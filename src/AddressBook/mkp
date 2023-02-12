@@ -1,0 +1,2 @@
+PATH=/usr/bin/m68k:$PATH
+make -f Makefile.palmos $1

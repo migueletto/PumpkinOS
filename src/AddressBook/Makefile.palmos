@@ -1,0 +1,39 @@
+CC        = m68k-palmos-gcc
+AS        = m68k-palmos-as
+OBJRES    = m68k-palmos-obj-res
+
+CSFLAGS   = -O2 -S -Wall -Wno-switch
+CFLAGS    = -O2 -Wall -Wno-switch -DPALMOS
+LDFLAGS   =  -v -L/usr/m68k-palmos/lib
+
+PILRC     = pilrc
+BUILDPRC  = build-prc
+
+PROG      = AddrTest
+OBJS      = AddrCustom.o AddrDetails.o AddrDialList.o AddrEdit.o AddressAutoFill.o Address.o AddressDB.o AddressLookup.o AddressTransfer.o AddrList.o AddrNote.o AddrPrefs.o AddrTools.o AddrView.o SysDebug.o
+
+all: $(PROG).prc
+
+.S.o:
+	$(CC) $(TARGETFLAGS) -c $<
+
+.c.s:
+	$(CC) $(CSFLAGS) $<
+
+$(PROG).prc: $(PROG) $(PROG).def
+	$(BUILDPRC) $(PROG).def $(PROG) resources/*.bin
+
+$(PROG): $(OBJS) $(PROG)-sections.o $(PROG)-sections.ld crt0.o
+	$(CC) $(OBJS) $(PROG)-sections.o $(PROG)-sections.ld -lPalmOSGlue $(LDFLAGS) -o $(PROG)
+
+$(PROG)-sections.s $(PROG)-sections.ld: $(PROG).def
+	m68k-palmos-multigen $(PROG).def
+
+$(PROG)-sections.o: $(PROG)-sections.s
+	$(AS) -mno-68881 -m68000 -o $(PROG)-sections.o $(PROG)-sections.s
+
+crt0.o: crt0.dat
+	cp crt0.dat crt0.o
+
+clean:
+	rm -f *.[osS] $(PROG) $(PROG)-sections.ld $(PROG).prc

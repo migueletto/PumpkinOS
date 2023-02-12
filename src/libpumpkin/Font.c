@@ -1,0 +1,646 @@
+#include <PalmOS.h>
+
+#include <time.h>
+#include <sys/time.h>
+
+#include "thread.h"
+#include "mutex.h"
+#include "pwindow.h"
+#include "sys.h"
+#include "vfs.h"
+#include "mem.h"
+#include "bytes.h"
+#include "AppRegistry.h"
+#include "storage.h"
+#include "pumpkin.h"
+#include "debug.h"
+#include "xalloc.h"
+
+typedef struct {
+  FontType *fonts[256];
+  FontTypeV2 *fontsv2[256];
+  FontID currentFont;
+  MemHandle h[256];
+  int nh;
+} fnt_module_t;
+
+extern thread_key_t *fnt_key;
+
+static void FntSaveFont(FontPtr font, FontID id);
+
+static void adjust(Int16 *r) {
+  switch (WinGetCoordinateSystem()) {
+    case kCoordinatesDouble:    *r *= 2; break;
+    case kCoordinatesQuadruple: *r *= 4; break;
+  }
+}
+
+int FntInitModule(UInt16 density) {
+  fnt_module_t *module;
+  MemHandle h;
+  FontTypeV2 *f2;
+  UInt16 id;
+  int i;
+
+  if ((module = xcalloc(1, sizeof(fnt_module_t))) == NULL) {
+    return -1;
+  }
+
+  thread_set(fnt_key, module);
+
+  // stdFont, boldFont, largeFont, symbolFont, symbol11Font, symbol7Font, ledFont, largeBoldFont
+  for (i = 0; i < 8; i++) {
+    id = 9000 + i;
+    if ((h = DmGetResource(fontExtRscType, id)) != NULL) {
+      if ((f2 = MemHandleLock(h)) != NULL) {
+        FntDefineFont(i, (FontPtr)f2);
+        module->h[module->nh++] = h;
+      } else {
+        DmReleaseResource(h);
+      }
+    } else {
+      debug(DEBUG_ERROR, "Font", "built-in nfnt %d font resource not found", id);
+    }
+  }
+
+  return 0;
+}
+
+int FntFinishModule(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  int i;
+
+  if (module) {
+    for (i = 0; i < module->nh; i++) {
+      if (module->h[i]) {
+        MemHandleUnlock(module->h[i]);
+        DmReleaseResource(module->h[i]);
+      }
+    }
+    xfree(module);
+  }
+
+  return 0;
+}
+
+FontID FntGetFont(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  return module->currentFont;
+}
+
+FontID FntSetFont(FontID font) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  FontID prev = module->currentFont;
+  module->currentFont = stdFont;
+  if (font >= 0 && font < 256) {
+    if (module->fonts[font] || module->fontsv2[font]) {
+      module->currentFont = font;
+    } else {
+      debug(DEBUG_ERROR, "Font", "font %d not installed", font);
+    }
+  }
+  return prev;
+}
+
+FontPtr FntGetFontPtr(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  if (module->fonts[module->currentFont]) {
+    return module->fonts[module->currentFont];
+  }
+  return (FontPtr)module->fontsv2[module->currentFont];
+}
+
+Int16 FntBaseLine(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  Int16 r = 0;
+  if (module->fonts[module->currentFont]) {
+    r = module->fonts[module->currentFont]->ascent;
+  } else if (module->fontsv2[module->currentFont]) {
+    r = module->fontsv2[module->currentFont]->ascent;
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntCharHeight(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  Int16 r = 0;
+  if (module->fonts[module->currentFont]) {
+    r = module->fonts[module->currentFont]->fRectHeight;
+  } else if (module->fontsv2[module->currentFont]) {
+    r = module->fontsv2[module->currentFont]->fRectHeight;
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntLineHeight(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  Int16 r = 0;
+  if (module->fonts[module->currentFont]) {
+    r = module->fonts[module->currentFont]->fRectHeight + module->fonts[module->currentFont]->leading;
+  } else if (module->fontsv2[module->currentFont]) {
+    r = module->fontsv2[module->currentFont]->fRectHeight + module->fontsv2[module->currentFont]->leading;
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntAverageCharWidth(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  Int16 r = 0;
+  if (module->fonts[module->currentFont]) {
+    r = module->fonts[module->currentFont]->fRectWidth;
+  } else if (module->fontsv2[module->currentFont]) {
+    r = module->fontsv2[module->currentFont]->fRectWidth;
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntCharWidth(Char ch) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  UInt8 uc = (UInt8)ch;
+  Int16 r = MISSING_SYMBOL_WIDTH;
+  if (module->fonts[module->currentFont] && uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
+    r = module->fonts[module->currentFont]->width[uc - module->fonts[module->currentFont]->firstChar];
+  } else if (module->fontsv2[module->currentFont] && uc >= module->fontsv2[module->currentFont]->firstChar && uc <= module->fontsv2[module->currentFont]->lastChar) {
+    r = module->fontsv2[module->currentFont]->width[uc - module->fontsv2[module->currentFont]->firstChar];
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntCharsWidth(Char const *chars, Int16 len) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  UInt8 uc;
+  Int16 i, r = 0;
+
+  if (module->fonts[module->currentFont]) {
+    for (i = 0; i < len; i++) {
+      uc = (UInt8)chars[i];
+      if (uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
+        r += module->fonts[module->currentFont]->width[uc - module->fonts[module->currentFont]->firstChar];
+      } else {
+        r += MISSING_SYMBOL_WIDTH;
+      }
+    }
+  } else if (module->fontsv2[module->currentFont]) {
+    for (i = 0; i < len; i++) {
+      uc = (UInt8)chars[i];
+      if (uc >= module->fontsv2[module->currentFont]->firstChar && uc <= module->fontsv2[module->currentFont]->lastChar) {
+        r += module->fontsv2[module->currentFont]->width[uc - module->fontsv2[module->currentFont]->firstChar];
+      } else {
+        r += MISSING_SYMBOL_WIDTH;
+      }
+    }
+  }
+  adjust(&r);
+
+  return r;
+}
+
+// Gets the width of the specified character. If the specified character
+// does not exist within the current font, the missing character symbol is substituted.
+
+Int16 FntWCharWidth(WChar iChar) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  UInt8 uc = (UInt16)iChar; // XXX
+  Int16 r = MISSING_SYMBOL_WIDTH;
+  if (module->fonts[module->currentFont] && uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
+    r = module->fonts[module->currentFont]->width[uc - module->fonts[module->currentFont]->firstChar];
+  } else if (module->fontsv2[module->currentFont] && uc >= module->fontsv2[module->currentFont]->firstChar && uc <= module->fontsv2[module->currentFont]->lastChar) {
+    r = module->fontsv2[module->currentFont]->width[uc - module->fontsv2[module->currentFont]->firstChar];
+  }
+  adjust(&r);
+  return r;
+}
+
+Int16 FntDescenderHeight(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  Int16 r = 0;
+  if (module->fonts[module->currentFont]) {
+    r = module->fonts[module->currentFont]->descent;
+  } else if (module->fontsv2[module->currentFont]) {
+    r = module->fontsv2[module->currentFont]->descent;
+  }
+  adjust(&r);
+  return r;
+}
+
+// Gets the width of the specified line of text, taking tab characters into
+// account. The function assumes that the characters passed are left-
+// aligned and that the first character in the string is the first character
+// drawn on a line. In other words, this routine doesn’t work for
+// characters that don’t start at the beginning of a line.
+
+Int16 FntLineWidth(Char const *pChars, UInt16 length) {
+  // XXX does not take into account tab characters
+  return FntCharsWidth(pChars, length);
+}
+
+// Given a string, determines how many bytes of text can be displayed
+// within the specified width with a line break at a tab or space character.
+
+UInt16 FntWordWrap(Char const *chars, UInt16 maxWidth) {
+  LineInfoType lineInfo;
+  RectangleType rect;
+  UInt16 totalLines, r = 0;
+
+  if (chars) {
+    RctSetRectangle(&rect, 0, 0, maxWidth, FntCharHeight());
+    WinDrawCharBox((char *)chars, StrLen(chars), FntGetFont(), &rect, false, NULL, &totalLines, NULL, &lineInfo);
+    if (totalLines > 0) {
+      r = lineInfo.length;
+    }
+  }
+
+  return r;
+}
+
+Err FntDefineFont(FontID font, FontPtr fontP) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  FontTypeV2 *f2;
+
+  if (font >= 0 && font < 256) {
+    if (fontP->v == 1) {
+      module->fonts[font] = fontP;
+      module->fontsv2[font] = NULL;
+      debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
+
+    } else if (fontP->v == 2) {
+      f2 = (FontTypeV2 *)fontP;
+      module->fonts[font] = NULL;
+      module->fontsv2[font] = f2;
+      debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
+
+    } else {
+      debug(DEBUG_ERROR, "Font", "FntDefineFont: invalid font version %d", fontP->v);
+    }
+  }
+  return 0;
+}
+
+// Given a pixel position, gets the offset of the character displayed at that location.
+Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Boolean *leadingEdge, Int16 *truncWidth) {
+  Int16 tw, width, offset = 0;
+
+
+  if (pChars && length) {
+    if (leadingEdge) *leadingEdge = false;
+    if (truncWidth) *truncWidth = FntCharsWidth(pChars, length);
+
+    for (offset = 0, width = 0; offset < length; offset++) {
+      tw = FntCharWidth(pChars[offset]);
+      if ((width + tw) >= pixelWidth) {
+         if (leadingEdge) *leadingEdge = false;
+         if (truncWidth) *truncWidth = width;
+         break;
+      }
+      width += tw;
+    }
+  }
+
+  return offset;
+}
+
+void FntCharsInWidth(Char const *string, Int16 *stringWidthP, Int16 *stringLengthP, Boolean *fitWithinWidth) {
+  int i, tw, lineWidth;
+  char *s;
+
+  if (string && stringWidthP && stringLengthP && fitWithinWidth) {
+    for (i = 0; string[i]; i++) {
+      if (string[i] != ' ' || string[i] != '\t') break;
+    }
+    s = (char *)&string[i];
+
+    for (i = 0, lineWidth = 0; i < *stringLengthP && s[i]; i++) {
+      tw = FntCharWidth(s[i]);
+      if (lineWidth + tw > *stringWidthP) break;
+      lineWidth += tw;
+    }
+
+    *stringWidthP = lineWidth;
+    *stringLengthP = i;
+    *fitWithinWidth = (s[i] == 0);
+  }
+}
+
+// Word wraps a text string backwards by the number of lines
+// specified. The character position of the start of the first line and the
+// number of lines that are actually word wrapped are returned.
+
+void FntWordWrapReverseNLines(Char const *const chars, UInt16 maxWidth, UInt16 *linesToScrollP, UInt16 *scrollPosP) {
+  debug(DEBUG_ERROR, "Font", "FntWordWrapReverseNLines not implemented");
+}
+
+// Gets the values needed to update a scroll bar based on a specified
+// string and the position within the string.
+
+void FntGetScrollValues(Char const *chars, UInt16 width, UInt16 scrollPos, UInt16 *linesP, UInt16 *topLine) {
+  debug(DEBUG_ERROR, "Font", "FntGetScrollValues not implemented");
+}
+
+FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsize) {
+  FontType *font;
+  uint16_t fontType;
+  uint16_t firstChar;
+  uint16_t lastChar;
+  uint16_t maxWidth;
+  uint16_t kernMax;
+  uint16_t nDescent;
+  uint16_t fRectWidth;
+  uint16_t fRectHeight;
+  uint16_t owTLoc;
+  uint16_t ascent;
+  uint16_t descent;
+  uint16_t leading;
+  uint16_t rowWords;
+  uint16_t column;
+  uint8_t offset, width;
+  int glyph_len;
+  int i, j, k;
+  uint8_t *bits;
+  Err err;
+
+  i = 0;
+  i += get2b(&fontType, p, i);
+  i += get2b(&firstChar, p, i);
+  i += get2b(&lastChar, p, i);
+  i += get2b(&maxWidth, p, i);
+  i += get2b(&kernMax, p, i);
+  i += get2b(&nDescent, p, i);
+  i += get2b(&fRectWidth, p, i);
+  i += get2b(&fRectHeight, p, i);
+  k = i;
+  i += get2b(&owTLoc, p, i);
+  i += get2b(&ascent, p, i);
+  i += get2b(&descent, p, i);
+  i += get2b(&leading, p, i);
+  i += get2b(&rowWords, p, i);
+
+  if ((font = StoNewDecodedResource(h, sizeof(FontType), 0, 0)) != NULL) {
+    font->v = 1;
+    font->fontType = fontType;
+    font->firstChar = firstChar;
+    font->lastChar = lastChar;
+    font->maxWidth = maxWidth;
+    font->kernMax = kernMax;
+    font->nDescent = nDescent;
+    font->fRectWidth = fRectWidth;
+    font->fRectHeight = fRectHeight;
+    font->owTLoc = owTLoc;
+    font->ascent = ascent;
+    font->descent = descent;
+    font->leading = leading;
+    font->rowWords = rowWords;
+    font->column = xcalloc(lastChar - firstChar + 1, sizeof(uint16_t));
+    font->width = xcalloc(lastChar - firstChar + 1, sizeof(uint8_t));
+    debug(DEBUG_TRACE, "Font", "font chars %d to %d, maxWidth %d, rectWidth %d, rectheight %d, rowWords %d",
+      firstChar, lastChar, maxWidth, fRectWidth, fRectHeight, rowWords);
+
+    font->pitch = font->rowWords * 2;
+    glyph_len = font->pitch * font->fRectHeight;
+    font->data = xcalloc(1, glyph_len);
+    xmemcpy(font->data, &p[i], glyph_len);
+    i += glyph_len;
+    debug(DEBUG_TRACE, "Font", "length %d, pitch %d", glyph_len, font->pitch);
+
+    for (j = 0; j < lastChar - firstChar + 1; j++) {
+      i += get2b(&column, p, i);
+      font->column[j] = column;
+      debug(DEBUG_TRACE, "Font", "char %d: column %d", firstChar + j, column);
+    }
+
+    i = owTLoc*2 + k;
+
+    font->totalWidth = 0;
+    for (j = 0; j < lastChar - firstChar + 1; j++) {
+      i += get1(&offset, p, i);
+      i += get1(&width, p, i);
+      if (offset == 255 && width == 255) {
+        debug(DEBUG_TRACE, "Font", "char %d: missing", firstChar + j);
+      } else {
+        font->width[j] = width;
+        font->totalWidth += width;
+        //debug(DEBUG_TRACE, "Font", "char %d: offset %d, width %d", firstChar + j, offset, width);
+      }
+    }
+    debug(DEBUG_TRACE, "Font", "totalWidth %d", font->totalWidth);
+
+    font->bmp = BmpCreate3(font->pitch*8, font->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+    bits = BmpGetBits(font->bmp);
+    xmemcpy(bits, font->data, font->fRectHeight * font->pitch);
+  }
+
+  *dsize = sizeof(FontType);
+  return font;
+}
+
+void pumpkin_destroy_font(void *p) {
+  FontType *font;
+
+  font = (FontType *)p;
+  if (font) {
+    if (font->bmp) BmpDelete(font->bmp);
+    MemChunkFree(font);
+  }
+}
+
+FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *dsize) {
+  FontTypeV2 *font;
+  uint16_t fontType;
+  uint16_t firstChar;
+  uint16_t lastChar;
+  uint16_t maxWidth;
+  uint16_t kernMax;
+  uint16_t nDescent;
+  uint16_t fRectWidth;
+  uint16_t fRectHeight;
+  uint16_t owTLoc;
+  uint16_t ascent;
+  uint16_t descent;
+  uint16_t leading;
+  uint16_t rowWords;
+  uint16_t version;
+  uint16_t densityCount;
+  uint16_t density;
+  uint32_t glyphBitsOffset;
+  uint16_t column;
+  uint8_t offset, width;
+  int glyph_offset, glyph_len;
+  int i, j, k;
+  uint8_t *bits;
+  Err err;
+
+  i = 0;
+  i += get2b(&fontType, p, i);
+  i += get2b(&firstChar, p, i);
+  i += get2b(&lastChar, p, i);
+  i += get2b(&maxWidth, p, i);
+  i += get2b(&kernMax, p, i);
+  i += get2b(&nDescent, p, i);
+  i += get2b(&fRectWidth, p, i);
+  i += get2b(&fRectHeight, p, i);
+  k = i;
+  i += get2b(&owTLoc, p, i);
+  i += get2b(&ascent, p, i);
+  i += get2b(&descent, p, i);
+  i += get2b(&leading, p, i);
+  i += get2b(&rowWords, p, i);
+  i += get2b(&version, p, i);
+  i += get2b(&densityCount, p, i);
+
+  if ((font = StoNewDecodedResource(h, sizeof(FontTypeV2), 0, 0)) != NULL) {
+    font->v = 2;
+    font->fontType = fontType;
+    font->firstChar = firstChar;
+    font->lastChar = lastChar;
+    font->maxWidth = maxWidth;
+    font->kernMax = kernMax;
+    font->nDescent = nDescent;
+    font->fRectWidth = fRectWidth;
+    font->fRectHeight = fRectHeight;
+    font->owTLoc = owTLoc;
+    font->ascent = ascent;
+    font->descent = descent;
+    font->leading = leading;
+    font->rowWords = rowWords;
+    font->version = version;
+    font->densityCount = densityCount;
+    font->densities = xcalloc(densityCount, sizeof(FontDensityType));
+    font->pitch = xcalloc(densityCount, sizeof(uint16_t));
+    font->column = xcalloc(lastChar - firstChar + 1, sizeof(uint16_t));
+    font->width = xcalloc(lastChar - firstChar + 1, sizeof(uint8_t));
+    font->data = xcalloc(densityCount, sizeof(uint8_t *));
+    font->bmp = xcalloc(densityCount, sizeof(BitmapType *));
+    debug(DEBUG_TRACE, "Font", "font version %d, densities %d, chars %d to %d, maxWidth %d, rectWidth %d, rectheight %d, rowWords %d",
+      version, densityCount, firstChar, lastChar, maxWidth, fRectWidth, fRectHeight, rowWords);
+
+    for (j = 0; j < densityCount; j++) {
+      i += get2b(&density, p, i);
+      i += get4b(&glyphBitsOffset, p, i);
+      font->densities[j].density = density;
+      font->densities[j].glyphBitsOffset = glyphBitsOffset;
+      debug(DEBUG_TRACE, "Font", "density %d: %d, offset %d", j, density, glyphBitsOffset);
+    }
+
+    for (j = 0; j < lastChar - firstChar + 1; j++) {
+      i += get2b(&column, p, i);
+      font->column[j] = column;
+      debug(DEBUG_TRACE, "Font", "char %d: column %d", firstChar + j, column);
+    }
+
+    i = owTLoc*2 + k;
+
+    font->totalWidth = 0;
+    for (j = 0; j < lastChar - firstChar + 1; j++) {
+      i += get1(&offset, p, i);
+      i += get1(&width, p, i);
+      if (offset == 255 && width == 255) {
+        debug(DEBUG_TRACE, "Font", "char %d: missing", firstChar + j);
+      } else {
+        font->width[j] = width;
+        font->totalWidth += width;
+        //debug(DEBUG_TRACE, "Font", "char %d: offset %d, width %d", firstChar + j, offset, width);
+      }
+    }
+    debug(DEBUG_TRACE, "Font", "totalWidth %d", font->totalWidth);
+
+    for (j = 0; j < densityCount; j++) {
+      glyph_offset = font->densities[j].glyphBitsOffset;
+
+      switch (font->densities[j].density) {
+        case kDensityLow:
+          glyph_len = font->densities[1].glyphBitsOffset - font->densities[0].glyphBitsOffset;
+          font->pitch[j] = glyph_len / font->fRectHeight;
+          font->data[j] = xcalloc(1, glyph_len);
+          xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
+          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+          bits = BmpGetBits(font->bmp[j]);
+          xmemcpy(bits, font->data[j], font->fRectHeight * font->pitch[j]);
+          debug(DEBUG_TRACE, "Font", "single density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);
+          break;
+        case kDensityDouble:
+          glyph_len = size - glyph_offset;
+          font->pitch[j] = glyph_len / (font->fRectHeight*2);
+          font->data[j] = xcalloc(1, glyph_len);
+          xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
+          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight*2, kDensityDouble, 1, true, 0, NULL, &err);
+          bits = BmpGetBits(font->bmp[j]);
+          xmemcpy(bits, font->data[j], font->fRectHeight * 2 * font->pitch[j]);
+          debug(DEBUG_TRACE, "Font", "double density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);
+          break;
+      }
+    }
+  }
+
+  *dsize = sizeof(FontTypeV2);
+  return font;
+}
+
+void pumpkin_destroy_fontv2(void *p) {
+  FontTypeV2 *font;
+  int i;
+
+  font = (FontTypeV2 *)p;
+  if (font) {
+    if (font->densities) xfree(font->densities);
+    if (font->pitch) xfree(font->pitch);
+    if (font->column) xfree(font->column);
+    if (font->width) xfree(font->width);
+
+    if (font->bmp) {
+      for (i = 0; i < font->densityCount; i++) {
+        if (font->bmp[i]) BmpDelete(font->bmp[i]);
+      }
+    }
+    if (font->data) {
+      for (i = 0; i < font->densityCount; i++) {
+        if (font->data) {
+          xfree(font->data[i]);
+        }
+      }
+      xfree(font->data);
+    }
+    MemChunkFree(font);
+  }
+}
+
+static void FntSaveFont(FontPtr font, FontID id) {
+  FontTypeV2 *font2;
+  Coord width, height;
+  char filename[64];
+
+  if (font) {
+    if (font->v == 1) {
+      width = font->pitch*8;
+      height = font->fRectHeight;
+      StrPrintF(filename, "font_%03d_v1.png", id);
+      pumpkin_save_bitmap(font->bmp, kDensityLow, 0, 0, width, height, filename);
+    } else {
+      font2 = (FontTypeV2 *)font;
+      width = font2->pitch[0]*8;
+      height = font2->fRectHeight;
+      StrPrintF(filename, "font_%03d_v2_low.png", id);
+      pumpkin_save_bitmap(font2->bmp[0], kDensityLow, 0, 0, width, height, filename);
+      width = font2->pitch[1]*8;
+      height = font2->fRectHeight*2;
+      StrPrintF(filename, "font_%03d_v2_dbl.png", id);
+      pumpkin_save_bitmap(font2->bmp[1], kDensityDouble, 0, 0, width, height, filename);
+    }
+  }
+}
+
+void FntSaveFonts(void) {
+  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  FontID font;
+
+  for (font = 0; font < 256; font++) {
+    if (module->fonts[font]) {
+      FntSaveFont(module->fonts[font], font);
+    } else if (module->fontsv2[font]) {
+      FntSaveFont((FontPtr)module->fontsv2[font], font);
+    }
+  }
+}

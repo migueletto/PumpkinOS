@@ -1,0 +1,31 @@
+#include "resource.h"
+
+ICONFAMILY "command.bmp" "" "" "command.bmp"
+
+FORM MainForm 0 0 160 160
+USABLE
+NOFRAME
+MENUID 1001
+BEGIN
+  TITLE ""
+END
+
+MENU 1001
+BEGIN
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "About" aboutCmd "A"
+  END
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Paste" pasteCmd "P"
+    MENUITEM "Copy"  copyCmd  "C"
+  END
+END
+
+DATA "Scrp" ID 1 "command.lua"
+
+HEX "wind" ID 1
+  0x02 0x80 0x01 0x40
+
+VERSION "1.0"

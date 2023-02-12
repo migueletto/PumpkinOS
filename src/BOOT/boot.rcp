@@ -1,0 +1,1162 @@
+FORM ID 10100 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Go To Date"
+  LABEL "1994" ID 10102 AT (65 16) USABLE FONT 1
+  REPEATBUTTON "\x02" ID 10103 AT (46 14 15 15) USABLE LEFTANCHOR NOFRAME FONT 4
+  REPEATBUTTON "\x03" ID 10104 AT (92 14 15 15) USABLE LEFTANCHOR NOFRAME FONT 4
+  PUSHBUTTON "Jan" ID 1 AT (9 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Feb" ID 2 AT (32 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Mar" ID 3 AT (55 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Apr" ID 4 AT (78 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "May" ID 5 AT (101 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Jun" ID 6 AT (124 31 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Jul" ID 7 AT (9 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Aug" ID 8 AT (32 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Sep" ID 9 AT (55 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Oct" ID 10 AT (78 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Nov" ID 11 AT (101 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Dec" ID 12 AT (124 45 22 13) USABLE RIGHTANCHOR GROUP 1
+  BUTTON "Today" ID 10118 AT (51 138 40 13) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 10119 AT (5 138 40 13) USABLE LEFTANCHOR FRAME
+  GADGET ID 10120 AT (7 63 140 70) USABLE EXTENDED
+  BUTTON "This Week" ID 10121 AT (51 138 55 13) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "This Month" ID 10122 AT (51 138 60 13) NONUSABLE LEFTANCHOR FRAME
+END
+
+FORM ID 11000 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  DEFAULTBTNID 11006
+BEGIN
+  TITLE "About ^1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  FORMBITMAP AT (31 23) BITMAP 10000 USABLE
+  LABEL "^1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" ID 11001 AT (15 74) USABLE FONT 1
+  LABEL "v. ^1XXXXXXXXXXXXXXX" ID 11002 AT (15 85) USABLE FONT 1
+  LABEL "Copyright \xa9 2001 Palm, Inc. or its subsidiaries. All rights reserved." ID 11004 AT (15 100) USABLE
+  BUTTON "OK" ID 11006 AT (60 139 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 11001 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  DEFAULTBTNID 11006
+BEGIN
+  TITLE "About ^1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  FORMBITMAP AT (31 23) BITMAP 10000 USABLE
+  LABEL "^1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" ID 11001 AT (15 74) USABLE FONT 1
+  LABEL "v. ^1XXXXXXXXXXXXXXX" ID 11002 AT (15 85) USABLE FONT 1
+  LABEL "Copyright \xa9 2023 @pmig96." ID 11004 AT (15 100) USABLE
+  BUTTON "OK" ID 11006 AT (60 139 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 10500 AT (2 98 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  MENUID 10000
+BEGIN
+  TITLE "Find"
+  LABEL "Find:" ID 10502 AT (7 20) USABLE FONT 1
+  FIELD ID 10503 AT (32 20 112 11) USABLE LEFTALIGN SINGLELINE AUTOSHIFT MAXCHARS 16
+  BUTTON "OK" ID 10504 AT (5 43 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 10505 AT (48 43 37 12) USABLE LEFTANCHOR FRAME
+  GRAFFITISTATEINDICATOR AT (142 49)
+END
+
+FORM ID 10600 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Find"
+  LABEL "" ID 10602 AT (7 16) USABLE FONT 1
+  TABLE ID 10603 AT (2 31 152 99) ROWS 9 COLUMNS 1 COLUMNWIDTHS 152
+  BUTTON "Cancel" ID 10605 AT (5 139 37 12) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Find More" ID 10606 AT (48 139 47 12) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Stop" ID 10607 AT (5 139 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 10200 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 10211
+BEGIN
+  TITLE "Set Time"
+  LABEL "Start Time:" ID 10202 AT (10 17) USABLE FONT 1
+  LABEL "End Time:" ID 10203 AT (10 48) USABLE FONT 1
+  PUSHBUTTON "12:00 pm  " ID 10204 AT (10 30 50 13) USABLE RIGHTANCHOR FONT 1
+  PUSHBUTTON "12:00 pm" ID 10205 AT (10 61 50 13) USABLE RIGHTANCHOR FONT 1
+  LIST ID 10206 AT (92 16 33 134) USABLE VISIBLEITEMS 12 FONT 1
+  LIST "\x9500" "  05" "  10" "  15" "  20" "  25" "\x9530" "  35" "  40" "  45" "  50" "  55" ID 10207 AT (130 16 23 134) USABLE VISIBLEITEMS 12 FONT 1
+  BUTTON "OK" ID 10208 AT (5 138 37 13) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 10209 AT (48 138 37 13) USABLE LEFTANCHOR FRAME
+  BUTTON "No Time" ID 10210 AT (10 115 50 13) USABLE LEFTANCHOR FRAME FONT 1
+  BUTTON "All Day" ID 10212 AT (10 95 50 13) NONUSABLE LEFTANCHOR FRAME FONT 1
+END
+
+FORM ID 13500 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  DEFAULTBTNID 13507
+BEGIN
+  TITLE " "
+  TABLE ID 13501 AT (2 14 152 120) ROWS 5 COLUMNS 2 COLUMNWIDTHS 13 139
+  BUTTON "Done" ID 13503 AT (5 139 32 12) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Snooze" ID 13504 AT (43 139 42 12) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "goto" ID 13505 AT (43 133 20 16) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Clear All" ID 13506 AT (91 139 42 12) USABLE LEFTANCHOR FRAME
+  BUTTON "close" ID 13507 AT (93 133 20 16) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "OK" ID 13508 AT (5 127 45 24) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Snooze" ID 13509 AT (56 127 44 24) NONUSABLE LEFTANCHOR FRAME
+  BUTTON "Go To" ID 13510 AT (106 127 45 24) NONUSABLE LEFTANCHOR FRAME
+  GADGET ID 13511 AT (2 14 152 110) USABLE EXTENDED
+  REPEATBUTTON "\x01" ID 13512 AT (138 137 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+  REPEATBUTTON "\x02" ID 13513 AT (138 145 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+END
+
+FORM ID 13150 AT (2 102 156 56)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 13150
+  DEFAULTBTNID 13152
+BEGIN
+  TITLE "Adjust Brightness"
+  SLIDER ID 13151 AT (4 15 148 20) USABLE FEEDBACK THUMBID 13100 BACKGROUNDID 13151 VALUE 128 MIN 0 MAX 255 PAGESIZE 16
+  BUTTON "Done" ID 13102 AT (5 39 36 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 13100 AT (2 102 156 56)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 13100
+  DEFAULTBTNID 13102
+BEGIN
+  TITLE "Adjust Contrast"
+  SLIDER ID 13101 AT (4 15 148 20) USABLE FEEDBACK THUMBID 13100 BACKGROUNDID 13101 VALUE 128 MIN 0 MAX 255 PAGESIZE 16
+  BUTTON "Done" ID 13102 AT (5 39 36 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 10000 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 10019
+  MENUID 10000
+BEGIN
+  TITLE "Edit Categories"
+  LIST ID 10002 AT (3 22 150 101) USABLE VISIBLEITEMS 9
+  BUTTON "OK" ID 10003 AT (5 139 22 12) USABLE LEFTANCHOR FRAME
+  BUTTON "New" ID 10004 AT (33 139 27 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Rename" ID 10005 AT (66 139 42 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Delete" ID 10006 AT (114 139 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 11100 AT (2 89 156 69)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  DEFAULTBTNID 11105
+  MENUID 10000
+BEGIN
+  TITLE "Edit Categories"
+  LABEL "Enter a new category name:" ID 11102 AT (4 15) USABLE FONT 1
+  FIELD ID 11103 AT (4 30 148 20) USABLE LEFTALIGN SINGLELINE AUTOSHIFT MAXCHARS 15
+  BUTTON "OK" ID 11104 AT (5 52 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 11105 AT (48 52 37 12) USABLE LEFTANCHOR FRAME
+  GRAFFITISTATEINDICATOR AT (142 58)
+END
+
+FORM ID 10400 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Tips"
+  FIELD ID 10402 AT (5 15 146 121) USABLE LEFTALIGN MULTIPLELINES MAXCHARS 1000
+  BUTTON "Done" ID 10403 AT (5 139 37 12) USABLE LEFTANCHOR FRAME
+  REPEATBUTTON "\x01" ID 10404 AT (138 137 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+  REPEATBUTTON "\x02" ID 10405 AT (138 145 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+END
+
+FORM ID 10950 AT (0 0 160 160)
+  NOFRAME
+  SAVEBEHIND
+  USABLE
+  MENUID 10300
+BEGIN
+  TITLE "\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19  "
+  FIELD ID 10901 AT (0 16 153 121) USABLE LEFTALIGN MULTIPLELINES AUTOSHIFT HASSCROLLBAR MAXCHARS 4096
+  BUTTON"Done" ID 10902 AT (1 147 30 12) USABLE LEFTANCHOR FRAME FONT 0
+  BUTTON"Delete..." ID 10905 AT (37 147 42 12) USABLE LEFTANCHOR FRAME FONT 0
+  SCROLLBAR ID 10908 AT (153 18 7 121) USABLE VALUE 0 MIN 0 MAX 0 PAGESIZE 0
+  GRAFFITISTATEINDICATOR AT (135 150)
+END
+
+FORM ID 12100 AT (2 88 156 70)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Set Time"
+  LABEL ":" ID 12102 AT (34 25) USABLE FONT 1
+  PUSHBUTTON "12" ID 12105 AT (10 25 20 13) USABLE RIGHTANCHOR FONT 1 GROUP 2
+  PUSHBUTTON "0" ID 12106 AT (40 25 14 13) USABLE RIGHTANCHOR FONT 1 GROUP 2
+  PUSHBUTTON "0" ID 12107 AT (55 25 14 13) USABLE RIGHTANCHOR FONT 1 GROUP 2
+  BUTTON "\x01" ID 12108 AT (81 23 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+  BUTTON "\x02" ID 12109 AT (81 32 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+  PUSHBUTTON "AM" ID 12110 AT (106 25 20 13) USABLE RIGHTANCHOR GROUP 3
+  PUSHBUTTON "PM" ID 12111 AT (127 25 20 13) USABLE RIGHTANCHOR GROUP 3
+  BUTTON "OK" ID 12112 AT (5 53 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 12113 AT (48 53 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 11900 AT (2 97 156 61)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Select Font"
+  LABEL "Font:" ID 11902 AT (23 21) USABLE FONT 1
+  PUSHBUTTON "A" ID 11903 AT (55 20 14 14) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "A" ID 11904 AT (70 20 14 14) USABLE RIGHTANCHOR FONT 1 GROUP 1
+  PUSHBUTTON "A" ID 11905 AT (85 20 14 14) USABLE RIGHTANCHOR FONT 7 GROUP 1
+  BUTTON "OK" ID 11906 AT (5 44 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 11907 AT (48 44 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 13300 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  DEFAULTBTNID 13301
+BEGIN
+  TITLE "Pick Color"
+  BUTTON "OK" ID 13301 AT (5 140 36 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 13302 AT (47 140 36 12) USABLE LEFTANCHOR FRAME
+  POPUPTRIGGER"Palette" ID 13303 AT (106 140 47 12) NONUSABLE LEFTANCHOR
+  POPUPLIST ID 13303 13304
+  LIST "Palette" "RGB" ID 13304 AT (104 126 42 24) NONUSABLE VISIBLEITEMS 2
+  GADGET ID 13305 AT (0 12 156 124) USABLE EXTENDED
+  SLIDER ID 13306 AT (5 50 114 21) NONUSABLE FEEDBACK THUMBID 13350 BACKGROUNDID 13351 VALUE 0 MIN 0 MAX 15 PAGESIZE 1
+  LABEL "R:" ID 13307 AT (124 54) NONUSABLE FONT 1
+  SLIDER ID 13308 AT (5 77 114 21) NONUSABLE FEEDBACK THUMBID 13350 BACKGROUNDID 13351 VALUE 0 MIN 0 MAX 15 PAGESIZE 1
+  LABEL "G:" ID 13309 AT (124 82) NONUSABLE FONT 1
+  SLIDER ID 13310 AT (5 106 114 21) NONUSABLE FEEDBACK THUMBID 13350 BACKGROUNDID 13351 VALUE 0 MIN 0 MAX 15 PAGESIZE 1
+  LABEL "B:" ID 13311 AT (124 111) NONUSABLE FONT 1
+  GADGET ID 13312 AT (8 18 142 22) USABLE EXTENDED
+  LABEL "00" ID 13313 AT (138 54) USABLE
+  LABEL "00" ID 13314 AT (138 82) USABLE
+  LABEL "00" ID 13315 AT (138 111) USABLE
+END
+
+FORM ID 13400 AT (2 2 156 156)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 13400
+  DEFAULTBTNID 13412
+BEGIN
+  TITLE "Set Time Zone"
+  FIELD ID 13401 AT (82 111 70 12) USABLE LEFTALIGN MULTIPLELINES MAXCHARS 80
+  FIELD ID 13402 AT (82 122 70 12) USABLE LEFTALIGN MULTIPLELINES MAXCHARS 80
+  LIST ID 13403 AT (1 13 154 90) USABLE VISIBLEITEMS 8
+  LABEL "New Time:" ID 13405 AT (27 122) USABLE FONT 1
+  LABEL "Current Time:" ID 13407 AT (9 111) USABLE FONT 1
+  BUTTON "OK" ID 13412 AT (5 139 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 13413 AT (48 139 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 13200 AT (2 78 156 80)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 10020
+  MENUID 10000
+BEGIN
+  TITLE "Change Security"
+  LABEL "CurrentPrivacy:" ID 13201 AT (13 24) USABLE FONT 1
+  POPUPTRIGGER"Popup" ID 13202 AT (59 35 42 12) USABLE LEFTANCHOR
+  POPUPLIST ID 13202 13203
+  LIST "Show Records" "Mask Records" "Hide Records" ID 13203 AT (69 33 64 35) NONUSABLE VISIBLEITEMS 3
+  BUTTON "OK" ID 13204 AT (5 63 37 12) USABLE LEFTANCHOR FRAME
+  BUTTON "Cancel" ID 13205 AT (48 63 37 12) USABLE LEFTANCHOR FRAME
+END
+
+FORM ID 32000 AT (2 14 156 144)
+  MODAL
+  SAVEBEHIND
+  USABLE
+  HELPID 32000
+  MENUID 32000
+BEGIN
+  TITLE "Keyboard"
+  BUTTON "Done" ID 32002 AT (5 126 38 13) USABLE LEFTANCHOR FRAME
+  FIELD ID 32003 AT (1 12 154 47) USABLE LEFTALIGN MULTIPLELINES UNDERLINED MAXCHARS 256
+  PUSHBUTTON "abc" ID 32005 AT (49 126 19 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "123" ID 32006 AT (69 126 19 13) USABLE RIGHTANCHOR GROUP 1
+  PUSHBUTTON "Int'l" ID 32007 AT (89 126 18 13) USABLE RIGHTANCHOR GROUP 1
+  GADGET ID 32010 AT (0 63 156 57) USABLE EXTENDED
+  GRAFFITISTATEINDICATOR AT (131 130)
+  REPEATBUTTON "\x01" ID 32008 AT (142 124 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+  REPEATBUTTON "\x02" ID 32009 AT (142 132 13 8) USABLE LEFTANCHOR NOFRAME FONT 5
+END
+
+FORM ID 17000 AT (2 2 118 52)
+  MODAL
+  SAVEBEHIND
+  USABLE
+BEGIN
+  TITLE "Password"
+  FIELD 17000 4 15 108 11 MAXCHARS 32 EDITABLE UNDERLINED SINGLELINE
+  BUTTON "Done" 17001 CENTER BOTTOM@48 AUTO AUTO
+END
+
+MENU ID 10300
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM SEPARATOR
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Font\x18" ID 10300 "F"
+    MENUITEM "Phone Lookup" ID 10301 "L"
+  END
+END
+
+MENU ID 32000
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 100 "U"
+    MENUITEM "Cut" ID 101 "X"
+    MENUITEM "Copy" ID 102 "C"
+    MENUITEM "Paste" ID 103 "P"
+    MENUITEM "Select All" ID 104 "S"
+  END
+END
+
+MENU ID 10400
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10400 "U"
+    MENUITEM "Cut" ID 10401 "X"
+    MENUITEM "Copy" ID 10402 "C"
+    MENUITEM "Paste" ID 10403 "P"
+  END
+END
+
+MENU ID 10200
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM SEPARATOR
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Font\x18" ID 10200 "F"
+    MENUITEM "Go to Top of Page" ID 10201
+    MENUITEM "Go to Bottom of Page" ID 10202
+    MENUITEM "Phone Lookup" ID 10203 "L"
+  END
+END
+
+MENU ID 10000
+BEGIN
+  PULLDOWN "Edit"
+  BEGIN
+    MENUITEM "Undo" ID 10000 "U"
+    MENUITEM "Cut" ID 10001 "X"
+    MENUITEM "Copy" ID 10002 "C"
+    MENUITEM "Paste" ID 10003 "P"
+    MENUITEM "Select All" ID 10004 "S"
+    MENUITEM SEPARATOR
+    MENUITEM "Keyboard" ID 10006 "K"
+    MENUITEM "Graffiti Help" ID 10007 "G"
+  END
+END
+
+ALERT ID 10000
+WARNING
+BEGIN
+  TITLE "Edit Categories"
+  MESSAGE "Select a category name."
+  BUTTONS "OK"
+END
+
+ALERT ID 10001
+DEFAULTBUTTON 2
+WARNING
+BEGIN
+  TITLE "Remove Category"
+  MESSAGE "Delete category name and all records, or only category name (all records will be moved to the Unfiled category)?"
+  BUTTONS "Records" "Name Only" "Cancel"
+END
+
+ALERT ID 10004
+DEFAULTBUTTON 1
+WARNING
+BEGIN
+  TITLE "Undo"
+  MESSAGE "This editing operation cannot be undone."
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 10005
+DEFAULTBUTTON 1
+WARNING
+BEGIN
+  TITLE "Merge Category"
+  MESSAGE "You have renamed the category to one that already exists.  This will merge those two categories.  Do you wish to continue?"
+  BUTTONS "Yes" "No"
+END
+
+ALERT ID 10006
+INFORMATION
+BEGIN
+  TITLE "Private Records"
+  MESSAGE "You have marked this record Private.  Go to the Security application or the Security menu item  and choose Mask Records or Hide Records to mask or hide all Private records."
+  BUTTONS "OK"
+END
+
+ALERT ID 10007
+WARNING
+BEGIN
+  TITLE "Clipboard"
+  MESSAGE "Clipboard limit exceeded."
+  BUTTONS "OK"
+END
+
+ALERT ID 10012
+ERROR
+BEGIN
+  TITLE "Category Name"
+  MESSAGE "The category ^1 already exists.  Please use a different name."
+  BUTTONS "OK"
+END
+
+ALERT ID 10013
+WARNING
+BEGIN
+  TITLE "Handheld Full"
+  MESSAGE "The data storage of the handheld is full."
+  BUTTONS "OK"
+END
+
+ALERT ID 10014
+ERROR
+BEGIN
+  TITLE "New Category"
+  MESSAGE "All categories are used.  Please delete a category before adding another."
+  BUTTONS "OK"
+END
+
+ALERT ID 10015
+DEFAULTBUTTON 1
+WARNING
+BEGIN
+  TITLE "Remove Category"
+  MESSAGE "Deleting a category name will cause all entries in that category to be moved to the Unfiled category.  Do you wish to continue?"
+  BUTTONS "Yes" "No"
+END
+
+ALERT ID 10017
+ERROR
+BEGIN
+  TITLE "Send"
+  MESSAGE "There is no data to send or the data is marked private."
+  BUTTONS "OK"
+END
+
+ALERT ID 10018
+WARNING
+BEGIN
+  TITLE "Low Batteries"
+  MESSAGE "Your batteries are low.  Place the handheld in a HotSync cradle to recharge."
+  BUTTONS "OK"
+END
+
+ALERT ID 10019
+WARNING
+BEGIN
+  TITLE "Low Batteries"
+  MESSAGE "Your batteries are EXTREMELY low.  Place the handheld in a HotSync cradle to recharge."
+  BUTTONS "OK"
+END
+
+ALERT ID 10020
+ERROR
+BEGIN
+  TITLE "Category Name"
+  MESSAGE "This category name is too long."
+  BUTTONS "OK"
+END
+
+ALERT ID 10021
+ERROR
+BEGIN
+  TITLE "Error"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK"
+END
+
+ALERT ID 10022
+ERROR
+BEGIN
+  TITLE "Error"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 10023
+ERROR
+BEGIN
+  TITLE "Error"
+  MESSAGE "^1^2^3"
+  BUTTONS "Cancel"
+END
+
+ALERT ID 10024
+INFORMATION
+BEGIN
+  TITLE "Information"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK"
+END
+
+ALERT ID 10025
+INFORMATION
+BEGIN
+  TITLE "Information"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 10026
+INFORMATION
+BEGIN
+  TITLE "Information"
+  MESSAGE "^1^2^3"
+  BUTTONS "Cancel"
+END
+
+ALERT ID 10028
+CONFIRMATION
+BEGIN
+  TITLE "Confirmation"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK"
+END
+
+ALERT ID 10029
+CONFIRMATION
+BEGIN
+  TITLE "Confirmation"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 10030
+CONFIRMATION
+BEGIN
+  TITLE "Confirmation"
+  MESSAGE "^1^2^3"
+  BUTTONS "Cancel"
+END
+
+ALERT ID 10031
+WARNING
+BEGIN
+  TITLE "Warning"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK"
+END
+
+ALERT ID 10032
+WARNING
+BEGIN
+  TITLE "Warning"
+  MESSAGE "^1^2^3"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 10033
+WARNING
+BEGIN
+  TITLE "Warning"
+  MESSAGE "^1^2^3"
+  BUTTONS "Cancel"
+END
+
+ALERT ID 10035
+ERROR
+BEGIN
+  TITLE "Launch Error"
+  MESSAGE "The application cannot be launched because of a system error."
+  BUTTONS "OK"
+END
+
+ALERT ID 10100
+ERROR
+BEGIN
+  TITLE "Fatal Alert"
+  MESSAGE ""
+  BUTTONS "Reset" "Debug" "Cont"
+END
+
+ALERT ID 11720
+ERROR
+BEGIN
+  TITLE "Low Battery"
+  MESSAGE "The battery is too low for this operation."
+  BUTTONS "OK"
+END
+
+ALERT ID 13250
+ERROR
+BEGIN
+  TITLE "Password"
+  MESSAGE "Password incorrect.\nPlease try again.\n\nHint: ^1"
+  BUTTONS "OK"
+END
+
+ALERT ID 13251
+ERROR
+BEGIN
+  TITLE "Invalid Record"
+  MESSAGE "You attempted to goto an invalid record."
+  BUTTONS "OK"
+END
+
+ALERT ID 13261
+HELPID 10021
+DEFAULTBUTTON 1
+CONFIRMATION
+BEGIN
+  TITLE "Show Private Records"
+  MESSAGE "Enter your password to show private records:"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 13265
+HELPID 10021
+DEFAULTBUTTON 1
+CONFIRMATION
+BEGIN
+  TITLE "Mask Private Records"
+  MESSAGE "Enter your password to show private records in masked form:\n(Applications which cannot show masked form will hide private data)"
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 13268
+HELPID 10021
+CONFIRMATION
+BEGIN
+  TITLE "Hide Records"
+  MESSAGE "Records marked Private in the details dialog will be hidden.\n\nIf a password is assigned, you must enter it to show private records."
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 13269
+HELPID 10021
+CONFIRMATION
+BEGIN
+  TITLE "Mask Records"
+  MESSAGE "Records marked Private in the details dialog will be masked or covered for your protection. \n\nIf a password is assigned, you must enter it to show private records."
+  BUTTONS "OK" "Cancel"
+END
+
+ALERT ID 13300
+DEFAULTBUTTON 1
+CONFIRMATION
+BEGIN
+  TITLE "Password"
+  MESSAGE "Enter your password:"
+  BUTTONS "OK" "Cancel"
+END
+
+BITMAP ID 10000
+BEGIN
+  BITMAP "logo_72.bmp"  BPP 8 DENSITY 72
+  BITMAP "logo_144.bmp" BPP 8 DENSITY 144
+END
+
+BITMAP ID 10004
+BEGIN
+  BITMAP "information_72.bmp"  BPP 8 TRANSPARENTINDEX 210 DENSITY 72
+  BITMAP "information_144.bmp" BPP 8 TRANSPARENTINDEX 210 DENSITY 144
+END
+
+BITMAP ID 10005
+BEGIN
+  BITMAP "confirmation_72.bmp"  BPP 8 TRANSPARENTINDEX 210 DENSITY 72
+  BITMAP "confirmation_144.bmp" BPP 8 TRANSPARENTINDEX 210 DENSITY 144
+END
+
+BITMAP ID 10006
+BEGIN
+  BITMAP "warning_72.bmp"  BPP 8 TRANSPARENTINDEX 210 DENSITY 72
+  BITMAP "warning_144.bmp" BPP 8 TRANSPARENTINDEX 210 DENSITY 144
+END
+
+BITMAP ID 10007
+BEGIN
+  BITMAP "error_72.bmp"  BPP 8 TRANSPARENTINDEX 210 DENSITY 72
+  BITMAP "error_144.bmp" BPP 8 TRANSPARENTINDEX 210 DENSITY 144
+END
+
+BITMAP ID 13100
+BEGIN
+  BITMAP "handle_72.bmp" BPP 1 DENSITY 72
+END
+
+BITMAP ID 13101
+BEGIN
+  BITMAP "rampup_72.bmp" BPP 4 DENSITY 72
+END
+
+BITMAP ID 13151
+BEGIN
+  BITMAP "rampdown_72.bmp" BPP 4 DENSITY 72
+END
+
+BITMAP ID 13350
+BEGIN
+  BITMAP "handlesmall_72.bmp" BPP 1 DENSITY 72
+END
+
+BITMAP ID 13351
+BEGIN
+  BITMAP "scale_72.bmp" BPP 1 DENSITY 72
+END
+
+BITMAP ID 32000
+BEGIN
+  BITMAP "back_72.bmp" BPP 8 TRANSPARENTINDEX 0 DENSITY 72
+END
+
+BITMAP ID 32001
+BEGIN
+  BITMAP "tab_72.bmp" BPP 8 TRANSPARENTINDEX 0 DENSITY 72
+END
+
+BITMAP ID 32002
+BEGIN
+  BITMAP "enter_72.bmp" BPP 8 TRANSPARENTINDEX 0 DENSITY 72
+END
+
+BITMAP ID 32100
+BEGIN
+  BITMAP "backw_72.bmp" BPP 8 TRANSPARENTINDEX 255 DENSITY 72
+END
+
+BITMAP ID 32101
+BEGIN
+  BITMAP "tabw_72.bmp" BPP 8 TRANSPARENTINDEX 255 DENSITY 72
+END
+
+BITMAP ID 32500
+COMPRESS
+BEGIN
+  BITMAP "graffiti_72.bmp"  BPP 8 DENSITY 72
+  BITMAP "graffiti_144.bmp" BPP 8 DENSITY 144
+END
+
+BITMAP ID 32501
+BEGIN
+  BITMAP "taskbar_72.bmp"  BPP 8 DENSITY 72
+  BITMAP "taskbar_144.bmp" BPP 8 DENSITY 144
+END
+
+BITMAP ID 32502
+BEGIN
+  BITMAP "down_72.bmp"  BPP 8 DENSITY 72
+  BITMAP "down_144.bmp" BPP 8 DENSITY 144
+END
+
+BITMAP ID 32503
+BEGIN
+  BITMAP "up_72.bmp"  BPP 8 DENSITY 72
+  BITMAP "up_144.bmp" BPP 8 DENSITY 144
+END
+
+BITMAP ID 32102
+BEGIN
+  BITMAP "enterw_72.bmp" BPP 8 TRANSPARENTINDEX 255 DENSITY 72
+END
+
+FONTFAMILY ID 9000 FONTID 128
+BEGIN
+  FONT "font_9000_72.txt"  DENSITY 72
+  FONT "font_9000_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9001 FONTID 129
+BEGIN
+  FONT "font_9001_72.txt"  DENSITY 72
+  FONT "font_9001_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9002 FONTID 130
+BEGIN
+  FONT "font_9002_72.txt"  DENSITY 72
+  FONT "font_9002_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9003 FONTID 131
+BEGIN
+  FONT "font_9003_72.txt"  DENSITY 72
+  FONT "font_9003_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9004 FONTID 132
+BEGIN
+  FONT "font_9004_72.txt"  DENSITY 72
+  FONT "font_9004_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9005 FONTID 133
+BEGIN
+  FONT "font_9005_72.txt"  DENSITY 72
+  FONT "font_9005_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9006 FONTID 134
+BEGIN
+  FONT "font_9006_72.txt"  DENSITY 72
+  FONT "font_9006_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9007 FONTID 135
+BEGIN
+  FONT "font_9007_72.txt"  DENSITY 72
+  FONT "font_9007_144.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9010 FONTID 128
+BEGIN
+  FONT "3x5.txt"  DENSITY 72
+  FONT "6x10.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9011 FONTID 129
+BEGIN
+  FONT "4x7.txt"  DENSITY 72
+  FONT "8x14.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9012 FONTID 130
+BEGIN
+  FONT "8x8.txt"   DENSITY 72
+  FONT "16x16.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9013 FONTID 131
+BEGIN
+  FONT "4x8.txt"   DENSITY 72
+  FONT "8x16.txt"  DENSITY 144
+END
+
+STRING ID 10000 "Sun Mon Tue Wed Thu Fri Sat "
+STRING ID 10001 "Sunday Monday Tuesday Wednesday Thursday Friday Saturday "
+STRING ID 10002 "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec "
+STRING ID 10003 "January February March April May June July August September October November December "
+
+STRING ID 10004 "All"
+STRING ID 10005 "Edit Categories\x18"
+
+STRING ID 10006 "\x16"
+
+STRING ID 10007 "Battery"
+
+STRING ID 10009 "Lookup"
+
+STRING ID 10010 "Add"
+
+STRING ID 10011 "^listname ^listphone"
+
+STRING ID 10017 "Latin Locale Module"
+
+STRING ID 10018 ""
+
+STRING ID 10019 "\x95 If you delete a category name, the records filed under that name will become unfiled records.\n\n\x95 To merge records in different categories, rename one category to the other category name.\n"
+
+STRING ID 10020 "\x95 Tap on Show to view all records marked Private that are currently either Masked or Hidden. \n\n\x95 Tap on Mask to cover all records marked Private with a gray box. This will mask the contents of the records from view.\n\n\x95 Tap on Hide to remove all records marked Private from view. These Hidden records can be viewed again by tapping Show and entering your password."
+
+STRING ID 10021 "\x95 To mark a record private, select the record and tap the Details button. Then tap the check box that says Private.\n\n\x95 You can use this feature without a password."
+
+STRING ID 10211 "There are three ways to access the Set Time dialog:\n\n1. Tap the time next to an event.\n2. Tap the time in the Event Details dialog.\n3. Enter the time using Graffiti.\n"
+
+STRING ID 10607 "Searching\x85"
+STRING ID 10608 "Matches for \x93^0\x94"
+STRING ID 10609 "No matches for \x93^0\x94"
+STRING ID 10610 " (cont.)"
+
+STRING ID 11003 "Error"
+
+STRING ID 11710 "Do you want to accept \x93%s\x94\ninto %s?"
+STRING ID 11711 "Unnamed"
+STRING ID 11712 "Beam"
+STRING ID 11713 "Do you want to accept into %s?"
+STRING ID 11714 "Send With"
+
+STRING ID 13100 "Drag the slider back and forth to rapidly adjust the contrast.\nYou may also:\n - press or hold the PageUp\n    and PageDown scroll\n    buttons, or\n - tap to the left or right of\n    the slider to change the\n    display in small\n    increments."
+STRING ID 13150 "Drag the slider back and forth to rapidly adjust the brightness.\nYou may also:\n - press or hold the PageUp\n    and PageDown scroll\n    buttons, or\n - tap to the left or right of\n    the slider to change the\n    display in small\n    increments."
+
+STRING ID 13400 "Choose the time zone from the list that corresponds to where you are. When you travel, use this dialog to change time zones.\n\nIf you're not sure which time zone you're in, find out what time it is, and select the time zone which shows the correct new time.\n\nDon't use this dialog to switch between daylight saving time and standard time."
+STRING ID 13419 "^1r"
+STRING ID 13420 "GMT"
+STRING ID 13421 "0:00"
+
+STRING ID 13500 "Reminder"
+STRING ID 13501 "Reminders"
+STRING ID 13502 "^0, ^1"
+
+STRING ID 15000 "-Current-"
+STRING ID 15001 "Cradle/Cable"
+STRING ID 15002 "Direct Serial"
+
+STRING ID 32000 "There are three ways to access the onscreen keyboard:\n\n1. Tap the dots in the corners of the Graffiti writing area to activate the numbers or letters keyboards.\n\n2. The Keyboard command appears in the Edit menu of most applications.\n\n3. Use the full-screen pen stroke.  Place the pen in the Graffiti writing area, drag it to the top of the screen, and lift the pen."
+
+STRINGTABLE ID 10000 "" "Mem" "Dm" "Ser" "Slk" "Sys" "Fpl" "Evnt" "Snd" "Alrm" "Time" "Pen" "Ftr" "Cmp" "Dlk" "Pad" "Grf"
+ "Mdm" "Net" "HTal" "iNet" "Exg" "File" "RFut" "Text" "Tsm" "Web" "Sec" "Emu" "Flsh" "Pwr" "Cnc" "Actv"
+ "Radio" "Disp" "Blt" "Win" "Om" "Menu" "Lz77" "Sms" "Exp" "VFS" "LM" "Intl" "PDI" "Attn" "Tel" "Hwr"
+ "Blth"
+
+STRINGTABLE ID 10001 "Memory:  " "" "chunk locked." "out of space." "invalid parameter." "chunk not locked."
+
+STRINGTABLE ID 10002 "Database:  " "" "Out of memory.  Delete old data or unneeded applications." "index out of range" "invalid parameter" "read only" "already open" "can't open" "can't find" "" "corrupt database" "record deleted" "record archived" "not record database" "not resource database" "ROM based database" "record busy"
+ "resource not found" "no open database" "invalid category" "invalid record" "write out of bounds" "seek failed" "already open for writes" "opened by another task" "unique ID not found" "already exists" "invalid name" "database protected"
+
+STRINGTABLE ID 10003 "Serial : " "" "" "" "" "" "timeout. Could be bad cable or faulty Modem." "line error" "port in use"
+
+STRINGTABLE ID 10017 "" "" "no dial tone" "no carrier" "incorrect or busy phone number" "user cancel" "Modem command error. Check Modem Preferences" "modem not found" "out of memory" "modem not setup" "phone number is too long or contains invalid characters"
+
+STRINGTABLE ID 10018 "" "" "already open" "not open" "still open" "parameter err" "no more sockets" "out of resources" "out of memory" "socket not open" "socket busy" "message too big" "socket not connected" "Your Internet connection is not set up.  Go to the Network preferences to set it up." "buffer too small" "unimplemented" "port in use"
+ "quiet time not elapsed" "internal err" "timeout" "socket already connected" "socket closed by peer" "out of cmd blocks" "wrong socket type" "socket not listening" "unknown setting" "invalid setting size" "Incomplete setup. \nPlease check your network settings." "invalid interface" "interface not found" "too many interfaces" "buffer wrong size" "user cancel"
+ "bad script" "no socket" "socket receive buffer full" "no pending connect" "unexpected command" "no TCB" "nil remote window size" "no timer proc" "socket input shutdown" "cmd block not checked out" "cmd not done" "unknown protocol" "unknown service" "unreachable destination" "read only setting" "would block"
+ "already in progress" "PPP timeout" "PPP brought down" "authentication failure" "IP address refused" "DNS name too long" "bad DNS name" "bad DNS arguments" "DNS label too long" "DNS out of memory" "DNS timeout" "DNS unreachable" "bad DNS format" "DNS server failure" "nonexistant DNS name" "DNS NIY"
+ "DNS refused" "DNS impossible" "DNS no resource records" "DNS aborted" "DNS bad protocol" "DNS truncated" "DNS no recursion" "DNS irrelevant" "DNS not in local cache" "DNS no port" "can't fragment" "no route" "no source addr" "no destination addr" "packet overflow" "too many connections"
+ "The DNS server address is not setup properly" "interface is down" "<0Srfdgappl0000><1>Your area may have weak or no coverage.  \nYou can improve weak coverage by moving near a window or open area.  \n\nTap OK to monitor signal strength in the Diagnostics application." "We received a request to deactivate this handheld. \nYour handheld is now deactivated.  If this is an error, note the error code.  Then contact Customer Care." "<*1268>" "The Palm.Net\x99 service is busy or unavailable.\n\nTry your transaction again later." "<1>We received a request to deactivate this handheld.\n\nIf you canceled your service, tap OK.  If this is an error, note the error code, tap Cancel, and contact Customer Care." "The wireless network is busy or unavailable.\n\nTry your transaction again later." "The wireless network is busy or unavailable.\n\nTry your transaction again later." "The wireless network is busy or unavailable.\n\nTry your transaction again later." "To use the wireless features, you must first activate the Palm.Net\x99 service.\n\nTo activate the service, go to the Applications Launcher and tap the Activate icon." "<0Srfdgappl0000><1>Your transaction did not complete successfully.  \n\nMove to an area with better coverage.  Tap OK to go to the Diagnostics application to monitor the signal strength.\nOr tap Cancel, wait a few minutes, and then try again." "flex list full" "invalid sender MAN" "illegal type" "illegal state"
+ "illegal flags" "illegal send list" "illegal length" "illegal addressee" "illegal packet class" "invalid buffer length" "The transmitter charge is too low for wireless transactions.\nRecharging will start now." "<TE>The transmitter hardware failed to initialize.\n\nTry again.  If you receive this message again, note the error code.  Then contact Customer Care." "illegal logout" "The AAA battery level is too low for wireless transactions.\n\nPerform a HotSync operation and replace the batteries as soon as possible." "Raise the antenna to perform wireless transactions.\nTap Cancel to stop this wireless operation." "<0Srfdgappl0000><1>Your transmitter is being charged now. You cannot perform wireless transactions at this time. \n\nTo see charging end time, tap OK, and then tap Details in Diagnostics." "The antenna has been lowered during wireless operation.\n\nRaise it to continue this operation." "You have not activated the Palm.Net\x99 wireless communication service.\n\nTo activate the service, go to the Applications Launcher and tap the Activate icon." "The transmitter is either too cold or too hot to work properly.\n\nWait until the transmitter regains a normal temperature, and then try again.\n" "<TE>Charging was interrupted.  The transmitter power source may need to be replaced.\n\nNote the error code and contact Customer Care."
+ "The transmitter power source may need to be replaced.  The handheld will attempt to charge the transmitter now to verify its function.\nIf charging fails, note the error code and contact Customer Care." "The AAA battery level is too low to finish charging the transmitter.\n\nPerform a HotSync operation and install new AAA batteries as soon as possible to resume charging." "" "<TE>Configuration is not available." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.\n\nNote the error code and contact the developer of this application." "Attempted to send multi-packet request without a fixed MAN. Send a small request first to update the server's fixed MAN." "<TE>Out of packets.  \n\nTry your transaction again later." "<TE>Your handheld needs an updated server address.\n\nTry your transaction again." "<TE>Internal error.\n\nTry your transaction again."
+ "Script plug-in is missing." "Script plug-in failed to launch." "Script plug-in command failed." "The script plug-in is trying to execute an unknown command." "Unable to load Phone Services." "Unable to use phone services because of an unhandled error."
+
+STRINGTABLE ID 10020 "" "" "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "URL buffer too small" "Invalid URL" "Too many sockets" "Request not created" "Not connected" "Invalid request" "Not ready" "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "Cannot connect to proxy server.\nServer port identified\nin Web Clipping panel \nis not correct." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application."
+ "Your handheld could not connect to the server.\n\nWait a few minutes and try again." "Your handheld could not connect to the server.\n\nWait a few minutes and try again." "Your handheld could not connect to the server.\n\nWait a few minutes and try again." "Your handheld could not connect to the server.\n\nWait a few minutes and try again." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>The application tried to connect to the Internet using a protocol that is not supported.\n\nNote the error code and contact the developer of this application." "Invalid response from host" "URL dispatched" "This type not cached" "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>Configuration is not available." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application."
+ "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "" "<TE>An error occurred in the application you are using.  \n\nNote the error code and contact the developer of this application." "<TE>You tried to use a wireless feature that is not available on this handheld." "<TE>Data encryption is not available on this handheld." "The server has updated the security sequence number.\n\nTry your transaction again.   " "The server has updated the security key.\n\nTry your transaction again.   " "The response was shorter than expected." "<1>We received a request to deactivate this handheld.\nIf you canceled your service, tap OK. If this is an error, note the error\ncode, tap Cancel, and contact Customer Care." "<1>Your handheld tried to connect to an invalid proxy server.\nTo use the default proxy, tap OK.\nIf this is an error, note the error code and tap Cancel.  Then contact Customer Care." "<TE>A \"Bad Request\" error occurred in the application you are using. \n\nNote the error code and contact the developer of this application." "<TE>Authentication is required in the application you are using. \n\nNote the error code and contact the developer of this application." "<TE>This request is not allowed by the web server. \n\nNote the error code and contact the developer of this application."
+ "<TE>The clipping you requested is not available.\n\nVerify that the query you submitted is correct.  If you receive this message again, note the error code and contact the developer of this application." "<TE>The query used an incorrect submission method.\n\nNote the error code and contact the developer of this application." "<TE>The response to your query contained a data format that is not supported by the query application. \n\nNote the error code and contact the developer of this application." "<TE>Proxy authentication is required. \n\nNote the error code and contact Customer Care." "Your transaction has timed out.  The network may be busy. \n\nTry your transaction again." "<TE>The request resulted in a conflict. \n\nNote the error code and contact Customer Care." "<TE>The resource that you tried to contact has been removed from the web server. \n\nNote the error code and contact the developer of this application." "<TE>The web clipping proxy server failed to provide content length to the web server. \n\nNote the error code and contact Customer Care." "<TE>Precondition failed on the web server. \n\nNote the error code and contact Customer Care." "<TE>The submitted request is too large.  It was rejected by the web server. \n\nNote the error code and contact the developer of this application." "<TE>The requested URL is too long. \n\nNote the error code and contact Customer Care." "<TE>The request contained a media type that is not supported by the web server. \n\nNote the error code and contact Customer Care." "<TE>The Web server was unable to process the request due to an error on the server.\n\nNote the error code and contact the developer of this application." "<TE>CTP server error" "Type not in cache" "Cache invalid"
+ "URL dispatched" "Database not found " "<TE>The request was rejected by the web clipping proxy server because its format is invalid.\n\nNote the error code and contact Customer Care." "<TE>The request was rejected by the web clipping proxy server because its format is invalid.\n\nNote the error code and contact Customer Care." "" "<TE>An error occurred while processing your request.\n\nNote the error code and contact Customer Care." "<TE>An error occurred while processing your request.\n\nNote the error code and contact Customer Care." "<TE>An error occurred while processing your request.\n\nNote the error code and contact Customer Care." "<TE>You tried to access the web using an invalid address.\n\nNote the error code and contact Customer Care." "<TE>The query application you are using does not match its counterpart on the server.\n\nNote the error code and contact the developer of this application." "<TE>An invalid request was submitted.\n\nNote the error code and contact Customer Care." "" "Your handheld cannot connect to the iMessenger\x99 server at this time.\n\nTry again later." "" "<TE>Content conversion error - invalid tag" "<TE>Internal content conversion error"
+ "<TE>Content conversion error - unexpected end of data" "<TE>Content conversion error - resource too big" "<TE>Content conversion error - frames present in HTML without noframes tag" "<TE>Content conversion error - unsupported content type" "<TE>Content conversion error - unsupported content encoding" "<TE>Content conversion error - bad form" "<TE>Content conversion error - missing action attribute in form" "<TE>Content conversion error - missing method attribute in form" "<TE>Content conversion error - empty HTML page" "<TE>Content conversion error - bad image" "<TE>Content conversion error - image too large" "An error occured and was handled by the lower level code." "The proxy server configured in the wireless preferences did not respond. This server may be temporarily unavailable." "Your handheld lost connection with the server.\n\nWait a few minutes and try again." "Local link not found"
+
+STRINGTABLE ID 10021 "" "" "Not enough memory to complete operation." "Could not initialize library." "Operation canceled by user." "Could not find a receiving handheld computer." "Data received in unknown format." "Cannot find application for data received." "This operation is not supported." "The data was not accepted." "An application error occurred." "An unknown problem occurred." "There is not enough space on the receiving handheld computer." "Beam Disconnected." "Could not find object." "Invalid parameter in exchange request." "This feature is not supported."
+ "The other handheld computer is currently busy and cannot receive data." "Cannot find an application that handles this type of link."
+
+STRINGTABLE ID 10026 "" "" "<TE>Buffer too small. \n\nNote the error code and contact the developer of this application." "<TE>The page is too complex to display.\n \nNote the error code and contact the developer of this application." "Page done" "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application." "<TE>User Cancel" "<TE>Not enough memory, or the page is too large to display. \n\nClose the application and try again." "<TE>Invalid handle. \n\nNote the error code and contact developer of this application." "<TE>Parser Overrun" "<TE>Invalid parameter. \n\nNote the error code and contact the developer of this application." "<TE>Internal error. \n\nNote the error code and contact the developer of this application." "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application." "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application." "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application." "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application." "<TE>Invalid HTML. \n\nNote the error code and contact developer of this application."
+ "<TE>This application is incompatible with this version of Palm OS. \n\nNote the error code and contact the developer of this application." "<TE>Nested table (not allowed)" ""
+
+STRINGTABLE ID 10027 "" "" "general error" "internal error" "usage error" "MIC mismatch" "sequence number invalid" "key not found" "<TI>Expanding updated security key.\n\nPlease wait." "buffer too small" "data size error" "data too large" "initialization error" "<TE>Memory error in security library. \nTo clear error, gently press the reset button on the back of your handheld with a reset tool." "already open" "not open" "<TE>Not enough memory for security library.  \n\nDelete some applications or data to free up memory."
+
+STRINGTABLE ID 10030 "Power Manager: " "" "Backlight unavailable because your batteries are too low.  Reducing your power usage may help." "Transmitter has been temporarily disabled." "Send failed because your batteries are too low.  Reducing your power usage may help." "Your batteries are too low to perform this operation.  Reducing your power usage may help."
+
+STRINGTABLE ID 10032 "" "" "Handled within activation.  User Information Error." "Handled within activation.  Duplicate Alias Error." "Handled within activation.  Not Preactivated Error" "Handled within activation.  Illegal CAN Error." "Handled within activation.  General Failure Error." "Your handheld cannot be activated because it has the same ID as another handheld.\n\nNote the error code and contact Customer Care." "Handled within activation.  Invalid Payment Error." "The device has never been registered.  Not able to perform operation." "Handled within activation.  Encryption Key Version Mismatch Error." "Security Error.\n\nNote the error code and contact Customer Care." "Handled within activation.  Invalid Promotion Error." "Handled within activation.  Promotion Expired Error." "Developer Alert Error.\n\nNote the error code and contact Customer Care." "Cannot save username.\n\nNote the error code and contact Customer Care." "Internal message generation error.\n\nNote the error code and contact Customer Care."
+ "Handled within activation.  Not Enough Memory Error." "Invalid device ID.\n\nNote the error code and contact Customer Care." "The security key could not be updated for this transaction.\n\nNote the error code and contact Customer Care." "Network decryption failed for this transaction.\n\nNote the error code and contact Customer Care." "Cannot save device ID.\n\nNote the error code and contact Customer Care." "Internal registration error.\n\nNote the error code and contact Customer Care." "Handled within activation.  User Cancel Error." "Handled within activation.  Transaction Timeout Error." "Handled within activation.  Not All Data Sent Error." "Returned unknown error.\n\nNote the error code and contact Customer Care." "Invalid URL.\n\nNote the error code and contact Customer Care." "Security Error.\n\nNote the error code and contact Customer Care." "Invalid Registration Response."
+
+STRINGTABLE ID 10200 "" "S" "M" "T" "W" "T" "F" "S"
+STRINGTABLE ID 10201 "" "Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"
+STRINGTABLE ID 10202 "" "Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday"
+STRINGTABLE ID 10203 "" "J" "F" "M" "A" "M" "J" "J" "A" "S" "O" "N" "D"
+STRINGTABLE ID 10204 "" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"
+STRINGTABLE ID 10205 "" "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December"
+STRINGTABLE ID 10206 "" "^3r/^0r/^4s" "^0r/^3r/^4s" "^0r.^3r.^4s" "^0r-^3r-^4s" "^4s/^3r/^0r" "^4s.^3r.^0r" "^4s-^3r-^0r" "^2r ^0r, ^4r" "^0r ^2r ^4r" "^0r. ^2r ^4r" "^2l ^4r" "^0r ^2r, ^4r" "^4r.^3r.^0r" "^4r ^2r ^0r" "^2r '^4s" "^2r ^4s" "^3r-^0r-^4s"
+STRINGTABLE ID 10207 "" "^1r ^3r/^0r/^4s" "^1r ^0r/^3r/^4s" "^1r ^0r.^3r.^4s" "^1r ^0r-^3r-^4s" "^1r ^4s/^3r/^0r" "^1r ^4s.^3r.^0r" "^1r ^4s-^3r-^0r" "^1r ^2r ^0r, ^4r" "^1r ^0r ^2r ^4r" "^1r ^0r. ^2r ^4r" "^1r ^2l ^4r" "^1r ^0r ^2r, ^4r" "^1r ^4r.^3r.^0r" "^1r ^4r ^2r ^0r" "^1r ^2r '^4s" "^1r ^2r ^4s" "^1r ^3r-^0r-^4s"
+
+STRINGTABLE ID 11600 "" "" "OK" "Cancelling..." "Error: " "Unknown"
+STRINGTABLE ID 11650 "" "" "OK" "Canceling..." "Error: " "Initializing" "Starting" "Searching" "Connected" "Sending " "Receiving " "Disconnecting" "Waiting for Sender" "Preparing" "Accepting" "Beam interrupted. Ensure handhelds are aligned and within range."
+
+STRINGTABLE ID 13400 "" "Afghanistan" "Australia (Eastern)" "Australia (N/S Terr.)" "Australia (Western)" "Austria" "Bangladesh" "Belgium" "Brazil" "Canada (Atlantic)" "Canada (Central)" "Canada (Eastern)" "Canada (Mountain)" "Canada (Pacific)" "Chile" "P.R.C." "Czech Republic"
+ "Denmark" "Finland" "Fr. Polynesia" "France" "Germany" "Greece" "Hong Kong" "Hungary" "India" "Iran" "Ireland" "Israel" "Italy" "Japan" "Korea" "Madagascar"
+ "Mexico (Central)" "Mexico (Pacific)" "Mid-Atlantic" "Nepal" "Netherlands" "New Caledonia" "New Zealand" "Norway" "Pakistan" "Philippines" "Poland" "Portugal" "Azores" "Russia (Moscow)" "Samoa" "Saudi Arabia"
+ "Singapore" "South Africa" "Spain" "Sweden" "Switzerland" "Taiwan" "Thailand" "Ukraine" "U.A.E." "United Kingdom" "USA (Alaska)" "USA (Central)" "USA (Eastern)" "USA (Hawaii)" "USA (Mountain)" "USA (Pacific)"
+ "Iceland" "Luxembourg" "Indonesia (Jakarta)" "Indonesia (Irian Jaya)" "Indonesia (Bali)" "Malaysia" "Mexico (Mountain)"
+
+STRINGTABLE ID 32001 "" "us-ascii" "ISO-8859-1" "Windows-1252" "Windows-1252"
+
+WORDLIST ID 13400  // timezones in minutes (can be negative)
+BEGIN
+  270
+  600
+  570
+  480
+  60
+  360
+  60
+  65356
+  65296
+  65176
+  65236
+  65116
+  65056
+  65296
+  480
+  60
+  60
+  120
+  64936
+  60
+  60
+  120
+  480
+  60
+  330
+  210
+  0
+  120
+  60
+  540
+  540
+  180
+  65176
+  65056
+  65416
+  345
+  60
+  660
+  720
+  60
+  300
+  480
+  60
+  0
+  65476
+  180
+  64876
+  180
+  480
+  120
+  60
+  60
+  60
+  480
+  420
+  120
+  240
+  0
+  64996
+  65176
+  65236
+  64936
+  65116
+  65056
+  0
+  60
+  420
+  540
+  480
+  480
+  65116
+END
+
+WORDLIST ID 13401  // country codes
+BEGIN
+  35
+  0
+  0
+  0
+  1
+  49
+  2
+  3
+  4
+  4
+  4
+  4
+  4
+  70
+  28
+  78
+  5
+  6
+  173
+  7
+  8
+  105
+  9
+  115
+  24
+  119
+  11
+  116
+  12
+  13
+  26
+  145
+  15
+  15
+  75
+  167
+  16
+  162
+  17
+  18
+  175
+  29
+  176
+  180
+  180
+  186
+  232
+  188
+  30
+  236
+  19
+  20
+  21
+  32
+  31
+  219
+  34
+  22
+  23
+  23
+  23
+  23
+  23
+  23
+  10
+  14
+  25
+  25
+  25
+  27
+  15
+END
+
+DATA "tAIB" ID 10000 "tAIB.10000"
+DATA "tAIB" ID 10001 "tAIB.10001"
+
+DATA "locs" ID 10000 "locs.dat"

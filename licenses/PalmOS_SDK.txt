@@ -1,0 +1,228 @@
+IMPORTANT:  Read Before Using The Accompanying Software
+
+PALM OS® SOFTWARE DEVELOPMENT KIT SOFTWARE LICENSE AGREEMENT
+
+
+YOU SHOULD CAREFULLY READ THE FOLLOWING TERMS AND CONDITIONS BEFORE
+USING THE ACCOMPANYING SOFTWARE, THE USE OF WHICH IS LICENSED BY
+PALMSOURCE, INC. ("PALMSOURCE"), TO ITS CUSTOMERS FOR THEIR USE ONLY
+AS SET FORTH BELOW.  IF YOU DO NOT AGREE TO THE TERMS AND CONDITIONS
+OF THIS AGREEMENT,  DO NOT USE THE SOFTWARE.  USING ANY PART OF THE
+SOFTWARE INDICATES THAT YOU ACCEPT THESE TERMS.
+
+LICENSE:  PalmSource grants you a nonexclusive, royalty-free license
+to use the accompanying software program(s) (the "Software") subject
+to the terms and restrictions set forth in this License Agreement.
+Except as explicitly set forth below, (i) you are not permitted to
+lease or rent (except under separate mutually agreeable terms set
+forth in writing and signed by both parties), distribute or sublicense
+the Software or to use the Software in a time-sharing arrangement or
+in any other unauthorized manner; (ii) no license is granted to you in
+the human readable code of the Software (source code); and (iii) this
+License Agreement does not grant you any rights to patents,
+copyrights, trade secrets, trademarks, or any other rights in respect
+to the Software.
+
+
+The Software is licensed to be used on any personal computer and/or
+any Palm OS platform product, provided that the Software is used only
+in connection with your development of products for use with Palm OS
+platform products.  The Software contains certain sample source code
+in the form of example applications (including several conduits) and
+code fragments (both in the source code files and documentation
+provided hereunder), and may include a tutorial application
+(collectively, "Sample Source Code").  You may use the Sample Source
+Code internally to develop products for Palm OS platform products.
+You may distribute any such products built with the Sample Source
+Code, provided that you include the following copyright notice within
+your source code and in the location of your own copyright notice:
+"Portions copyright © 1996-2003 PalmSource, Inc. or its subsidiaries.
+All rights reserved."
+
+Notwithstanding anything else in this License Agreement, you may not
+distribute the conduit development kit header files included as part
+of the Software to anyone for any reason.
+
+Except as described above, the Software and supporting documentation
+may be copied only as essential for backup or archive purposes in
+support of your use of the Software as permitted hereunder.  You must
+reproduce and include all copyright notices and any other proprietary
+rights notices appearing on the Software on any copies that you make.
+
+NO ASSIGNMENT; NO REVERSE ENGINEERING:  You may transfer the Software
+and this License Agreement to another party if the other party agrees
+in writing to accept the terms and conditions of this License
+Agreement.  If you transfer the Software, you must at the same time
+either transfer all copies of the Software as well as the supporting
+documentation to the same party or destroy any such materials not
+transferred.  Except as set forth above, you may not transfer or
+assign the Software or your rights under this License Agreement.
+
+Modification, reverse engineering, reverse compiling, or disassembly
+of the Software is expressly prohibited.  However, if you are a
+European Union("EU") resident, information necessary to achieve
+interoperability of the Software with other programs within the
+meaning of the EU Directive on the Legal Protection of Computer
+Programs is available to you from PalmSource upon written request.
+
+EXPORT RESTRICTIONS: The Software supplied hereunder is subject
+to all pertinent import and export laws of the United States,
+including specifically the U.S. Export Administration Regulations
+("EAR") and the laws of the country in which you obtained them.  You
+agree that you will be solely responsible for compliance with all such
+laws.   In particular, you agree that you will not export, re-export,
+or transfer,directly or indirectly, to any person, firm or country on
+the Denied Persons List, Entity List, Debarred Parties or Specially
+Designated Nationals lists or to Afghanistan, Cuba, Iran, Iraq, Libya,
+North Korea, Federal Republic of Yugoslavia (Serbia only), Sudan, or
+Syria or any other country or entity designated by the U.S. Government
+as prohibited by U.S. law, or nationals thereof, and that you are not
+located in such a country or on such a list.  You agree that you will
+not transfer, export or re-export, directly or indirectly, for use or
+to users in military or proliferation activities (Nuclear, Missile,
+Chemical or Biological Weapons) without  U.S. Government authorization
+(by export license or regulation).  You agree that, upon request, you
+will provide additional end use/end user information or written
+acceptance of requirements and responsibilities to comply with U.S.
+export license requirements.  You agree to be bound by any future
+modifications of the foregoing list of restricted destinations by
+amendments to the EAR or other U.S. government regulations.  These
+requirements shall survive the term or termination of the Agreement.
+
+TRADE SECRETS; TITLE:  You acknowledge and agree that the structure,
+sequence and organization of the Software are the valuable trade
+secrets of PalmSource and its suppliers.  You agree to hold such trade
+secrets in confidence.  You further acknowledge and agree that
+ownership of, and title to, the Software and all subsequent copies
+thereof regardless of the form or media are held by PalmSource and its
+suppliers.
+
+UNITED STATES GOVERNMENT LEGEND:  The Software is commercial in nature
+and developed solely at private expense.  The Software is delivered as
+"Commercial Computer Software" as defined in DFARS 252.227-7014 (June
+1995) or as a commercial item as defined in FAR 2.101(a) and as such
+is provided with only such rights as are provided in this License
+agreement, which is PalmSource's standard commercial license for the
+Software.  Technical data is provided with limited rights only as
+provided in DFAR 252.227-7015 (Nov. 1995) or FAR 52.227-14 (June
+1987), whichever is applicable.
+
+TERM AND TERMINATION:  This License Agreement is effective until
+terminated.  You may terminate it at any time by destroying the
+Software and documentation together with all copies and merged
+portions in any form.  It will also terminate immediately if you fail
+to comply with any term or condition of this License Agreement.  Upon
+such termination you agree to destroy the Software and documentation,
+together with all copies and merged portions in any form.
+
+GOVERNING LAW:  This License Agreement shall be governed by the laws
+of the State of California as such laws are applied to agreements
+entered into and to be performed entirely within California between
+California residents and by the laws of the United States.  You agree
+that the United Nations Convention on Contracts for the International
+Sale of Goods (1980) is hereby excluded in its entirety from
+application
+to this License Agreement.
+
+LIMITED WARRANTY: PalmSource warrants the media containing the
+Software for a period of ninety (90) days from the date of original
+purchase from PalmSource or its authorized retailer.  Proof of date of
+purchase will be required.  Any updates to the Software provided by
+PalmSource (which may be provided by PalmSource at its sole
+discretion) shall be governed by the terms of this License Agreement.
+The sole obligation of PalmSource with respect to this express
+warranty shall be (at the discretion of PalmSource) to refund the
+purchase price paid by you for the Software on the defective media, or
+to replace the Software on new media.  Neither PalmSource nor its
+suppliers makes any warranty or representation that its software
+products will meet your requirements or will work in combination with
+any hardware or applications software products provided by third
+parties, that the operation of the software products will be
+uninterrupted or error free, or that all defects in the
+Software will be corrected.
+
+OBTAINING WARRANTY SERVICE:  You must contact PalmSource Technical
+Support within the applicable warranty period to obtain warranty
+service authorization.  Dated proof of original purchase will be
+required.  PalmSource is not responsible for your products or parts
+received without warranty service authorization.
+
+WARRANTIES EXCLUSIVE:   IF THE SOFTWARE MEDIA DOES NOT OPERATE AS
+WARRANTED ABOVE, YOUR SOLE REMEDY FOR BREACH OF THAT WARRANTY SHALL BE
+REPLACEMENT OF THE SOFTWARE ON NEW MEDIA OR REFUND OF THE PURCHASE
+PRICE PAID, AT THE OPTION OF PALMSOURCE AND DEPENDENT UPON PRIOR
+AUTHORIZATION.  TO THE FULL EXTENT ALLOWED BY LAW, THE FOREGOING
+WARRANTIES AND REMEDIES ARE EXCLUSIVE AND ARE IN LIEU OF ALL OTHER
+WARRANTIES, TERMS, OR CONDITIONS, EXPRESS OR IMPLIED, EITHER IN FACT
+OR BY OPERATION OF LAW, STATUTORY OR OTHERWISE, INCLUDING WARRANTIES,
+TERMS, OR CONDITIONS OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND SATISFACTORY QUALITY.  PALMSOURCE NEITHER ASSUMES NOR
+AUTHORIZES ANY OTHER PERSON TO ASSUME FOR IT ANY OTHER LIABILITY IN
+CONNECTION WITH THE SALE, INSTALLATION, MAINTENANCE OR USE OF ITS
+PRODUCTS.
+
+PalmSource shall not be liable under this warranty if its testing and
+examination disclose that the alleged defect in the product does not
+exist or was caused by your or any third person's misuse, neglect,
+improper installation or testing, unauthorized attempts to repair or
+modify, or any other cause beyond the range of the intended use, or by
+accident, fire, lightning, or other hazards or acts of God.  This
+warranty does not apply when the malfunction results from the use of
+this product in conjunction with accessories, other products, or
+ancillary or peripheral equipment and PalmSource determines that there
+is no fault with the product itself.
+
+LIMITATION OF LIABILITY.   TO THE FULL EXTENT ALLOWED
+BY LAW PALMSOURCE ALSO EXCLUDES FOR ITSELF AND ITS SUPPLIERS
+ANY LIABILITY, WHETHER BASED IN CONTRACT OR TORT
+(INCLUDING NEGLIGENCE), FOR INCIDENTAL, CONSEQUENTIAL,
+INDIRECT, SPECIAL, OR PUNITIVE DAMAGES OF ANY KIND, OR
+FOR LOSS OF REVENUE OR PROFITS, LOSS OF BUSINESS, LOSS OF
+INFORMATION OR DATA, OR OTHER FINANCIAL LOSS ARISING
+OUT OF OR IN CONNECTION WITH THE SALE, INSTALLATION,
+MAINTENANCE, USE, PERFORMANCE, FAILURE, OR
+INTERRUPTION OF THIS PRODUCT, EVEN IF PALMSOURCE OR ITS
+AUTHORIZED RESELLER HAS BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES, AND LIMITS ITS LIABILITY TO
+REPLACEMENT OF THE SOFTWARE ON NEW MEDIA, OR REFUND
+OF THE PURCHASE PRICE PAID, AT THE OPTION OF PALMSOURCE.  THIS
+DISCLAIMER OF LIABILITY FOR DAMAGES WILL NOT BE
+AFFECTED IF ANY REMEDY PROVIDED HEREIN SHALL FAIL OF
+ITS ESSENTIAL PURPOSE.
+
+TRADEMARKS:    You acknowledge that PalmSource and its affiliates are
+the sole owners of all trademark rights in the marks HotSync,
+Graffiti, iMessenger, MultiMail, Palm, Palm OS, PalmModem, Palm.net,
+PalmPoint, PalmConnect, PalmSource, Palm Powered and the Palm logos.
+You agree to do nothing inconsistent with such ownership.  You will
+not use "Palm" as part of you company, product, service or domain
+names. You acknowledge that this Agreement does not grant any rights
+to use any of the foregoing trademarks or any other trademark of
+PalmSource or any of its affiliates, even if such marks are included
+in any of the materials provided by PalmSource.  You may, however, use
+the tagline "for Palm OS ®" to indicate compatibility, or, after
+meeting Palm OS Developer Program membership and product testing
+requirements, use the Palm
+Powered Compatible Solution logo to indicate compatibility.
+
+SEVERABILITY:  In the event any provision of this License Agreement is
+found to be invalid, illegal or unenforceable, the validity, legality
+and enforceability of any of the remaining provisions shall not in any
+way be affected or impaired and a valid, legal and enforceable
+provision
+of similar intent and economic impact shall be substituted therefor.
+The
+headings used in this Agreement are for convenience only and shall not
+be considered part of the Agreement.
+
+ENTIRE AGREEMENT:  This License Agreement sets forth the entire
+understanding and agreement between you and PalmSource, supersedes all
+prior agreements, whether written or oral, with respect to the
+Software
+and subject matter hereof, and may be amended only in a writing signed
+by both parties.
+
+PalmSource, Inc.
+1240 Crossman Avenue
+Sunnyvale, CA 94089
+

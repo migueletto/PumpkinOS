@@ -1,0 +1,63 @@
+/******************************************************************************
+ *
+ * Copyright (c) 1995-2003 PalmSource, Inc. All rights reserved.
+ *
+ * File: SysResTypes.rh
+ *
+ * Release: 
+ *
+ * Description:
+ *		Include file for PalmRez. This file contains resource definitions
+ *  equates used by both tools. When compiling using the C compiler
+ *  the variable RESOURCE_COMPILER must be defined.
+ *
+ *****************************************************************************/
+
+#ifndef 	__SYSRESTYPES_RH__
+#define	__SYSRESTYPES_RH__
+
+#include <SystemResources.h>
+
+//-----------------------------------------------------------
+// This section is only valid when running the resource compiler
+//-----------------------------------------------------------
+#ifdef RESOURCE_COMPILER
+
+// Definition of the Pilot Preferences Resource. This must match
+//  the definition of the structure SysAppPrefs in SystemMgr.h
+resdef {
+	word	priority;				// AMX task priority
+	long	stackSize;				// required stack size
+	long	minHeapSpace;			// min required free space in heap
+	} sysResTAppPrefs;
+
+// Definition of the extended preferences resource. This must
+// match the definition of the structure SysExtPrefsType in SystemMgr.h
+
+resdef {
+	word	version;					// Version of structure.
+	long	flags;					// 32 flags.
+	} sysResTExtPrefs;
+
+// Definition of the ROM - Based   Feature table
+resdef {
+	word	featureNum;				// Feature number
+	long  featureValue;			// Feature value
+	} 'FITM';
+	
+resdef {
+	long	creator;					// creator type
+	word	len(featureItems);
+	resource 'FITM' featureItems[];
+	} 'CITM';
+
+resdef {
+	word	len(creatorItems);
+	resource 'CITM' creatorItems[];
+	} sysResTFeatures;
+
+
+#endif
+
+
+#endif // __SYSRESTYPES_RH__

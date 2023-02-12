@@ -1,0 +1,28 @@
+PalmOS:
+
+index   size    attrs   cat     uid
+0       14      0x40    2       0xb6e001
+0000: ee 48 02 54 65 73 74 65 00 4e 6f 74 61 00         nH.Teste.Nota.
+
+DateType:
+E    E    4    8
+1110 1110 0100 1000
+
+UInt16 year  :7; // years since 1904 (MAC format)
+UInt16 month :4;
+UInt16 day   :5;
+
+Year    Mon  Day
+1110111 0010 01000
+
+Year  = 119 + 1904 = 2023
+Month = 2
+Day   = 8
+
+2023-02-08
+
+---
+
+PumpkinOS:
+
+48 ee 02 54 65 73 74 65 00 4e 6f 74 61 00

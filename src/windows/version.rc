@@ -1,0 +1,23 @@
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "pmig96"
+      VALUE "FileDescription", "PumpkinOS"
+      VALUE "FileVersion", "1.0"
+      VALUE "InternalName", "pumpkin"
+      VALUE "LegalCopyright", "pmig96"
+      VALUE "OriginalFilename", "pumpkin.exe"
+      VALUE "ProductName", "PumpkinOS"
+      VALUE "ProductVersion", "1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END

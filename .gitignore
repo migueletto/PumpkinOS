@@ -1,0 +1,16 @@
+/bin
+/vfs
+/registry
+/pumpkin
+*.o
+*.res
+*.so
+*.dll
+*.exe
+*.bin
+*.dlib
+*.prc
+*.log
+res
+!/lib/*
+!/lib32/*
