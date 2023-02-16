@@ -1,5 +1,8 @@
 #include <PalmOS.h>
+#include <time.h>
+#include <sys/time.h>
 
+#include "pumpkin.h"
 #include "debug.h"
 
 Err PenOpen(void) {
@@ -19,7 +22,7 @@ Err PenWake(void) {
 }
 
 Err PenGetRawPen(PointType *penP) {
-  debug(DEBUG_ERROR, OSNAME, "PenGetRawPen not implemented");
+  debug(DEBUG_ERROR, PUMPKINOS, "PenGetRawPen not implemented");
   return sysErrParamErr;
 }
 
@@ -32,11 +35,11 @@ Err PenResetCalibration(void) {
 }
 
 Err PenRawToScreen(PointType *penP) {
-  debug(DEBUG_ERROR, OSNAME, "PenRawToScreen not implemented");
+  debug(DEBUG_ERROR, PUMPKINOS, "PenRawToScreen not implemented");
   return sysErrParamErr;
 }
 
 Err PenScreenToRaw(PointType *penP) {
-  debug(DEBUG_ERROR, OSNAME, "PenScreenToRaw not implemented");
+  debug(DEBUG_ERROR, PUMPKINOS, "PenScreenToRaw not implemented");
   return sysErrParamErr;
 }

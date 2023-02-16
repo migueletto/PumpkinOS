@@ -1,5 +1,6 @@
 /bin
 /vfs
+/tools
 /registry
 /pumpkin
 *.o

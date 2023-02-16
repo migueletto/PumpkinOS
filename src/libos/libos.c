@@ -33,7 +33,7 @@ static void EventLoop(libos_t *data) {
   unsigned int len;
   int r;
 
-  debug(DEBUG_INFO, OSNAME, "starting launcher");
+  debug(DEBUG_INFO, PUMPKINOS, "starting launcher");
   xmemset(&request, 0, sizeof(request));
   strncpy(request.name, data->launcher, dmDBNameLength-1);
   request.code = sysAppLaunchCmdNormalLaunch;
@@ -48,23 +48,23 @@ static void EventLoop(libos_t *data) {
           creq = (client_request_t *)buf;
           switch (creq->type) {
             case MSG_LAUNCH:
-              debug(DEBUG_INFO, OSNAME, "received launch message");
+              debug(DEBUG_INFO, PUMPKINOS, "received launch message");
               pumpkin_local_refresh();
               pumpkin_launch(&creq->data.launch);
               break;
             case MSG_DEPLOY:
-              debug(DEBUG_INFO, OSNAME, "received deploy message");
+              debug(DEBUG_INFO, PUMPKINOS, "received deploy message");
               MemSet(&notify, sizeof(notify), 0);
               notify.notifyType = sysNotifySyncFinishEvent;
               notify.broadcaster = sysNotifyBroadcasterCode;
               SysNotifyBroadcast(&notify);
               break;
             default:
-              debug(DEBUG_ERROR, OSNAME, "invalid client request type %d", creq->type);
+              debug(DEBUG_ERROR, PUMPKINOS, "invalid client request type %d", creq->type);
               break;
           }
         } else {
-          debug(DEBUG_ERROR, OSNAME, "invalid client request size %d", len);
+          debug(DEBUG_ERROR, PUMPKINOS, "invalid client request size %d", len);
         }
         xfree(buf);
       }
@@ -82,22 +82,16 @@ static int libos_action(void *arg) {
   height = data->dia ? (data->height * 2) / 3 : data->height;
 
   if (data->wp) {
-    debug(DEBUG_INFO, OSNAME, "creating window");
+    debug(DEBUG_INFO, PUMPKINOS, "creating window");
     encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
-    debug(1, "XXX", "wp=%p", data->wp);
-    debug(1, "XXX", "wp->create=%p", data->wp ? data->wp->create : NULL);
-    debug(1, "XXX", "encoding=%d width=%d height=%d full=%d", encoding, data->width, data->height, data->fullscreen);
     if ((data->w = data->wp->create(encoding, &data->width, &data->height, 1, 1, 0, data->fullscreen, 0, data->wp->data)) == NULL) {
-    debug(1, "XXX", "create failed");
-      thread_end(OSNAME, thread_get_handle());
+      thread_end(PUMPKINOS, thread_get_handle());
       xfree(data);
       return 0;
     }
-    debug(1, "XXX", "create ok");
     pumpkin_set_window(data->w, data->width, height);
-    debug(1, "XXX", "set_windows ok");
     if (data->wp->title) {
-      data->wp->title(data->w, data->single ? data->launcher : OSNAME);
+      data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
     }
     if (data->dia) {
       //dbg_init(data->wp, encoding);
@@ -117,22 +111,22 @@ static int libos_action(void *arg) {
 
   pumpkin_set_spawner(thread_get_handle());
 
-  debug(DEBUG_INFO, OSNAME, "deploying applications");
+  debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
   pumpkin_deploy_files("/app_install");
   pumpkin_load_plugins();
 
   if (data->dia || data->single) {
-    debug(DEBUG_INFO, OSNAME, "starting \"%s\"", data->launcher);
+    debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->launcher);
     pumpkin_launcher(data->launcher, data->width, height);
   } else {
-    debug(DEBUG_INFO, OSNAME, "event loop begin");
+    debug(DEBUG_INFO, PUMPKINOS, "event loop begin");
     EventLoop(data);
-    debug(DEBUG_INFO, OSNAME, "event loop end");
+    debug(DEBUG_INFO, PUMPKINOS, "event loop end");
   }
   //dbg_finish();
 
   xfree(data);
-  thread_end(OSNAME, thread_get_handle());
+  thread_end(PUMPKINOS, thread_get_handle());
   sys_set_finish(0);
 
   return 0;
@@ -230,7 +224,7 @@ static int libos_serial(int pe) {
       r = pumpkin_add_serial(descr, creator, host, port);
       r = script_push_boolean(pe, r == 0);
     } else {
-      debug(DEBUG_ERROR, OSNAME, "invalid creator for serial");
+      debug(DEBUG_ERROR, PUMPKINOS, "invalid creator for serial");
     }
   }
 
@@ -242,7 +236,7 @@ static int libos_serial(int pe) {
 }
 
 int libos_init(int pe, script_ref_t obj) {
-  debug(DEBUG_INFO, OSNAME, "libos_init");
+  debug(DEBUG_INFO, PUMPKINOS, "libos_init");
 
   script_add_function(pe, obj, "init",   libos_app_init);
   script_add_function(pe, obj, "finish", libos_app_finish);

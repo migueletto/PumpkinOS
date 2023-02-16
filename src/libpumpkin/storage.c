@@ -1442,27 +1442,18 @@ static int StoMapResources(storage_t *sto, storage_db_t *db) {
   uint32_t type, id;
   int n, r = -1;
 
-debug(1, "XXX", "StoMapContents \"%s\"", db->name);
   if (db->elements == NULL) {
-debug(1, "XXX", "StoMapContents elements null");
     storage_name(sto, db->name, 0, 0, 0, 0, 0, buf);
-debug(1, "XXX", "StoMapContents opendir \"%s\"", buf);
     if ((dir = StoVfsOpendir(sto->session, buf)) != NULL) {
-debug(1, "XXX", "StoMapContents opendir ok");
       for (;;) {
         ent = StoVfsReaddir(dir);
         if (ent == NULL) break;
-debug(1, "XXX", "StoMapContents ent \"%s\"", ent->name);
         if (ent->type != VFS_FILE) continue;
         if (!strcmp(ent->name, ".") || !strcmp(ent->name, "..")) continue;
 st[0] = 0;
-        //if ((n = sscanf(ent->name, "%4s.%08X.%d", st, &type, &id)) == 3) {
         st[4] = 0;
         if ((n = sscanf(ent->name, "%c%c%c%c.%08X.%d", st, st+1, st+2, st+3, &type, &id)) == 6) {
-debug(1, "XXX", "StoMapContents add res");
           StoAddRes(sto, db, type, id, ent->size);
-        } else {
-debug(1, "XXX", "StoMapContents sscanf=%d st=\"%s\" 0x%08X %d", n, st, type, id);
         }
       }
       vfs_closedir(dir);
@@ -1496,15 +1487,12 @@ static int StoMapContents(storage_t *sto, storage_db_t *db) {
 
   switch (db->ftype) {
     case STO_TYPE_REC:
-debug(1, "XXX", "StoMapContents record");
       r = StoMapRecords(sto, db);
       break;
     case STO_TYPE_RES:
-debug(1, "XXX", "StoMapContents resource");
       r = StoMapResources(sto, db);
       break;
     case STO_TYPE_FILE:
-debug(1, "XXX", "StoMapContents file");
       r = StoMapFile(sto, db);
       break;
   }
@@ -1526,23 +1514,17 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
   DmOpenType *first, *dbRef = NULL;
   Err err = dmErrInvalidParam;
 
-debug(1, "XXX", "DmOpenDatabase dbID 0x%08X", dbID);
   if (mutex_lock(sto->mutex) == 0) {
-debug(1, "XXX", "DmOpenDatabase mutex ok");
     if (dbID < (sto->size - sizeof(storage_db_t))) {
-debug(1, "XXX", "DmOpenDatabase dbID ok");
       db = (storage_db_t *) (sto->base + dbID);
       if ((dbRef = pumpkin_heap_alloc(sizeof(DmOpenType), "dbRef")) != NULL) {
-debug(1, "XXX", "DmOpenDatabase heap alloc ok");
         if (dbID == sto->watchID) {
           debug(DEBUG_INFO, "STOR", "WATCH DmOpenDatabase(0x%08X, 0x%04X): %p", dbID, mode, dbRef);
         }
         if (mode & dmModeWrite) {
           ok = StoLockForWriting(sto, db) == 0;
-debug(1, "XXX", "DmOpenDatabase write ok=%d", ok);
         } else if (mode & dmModeReadOnly) {
           ok = StoLockForReading(sto, db) == 0;
-debug(1, "XXX", "DmOpenDatabase read ok=%d", ok);
         } else {
           debug(DEBUG_ERROR, "STOR", "DmOpenDatabase \"%s\" invalid mode 0x%04X", db->name, mode);
           ok = false;
@@ -1551,11 +1533,9 @@ debug(1, "XXX", "DmOpenDatabase read ok=%d", ok);
           db->mode = mode;
           dbRef->dbID = dbID;
           dbRef->mode = mode;
-debug(1, "XXX", "DmOpenDatabase map contents");
           StoMapContents(sto, db);
           err = errNone;
         } else {
-debug(1, "XXX", "DmOpenDatabase not ok");
           pumpkin_heap_free(dbRef, "dbRef");
           dbRef = NULL;
         }

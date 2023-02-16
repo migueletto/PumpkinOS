@@ -1,7 +1,6 @@
 include ../common.mak
 include ../commonp.mak
 
-OSNAME=Pumpkin
 PROGRAM=$(BIN)/libpumpkin$(SOEXT)
 
 CRDATE := $(shell date +%s)

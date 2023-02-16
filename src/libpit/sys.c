@@ -462,6 +462,9 @@ int sys_country(char *country, int len) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
     }
+    if (!strcmp(buf, "C")) {
+      strncpy(buf, "en_US", sizeof(buf)-1);
+    }
     if ((p = strchr(buf, '_')) != NULL) {
       // "pt_BR" -> "BR"
       strncpy(country, p+1, len-1);

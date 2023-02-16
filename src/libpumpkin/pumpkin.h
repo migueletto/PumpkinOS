@@ -92,6 +92,8 @@ extern "C" {
 
 #define BITMAP_MAGIC 'Bitm'
 
+#define PUMPKINOS "PumpkinOS"
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;

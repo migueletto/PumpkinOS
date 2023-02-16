@@ -106,7 +106,6 @@ void thread_init(void) {
   port = 0;
   main_targ.sock = sys_socket_bind(LOCALHOST, &port, IP_DGRAM);
   main_targ.port = port;
-debug(1, "XXX", "main sock=%d port=%d", main_targ.sock, main_targ.port);
   main_targ.psi = 0;
 
   thread_set(local, &main_targ);

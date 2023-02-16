@@ -2811,35 +2811,38 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
 
   switch (SYS_OS) {
     case 1:
-      debug(DEBUG_INFO, OSNAME, "Host OS is Linux based");
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is Linux based");
       break;
     case 2:
-      debug(DEBUG_INFO, OSNAME, "Host OS is Windows based");
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is Windows based");
+      break;
+    case 3:
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is SerenityOS");
       break;
     default:
-      debug(DEBUG_ERROR, OSNAME, "Host OS is unknown");
+      debug(DEBUG_ERROR, PUMPKINOS, "Host OS is unknown");
       break;
   }
 
   if (FtrGet(sysFileCSystem, sysFtrNumProcessorID, &value) == errNone) {
     if (sysFtrNumProcessorIsARM(value)) {
-      debug(DEBUG_INFO, OSNAME, "Host CPU is ARM");
+      debug(DEBUG_INFO, PUMPKINOS, "Host CPU is ARM");
     } else if ((value & sysFtrNumProcessorMask) == sysFtrNumProcessorx86) {
-      debug(DEBUG_INFO, OSNAME, "Host CPU is x86");
+      debug(DEBUG_INFO, PUMPKINOS, "Host CPU is x86");
     } else {
-      debug(DEBUG_ERROR, OSNAME, "Host CPU is unknown");
+      debug(DEBUG_ERROR, PUMPKINOS, "Host CPU is unknown");
     }
   }
 
   switch (SYS_SIZE) {
     case 1:
-      debug(DEBUG_INFO, OSNAME, "Host word size is 32");
+      debug(DEBUG_INFO, PUMPKINOS, "Host word size is 32");
       break;
     case 2:
-      debug(DEBUG_INFO, OSNAME, "Host word size is 64");
+      debug(DEBUG_INFO, PUMPKINOS, "Host word size is 64");
       break;
     default:
-      debug(DEBUG_ERROR, OSNAME, "Host word size is unknown");
+      debug(DEBUG_ERROR, PUMPKINOS, "Host word size is unknown");
       break;
   }
 

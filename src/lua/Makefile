@@ -1,4 +1,4 @@
-include ../../common.mak
+include ../common.mak
 
 # Makefile for building Lua
 # See ../doc/readme.html for installation and customization instructions.
@@ -31,7 +31,6 @@ MYOBJS=
 PLATS= aix bsd c89 freebsd generic linux macosx mingw posix solaris
 
 LUA_A=	liblua.a
-LUA_BC=	$(BC)/libscriptlua.bc
 LUA_S=  $(BIN)/libscriptlua$(SOEXT)
 CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
 	lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o \
@@ -40,13 +39,6 @@ LIB_O=	lauxlib.o lbaselib.o lbitlib.o lcorolib.o ldblib.o liolib.o \
 	lmathlib.o loslib.o lstrlib.o ltablib.o lutf8lib.o loadlib.o linit.o
 PIT_O=  script_lua.o
 BASE_O= $(CORE_O) $(LIB_O) $(MYOBJS)
-
-CORE_BC=	lapi.bc lcode.bc lctype.bc ldebug.bc ldo.bc ldump.bc lfunc.bc lgc.bc llex.bc \
-	lmem.bc lobject.bc lopcodes.bc lparser.bc lstate.bc lstring.bc ltable.bc \
-	ltm.bc lundump.bc lvm.bc lzio.bc
-LIB_BC=	lauxlib.bc lbaselib.bc lbitlib.bc lcorolib.bc ldblib.bc liolib.bc \
-	lmathlib.bc loslib.bc lstrlib.bc ltablib.bc lutf8lib.bc loadlib.bc linit.bc
-PIT_BC=  script_lua.bc
 
 LUA_T=	lua
 LUA_O=	lua.o
@@ -58,14 +50,14 @@ ALL_O= $(BASE_O) $(LUA_O) $(LUAC_O)
 ALL_T= $(LUA_A) $(LUA_T) $(LUAC_T)
 ALL_A= $(LUA_A)
 ALL_S= $(LUA_S)
-ALL_BC= $(LUA_BC)
 
 # Targets start here.
-default: $(PLAT)
+#default: $(PLAT)
 
-all:	$(ALL_S)
+#all:	$(ALL_S)
 
-bc:	$(ALL_BC)
+$(LUA_S): $(PIT_O) $(CORE_O) $(LIB_O)
+	$(CC) -o $@ -shared $(MYLDFLAGS) $(CORE_O) $(LIB_O) $(PIT_O) -L$(BIN) -lpit -lm
 
 o:	$(ALL_O)
 
@@ -75,12 +67,6 @@ $(LUA_A): $(BASE_O)
 	$(AR) $@ $(BASE_O)
 	$(RANLIB) $@
 
-$(LUA_S): $(PIT_O) $(CORE_O) $(LIB_O)
-	$(CC) -o $@ $(MYLDFLAGS) $(CORE_O) $(LIB_O) $(PIT_O) -L$(BIN) -lpit -lm
-
-$(LUA_BC): $(PIT_BC) $(CORE_BC) $(LIB_BC)
-	$(EMCC) $(EMLDFLAGS) -o $@ $(CORE_BC) $(LIB_BC) $(PIT_BC)
-
 $(LUA_T): $(LUA_O) $(LUA_A)
 	$(CC) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
 
@@ -88,7 +74,7 @@ $(LUAC_T): $(LUAC_O) $(LUA_A)
 	$(CC) -o $@ $(LDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
 
 clean:
-	$(RM) $(ALL_T) $(ALL_O) $(ALL_S) $(PIT_O) $(ALL_BC) $(PIT_BC) $(CORE_BC) $(LIB_BC)
+	$(RM) $(ALL_T) $(ALL_O) $(ALL_S) $(PIT_O)
 
 depend:
 	@$(CC) $(CFLAGS) -MM l*.c
@@ -130,7 +116,8 @@ generic: $(ALL)
 
 linux:
 #	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lreadline"
-	$(MAKE) $(ALL_S) MYCFLAGS="-fPIC -DLUA_USE_LINUX" MYLDFLAGS="-shared" MYLIBS="-Wl,-E"
+#	$(MAKE) $(ALL_S) MYCFLAGS="-fPIC -DLUA_USE_LINUX" MYLDFLAGS="-shared" MYLIBS="-Wl,-E"
+	$(MAKE) $(ALL_S)
 
 macosx:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX" SYSLIBS="-lreadline"
@@ -140,7 +127,8 @@ mingw:
 #	"AR=$(CC) -shared -o" "RANLIB=strip --strip-unneeded" \
 #	"SYSCFLAGS=-DLUA_BUILD_AS_DLL" "SYSLIBS=" "SYSLDFLAGS=-s" lua.exe
 #	$(MAKE) "LUAC_T=luac.exe" luac.exe
-	$(MAKE) $(ALL_S) MYCFLAGS="-fPIC -DLUA_BUILLD_AS_DLL" MYLDFLAGS="-shared" MYLIBS="-Wl,-E"
+#	$(MAKE) $(ALL_S) MYCFLAGS="-fPIC -DLUA_BUILLD_AS_DLL" MYLDFLAGS="-shared" MYLIBS="-Wl,-E"
+	$(MAKE) $(ALL_S)
 
 posix:
 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_POSIX"

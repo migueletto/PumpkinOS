@@ -62,8 +62,8 @@
 #define CRASH_LOG   "crash.log"
 #define COMPAT_LIST "log/compat.txt"
 
-#define PUMPKIN_USER_AGENT  "PumpkinOS"
-#define PUMPKIN_SERVER_NAME "PumpkinOS"
+#define PUMPKIN_USER_AGENT  PUMPKINOS
+#define PUMPKIN_SERVER_NAME PUMPKINOS
 
 typedef struct {
   uint16_t refNum;
@@ -261,9 +261,9 @@ void heap_assertion_error(char *msg) {
 }
 
 void pumpkin_test_exception(int fatal) {
-  debug(DEBUG_ERROR, OSNAME, "pumpkin_test_exception fatal=%d", fatal);
+  debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_test_exception fatal=%d", fatal);
   ErrDisplayFileLineMsgEx("test.c", "test", 1, "test exception", fatal);
-  debug(DEBUG_ERROR, OSNAME, "pumpkin_test_exception should not be here!");
+  debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_test_exception should not be here!");
 }
 
 void pumpkin_debug_init(void) {
@@ -349,7 +349,7 @@ static int pumpkin_register_plugin(UInt32 type, UInt32 id, pluginMainF pluginMai
     if ((plugin = xcalloc(1, sizeof(pumpkin_plugin_t))) != NULL) {
       pumpkin_id2s(type, sType);
       pumpkin_id2s(id, sId);
-      debug(DEBUG_INFO, OSNAME, "registering plugin type '%s' id '%s'", sType, sId);
+      debug(DEBUG_INFO, PUMPKINOS, "registering plugin type '%s' id '%s'", sType, sId);
       plugin->type = type;
       plugin->id = id;
       plugin->pluginMain = pluginMain;
@@ -377,7 +377,7 @@ pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id) {
   if (plugin == NULL) {
     pumpkin_id2s(type, sType);
     pumpkin_id2s(id, sId);
-    debug(DEBUG_INFO, OSNAME, "plugin type '%s' id '%s' not found", sType, sId);
+    debug(DEBUG_INFO, PUMPKINOS, "plugin type '%s' id '%s' not found", sType, sId);
   }
 
   return plugin;
@@ -399,14 +399,14 @@ void pumpkin_load_plugins(void) {
 
     if ((dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadOnly)) != NULL) {
       if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
-        debug(DEBUG_INFO, OSNAME, "plugin dlib resource loaded (first %d)", firstLoad ? 1 : 0);
+        debug(DEBUG_INFO, PUMPKINOS, "plugin dlib resource loaded (first %d)", firstLoad ? 1 : 0);
         pluginInit = sys_lib_defsymbol(lib, "PluginInit", 1);
         if (pluginInit) {
           if ((pluginMain = pluginInit(&type, &id)) != NULL) {
             pumpkin_register_plugin(type, id, pluginMain);
           }
         } else {
-          debug(DEBUG_ERROR, OSNAME, "PluginInit not found in plugin dlib");
+          debug(DEBUG_ERROR, PUMPKINOS, "PluginInit not found in plugin dlib");
         }
         // sys_lib_close is not being called
       }
@@ -421,7 +421,7 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 index, UInt16 id, void 
 
   pumpkin_id2s(n->appCreator, screator);
   pumpkin_id2s(n->notifyType, stype);
-  debug(DEBUG_INFO, OSNAME, "load notification type '%s' creator '%s' priority %d: added", stype, screator, n->priority);
+  debug(DEBUG_INFO, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: added", stype, screator, n->priority);
 
   pumpkin_module.notif[pumpkin_module.num_notif].appCreator = n->appCreator;
   pumpkin_module.notif[pumpkin_module.num_notif].notifyType = n->notifyType;
@@ -435,7 +435,7 @@ int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line
 
   xmemset(&pumpkin_module, 0, sizeof(pumpkin_module_t));
 
-  if ((mutex = mutex_create(OSNAME)) == NULL) {
+  if ((mutex = mutex_create(PUMPKINOS)) == NULL) {
     return -1;
   }
 
@@ -515,7 +515,7 @@ void pumpkin_deploy_files(char *path) {
 }
 
 void pumpkin_set_spawner(int handle) {
-  debug(DEBUG_INFO, OSNAME, "spawner set to port %d", handle);
+  debug(DEBUG_INFO, PUMPKINOS, "spawner set to port %d", handle);
   pumpkin_module.spawner = handle;
 }
 
@@ -528,7 +528,7 @@ int pumpkin_get_spawner(void) {
 }
 
 void pumpkin_set_window(window_t *w, int width, int height) {
-  debug(DEBUG_INFO, OSNAME, "set window %dx%d", width, height);
+  debug(DEBUG_INFO, PUMPKINOS, "set window %dx%d", width, height);
   pumpkin_module.w = w;
   pumpkin_module.width = width;
   pumpkin_module.height = height;
@@ -849,16 +849,16 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
     lib = NULL;
 
     if (pilot_main) {
-      debug(DEBUG_INFO, OSNAME, "using provided PilotMain");
+      debug(DEBUG_INFO, PUMPKINOS, "using provided PilotMain");
     } else {
-      debug(DEBUG_INFO, OSNAME, "searching PilotMain in dlib");
+      debug(DEBUG_INFO, PUMPKINOS, "searching PilotMain in dlib");
       if ((dbID = DmFindDatabase(0, request->name)) != 0) {
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
-            debug(DEBUG_INFO, OSNAME, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
+            debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
-              debug(DEBUG_ERROR, OSNAME, "PilotMain not found in dlib");
+              debug(DEBUG_ERROR, PUMPKINOS, "PilotMain not found in dlib");
             }
           }
           DmCloseDatabase(dbRef);
@@ -869,25 +869,25 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
     if (pilot_main) {
       pumpkin_set_m68k(0);
       if (opendb) {
-        debug(DEBUG_INFO, OSNAME, "calling pilot_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
+        debug(DEBUG_INFO, PUMPKINOS, "calling pilot_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
         r = pumpkin_pilotmain(request->name, pilot_main, request->code, request->param, request->flags);
       } else {
-        debug(DEBUG_INFO, OSNAME, "calling pilot_main for \"%s\" with code %d as subroutine", request->name, request->code);
+        debug(DEBUG_INFO, PUMPKINOS, "calling pilot_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = pilot_main(request->code, request->param, request->flags);
       }
-      debug(DEBUG_INFO, OSNAME, "pilot_main returned %u", r);
+      debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
     } else {
       int m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
       if (opendb) {
-        debug(DEBUG_INFO, OSNAME, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
+        debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
         r = pumpkin_pilotmain(request->name, emupalmos_main, request->code, request->param, request->flags);
       } else {
-        debug(DEBUG_INFO, OSNAME, "calling emupalmos_main for \"%s\" with code %d as subroutine", request->name, request->code);
+        debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = emupalmos_main(request->code, request->param, request->flags);
       }
-      debug(DEBUG_INFO, OSNAME, "emupalmos_main returned %u", r);
+      debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main returned %u", r);
       pumpkin_set_m68k(m68k);
     }
 
@@ -1130,7 +1130,7 @@ static int pumpkin_local_finish(UInt32 creator) {
   xfree(task);
 
   if (pumpkin_module.num_tasks == 0) {
-    debug(DEBUG_INFO, OSNAME, "last task finishing");
+    debug(DEBUG_INFO, PUMPKINOS, "last task finishing");
     sys_set_finish(0);
   }
 
@@ -1168,7 +1168,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
-      debug(DEBUG_ERROR, OSNAME, "ErrSetJump not zero");
+      debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
       MemSet(&request, sizeof(launch_request_t), 0);
       StrNCopy(request.name, name, dmDBNameLength);
@@ -1193,7 +1193,7 @@ static int pumpkin_launch_action(void *arg) {
   int i, cont = 0;
 
   data = (launch_data_t *)arg;
-  debug(DEBUG_INFO, OSNAME, "starting \"%s\"", data->request.name);
+  debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->request.name);
 
   strncpy(name, data->request.name, dmDBNameLength);
   for (i = 0; name[i]; i++) {
@@ -1205,7 +1205,7 @@ static int pumpkin_launch_action(void *arg) {
     task = (pumpkin_task_t *)thread_get(task_key);
     pumpkin_set_compat(data->creator, appCompatOk, 0);
     if (ErrSetJump(task->jmpbuf) != 0) {
-      debug(DEBUG_ERROR, OSNAME, "ErrSetJump not zero");
+      debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
       pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
     } else {
       pumpkin_launch_sub(&data->request, data->request.opendb);
@@ -1219,11 +1219,11 @@ static int pumpkin_launch_action(void *arg) {
   }
 
   thread_set_name(TAG_APP);
-  debug(DEBUG_INFO, OSNAME, "thread exiting");
+  debug(DEBUG_INFO, PUMPKINOS, "thread exiting");
   xfree(data);
 
   if (cont) {
-    debug(DEBUG_INFO, OSNAME, "switching to \"%s\"", launch.name);
+    debug(DEBUG_INFO, PUMPKINOS, "switching to \"%s\"", launch.name);
     pumpkin_launch_request(launch.name, launch.code, launch.param, launch.flags, NULL, 1);
   }
 
@@ -1238,7 +1238,7 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
 
   for (i = 0, ack = 0; i < 10 && !ack; i++) {
     if ((r = thread_server_read_timeout_from(100000, &buf, &len, &client)) == -1) {
-      debug(DEBUG_ERROR, OSNAME, "error receiving ack from %d", port);
+      debug(DEBUG_ERROR, PUMPKINOS, "error receiving ack from %d", port);
       break;
     }
     if (r == 0) {
@@ -1254,21 +1254,21 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
           p = (uint32_t *)buf;
           if (reply) *reply = *p;
           r = 0;
-          debug(DEBUG_INFO, OSNAME, "reply %u from %d", *p, port);
+          debug(DEBUG_INFO, PUMPKINOS, "reply %u from %d", *p, port);
         } else {
-          debug(DEBUG_ERROR, OSNAME, "received %d bytes from %d but was expecting %d bytes", len, port, sizeof(uint32_t));
+          debug(DEBUG_ERROR, PUMPKINOS, "received %d bytes from %d but was expecting %d bytes", len, port, sizeof(uint32_t));
         }
       } else {
         if (len == sizeof(uint32_t)) {
           p = (uint32_t *)buf;
-          debug(DEBUG_ERROR, OSNAME, "received reply %u from %d but was expecting %d", p, client, port);
+          debug(DEBUG_ERROR, PUMPKINOS, "received reply %u from %d but was expecting %d", p, client, port);
         } else {
-          debug(DEBUG_ERROR, OSNAME, "received reply from %d but was expecting %d", client, port);
+          debug(DEBUG_ERROR, PUMPKINOS, "received reply from %d but was expecting %d", client, port);
         }
       }
       xfree(buf);
     } else {
-      debug(DEBUG_ERROR, OSNAME, "received nothing from %d but was expecting %d bytes", port, sizeof(uint32_t));
+      debug(DEBUG_ERROR, PUMPKINOS, "received nothing from %d but was expecting %d bytes", port, sizeof(uint32_t));
     }
   }
 
@@ -1302,7 +1302,7 @@ int pumpkin_launch(launch_request_t *request) {
           pumpkin_module.tasks[i].texture = NULL;
         }
         if (index == -1) {
-          debug(DEBUG_INFO, OSNAME, "task %d reserved for application \"%s\"", i, request->name);
+          debug(DEBUG_INFO, PUMPKINOS, "task %d reserved for application \"%s\"", i, request->name);
           strncpy(pumpkin_module.tasks[i].name, request->name, dmDBNameLength-1);
           pumpkin_module.tasks[i].reserved = 1;
           index = i;
@@ -1311,7 +1311,7 @@ int pumpkin_launch(launch_request_t *request) {
     }
 
     if (running != -1) {
-      debug(DEBUG_INFO, OSNAME, "application \"%s\" is already running", request->name);
+      debug(DEBUG_INFO, PUMPKINOS, "application \"%s\" is already running", request->name);
       if (index != -1) {
         pumpkin_module.tasks[index].reserved = 0;
       }
@@ -1330,7 +1330,7 @@ int pumpkin_launch(launch_request_t *request) {
       }
       mutex_unlock(mutex);
       if (wait_ack != -1) {
-        debug(DEBUG_INFO, OSNAME, "waiting ack from \"%s\"", request->name);
+        debug(DEBUG_INFO, PUMPKINOS, "waiting ack from \"%s\"", request->name);
         if (pumpkin_wait_ack(wait_ack, NULL) == 0) {
           if (request->param) {
             pumpkin_heap_free(request->param, "request_param");
@@ -1341,7 +1341,7 @@ int pumpkin_launch(launch_request_t *request) {
     }
 
     if (index == -1) {
-      debug(DEBUG_ERROR, OSNAME, "no more threads");
+      debug(DEBUG_ERROR, PUMPKINOS, "no more threads");
       mutex_unlock(mutex);
       return -1;
     }
@@ -1360,12 +1360,12 @@ int pumpkin_launch(launch_request_t *request) {
         if (AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
           data->width = s.width;
           data->height = s.height;
-          debug(DEBUG_INFO, OSNAME, "using size %dx%d from registry", data->width, data->height);
+          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
         }
         if (AppRegistryGet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p)) {
           data->x = p.x;
           data->y = p.y;
-          debug(DEBUG_INFO, OSNAME, "using position %d,%d from registry", data->x, data->y);
+          debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry", data->x, data->y);
         }
       }
 
@@ -1382,7 +1382,7 @@ int pumpkin_launch(launch_request_t *request) {
       data->index = index;
       xmemcpy(&data->request, request, sizeof(launch_request_t));
       data->texture = pumpkin_module.wp->create_texture(pumpkin_module.w, data->width, data->height);
-      debug(DEBUG_INFO, OSNAME, "starting \"%s\" with launchCode %d", request->name, request->code);
+      debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\" with launchCode %d", request->name, request->code);
       r = thread_begin(TAG_APP, pumpkin_launch_action, data);
       if (r == -1) {
         pumpkin_module.tasks[index].reserved = 0;
@@ -1420,7 +1420,7 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
 
   if (name && task && !strcmp(name, task->name)) {
     // not pausing itself...
-    debug(DEBUG_INFO, OSNAME, "no need to pause myself");
+    debug(DEBUG_INFO, PUMPKINOS, "no need to pause myself");
     *call_sub = 1;
 
   } else {
@@ -1437,7 +1437,7 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
       }
 
       if (handle > 0) {
-        debug(DEBUG_INFO, OSNAME, "sending pause request to \"%s\" on port %d", name, handle);
+        debug(DEBUG_INFO, PUMPKINOS, "sending pause request to \"%s\" on port %d", name, handle);
         msg = MSG_PAUSE;
         if (thread_client_write(handle, (uint8_t *)&msg, sizeof(uint32_t)) == sizeof(uint32_t)) {
           *call_sub = 1;
@@ -1448,13 +1448,13 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
       mutex_unlock(mutex);
 
       if (handle > 0) {
-        debug(DEBUG_INFO, OSNAME, "waiting pause reply from \"%s\"", name);
+        debug(DEBUG_INFO, PUMPKINOS, "waiting pause reply from \"%s\"", name);
         if (pumpkin_wait_ack(handle, NULL) == -1) {
-          debug(DEBUG_ERROR, OSNAME, "pause reply error");
+          debug(DEBUG_ERROR, PUMPKINOS, "pause reply error");
           *call_sub = 0;
           handle = -1;
         } else {
-          debug(DEBUG_INFO, OSNAME, "pause reply received");
+          debug(DEBUG_INFO, PUMPKINOS, "pause reply received");
         }
       }
     }
@@ -1468,7 +1468,7 @@ static int pumpkin_resume_task(int handle) {
   int r = 0;
 
   if (handle > 0) {
-    debug(DEBUG_INFO, OSNAME, "sending resume request to port %d", handle);
+    debug(DEBUG_INFO, PUMPKINOS, "sending resume request to port %d", handle);
     msg = MSG_RESUME;
     r = thread_client_write(handle, (uint8_t *)&msg, sizeof(uint32_t));
   }
@@ -1507,10 +1507,10 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
       creq.data.launch.param = gotoParam;
       break;
     default:
-      debug(DEBUG_INFO, OSNAME, "sending launch code %d to \"%s\"", cmd, name);
+      debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\"", cmd, name);
       handle = pumpkin_pause_task(name, &call_sub);
       if (call_sub) {
-        debug(DEBUG_INFO, OSNAME, "calling \"%s\" as subroutine", name);
+        debug(DEBUG_INFO, PUMPKINOS, "calling \"%s\" as subroutine", name);
         creq.data.launch.flags |= sysAppLaunchFlagSubCall;
         r = pumpkin_launch_sub(&creq.data.launch, 1);
       }
@@ -1521,7 +1521,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   }
 
   if (thread_get_handle() == pumpkin_module.spawner) {
-    debug(DEBUG_INFO, OSNAME, "spawning \"%s\" with launchCode %d", name, cmd);
+    debug(DEBUG_INFO, PUMPKINOS, "spawning \"%s\" with launchCode %d", name, cmd);
     win_module = WinReinitModule(NULL);
     frm_module = FrmReinitModule(NULL);
     fld_module = FldReinitModule(NULL);
@@ -1530,7 +1530,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     pumpkin_launched(1);
     xmemcpy(jmpbuf, task->jmpbuf, sizeof(ErrJumpBuf));
     if (ErrSetJump(task->jmpbuf) != 0) {
-      debug(DEBUG_ERROR, OSNAME, "ErrSetJump not zero");
+      debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
       r = pumpkin_launch_sub(&creq.data.launch, 1);
     }
@@ -1546,7 +1546,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     PINSetInputTriggerState(pinInputTriggerEnabled);
     FrmDrawForm(FrmGetActiveForm());
   } else {
-    debug(DEBUG_INFO, OSNAME, "sending launch code %d to \"%s\" via spawner on port %d", cmd, name, pumpkin_module.spawner);
+    debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" via spawner on port %d", cmd, name, pumpkin_module.spawner);
     thread_client_write(pumpkin_module.spawner, (uint8_t *)&creq, sizeof(client_request_t));
   }
 
@@ -1639,14 +1639,14 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   UInt32 type;
   int r = -1;
 
-  debug(DEBUG_INFO, OSNAME, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
+  debug(DEBUG_INFO, PUMPKINOS, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
 
   if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, NULL) == errNone) {
     if (dbID != task->dbID) {
       *resultP = pumpkin_launch_request(name, cmd, cmdPBP, launchFlags, pilotMain, 1);
       r = 0;
     } else {
-      debug(DEBUG_INFO, OSNAME, "calling self with launchCode %d", cmd);
+      debug(DEBUG_INFO, PUMPKINOS, "calling self with launchCode %d", cmd);
       xmemset(&request, 0, sizeof(launch_request_t));
       strncpy(request.name, name, dmDBNameLength-1);
       request.code = cmd;
@@ -1673,7 +1673,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
     if (pumpkin_module.dia) {
       if (dia_get_main_dimension(pumpkin_module.dia, &width, &height) == 0) {
         if (width != pumpkin_module.tasks[i].width || height != pumpkin_module.tasks[i].height) {
-          debug(DEBUG_INFO, OSNAME, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
+          debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
 
           if ((surface = surface_create(width, height, pumpkin_module.encoding)) != NULL) {
             surface_draw(surface, 0, 0, screen->surface, 0, 0, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height);
@@ -1707,7 +1707,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
       *y = screen->y0;
       *w = screen->x1 - screen->x0 + 1;
       *h = screen->y1 - screen->y0 + 1;
-      debug(DEBUG_TRACE, OSNAME, "task %d (%s) update texture %d,%d %d,%d", i, pumpkin_module.tasks[i].name, *x, *y, *w, *h);
+      debug(DEBUG_TRACE, PUMPKINOS, "task %d (%s) update texture %d,%d %d,%d", i, pumpkin_module.tasks[i].name, *x, *y, *w, *h);
       pumpkin_module.wp->update_texture_rect(pumpkin_module.w, pumpkin_module.tasks[i].texture, raw, *x, *y, *w, *h);
       screen->x0 = pumpkin_module.width;
       screen->y0 = pumpkin_module.height;
@@ -1794,7 +1794,7 @@ int pumpkin_pause(int pause) {
 
   if (mutex_lock(mutex) == 0) {
     if (pumpkin_module.paused != pause) {
-      debug(DEBUG_INFO, OSNAME, "pause %d", pause);
+      debug(DEBUG_INFO, PUMPKINOS, "pause %d", pause);
       pumpkin_module.paused = pause;
     }
     mutex_unlock(mutex);
@@ -1891,7 +1891,7 @@ int pumpkin_sys_event(void) {
     i = pumpkin_module.current_task;
 
     if (ev) {
-      debug(DEBUG_TRACE, OSNAME, "event ev=%d arg1=%d arg2=%d", ev, arg1, arg2);
+      debug(DEBUG_TRACE, PUMPKINOS, "event ev=%d arg1=%d arg2=%d", ev, arg1, arg2);
     }
 
     switch (ev) {
@@ -2136,22 +2136,22 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
           }
           break;
         case MSG_LAUNCH:
-          debug(DEBUG_INFO, OSNAME, "pumpkin_event received launch request from %d", client);
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event received launch request from %d", client);
           if (len == sizeof(client_request_t)) {
             creq = (client_request_t *)buf;
             reply = pumpkin_launch_sub(&creq->data.launch, 0);
-            debug(DEBUG_INFO, OSNAME, "pumpkin_event sending reply %u to %d", reply, client);
+            debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event sending reply %u to %d", reply, client);
             thread_client_write(client, (uint8_t *)&reply, sizeof(uint32_t));
           }
           break;
         case MSG_PAUSE:
-          debug(DEBUG_INFO, OSNAME, "pumpkin_event pausing");
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event pausing");
           task->paused = client;
           reply = 0;
           thread_client_write(client, (uint8_t *)&reply, sizeof(uint32_t));
           break;
         case MSG_DISPLAY:
-          debug(DEBUG_INFO, OSNAME, "pumpkin_event change display to %dx%d", arg[1], arg[2]);
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event change display to %dx%d", arg[1], arg[2]);
           task->width = arg[1];
           task->height = arg[2];
 
@@ -2165,7 +2165,7 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
           EvtAddEventToQueue(&event);
           break;
         case MSG_RAISE:
-          debug(DEBUG_INFO, OSNAME, "pumpkin_event raise");
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event raise");
           MemSet(&event, sizeof(EventType), 0);
           event.eType = appRaiseEvent;
           EvtAddEventToQueue(&event);
@@ -2175,14 +2175,14 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
           if (len <= *n) {
             *n = len;
           } else {
-            debug(DEBUG_ERROR, OSNAME, "pumpkin_event event %u len %u > %u", ev, len, *n);
+            debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_event event %u len %u > %u", ev, len, *n);
             len = *n;
           }
           if (data) xmemcpy(data, &arg[1], len);
           break;
       }
     } else {
-      debug(DEBUG_ERROR, OSNAME, "pumpkin_event invalid len %u", len);
+      debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_event invalid len %u", len);
     }
     if (buf) xfree(buf);
 
@@ -2203,7 +2203,7 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
       xfree(buf);
       continue;
     }
-    debug(DEBUG_INFO, OSNAME, "pumpkin_event resuming");
+    debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event resuming");
     task->paused = 0;
   }
 
@@ -2325,7 +2325,7 @@ int pumpkin_script_create(void) {
   script_arg_t value;
   int obj, pe = -1;
 
-  debug(DEBUG_TRACE, OSNAME, "creating script environment");
+  debug(DEBUG_TRACE, PUMPKINOS, "creating script environment");
   if ((pe = script_create()) != -1) {
     value.type = SCRIPT_ARG_OBJECT;
     if ((value.value.r = script_create_object(pe)) != -1 && script_global_set(pe, "app", &value) != -1) {
@@ -2355,7 +2355,7 @@ int pumpkin_script_init(int pe, uint32_t type, uint16_t id) {
         len = MemHandleSize(h);
         if ((p = MemPtrNew(len+1)) != NULL) {
           MemMove(p, s, len);
-          debug(DEBUG_TRACE, OSNAME, "running script resource");
+          debug(DEBUG_TRACE, PUMPKINOS, "running script resource");
           r = script_run(pe, p, 0, NULL);
           MemPtrFree(p);
         }
@@ -2372,7 +2372,7 @@ int pumpkin_script_destroy(int pe) {
   int r = -1;
 
   if (pe > 0) {
-    debug(DEBUG_TRACE, OSNAME, "destroying script environment");
+    debug(DEBUG_TRACE, PUMPKINOS, "destroying script environment");
     script_destroy(pe);
     r = 0;
   }
@@ -2548,7 +2548,7 @@ int pumpkin_alarm_check(void) {
   if (task->alarm_time) {
     // there is an alarm set
     if (sys_time() >= task->alarm_time) {
-      debug(DEBUG_INFO, OSNAME, "pumpkin_alarm_check: alarm time has arrived");
+      debug(DEBUG_INFO, PUMPKINOS, "pumpkin_alarm_check: alarm time has arrived");
       triggerAlarm.alarmSeconds = task->alarm_time;
       triggerAlarm.ref = task->alarm_data;
 
@@ -2560,7 +2560,7 @@ int pumpkin_alarm_check(void) {
         xmemcpy(&triggerAlarm, request.param, sizeof(SysAlarmTriggeredParamType));
         if (triggerAlarm.purgeAlarm) {
           // application requested to cancel the alarm
-          debug(DEBUG_INFO, OSNAME, "pumpkin_alarm_check: purge alarm");
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_alarm_check: purge alarm");
           task->alarm_time = 0;
           task->alarm_data = 0;
 
@@ -2576,7 +2576,7 @@ int pumpkin_alarm_check(void) {
           request.code = sysAppLaunchCmdDisplayAlarm;
           request.param = &displayAlarm;
 
-          debug(DEBUG_INFO, OSNAME, "pumpkin_alarm_check: display alarm");
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_alarm_check: display alarm");
           if (pumpkin_launch_sub(&request, 0) == 0) {
             r = 1;
           }
@@ -2872,15 +2872,15 @@ void pumpkin_error_dialog(char *msg) {
 void pumpkin_fatal_error(int finish) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
-  debug(DEBUG_ERROR, OSNAME, "pumpkin_fatal_error finish=%d", finish);
+  debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_fatal_error finish=%d", finish);
   if (finish || pumpkin_module.dia || pumpkin_module.single) {
     sys_set_finish(finish);
     sys_exit(finish);
   }
 
-  debug(DEBUG_ERROR, OSNAME, "calling ErrLongJump");
+  debug(DEBUG_ERROR, PUMPKINOS, "calling ErrLongJump");
   ErrLongJump(task->jmpbuf, 1);
-  debug(DEBUG_ERROR, OSNAME, "after ErrLongJump!");
+  debug(DEBUG_ERROR, PUMPKINOS, "after ErrLongJump!");
 }
 
 void pumpkin_set_compat(uint32_t creator, int compat, int code) {
@@ -2990,7 +2990,7 @@ Boolean SysLibNewRefNum68K(UInt32 type, UInt32 creator, UInt16 *refNum) {
     *refNum = task->syslibs[first].refNum;
     pumpkin_id2s(type, buf);
     pumpkin_id2s(creator, buf2);
-    debug(DEBUG_INFO, OSNAME, "reserving syslib type '%s' creator '%s' at %d", buf, buf2, *refNum);
+    debug(DEBUG_INFO, PUMPKINOS, "reserving syslib type '%s' creator '%s' at %d", buf, buf2, *refNum);
   }
 
   return exists;
@@ -3018,11 +3018,11 @@ Err SysLibRegister68K(UInt16 refNum, LocalID dbID, uint8_t *code, UInt32 size, U
           get2b(&nameOffset, (uint8_t *)task->syslibs[i].dispatchTbl, 0);
           get2b(&firstOffset, (uint8_t *)task->syslibs[i].dispatchTbl, 2);
           numFunctions = firstOffset / 2;
-          debug(DEBUG_INFO, OSNAME, "SysLibRegister68K nameOffset %d firstOffset %d numFunctions %d", nameOffset, firstOffset, numFunctions);
-          debug_bytes(DEBUG_TRACE, OSNAME, (uint8_t *)task->syslibs[i].dispatchTbl, numFunctions*2);
+          debug(DEBUG_INFO, PUMPKINOS, "SysLibRegister68K nameOffset %d firstOffset %d numFunctions %d", nameOffset, firstOffset, numFunctions);
+          debug_bytes(DEBUG_TRACE, PUMPKINOS, (uint8_t *)task->syslibs[i].dispatchTbl, numFunctions*2);
           pumpkin_id2s(task->syslibs[i].type, buf);
           pumpkin_id2s(task->syslibs[i].creator, buf2);
-          debug(DEBUG_INFO, OSNAME, "registering syslib \"%s\" type '%s' creator '%s' at %d", task->syslibs[i].name, buf, buf2, refNum);
+          debug(DEBUG_INFO, PUMPKINOS, "registering syslib \"%s\" type '%s' creator '%s' at %d", task->syslibs[i].name, buf, buf2, refNum);
         }
       }
       break;
@@ -3066,7 +3066,7 @@ void SysLibCancelRefNum68K(UInt16 refNum) {
       }
       pumpkin_id2s(task->syslibs[i].type, buf);
       pumpkin_id2s(task->syslibs[i].creator, buf2);
-      debug(DEBUG_INFO, OSNAME, "unregistering syslib \"%s\" type '%s' creator '%s' at %d", task->syslibs[i].name, buf, buf2, refNum);
+      debug(DEBUG_INFO, PUMPKINOS, "unregistering syslib \"%s\" type '%s' creator '%s' at %d", task->syslibs[i].name, buf, buf2, refNum);
       xmemset(&task->syslibs[i], 0, sizeof(syslib_t));
       break;
     }
@@ -3083,7 +3083,7 @@ UInt16 SysLibFind68K(char *name) {
       refNum = task->syslibs[i].refNum;
       pumpkin_id2s(task->syslibs[i].type, buf);
       pumpkin_id2s(task->syslibs[i].creator, buf2);
-      debug(DEBUG_INFO, OSNAME, "found syslib \"%s\" type '%s' creator '%s' at %d", name, buf, buf2, refNum);
+      debug(DEBUG_INFO, PUMPKINOS, "found syslib \"%s\" type '%s' creator '%s' at %d", name, buf, buf2, refNum);
       break;
     }
   }
@@ -3160,7 +3160,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     wWidth = width;
     wHeight = height;
   }
-  debug(DEBUG_INFO, OSNAME, "saving %dx%d bitmap as %s", width, height, filename);
+  debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d bitmap as %s", width, height, filename);
   if ((surface = surface_create(wWidth*2, wHeight*2, SURFACE_ENCODING_ARGB)) != NULL) {
     wh = WinCreateOffscreenWindow(wWidth, wHeight, nativeFormat, NULL);
     old = WinSetDrawWindow(wh);
@@ -3420,14 +3420,14 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
         if (pumpkin_module.num_notif < MAX_NOTIF_REGISTER) {
           for (i = 0; i < pumpkin_module.num_notif; i++) {
             if (pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType) {
-              debug(DEBUG_ERROR, OSNAME, "register notification type '%s' creator '%s' priority %d: duplicate", stype, screator, priority);
+              debug(DEBUG_ERROR, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: duplicate", stype, screator, priority);
               err = sysNotifyErrDuplicateEntry;
               break;
             }
           }
 
           if (i == pumpkin_module.num_notif) {
-            debug(DEBUG_INFO, OSNAME, "register notification type '%s' creator '%s' priority %d: added", stype, screator, priority);
+            debug(DEBUG_INFO, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: added", stype, screator, priority);
             if (callbackP || userDataP) {
               np = xcalloc(1, sizeof(notif_ptr_t));
               np->tag = TAG_NOTIF;
@@ -3454,14 +3454,14 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
             err = errNone;
           }
         } else {
-          debug(DEBUG_ERROR, OSNAME, "register notification type '%s' creator '%s' priority %d: max reached", stype, screator, priority);
+          debug(DEBUG_ERROR, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: max reached", stype, screator, priority);
           err = sysErrParamErr;
         }
         mutex_unlock(mutex);
       }
     } else {
       // XXX different behavior: in PalmOS any code resource is ok, not only applications
-      debug(DEBUG_ERROR, OSNAME, "register notification type '%s' creator '%s' priority %d: dbID is not an application", stype, screator, priority);
+      debug(DEBUG_ERROR, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: dbID is not an application", stype, screator, priority);
       err = sysErrParamErr;
     }
   }
@@ -3483,7 +3483,7 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
 
       for (i = 0; i < pumpkin_module.num_notif; i++) {
         if (pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType) {
-          debug(DEBUG_INFO, OSNAME, "unregister notification type '%s' creator '%s' priority %d: removed", stype, screator, pumpkin_module.notif[i].priority);
+          debug(DEBUG_INFO, PUMPKINOS, "unregister notification type '%s' creator '%s' priority %d: removed", stype, screator, pumpkin_module.notif[i].priority);
           if (pumpkin_module.notif[i].ptr) {
             ptr_free(pumpkin_module.notif[i].ptr, TAG_NOTIF);
           } else {
@@ -3502,7 +3502,7 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
       }
 
       if (i == pumpkin_module.num_notif) {
-        debug(DEBUG_ERROR, OSNAME, "unregister notification type '%s' creator '%s': not found", stype, screator);
+        debug(DEBUG_ERROR, PUMPKINOS, "unregister notification type '%s' creator '%s': not found", stype, screator);
         err = sysNotifyErrEntryNotFound;
       }
       mutex_unlock(mutex);
@@ -3548,7 +3548,7 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
   }
 
   pumpkin_id2s(notify->notifyType, stype);
-  debug(DEBUG_INFO, OSNAME, "broadcast notification type '%s' begin", stype);
+  debug(DEBUG_INFO, PUMPKINOS, "broadcast notification type '%s' begin", stype);
 
   selected = NULL;
   n = 0;
@@ -3569,7 +3569,7 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
         }
       }
     } else {
-      debug(DEBUG_INFO, OSNAME, "no app registered for this notification type");
+      debug(DEBUG_INFO, PUMPKINOS, "no app registered for this notification type");
     }
     mutex_unlock(mutex);
   }
@@ -3593,31 +3593,31 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
           notify->userDataP = np->userData68k ? (uint8_t *)pumpkin_heap_base() + np->userData68k : np->userData;
 
           if (np->callback) {
-            debug(DEBUG_INFO, OSNAME, "send notification type '%s' priority %d to \"%s\" using callback %p", stype, selected[j].priority, name, np->callback);
+            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using callback %p", stype, selected[j].priority, name, np->callback);
             handle = pumpkin_pause_task(name, &call);
             if (call) np->callback(notify);
             pumpkin_resume_task(handle);
           } else if (np->callback68k) {
-            debug(DEBUG_INFO, OSNAME, "send notification type '%s' priority %d to \"%s\" using 68k callback 0x%08X", stype, selected[j].priority, name, np->callback68k);
+            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using 68k callback 0x%08X", stype, selected[j].priority, name, np->callback68k);
             handle = pumpkin_pause_task(name, &call);
             if (call) CallNotifyProc(np->callback68k, notify);
             pumpkin_resume_task(handle);
           } else {
-            debug(DEBUG_INFO, OSNAME, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
+            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
             pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
           }
           ptr_unlock(selected[j].ptr, TAG_NOTIF);
         }
       } else {
         notify->userDataP = NULL;
-        debug(DEBUG_INFO, OSNAME, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
+        debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
         pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
       }
     }
     xfree(selected);
   }
 
-  debug(DEBUG_INFO, OSNAME, "broadcast notification type '%s' end", stype);
+  debug(DEBUG_INFO, PUMPKINOS, "broadcast notification type '%s' end", stype);
 
   return errNone;
 }
@@ -3631,7 +3631,7 @@ Err SysNotifyBroadcastDeferred(SysNotifyParamType *notify, Int16 paramSize) {
     pumpkin_id2s(notify->notifyType, stype);
 
     if (task->num_notifs < MAX_NOTIF_QUEUE) {
-      debug(DEBUG_INFO, OSNAME, "defer notification type '%s'", stype);
+      debug(DEBUG_INFO, PUMPKINOS, "defer notification type '%s'", stype);
       MemMove(&task->notify[task->num_notifs], notify, sizeof(SysNotifyParamType));
       if (notify->notifyDetailsP && paramSize) {
         task->notify[task->num_notifs].notifyDetailsP = MemPtrNew(paramSize);
@@ -3640,7 +3640,7 @@ Err SysNotifyBroadcastDeferred(SysNotifyParamType *notify, Int16 paramSize) {
       task->num_notifs++;
       err = errNone;
     } else {
-      debug(DEBUG_ERROR, OSNAME, "defer notification type '%s' max reached", stype);
+      debug(DEBUG_ERROR, PUMPKINOS, "defer notification type '%s' max reached", stype);
       err = sysNotifyErrQueueFull;
     }
   }
@@ -3653,7 +3653,7 @@ void SysNotifyBroadcastQueued(void) {
   int i;
 
   if (task->num_notifs > 0) {
-    debug(DEBUG_INFO, OSNAME, "flush notification queue begin");
+    debug(DEBUG_INFO, PUMPKINOS, "flush notification queue begin");
 
     for (i = 0; i < task->num_notifs; i++) {
       SysNotifyBroadcast(&task->notify[i]);
@@ -3664,6 +3664,6 @@ void SysNotifyBroadcastQueued(void) {
 
     MemSet(task->notify, sizeof(SysNotifyParamType) * MAX_NOTIF_QUEUE, 0);
     task->num_notifs = 0;
-    debug(DEBUG_INFO, OSNAME, "flush notification queue end");
+    debug(DEBUG_INFO, PUMPKINOS, "flush notification queue end");
   }
 }
