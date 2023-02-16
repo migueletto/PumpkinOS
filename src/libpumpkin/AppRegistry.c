@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "AppRegistry.h"
 #include "pumpkin.h"
@@ -51,7 +52,9 @@ AppRegistryType *AppRegistryInit(char *regname) {
         ar->registry = xrealloc(ar->registry, ar->size * sizeof(AppRegistryEntry));
       }
       if (sys_readdir(dir, name, sizeof(name)-1) == -1) break;
-      if (sscanf(name, "%4s.%08X.%d.%d", screator, &aux, &id, &seq) != 4) continue;
+      //if (sscanf(name, "%4s.%08X.%d.%d", screator, &aux, &id, &seq) != 4) continue;
+      screator[4] = 0;
+      if (sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator+1, screator+2, screator+3, &aux, &id, &seq) != 7) continue;
       if (id < appRegistryCompat || id >= appRegistryLast) continue;
 
       snprintf(path, sizeof(path)-1, "%s%s", regname, name);

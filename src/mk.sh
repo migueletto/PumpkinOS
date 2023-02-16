@@ -22,11 +22,21 @@ do
   fi
 done
 
-for dir in libpit lua-5.3.5 $SDL2 pilrc prcbuild libpumpkin libos $GUI BOOT Launcher Preferences Command libshell Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+for dir in pilrc prcbuild
 do
   if [ -d $dir ]; then
     cd $dir
     make ROOT=$ROOT BITS=$1 $2
+    cd $DIR
+  fi
+done
+
+for dir in libpit lua-5.3.5 $SDL2 libpumpkin libos $GUI BOOT Launcher Preferences Command libshell Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+do
+  if [ -d $dir ]; then
+    cd $dir
+    make ROOT=$ROOT OSNAME=serenity BITS=$1 $2
+    #make ROOT=$ROOT BITS=$1 $2
     cd $DIR
   fi
 done

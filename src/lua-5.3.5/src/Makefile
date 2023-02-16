@@ -8,8 +8,8 @@ include ../../common.mak
 # Your platform. See PLATS for possible values.
 PLAT= $(LUAPLAT)
 
-CC= gcc -std=gnu99
-CFLAGS= -g -Wall -Wextra -DLUA_COMPAT_5_2 $(SYSCFLAGS) $(MYCFLAGS) -I$(LIBPIT) -DLUA_INT_TYPE=1 -DLUA_FLOAT_TYPE=2
+CC?= gcc -std=gnu99
+CFLAGS+= -DLUA_COMPAT_5_2 -DLUA_INT_TYPE=1 -DLUA_FLOAT_TYPE=2
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 

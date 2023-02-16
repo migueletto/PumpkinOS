@@ -44,9 +44,14 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#ifdef SERENITY
+#include <sys/select.h>
+#include <sys/statvfs.h>
+#else
 #include <sys/syscall.h>
-#include <sys/wait.h>
 #include <sys/vfs.h>
+#endif
+#include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -392,8 +397,12 @@ time_t sys_timegm(struct tm *tm) {
 time_t sys_timelocal(struct tm *tm) {
 #ifdef WINDOWS
   return mktime(tm);
-#else
+#endif
+#ifdef LINUX
   return timelocal(tm);
+#endif
+#ifdef SERENITY
+  return mktime(tm);
 #endif
 }
 
@@ -510,12 +519,14 @@ uint32_t sys_get_pid(void) {
 }
 
 uint32_t sys_get_tid(void) {
-#if WASM
-  return 0;
-#elif WINDOWS
+#ifdef WINDOWS
   return GetCurrentThreadId();
-#else
+#endif
+#ifdef LINUX
   return syscall(SYS_gettid);
+#endif
+#ifdef SERENITY
+  return gettid();
 #endif
 }
 
@@ -1135,7 +1146,7 @@ int sys_peek(int fd) {
   }
 
 #ifndef WINDOWS
-  // XXX como fazer isso no Windows ?
+  // XXX how to do this on Windows ?
   char buf;
   if ((r = recv(fd, &buf, 1, MSG_PEEK)) < 0) {
     debug_errno("SYS", "recv");
@@ -1243,12 +1254,20 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
     st->free = lpTotalNumberOfFreeBytes.QuadPart;
     r = 0;
   }
-#else
+#endif
+#ifdef LINUX
   struct statfs sb;
 
   if (statfs(pathname, &sb) == 0) {
     st->total = sb.f_blocks * sb.f_bsize;
     st->free = sb.f_bfree * sb.f_bsize;
+    r = 0;
+  }
+#endif
+#ifdef SERENITY
+  struct statvfs sb;
+
+  if (statvfs(pathname, &sb) == 0) {
     r = 0;
   }
 #endif
@@ -1787,17 +1806,6 @@ int64_t sys_get_clock(void) {
 
 int sys_get_clock_ts(struct timespec *ts) {
 #if WINDOWS
-/*
-  ULARGE_INTEGER u;
-  FILETIME ft;
-  // 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC)
-  GetSystemTimePreciseAsFileTime(&ft);
-  u.u.LowPart = dwLowDateTime;
-  u.u.HighPart = dwHighDateTime;
-  ts.ts_sec = 0;
-  ts.ts_nsec = 0;
-  return 0;
-*/
   return clock_gettime(CLOCK_REALTIME, ts);
 #else
 #if _POSIX_TIMERS > 0
@@ -1820,10 +1828,10 @@ int64_t sys_get_process_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetProcessTimes failed");
   }
 #else
-#if _POSIX_TIMERS > 0
+#ifdef LINUX
   ts = gettime(CLOCK_PROCESS_CPUTIME_ID);
 #else
-  debug(DEBUG_ERROR, "SYS", "clock_gettime is not implemented");
+  debug(DEBUG_ERROR, "SYS", "CLOCK_PROCESS_CPUTIME_ID is not implemented");
 #endif
 #endif
 
@@ -1841,10 +1849,10 @@ int64_t sys_get_thread_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetThreadTimes failed");
   }
 #else
-#if _POSIX_TIMERS > 0
+#ifdef LINUX
   ts = gettime(CLOCK_THREAD_CPUTIME_ID);
 #else
-  debug(DEBUG_ERROR, "SYS", "clock_gettime is not implemented");
+  debug(DEBUG_ERROR, "SYS", "CLOCK_THREAD_CPUTIME_ID is not implemented");
 #endif
 #endif
 
@@ -1948,7 +1956,16 @@ void *sys_lib_load(char *libname, int *first_load) {
 
   // check if library is already loaded
   dlerror();
+
+#ifndef RTLD_NODELETE
+#define RTLD_NODELETE 0
+#endif
+
+#ifdef RTLD_NOLOAD
   lib = dlopen(buf, RTLD_NOW | RTLD_NODELETE | RTLD_NOLOAD);
+#else
+  lib = NULL;
+#endif
 
   if (lib == NULL) {
     // not loaded yet: load it
@@ -2251,15 +2268,18 @@ int sys_socket_connect(int sock, char *host, int port) {
   return 0;
 }
 
-static int sys_tcpip_bind(int sock, char *host, int *port) {
+static int sys_tcpip_bind(int sock, char *host, int *pport) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
   struct sockaddr_in6 *addr6;
   int addrlen, ipv6, reuse, type, bcast;
   socklen_t socklen;
   char *s, aux[256];
+  int port, r;
 
-  if ((ipv6 = sys_tcpip_fill_addr(&addr, host, *port, &addrlen, 0)) == -1) {
+  port = *pport;
+
+  if ((ipv6 = sys_tcpip_fill_addr(&addr, host, port, &addrlen, 0)) == -1) {
     return -1;
   }
 
@@ -2274,10 +2294,13 @@ static int sys_tcpip_bind(int sock, char *host, int *port) {
     bcast = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&bcast, sizeof(bcast)) == -1) {
       debug_errno("SYS", "setsockopt SO_BROADCAST");
+#ifndef SERENITY
       closesocket(sock);
       return -1;
+#endif
+    } else {
+      debug(DEBUG_TRACE, "SYS", "broadcast enabled");
     }
-    debug(DEBUG_TRACE, "SYS", "broadcast enabled");
   }
 
 #ifndef WINDOWS
@@ -2287,8 +2310,24 @@ static int sys_tcpip_bind(int sock, char *host, int *port) {
   }
 #endif
 
-  if (bind(sock, (struct sockaddr *)&addr, addrlen) != 0) {
-    debug_errno("SYS", "bind to port %d", *port);
+#ifdef SERENITY
+  if (port == 0) {
+    // XXX if port==0, bind() should pick a randon port number, but
+    // Serenity does not dot that. So we do the hard and inneficient way.
+    r = -1;
+    for (port = 16384; port < 65536; port++) {
+      sys_tcpip_fill_addr(&addr, host, port, &addrlen, 0);
+      r = bind(sock, (struct sockaddr *)&addr, addrlen);
+      if (r == 0) break;
+    }
+  } else {
+    r = bind(sock, (struct sockaddr *)&addr, addrlen);
+  }
+#else
+  r = bind(sock, (struct sockaddr *)&addr, addrlen);
+#endif
+  if (r != 0) {
+    debug_errno("SYS", "bind to port %d", port);
     return -1;
   }
 
@@ -2303,20 +2342,20 @@ static int sys_tcpip_bind(int sock, char *host, int *port) {
     case AF_INET:
       addr4 = (struct sockaddr_in *)&addr;
       s = (char *)inet_ntoa(addr4->sin_addr);
-      *port = ntohs(addr4->sin_port);
+      *pport = ntohs(addr4->sin_port);
       break;
     case AF_INET6:
       addr6 = (struct sockaddr_in6 *)&addr;
       inet_ntop(AF_INET6, &(addr6->sin6_addr), aux, sizeof(aux)-1);
       s = aux;
-      *port = ntohs(addr6->sin6_port);
+      *pport = ntohs(addr6->sin6_port);
       break;
     default:
       debug(DEBUG_ERROR, "SYS", "fd %d received invalid address family %d", sock, addr.ss_family);
       return -1;
   }
 
-  debug(DEBUG_TRACE, "SYS", "fd %d bound to host %s port %d (ipv%d)", sock, s, *port, ipv6 ? 6 : 4);
+  debug(DEBUG_TRACE, "SYS", "fd %d bound to host %s port %d (ipv%d)", sock, s, *pport, ipv6 ? 6 : 4);
 
   return sock;
 }

@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "editor.h"
 #include "pterm.h"

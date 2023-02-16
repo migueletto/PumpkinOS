@@ -84,12 +84,18 @@ static int libos_action(void *arg) {
   if (data->wp) {
     debug(DEBUG_INFO, OSNAME, "creating window");
     encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
+    debug(1, "XXX", "wp=%p", data->wp);
+    debug(1, "XXX", "wp->create=%p", data->wp ? data->wp->create : NULL);
+    debug(1, "XXX", "encoding=%d width=%d height=%d full=%d", encoding, data->width, data->height, data->fullscreen);
     if ((data->w = data->wp->create(encoding, &data->width, &data->height, 1, 1, 0, data->fullscreen, 0, data->wp->data)) == NULL) {
+    debug(1, "XXX", "create failed");
       thread_end(OSNAME, thread_get_handle());
       xfree(data);
       return 0;
     }
+    debug(1, "XXX", "create ok");
     pumpkin_set_window(data->w, data->width, height);
+    debug(1, "XXX", "set_windows ok");
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : OSNAME);
     }

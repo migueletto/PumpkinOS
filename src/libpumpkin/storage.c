@@ -1440,18 +1440,29 @@ static int StoMapResources(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
   char st[8];
   uint32_t type, id;
-  int r = -1;
+  int n, r = -1;
 
+debug(1, "XXX", "StoMapContents \"%s\"", db->name);
   if (db->elements == NULL) {
+debug(1, "XXX", "StoMapContents elements null");
     storage_name(sto, db->name, 0, 0, 0, 0, 0, buf);
+debug(1, "XXX", "StoMapContents opendir \"%s\"", buf);
     if ((dir = StoVfsOpendir(sto->session, buf)) != NULL) {
+debug(1, "XXX", "StoMapContents opendir ok");
       for (;;) {
         ent = StoVfsReaddir(dir);
         if (ent == NULL) break;
+debug(1, "XXX", "StoMapContents ent \"%s\"", ent->name);
         if (ent->type != VFS_FILE) continue;
         if (!strcmp(ent->name, ".") || !strcmp(ent->name, "..")) continue;
-        if (sscanf(ent->name, "%4s.%08X.%d", st, &type, &id) == 3) {
+st[0] = 0;
+        //if ((n = sscanf(ent->name, "%4s.%08X.%d", st, &type, &id)) == 3) {
+        st[4] = 0;
+        if ((n = sscanf(ent->name, "%c%c%c%c.%08X.%d", st, st+1, st+2, st+3, &type, &id)) == 6) {
+debug(1, "XXX", "StoMapContents add res");
           StoAddRes(sto, db, type, id, ent->size);
+        } else {
+debug(1, "XXX", "StoMapContents sscanf=%d st=\"%s\" 0x%08X %d", n, st, type, id);
         }
       }
       vfs_closedir(dir);
@@ -1485,12 +1496,15 @@ static int StoMapContents(storage_t *sto, storage_db_t *db) {
 
   switch (db->ftype) {
     case STO_TYPE_REC:
+debug(1, "XXX", "StoMapContents record");
       r = StoMapRecords(sto, db);
       break;
     case STO_TYPE_RES:
+debug(1, "XXX", "StoMapContents resource");
       r = StoMapResources(sto, db);
       break;
     case STO_TYPE_FILE:
+debug(1, "XXX", "StoMapContents file");
       r = StoMapFile(sto, db);
       break;
   }
@@ -1512,17 +1526,23 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
   DmOpenType *first, *dbRef = NULL;
   Err err = dmErrInvalidParam;
 
+debug(1, "XXX", "DmOpenDatabase dbID 0x%08X", dbID);
   if (mutex_lock(sto->mutex) == 0) {
+debug(1, "XXX", "DmOpenDatabase mutex ok");
     if (dbID < (sto->size - sizeof(storage_db_t))) {
+debug(1, "XXX", "DmOpenDatabase dbID ok");
       db = (storage_db_t *) (sto->base + dbID);
       if ((dbRef = pumpkin_heap_alloc(sizeof(DmOpenType), "dbRef")) != NULL) {
+debug(1, "XXX", "DmOpenDatabase heap alloc ok");
         if (dbID == sto->watchID) {
           debug(DEBUG_INFO, "STOR", "WATCH DmOpenDatabase(0x%08X, 0x%04X): %p", dbID, mode, dbRef);
         }
         if (mode & dmModeWrite) {
           ok = StoLockForWriting(sto, db) == 0;
+debug(1, "XXX", "DmOpenDatabase write ok=%d", ok);
         } else if (mode & dmModeReadOnly) {
           ok = StoLockForReading(sto, db) == 0;
+debug(1, "XXX", "DmOpenDatabase read ok=%d", ok);
         } else {
           debug(DEBUG_ERROR, "STOR", "DmOpenDatabase \"%s\" invalid mode 0x%04X", db->name, mode);
           ok = false;
@@ -1531,9 +1551,11 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
           db->mode = mode;
           dbRef->dbID = dbID;
           dbRef->mode = mode;
+debug(1, "XXX", "DmOpenDatabase map contents");
           StoMapContents(sto, db);
           err = errNone;
         } else {
+debug(1, "XXX", "DmOpenDatabase not ok");
           pumpkin_heap_free(dbRef, "dbRef");
           dbRef = NULL;
         }
@@ -1977,10 +1999,11 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
       db = (storage_db_t *)(sto->base + dbRef->dbID);
       if (db->ftype != STO_TYPE_RES) continue;
 
-      debug(DEBUG_TRACE, "STOR", "DmGetResourceEx checking database \"%s\"", db->name);
+      debug(DEBUG_TRACE, "STOR", "DmGetResourceEx checking database \"%s\" (%d resources)", db->name, db->numRecs);
       for (i = 0; i < db->numRecs; i++) {
         h = db->elements[i];
         pumpkin_id2s(h->d.res.type, st);
+        debug(DEBUG_TRACE, "STOR", "DmGetResourceEx resource %d: %s %d", i, st, resID);
         if (h->d.res.type == type && h->d.res.id == resID) {
           debug(DEBUG_TRACE, "STOR", "DmGetResourceEx found resource %s %d inflated %d on \"%s\"", st, resID, (h->htype & STO_INFLATED) ? 1 : 0, db->name);
           found = 1;

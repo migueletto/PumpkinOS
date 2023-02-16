@@ -2,13 +2,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
+#include <sys/time.h>
 
-#include "bytes.h"
-#include "sys.h"
 #include "pdb.h"
-#include "debug.h"
-#include "xalloc.h"
  
 #define PDB_HEADER  78
 #define PDB_RESHDR  10
@@ -98,14 +96,28 @@ struct recheader_struct {
 }
 */
 
+static int put2b(uint16_t w, uint8_t *buf, int i) {
+  buf[i] = w >> 8;
+  buf[i+1] = w;
+  return 2;
+}
+
+static int put4b(uint32_t w, uint8_t *buf, int i) {
+  buf[i] = w >> 24;
+  buf[i+1] = w >> 16;
+  buf[i+2] = w >> 8;
+  buf[i+3] = w;
+  return 4;
+}
+
 pdb_t *pdb_new(char *name, char *type, char *creator) {
   pdb_t *pdb = NULL;
 
-  if (name && (pdb = xcalloc(1, sizeof(pdb_t))) != NULL) {
+  if (name && (pdb = calloc(1, sizeof(pdb_t))) != NULL) {
     strncpy(pdb->name, name, dmDBNameLength);
     strncpy(pdb->type, type, 4);
     strncpy(pdb->creator, creator, 4);
-    pdb->creationDate = T0 + sys_time();
+    pdb->creationDate = T0 + time(NULL);
     pdb->modificationDate = pdb->creationDate;
     pdb->numrecs = 0;
   }
@@ -120,11 +132,11 @@ int pdb_destroy(pdb_t *pdb) {
   if (pdb) {
     for (j = 0, res = pdb->reslist; j < pdb->numrecs && res; j++) {
       auxs = res->next;
-      if (res->data) xfree(res->data);
-      xfree(res);
+      if (res->data) free(res->data);
+      free(res);
       res = auxs;
     }
-    xfree(pdb);
+    free(pdb);
     r = 0;
   }
 
@@ -136,23 +148,20 @@ int pdb_add_res(pdb_t *pdb, char *type, uint16_t id, uint32_t size, uint8_t *dat
   int r = -1;
 
   if (pdb && size && data) {
-    res = xcalloc(1, sizeof(pdb_res_t));
+    res = calloc(1, sizeof(pdb_res_t));
     strncpy(res->type, type, 4);
     res->id = id;
     res->size = size;
     res->data = data;
     if (pdb->lastres == NULL) {
-      debug(DEBUG_TRACE, "PDB", "pdb_add_res: added first resource");
       pdb->reslist = res;
       pdb->lastres = res;
     } else {
-      debug(DEBUG_TRACE, "PDB", "pdb_add_res: added resource");
       pdb->lastres->next = res;
       pdb->lastres = res;
     }
-    pdb->modificationDate = T0 + sys_time();
+    pdb->modificationDate = T0 + time(NULL);
     pdb->numrecs++;
-    debug(DEBUG_TRACE, "PDB", "pdb_add_res: file has %d resource(s)", pdb->numrecs);
     r = 0;
   }
 
@@ -191,10 +200,9 @@ int pdb_save(pdb_t *pdb, int f) {
     i += put4b(0, pdb->header, i); // nextRecordListID
     i += put2b(pdb->numrecs, pdb->header, i); // numberOfRecords
 
-    if (sys_write(f, pdb->header, PDB_HEADER) != PDB_HEADER) {
+    if (write(f, pdb->header, PDB_HEADER) != PDB_HEADER) {
       return -1;
     }
-    debug(DEBUG_TRACE, "PDB", "pdb_save: wrote header \"%s\" (%d recs)", pdb->name, pdb->numrecs);
 
     for (j = 0, res = pdb->reslist; j < pdb->numrecs && res; j++, res = res->next) {
       i = 0;
@@ -202,30 +210,24 @@ int pdb_save(pdb_t *pdb, int f) {
       i += 4;
       i += put2b(res->id, buf, i);
       i += put4b(offset, buf, i);
-      if (sys_write(f, buf, PDB_RESHDR) != PDB_RESHDR) {
+      if (write(f, buf, PDB_RESHDR) != PDB_RESHDR) {
         return -1;
       }
-      debug(DEBUG_TRACE, "PDB", "pdb_save: wrote resource index %d, offset %u", j, offset);
       offset += res->size;
     }
 
     pad[0] = pad[1] = 0;
-    if (sys_write(f, pad, 2) != 2) {
+    if (write(f, pad, 2) != 2) {
       return -1;
     }
-    debug(DEBUG_TRACE, "PDB", "pdb_save: wrote pad");
 
     for (j = 0, res = pdb->reslist; j < pdb->numrecs && res; j++, res = res->next) {
-      if (sys_write(f, res->data, res->size) != res->size) {
+      if (write(f, res->data, res->size) != res->size) {
         return -1;
       }
-      debug(DEBUG_TRACE, "PDB", "pdb_save: wrote res (%d bytes)", res->size);
     }
 
-    debug(DEBUG_TRACE, "PDB", "pdb_save: end");
     r = 0;
-  } else {
-    debug(DEBUG_ERROR, "PDB", "pdb_save: invalid parameters");
   }
 
   return r;

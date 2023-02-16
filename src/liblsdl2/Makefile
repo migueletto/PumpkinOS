@@ -14,6 +14,11 @@ ifeq ($(OSNAME),GNU/Linux)
 LIBSDL=-lSDL2
 endif
 
+ifeq ($(OSNAME),serenity)
+#LIBSDL=-lSDL2 -lSDL2_mixer
+LIBSDL=-lSDL2
+endif
+
 $(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBSDL)
 

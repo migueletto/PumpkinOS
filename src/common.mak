@@ -5,6 +5,7 @@ endif
 BIN=$(ROOT)/bin
 SRC=$(ROOT)/src
 VFS=$(ROOT)/vfs
+TOOLS=$(ROOT)/tools
 LIBPIT=$(SRC)/libpit
 
 SYSNAME=pit
@@ -40,6 +41,8 @@ else
 $(error Unknown CPU $(MACHINE))
 endif
 
+HOSTCC=gcc
+
 ifeq ($(OSNAME),GNU/Linux)
 SYS_OS=1
 EXTLIBS=-lrt -ldl
@@ -47,6 +50,7 @@ SOEXT=.so
 LUAPLAT=linux
 OS=Linux
 OSDEFS=-m$(BITS) -DLINUX -DSOEXT=\"$(SOEXT)\"
+CC=gcc
 else ifeq ($(OSNAME),Msys)
 SYS_OS=2
 EXTLIBS=-lwsock32 -lws2_32
@@ -54,11 +58,19 @@ SOEXT=.dll
 LUAPLAT=mingw
 OS=Windows
 OSDEFS=-m$(BITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
+CC=gcc
+else ifeq ($(OSNAME),serenity)
+SYS_OS=3
+EXTLIBS=
+SOEXT=.so
+LUAPLAT=linux
+OS=Serenity
+SERENITY=/home/marcio/serenity/Build/x86_64/Root
+OSDEFS=-m$(BITS) -DSERENITY -DSOEXT=\"$(SOEXT)\" -I$(SERENITY)/usr/include -D_GNU_SOURCE
+CC=/home/marcio/serenity/Toolchain/Local/x86_64/bin/x86_64-pc-serenity-gcc
 else
 $(error Unknown OS $(OSNAME))
 endif
 
-CC=gcc
-
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -g -fPIC -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
+CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -g -fPIC $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" $(CUSTOMFLAGS) $(SYSDEFS)

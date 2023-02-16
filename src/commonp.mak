@@ -1,7 +1,7 @@
 OSNAME    = Pumpkin
 PCC       = m68k-palmos-gcc
-PILRC     = $(BIN)/pilrc
-PRCDUILD  = $(BIN)/prcbuild
+PILRC     = $(TOOLS)/pilrc
+PRCDUILD  = $(TOOLS)/prcbuild
 BUILDPRC  = build-prc
 DLIBID    = $(shell expr $(SYS_OS) \* 64 + $(SYS_CPU) \* 8 + $(SYS_SIZE))
 DLIB      = $(shell printf "dlib%04x.bin" $(DLIBID))

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "pumpkin.h"
 #include "editor.h"

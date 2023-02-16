@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include <PalmOS.h>
 #include <VFSMgr.h>
