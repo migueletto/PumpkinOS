@@ -37,7 +37,7 @@ Next clone the PumpkinOS repository:
 Finally go to the source directory of the PumpkinOS repository you have just cloned and run the make script:
 
     cd PumpkinOS/src
-    ./mk.sh 64
+    ./mk.sh Msys 64
 
 If everything goes well, you will have a pumpkin.exe in the root directory, some DLLs in the bin directory, and some PRC files in the vfs/app_install directory.
 
@@ -49,7 +49,7 @@ Open a MINGW32 terminal (the one with the gray 'M' icon) and install this additi
 From there, compile using (note that now argument is 32, for 32-bits):
 
     cd PumpkinOS/src
-    ./mk.sh 32
+    ./mk.sh Msys 32
 
 If you are using a 64-bits Linux-based OS (like Debian, Ubuntu, etc), you also need gcc, binutils, make and git. If you are a developer,
 there is a chance you already have those. If they are not installed, follow the instructions to download additional packages on your specific Linux distribution.
@@ -60,7 +60,7 @@ You must also install the SDL2 development package (the package that contains th
 Again, you must clone the repository and compile it using:
 
     cd PumpkinOS/src
-    ./mk.sh 64
+    ./mk.sh GNU/Linux 64
 
 On Windows 11 and recent releases of Windows 10, it is also possible to build PumpkinOS on WSL (Windows Subsystem for Linux, version 2). 
 Open a WSL terminal and follow the same instructions for a Linux build.
