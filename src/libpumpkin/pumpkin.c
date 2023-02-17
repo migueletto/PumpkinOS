@@ -1487,6 +1487,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   void *menu_module;
   int handle, call_sub;
   uint32_t r = 0;
+  void *data;
 
   xmemset(&creq, 0, sizeof(client_request_t));
   creq.type = MSG_LAUNCH;
@@ -1532,7 +1533,10 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
+      data = pumpkin_get_data();
+      pumpkin_set_data(NULL);
       r = pumpkin_launch_sub(&creq.data.launch, 1);
+      pumpkin_set_data(data);
     }
     xmemcpy(task->jmpbuf, jmpbuf, sizeof(ErrJumpBuf));
     pumpkin_set_m68k(0);
