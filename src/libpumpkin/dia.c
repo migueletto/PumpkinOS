@@ -59,7 +59,6 @@ struct dia_t {
   int dbl;
   uint32_t fg, bg;
   surface_t *surface;
-  surface_t *stroke_surface;
   WinHandle graffiti_wh;
   WinHandle lower_wh;
   WinHandle upper_wh;
@@ -67,6 +66,7 @@ struct dia_t {
   WinHandle mode_wh;
   WinHandle wh;
   texture_t *graffiti;
+  int xmin, xmax, ymin, ymax;
   RectangleType bounds_lower[256];
   RectangleType bounds_upper[256];
   RectangleType bounds_number[256];
@@ -102,7 +102,6 @@ static void dia_invert_key(dia_t *dia, int i) {
 dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int dbl) {
   dia_t *dia = NULL;
   RGBColorType fg, bg;
-  //uint32_t c;
 
   debug(DEBUG_INFO, "DIA", "setting DIA");
 
@@ -132,9 +131,6 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
     dia->bg = surface_color_rgb(encoding, dia->surface->palette, dia->surface->npalette, bg.r, bg.g, bg.b, 0xff);
     surface_rectangle(dia->surface, 0, 0, dia->width - 1, dia->graffiti_height - 1, 1, dia->bg);
 
-    dia->stroke_surface = surface_create(dia->width, dia->alpha_height, encoding);
-    surface_rectangle(dia->surface, 0, 0, dia->alpha_width - 1, dia->alpha_height - 1, 1, dia->bg);
-
     dia->graffiti = wp->create_texture(w, dia->width, dia->graffiti_height);
     dia->taskbar_height = dia->graffiti_height - dia->alpha_height;
     dia->graffiti_alpha = -1;
@@ -143,6 +139,10 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
     dia->sel = -1;
     dia->mode = DIA_MODE_GRAF;
     dia->graffiti_dirty = 1;
+    dia->xmin = dia->width;
+    dia->ymin = dia->height;
+    dia->xmax = dia->ymax = 0;
+    dia->stroke_dirty = 0;
     dia->first = 1;
   }
 
@@ -247,7 +247,7 @@ static void draw_symbol(dia_t *dia, int cond, int s, int i) {
 
   BmpDrawSurface(WinGetBitmap(dia->wh), x, y, fw, fh, dia->surface, x, y, true);
 
-  raw = (uint8_t *)dia->surface->getbuffer(dia->surface, &len);
+  raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
   dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, x, y, fw, fh);
   dia->wp->draw_texture_rect(dia->w, dia->graffiti, x, y, fw, fh, x, dia->height - dia->graffiti_height + y);
 }
@@ -334,7 +334,7 @@ int dia_update(dia_t *dia) {
 
     BmpDrawSurface(WinGetBitmap(dia->wh), 0, 0, dia->width, dia->graffiti_height, dia->surface, 0, 0, true);
 
-    raw = (uint8_t *)dia->surface->getbuffer(dia->surface, &len);
+    raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
     dia->wp->update_texture(dia->w, dia->graffiti, raw);
     if (dia->state) {
       // show whole DIA
@@ -348,11 +348,16 @@ int dia_update(dia_t *dia) {
   }
 
   if (dia->stroke_dirty) {
-    raw = (uint8_t *)dia->stroke_surface->getbuffer(dia->stroke_surface, &len);
-    dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, 0, 0, dia->alpha_width, dia->alpha_height);
-    dia->wp->draw_texture_rect(dia->w, dia->graffiti, 0, 0, dia->alpha_width, dia->alpha_height, 0, dia->height - dia->graffiti_height);
+    if (dia->xmax > dia->xmin && dia->ymax > dia->ymin) {
+      raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
+      dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, dia->xmin, dia->ymin, dia->xmax-dia->xmin+1, dia->ymax-dia->ymin+1);
+      dia->wp->draw_texture_rect(dia->w, dia->graffiti, dia->xmin, dia->ymin, dia->xmax-dia->xmin+1, dia->ymax-dia->ymin+1, 0 + dia->xmin, dia->height - dia->graffiti_height + dia->ymin);
+      dia->xmin = dia->width;
+      dia->ymin = dia->height;
+      dia->xmax = dia->ymax = 0;
+      r = 1;
+    }
     dia->stroke_dirty = 0;
-    r = 1;
   }
 
   if (dia->graffiti_dirty) {
@@ -370,7 +375,6 @@ int dia_finish(dia_t *dia) {
 
   if (dia) {
     if (dia->graffiti) dia->wp->destroy_texture(dia->w, dia->graffiti);
-    if (dia->stroke_surface) surface_destroy(dia->stroke_surface);
     if (dia->surface) surface_destroy(dia->surface);
 
     if (dia->lower_wh) WinDeleteWindow(dia->lower_wh, false);
@@ -578,7 +582,7 @@ int dia_set_state(dia_t *dia, int state) {
       dia->state = state;
       if (dia->state == 0) {
         // erase DIA (minus taskbar) with white
-        raw = (uint8_t *)dia->surface->getbuffer(dia->surface, &len);
+        raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
         surface_rectangle(dia->surface, 0, 0, dia->width - 1, dia->graffiti_height - dia->taskbar_height - 1, 1, dia->bg);
         dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, 0, 0, dia->width, dia->graffiti_height - dia->taskbar_height);
         dia->wp->draw_texture_rect(dia->w, dia->graffiti, 0, 0, dia->width, dia->graffiti_height - dia->taskbar_height, 0, dia->height - dia->graffiti_height);
@@ -653,31 +657,39 @@ int dia_stroke(dia_t *dia, int x, int y) {
         }
         break;
     }
-    //dia->graffiti_dirty = 1;
     r = 1;
   }
 
   return r;
 }
 
-void dia_draw_stroke(dia_t *dia, int x1, int y1, int x2, int y2) {
+void dia_draw_stroke(dia_t *dia, int x1, int y1, int x2, int y2, int alpha) {
   uint32_t c;
-  int rx, ry;
+  int dx, rx, ry;
 
+  dx = alpha ? 0 : dia->alpha_width;
   rx = x2 - x1;
   ry = y2 - y1;
   if (rx < 0) rx = -rx;
   if (ry < 0) ry = -ry;
 
-  c = surface_color_rgb(dia->stroke_surface->encoding, dia->stroke_surface->palette, dia->stroke_surface->npalette, 0xff, 0x00, 0x00, 0xff);
-  surface_line(dia->stroke_surface, x1, y1, x2, y2, c);
+  c = surface_color_rgb(dia->surface->encoding, dia->surface->palette, dia->surface->npalette, 0xff, 0x00, 0x00, 0xff);
+  surface_line(dia->surface, dx+x1, y1, dx+x2, y2, c);
   if (rx > ry) {
-    surface_line(dia->stroke_surface, x1, y1-1, x2, y2-1, c);
-    surface_line(dia->stroke_surface, x1, y1+1, x2, y2+1, c);
+    surface_line(dia->surface, dx+x1, y1-1, dx+x2, y2-1, c);
+    surface_line(dia->surface, dx+x1, y1+1, dx+x2, y2+1, c);
   } else {
-    surface_line(dia->stroke_surface, x1-1, y1, x1-1, y1, c);
-    surface_line(dia->stroke_surface, x1+1, y1, x1+1, y1, c);
+    surface_line(dia->surface, dx+x1-1, y1, dx+x1-1, y1, c);
+    surface_line(dia->surface, dx+x1+1, y1, dx+x1+1, y1, c);
   }
+  if (dx+x1 < dia->xmin) dia->xmin = dx+x1;
+  else if (dx+x1 > dia->xmax) dia->xmax = dx+x1;
+  if (dx+x2 < dia->xmin) dia->xmin = dx+x2;
+  else if (dx+x2 > dia->xmax) dia->xmax = dx+x2;
+  if (y1 < dia->ymin) dia->ymin = y1;
+  else if (y1 > dia->ymax) dia->ymax = y1;
+  if (y2 < dia->ymin) dia->ymin = y2;
+  else if (y2 > dia->ymax) dia->ymax = y2;
 
   dia->graffiti_t0 = sys_get_clock();
   dia->graffiti_drawn = 1;

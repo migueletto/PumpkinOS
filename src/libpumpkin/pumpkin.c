@@ -1742,8 +1742,8 @@ void pumpkin_forward_event(int i, int ev, int a1, int a2, int a3) {
   task_forward_event(i, ev, a1, a2, a3);
 }
 
-void grail_draw_stroke(int x1, int y1, int x2, int y2) {
-  dia_draw_stroke(pumpkin_module.dia, x1, y1, x2, y2);
+void grail_draw_stroke(int x1, int y1, int x2, int y2, int alpha) {
+  dia_draw_stroke(pumpkin_module.dia, x1, y1, x2, y2, alpha);
 }
 
 static int task_clicked(int x, int y, int *tx, int *ty) {

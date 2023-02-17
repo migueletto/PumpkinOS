@@ -165,7 +165,7 @@ int grail_stroke(int x, int y) {
 
   if (num < MAX_POINTS) {
     if (num > 0) {
-      grail_draw_stroke(x, y, points[num-1].x, points[num-1].y);
+      grail_draw_stroke(x, y, points[num-1].x, points[num-1].y, alpha);
     }
     points[num].x = x;
     points[num].y = y;

@@ -64,6 +64,8 @@
 #include "debug.h"
 #include "xalloc.h"
 
+#define EN_US "en_US"
+
 struct sys_dir_t {
 #ifdef WINDOWS
   int first;
@@ -463,7 +465,7 @@ int sys_country(char *country, int len) {
       *p = 0;
     }
     if (!strcmp(buf, "C")) {
-      strncpy(buf, "en_US", sizeof(buf)-1);
+      strncpy(buf, EN_US, sizeof(buf)-1);
     }
     if ((p = strchr(buf, '_')) != NULL) {
       // "pt_BR" -> "BR"
@@ -498,6 +500,9 @@ int sys_language(char *language, int len) {
     if ((p = strchr(buf, '.')) != NULL) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
+    }
+    if (!strcmp(buf, "C")) {
+      strncpy(buf, EN_US, sizeof(buf)-1);
     }
     if ((p = strchr(buf, '_')) != NULL) {
       // "pt_BR" -> "pt"
