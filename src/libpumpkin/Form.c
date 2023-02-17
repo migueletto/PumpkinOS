@@ -230,8 +230,7 @@ void FrmSetEventHandler(FormType *formP, FormEventHandlerType *handler) {
 // Returns the Boolean value returned by the form’s event handler or FrmHandleEvent.
 // XXX The event is dispatched to the current form’s handler unless the form ID is specified in the event data, as, for example, with frmOpenEvent or frmGotoEvent.
 
-Boolean FrmDispatchEvent(EventType *eventP) {
-  FormType *formP = FrmGetActiveForm();
+static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP, Boolean defaultHandler) {
   Boolean r = false;
 
   if (formP) {
@@ -250,12 +249,17 @@ Boolean FrmDispatchEvent(EventType *eventP) {
       }
     }
 
-    if (!r) {
+    if (!r && defaultHandler) {
       r = FrmHandleEvent(formP, eventP);
     }
   }
 
   return r;
+}
+
+Boolean FrmDispatchEvent(EventType *eventP) {
+  FormType *formP = FrmGetActiveForm();
+  return FrmDispatchEventInternal(formP, eventP, true);
 }
 
 void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
@@ -1771,12 +1775,19 @@ void FrmUpdateForm(UInt16 formId, UInt16 updateCode) {
 void FrmCloseAllForms(void) {
   frm_module_t *module = (frm_module_t *)thread_get(frm_key);
   FormList *p, *q;
+  EventType event;
 
   debug(DEBUG_TRACE, "Form", "FrmCloseAllForms");
   WinEraseWindow();
 
   for (p = module->list; p;) {
     debug(DEBUG_TRACE, "Form", "FrmCloseAllForms form %d", p->formP->formId);
+
+    xmemset(&event, 0, sizeof(EventType));
+    event.eType = frmCloseEvent;
+    event.data.frmClose.formID = p->formP->formId;
+    FrmDispatchEventInternal(p->formP, &event, false);
+
     FrmDeleteFormInternal(p->formP);
     q = p->next;
     xfree(p);
