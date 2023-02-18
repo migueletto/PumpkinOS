@@ -66,8 +66,8 @@ On Windows 11 and recent releases of Windows 10, it is also possible to build Pu
 Open a WSL terminal and follow the same instructions for a Linux build.
 
 ## Running
-On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux os WSL, run pumpkin.sh. PumpkinOS will open on a new window.
-On WSL you will also need to run a X-Window Manager, otherwise the PumpkinOS window will not have a border.
+On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. PumpkinOS will open on a new window.
+On WSL you may need to run a X-Window Manager, otherwise the PumpkinOS window will not have a border.
 
 When you run PumpkinOS, all PRCs inside vfs/app_install will be removed and expanded into folders inside vfs/app_storage.
 Please keep in mind that everything is pretty much experimental at this stage, so expect a few issues here and there.
