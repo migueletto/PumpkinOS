@@ -42,6 +42,7 @@ typedef struct {
   int width, height, size;
   win_event_t events[MAX_EVENTS];
   int num_ev, ie, oe, down;
+  int x, y, buttons;
 } win_window_t;
 
 struct texture_t {
@@ -180,6 +181,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         ev.ev = WINDOW_MOTION;
         ev.arg1 = GET_X_LPARAM(lParam);
         ev.arg2 = GET_Y_LPARAM(lParam);
+        window->x = ev.arg1;
+        window->y = ev.arg2;
         putEvent(window, &ev);
       }
       return 0;
@@ -191,6 +194,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
       ev.ev = WINDOW_MOTION;
       ev.arg1 = GET_X_LPARAM(lParam);
       ev.arg2 = GET_Y_LPARAM(lParam);
+      window->x = ev.arg1;
+      window->y = ev.arg2;
+      window->buttons = 1;
       putEvent(window, &ev);
       ev.ev = WINDOW_BUTTONDOWN;
       ev.arg1 = 1;
@@ -205,6 +211,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
       ev.ev = WINDOW_BUTTONUP;
       ev.arg1 = 1;
       ev.arg2 = 0;
+      window->buttons = 0;
       putEvent(window, &ev);
       return 0;
 
@@ -215,6 +222,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
       ev.ev = WINDOW_MOTION;
       ev.arg1 = GET_X_LPARAM(lParam);
       ev.arg2 = GET_Y_LPARAM(lParam);
+      window->x = ev.arg1;
+      window->y = ev.arg2;
       putEvent(window, &ev);
       ev.ev = WINDOW_BUTTONDOWN;
       ev.arg1 = 2;
@@ -249,6 +258,7 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
   win_window_t *window;
   HINSTANCE hInstance;
   BITMAPV5HEADER bmh;
+  RECT rect;
   HDC hdc;
 
   debug(DEBUG_TRACE, "WIN32", "window_create(%d,%d,%d,%d,%d,%d,%d,%d)", encoding, *width, *height, xfactor, yfactor, rotate, fullscreen, software);
@@ -256,12 +266,18 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
   if ((window = xcalloc(1, sizeof(win_window_t))) != NULL) {
     hInstance = (HINSTANCE)data;
 
+    rect.left = rect.top = 0;
+    rect.right = *width;
+    rect.bottom = *height;
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+
     window->hwnd = CreateWindowEx(
       0,                              // Optional window styles.
       CLASS_NAME,                     // Window class
       L"PumpkinOS",                   // Window text
       WS_OVERLAPPEDWINDOW,            // Window style
-      CW_USEDEFAULT, CW_USEDEFAULT, *width, *height,
+      CW_USEDEFAULT, CW_USEDEFAULT,
+      rect.right - rect.left, rect.bottom - rect.top,
       NULL,       // Parent window
       NULL,       // Menu
       hInstance,  // Instance handle
@@ -269,17 +285,17 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
     );
     SetProp(window->hwnd, WINDOW_PROP, window);
 
-    window->size = (*width) * (*height) * sizeof(uint16_t);
     window->width = *width;
     window->height = *height;
+    window->size = window->width * window->height * sizeof(uint16_t);
 
     hdc = GetDC(window->hwnd);
     window->hdcBitmap = CreateCompatibleDC(hdc);
 
     xmemset(&window->bmi, 0, sizeof(V5BMPINFO));
     bmh.bV5Size = sizeof(BITMAPV5HEADER);
-    bmh.bV5Width = *width;
-    bmh.bV5Height = *height;
+    bmh.bV5Width = window->width;
+    bmh.bV5Height = window->height;
     bmh.bV5Planes = 1;
     bmh.bV5BitCount = 16;
     bmh.bV5Compression = BI_BITFIELDS;
@@ -511,6 +527,13 @@ static int window_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   return ev;
 }
 
+static void window_status(window_t *_window, int *x, int *y, int *buttons) {
+  win_window_t *window = (win_window_t *)_window;
+  *x = window->x;
+  *y = window->y;
+  *buttons = window->buttons;
+}
+
 static int window_mixer_init(void) {
   return 0;
 }
@@ -568,6 +591,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.update_texture_rect = window_update_texture_rect;
   wp.draw_texture_rect = window_draw_texture_rect;
   wp.event2 = window_event2;
+  wp.status = window_status;
   wp.mixer_init = window_mixer_init;
   wp.mixer_play = window_mixer_play;
   wp.mixer_stop = window_mixer_stop;
