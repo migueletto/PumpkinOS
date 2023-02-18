@@ -1,12 +1,12 @@
 include ../common.mak
 include ../commonp.mak
 
-OBJS=main.o drop.o
+OBJS=main.o drop.o midi.o
 RES=icon.res version.res
 PROGRAM=$(ROOT)/pumpkin.exe
 
 $(PROGRAM): $(OBJS) $(RES)
-	g++ -mwindows -o $(PROGRAM) $(OBJS) $(RES) -L$(BIN) -lpit -lpumpkin -lgdi32 -lole32 -luuid
+	g++ -mwindows -o $(PROGRAM) $(OBJS) $(RES) -L$(BIN) -lpit -lpumpkin -lgdi32 -lole32 -luuid -lwinmm
 
 drop.o: drop.cpp
 	g++ $(CFLAGS) -c -o drop.o drop.cpp

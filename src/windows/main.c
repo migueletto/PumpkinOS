@@ -11,6 +11,7 @@
 
 #include "main.h"
 #include "drop.h"
+#include "midi.h"
 #include "thread.h"
 #include "script.h"
 #include "sys.h"
@@ -510,6 +511,31 @@ static int window_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   return ev;
 }
 
+static int window_mixer_init(void) {
+  return 0;
+}
+
+static int window_mixer_play(uint8_t *buf, uint32_t len, int volume) {
+  char name[256 + L_tmpnam + 1];
+  int fd, r = -1;
+
+  if (buf) {
+    if (sys_tmpname(name, sizeof(name)) == 0) {
+      if ((fd = sys_create(name, SYS_WRITE, 0644)) != -1) {
+        sys_write(fd, buf, len);
+        sys_close(fd);
+        r = playMIDIFile(NULL, name) == 0;
+        sys_unlink(name);
+      }
+    }
+  }
+
+  return r;
+}
+
+static int window_mixer_stop(void) {
+  return 0;
+}
 
 static void pit_callback(int pe, void *data) {
   script_set_pointer(pe, WINDOW_PROVIDER, &wp);
@@ -542,6 +568,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.update_texture_rect = window_update_texture_rect;
   wp.draw_texture_rect = window_draw_texture_rect;
   wp.event2 = window_event2;
+  wp.mixer_init = window_mixer_init;
+  wp.mixer_play = window_mixer_play;
+  wp.mixer_stop = window_mixer_stop;
   wp.data = hInstance;
 
   cmdline = xstrdup(lpCmdLine);
