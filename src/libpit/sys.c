@@ -2750,18 +2750,36 @@ int sys_fork_exec(char *filename, char *argv[], int fd) {
 #endif
 }
 
+int sys_tmpname(char *buf, int max) {
+#ifdef WINDOWS
+  char *t;
+  int n, r = -1;
+
+  if (max >= 256 + L_tmpnam + 1) {
+    t = getenv("TEMP");
+    xmemset(buf, 0, max);
+    strncpy(buf, t ? t : "\\", 255);
+    n = strlen(buf);
+    if (tmpnam(&buf[n])) {
+      r = 0;
+    }
+  }
+
+  return r;
+#else
+  return 0;
+#endif
+}
+
 FILE *sys_tmpfile(void) {
 #ifdef WINDOWS
-  char *t, buf[256 + L_tmpnam + 1];
+  char buf[256 + L_tmpnam + 1];
   FILE *f = NULL;
-  int n;
-  t = getenv("TEMP");
-  xmemset(buf, 0, sizeof(buf));
-  strncpy(buf, t ? t : "\\", 255);
-  n = strlen(buf);
-  if (tmpnam(&buf[n])) {
+
+  if (sys_tmpname(buf, sizeof(buf)) == 0) {
     f = fopen(buf, "w+");
   }
+
   return f;
 #else
   return tmpfile();

@@ -242,6 +242,8 @@ int sys_fork_exec(char *filename, char *argv[], int fd);
 
 int sys_list_symbols(char *libname);
 
+int sys_tmpname(char *buf, int max);
+
 FILE *sys_tmpfile(void);
 
 #ifdef __cplusplus
