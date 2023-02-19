@@ -1677,17 +1677,19 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              if (i != data->prev) {
-                if (data->prev >= 0) {
-                  printAppSmall(data, &data->item[data->prev], data->prevX, data->prevY, false);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                if (i != data->prev) {
+                  if (data->prev >= 0) {
+                    printAppSmall(data, &data->item[data->prev], data->prevX, data->prevY, false);
+                  }
+                  printAppSmall(data, &data->item[i], x, y, true);
+                  data->prev = i;
+                  data->prevX = x;
+                  data->prevY = y;
                 }
-                printAppSmall(data, &data->item[i], x, y, true);
-                data->prev = i;
-                data->prevX = x;
-                data->prevY = y;
               }
             }
           }
@@ -1699,21 +1701,23 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printDatabase(data, &data->item[i], x, y, true);
-            } else {
-              printDatabase(data, &data->item[i], x, y, false);
-              StrNCopy(data->name, data->item[i].name, dmDBNameLength-1);
-              data->dbID = data->item[i].dbID;
-              data->sort = 0;
-              data->dir = 0;
-              frm = FrmGetActiveForm();
-              data->mode = data->item[i].rsrc ? launcher_rsrc : launcher_rec;
-              launcherScan(data);
-              refresh(frm, data);
-              UpdateStatus(frm, data, true);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printDatabase(data, &data->item[i], x, y, true);
+              } else {
+                printDatabase(data, &data->item[i], x, y, false);
+                StrNCopy(data->name, data->item[i].name, dmDBNameLength-1);
+                data->dbID = data->item[i].dbID;
+                data->sort = 0;
+                data->dir = 0;
+                frm = FrmGetActiveForm();
+                data->mode = data->item[i].rsrc ? launcher_rsrc : launcher_rec;
+                launcherScan(data);
+                refresh(frm, data);
+                UpdateStatus(frm, data, true);
+              }
             }
           }
           break;
@@ -1724,13 +1728,15 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printResource(data, &data->item[i], x, y, true);
-            } else {
-              printResource(data, &data->item[i], x, y, false);
-              editResource(data, &data->item[i]);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printResource(data, &data->item[i], x, y, true);
+              } else {
+                printResource(data, &data->item[i], x, y, false);
+                editResource(data, &data->item[i]);
+              }
             }
           }
           break;
@@ -1741,13 +1747,15 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printRecord(data, &data->item[i], x, y, true);
-            } else {
-              printRecord(data, &data->item[i], x, y, false);
-              editRecord(data, &data->item[i]);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printRecord(data, &data->item[i], x, y, true);
+              } else {
+                printRecord(data, &data->item[i], x, y, false);
+                editRecord(data, &data->item[i]);
+              }
             }
           }
           break;
@@ -1758,28 +1766,30 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printFile(data, &data->item[i], x, y, true);
-            } else {
-              printFile(data, &data->item[i], x, y, false);
-              frm = FrmGetActiveForm();
-              plen = StrLen(data->path);
-              if (StrCompare(data->item[i].name, PARENT_DIR) == 0) {
-                for (plen--; data->path[plen-1] != '/'; plen--);
-                data->path[plen] = 0;
-                launcherScan(data);
-                refresh(frm, data);
-                UpdateStatus(frm, data, true);
-              } else if (data->item[i].dir) {
-                len = StrLen(data->item[i].name);
-                if (plen + len + 1 < MAX_NAME-1) {
-                  StrCat(data->path, data->item[i].name);
-                  StrCat(data->path, "/");
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printFile(data, &data->item[i], x, y, true);
+              } else {
+                printFile(data, &data->item[i], x, y, false);
+                frm = FrmGetActiveForm();
+                plen = StrLen(data->path);
+                if (StrCompare(data->item[i].name, PARENT_DIR) == 0) {
+                  for (plen--; data->path[plen-1] != '/'; plen--);
+                  data->path[plen] = 0;
                   launcherScan(data);
                   refresh(frm, data);
                   UpdateStatus(frm, data, true);
+                } else if (data->item[i].dir) {
+                  len = StrLen(data->item[i].name);
+                  if (plen + len + 1 < MAX_NAME-1) {
+                    StrCat(data->path, data->item[i].name);
+                    StrCat(data->path, "/");
+                    launcherScan(data);
+                    refresh(frm, data);
+                    UpdateStatus(frm, data, true);
+                  }
                 }
               }
             }
@@ -1792,12 +1802,14 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printTask(data, &data->item[i], x, y, true);
-            } else {
-              printTask(data, &data->item[i], x, y, false);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printTask(data, &data->item[i], x, y, true);
+              } else {
+                printTask(data, &data->item[i], x, y, false);
+              }
             }
           }
           break;
@@ -1808,12 +1820,14 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
           } else {
             i = (row-1) * ncols + col + data->topItem;
-            x = gad->rect.topLeft.x + col * iw;
-            y = gad->rect.topLeft.y + 2 + row * ih;
-            if (event->eType == frmGadgetEnterEvent) {
-              printRegistry(data, &data->item[i], x, y, true);
-            } else {
-              printRegistry(data, &data->item[i], x, y, false);
+            if (i < data->numItems) {
+              x = gad->rect.topLeft.x + col * iw;
+              y = gad->rect.topLeft.y + 2 + row * ih;
+              if (event->eType == frmGadgetEnterEvent) {
+                printRegistry(data, &data->item[i], x, y, true);
+              } else {
+                printRegistry(data, &data->item[i], x, y, false);
+              }
             }
           }
           break;
