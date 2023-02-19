@@ -1132,9 +1132,11 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
 
   if (item) {
     FntSetFont(stdFont);
-    // XXX commented out: avoid black bar around bitmap
-    //RctSetRectangle(&rect, x, y, 11, data->cellHeight);
-    //WinEraseRectangle(&rect, 0);
+    RctSetRectangle(&rect, x, y, 11, data->cellHeight);
+    WinEraseRectangle(&rect, 0);
+    setBackColor(WHITE);
+    RctSetRectangle(&rect, x, y, data->cellHeight, data->cellHeight);
+    WinEraseRectangle(&rect, 0);
     if (bmpId == 0xffff) {
       if (item->iconWh) {
         RctSetRectangle(&rect, 0, 0, data->cellHeight, data->cellHeight);
@@ -1142,6 +1144,11 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
       }
     } else if (bmpId > 0) {
       paintBitmap(bmpId, x, y);
+    }
+    if (inverted) {
+      setBackColor(BLACK);
+    } else {
+      setBackColor(WHITE);
     }
     RctSetRectangle(&rect, x+11, y, 4, data->cellHeight);
     WinEraseRectangle(&rect, 0);
@@ -1191,9 +1198,11 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
-  x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
-  x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
+  if (!pumpkin_dia_enabled()) {
+    x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
+    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+    x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
+  }
   lastColumn(data, x, y);
 }
 
@@ -1204,12 +1213,14 @@ static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Name", item ? item->name : NULL, x, y, 28 * FntCharWidth('a'), false, inverted);
-  x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
-  x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
-  x = printColumn(data, item, "Recs", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
-  x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
+  if (!pumpkin_dia_enabled()) {
+    x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
+    x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
+    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
+    x = printColumn(data, item, "Recs", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
+    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+    x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
+  }
   lastColumn(data, x, y);
 }
 
@@ -1243,7 +1254,9 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
 static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
   char buf[128], *s;
   UInt16 bmpId;
+  int dia;
 
+  dia = pumpkin_dia_enabled();
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
   if (item) snprintf(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
@@ -1292,7 +1305,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
     x = printBmpColumn(data, item, NULL, buf, bmpId, x, y, 32 * FntCharWidth('w'), inverted);
 
   } else {
-    x = printColumn(data, item, "Compatibility", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
+    x = printColumn(data, item, dia ? "Compat." : "Compatibility", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
   }
 
   lastColumn(data, x, y);
@@ -1307,8 +1320,10 @@ static void printResource(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printColumn(data, item, "ID", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
   if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
-  x = spaceColumn(data, x, y, 10);
-  x = printColumn(data, item, "Contents", item ? (item->info ? item->info : "Unknown") : NULL, x, y, data->cellWidth - (x - data->x[0]), false, inverted);
+  if (!pumpkin_dia_enabled()) {
+    x = spaceColumn(data, x, y, 10);
+    x = printColumn(data, item, "Contents", item ? (item->info ? item->info : "Unknown") : NULL, x, y, data->cellWidth - (x - data->x[0]), false, inverted);
+  }
   lastColumn(data, x, y);
 }
 
