@@ -230,7 +230,7 @@ void FrmSetEventHandler(FormType *formP, FormEventHandlerType *handler) {
 // Returns the Boolean value returned by the form’s event handler or FrmHandleEvent.
 // XXX The event is dispatched to the current form’s handler unless the form ID is specified in the event data, as, for example, with frmOpenEvent or frmGotoEvent.
 
-static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP, Boolean defaultHandler) {
+static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP) {
   Boolean r = false;
 
   if (formP) {
@@ -248,10 +248,6 @@ static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP, Bool
         PINSetInputTriggerState(pinInputTriggerDisabled);
       }
     }
-
-    if (!r && defaultHandler) {
-      r = FrmHandleEvent(formP, eventP);
-    }
   }
 
   return r;
@@ -259,7 +255,14 @@ static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP, Bool
 
 Boolean FrmDispatchEvent(EventType *eventP) {
   FormType *formP = FrmGetActiveForm();
-  return FrmDispatchEventInternal(formP, eventP, true);
+  Boolean r;
+
+  r = FrmDispatchEventInternal(formP, eventP);
+  if (!r) {
+    r = FrmHandleEvent(formP, eventP);
+  }
+
+  return r;
 }
 
 void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
@@ -1786,8 +1789,7 @@ void FrmCloseAllForms(void) {
     xmemset(&event, 0, sizeof(EventType));
     event.eType = frmCloseEvent;
     event.data.frmClose.formID = p->formP->formId;
-    FrmDispatchEventInternal(p->formP, &event, false);
-
+    FrmDispatchEventInternal(p->formP, &event);
     FrmDeleteFormInternal(p->formP);
     q = p->next;
     xfree(p);
