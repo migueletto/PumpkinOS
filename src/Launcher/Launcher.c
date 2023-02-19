@@ -917,25 +917,28 @@ static void compat_callback(UInt32 creator, UInt16 index, UInt16 id, void *p, vo
   AppRegistryCompat *c;
   AppRegistrySize *s;
 
-  if (index < MAX_ITEMS) {
-    switch (id) {
-      case appRegistryCompat:
-        c = (AppRegistryCompat *)p;
-        data->item[index].type = sysFileTApplication;
-        data->item[index].creator = creator;
-        data->item[index].compat = c->compat;
-        data->item[index].code = c->code;
-        break;
-      case appRegistrySize:
-        s = (AppRegistrySize *)p;
-        data->item[index].type = sysFileTApplication;
-        data->item[index].creator = creator;
-        data->item[index].width = s->width;
-        data->item[index].height = s->height;
-        break;
-    }
-    if (index+1 > data->numItems) {
-      data->numItems = index+1;
+  if (index >= 1) {
+    index--;
+    if (index < MAX_ITEMS) {
+      switch (id) {
+        case appRegistryCompat:
+          c = (AppRegistryCompat *)p;
+          data->item[index].type = sysFileTApplication;
+          data->item[index].creator = creator;
+          data->item[index].compat = c->compat;
+          data->item[index].code = c->code;
+          break;
+        case appRegistrySize:
+          s = (AppRegistrySize *)p;
+          data->item[index].type = sysFileTApplication;
+          data->item[index].creator = creator;
+          data->item[index].width = s->width;
+          data->item[index].height = s->height;
+          break;
+      }
+      if (index+1 > data->numItems) {
+        data->numItems = index+1;
+      }
     }
   }
 }
