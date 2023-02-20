@@ -1738,7 +1738,9 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printResource(data, &data->item[i], x, y, true);
               } else {
                 printResource(data, &data->item[i], x, y, false);
-                editResource(data, &data->item[i]);
+                if (!pumpkin_dia_enabled()) {
+                  editResource(data, &data->item[i]);
+                }
               }
             }
           }
@@ -1757,7 +1759,9 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printRecord(data, &data->item[i], x, y, true);
               } else {
                 printRecord(data, &data->item[i], x, y, false);
-                editRecord(data, &data->item[i]);
+                if (!pumpkin_dia_enabled()) {
+                  editRecord(data, &data->item[i]);
+                }
               }
             }
           }
