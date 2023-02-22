@@ -549,6 +549,9 @@ static void pumpkin_set_encoding(int depth) {
     case 16:
       pumpkin_module.encoding = SURFACE_ENCODING_RGB565;
       break;
+    case 32:
+      pumpkin_module.encoding = SURFACE_ENCODING_ARGB;
+      break;
     default:
       pumpkin_module.encoding = SURFACE_ENCODING_RGB565;
       break;
