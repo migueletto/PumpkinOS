@@ -8,8 +8,10 @@
 #include <time.h>
 #include <sys/time.h>
 #include <linux/fb.h>
+#include <linux/input.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 
 #include "script.h"
 #include "thread.h"
@@ -23,7 +25,8 @@ typedef struct {
   int fb_num, input_num;
   int width, height, depth;
   int fb_fd, input_fd, len;
-  int x, y, buttons, next_ev;
+  int xmin, xmax, ymin, ymax;
+  int x, y, buttons, button_down;
   uint16_t *p16;
   uint32_t *p32;
   void *p;
@@ -44,20 +47,30 @@ static fb_t fb;
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0030: 28 E9 8A 60 3F C9 07 00 03 00 18 00 85 00 00 00
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0040: 28 E9 8A 60 3F C9 07 00 00 00 00 00 00 00 00 00
 
-static int input_event(fb_t *fb, uint32_t us, int *x, int *y) {
+static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
   uint8_t buf[24];
   uint32_t value;
   int32_t ivalue;
   uint16_t type, code;
+  //fd_set fds;
+  //struct timeval tv;
   int i, len, nread, hast, hasx, hasy, down, ev = -1;
 
   hast = hasx = hasy = down = 0;
   len = sizeof(struct timeval) + 8; // struct timeval can be 16 bytes or 24 bytes
   *x = 0;
   *y = 0;
+  *button = 0;
 
   for (; ev == -1;) {
+    //int  FD_ISSET(int fd, fd_set *set);
+    //FD_ZERO(&fds);
+    //FD_SET(fb->input_fd, &fds);
+    //tv.tv_sec = 0;
+    //tv.tv_usec = us;
+
     switch (sys_read_timeout(fb->input_fd, buf, len, &nread, us)) {
+    //switch (select(fb->input_fd+1, &fds, NULL, NULL, &tv)) {
       case -1:
         debug(DEBUG_ERROR, "FB", "input_event error");
         return -1;
@@ -65,6 +78,7 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y) {
         ev = 0;
         break;
       default:
+        //sys_read_timeout(fb->input_fd, buf, len, &nread, 0);
         debug(DEBUG_TRACE, "FB", "read %d bytes", nread);
         if (nread == len) {
           i = len - 8; // ignore struct timeval
@@ -94,6 +108,12 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y) {
               switch (code) {
                 case 0x110: // BTN_LEFT (for mouse)
                 case 0x14A: // BTN_TOUCH (for touch screen)
+                  *button = 1;
+                  down = value ? 1 : 0;
+                  hast = 1;
+                  break;
+                case 0x111: // BTN_RIGHT (for mouse)
+                  *button = 2;
                   down = value ? 1 : 0;
                   hast = 1;
                   break;
@@ -103,14 +123,14 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y) {
                 ivalue = value;
                 switch (code) {
                   case 0x00: // REL_X
-                    debug(DEBUG_TRACE, "FB", "EV_REL X");
+                    debug(DEBUG_TRACE, "FB", "EV_REL X %d: %d -> %d", ivalue, fb->x, fb->x + ivalue);
                     fb->x += ivalue;
                     if (fb->x < 0) fb->x = 0;
                     else if (fb->x >= fb->width) fb->x = fb->width-1;
                     hasx = 1;
                     break;
                   case 0x01: // REL_Y
-                    debug(DEBUG_TRACE, "FB", "EV_REL Y");
+                    debug(DEBUG_TRACE, "FB", "EV_REL Y %d: %d -> %d", ivalue, fb->y, fb->y + ivalue);
                     fb->y += ivalue;
                     if (fb->y < 0) fb->y = 0;
                     else if (fb->y >= fb->height) fb->y = fb->height-1;
@@ -121,19 +141,15 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y) {
               case 0x03: // EV_ABS
                 switch (code) {
                   case 0x00: // ABS_X
-                    debug(DEBUG_TRACE, "FB", "EV_ABS X");
-                    if (value < 0x100) value = 0x100;
-                    else if (value >= 0xF00) value = 0xEFF;
-                    value = ((value - 0x100) * fb->width) / 0xE00;
+                    debug(DEBUG_TRACE, "FB", "EV_ABS X %u", value);
+                    value = ((value - fb->xmin) * fb->width) / (fb->xmax - fb->xmin);
                     if (value >= fb->width) value = fb->width-1;
                     fb->x = value;
                     hasx = 1;
                     break;
                   case 0x01: // ABS_Y
-                    debug(DEBUG_TRACE, "FB", "EV_ABS Y");
-                    if (value < 0x100) value = 0x100;
-                    else if (value >= 0xF00) value = 0xEFF;
-                    value = ((value - 0x100) * fb->height) / 0xE00;
+                    debug(DEBUG_TRACE, "FB", "EV_ABS Y %u", value);
+                    value = ((value - fb->ymin) * fb->height) / (fb->ymax - fb->ymin);
                     if (value >= fb->height) value = fb->height-1;
                     fb->y = value;
                     hasy = 1;
@@ -156,14 +172,14 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
   fb_t *fb = (fb_t *)data;
   struct fb_var_screeninfo vinfo;
   struct fb_fix_screeninfo finfo;
+  struct input_absinfo abs_feat;
+  int xmin, xmax, ymin, ymax;
   int fb_fd, input_fd;
   char device[32];
   void *p;
   window_t *w;
 
   if (fb->fb_fd == 0) {
-    xmemset(fb, 0, sizeof(fb_t));
-
     snprintf(device, sizeof(device)-1, "/dev/fb%d", fb->fb_num);
     fb_fd = open(device, O_RDWR);
     if (fb_fd == -1) debug_errno("FB", "open fb");
@@ -180,12 +196,35 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
           ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo) != -1) {
         debug(DEBUG_INFO, "FB", "framebuffer %s %dx%d bpp %d type %d", finfo.id, vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, finfo.type);
 
+        if (ioctl(input_fd, EVIOCGABS(ABS_X), &abs_feat) == 0) {
+          debug(DEBUG_INFO, "FB", "input ABS_X: %d (min:%d max:%d flat:%d fuzz:%d)",
+            abs_feat.value, abs_feat.minimum, abs_feat.maximum, abs_feat.flat, abs_feat.fuzz);
+          xmin = abs_feat.minimum;
+          xmax = abs_feat.maximum;
+        } else {
+          xmin = 0;
+          xmax = vinfo.xres - 1;
+        }
+        if (ioctl(input_fd, EVIOCGABS(ABS_Y), &abs_feat) == 0) {
+          debug(DEBUG_INFO, "FB", "input ABS_Y: %d (min:%d max:%d flat:%d fuzz:%d)",
+            abs_feat.value, abs_feat.minimum, abs_feat.maximum, abs_feat.flat, abs_feat.fuzz);
+          ymin = abs_feat.minimum;
+          ymax = abs_feat.maximum;
+        } else {
+          ymin = 0;
+          ymax = vinfo.yres - 1;
+        }
+
         if ((p = (uint16_t *)mmap(0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0)) != NULL) {
           fb->fb_fd = fb_fd;
           fb->input_fd = input_fd;
           fb->p = p;
           fb->width = vinfo.xres;
           fb->height = vinfo.yres;
+          fb->xmin = xmin;
+          fb->xmax = xmax;
+          fb->ymin = ymin;
+          fb->ymax = ymax;
           fb->x = fb->width / 2;
           fb->y = fb->height / 2;
           fb->depth = vinfo.bits_per_pixel;
@@ -223,12 +262,12 @@ static int window_destroy(window_t *window) {
     if (fb->fb_fd > 0) {
       munmap(fb->p, fb->len);
       close(fb->fb_fd);
+      fb->fb_fd = 0;
     }
     if (fb->input_fd > 0) {
       close(fb->input_fd);
+      fb->input_fd = 0;
     }
-
-    xmemset(fb, 0, sizeof(fb_t));
   }
 
   return 0;
@@ -379,25 +418,25 @@ static int window_draw_texture(window_t *window, texture_t *texture, int x, int 
 
 static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
   fb_t *fb = (fb_t *)window;
-  int ev = 0;
+  int button, ev = 0;
 
   if (fb->input_fd > 0) {
-    if (fb->next_ev) {
+    if (fb->button_down) {
       debug(DEBUG_TRACE, "FB", "restoring button down");
-      ev = fb->next_ev;
-      fb->next_ev = 0;
-      *arg1 = 1;
+      ev = WINDOW_BUTTONDOWN;
+      *arg1 = fb->button_down;
       *arg2 = 0;
+      fb->button_down = 0;
     } else {
-      ev = input_event(fb, wait, arg1, arg2);
+      ev = input_event(fb, wait, arg1, arg2, &button);
       switch (ev) {
         case WINDOW_BUTTONDOWN:
           debug(DEBUG_TRACE, "FB", "changing first button down into motion");
-          fb->next_ev = ev;
+          fb->button_down = button;
           ev = WINDOW_MOTION;
           break;
         case WINDOW_BUTTONUP:
-          *arg1 = 1;
+          *arg1 = button;
           *arg2 = 0;
           break;
       }
