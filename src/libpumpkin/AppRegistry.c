@@ -87,20 +87,30 @@ AppRegistryType *AppRegistryInit(char *regname) {
   return ar;
 }
 
-void AppRegistryFinish(AppRegistryType *ar) {
+static int AppRegistrySave(AppRegistryType *ar, int i) {
   char path[64], screator[8];
-  int i, fd;
+  int fd, r = -1;
+
+  pumpkin_id2s(ar->registry[i].creator, screator);
+  snprintf(path, sizeof(path)-1, "%s%4s.%08X.%d.%d", ar->regname, screator, ar->registry[i].creator, ar->registry[i].id, ar->registry[i].seq);
+
+  if ((fd = sys_create(path, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
+    debug(DEBUG_INFO, "AppReg", "saving registry creator '%s' id %d seq %d", screator, ar->registry[i].id, ar->registry[i].seq);
+    sys_write(fd, (uint8_t *)ar->registry[i].data, ar->registry[i].size);
+    sys_close(fd);
+    r = 0;
+  }
+
+  return r;
+}
+
+void AppRegistryFinish(AppRegistryType *ar) {
+  int i;
 
   if (ar) {
     if (ar->registry) {
       for (i = 0; i < ar->num; i++) {
-        pumpkin_id2s(ar->registry[i].creator, screator);
-        snprintf(path, sizeof(path)-1, "%s%4s.%08X.%d.%d", ar->regname, screator, ar->registry[i].creator, ar->registry[i].id, ar->registry[i].seq);
-        if ((fd = sys_create(path, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-          debug(DEBUG_INFO, "AppReg", "saving registry creator '%s' id %d seq %d", screator, ar->registry[i].id, ar->registry[i].seq);
-          sys_write(fd, (uint8_t *)ar->registry[i].data, ar->registry[i].size);
-          sys_close(fd);
-        }
+        AppRegistrySave(ar, i);
         xfree(ar->registry[i].data);
       }
       xfree(ar->registry);
@@ -140,6 +150,7 @@ static UInt16 AppRegistryProcess(AppRegistryType *ar, UInt32 creator, UInt16 id,
       }
 
       r = callback(&ar->registry[i], d, size, true);
+      AppRegistrySave(ar, i);
 
     } else {
       if (i < ar->num) {
