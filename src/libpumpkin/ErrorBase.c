@@ -1,13 +1,11 @@
 #include <PalmOS.h>
 
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 #include <setjmp.h>
 
+#include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "vfs.h"
 #include "mem.h"
 #include "pumpkin.h"

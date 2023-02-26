@@ -209,7 +209,8 @@ int cond_wait(cond_t *c, mutex_t *m) {
 }
 
 int cond_timedwait(cond_t *c, mutex_t *m, int us) {
-  struct timespec ts;
+  sys_timespec_t ts;
+  struct timespec t;
   int r = -1;
 
   if (c && m) {
@@ -220,7 +221,9 @@ int cond_timedwait(cond_t *c, mutex_t *m, int us) {
       ts.tv_nsec -= 1000000000;
     }
 
-    r = pthread_cond_timedwait(&c->cond, &m->mutex, &ts);
+    t.tv_sec = ts.tv_sec;
+    t.tv_nsec = ts.tv_nsec;
+    r = pthread_cond_timedwait(&c->cond, &m->mutex, &t);
     if (r != 0) {
       if (r != ETIMEDOUT) {
         errno = r;

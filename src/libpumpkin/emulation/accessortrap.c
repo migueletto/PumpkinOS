@@ -1,7 +1,5 @@
 #include <stdlib.h>
 #include <stdarg.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <PalmOS.h>
 #include <VFSMgr.h>
@@ -9,6 +7,7 @@
 #include <CtlGlue.h>
 #include <LstGlue.h>
 
+#include "sys.h"
 #ifdef ARMEMU
 #include "armemu.h"
 #endif

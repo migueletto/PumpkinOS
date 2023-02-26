@@ -82,7 +82,7 @@ typedef int (*io_loop_f)(int fd, int ptr);
 
 typedef struct {
   int (*bind)(char *addr, int port, int type);
-  int (*accept)(int sock, char *peer, int *port, int type, struct timeval *tv);
+  int (*accept)(int sock, char *peer, int *port, int type, sys_timeval_t *tv);
   int (*connect)(char *peer, int port, int type);
 } bt_provider_t;
 

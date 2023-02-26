@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "pumpkin.h"
 #include "syntax.h"
 #include "color.h"

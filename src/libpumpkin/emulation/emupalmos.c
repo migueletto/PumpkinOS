@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <PalmOS.h>
 #include <PceNativeCall.h>
@@ -12,10 +10,10 @@
 #include <Helper.h>
 #include <GPSLib.h>
 
+#include "sys.h"
 #include "pwindow.h"
 #include "thread.h"
 #include "mutex.h"
-#include "sys.h"
 #include "vfs.h"
 #include "bytes.h"
 #ifdef ARMEMU

@@ -1,11 +1,8 @@
 #include <PalmOS.h>
 
-#include <time.h>
-#include <sys/time.h>
-
+#include "sys.h"
 #include "mutex.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "vfs.h"
 #include "mem.h"
 #include "bytes.h"

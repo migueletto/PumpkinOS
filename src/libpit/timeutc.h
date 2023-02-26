@@ -5,11 +5,11 @@
 extern "C" {
 #endif
 
-time_t timeutc(struct tm *tm);
+uint64_t timeutc(sys_tm_t *tm);
 
-struct tm *utctime(const time_t *t, struct tm *tm);
+sys_tm_t *utctime(const uint64_t *t, sys_tm_t *tm);
 
-int timeofday(struct timeval *tv);
+int timeofday(sys_timeval_t *tv);
 
 int daysinmonth(int year, int month);
 

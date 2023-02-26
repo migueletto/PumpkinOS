@@ -1,10 +1,7 @@
 #include <PalmOS.h>
 
-#include <time.h>
-#include <sys/time.h>
-
-#include "pwindow.h"
 #include "sys.h"
+#include "pwindow.h"
 #include "vfs.h"
 #include "mem.h"
 #include "pumpkin.h"
@@ -36,7 +33,7 @@ static const char *dayNames[] = {
   "Thursday", "Friday", "Saturday"
 };
 
-static void TimGmTime(UInt32 seconds, struct tm *tm) {
+static void TimGmTime(UInt32 seconds, sys_tm_t *tm) {
   UInt32 year, month, day, hour, min;
   UInt32 days, d, s, count;
 
@@ -82,7 +79,7 @@ static void TimGmTime(UInt32 seconds, struct tm *tm) {
   tm->tm_sec = seconds - count;
 }
 
-static UInt32 TimTimeGm(struct tm *tm) {
+static UInt32 TimTimeGm(sys_tm_t *tm) {
   UInt32 year, month, count;
 
   for (year = YEAR0, count = 0; year < tm->tm_year + 1900; year++) {
@@ -104,7 +101,7 @@ static UInt32 TimTimeGm(struct tm *tm) {
   return count;
 }
 
-static void tim_t2tm(UInt32 seconds, struct tm *tm) {
+static void tim_t2tm(UInt32 seconds, sys_tm_t *tm) {
   Int32 zone, dls;
 
   zone = PrefGetPreference(prefTimeZone)*60;
@@ -118,7 +115,7 @@ static void tim_t2tm(UInt32 seconds, struct tm *tm) {
   TimGmTime(seconds, tm);
 }
 
-static time_t tim_tm2t(struct tm *tm) {
+static time_t tim_tm2t(sys_tm_t *tm) {
   Int32 zone, dls;
   UInt32 seconds;
 
@@ -136,7 +133,7 @@ static time_t tim_tm2t(struct tm *tm) {
 }
 
 void TimSecondsToDateTime(UInt32 seconds, DateTimeType *dateTimeP) {
-  struct tm tm;
+  sys_tm_t tm;
 
   tim_t2tm(seconds, &tm);
   dateTimeP->year = tm.tm_year + 1900;
@@ -150,10 +147,10 @@ void TimSecondsToDateTime(UInt32 seconds, DateTimeType *dateTimeP) {
 }
 
 UInt32 TimDateTimeToSeconds(const DateTimeType *dateTimeP) {
-  struct tm tm;
+  sys_tm_t tm;
   UInt32 seconds;
 
-  xmemset(&tm, 0, sizeof(struct tm));
+  xmemset(&tm, 0, sizeof(sys_tm_t));
   tm.tm_year = dateTimeP->year - 1900;
   tm.tm_mon = dateTimeP->month - 1;
   tm.tm_mday = dateTimeP->day;
@@ -207,10 +204,10 @@ Int16 DaysInMonth(Int16 month, Int16 year) {
 }
 
 Int16 DayOfWeek(Int16 month, Int16 day, Int16 year) {
-  struct tm tm;
+  sys_tm_t tm;
   time_t t;
 
-  xmemset(&tm, 0, sizeof(struct tm));
+  xmemset(&tm, 0, sizeof(sys_tm_t));
   tm.tm_year = year - 1900;
   tm.tm_mon = month - 1;
   tm.tm_mday = day;

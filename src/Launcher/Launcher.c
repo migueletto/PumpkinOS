@@ -1,20 +1,18 @@
-#include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
-#include <string.h>
-
 #include <PalmOS.h>
 #include <Control.h>
 #include <BmpGlue.h>
 #include <VFSMgr.h>
 
+#include <stdlib.h>
+#include <string.h>
+
+#include "sys.h"
 #include "resedit.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
 #include "pwindow.h"
 #include "media.h"
-#include "sys.h"
 #include "ptr.h"
 #include "vfs.h"
 #include "bytes.h"

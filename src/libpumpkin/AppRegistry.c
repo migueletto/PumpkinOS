@@ -1,10 +1,8 @@
 #include <PalmOS.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "AppRegistry.h"
 #include "pumpkin.h"
-#include "sys.h"
 #include "bytes.h"
 #include "mutex.h"
 #include "xalloc.h"

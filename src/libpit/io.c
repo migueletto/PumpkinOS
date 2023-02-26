@@ -4,11 +4,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
-#include "pit_io.h"
 #include "sys.h"
+#include "pit_io.h"
 #include "ptr.h"
 #include "thread.h"
 #include "timeutc.h"
@@ -305,7 +303,7 @@ int io_bind(char *host, int port, int *addr_type, bt_provider_t *bt) {
 
 int io_accept(int fd, uint32_t us, int addr_type, bt_provider_t *bt) {
   io_addr_t addr;
-  struct timeval tv;
+  sys_timeval_t tv;
   int newfd = -1;
 
   tv.tv_sec = 0;
@@ -539,7 +537,7 @@ static int io_new_stream(char *tag, int fd, int line, int timeout, int timer, in
 }
 
 static int io_stream_server_loop(io_server_t *server, int handle) {
-  struct timeval tv;
+  sys_timeval_t tv;
   io_addr_t addr;
   int fd, r;
   unsigned char *buf;
@@ -652,7 +650,7 @@ static int io_simple_conn_action(void *arg) {
 static int io_simple_server_action(void *arg) {
   io_simple_t *server, *conn;
   io_addr_t addr;
-  struct timeval tv;
+  sys_timeval_t tv;
   int fd;
 
   server = (io_simple_t *)arg;
@@ -746,7 +744,7 @@ static int io_simple_client_action(void *arg) {
 }
 
 static int io_dgram_loop(io_server_t *server, int handle) {
-  struct timeval tv;
+  sys_timeval_t tv;
   io_addr_t addr;
   io_write_arg_t *arg;
   unsigned int n;

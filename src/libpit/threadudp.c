@@ -7,8 +7,6 @@
 #define __USE_GNU
 #include <pthread.h>
 #undef __USE_GNU
-#include <time.h>
-#include <sys/time.h>
 #include <errno.h>
 
 #include "thread.h"
@@ -389,7 +387,7 @@ static int thread_write_port(int port, unsigned char *buf, unsigned int len) {
 }
 
 static int thread_read_sock(int sock, uint32_t usec, unsigned char **rbuf, unsigned int *len, int *client) {
-  struct timeval tv;
+  sys_timeval_t tv;
   uint8_t *buf;
   char host[32];
   int port, n;

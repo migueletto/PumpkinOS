@@ -1,15 +1,12 @@
 #include <PalmOS.h>
 
-#include <time.h>
-#include <sys/time.h>
-
 static void nop(Err err);
 #define PALMOS_MODULE "Field"
 #define PALMOS_MODERR nop
 
+#include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "vfs.h"
 #include "mem.h"
 #include "pumpkin.h"

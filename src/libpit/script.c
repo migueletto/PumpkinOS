@@ -4,15 +4,13 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "script.h"
 #include "ptr.h"
 #include "thread.h"
 #include "mutex.h"
-#include "pit_io.h"
 #include "sys.h"
+#include "pit_io.h"
 #include "timeutc.h"
 #include "debug.h"
 #include "xalloc.h"

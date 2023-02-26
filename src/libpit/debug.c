@@ -4,8 +4,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
 #ifdef ANDROID
 #include <android/log.h>
@@ -153,9 +151,9 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
   char tmp[MAX_BUF], buf[MAX_BUF], *s;
   int i, j, k, ms;
   char thread_name[32];
-  struct timeval tv;
-  struct tm tm;
-  time_t ts;
+  sys_timeval_t tv;
+  sys_tm_t tm;
+  uint64_t ts;
 
   if (_level < DEBUG_ERROR) _level = DEBUG_ERROR;
   if (_level > DEBUG_TRACE) _level = DEBUG_TRACE;
@@ -177,7 +175,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
 
     thread_get_name(thread_name, sizeof(thread_name));
 
-    timeofday(&tv);
+    sys_timeofday(&tv);
     ts = tv.tv_sec;
     ms = tv.tv_usec / 1000;
     utctime(&ts, &tm);

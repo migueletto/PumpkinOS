@@ -1,8 +1,6 @@
 #include <PalmOS.h>
 
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 #include <string.h>
 
 #include "rcpexport.h"

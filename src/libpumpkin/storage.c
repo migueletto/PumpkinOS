@@ -2,8 +2,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <PalmOS.h>
 

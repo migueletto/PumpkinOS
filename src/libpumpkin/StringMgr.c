@@ -4,9 +4,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "pumpkin.h"
 #include "debug.h"
 

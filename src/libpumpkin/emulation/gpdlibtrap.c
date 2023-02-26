@@ -1,13 +1,12 @@
 #include <stdlib.h>
 #include <stdarg.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <PalmOS.h>
 #include <PalmCompatibility.h>
 #include <VFSMgr.h>
 #include <GPDLib.h>
 
+#include "sys.h"
 #ifdef ARMEMU
 #include "armemu.h"
 #endif

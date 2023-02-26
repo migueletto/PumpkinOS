@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "sys.h"
 #include "filter.h"

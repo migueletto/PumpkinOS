@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <sys/time.h>
 
 #include "script.h"
+#include "sys.h"
 #include "pit_io.h"
 #include "sock.h"
 #include "debug.h"

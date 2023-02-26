@@ -2,11 +2,9 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
-#include "mutex.h"
 #include "sys.h"
+#include "mutex.h"
 #include "pwindow.h"
 #include "vfs.h"
 #include "mem.h"

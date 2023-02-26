@@ -1,9 +1,8 @@
 #include <PalmOS.h>
 #include <PalmCompatibility.h>
-#include <time.h>
-#include <sys/time.h>
 #include <GPDLib.h>
 
+#include "sys.h"
 #include "pumpkin.h"
 #include "debug.h"
 

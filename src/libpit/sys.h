@@ -5,10 +5,7 @@
 extern "C" {
 #endif
 
-//#define SYSTEM_NAME "pit"
-//#define SYSTEM_OS "Android"
-//#define SYSTEM_VERSION "1"
-//#define SOEXT ".so"
+#include <stdint.h>
 
 typedef enum {
   SYS_SEEK_SET, SYS_SEEK_CUR, SYS_SEEK_END
@@ -68,6 +65,27 @@ typedef struct {
   int l_linger;
 } sys_linger_t;
 
+typedef struct {
+  int tm_year;
+  int tm_mon;
+  int tm_mday;
+  int tm_wday;
+  int tm_hour;
+  int tm_min;
+  int tm_sec;
+  int tm_isdst;
+} sys_tm_t;
+
+typedef struct {
+  uint32_t tv_sec;
+  uint32_t tv_usec;
+} sys_timeval_t;
+
+typedef struct {
+  uint64_t tv_sec;
+  uint64_t tv_nsec;
+} sys_timespec_t;
+
 typedef struct sys_dir_t sys_dir_t;
 
 typedef uint32_t sys_fdset_t;
@@ -80,13 +98,15 @@ uint64_t sys_time(void);
 
 int sys_isdst(void);
 
-time_t sys_timegm(struct tm *tm);
+uint64_t sys_timegm(sys_tm_t *tm);
 
-time_t sys_timelocal(struct tm *tm);
+uint64_t sys_timelocal(sys_tm_t *tm);
 
-int sys_localtime(const time_t *t, struct tm *tm);
+int sys_localtime(const uint64_t *t, sys_tm_t *tm);
 
-int sys_gmtime(const time_t *t, struct tm *tm);
+int sys_gmtime(const uint64_t *t, sys_tm_t *tm);
+
+int sys_timeofday(sys_timeval_t *tv);
 
 char *sys_getenv(char *name);
 
@@ -149,7 +169,7 @@ int sys_rmdir(const char *pathname);
 int sys_mkdir(const char *pathname);
 
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds,
-                   struct timeval *timeout);
+                   sys_timeval_t *timeout);
 
 void sys_fdclr(int n, sys_fdset_t *fds);
 
@@ -179,7 +199,7 @@ int sys_isatty(int fd);
 
 int64_t sys_get_clock(void);
 
-int sys_get_clock_ts(struct timespec *ts);
+int sys_get_clock_ts(sys_timespec_t *ts);
 
 int64_t sys_get_process_time(void);
 
@@ -223,12 +243,12 @@ int sys_socket_bind(char *host, int *port, int type);
 
 int sys_socket_bind_connect(char *src_host, int src_port, char *host, int port, int type);
 
-int sys_socket_accept(int sock, char *host, int hlen, int *port, struct timeval *tv);
+int sys_socket_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv);
 
 int sys_socket_sendto(int sock, char *host, int port, unsigned char *buf, int n);
 
 int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n,
-                        struct timeval *tv);
+                        sys_timeval_t *tv);
 
 int sys_socket_shutdown(int sock, int dir);
 

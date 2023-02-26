@@ -4,13 +4,11 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
-#include "sys.h"
 #include "vfs.h"
 #include "ptr.h"
 #include "filter.h"

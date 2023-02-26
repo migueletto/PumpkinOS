@@ -2,9 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "pit_io.h"
 #include "filter.h"
 #include "ctelnet.h"

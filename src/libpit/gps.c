@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "script.h"
+#include "sys.h"
 #include "pit_io.h"
 #include "gps.h"
 #include "sock.h"

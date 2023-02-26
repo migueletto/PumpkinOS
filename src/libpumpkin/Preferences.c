@@ -1,8 +1,5 @@
 #include <PalmOS.h>
 
-#include <time.h>
-#include <sys/time.h>
-
 #include "thread.h"
 #include "mutex.h"
 #include "sys.h"
@@ -446,8 +443,8 @@ static void initPrefs(SystemPreferencesType *prefs) {
   char country[8], language[16];
   UInt16 index;
   Int16 n;
-  struct tm tm;
-  time_t dt;
+  sys_tm_t tm;
+  uint64_t dt;
   int dst;
   Boolean found;
 

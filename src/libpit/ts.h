@@ -7,7 +7,7 @@ extern "C" {
 
 time_t time2ts(int day, int month, int year, int hour, int min, int sec);
 
-void ts2time(time_t ts, int *day, int *month, int *year, int *wday, int *hour, int *min, int *sec);
+void ts2time(uint64_t ts, int *day, int *month, int *year, int *wday, int *hour, int *min, int *sec);
 
 #ifdef __cplusplus
 }

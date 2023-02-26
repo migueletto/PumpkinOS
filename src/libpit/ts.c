@@ -1,15 +1,15 @@
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
+#include <stdio.h>
 
+#include "sys.h"
 #include "ts.h"
 #include "timeutc.h"
+#include "xalloc.h"
 
 time_t time2ts(int day, int month, int year, int hour, int min, int sec) {
-  struct tm tm;
+  sys_tm_t tm;
 
-  memset(&tm, 0, sizeof(tm));
+  xmemset(&tm, 0, sizeof(tm));
   tm.tm_year = year - 1900;
   tm.tm_mon = month - 1;
   tm.tm_mday = day;
@@ -20,8 +20,8 @@ time_t time2ts(int day, int month, int year, int hour, int min, int sec) {
   return timeutc(&tm);
 }
 
-void ts2time(time_t ts, int *day, int *month, int *year, int *wday, int *hour, int *min, int *sec) {
-  struct tm tm;
+void ts2time(uint64_t ts, int *day, int *month, int *year, int *wday, int *hour, int *min, int *sec) {
+  sys_tm_t tm;
 
   utctime(&ts, &tm);
 

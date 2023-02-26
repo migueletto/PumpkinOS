@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <signal.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "thread.h"
 #include "sys.h"

@@ -2,11 +2,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
-#include <time.h>
-#include <sys/time.h>
 
 //#define VISUAL_HEAP 1
 
+#include "sys.h"
 #include "heap.h"
 #ifdef VISUAL_HEAP
 #include "pwindow.h"
@@ -19,7 +18,6 @@
 #include "emulation/emupalmosinc.h"
 #include "mem.h"
 #include "dlmalloc.h"
-#include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
 

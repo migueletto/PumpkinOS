@@ -5,18 +5,16 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <time.h>
-#include <sys/time.h>
 #include <linux/fb.h>
 #include <linux/input.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/select.h>
 
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "bytes.h"
 #include "debug.h"
 #include "xalloc.h"

@@ -1,11 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
-#include <sys/time.h>
 
-#include "timeutc.h"
 #include "sys.h"
+#include "timeutc.h"
 
 #define YEAR0 1970
 
@@ -21,9 +19,9 @@ static int leap_days(int year) {
   return (year/4 - (YEAR0 - 1)/4) - (year/100 - (YEAR0 - 1)/100) + (year/400 - (YEAR0 - 1)/400);
 }
 
-time_t timeutc(struct tm *tm) {
+uint64_t timeutc(sys_tm_t *tm) {
+  uint64_t t;
   int year;
-  time_t t;
 
   year = tm->tm_year + 1900;
 
@@ -37,13 +35,9 @@ time_t timeutc(struct tm *tm) {
   return t;
 }
 
-struct tm *utctime(const time_t *t, struct tm *tm) {
+sys_tm_t *utctime(const uint64_t *t, sys_tm_t *tm) {
   sys_gmtime(t, tm);
   return tm;
-}
-
-int timeofday(struct timeval *tv) {
-  return gettimeofday(tv, NULL);
 }
 
 int daysinmonth(int year, int month) {

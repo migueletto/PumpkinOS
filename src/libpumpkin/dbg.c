@@ -1,12 +1,10 @@
 #include <PalmOS.h>
 
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "pumpkin.h"
 #include "bytes.h"
-#include "sys.h"
 #include "rgb.h"
 #include "debug.h"
 #include "xalloc.h"

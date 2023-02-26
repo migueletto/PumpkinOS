@@ -379,8 +379,8 @@ uint64_t sys_time(void) {
 }
 
 int sys_isdst(void) {
-  struct tm tm;
-  time_t t;
+  sys_tm_t tm;
+  uint64_t t;
 
   t = sys_time();
   sys_localtime(&t, &tm);
@@ -388,50 +388,128 @@ int sys_isdst(void) {
   return tm.tm_isdst > 0 ? 1 : 0;
 }
 
-time_t sys_timegm(struct tm *tm) {
+uint64_t sys_timegm(sys_tm_t *tm) {
+  struct tm stm;
+  uint64_t t;
+
+  xmemset(&stm, 0, sizeof(stm));
+  stm.tm_year = tm->tm_year;
+  stm.tm_mon = tm->tm_mon;
+  stm.tm_mday = tm->tm_mday;
+  stm.tm_wday = tm->tm_wday;
+  stm.tm_hour = tm->tm_hour;
+  stm.tm_min = tm->tm_min;
+  stm.tm_sec = tm->tm_sec;
+  stm.tm_isdst = tm->tm_isdst;
 #ifdef WINDOWS32
-  return _mkgmtime(tm);
+  t = _mkgmtime(&stm);
 #else
-  return timegm(tm);
+  t = timegm(&stm);
 #endif
+
+  return t;
 }
 
-time_t sys_timelocal(struct tm *tm) {
+uint64_t sys_timelocal(sys_tm_t *tm) {
+  struct tm stm;
+  uint64_t t;
+
+  xmemset(&stm, 0, sizeof(stm));
+  stm.tm_year = tm->tm_year;
+  stm.tm_mon = tm->tm_mon;
+  stm.tm_mday = tm->tm_mday;
+  stm.tm_wday = tm->tm_wday;
+  stm.tm_hour = tm->tm_hour;
+  stm.tm_min = tm->tm_min;
+  stm.tm_sec = tm->tm_sec;
+  stm.tm_isdst = tm->tm_isdst;
+
 #ifdef WINDOWS
-  return mktime(tm);
+  t = mktime(&stm);
 #endif
 #ifdef LINUX
-  return timelocal(tm);
+  t = timelocal(&stm);
 #endif
 #ifdef SERENITY
-  return mktime(tm);
+  t = mktime(&stm);
 #endif
+
+  return t;
 }
 
-int sys_gmtime(const time_t *t, struct tm *tm) {
+int sys_gmtime(const uint64_t *t, sys_tm_t *tm) {
+  time_t tt;
 #ifdef WINDOWS
-  struct tm *ltm;
   // the MSVC implementation of gmtime() is already thread safe
-  ltm = gmtime(t);
-  xmemcpy(tm, ltm, sizeof(struct tm));
-  return 0;
+  struct tm *stm;
+  tt = *t;
+  stm = gmtime(&tt);
+  tm->tm_year = stm->tm_year;
+  tm->tm_mon = stm->tm_mon;
+  tm->tm_mday = stm->tm_mday;
+  tm->tm_wday = stm->tm_wday;
+  tm->tm_hour = stm->tm_hour;
+  tm->tm_min = stm->tm_min;
+  tm->tm_sec = stm->tm_sec;
+  tm->tm_isdst = stm->tm_isdst;
 #else
-  gmtime_r(t, tm);
-  return 0;
+  struct tm st;
+  tt = *t;
+  gmtime_r(&tt, &st);
+  tm->tm_year = st.tm_year;
+  tm->tm_mon = st.tm_mon;
+  tm->tm_mday = st.tm_mday;
+  tm->tm_wday = st.tm_wday;
+  tm->tm_hour = st.tm_hour;
+  tm->tm_min = st.tm_min;
+  tm->tm_sec = st.tm_sec;
+  tm->tm_isdst = st.tm_isdst;
 #endif
+
+  return 0;
 }
 
-int sys_localtime(const time_t *t, struct tm *tm) {
+int sys_localtime(const uint64_t *t, sys_tm_t *tm) {
+  time_t tt;
 #ifdef WINDOWS
-  struct tm *ltm;
+  struct tm *stm;
   // the MSVC implementation of localtime() is already thread safe
-  ltm = localtime(t);
-  xmemcpy(tm, ltm, sizeof(struct tm));
-  return 0;
+  tt = *t;
+  stm = localtime(&tt);
+  tm->tm_year = stm->tm_year;
+  tm->tm_mon = stm->tm_mon;
+  tm->tm_mday = stm->tm_mday;
+  tm->tm_wday = stm->tm_wday;
+  tm->tm_hour = stm->tm_hour;
+  tm->tm_min = stm->tm_min;
+  tm->tm_sec = stm->tm_sec;
+  tm->tm_isdst = stm->tm_isdst;
 #else
-  localtime_r(t, tm);
-  return 0;
+  struct tm st;
+  tt = *t;
+  localtime_r(&tt, &st);
+  tm->tm_year = st.tm_year;
+  tm->tm_mon = st.tm_mon;
+  tm->tm_mday = st.tm_mday;
+  tm->tm_wday = st.tm_wday;
+  tm->tm_hour = st.tm_hour;
+  tm->tm_min = st.tm_min;
+  tm->tm_sec = st.tm_sec;
+  tm->tm_isdst = st.tm_isdst;
 #endif
+
+  return 0;
+}
+
+int sys_timeofday(sys_timeval_t *tv) {
+  struct timeval t;
+  int r;
+
+  r = gettimeofday(&t, NULL);
+  tv->tv_sec = t.tv_sec;
+  tv->tv_usec = t.tv_usec;
+
+  return r;
 }
 
 char *sys_getenv(char *name) {
@@ -845,7 +923,7 @@ int sys_fdisset(int n, sys_fdset_t *fds) {
   return ((*fds) & (1L << n));
 }
 
-int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, struct timeval *timeout) {
+int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
   fd_set rfds, wfds, efds;
   int r, i, s;
 #ifdef WINDOWS
@@ -1812,17 +1890,25 @@ int64_t sys_get_clock(void) {
   return ts;
 }
 
-int sys_get_clock_ts(struct timespec *ts) {
+int sys_get_clock_ts(sys_timespec_t *ts) {
+  struct timespec t;
+  int r;
+
 #if WINDOWS
-  return clock_gettime(CLOCK_REALTIME, ts);
+  r = clock_gettime(CLOCK_REALTIME, &t);
 #else
 #if _POSIX_TIMERS > 0
-  return clock_gettime(CLOCK_REALTIME, ts);
+  r = clock_gettime(CLOCK_REALTIME, &t);
 #else
   debug(DEBUG_ERROR, "SYS", "clock_gettime is not implemented");
-  return -1;
+  r = -1;
 #endif
 #endif
+
+  ts->tv_sec = t.tv_sec;
+  ts->tv_nsec = t.tv_nsec;
+
+  return r;
 }
 
 int64_t sys_get_process_time(void) {
@@ -2460,7 +2546,7 @@ int sys_socket_bind_connect(char *src_host, int src_port, char *host, int port, 
 #endif
 }
 
-static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, struct timeval *tv, int nf) {
+static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv, int nf) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
   struct sockaddr_in6 *addr6;
@@ -2516,7 +2602,7 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, struct ti
   return csock;
 }
 
-int sys_socket_accept(int sock, char *host, int hlen, int *port, struct timeval *tv) {
+int sys_socket_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv) {
 #ifdef WINDOWS
   fd_t *f;
   int csock = -1;
@@ -2575,7 +2661,7 @@ int sys_socket_sendto(int sock, char *host, int port, unsigned char *buf, int n)
   return r;
 }
 
-static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, struct timeval *tv, int nf) {
+static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, sys_timeval_t *tv, int nf) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
   struct sockaddr_in6 *addr6;
@@ -2618,7 +2704,7 @@ static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigne
   return r;
 }
 
-int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, struct timeval *tv) {
+int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, sys_timeval_t *tv) {
   int r = -1;
 
 #ifdef WINDOWS

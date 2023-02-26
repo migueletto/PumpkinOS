@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -168,8 +166,8 @@ static int authenticate(char *s, char *correct_user, char *correct_password) {
 static time_t parse_date(char *date) {
   int day, year, hour, min, sec, i, j, n;
   char wday[4], mon[4], tz[4];
-  struct tm tm;
-  time_t t;
+  sys_tm_t tm;
+  uint64_t t;
 
   // Wed, 23 Mar 2016 14:19:36 GMT
   
@@ -854,7 +852,7 @@ static int unescape_url(char *url) {
 static int httpd_action(void *arg) {
   httpd_server_t *server;
   http_connection_t con;
-  struct timeval tv;
+  sys_timeval_t tv;
   ext_type_t *type;
   char host[MAX_HOST];
   node_t *node;

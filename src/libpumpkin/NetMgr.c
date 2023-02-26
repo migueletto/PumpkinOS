@@ -2,8 +2,6 @@
 
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "pwindow.h"
 #include "sys.h"
@@ -270,7 +268,7 @@ Int16 NetLibSend(UInt16 libRefNum, NetSocketRef socket, void *bufP, UInt16 bufLe
 
 Int16 NetLibReceive(UInt16 libRefNum, NetSocketRef socket, void *bufP, UInt16 bufLen, UInt16 flags, void *fromAddrP, UInt16 *fromLenP, Int32 timeout, Err *errP) {
   NetSocketAddrINType *inAddr;
-  struct timeval tv, *tvp;
+  sys_timeval_t tv, *tvp;
   char host[32];
   int port, nread = 0;
   Int16 r = -1;
@@ -431,7 +429,7 @@ Int16 NetLibSocketListen(UInt16 libRefnum, NetSocketRef socket, UInt16 queueLen,
 
 Int16 NetLibSocketAccept(UInt16 libRefnum, NetSocketRef socket, NetSocketAddrType *sockAddrP, Int16 *addrLenP, Int32 timeout, Err *errP) {
   NetSocketAddrINType *inAddr;
-  struct timeval tv;
+  sys_timeval_t tv;
   char host[32];
   int port, r;
 
@@ -502,7 +500,7 @@ Int32 NetUWriteN(NetSocketRef fd, UInt8 *bufP, UInt32 numBytes) {
 }
 
 Int16 NetLibSelect(UInt16 libRefNum, UInt16 width, NetFDSetType *readFDs, NetFDSetType *writeFDs, NetFDSetType *exceptFDs, Int32 timeout, Err *errP) {
-  struct timeval tv;
+  sys_timeval_t tv;
   Boolean hasUserEvent;
   Int16 r;
 

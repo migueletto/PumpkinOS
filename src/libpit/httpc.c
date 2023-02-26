@@ -2,15 +2,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "thread.h"
+#include "sys.h"
 #include "pit_io.h"
 #include "filter.h"
 #include "secure.h"
 #include "httpc.h"
-#include "sys.h"
 #include "ptr.h"
 #include "debug.h"
 #include "xalloc.h"

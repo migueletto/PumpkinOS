@@ -1,7 +1,6 @@
 #include <PalmOS.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "resource.h"
 #include "thread.h"
 #include "mutex.h"

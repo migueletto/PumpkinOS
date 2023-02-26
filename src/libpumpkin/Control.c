@@ -1,8 +1,5 @@
 #include <PalmOS.h>
 
-#include <time.h>
-#include <sys/time.h>
-
 #include "sys.h"
 #include "pwindow.h"
 #include "vfs.h"

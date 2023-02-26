@@ -4,8 +4,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "loadfile.h"
 #include "sys.h"

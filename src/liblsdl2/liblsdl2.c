@@ -2,19 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <SDL2/SDL.h>
 #ifdef SDL_MIXER
 #include <SDL2/SDL_mixer.h>
 #endif
 
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "media.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "ptr.h"
 #include "debug.h"
 #include "xalloc.h"

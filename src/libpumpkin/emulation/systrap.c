@@ -1,14 +1,13 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include <PalmOS.h>
 #include <VFSMgr.h>
 #include <DLServer.h>
 #include <Helper.h>
 
+#include "sys.h"
 #include "mutex.h"
 #include "AppRegistry.h"
 #include "storage.h"

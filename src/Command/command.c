@@ -1,14 +1,12 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "sys.h"
 #include "script.h"
 #include "pfont.h"
 #include "graphic.h"
 #include "ptr.h"
 #include "vfs.h"
-#include "sys.h"
 #include "filter.h"
 #include "shell.h"
 #include "telnet.h"

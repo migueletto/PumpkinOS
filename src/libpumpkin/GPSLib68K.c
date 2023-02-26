@@ -1,17 +1,15 @@
 #include <PalmOS.h>
 #include <GPSLib68K.h>
 
-#include <time.h>
-#include <sys/time.h>
 #include <math.h>
 
+#include "sys.h"
 #include "thread.h"
 #include "script.h"
 #include "pwindow.h"
 #include "pfont.h"
 #include "graphic.h"
 #include "image.h"
-#include "sys.h"
 #include "pit_io.h"
 #include "ptr.h"
 #include "vfs.h"
