@@ -7,19 +7,15 @@ extern "C" {
 
 int little_endian(void);
 
-#ifdef WINDOWS32
-uint16_t htole16(uint16_t host_16bits);
-uint32_t htole32(uint32_t host_32bits);
-uint16_t le16toh(uint16_t little_endian_16bits);
-uint32_t le32toh(uint32_t little_endian_32bits);
+uint16_t sys_htole16(uint16_t host_16bits);
+uint32_t sys_htole32(uint32_t host_32bits);
+uint16_t sys_le16toh(uint16_t little_endian_16bits);
+uint32_t sys_le32toh(uint32_t little_endian_32bits);
 
-uint16_t htobe16(uint16_t host_16bits);
-uint32_t htobe32(uint32_t host_32bits);
-uint16_t be16toh(uint16_t big_endian_16bits);
-uint32_t be32toh(uint32_t big_endian_32bits);
-#else
-#include <endian.h>
-#endif
+uint16_t sys_htobe16(uint16_t host_16bits);
+uint32_t sys_htobe32(uint32_t host_32bits);
+uint16_t sys_be16toh(uint16_t big_endian_16bits);
+uint32_t sys_be32toh(uint32_t big_endian_32bits);
 
 #ifdef __cplusplus
 }

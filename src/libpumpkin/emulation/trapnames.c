@@ -1271,7 +1271,7 @@ static void getp(uint32_t addr, char *a, char *buf) {
       sys_sprintf(buf, "L['%s']", st);
     } else if (!sys_strcmp(a, "frmp")) {
       W = m68k_read_memory_16(addr+104);
-      W = be16toh(W);
+      W = sys_be16toh(W);
       sys_sprintf(buf, "Form[%u]", W);
     } else if (!sys_strcmp(a, "fobjp")) {
       sys_sprintf(buf, "FormObj");
@@ -1280,15 +1280,15 @@ static void getp(uint32_t addr, char *a, char *buf) {
       sys_sprintf(buf, "Control[%u]", W);
     } else if (!sys_strcmp(a, "lstp")) {
       W = m68k_read_memory_16(addr);
-      W = be16toh(W);
+      W = sys_be16toh(W);
       sys_sprintf(buf, "List[%u]", W);
     } else if (!sys_strcmp(a, "fldp")) {
       W = m68k_read_memory_16(addr);
-      W = be16toh(W);
+      W = sys_be16toh(W);
       sys_sprintf(buf, "Field[%u]", W);
     } else if (!sys_strcmp(a, "tblp")) {
       W = m68k_read_memory_16(addr);
-      W = be16toh(W);
+      W = sys_be16toh(W);
       sys_sprintf(buf, "Table[%u]", W);
     } else if (!sys_strcmp(a, "sclp")) {
       W = m68k_read_memory_16(addr+8);
