@@ -20,9 +20,9 @@
 #include "xalloc.h"
 
 typedef struct {
-  int fb_num, input_num;
+  int fb_num, kbd_num, mouse_num;
   int width, height, depth;
-  int fb_fd, input_fd, len;
+  int fb_fd, kbd_fd, mouse_fd, len;
   int xmin, xmax, ymin, ymax;
   int x, y, buttons, button_down;
   uint16_t *p16;
@@ -50,9 +50,9 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
   uint32_t value;
   int32_t ivalue;
   uint16_t type, code;
-  //fd_set fds;
-  //struct timeval tv;
-  int i, len, nread, hast, hasx, hasy, down, ev = -1;
+  struct timeval tv;
+  fd_set fds;
+  int i, nfds, len, nread, hast, hasx, hasy, down, ev = -1;
 
   hast = hasx = hasy = down = 0;
   len = sizeof(struct timeval) + 8; // struct timeval can be 16 bytes or 24 bytes
@@ -61,14 +61,15 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
   *button = 0;
 
   for (; ev == -1;) {
-    //int  FD_ISSET(int fd, fd_set *set);
-    //FD_ZERO(&fds);
-    //FD_SET(fb->input_fd, &fds);
-    //tv.tv_sec = 0;
-    //tv.tv_usec = us;
+    FD_ZERO(&fds);
+    FD_SET(fb->kbd_fd, &fds);
+    FD_SET(fb->mouse_fd, &fds);
+    nfds = fb->kbd_fd > fb->mouse_fd ? fb->kbd_fd : fb->mouse_fd;
+    tv.tv_sec = 0;
+    tv.tv_usec = us;
 
-    switch (sys_read_timeout(fb->input_fd, buf, len, &nread, us)) {
-    //switch (select(fb->input_fd+1, &fds, NULL, NULL, &tv)) {
+    //switch (sys_read_timeout(fb->mouse_fd, buf, len, &nread, us)) {
+    switch (select(nfds+1, &fds, NULL, NULL, &tv)) {
       case -1:
         debug(DEBUG_ERROR, "FB", "input_event error");
         return -1;
@@ -76,8 +77,14 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
         ev = 0;
         break;
       default:
-        //sys_read_timeout(fb->input_fd, buf, len, &nread, 0);
+        nread = 0;
+        if (FD_ISSET(fb->kbd_fd, &fds)) {
+          sys_read_timeout(fb->kbd_fd, buf, len, &nread, 0);
+        } else {
+          sys_read_timeout(fb->mouse_fd, buf, len, &nread, 0);
+        }
         debug(DEBUG_TRACE, "FB", "read %d bytes", nread);
+
         if (nread == len) {
           i = len - 8; // ignore struct timeval
           i += get2l(&type, buf, i);
@@ -172,7 +179,7 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
   struct fb_fix_screeninfo finfo;
   struct input_absinfo abs_feat;
   int xmin, xmax, ymin, ymax;
-  int fb_fd, input_fd;
+  int fb_fd, kbd_fd, mouse_fd;
   char device[32];
   void *p;
   window_t *w;
@@ -182,19 +189,28 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
     fb_fd = open(device, O_RDWR);
     if (fb_fd == -1) debug_errno("FB", "open fb");
 
-    snprintf(device, sizeof(device)-1, "/dev/input/event%d", fb->input_num);
-    input_fd = open(device, O_RDONLY);
-    if (input_fd == -1) debug_errno("FB", "open input");
+    snprintf(device, sizeof(device)-1, "/dev/input/event%d", fb->kbd_num);
+    kbd_fd = open(device, O_RDONLY);
+    if (kbd_fd == -1) debug_errno("FB", "open keyboard");
 
-    if (fb_fd != -1 && input_fd != -1) {
-      debug(DEBUG_INFO, "FB", "framebuffer %d open", fb->fb_num);
-      debug(DEBUG_INFO, "FB", "input %d open", fb->input_num);
+    if (fb->mouse_num != fb->kbd_num) {
+      snprintf(device, sizeof(device)-1, "/dev/input/event%d", fb->mouse_num);
+      mouse_fd = open(device, O_RDONLY);
+      if (mouse_fd == -1) debug_errno("FB", "open mouse");
+    } else {
+      mouse_fd = kbd_fd;
+    }
+
+    if (fb_fd != -1 && kbd_fd != -1 && mouse_fd != -1) {
+      debug(DEBUG_INFO, "FB", "framebuffer %d open as fd %d", fb->fb_num, fb_fd);
+      debug(DEBUG_INFO, "FB", "keyboard %d open as fd %d", fb->kbd_num, kbd_fd);
+      debug(DEBUG_INFO, "FB", "mouse %d open as fd %d", fb->mouse_num, mouse_fd);
 
       if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) != -1 &&
           ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo) != -1) {
         debug(DEBUG_INFO, "FB", "framebuffer %s %dx%d bpp %d type %d", finfo.id, vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, finfo.type);
 
-        if (ioctl(input_fd, EVIOCGABS(ABS_X), &abs_feat) == 0) {
+        if (ioctl(mouse_fd, EVIOCGABS(ABS_X), &abs_feat) == 0) {
           debug(DEBUG_INFO, "FB", "input ABS_X: %d (min:%d max:%d flat:%d fuzz:%d)",
             abs_feat.value, abs_feat.minimum, abs_feat.maximum, abs_feat.flat, abs_feat.fuzz);
           xmin = abs_feat.minimum;
@@ -203,7 +219,7 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
           xmin = 0;
           xmax = vinfo.xres - 1;
         }
-        if (ioctl(input_fd, EVIOCGABS(ABS_Y), &abs_feat) == 0) {
+        if (ioctl(mouse_fd, EVIOCGABS(ABS_Y), &abs_feat) == 0) {
           debug(DEBUG_INFO, "FB", "input ABS_Y: %d (min:%d max:%d flat:%d fuzz:%d)",
             abs_feat.value, abs_feat.minimum, abs_feat.maximum, abs_feat.flat, abs_feat.fuzz);
           ymin = abs_feat.minimum;
@@ -215,7 +231,8 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
 
         if ((p = (uint16_t *)mmap(0, finfo.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0)) != NULL) {
           fb->fb_fd = fb_fd;
-          fb->input_fd = input_fd;
+          fb->kbd_fd = kbd_fd;
+          fb->mouse_fd = mouse_fd;
           fb->p = p;
           fb->width = vinfo.xres;
           fb->height = vinfo.yres;
@@ -239,11 +256,13 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
       } else {
         debug_errno("FB", "ioctl");
         close(fb_fd);
-        close(input_fd);
+        close(kbd_fd);
+        if (mouse_fd != kbd_fd) close(mouse_fd);
       }
     } else {
       if (fb_fd != -1) close(fb_fd);
-      if (input_fd != -1) close(input_fd);
+      if (kbd_fd != -1) close(kbd_fd);
+      if (mouse_fd != -1 && mouse_fd != kbd_fd) close(mouse_fd);
     }
   } else {
     debug(DEBUG_ERROR, "FB", "only one window can be created");
@@ -260,12 +279,16 @@ static int window_destroy(window_t *window) {
     if (fb->fb_fd > 0) {
       munmap(fb->p, fb->len);
       close(fb->fb_fd);
-      fb->fb_fd = 0;
     }
-    if (fb->input_fd > 0) {
-      close(fb->input_fd);
-      fb->input_fd = 0;
+    if (fb->kbd_fd > 0) {
+      close(fb->kbd_fd);
     }
+    if (fb->mouse_fd > 0 && fb->mouse_fd != fb->kbd_fd) {
+      close(fb->mouse_fd);
+    }
+
+    fb->fb_fd = 0;
+    fb->kbd_fd = 0;
   }
 
   return 0;
@@ -418,7 +441,7 @@ static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
   fb_t *fb = (fb_t *)window;
   int button, ev = 0;
 
-  if (fb->input_fd > 0) {
+  if (fb->kbd_fd > 0) {
     if (fb->button_down) {
       debug(DEBUG_TRACE, "FB", "restoring button down");
       ev = WINDOW_BUTTONDOWN;
@@ -453,12 +476,17 @@ static void window_status(window_t *window, int *x, int *y, int *buttons) {
 }
 
 static int libfb_setup(int pe) {
-  script_int_t fb_num, input_num;
+  script_int_t fb_num, kbd_num, mouse_num;
   int r = -1;
 
-  if (script_get_integer(pe, 0, &fb_num) == 0 && script_get_integer(pe, 1, &input_num) == 0) {
+  if (script_get_integer(pe, 0, &fb_num) == 0 &&
+      script_get_integer(pe, 1, &kbd_num) == 0 &&
+      script_get_integer(pe, 2, &mouse_num) == 0) {
+
     fb.fb_num = fb_num;
-    fb.input_num = input_num;
+    fb.kbd_num = kbd_num;
+    fb.mouse_num = mouse_num;
+    debug(DEBUG_INFO, "FB", "setup %d %d %d", fb.fb_num, fb.kbd_num, fb.mouse_num);
     r = 0;
   }
 
