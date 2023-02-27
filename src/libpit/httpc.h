@@ -38,7 +38,7 @@ typedef struct http_client_t {
   int response_ok;
   int response_code;
   int response_end_header;
-  FILE *response_fd;
+  int response_fd;
 
   // callback
   void *data;

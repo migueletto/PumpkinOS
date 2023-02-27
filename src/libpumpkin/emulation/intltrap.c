@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <stdarg.h>
-
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
@@ -114,7 +111,7 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //case intlTxtNameToEncoding:
     //case intlIntlStrictChecks:
     default:
-      snprintf(buf, sizeof(buf)-1, "IntlDispatch selector %d not mapped", sel);
+      sys_snprintf(buf, sizeof(buf)-1, "IntlDispatch selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }

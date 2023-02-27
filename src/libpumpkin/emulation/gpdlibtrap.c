@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <stdarg.h>
-
 #include <PalmOS.h>
 #include <PalmCompatibility.h>
 #include <VFSMgr.h>
@@ -79,7 +76,7 @@ void palmos_gpdlibtrap(uint16_t trap) {
       }
       break;
     default:
-      snprintf(buf, sizeof(buf)-1, "GPDLib trap 0x%04X not mapped", trap);
+      sys_snprintf(buf, sizeof(buf)-1, "GPDLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }

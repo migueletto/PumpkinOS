@@ -1,7 +1,5 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <string.h>
 #include "armem.h"
 
 
@@ -20,9 +18,9 @@ struct ArmMem {
 
 
 struct ArmMem *memInit(void) {
-  struct ArmMem *mem = (struct ArmMem*)malloc(sizeof(*mem));
+  struct ArmMem *mem = (struct ArmMem*)sys_malloc(sizeof(*mem));
   
-  if (mem) memset(mem, 0, sizeof (*mem));
+  if (mem) sys_memset(mem, 0, sizeof (*mem));
   
   return mem;
 }
@@ -30,11 +28,11 @@ struct ArmMem *memInit(void) {
 
 void memDeinit(struct ArmMem *mem) {
   if (mem) {
-    free(mem);
+    sys_free(mem);
   }
 }
 
-bool memRegionAdd(struct ArmMem *mem, uint32_t pa, uint32_t sz, ArmMemAccessF aF, void *uD) {
+int memRegionAdd(struct ArmMem *mem, uint32_t pa, uint32_t sz, ArmMemAccessF aF, void *uD) {
   uint8_t i;
   
   //check for intersection with another region
@@ -44,7 +42,7 @@ bool memRegionAdd(struct ArmMem *mem, uint32_t pa, uint32_t sz, ArmMemAccessF aF
     if (!mem->regions[i].sz)
       continue;
     if ((mem->regions[i].pa <= pa && mem->regions[i].pa + mem->regions[i].sz > pa) || (pa <= mem->regions[i].pa && pa + sz > mem->regions[i].pa))
-      return false;    //intersection -> fail
+      return 0;    //intersection -> fail
   }
   
   
@@ -58,17 +56,17 @@ bool memRegionAdd(struct ArmMem *mem, uint32_t pa, uint32_t sz, ArmMemAccessF aF
       mem->regions[i].aF = aF;
       mem->regions[i].uD = uD;
     
-      return true;
+      return 1;
     }
   }
   
   //fail miserably
   
-  return false;  
+  return 0;  
 }
 
-bool memAccess(struct ArmMem *mem, uint32_t addr, uint8_t size, uint8_t accessType, void *buf) {
-  bool ret = false, wantWrite = !!(accessType &~ MEM_ACCCESS_FLAG_NOERROR);
+int memAccess(struct ArmMem *mem, uint32_t addr, uint8_t size, uint8_t accessType, void *buf) {
+  int ret = 0, wantWrite = !!(accessType &~ MEM_ACCCESS_FLAG_NOERROR);
   uint8_t i;
   
   for (i = 0; i < NUM_MEM_REGIONS; i++) {

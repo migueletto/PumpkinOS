@@ -1,8 +1,6 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
+#include "sys.h"
 #include "icache.h"
 #include "cp15.h"
 #include "CPU.h"
@@ -75,7 +73,7 @@ struct ArmBankedRegs {
 struct ArmCpu {
 	uint32_t regs[16];		//current active regs as per current mode
 	uint32_t SPSR;
-	bool N, Z, C, V, Q, T, I, F;
+	int N, Z, C, V, Q, T, I, F;
 	uint8_t M;
 
 	uint32_t curInstrPC;
@@ -136,12 +134,12 @@ static void cpuPrvSetPC(struct ArmCpu *cpu, uint32_t pc)	//with interworking
 	cpu->T = (pc & 1);
 }
 
-static uint32_t cpuPrvGetRegNotPC(struct ArmCpu *cpu, uint8_t reg, bool wasT, bool specialPC)
+static uint32_t cpuPrvGetRegNotPC(struct ArmCpu *cpu, uint8_t reg, int wasT, int specialPC)
 {
 	return cpu->regs[reg];
 }
 
-static uint32_t cpuPrvGetReg(struct ArmCpu *cpu, uint8_t reg, bool wasT, bool specialPC)
+static uint32_t cpuPrvGetReg(struct ArmCpu *cpu, uint8_t reg, int wasT, int specialPC)
 {
 	uint32_t ret;
 
@@ -313,7 +311,7 @@ static void cpuPrvException(struct ArmCpu *cpu, uint32_t vector_pc, uint32_t lr,
 }
 
 //input addr is VA not MVA
-static void cpuPrvHandleMemErr(struct ArmCpu *cpu, uint32_t addr, uint8_t sz, bool write, bool instrFetch, uint8_t fsr)
+static void cpuPrvHandleMemErr(struct ArmCpu *cpu, uint32_t addr, uint8_t sz, int write, int instrFetch, uint8_t fsr)
 {
 	debug(DEBUG_ERROR, "EmuPalmOS", "access error to 0x%08x with fsr %u from 0x%08x", addr, fsr, cpu->regs[REG_NO_PC]);
 	
@@ -339,10 +337,10 @@ static void cpuPrvHandleMemErr(struct ArmCpu *cpu, uint32_t addr, uint8_t sz, bo
 	emupalmos_finish(1);
 }
 
-static uint32_t cpuPrvArmAdrMode_1(struct ArmCpu *cpu, uint32_t instr, bool* carryOutP, bool wasT, bool specialPC)
+static uint32_t cpuPrvArmAdrMode_1(struct ArmCpu *cpu, uint32_t instr, int* carryOutP, int wasT, int specialPC)
 {
 	uint8_t v, a;
-	bool co = cpu->C;	//be default carry out = C flag
+	int co = cpu->C;	//be default carry out = C flag
 	uint32_t ret;
 
 	if (instr & 0x02000000UL) {				//immed
@@ -527,7 +525,7 @@ ARM_MODE_2_T	is flag for T
 
 
 */
-static uint8_t cpuPrvArmAdrMode_2(struct ArmCpu *cpu, uint32_t instr, uint32_t* addBeforeP, uint32_t* addWritebackP, bool wasT, bool specialPC)
+static uint8_t cpuPrvArmAdrMode_2(struct ArmCpu *cpu, uint32_t instr, uint32_t* addBeforeP, uint32_t* addWritebackP, int wasT, int specialPC)
 {
 	uint8_t reg, shift;
 	uint32_t val;
@@ -608,11 +606,11 @@ same comments as for addr mode 2 apply
 #define ARM_MODE_3_INV	0x80
 */
 
-static uint8_t cpuPrvArmAdrMode_3(struct ArmCpu *cpu, uint32_t instr, uint32_t* addBeforeP, uint32_t* addWritebackP, bool wasT, bool specialPC)
+static uint8_t cpuPrvArmAdrMode_3(struct ArmCpu *cpu, uint32_t instr, uint32_t* addBeforeP, uint32_t* addWritebackP, int wasT, int specialPC)
 {
 	uint8_t reg;
 	uint32_t val;
-	bool S, H, L;
+	int S, H, L;
 
 	reg = (instr >> 16) & 0x0F;
 	
@@ -677,7 +675,7 @@ static uint8_t cpuPrvArmAdrMode_3(struct ArmCpu *cpu, uint32_t instr, uint32_t* 
 	#define ARM_MODE_4_S	0x80	//S bit set?
 */
 
-static uint8_t cpuPrvArmAdrMode_4(struct ArmCpu *cpu, uint32_t instr, bool usesUsrRegs, uint16_t* regs)
+static uint8_t cpuPrvArmAdrMode_4(struct ArmCpu *cpu, uint32_t instr, int usesUsrRegs, uint16_t* regs)
 {
 	uint8_t reg;
 	
@@ -741,7 +739,7 @@ static uint8_t cpuPrvArmAdrMode_5(struct ArmCpu *cpu, uint32_t instr, uint32_t* 
 	return reg;
 }
 
-static void cpuPrvSetPSR(struct ArmCpu *cpu, uint8_t mask, bool privileged, bool R, uint32_t val)
+static void cpuPrvSetPSR(struct ArmCpu *cpu, uint8_t mask, int privileged, int R, uint32_t val)
 {
 	if (R)	//setting SPSR in sys or usr mode is no harm since they arent used, so just do it without any checks
 		cpu->SPSR = val;
@@ -755,14 +753,14 @@ static void cpuPrvSetPSR(struct ArmCpu *cpu, uint8_t mask, bool privileged, bool
 	}
 }
 
-static bool cpuPrvSignedAdditionOverflows(int32_t a, int32_t b, int32_t sum)
+static int cpuPrvSignedAdditionOverflows(int32_t a, int32_t b, int32_t sum)
 {	
 	int32_t c;
 	
 	return __builtin_add_overflow(a, b, &c);
 }
 
-static bool cpuPrvSignedSubtractionOverflows(int32_t a, int32_t b, int32_t diff)	//diff = a - b
+static int cpuPrvSignedSubtractionOverflows(int32_t a, int32_t b, int32_t diff)	//diff = a - b
 {
 	int32_t c;
 	
@@ -774,7 +772,7 @@ static int32_t cpuPrvMedia_signedSaturate32(int32_t sign)
 	return (sign < 0) ? -0x80000000UL : 0x7ffffffful;
 }
 
-static bool cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, bool write, bool priviledged, uint8_t* fsrP, uint8_t memAccessFlags)
+static int cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, int write, int priviledged, uint8_t* fsrP, uint8_t memAccessFlags)
 {
 	uint32_t pa;
 	
@@ -782,14 +780,14 @@ static bool cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t
 		if (fsrP)
 			*fsrP = 1;	//alignment fault;
 		debug(DEBUG_ERROR, "EmuPalmOS", "size is not a power of two (size %d)", size);
-		return false;
+		return 0;
 	}
 	
 	if (vaddr & (size - 1)) {	//bad alignment
 		if (fsrP)
 			*fsrP = 1;	//alignment fault;
 		debug(DEBUG_ERROR, "EmuPalmOS", "bad alignment (vaddr 0x%08X, size %d)", vaddr, size);
-		return false;
+		return 0;
 	}
 	
 	//FCSE
@@ -798,7 +796,7 @@ static bool cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t
 	
 	if (!mmuTranslate(cpu->mmu, vaddr, priviledged, write, &pa, fsrP, NULL)) {
 		debug(DEBUG_ERROR, "EmuPalmOS", "mmuTranslate failed (vaddr 0x%08X)", vaddr);
-		return false;
+		return 0;
 	}
 	
 	if (!memAccess(cpu->mem, pa, size, memAccessFlags | (write ? MEM_ACCESS_TYPE_WRITE : MEM_ACCESS_TYPE_READ), buf)) {
@@ -807,27 +805,27 @@ static bool cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t
 			*fsrP = 10;	//external abort on non-linefetch
 		
 		debug(DEBUG_ERROR, "EmuPalmOS", "memAccess failed (vaddr 0x%08X)", vaddr);
-		return false;
+		return 0;
 	}
 	
-	return true;
+	return 1;
 }
 
 //for internal use
-static bool cpuPrvMemOp(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, bool write, bool priviledged, uint8_t* fsrP)
+static int cpuPrvMemOp(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, int write, int priviledged, uint8_t* fsrP)
 {
 	if (cpuPrvMemOpEx(cpu, buf, vaddr, size, write, priviledged, fsrP, 0))
-		return true;
+		return 1;
 	
 	//fprintf(stderr, "%c of %u bytes to 0x%08lx failed!\n", (int)(write ? 'W' : 'R'), (unsigned)size, (unsigned long)vaddr);
 	
-	return false;
+	return 0;
 }
 
 //for external use
-bool cpuMemOpExternal(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, bool write)	//for external use
+int cpuMemOpExternal(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, int write)	//for external use
 {
-	return cpuPrvMemOpEx(cpu, buf, vaddr, size, write, true, NULL, MEM_ACCCESS_FLAG_NOERROR);
+	return cpuPrvMemOpEx(cpu, buf, vaddr, size, write, 1, NULL, MEM_ACCCESS_FLAG_NOERROR);
 }
 
 static uint64_t cpuPrv64FromHalves(uint64_t hi, uint32_t lo)
@@ -854,22 +852,22 @@ static uint64_t cpuPrv64FromHalves(uint64_t hi, uint32_t lo)
 	return t.val;
 }
 
-static bool cpuPrvSignedSubtractionWithPossibleCarryOverflows(uint32_t a, uint32_t b, uint32_t diff)	//diff = a - b
+static int cpuPrvSignedSubtractionWithPossibleCarryOverflows(uint32_t a, uint32_t b, uint32_t diff)	//diff = a - b
 {
 	return ((a ^ b) & (a ^ diff)) >> 31;
 }
 
 
-static bool cpuPrvSignedAdditionWithPossibleCarryOverflows(uint32_t a, uint32_t b, uint32_t sum)
+static int cpuPrvSignedAdditionWithPossibleCarryOverflows(uint32_t a, uint32_t b, uint32_t sum)
 {
 	return ((a ^ b ^ 0x80000000UL) & (a ^ sum)) >> 31;
 }
 
 
-static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool privileged, bool specialPC/* for thumb*/)
+static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, int wasT , int privileged, int specialPC/* for thumb*/)
 {
 	uint32_t op1, op2, res, sr, ea, memVal32, addBefore, addAfter;
-	bool specialInstr = false, ok;
+	int specialInstr = 0, ok;
 	uint8_t mode, cpNo, fsr;
 	uint16_t regsList;
 	uint16_t memVal16;
@@ -951,7 +949,7 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 			break;
 		
 		case 15:	//NV
-			specialInstr = true;
+			specialInstr = 1;
 		
 			switch ((instr >> 24) & 0x0f) {
 				case 5:
@@ -993,16 +991,16 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							case 0:		//SWP
 								
 								ea = cpuPrvGetRegNotPC(cpu, (instr >> 16) & 0x0F, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 4, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 4, 0, 0, fsr);
 									goto instr_done;
 								}
 								op1 = memVal32;
 								memVal32 = cpuPrvGetRegNotPC(cpu, instr & 0x0F, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, true, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, 1, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 4, true, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 4, 1, 0, fsr);
 									goto instr_done;
 								}
 								cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, op1);
@@ -1011,16 +1009,16 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							case 4:		//SWPB
 								
 								ea = cpuPrvGetRegNotPC(cpu, (instr >> 16) & 0x0F, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 1, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 1, 0, 0, fsr);
 									goto instr_done;
 								}
 								op1 = memVal8;
 								memVal8 = cpuPrvGetRegNotPC(cpu, instr & 0x0F, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, true, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, 1, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 1, true, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 1, 1, 0, fsr);
 									goto instr_done;
 								}
 								cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, op1);
@@ -1106,9 +1104,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 						switch (mode & ARM_MODE_3_TYPE) {
 							case ARM_MODE_3_H:
 								
-								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 2, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 2, 0, 0, fsr);
 									goto instr_done;
 								}
 								cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, memVal16);
@@ -1116,9 +1114,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 								
 							case ARM_MODE_3_SH:
 								
-								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 2, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 2, 0, 0, fsr);
 									goto instr_done;
 								}
 								cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, (int32_t)(int16_t)memVal16);
@@ -1126,9 +1124,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							
 							case ARM_MODE_3_SB:
 								
-								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 1, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 1, 0, 0, fsr);
 									goto instr_done;
 								}
 								cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, (int32_t)(int8_t)memVal8);
@@ -1136,9 +1134,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							
 							case ARM_MODE_3_D:
 							
-								ok = cpuPrvMemOp(cpu, doubleMem, ea, 8, false, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, doubleMem, ea, 8, 0, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 8, false, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 8, 0, 0, fsr);
 									goto instr_done;
 								}
 								
@@ -1152,9 +1150,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							case ARM_MODE_3_H:
 								
 								memVal16 = cpuPrvGetReg(cpu, (instr >> 12) & 0x0F, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, true, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, &memVal16, ea, 2, 1, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 2, true, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 2, 1, 0, fsr);
 									goto instr_done;
 								}
 								break;
@@ -1168,9 +1166,9 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 							
 								doubleMem[0] = cpuPrvGetRegNotPC(cpu, ((instr >> 12) & 0x0F) + 0, wasT, specialPC);
 								doubleMem[1] = cpuPrvGetRegNotPC(cpu, ((instr >> 12) & 0x0F) + 1, wasT, specialPC);
-								ok = cpuPrvMemOp(cpu, doubleMem, ea, 8, true, privileged, &fsr);
+								ok = cpuPrvMemOp(cpu, doubleMem, ea, 8, 1, privileged, &fsr);
 								if (!ok) {
-									cpuPrvHandleMemErr(cpu, ea, 8, true, false, fsr);
+									cpuPrvHandleMemErr(cpu, ea, 8, 1, 0, fsr);
 									goto instr_done;
 								}
 								break;
@@ -1398,7 +1396,7 @@ static void cpuPrvExecInstr(struct ArmCpu *cpu, uint32_t instr, bool wasT , bool
 			
 data_processing:							//data processing
 			{
-				bool cOut, setFlags = !!(instr & 0x00100000UL);
+				int cOut, setFlags = !!(instr & 0x00100000UL);
 				
 				op2 = cpuPrvArmAdrMode_1(cpu, instr, &cOut, wasT, specialPC);
 				
@@ -1481,7 +1479,7 @@ data_processing:							//data processing
 					case 9:			//TEQ
 						if (!setFlags) {		//MSR CPSR, imm
 							
-							cpuPrvSetPSR(cpu, (instr >> 16) & 0x0F, privileged, false, cpuPrvROR(instr & 0xFF, ((instr >> 8) & 0x0F) * 2));
+							cpuPrvSetPSR(cpu, (instr >> 16) & 0x0F, privileged, 0, cpuPrvROR(instr & 0xFF, ((instr >> 8) & 0x0F) * 2));
 							goto instr_done;
 						}
 						op1 = cpuPrvGetReg(cpu, (instr >> 16) & 0x0F, wasT, specialPC);
@@ -1500,7 +1498,7 @@ data_processing:							//data processing
 					case 11:		//CMN
 						if (!setFlags) {		//MSR SPSR, imm
 							
-							cpuPrvSetPSR(cpu, (instr >> 16) & 0x0F, privileged, true, cpuPrvROR(instr & 0xFF, ((instr >> 8) & 0x0F) * 2));
+							cpuPrvSetPSR(cpu, (instr >> 16) & 0x0F, privileged, 1, cpuPrvROR(instr & 0xFF, ((instr >> 8) & 0x0F) * 2));
 							goto instr_done;
 						}
 						op1 = cpuPrvGetReg(cpu, (instr >> 16) & 0x0F, wasT, specialPC);
@@ -1572,24 +1570,24 @@ load_store_mode_2:
 		if (mode & ARM_MODE_2_INV)
 			goto invalid_instr;
 		if (mode & ARM_MODE_2_T)
-			privileged = false;
+			privileged = 0;
 		
 		ea = cpuPrvGetReg(cpu, mode & ARM_MODE_2_REG, wasT, specialPC);
 		ea += addBefore;
 		
 		if (mode & ARM_MODE_2_LOAD) {
 			if (mode & ARM_MODE_2_WORD) {
-				ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, false, privileged, &fsr);
+				ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, 0, privileged, &fsr);
 				if (!ok) {
-					cpuPrvHandleMemErr(cpu, ea, 4, false, false, fsr);
+					cpuPrvHandleMemErr(cpu, ea, 4, 0, 0, fsr);
 					goto instr_done;
 				}
 				cpuPrvSetReg(cpu, (instr >> 12) & 0x0F, memVal32);
 			}
 			else {
-				ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, false, privileged, &fsr);
+				ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, 0, privileged, &fsr);
 				if (!ok) {
-					cpuPrvHandleMemErr(cpu, ea, 1, false, false, fsr);
+					cpuPrvHandleMemErr(cpu, ea, 1, 0, 0, fsr);
 					goto instr_done;
 				}
 				cpuPrvSetRegNotPC(cpu, (instr >> 12) & 0x0F, memVal8);
@@ -1600,17 +1598,17 @@ load_store_mode_2:
 			
 			if (mode & ARM_MODE_2_WORD) {
 				memVal32 = op1;
-				ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, true, privileged, &fsr);
+				ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, 1, privileged, &fsr);
 				if (!ok) {
-					cpuPrvHandleMemErr(cpu, ea, 4, true, false, fsr);
+					cpuPrvHandleMemErr(cpu, ea, 4, 1, 0, fsr);
 					goto instr_done;
 				}
 			}
 			else {
 				memVal8 = op1;
-				ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, true, privileged, &fsr);
+				ok = cpuPrvMemOp(cpu, &memVal8, ea, 1, 1, privileged, &fsr);
 				if (!ok) {
-					cpuPrvHandleMemErr(cpu, ea, 1, true, false, fsr);
+					cpuPrvHandleMemErr(cpu, ea, 1, 1, 0, fsr);
 					goto instr_done;
 				}
 			}
@@ -1622,7 +1620,7 @@ load_store_mode_2:
 	case 8:
 		case 9:		//load/store multiple
 			{
-				bool userModeRegs = false, copySPSR = false, isLoad = !!(instr & 0x00100000UL);
+				int userModeRegs = 0, copySPSR = 0, isLoad = !!(instr & 0x00100000UL);
 				uint32_t loadedPc = 0xfffffffful, origBaseRegVal;	//so we can restore on load failure, even if we loaded into it
 				uint8_t idx, regNo;
 				
@@ -1630,9 +1628,9 @@ load_store_mode_2:
 				origBaseRegVal = ea = cpuPrvGetRegNotPC(cpu, mode & ARM_MODE_4_REG, wasT, specialPC);
 				if (mode & ARM_MODE_4_S) {		//sort out what "S" means
 					if (isLoad && (regsList & (1 << REG_NO_PC)))
-						copySPSR = true;
+						copySPSR = 1;
 					else
-						userModeRegs = true;
+						userModeRegs = 1;
 				}
 
 				for (idx = 0; idx < 16; idx++) {
@@ -1662,7 +1660,7 @@ load_store_mode_2:
 					ok = cpuPrvMemOp(cpu, &memVal32, ea, 4, !isLoad, privileged, &fsr);
 					if (!ok) {
 						debug(1, "XXX", "cpuPrvHandleMemErr idx=%d", idx);
-						cpuPrvHandleMemErr(cpu, ea, 4, !isLoad, false, fsr);
+						cpuPrvHandleMemErr(cpu, ea, 4, !isLoad, 0, fsr);
 						if (regsList & (1 << (mode & ARM_MODE_4_REG)))				//restore base if we had already overwritten it
 							cpuPrvSetReg(cpu, mode & ARM_MODE_4_REG, origBaseRegVal);
 						goto instr_done;
@@ -1797,14 +1795,14 @@ load_store_mode_2:
 					//uint32_t addr = cpu->regs[1];
 					//uint8_t ch;
 					
-					//while (cpuPrvMemOp(cpu, &ch, addr++, 1, false, true, &fsr) && ch)
+					//while (cpuPrvMemOp(cpu, &ch, addr++, 1, 0, 1, &fsr) && ch)
 						//fprintf(stderr, "%c", ch);
 				}
 				else if (cpu->regs[0] == 3) {
 					
 					//uint8_t ch;
 					
-					//if (cpuPrvMemOp(cpu, &ch, cpu->regs[1], 1, false, true, &fsr) && ch)
+					//if (cpuPrvMemOp(cpu, &ch, cpu->regs[1], 1, 0, 1, &fsr) && ch)
 						//fprintf(stderr, "%c", ch);
 				}
 				else if (cpu->regs[0] == 0x132) {
@@ -1830,7 +1828,7 @@ instr_done:
 static void cpuPrvCycleArm(struct ArmCpu *cpu)
 {
 	uint32_t instr, pc, fetchPc;
-	bool privileged, ok;
+	int privileged, ok;
 	uint8_t fsr;
 
 //debug(1, "XXX", "cpuPrvCycleArm");
@@ -1850,19 +1848,19 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 //debug(1, "XXX", "cpuPrvCycleArm ok=%d", ok);
 	if (!ok) {
 debug(1, "XXX", "cpuPrvCycleArm pc=0x%08X mem error", pc);
-		cpuPrvHandleMemErr(cpu, pc, 4, false, true, fsr);
+		cpuPrvHandleMemErr(cpu, pc, 4, 0, 1, fsr);
 	} else {
     //disasm(pc, instr);
 
 		cpu->regs[REG_NO_PC] += 4;
-		cpuPrvExecInstr(cpu, instr, false, privileged, false);
+		cpuPrvExecInstr(cpu, instr, 0, privileged, 0);
 	}
 }
 
 
 static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 	
-	bool privileged, vB, specialPC = false, ok;
+	int privileged, vB, specialPC = 0, ok;
 	uint32_t t, instr = 0xE0000000UL /*most likely thing*/, pc, fetchPc;
 	uint16_t instrT, v16;
 	uint8_t v8, fsr;
@@ -1878,7 +1876,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 	
 	ok = icacheFetch(cpu->ic, fetchPc, 2, privileged, &fsr, &instrT);
 	if (!ok) {
-		cpuPrvHandleMemErr(cpu, pc, 2, false, true, fsr);
+		cpuPrvHandleMemErr(cpu, pc, 2, 0, 1, fsr);
 		return;						//exit here so that debugger can see us execute first instr of execption handler
 	}
 	cpu->regs[REG_NO_PC] += 2;
@@ -1933,7 +1931,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 			if (instrT & 0x0800) {			// LDR(3)
 				
 				instr |= 0x059F0000UL | ((instrT & 0xFF) << 2) | ((instrT & 0x700) << 4);
-				specialPC = true;
+				specialPC = 1;
 			}
 			else if (instrT & 0x0400) {		// ADD(4) CMP(3) MOV(3) BX
 				
@@ -1947,7 +1945,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 					case 0:			// ADD(4)
 						
 						//special handling required for PC destination
-						t = cpuPrvGetReg(cpu, vD, true, false) + cpuPrvGetReg(cpu, v8, true, false);
+						t = cpuPrvGetReg(cpu, vD, 1, 0) + cpuPrvGetReg(cpu, v8, 1, 0);
 						if (vD == 15)
 							t |= 1;
 						cpuPrvSetReg(cpu, vD, t);
@@ -1962,7 +1960,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 					case 2:			// MOV(3)
 						
 						//special handling required for PC destination
-						t = cpuPrvGetReg(cpu, v8, true, false);
+						t = cpuPrvGetReg(cpu, v8, 1, 0);
 						if (vD == 15)
 							t |= 1;
 						cpuPrvSetReg(cpu, vD, t);
@@ -2054,7 +2052,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 			instr |= ((instrT & 0x700) << 4) | (instrT &0xFF) | 0x028D0F00UL;	//encode add to SP, line below sets the bit needed to reference PC instead when needed)
 			if (!(instrT & 0x0800)) {
 				instr |= 0x00020000UL;
-				specialPC = true;
+				specialPC = 1;
 			}
 			break;
 		
@@ -2155,7 +2153,7 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 	}
 
 instr_execute:
-	cpuPrvExecInstr(cpu, instr, true, privileged, specialPC);
+	cpuPrvExecInstr(cpu, instr, 1, privileged, specialPC);
 	
 instr_done:
 	return;
@@ -2166,15 +2164,15 @@ undefined:
 	goto instr_execute;
 }
 
-struct ArmCpu* cpuInit(uint32_t pc, struct ArmMem *mem, bool xscale, bool omap, uint32_t cpuid, uint32_t cacheId)
+struct ArmCpu* cpuInit(uint32_t pc, struct ArmMem *mem, int xscale, int omap, uint32_t cpuid, uint32_t cacheId)
 {
-	struct ArmCpu *cpu = (struct ArmCpu*)malloc(sizeof(*cpu));
+	struct ArmCpu *cpu = (struct ArmCpu*)sys_malloc(sizeof(*cpu));
 	
 	if (cpu) {
-		memset(cpu, 0, sizeof (*cpu));
+		sys_memset(cpu, 0, sizeof (*cpu));
 	
-		cpu->I = true;	//start w/o interrupts in supervisor mode
-		cpu->F = true;
+		cpu->I = 1;	//start w/o interrupts in supervisor mode
+		cpu->F = 1;
 		cpu->M = ARM_SR_MODE_SVC;
 	
 		cpu->mem = mem;
@@ -2193,7 +2191,7 @@ void cpuDeinit(struct ArmCpu *cpu) {
     cp15Deinit(cpu->cp15);
     icacheDeinit(cpu->ic);
     mmuDeinit(cpu->mmu);
-    free(cpu);
+    sys_free(cpu);
   }
 }
 
@@ -2216,7 +2214,7 @@ void cpuCycle(struct ArmCpu *cpu) {
 		cpuPrvCycleArm(cpu);
 }
 
-void cpuIrq(struct ArmCpu *cpu, bool fiq, bool raise) {	//unraise when acknowledged
+void cpuIrq(struct ArmCpu *cpu, int fiq, int raise) {	//unraise when acknowledged
 
 	if (fiq) {
 		if (raise) {

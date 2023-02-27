@@ -43,7 +43,7 @@ typedef struct http_connection_t {
   char *res_header_name[MAX_REQ_HEADERS];
   char *res_header_value[MAX_REQ_HEADERS];
   char *authorization;
-  FILE *body_fd;
+  int body_fd;
   char body_buf[MAX_PACKET];
   char *user;
   char *password;
@@ -59,7 +59,7 @@ typedef struct http_connection_t {
 
 int httpd_string(http_connection_t *con, int code, char *str, char *mime);
 int httpd_file(http_connection_t *con, char *filename);
-int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, uint64_t mtime);
+int httpd_file_stream(http_connection_t *con, int fd, char *mime, uint64_t mtime);
 int httpd_set_header(http_connection_t *con, char *name, char *value);
 int httpd_reply(http_connection_t *con, int code);
 

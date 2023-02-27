@@ -1,15 +1,12 @@
 #include <PalmOS.h>
 #include <GPSLib68K.h>
 
-#include <math.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "script.h"
 #include "pwindow.h"
 #include "pfont.h"
 #include "graphic.h"
-#include "image.h"
 #include "pit_io.h"
 #include "ptr.h"
 #include "vfs.h"
@@ -132,7 +129,7 @@ static int gpslib_callback(io_arg_t *arg) {
             priv->position.lat = (Int32)(gps->lat * (2147483648.0 / 180.0));
             priv->position.altMSL = (float)gps->height;  // meters
             //priv->position.altWGS84 = (float)gps->height;  // meters
-            priv->velocity.track = (float)(gps->course * M_PI / 180.0);  // in radians
+            priv->velocity.track = (float)(gps->course * sys_pi() / 180.0);  // in radians
             priv->velocity.speed = (float)gps->speed;  // m/s
             priv->time.seconds = gps->hour*24*60*60 + gps->min*60 + gps->sec;  // seconds since midnight (UTC)
             debug(DEBUG_INFO, "GPSLIB", "conv lon=%d, lat=%d, alt=%.1f, speed=%.1f, track=%.1f",
@@ -378,8 +375,8 @@ Err GPSGetSatellites(const UInt16 refNum, GPSSatDataType *sat) {
       sat[i].status = gpsSatEphMask;
       if (i >= 4 && i <= 7) sat[i].status |= gpsSatUsedMask;
       sat[i].snr = 30 + i*2;
-      sat[i].azimuth = (i*20) * M_PI / 180.0;
-      sat[i].elevation = (30 + i*5) * M_PI / 180.0;
+      sat[i].azimuth = (i*20) * sys_pi() / 180.0;
+      sat[i].elevation = (30 + i*5) * sys_pi() / 180.0;
       debug(DEBUG_INFO, "GPSLIB", "GPSGetSatellites %d %.1f %.1f", i, sat[i].azimuth, sat[i].elevation);
     }
   }

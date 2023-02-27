@@ -22,11 +22,11 @@
 #if EMULATION_LEVEL == EMULATION_NONE
 #  define _Palm_va_list char *
 #else
-#  define _Palm_va_list va_list
+#  define _Palm_va_list sys_va_list
 #  include <stdarg.h>
 #endif
 #else
-#  define _Palm_va_list va_list
+#  define _Palm_va_list sys_va_list
 #  include <stdarg.h>
 #endif
 

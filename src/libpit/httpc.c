@@ -20,7 +20,7 @@ static void http_parse_headers(char *buf, http_client_t *hc) {
   char *p;
 
   if (!sys_strncmp(buf, "HTTP/1.", 7)) {
-    if (sscanf(buf, "HTTP/1.%d %d ", &minor, &code) == 2) {
+    if (sys_sscanf(buf, "HTTP/1.%d %d ", &minor, &code) == 2) {
       hc->response_ok = 1;
       hc->response_code = code;
 
@@ -69,7 +69,7 @@ static void free_http_client(void *p) {
     if (hc->request_body) xfree(hc->request_body);
     if (hc->request_path) xfree(hc->request_path);
     if (hc->request_host) xfree(hc->request_host);
-    if (hc->response_fd) fclose(hc->response_fd);
+    if (hc->response_fd) sys_close(hc->response_fd);
     xfree(hc);
   }
 }
@@ -105,9 +105,9 @@ static int io_callback(io_arg_t *arg) {
       sys_memset(header, 0, sizeof(header));
 
       if (hc->request_type) {
-        snprintf(header, sizeof(header)-1, "%s %s HTTP/1.1\r\nUser-Agent: %s\r\nAccept: */*\r\nHost: %s:%d\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", hc->request_method, hc->request_path, hc->user_agent, hc->request_host, hc->request_port, hc->request_type, hc->request_body_length);
+        sys_snprintf(header, sizeof(header)-1, "%s %s HTTP/1.1\r\nUser-Agent: %s\r\nAccept: */*\r\nHost: %s:%d\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", hc->request_method, hc->request_path, hc->user_agent, hc->request_host, hc->request_port, hc->request_type, hc->request_body_length);
       } else {
-        snprintf(header, sizeof(header)-1, "%s %s HTTP/1.1\r\nUser-Agent: %s\r\nAccept: */*\r\nHost: %s:%d\r\nConnection: close\r\n\r\n", hc->request_method, hc->request_path, hc->user_agent, hc->request_host, hc->request_port);
+        sys_snprintf(header, sizeof(header)-1, "%s %s HTTP/1.1\r\nUser-Agent: %s\r\nAccept: */*\r\nHost: %s:%d\r\nConnection: close\r\n\r\n", hc->request_method, hc->request_path, hc->user_agent, hc->request_host, hc->request_port);
       }
 
       if (hc->s) {
@@ -160,7 +160,7 @@ static int io_callback(io_arg_t *arg) {
 
       if (hc->response_end_header) {
         if (arg->len > 0) {
-          fwrite(arg->buf, 1, arg->len, hc->response_fd);
+          sys_write(hc->response_fd, arg->buf, arg->len);
         }
       } else {
         for (i = 0; i < arg->len; i++) {
@@ -170,12 +170,11 @@ static int io_callback(io_arg_t *arg) {
             }
             if (hc->linelen == 0) {
               hc->response_end_header = 1;
-              if ((hc->response_fd = tmpfile()) == NULL) {
-                debug_errno("WEB", "tmpfile");
+              if ((hc->response_fd = sys_mkstemp()) == -1) {
                 r = 1;
               } else {
                 if (arg->len - (i+1) > 0) {
-                  fwrite(arg->buf + i+1, 1, arg->len - (i+1), hc->response_fd);
+                  sys_write(hc->response_fd, arg->buf + i+1, arg->len - (i+1));
                   i = arg->len;
                 }
               }
@@ -201,7 +200,7 @@ static int io_callback(io_arg_t *arg) {
     case IO_DISCONNECT:
       if (!hc->response_ok) debug(DEBUG_ERROR, "WEB", "http server reply code not found");
       if (!hc->response_end_header) debug(DEBUG_ERROR, "WEB", "http server reply header did not end properly");
-      if (hc->response_fd) rewind(hc->response_fd);
+      if (hc->response_fd) sys_seek(hc->response_fd, 0, SYS_SEEK_SET);
       if (hc->callback) {
         hc->tag = TAG_HTTP_CLIENT;
         if ((ptr = ptr_new(hc, free_http_client)) != -1) {

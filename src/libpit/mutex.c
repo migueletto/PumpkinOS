@@ -1,4 +1,3 @@
-#include <stdarg.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <errno.h>
@@ -271,7 +270,7 @@ sema_t *semaphore_create(int count) {
         t = sys_get_clock();
         n2 = t >> 32;
         n3 = t & 0xFFFFFFFF;
-        snprintf(name, sizeof(name)-1, "/pit_%u%u%u.sem", n1, n2, n3);
+        sys_snprintf(name, sizeof(name)-1, "/pit_%u%u%u.sem", n1, n2, n3);
         sem_unlink(name);
         if ((sem->s = sem_open(name, O_CREAT | O_EXCL, S_IWUSR | S_IRUSR, count)) == (sem_t *)SEM_FAILED) {
           debug_errno("MUTEX", "sem_open \"%s\"", name);

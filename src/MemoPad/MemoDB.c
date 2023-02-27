@@ -12,10 +12,7 @@
  *****************************************************************************/
 
 #include <PalmOS.h>
-
 #include <PalmUtils.h>
-#include <stddef.h>
-#include <debug.h>
 
 #include "MemoDB.h"
 #include "MemoMain.h"
@@ -60,7 +57,7 @@ static void MemoLocalizeAppInfo (MemoAppInfoPtr appInfoP)
 			{
 			if (stringsP[i][0] != '\0')
 				//DmStrCopy(appInfoP, (UInt32) nilP->categoryLabels[i], stringsP[i]);
-				DmStrCopy(appInfoP, offsetof(MemoAppInfoType, categoryLabels) + i*dmCategoryLength, stringsP[i]);
+				DmStrCopy(appInfoP, OffsetOf(MemoAppInfoType, categoryLabels) + i*dmCategoryLength, stringsP[i]);
 			}
 		
 		MemPtrFree(stringsP);

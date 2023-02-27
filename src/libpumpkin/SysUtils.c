@@ -132,7 +132,7 @@ Char *SysStringByIndex(UInt16 resID, UInt16 index, Char *strP, UInt16 maxLen) {
           i += pumpkin_getstr(&str, p, i);
         }
         if (j < max && prefix && str) {
-          snprintf(strP, maxLen, "%s%s", prefix, str);
+          sys_snprintf(strP, maxLen, "%s%s", prefix, str);
           debug(DEBUG_TRACE, PALMOS_MODULE, "SysStringByIndex resID %d index %d \"%s\"", resID, index, strP);
         }
         MemHandleUnlock(h);
@@ -207,7 +207,7 @@ void SysQSort(void *baseP, UInt16 numOfElements, Int16 width, CmpFuncPtr comparF
 
   module->comparF = comparF;
   module->other = other;
-  qsort(baseP, numOfElements, width, compare);
+  sys_qsort(baseP, numOfElements, width, compare);
   module->comparF = NULL;
 }
 
@@ -221,7 +221,7 @@ void SysQSortP(void *baseP, UInt32 numOfElements, Int32 width, CmpFuncPPtr compa
 
   module->comparFP = comparFP;
   module->otherP = otherP;
-  qsort(baseP, numOfElements, width, compareP);
+  sys_qsort(baseP, numOfElements, width, compareP);
   module->comparFP = NULL;
 }
 

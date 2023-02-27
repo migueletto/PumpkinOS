@@ -28,7 +28,6 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 #ifndef __ARMV7_TBL__
 #define __ARMV7_TBL__
-#include <stdint.h>
 #include "darm-tbl.h"
 extern darm_enctype_t armv7_instr_types[256];
 extern darm_enctype_t thumb2_instr_types[256];

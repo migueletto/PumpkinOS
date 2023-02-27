@@ -27,10 +27,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdio.h>
-#include <ctype.h>
-#include <stdint.h>
-#include <string.h>
+#include "sys.h"
 #include "darm.h"
 #include "darm-internal.h"
 
@@ -77,7 +74,7 @@ void darm_init(darm_t *d)
 {
     // initialize the entire darm state in order to make sure that no members
     // contain undefined data
-    memset(d, 0, sizeof(darm_t));
+    sys_memset(d, 0, sizeof(darm_t));
     d->instr = I_INVLD;
     d->instr_type = T_INVLD;
     d->shift_type = S_INVLD;
@@ -570,7 +567,7 @@ int darm_str2(const darm_t *d, darm_str_t *str, int lowercase)
         // just lowercase the entire object, including null-bytes
         char *buf = (char *) str;
         for (uint32_t i = 0; i < sizeof(darm_str_t); i++) {
-            buf[i] = tolower(buf[i]);
+            buf[i] = sys_tolower(buf[i]);
         }
     }
     return 0;
@@ -617,6 +614,7 @@ int darm_reglist(uint16_t reglist, char *out)
     return out - base;
 }
 
+#if 0
 void darm_dump(const darm_t *d)
 {
     printf(
@@ -721,3 +719,4 @@ void darm_dump(const darm_t *d)
 
     printf("\n");
 }
+#endif

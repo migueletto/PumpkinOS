@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
 #include <SDL2/SDL.h>
 #ifdef SDL_MIXER
 #include <SDL2/SDL_mixer.h>

@@ -264,46 +264,46 @@ static void fillObjectNames(form_edit_t *data) {
 
     switch (FrmGetObjectType(data->formP, index)) {
       case frmFieldObj:
-        snprintf(buf, sizeof(buf)-1, "Field %d", obj.field->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Field %d", obj.field->id);
         break;
       case frmControlObj:
-        snprintf(buf, sizeof(buf)-1, "Control %d", obj.control->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Control %d", obj.control->id);
         break;
       case frmListObj:
-        snprintf(buf, sizeof(buf)-1, "List %d", obj.list->id);
+        sys_snprintf(buf, sizeof(buf)-1, "List %d", obj.list->id);
         break;
       case frmTitleObj:
-        snprintf(buf, sizeof(buf)-1, "Title");
+        sys_snprintf(buf, sizeof(buf)-1, "Title");
         break;
       case frmTableObj:
-        snprintf(buf, sizeof(buf)-1, "Table %d", obj.table->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Table %d", obj.table->id);
         break;
       case frmBitmapObj:
-        snprintf(buf, sizeof(buf)-1, "Bitmap %d", obj.bitmap->rscID);
+        sys_snprintf(buf, sizeof(buf)-1, "Bitmap %d", obj.bitmap->rscID);
         break;
       case frmLineObj:
-        snprintf(buf, sizeof(buf)-1, "Line");
+        sys_snprintf(buf, sizeof(buf)-1, "Line");
         break;
       case frmFrameObj:
-        snprintf(buf, sizeof(buf)-1, "Frame");
+        sys_snprintf(buf, sizeof(buf)-1, "Frame");
         break;
       case frmRectangleObj:
-        snprintf(buf, sizeof(buf)-1, "Rect");
+        sys_snprintf(buf, sizeof(buf)-1, "Rect");
         break;
       case frmLabelObj:
-        snprintf(buf, sizeof(buf)-1, "Label %d", obj.label->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Label %d", obj.label->id);
         break;
       case frmPopupObj:
-        snprintf(buf, sizeof(buf)-1, "Popup %d %d", obj.popup->controlID, obj.popup->listID);
+        sys_snprintf(buf, sizeof(buf)-1, "Popup %d %d", obj.popup->controlID, obj.popup->listID);
         break;
       case frmGraffitiStateObj:
-        snprintf(buf, sizeof(buf)-1, "Graffiti");
+        sys_snprintf(buf, sizeof(buf)-1, "Graffiti");
         break;
       case frmGadgetObj:
-        snprintf(buf, sizeof(buf)-1, "Gadget %d", obj.gadget->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Gadget %d", obj.gadget->id);
         break;
       case frmScrollBarObj:
-        snprintf(buf, sizeof(buf)-1, "Scroll %d", obj.scrollBar->id);
+        sys_snprintf(buf, sizeof(buf)-1, "Scroll %d", obj.scrollBar->id);
         break;
     }
     data->itemText[index] = xstrdup(buf);
@@ -809,7 +809,7 @@ static Boolean eventHandler(EventType *event) {
         index = FrmGetObjectIndex(frm, objectCtl);
         ctl = (ControlType *)FrmGetObjectPtr(frm, index);
         CtlSetLabel(ctl, s);
-        snprintf(data->title, MAX_TITLE-1, "%s: %s", data->rtitle, s);
+        sys_snprintf(data->title, MAX_TITLE-1, "%s: %s", data->rtitle, s);
       } else {
         index = FrmGetObjectIndex(frm, objectCtl);
         FrmHideObject(frm, index);
@@ -846,7 +846,7 @@ static Boolean eventHandler(EventType *event) {
         index = FrmGetObjectIndex(frm, objectList);
         lst = (ListType *)FrmGetObjectPtr(frm, index);
         s = LstGetSelectionText(lst, data->selected);
-        snprintf(data->title, MAX_TITLE-1, "%s: %s", data->rtitle, s);
+        sys_snprintf(data->title, MAX_TITLE-1, "%s: %s", data->rtitle, s);
         FrmSetTitle(frm, data->title);
       }
       break;

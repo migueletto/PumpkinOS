@@ -27,9 +27,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+#include "sys.h"
 #include "darm.h"
 #include "darm-internal.h"
 #include "thumb-tbl.h"
@@ -603,31 +601,31 @@ char *darm_thumb2_str(darm_t *d)
         }
     }
 
-    offset += sprintf(stringbuf + offset, "%s",
+    offset += sys_sprintf(stringbuf + offset, "%s",
         thumb2_instruction_strings[index]);
 
     if(d->Rd != R_INVLD) {
-        offset += sprintf(stringbuf+offset, "rd%i,", d->Rd);
+        offset += sys_sprintf(stringbuf+offset, "rd%i,", d->Rd);
     }
 
     if(d->Rt != R_INVLD) {
-        offset += sprintf(stringbuf+offset, "rt%i,", d->Rt2);
+        offset += sys_sprintf(stringbuf+offset, "rt%i,", d->Rt2);
     }
 
     if(d->Rt2 != R_INVLD) {
-        offset += sprintf(stringbuf+offset, "rt2%i,", d->Rt);
+        offset += sys_sprintf(stringbuf+offset, "rt2%i,", d->Rt);
     }
 
     if(d->Rn != R_INVLD) {
-        offset += sprintf(stringbuf+offset, "rn%i,", d->Rn);
+        offset += sys_sprintf(stringbuf+offset, "rn%i,", d->Rn);
     }
 
     if(d->Rm != R_INVLD) {
-        offset += sprintf(stringbuf+offset, "rm%i ", d->Rm);
+        offset += sys_sprintf(stringbuf+offset, "rm%i ", d->Rm);
     }
 
     if(d->I == B_SET) {
-        offset += sprintf(stringbuf+offset, "#0x%x", d->imm);
+        offset += sys_sprintf(stringbuf+offset, "#0x%x", d->imm);
     }
 
     return stringbuf;

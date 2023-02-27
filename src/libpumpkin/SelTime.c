@@ -89,7 +89,7 @@ static Boolean SelectOneTimeHandleEvent(EventType *eventP) {
             switch (ctl->id) {
               case 12105: // hour
                 if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
-                  n = atoi(s);
+                  n = sys_atoi(s);
                   if (up) {
                     n = (n == (is24h ? 23 : 12)) ? 0 : n+1;
                   } else {
@@ -101,7 +101,7 @@ static Boolean SelectOneTimeHandleEvent(EventType *eventP) {
                 break;
               case 12106: // minute (high digit)
                 if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
-                  n = atoi(s);
+                  n = sys_atoi(s);
                   if (up) {
                     n = (n == 5) ? 0 : n+1;
                   } else {
@@ -113,7 +113,7 @@ static Boolean SelectOneTimeHandleEvent(EventType *eventP) {
                 break;
               case 12107: // minute (low digit)
                 if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
-                  n = atoi(s);
+                  n = sys_atoi(s);
                   if (up) {
                     n = (n == 9) ? 0 : n+1;
                   } else {
@@ -205,15 +205,15 @@ Boolean SelectOneTime(Int16 *hour, Int16 *minute, const Char *titleP) {
 
   if (FrmDoDialog(frm) == 12112) { // "OK" button
     if ((s = (char *)CtlGetLabel(hctl)) != NULL) {
-      *hour = atoi(s);
+      *hour = sys_atoi(s);
       am = CtlGetValue(amctl);
       if (is24h && !am) *hour += 12;
     }
     if ((s = (char *)CtlGetLabel(m1ctl)) != NULL) {
-      *minute = atoi(s) * 10;
+      *minute = sys_atoi(s) * 10;
     }
     if ((s = (char *)CtlGetLabel(m2ctl)) != NULL) {
-      *minute += atoi(s);
+      *minute += sys_atoi(s);
     }
     r = true;
   }

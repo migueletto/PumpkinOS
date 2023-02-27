@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-
 #include <PalmOS.h>
 #include <PceNativeCall.h>
 #include <VFSMgr.h>
@@ -165,24 +160,24 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
 
     s = getTrapName(trap);
     if (s) {
-      snprintf(name, sizeof(name)-1, "%s", s);
+      sys_snprintf(name, sizeof(name)-1, "%s", s);
     } else {
-      snprintf(name, sizeof(name)-1, "trap %04X", trap);
+      sys_snprintf(name, sizeof(name)-1, "trap %04X", trap);
     }
 
     if (sel != 0xFFFF) {
-      snprintf(selector, sizeof(selector)-1, " selector %d", sel);
+      sys_snprintf(selector, sizeof(selector)-1, " selector %d", sel);
     } else {
       selector[0] = 0;
     }
 
     if (arg >= 0) {
-      snprintf(argument, sizeof(argument)-1, " argument %d", arg);
+      sys_snprintf(argument, sizeof(argument)-1, " argument %d", arg);
     } else {
       argument[0] = 0;
     }
 
-    snprintf(buf, sizeof(buf)-1, "Invalid address 0x%08X for %s%s%s.", address, name, selector, argument);
+    sys_snprintf(buf, sizeof(buf)-1, "Invalid address 0x%08X for %s%s%s.", address, name, selector, argument);
     emupalmos_panic(buf, EMUPALMOS_INVALID_ADDRESS);
     return NULL;
   }
@@ -203,7 +198,7 @@ uint32_t emupalmos_trap_out(void *address) {
   if (address == NULL) return 0;
 
   if (addr < ram || addr > ram+size-4) {
-    snprintf(buf, sizeof(buf)-1, "Invalid address %p.", address);
+    sys_snprintf(buf, sizeof(buf)-1, "Invalid address %p.", address);
     emupalmos_panic(buf, EMUPALMOS_INVALID_ADDRESS);
     return 0;
   }
@@ -229,7 +224,7 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
 
   if (address > hsize-size) {
     m68k_pulse_halt();
-    snprintf(buf, sizeof(buf)-1, "%s %d bytes(s) %s invalid 68K address 0x%08X", read ? "Read" : "Write", size, read ? "from" : "to", address);
+    sys_snprintf(buf, sizeof(buf)-1, "%s %d bytes(s) %s invalid 68K address 0x%08X", read ? "Read" : "Write", size, read ? "from" : "to", address);
     debug(DEBUG_ERROR, "EmuPalmOS", buf);
     emupalmos_panic(buf, EMUPALMOS_INVALID_ADDRESS);
     return 0;
@@ -1011,7 +1006,7 @@ void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_detail
     if (notify->broadcaster) {
       pumpkin_id2s(notify->broadcaster, buf2);
     } else {
-      strcpy(buf2, "<none>");
+      sys_strcpy(buf2, "<none>");
     }
     debug(DEBUG_TRACE, "PALMOS", "SysNotifyParamType '%s' from '%s' details 0x%08X handled %d", buf1, buf2, notifyDetailsP, notify->handled);
 
@@ -1396,7 +1391,7 @@ static void make_hex(char *buf, unsigned int pc, unsigned int length) {
   char *ptr = buf;
 
   for (; length > 0; length -= 2) {
-    sprintf(ptr, "%04x", cpu_read_word(pc));
+    sys_sprintf(ptr, "%04x", cpu_read_word(pc));
     pc += 2;
     ptr += 4;
     if (length > 2) *ptr++ = ' ';
@@ -1428,15 +1423,15 @@ static void print_regs(void) {
 
   buf[0] = 0;
   for (i = 0; i < 8; i++) {
-    sprintf(aux, " D%d=%08X", i, d[i]);
-    strcat(buf, aux);
+    sys_sprintf(aux, " D%d=%08X", i, d[i]);
+    sys_strcat(buf, aux);
   }
   debug(DEBUG_INFO, "EmuPalmOS", "%s", buf);
 
   buf[0] = 0;
   for (i = 0; i < 8; i++) {
-    sprintf(aux, " A%d=%08X", i, a[i]);
-    strcat(buf, aux);
+    sys_sprintf(aux, " A%d=%08X", i, a[i]);
+    sys_strcat(buf, aux);
   }
   debug(DEBUG_INFO, "EmuPalmOS", "%s", buf);
 }
@@ -1459,7 +1454,7 @@ int cpu_instr_callback(int pc) {
       debug(DEBUG_TRACE, "EmuPalmOS", "returned from trap %s (pc 0x%08X)", s, pc);
       return 0 ;
     }
-    snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown (pc 0x%08X)", trap, pc);
+    sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown (pc 0x%08X)", trap, pc);
     emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
     return -1;
   }

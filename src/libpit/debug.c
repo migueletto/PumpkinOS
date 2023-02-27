@@ -1,4 +1,4 @@
-#include <stdarg.h>
+#include <stdio.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -138,7 +138,7 @@ int str(char *buf, int d, char *s, int max) {
   return i;
 }
 
-void debugva_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, va_list ap) {
+void debugva_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, sys_va_list ap) {
   char tmp[MAX_BUF], buf[MAX_BUF], *s;
   int i, j, k, ms;
   char thread_name[32];
@@ -221,24 +221,24 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
 }
 
 void debug_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, ...) {
-  va_list ap;
+  sys_va_list ap;
 
-  va_start(ap, fmt);
+  sys_va_start(ap, fmt);
   debugva_full(file, func, line, _level, sys, fmt, ap);
-  va_end(ap);
+  sys_va_end(ap);
 }
 
 void debug_errno_full(const char *file, const char *func, int line, const char *sys, const char *fmt, ...) {
-  va_list ap;
+  sys_va_list ap;
   char buf[MAX_BUF], msg[MAX_BUF];
   int err;
 
   err = sys_errno();
   sys_strerror(err, msg, sizeof(msg));
 
-  va_start(ap, fmt);
+  sys_va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf)-1, fmt, ap);
-  va_end(ap);
+  sys_va_end(ap);
 
   debug_full(file, func, line, DEBUG_ERROR, sys, "%s failed: %d (%s)", buf, err, msg);
 }
@@ -248,7 +248,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
   uint32_t i, j, n;
 
   p = sbuf;
-  sprintf(p, "%04X: ", 0);
+  sys_snprintf(p, 6, "%04X: ", 0);
   n = sys_strlen(p);
   p += n;
   e = p + 1024 - n - 4;
@@ -258,7 +258,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       *p = ' ';
       p++;
     }
-    sprintf(p, "%02X", buf[i]);
+    sys_snprintf(p, 2, "%02X", buf[i]);
     abuf[j] = (buf[i] >= 32 && buf[i] < 127) ? buf[i] : '.';
     p += 2;
     j++;
@@ -267,7 +267,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       abuf[j] = 0;
       debug_full(file, func, line, level, sys, "%s %s", sbuf, abuf);
       p = sbuf;
-      sprintf(p, "%04X: ", i+1);
+      sys_snprintf(p, 6, "%04X: ", i+1);
       n = sys_strlen(p);
       p += n;
       e = p + 1024 - n - 4;

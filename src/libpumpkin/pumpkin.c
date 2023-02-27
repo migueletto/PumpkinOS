@@ -1,14 +1,12 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
-#include <string.h>
-
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
 #include "pwindow.h"
 #include "bytes.h"
-#include "sys.h"
 #include "vfs.h"
 #include "mem.h"
 #include "ptr.h"
@@ -795,7 +793,7 @@ int pumpkin_kill(char *name) {
   if (name) {
     if (mutex_lock(mutex) == 0) {
       for (i = 0; i < MAX_TASKS; i++) {
-        if (pumpkin_module.tasks[i].active && !strcmp(pumpkin_module.tasks[i].name, name)) {
+        if (pumpkin_module.tasks[i].active && !sys_strcmp(pumpkin_module.tasks[i].name, name)) {
           thread_end(TAG_APP, pumpkin_module.tasks[i].handle);
           r = 0;
           break;
@@ -961,7 +959,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   pumpkin_module.tasks[i].handle = thread_get_handle();
   pumpkin_module.tasks[i].texture = texture;
   pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFF;
-  strncpy(pumpkin_module.tasks[i].name, name, dmDBNameLength-1);
+  sys_strncpy(pumpkin_module.tasks[i].name, name, dmDBNameLength-1);
   pumpkin_module.tasks[i].num_notifs = 0;
 
   pumpkin_module.task_order[pumpkin_module.num_tasks] = i;
@@ -974,7 +972,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   task->screen_ptr = ptr;
   task->width = width;
   task->height = height;
-  strncpy(task->name, name, dmDBNameLength-1);
+  sys_strncpy(task->name, name, dmDBNameLength-1);
 
   thread_set(task_key, task);
   if (!pumpkin_module.dia && !pumpkin_module.single) {
@@ -986,8 +984,8 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   task->exception = pumpkin_heap_alloc(sizeof(void *), "Exception");
 
   for (j = 0; j < pumpkin_module.num_serial; j++) {
-    task->serial[j] = pumpkin_heap_alloc(strlen(pumpkin_module.serial[j].descr) + 1, "serial_descr");
-    if (task->serial[j]) strcpy(task->serial[j], pumpkin_module.serial[j].descr);
+    task->serial[j] = pumpkin_heap_alloc(sys_strlen(pumpkin_module.serial[j].descr) + 1, "serial_descr");
+    if (task->serial[j]) sys_strcpy(task->serial[j], pumpkin_module.serial[j].descr);
   }
 
   SysUInitModule();
@@ -1196,7 +1194,7 @@ static int pumpkin_launch_action(void *arg) {
   data = (launch_data_t *)arg;
   debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->request.name);
 
-  strncpy(name, data->request.name, dmDBNameLength);
+  sys_strncpy(name, data->request.name, dmDBNameLength);
   for (i = 0; name[i]; i++) {
     if (name[i] <= 32) name[i] = '_';
   }
@@ -1291,7 +1289,7 @@ int pumpkin_launch(launch_request_t *request) {
   if (mutex_lock(mutex) == 0) {
     for (i = 0; i < MAX_TASKS; i++) {
       if (pumpkin_module.tasks[i].active || pumpkin_module.tasks[i].reserved) {
-        if (!strncmp(pumpkin_module.tasks[i].name, request->name, dmDBNameLength-1)) {
+        if (!sys_strncmp(pumpkin_module.tasks[i].name, request->name, dmDBNameLength-1)) {
           if (!(request->flags & sysAppLaunchFlagFork)) {
             running = i;
             break;
@@ -1304,7 +1302,7 @@ int pumpkin_launch(launch_request_t *request) {
         }
         if (index == -1) {
           debug(DEBUG_INFO, PUMPKINOS, "task %d reserved for application \"%s\"", i, request->name);
-          strncpy(pumpkin_module.tasks[i].name, request->name, dmDBNameLength-1);
+          sys_strncpy(pumpkin_module.tasks[i].name, request->name, dmDBNameLength-1);
           pumpkin_module.tasks[i].reserved = 1;
           index = i;
         }
@@ -1419,7 +1417,7 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
   int i, handle = -1;
   uint32_t msg;
 
-  if (name && task && !strcmp(name, task->name)) {
+  if (name && task && !sys_strcmp(name, task->name)) {
     // not pausing itself...
     debug(DEBUG_INFO, PUMPKINOS, "no need to pause myself");
     *call_sub = 1;
@@ -1430,7 +1428,7 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
     if (mutex_lock(mutex) == 0) {
       for (i = 0; i < MAX_TASKS; i++) {
         if (pumpkin_module.tasks[i].active) {
-          if (!strncmp(pumpkin_module.tasks[i].name, name, dmDBNameLength-1)) {
+          if (!sys_strncmp(pumpkin_module.tasks[i].name, name, dmDBNameLength-1)) {
             handle = pumpkin_module.tasks[i].handle;
             break;
           }
@@ -1492,7 +1490,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
 
   xmemset(&creq, 0, sizeof(client_request_t));
   creq.type = MSG_LAUNCH;
-  strncpy(creq.data.launch.name, name, dmDBNameLength-1);
+  sys_strncpy(creq.data.launch.name, name, dmDBNameLength-1);
   creq.data.launch.code = cmd;
   creq.data.launch.flags = flags;
   creq.data.launch.param = param;
@@ -1653,7 +1651,7 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
     } else {
       debug(DEBUG_INFO, PUMPKINOS, "calling self with launchCode %d", cmd);
       xmemset(&request, 0, sizeof(launch_request_t));
-      strncpy(request.name, name, dmDBNameLength-1);
+      sys_strncpy(request.name, name, dmDBNameLength-1);
       request.code = cmd;
       request.flags = sysAppLaunchFlagSubCall;
       request.param = cmdPBP;
@@ -2387,7 +2385,7 @@ int pumpkin_script_destroy(int pe) {
 
 int pumpkin_getstr(char **s, uint8_t *p, int i) {
   *s = (char *)&p[i];
-  return strlen(*s) + 1;
+  return sys_strlen(*s) + 1;
 }
 
 void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
@@ -2495,7 +2493,7 @@ int pumpkin_clipboard_append_text(char *text, int length) {
     if (mutex_lock(mutex) == 0) {
       len = 0;
       if ((s = pumpkin_module.wp->clipboard(pumpkin_module.w, NULL, 0)) != NULL) {
-        len = strlen(s);
+        len = sys_strlen(s);
         if (len > cbdMaxTextLength*2) len = cbdMaxTextLength*2;
         xmemcpy(pumpkin_module.clipboardAux, s, len);
       }
@@ -2520,7 +2518,7 @@ int pumpkin_clipboard_get_text(char *text, int *length) {
   if (text && length && pumpkin_module.wp && pumpkin_module.wp->clipboard) {
     if (mutex_lock(mutex) == 0) {
       if ((s = pumpkin_module.wp->clipboard(pumpkin_module.w, NULL, 0)) != NULL) {
-        len = strlen(s);
+        len = sys_strlen(s);
         if (len > *length) len = *length;
         xmemcpy(text, s, len);
         *length = len;
@@ -2624,13 +2622,13 @@ int pumpkin_add_serial(char *descr, uint32_t creator, char *host, uint32_t port)
 
   if (mutex_lock(mutex) == 0) {
     if (pumpkin_module.num_serial < MAX_SERIAL) {
-      pumpkin_module.serial[pumpkin_module.num_serial].descr = xcalloc(1, strlen(descr) + 1);
+      pumpkin_module.serial[pumpkin_module.num_serial].descr = xcalloc(1, sys_strlen(descr) + 1);
       if (pumpkin_module.serial[pumpkin_module.num_serial].descr) {
-        strcpy(pumpkin_module.serial[pumpkin_module.num_serial].descr, descr);
+        sys_strcpy(pumpkin_module.serial[pumpkin_module.num_serial].descr, descr);
       }
       pumpkin_module.serial[pumpkin_module.num_serial].creator = creator;
       pumpkin_module.serial[pumpkin_module.num_serial].port = port;
-      strncpy(pumpkin_module.serial[pumpkin_module.num_serial].host, host, MAX_HOST);
+      sys_strncpy(pumpkin_module.serial[pumpkin_module.num_serial].host, host, MAX_HOST);
       pumpkin_module.num_serial++;
       r = 0;
     }
@@ -2645,7 +2643,7 @@ int pumpkin_info_serial(uint32_t id, char *host, int hlen, uint32_t *port) {
 
   if (mutex_lock(mutex) == 0) {
     if (id < pumpkin_module.num_serial) {
-      if (host && hlen) strncpy(host, pumpkin_module.serial[id].host, hlen);
+      if (host && hlen) sys_strncpy(host, pumpkin_module.serial[id].host, hlen);
       if (port) *port = pumpkin_module.serial[id].port;
       r = 0;
     }
@@ -2789,15 +2787,15 @@ static char *pumpkin_script_ret(int pe, script_arg_t *ret) {
 
   switch (ret->type) {
     case SCRIPT_ARG_INTEGER:
-      snprintf(buf, sizeof(buf)-1, "%d", ret->value.i);
+      sys_snprintf(buf, sizeof(buf)-1, "%d", ret->value.i);
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_REAL:
-      snprintf(buf, sizeof(buf)-1, "%f", ret->value.d);
+      sys_snprintf(buf, sizeof(buf)-1, "%f", ret->value.d);
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_BOOLEAN:
-      strcpy(buf, ret->value.i ? "true" : "false");
+      sys_strcpy(buf, ret->value.i ? "true" : "false");
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_STRING:
@@ -2811,24 +2809,24 @@ static char *pumpkin_script_ret(int pe, script_arg_t *ret) {
       xfree(ret->value.l.s);
       break;
     case SCRIPT_ARG_OBJECT:
-      strcpy(buf, "<object>");
+      sys_strcpy(buf, "<object>");
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
     case SCRIPT_ARG_FUNCTION:
-      strcpy(buf, "<function>");
+      sys_strcpy(buf, "<function>");
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
     case SCRIPT_ARG_FILE:
-      strcpy(buf, "<file>");
+      sys_strcpy(buf, "<file>");
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_NULL:
       val = NULL;
       break;
     default:
-      snprintf(buf, sizeof(buf)-1, "type(%c)", ret->type);
+      sys_snprintf(buf, sizeof(buf)-1, "type(%c)", ret->type);
       val = xstrdup(buf);
       break;
   }
@@ -2843,7 +2841,7 @@ char *pumpkin_script_call(int pe, char *function, char *s) {
   if (script_global_get(pe, function, &f) == 0 && f.type == SCRIPT_ARG_FUNCTION) {
     arg.type = SCRIPT_ARG_LSTRING;
     arg.value.l.s = (char *)s;
-    arg.value.l.n = strlen(s);
+    arg.value.l.n = sys_strlen(s);
 
     if (script_call_args(pe, f.value.r, &ret, 1, &arg) == 0) {
       val = pumpkin_script_ret(pe, &ret);
@@ -2908,8 +2906,8 @@ static void compat_callback(UInt32 creator, UInt16 index, UInt16 id, void *p, vo
     c = (AppRegistryCompat *)p;
     fd = *((int *)data);
     pumpkin_id2s(creator, st);
-    snprintf(buf, sizeof(buf)-1, "%s;%d;%d\n", st, c->compat, c->code);
-    sys_write(fd, (uint8_t *)buf, strlen(buf));
+    sys_snprintf(buf, sizeof(buf)-1, "%s;%d;%d\n", st, c->compat, c->code);
+    sys_write(fd, (uint8_t *)buf, sys_strlen(buf));
   }
 }
 
@@ -2932,8 +2930,8 @@ void pumpkin_crash_log(UInt32 creator, int code, char *msg) {
   if (mutex_lock(mutex) == 0) {
     if ((fd = sys_open(CRASH_LOG, SYS_WRITE)) != -1) {
       sys_seek(fd, 0, SYS_SEEK_END);
-      snprintf(buf, sizeof(buf)-1, "%s;%d;%s\n", st, code, msg);
-      sys_write(fd, (uint8_t *)buf, strlen(buf));
+      sys_snprintf(buf, sizeof(buf)-1, "%s;%d;%s\n", st, code, msg);
+      sys_write(fd, (uint8_t *)buf, sys_strlen(buf));
       sys_close(fd);
     }
     mutex_unlock(mutex);
@@ -3084,7 +3082,7 @@ UInt16 SysLibFind68K(char *name) {
   UInt16 i, refNum = 0;
 
   for (i = 0; i < MAX_SYSLIBS; i++) {
-    if (task->syslibs[i].refNum > 0 && !strcmp(task->syslibs[i].name, name)) {
+    if (task->syslibs[i].refNum > 0 && !sys_strcmp(task->syslibs[i].name, name)) {
       refNum = task->syslibs[i].refNum;
       pumpkin_id2s(task->syslibs[i].type, buf);
       pumpkin_id2s(task->syslibs[i].creator, buf2);
@@ -3254,7 +3252,7 @@ static int pumpkin_httpd_callback(http_connection_t *con) {
     return 0;
   }
 
-  if (!strcmp(con->method, "GET")) {
+  if (!sys_strcmp(con->method, "GET")) {
     obj = pumpkin_script_create_obj(h->pe, "header");
     for (i = 0; i < con->num_headers; i++) {
       script_add_sconst(h->pe, obj, con->header_name[i], con->header_value[i]);
@@ -3317,7 +3315,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *work, 
     card = VFS_CARD;
     if (card[0] == '/') card++;
     if (root[0] == '/') root++;
-    snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, root);
+    sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, root);
     h->handle = httpd_create("0.0.0.0", port, PUMPKIN_SERVER_NAME, buf, NULL, NULL, NULL, NULL, NULL, pumpkin_httpd_callback, h);
     if (h->handle != -1) {
       h->pe = pumpkin_script_create();
@@ -3369,7 +3367,7 @@ void pumpkin_save_icon(char *name) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
       if ((h = DmGet1Resource(iconType, 1000)) != NULL) {
         if ((bmp = MemHandleLock(h)) != NULL) {
-          snprintf(filename, sizeof(filename)-1, "%s.png", name);
+          sys_snprintf(filename, sizeof(filename)-1, "%s.png", name);
           pumpkin_save_bitmap(bmp, BmpGetDensity(bmp), cellWidth, cellHeight, 0, 0, filename);
           MemHandleUnlock(h);
         }

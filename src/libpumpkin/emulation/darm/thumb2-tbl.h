@@ -28,7 +28,6 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 #ifndef __THUMB2_TBL__
 #define __THUMB2_TBL__
-#include <stdint.h>
 #include "darm-tbl.h"
 #define THUMB2_INSTRUCTION_COUNT 220
 extern darm_instr_t thumb2_instr_labels[256];

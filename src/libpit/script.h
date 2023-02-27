@@ -39,7 +39,6 @@ typedef struct {
     script_lstring_t l;
     script_ref_t r;
     void *p;
-    FILE *f;
   } value;
 } script_arg_t;
 
@@ -99,7 +98,6 @@ int script_push_string(int pe, char *s);
 int script_push_lstring(int pe, char *s, int len);
 int script_push_function(int pe, script_ref_t r);
 int script_push_object(int pe, script_ref_t r);
-int script_push_file(int pe, FILE *f);
 int script_push_null(int pe);
 
 #define mkint(i) (script_int_t)(i)

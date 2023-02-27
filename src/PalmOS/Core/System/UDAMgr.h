@@ -20,8 +20,7 @@
 #include <ExgMgr.h>
 #ifdef PALMOS
 #include <unix_stdarg.h>
-#else
-#include <stdarg.h>
+#define sys_va_list va_list
 #endif
 
  /***********************************************************************
@@ -62,7 +61,7 @@ struct UDAWriterTag;
  ************************************************************************/
 
 typedef void (*UDADeleteFunction) (struct UDAObjectTag** ioObject);
-typedef Err (*UDAControlFunction) (struct UDAObjectTag* ioObject, UInt16 parameter, va_list args);
+typedef Err (*UDAControlFunction) (struct UDAObjectTag* ioObject, UInt16 parameter, sys_va_list args);
 
 typedef UDABufferSize (*UDAReadFunction) (struct UDAReaderTag* ioReader, UInt8* buffer, UDABufferSize bufferSize, Err* error);
 

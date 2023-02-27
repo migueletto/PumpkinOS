@@ -71,33 +71,33 @@
 * Contents, described in more detail in "description of public routines" below.
 
   Standard (ANSI/SVID/...)  functions:
-    malloc(size_t n);
-    calloc(size_t n_elements, size_t element_size);
+    malloc(sys_size_t n);
+    calloc(sys_size_t n_elements, sys_size_t element_size);
     free(Void_t* p);
-    realloc(Void_t* p, size_t n);
-    memalign(size_t alignment, size_t n);
-    valloc(size_t n);
+    realloc(Void_t* p, sys_size_t n);
+    memalign(sys_size_t alignment, sys_size_t n);
+    valloc(sys_size_t n);
     mallinfo()
     mallopt(int parameter_number, int parameter_value)
 
   Additional functions:
-    independent_calloc(size_t n_elements, size_t size, Void_t* chunks[]);
-    independent_comalloc(size_t n_elements, size_t sizes[], Void_t* chunks[]);
-    pvalloc(size_t n);
+    independent_calloc(sys_size_t n_elements, sys_size_t size, Void_t* chunks[]);
+    independent_comalloc(sys_size_t n_elements, sys_size_t sizes[], Void_t* chunks[]);
+    pvalloc(sys_size_t n);
     cfree(Void_t* p);
-    malloc_trim(size_t pad);
+    malloc_trim(sys_size_t pad);
     malloc_usable_size(Void_t* p);
     malloc_stats();
 
 * Vital statistics:
 
   Supported pointer representation:       4 or 8 bytes
-  Supported size_t  representation:       4 or 8 bytes 
-       Note that size_t is allowed to be 4 bytes even if pointers are 8.
+  Supported sys_size_t  representation:       4 or 8 bytes 
+       Note that sys_size_t is allowed to be 4 bytes even if pointers are 8.
        You can adjust this by defining INTERNAL_SIZE_T
 
-  Alignment:                              2 * sizeof(size_t) (default)
-       (i.e., 8 byte alignment with 4byte size_t). This suffices for
+  Alignment:                              2 * sizeof(sys_size_t) (default)
+       (i.e., 8 byte alignment with 4byte sys_size_t). This suffices for
        nearly all current machines and C compilers. However, you can
        define MALLOC_ALIGNMENT to be wider than this if necessary.
 
@@ -121,20 +121,20 @@
        allocated than were requested in malloc) is less than or equal
        to the minimum size, except for requests >= mmap_threshold that
        are serviced via mmap(), where the worst case wastage is 2 *
-       sizeof(size_t) bytes plus the remainder from a system page (the
+       sizeof(sys_size_t) bytes plus the remainder from a system page (the
        minimal mmap unit); typically 4096 or 8192 bytes.
 
-  Maximum allocated size:  4-byte size_t: 2^32 minus about two pages 
-                           8-byte size_t: 2^64 minus about two pages
+  Maximum allocated size:  4-byte sys_size_t: 2^32 minus about two pages 
+                           8-byte sys_size_t: 2^64 minus about two pages
 
-       It is assumed that (possibly signed) size_t values suffice to
+       It is assumed that (possibly signed) sys_size_t values suffice to
        represent chunk sizes. `Possibly signed' is due to the fact
-       that `size_t' may be defined on a system as either a signed or
+       that `sys_size_t' may be defined on a system as either a signed or
        an unsigned type. The ISO C standard says that it must be
        unsigned, but a few systems are known not to adhere to this.
-       Additionally, even when size_t is unsigned, sbrk (which is by
+       Additionally, even when sys_size_t is unsigned, sbrk (which is by
        default used to obtain memory from system) accepts signed
-       arguments, and may not be able to handle size_t-wide arguments
+       arguments, and may not be able to handle sys_size_t-wide arguments
        with negative sign bit.  Generally, values that would
        appear as negative after accounting for overhead and alignment
        are supported only via mmap(), which does not have this
@@ -200,7 +200,7 @@
 
     Changing default word sizes:
 
-    INTERNAL_SIZE_T            size_t
+    INTERNAL_SIZE_T            sys_size_t
     MALLOC_ALIGNMENT           2 * sizeof(INTERNAL_SIZE_T)
     PTR_UINT                   unsigned long
     CHUNK_SIZE_T               unsigned long
@@ -315,7 +315,7 @@ static int cpuinfo (int whole, unsigned long*kernel, unsigned long*user);
 #endif /*Void_t*/
 
 #if __STD_C
-#include <stddef.h>   /* for size_t */
+#include <stddef.h>   /* for sys_size_t */
 #else
 #include <sys/types.h>
 #endif
@@ -340,7 +340,7 @@ extern "C" {
 #include <stdio.h>    /* needed for malloc_stats */
 #include <errno.h>    /* needed for optional MALLOC_FAILURE_ACTION */
 
-#include <stdarg.h>
+#include "sys.h"
 #include "debug.h"
 
 /*
@@ -386,7 +386,7 @@ extern "C" {
 
 /*
   The unsigned integer type used for comparing any two chunk sizes.
-  This should be at least as wide as size_t, but should not be signed.
+  This should be at least as wide as sys_size_t, but should not be signed.
 */
 
 #ifndef CHUNK_SIZE_T
@@ -409,10 +409,10 @@ extern "C" {
   INTERNAL_SIZE_T is the word-size used for internal bookkeeping
   of chunk sizes.
 
-  The default version is the same as size_t.
+  The default version is the same as sys_size_t.
 
   While not strictly necessary, it is best to define this as an
-  unsigned type, even if size_t is a signed type. This may avoid some
+  unsigned type, even if sys_size_t is a signed type. This may avoid some
   artificial size limitations on some systems.
 
   On a 64-bit machine, you may be able to reduce malloc overhead by
@@ -421,12 +421,12 @@ extern "C" {
   space. If this limitation is acceptable, you are encouraged to set
   this unless you are on a platform requiring 16byte alignments. In
   this case the alignment requirements turn out to negate any
-  potential advantages of decreasing size_t word size.
+  potential advantages of decreasing sys_size_t word size.
 
   Implementors: Beware of the possible combinations of:
      - INTERNAL_SIZE_T might be signed or unsigned, might be 32 or 64 bits,
        and might be the same width as int or as long
-     - size_t might have different width and signedness as INTERNAL_SIZE_T
+     - sys_size_t might have different width and signedness as INTERNAL_SIZE_T
      - int and long might be 32 or 64 bits, and might be the same width
   To deal with this, most comparisons and difference computations
   among INTERNAL_SIZE_Ts should cast them to CHUNK_SIZE_T, being
@@ -437,7 +437,7 @@ extern "C" {
 */
 
 #ifndef INTERNAL_SIZE_T
-//#define INTERNAL_SIZE_T size_t
+//#define INTERNAL_SIZE_T sys_size_t
 #define INTERNAL_SIZE_T UIntPtr
 #endif
 
@@ -622,8 +622,8 @@ extern "C" {
 /* On Win32 memset and memcpy are already declared in windows.h */
 #else
 #if __STD_C
-void* memset(void*, int, size_t);
-void* memcpy(void*, const void*, size_t);
+void* memset(void*, int, sys_size_t);
+void* memcpy(void*, const void*, sys_size_t);
 #else
 Void_t* memset();
 Void_t* memcpy();
@@ -806,7 +806,7 @@ extern Void_t*     sbrk();
 #    define malloc_getpagesize sysconf(_SC_PAGE_SIZE)
 #  else
 #    if defined(BSD) || defined(DGUX) || defined(HAVE_GETPAGESIZE)
-       extern size_t getpagesize();
+       extern sys_size_t getpagesize();
 #      define malloc_getpagesize getpagesize()
 #    else
 #      ifdef WIN32 /* use supplied emulation of getpagesize */
@@ -902,21 +902,21 @@ struct mallinfo {
 /* ---------- description of public routines ------------ */
 
 /*
-  malloc(size_t n)
+  malloc(sys_size_t n)
   Returns a pointer to a newly allocated chunk of at least n bytes, or null
   if no space is available. Additionally, on failure, errno is
   set to ENOMEM on ANSI C systems.
 
   If n is zero, malloc returns a minumum-sized chunk. (The minimum
   size is 16 bytes on most 32bit systems, and 24 or 32 bytes on 64bit
-  systems.)  On most systems, size_t is an unsigned type, so calls
+  systems.)  On most systems, sys_size_t is an unsigned type, so calls
   with negative arguments are interpreted as requests for huge amounts
   of space, which will often fail. The maximum supported value of n
   differs across systems, but is in all cases less than the maximum
-  representable value of a size_t.
+  representable value of a sys_size_t.
 */
 #if __STD_C
-Void_t*  public_mALLOc(size_t);
+Void_t*  public_mALLOc(sys_size_t);
 #else
 Void_t*  public_mALLOc();
 #endif
@@ -939,18 +939,18 @@ void     public_fREe();
 #endif
 
 /*
-  calloc(size_t n_elements, size_t element_size);
+  calloc(sys_size_t n_elements, sys_size_t element_size);
   Returns a pointer to n_elements * element_size bytes, with all locations
   set to zero.
 */
 #if __STD_C
-Void_t*  public_cALLOc(size_t, size_t);
+Void_t*  public_cALLOc(sys_size_t, sys_size_t);
 #else
 Void_t*  public_cALLOc();
 #endif
 
 /*
-  realloc(Void_t* p, size_t n)
+  realloc(Void_t* p, sys_size_t n)
   Returns a pointer to a chunk of size n that contains the same data
   as does chunk p up to the minimum of (n, p's size) bytes, or null
   if no space is available. 
@@ -977,13 +977,13 @@ Void_t*  public_cALLOc();
   to be used as an argument to realloc is not supported.
 */
 #if __STD_C
-Void_t*  public_rEALLOc(Void_t*, size_t);
+Void_t*  public_rEALLOc(Void_t*, sys_size_t);
 #else
 Void_t*  public_rEALLOc();
 #endif
 
 /*
-  memalign(size_t alignment, size_t n);
+  memalign(sys_size_t alignment, sys_size_t n);
   Returns a pointer to a newly allocated chunk of n bytes, aligned
   in accord with the alignment argument.
 
@@ -995,18 +995,18 @@ Void_t*  public_rEALLOc();
   Overreliance on memalign is a sure way to fragment space.
 */
 #if __STD_C
-Void_t*  public_mEMALIGn(size_t, size_t);
+Void_t*  public_mEMALIGn(sys_size_t, sys_size_t);
 #else
 Void_t*  public_mEMALIGn();
 #endif
 
 /*
-  valloc(size_t n);
+  valloc(sys_size_t n);
   Equivalent to memalign(pagesize, n), where pagesize is the page
   size of the system. If the pagesize is unknown, 4096 is used.
 */
 #if __STD_C
-Void_t*  public_vALLOc(size_t);
+Void_t*  public_vALLOc(sys_size_t);
 #else
 Void_t*  public_vALLOc();
 #endif
@@ -1071,7 +1071,7 @@ struct mallinfo public_mALLINFo();
 #endif
 
 /*
-  independent_calloc(size_t n_elements, size_t element_size, Void_t* chunks[]);
+  independent_calloc(sys_size_t n_elements, sys_size_t element_size, Void_t* chunks[]);
 
   independent_calloc is similar to calloc, but instead of returning a
   single cleared space, it returns an array of pointers to n_elements
@@ -1123,13 +1123,13 @@ struct mallinfo public_mALLINFo();
   }
 */
 #if __STD_C
-Void_t** public_iCALLOc(size_t, size_t, Void_t**);
+Void_t** public_iCALLOc(sys_size_t, sys_size_t, Void_t**);
 #else
 Void_t** public_iCALLOc();
 #endif
 
 /*
-  independent_comalloc(size_t n_elements, size_t sizes[], Void_t* chunks[]);
+  independent_comalloc(sys_size_t n_elements, sys_size_t sizes[], Void_t* chunks[]);
 
   independent_comalloc allocates, all at once, a set of n_elements
   chunks with sizes indicated in the "sizes" array.    It returns
@@ -1169,7 +1169,7 @@ Void_t** public_iCALLOc();
 
   void send_message(char* msg) {
     int msglen = strlen(msg);
-    size_t sizes[3] = { sizeof(struct Head), msglen, sizeof(struct Foot) };
+    sys_size_t sizes[3] = { sizeof(struct Head), msglen, sizeof(struct Foot) };
     void* chunks[3];
     if (independent_comalloc(3, sizes, chunks) == 0)
       die();
@@ -1188,19 +1188,19 @@ Void_t** public_iCALLOc();
   might be available for some of the elements.
 */
 #if __STD_C
-Void_t** public_iCOMALLOc(size_t, size_t*, Void_t**);
+Void_t** public_iCOMALLOc(sys_size_t, sys_size_t*, Void_t**);
 #else
 Void_t** public_iCOMALLOc();
 #endif
 
 
 /*
-  pvalloc(size_t n);
+  pvalloc(sys_size_t n);
   Equivalent to valloc(minimum-page-that-holds(n)), that is,
   round up n to nearest pagesize.
  */
 #if __STD_C
-Void_t*  public_pVALLOc(size_t);
+Void_t*  public_pVALLOc(sys_size_t);
 #else
 Void_t*  public_pVALLOc();
 #endif
@@ -1220,7 +1220,7 @@ void     public_cFREe();
 #endif
 
 /*
-  malloc_trim(size_t pad);
+  malloc_trim(sys_size_t pad);
 
   If possible, gives memory back to the system (via negative
   arguments to sbrk) if there is unused memory at the `high' end of
@@ -1244,7 +1244,7 @@ void     public_cFREe();
   rreturn 0.
 */
 #if __STD_C
-int      public_mTRIm(size_t);
+int      public_mTRIm(sys_size_t);
 #else
 int      public_mTRIm();
 #endif
@@ -1265,9 +1265,9 @@ int      public_mTRIm();
 
 */
 #if __STD_C
-size_t   public_mUSABLe(Void_t*);
+sys_size_t   public_mUSABLe(Void_t*);
 #else
-size_t   public_mUSABLe();
+sys_size_t   public_mUSABLe();
 #endif
 
 /*
@@ -1523,18 +1523,18 @@ void     public_mSTATs(void);
 
 /* Declare all routines as internal */
 #if __STD_C
-static Void_t*  mALLOc(size_t);
+static Void_t*  mALLOc(sys_size_t);
 static void     fREe(Void_t*);
-static Void_t*  rEALLOc(Void_t*, size_t);
-static Void_t*  mEMALIGn(size_t, size_t);
-static Void_t*  vALLOc(size_t);
-static Void_t*  pVALLOc(size_t);
-static Void_t*  cALLOc(size_t, size_t);
-static Void_t** iCALLOc(size_t, size_t, Void_t**);
-static Void_t** iCOMALLOc(size_t, size_t*, Void_t**);
+static Void_t*  rEALLOc(Void_t*, sys_size_t);
+static Void_t*  mEMALIGn(sys_size_t, sys_size_t);
+static Void_t*  vALLOc(sys_size_t);
+static Void_t*  pVALLOc(sys_size_t);
+static Void_t*  cALLOc(sys_size_t, sys_size_t);
+static Void_t** iCALLOc(sys_size_t, sys_size_t, Void_t**);
+static Void_t** iCOMALLOc(sys_size_t, sys_size_t*, Void_t**);
 static void     cFREe(Void_t*);
-static int      mTRIm(size_t);
-static size_t   mUSABLe(Void_t*);
+static int      mTRIm(sys_size_t);
+static sys_size_t   mUSABLe(Void_t*);
 static void     mSTATs();
 static int      mALLOPt(int, int);
 static struct mallinfo mALLINFo(void);
@@ -1550,7 +1550,7 @@ static Void_t** iCALLOc();
 static Void_t** iCOMALLOc();
 static void     cFREe();
 static int      mTRIm();
-static size_t   mUSABLe();
+static sys_size_t   mUSABLe();
 static void     mSTATs();
 static int      mALLOPt();
 static struct mallinfo mALLINFo();
@@ -1593,7 +1593,7 @@ static pthread_mutex_t mALLOC_MUTEx = PTHREAD_MUTEX_INITIALIZER;
 
 #endif
 
-Void_t* public_mALLOc(size_t bytes) {
+Void_t* public_mALLOc(sys_size_t bytes) {
   Void_t* m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1613,7 +1613,7 @@ void public_fREe(Void_t* m) {
   }
 }
 
-Void_t* public_rEALLOc(Void_t* m, size_t bytes) {
+Void_t* public_rEALLOc(Void_t* m, sys_size_t bytes) {
   if (MALLOC_PREACTION != 0) {
     return 0;
   }
@@ -1623,7 +1623,7 @@ Void_t* public_rEALLOc(Void_t* m, size_t bytes) {
   return m;
 }
 
-Void_t* public_mEMALIGn(size_t alignment, size_t bytes) {
+Void_t* public_mEMALIGn(sys_size_t alignment, sys_size_t bytes) {
   Void_t* m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1634,7 +1634,7 @@ Void_t* public_mEMALIGn(size_t alignment, size_t bytes) {
   return m;
 }
 
-Void_t* public_vALLOc(size_t bytes) {
+Void_t* public_vALLOc(sys_size_t bytes) {
   Void_t* m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1645,7 +1645,7 @@ Void_t* public_vALLOc(size_t bytes) {
   return m;
 }
 
-Void_t* public_pVALLOc(size_t bytes) {
+Void_t* public_pVALLOc(sys_size_t bytes) {
   Void_t* m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1656,7 +1656,7 @@ Void_t* public_pVALLOc(size_t bytes) {
   return m;
 }
 
-Void_t* public_cALLOc(size_t n, size_t elem_size) {
+Void_t* public_cALLOc(sys_size_t n, sys_size_t elem_size) {
   Void_t* m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1668,7 +1668,7 @@ Void_t* public_cALLOc(size_t n, size_t elem_size) {
 }
 
 
-Void_t** public_iCALLOc(size_t n, size_t elem_size, Void_t** chunks) {
+Void_t** public_iCALLOc(sys_size_t n, sys_size_t elem_size, Void_t** chunks) {
   Void_t** m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1679,7 +1679,7 @@ Void_t** public_iCALLOc(size_t n, size_t elem_size, Void_t** chunks) {
   return m;
 }
 
-Void_t** public_iCOMALLOc(size_t n, size_t sizes[], Void_t** chunks) {
+Void_t** public_iCOMALLOc(sys_size_t n, sys_size_t sizes[], Void_t** chunks) {
   Void_t** m;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1699,7 +1699,7 @@ void public_cFREe(Void_t* m) {
   }
 }
 
-int public_mTRIm(size_t s) {
+int public_mTRIm(sys_size_t s) {
   int result;
   if (MALLOC_PREACTION != 0) {
     return 0;
@@ -1710,8 +1710,8 @@ int public_mTRIm(size_t s) {
   return result;
 }
 
-size_t public_mUSABLe(Void_t* m) {
-  size_t result;
+sys_size_t public_mUSABLe(Void_t* m) {
+  sys_size_t result;
   if (MALLOC_PREACTION != 0) {
     return 0;
   }
@@ -2100,7 +2100,7 @@ nextchunk-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
    Beware of lots of tricks that minimize the total bookkeeping space
    requirements. The result is a little over 1K bytes (for 4byte
-   pointers and size_t.)
+   pointers and sys_size_t.)
 */
 
 /*
@@ -2535,10 +2535,10 @@ static void malloc_init_state(av) mstate av;
 #if __STD_C
 static Void_t*  sYSMALLOc(INTERNAL_SIZE_T, mstate);
 #ifndef MORECORE_CANNOT_TRIM        
-static int      sYSTRIm(size_t, mstate);
+static int      sYSTRIm(sys_size_t, mstate);
 #endif
 static void     malloc_consolidate(mstate);
-static Void_t** iALLOc(size_t, size_t*, int, Void_t**);
+static Void_t** iALLOc(sys_size_t, sys_size_t*, int, Void_t**);
 #else
 static Void_t*  sYSMALLOc();
 #ifndef MORECORE_CANNOT_TRIM        
@@ -2795,7 +2795,7 @@ static void do_check_malloc_state(void)
   CHUNK_SIZE_T  total = 0;
   int max_fast_bin;
 
-  /* internal size_t must be no wider than pointer type */
+  /* internal sys_size_t must be no wider than pointer type */
   assert(sizeof(INTERNAL_SIZE_T) <= sizeof(char*));
 
   /* alignment is a power of 2 */
@@ -2933,7 +2933,7 @@ static Void_t* sYSMALLOc(nb, av) INTERNAL_SIZE_T nb; mstate av;
 
   CHUNK_SIZE_T    sum;            /* for updating stats */
 
-  size_t          pagemask  = av->pagesize - 1;
+  sys_size_t          pagemask  = av->pagesize - 1;
 
   /*
     If there is space available in fastbins, consolidate and retry
@@ -3068,7 +3068,7 @@ static Void_t* sYSMALLOc(nb, av) INTERNAL_SIZE_T nb; mstate av;
 
   /*
     Don't try to call MORECORE if argument is so big as to appear
-    negative. Note that since mmap takes size_t arg, it may succeed
+    negative. Note that since mmap takes sys_size_t arg, it may succeed
     below even if we cannot call MORECORE.
   */
 
@@ -3344,9 +3344,9 @@ static Void_t* sYSMALLOc(nb, av) INTERNAL_SIZE_T nb; mstate av;
 */
 
 #if __STD_C
-static int sYSTRIm(size_t pad, mstate av)
+static int sYSTRIm(sys_size_t pad, mstate av)
 #else
-static int sYSTRIm(pad, av) size_t pad; mstate av;
+static int sYSTRIm(pad, av) sys_size_t pad; mstate av;
 #endif
 {
   long  top_size;        /* Amount of top-most memory */
@@ -3354,7 +3354,7 @@ static int sYSTRIm(pad, av) size_t pad; mstate av;
   long  released;        /* Amount actually released */
   char* current_brk;     /* address returned by pre-check sbrk call */
   char* new_brk;         /* address returned by post-check sbrk call */
-  size_t pagesz;
+  sys_size_t pagesz;
 
   pagesz = av->pagesize;
   top_size = chunksize(av->top);
@@ -3407,9 +3407,9 @@ static int sYSTRIm(pad, av) size_t pad; mstate av;
 
 
 #if __STD_C
-Void_t* mALLOc(size_t bytes)
+Void_t* mALLOc(sys_size_t bytes)
 #else
-  Void_t* mALLOc(bytes) size_t bytes;
+  Void_t* mALLOc(bytes) sys_size_t bytes;
 #endif
 {
   mstate av = get_malloc_state();
@@ -4034,9 +4034,9 @@ void dlmalloc_init_state(void) {
 
 
 #if __STD_C
-Void_t* rEALLOc(Void_t* oldmem, size_t bytes)
+Void_t* rEALLOc(Void_t* oldmem, sys_size_t bytes)
 #else
-Void_t* rEALLOc(oldmem, bytes) Void_t* oldmem; size_t bytes;
+Void_t* rEALLOc(oldmem, bytes) Void_t* oldmem; sys_size_t bytes;
 #endif
 {
   mstate av = get_malloc_state();
@@ -4200,7 +4200,7 @@ Void_t* rEALLOc(oldmem, bytes) Void_t* oldmem; size_t bytes;
 
 #if HAVE_MREMAP
     INTERNAL_SIZE_T offset = oldp->prev_size;
-    size_t pagemask = av->pagesize - 1;
+    sys_size_t pagemask = av->pagesize - 1;
     char *cp;
     CHUNK_SIZE_T  sum;
     
@@ -4260,9 +4260,9 @@ Void_t* rEALLOc(oldmem, bytes) Void_t* oldmem; size_t bytes;
 */
 
 #if __STD_C
-Void_t* mEMALIGn(size_t alignment, size_t bytes)
+Void_t* mEMALIGn(sys_size_t alignment, sys_size_t bytes)
 #else
-Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
+Void_t* mEMALIGn(alignment, bytes) sys_size_t alignment; sys_size_t bytes;
 #endif
 {
   INTERNAL_SIZE_T nb;             /* padded  request size */
@@ -4286,7 +4286,7 @@ Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
 
   /* Make sure alignment is power of 2 (in case MINSIZE is not).  */
   if ((alignment & (alignment - 1)) != 0) {
-    size_t a = MALLOC_ALIGNMENT * 2;
+    sys_size_t a = MALLOC_ALIGNMENT * 2;
     while ((CHUNK_SIZE_T)a < (CHUNK_SIZE_T)alignment) a <<= 1;
     alignment = a;
   }
@@ -4365,9 +4365,9 @@ Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
 */
 
 #if __STD_C
-Void_t* cALLOc(size_t n_elements, size_t elem_size)
+Void_t* cALLOc(sys_size_t n_elements, sys_size_t elem_size)
 #else
-Void_t* cALLOc(n_elements, elem_size) size_t n_elements; size_t elem_size;
+Void_t* cALLOc(n_elements, elem_size) sys_size_t n_elements; sys_size_t elem_size;
 #endif
 {
   mchunkptr p;
@@ -4447,12 +4447,12 @@ void cFREe(mem) Void_t *mem;
 */
 
 #if __STD_C
-Void_t** iCALLOc(size_t n_elements, size_t elem_size, Void_t* chunks[])
+Void_t** iCALLOc(sys_size_t n_elements, sys_size_t elem_size, Void_t* chunks[])
 #else
-Void_t** iCALLOc(n_elements, elem_size, chunks) size_t n_elements; size_t elem_size; Void_t* chunks[];
+Void_t** iCALLOc(n_elements, elem_size, chunks) sys_size_t n_elements; sys_size_t elem_size; Void_t* chunks[];
 #endif
 {
-  size_t sz = elem_size; /* serves as 1-element array */
+  sys_size_t sz = elem_size; /* serves as 1-element array */
   /* opts arg of 3 means all elements are same size, and should be cleared */
   return iALLOc(n_elements, &sz, 3, chunks);
 }
@@ -4462,9 +4462,9 @@ Void_t** iCALLOc(n_elements, elem_size, chunks) size_t n_elements; size_t elem_s
 */
 
 #if __STD_C
-Void_t** iCOMALLOc(size_t n_elements, size_t sizes[], Void_t* chunks[])
+Void_t** iCOMALLOc(sys_size_t n_elements, sys_size_t sizes[], Void_t* chunks[])
 #else
-Void_t** iCOMALLOc(n_elements, sizes, chunks) size_t n_elements; size_t sizes[]; Void_t* chunks[];
+Void_t** iCOMALLOc(n_elements, sizes, chunks) sys_size_t n_elements; sys_size_t sizes[]; Void_t* chunks[];
 #endif
 {
   return iALLOc(n_elements, sizes, 0, chunks);
@@ -4483,12 +4483,12 @@ Void_t** iCOMALLOc(n_elements, sizes, chunks) size_t n_elements; size_t sizes[];
 
 
 #if __STD_C
-static Void_t** iALLOc(size_t n_elements, 
-                       size_t* sizes,  
+static Void_t** iALLOc(sys_size_t n_elements, 
+                       sys_size_t* sizes,  
                        int opts,
                        Void_t* chunks[])
 #else
-static Void_t** iALLOc(n_elements, sizes, opts, chunks) size_t n_elements; size_t* sizes; int opts; Void_t* chunks[];
+static Void_t** iALLOc(n_elements, sizes, opts, chunks) sys_size_t n_elements; sys_size_t* sizes; int opts; Void_t* chunks[];
 #endif
 {
   mstate av = get_malloc_state();
@@ -4502,7 +4502,7 @@ static Void_t** iALLOc(n_elements, sizes, opts, chunks) size_t n_elements; size_
   mchunkptr       array_chunk;    /* chunk for malloced ptr array */
   int             mmx;            /* to disable mmap */
   INTERNAL_SIZE_T size;           
-  size_t          i;
+  sys_size_t          i;
 
   /* Ensure initialization */
   if (av->max_fast == 0) malloc_consolidate(av);
@@ -4608,9 +4608,9 @@ static Void_t** iALLOc(n_elements, sizes, opts, chunks) size_t n_elements; size_
 */
 
 #if __STD_C
-Void_t* vALLOc(size_t bytes)
+Void_t* vALLOc(sys_size_t bytes)
 #else
-Void_t* vALLOc(bytes) size_t bytes;
+Void_t* vALLOc(bytes) sys_size_t bytes;
 #endif
 {
   /* Ensure initialization */
@@ -4625,13 +4625,13 @@ Void_t* vALLOc(bytes) size_t bytes;
 
 
 #if __STD_C
-Void_t* pVALLOc(size_t bytes)
+Void_t* pVALLOc(sys_size_t bytes)
 #else
-Void_t* pVALLOc(bytes) size_t bytes;
+Void_t* pVALLOc(bytes) sys_size_t bytes;
 #endif
 {
   mstate av = get_malloc_state();
-  size_t pagesz;
+  sys_size_t pagesz;
 
   /* Ensure initialization */
   if (av->max_fast == 0) malloc_consolidate(av);
@@ -4645,9 +4645,9 @@ Void_t* pVALLOc(bytes) size_t bytes;
 */
 
 #if __STD_C
-int mTRIm(size_t pad)
+int mTRIm(sys_size_t pad)
 #else
-int mTRIm(pad) size_t pad;
+int mTRIm(pad) sys_size_t pad;
 #endif
 {
   mstate av = get_malloc_state();
@@ -4667,9 +4667,9 @@ int mTRIm(pad) size_t pad;
 */
 
 #if __STD_C
-size_t mUSABLe(Void_t* mem)
+sys_size_t mUSABLe(Void_t* mem)
 #else
-size_t mUSABLe(mem) Void_t* mem;
+sys_size_t mUSABLe(mem) Void_t* mem;
 #endif
 {
   mchunkptr p;
@@ -4887,9 +4887,9 @@ int mALLOPt(param_number, value) int param_number; int value;
       MORECORE_CANNOT_TRIM,
 
   There is some variation across systems about the type of the
-  argument to sbrk/MORECORE. If size_t is unsigned, then it cannot
-  actually be size_t, because sbrk supports negative args, so it is
-  normally the signed type of the same width as size_t (sometimes
+  argument to sbrk/MORECORE. If sys_size_t is unsigned, then it cannot
+  actually be sys_size_t, because sbrk supports negative args, so it is
+  normally the signed type of the same width as sys_size_t (sometimes
   declared as "intptr_t", and sometimes "ptrdiff_t").  It doesn't much
   matter though. Internally, we use "long" as arguments, which should
   work across all reasonable possibilities.

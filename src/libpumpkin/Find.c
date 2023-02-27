@@ -2,10 +2,6 @@
 
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"

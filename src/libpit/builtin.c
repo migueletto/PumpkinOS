@@ -38,7 +38,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = c;
             lfmt[ilfmt++] = 0;
             if (script_get_integer(pe, iarg++, &integer) == -1) return -1;
-            snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, (char)integer);
+            sys_snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, (char)integer);
             ibuf = sys_strlen(buf);
           }
           escape = 0;
@@ -48,7 +48,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = c;
             lfmt[ilfmt++] = 0;
             if (script_get_integer(pe, iarg++, &integer) == -1) return -1;
-            snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, integer);
+            sys_snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, integer);
             ibuf = sys_strlen(buf);
           }
           escape = 0;
@@ -59,7 +59,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = c;
             lfmt[ilfmt++] = 0;
             if (script_get_real(pe, iarg++, &d) == -1) return -1;
-            snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, d);
+            sys_snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, d);
             ibuf = sys_strlen(buf);
           }
           escape = 0;
@@ -69,7 +69,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = c;
             lfmt[ilfmt++] = 0;
             if (script_get_string(pe, iarg++, &s) == -1) return -1;
-            snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, s);
+            sys_snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, s);
             xfree(s);
             ibuf = sys_strlen(buf);
           }

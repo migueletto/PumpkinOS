@@ -9,12 +9,12 @@ void heap_finish(heap_t *heap);
 void *heap_base(heap_t *heap);
 void heap_dump(heap_t *heap);
 void heap_walk(heap_t *heap, void (*callback)(uint32_t *p, uint32_t size, uint32_t task), uint32_t task);
-void *heap_alloc(heap_t *heap, size_t size);
-void *heap_realloc(heap_t *heap, void *p, size_t size);
+void *heap_alloc(heap_t *heap, sys_size_t size);
+void *heap_realloc(heap_t *heap, void *p, sys_size_t size);
 void heap_free(heap_t *heap, void *p);
 
 // called from dlmalloc.c:
-void *heap_morecore(size_t size);
+void *heap_morecore(sys_size_t size);
 void heap_assert(const char *file, int line, const char *func, const char *cond);
 
 void heap_exhausted_error(void);

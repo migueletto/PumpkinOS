@@ -1,7 +1,5 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <string.h>
-#include <stdlib.h>
 #include "cp15.h"
 
 struct ArmCP15 {
@@ -29,7 +27,7 @@ struct ArmCP15 {
 	uint32_t cpuid;
 	uint32_t cacheId;
 	
-	bool xscale, omap;
+	int xscale, omap;
 };
 
 void cp15Cycle(struct ArmCP15* cp15)	//mmu on/off lags by a cycle
@@ -41,7 +39,7 @@ void cp15Cycle(struct ArmCP15* cp15)	//mmu on/off lags by a cycle
 	}
 }
 
-static bool cp15prvCoprocRegXferFunc(struct ArmCpu* cpu, void* userData, bool two, bool read, uint8_t op1, uint8_t Rx, uint8_t CRn, uint8_t CRm, uint8_t op2)
+static int cp15prvCoprocRegXferFunc(struct ArmCpu* cpu, void* userData, int two, int read, uint8_t op1, uint8_t Rx, uint8_t CRn, uint8_t CRm, uint8_t op2)
 {
 	struct ArmCP15 *cp15 = (struct ArmCP15*)userData;
 	uint32_t val = 0, tmp;
@@ -87,7 +85,7 @@ static bool cp15prvCoprocRegXferFunc(struct ArmCpu* cpu, void* userData, bool tw
 					tmp = val ^ cp15->control;		//see what changed and mask off then chack for what we support changing of
 					if (tmp & 0x84F0UL) {
 						//fprintf(stderr, "cp15: unknown bits changed (0x%08lx) 0x%08lx -> 0x%08lx, halting\n", (unsigned long)(tmp & 0x84F0UL), (unsigned long)cp15->control, (unsigned long)origVal);
-						//while (true);
+						//while (1);
 					}
 					
 					if (tmp & 0x00002000UL) {			// V bit
@@ -331,24 +329,24 @@ static bool cp15prvCoprocRegXferFunc(struct ArmCpu* cpu, void* userData, bool tw
 	}
 	
 fail:
-	return false;
+	return 0;
 
 success:
 	
 	if(read)
 		cpuSetReg(cpu, Rx, val);
-	return true;
+	return 1;
 }
 
-struct ArmCP15* cp15Init(struct ArmCpu* cpu, struct ArmMmu* mmu, struct icache *ic, uint32_t cpuid, uint32_t cacheId, bool xscale, bool omap)
+struct ArmCP15* cp15Init(struct ArmCpu* cpu, struct ArmMmu* mmu, struct icache *ic, uint32_t cpuid, uint32_t cacheId, int xscale, int omap)
 {
-	struct ArmCP15 *cp15 = (struct ArmCP15*)malloc(sizeof(*cp15));
+	struct ArmCP15 *cp15 = (struct ArmCP15*)sys_malloc(sizeof(*cp15));
 	struct ArmCoprocessor cp = {
 		.regXfer = cp15prvCoprocRegXferFunc,
 		.userData = cp15,
 	};
 	
-	memset(cp15, 0, sizeof (*cp15));
+	sys_memset(cp15, 0, sizeof (*cp15));
 
 	cp15->cpu = cpu;
 	cp15->mmu = mmu;
@@ -369,7 +367,7 @@ struct ArmCP15* cp15Init(struct ArmCpu* cpu, struct ArmMmu* mmu, struct icache *
 
 void cp15Deinit(struct ArmCP15 *cp15) {
   if (cp15) {
-    free(cp15);
+    sys_free(cp15);
   }
 }
 

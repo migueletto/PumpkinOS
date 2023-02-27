@@ -1,10 +1,6 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-
+#include "sys.h"
 #include "endianness.h"
 #include "armem.h"
 #include "RAM.h"
@@ -16,7 +12,7 @@ struct ArmRam {
 	uint32_t* buf;
 };
 
-static bool ramAccessF(void* userData, uint32_t pa, uint8_t size, bool write, void* bufP)
+static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void* bufP)
 {
 	struct ArmRam *ram = (struct ArmRam*)userData;
 	uint8_t *addr = (uint8_t*)ram->buf;
@@ -24,7 +20,7 @@ static bool ramAccessF(void* userData, uint32_t pa, uint8_t size, bool write, vo
 	pa -= ram->adr;
 	if (pa >= ram->sz) {
 		debug(DEBUG_ERROR, "EmuPalmOS", "invalid address 0x%08X (arm)", pa);
-		return false;
+		return 0;
 	}
 	
 	addr += pa;
@@ -67,7 +63,7 @@ static bool ramAccessF(void* userData, uint32_t pa, uint8_t size, bool write, vo
 			
 			default:
 			
-				return false;
+				return 0;
 		}
 	}
 	else {
@@ -117,19 +113,19 @@ static bool ramAccessF(void* userData, uint32_t pa, uint8_t size, bool write, vo
 			
 			default:
 			
-				return false;
+				return 0;
 		}
 	}
 	
-	return true;
+	return 1;
 }
 
 struct ArmRam *ramInit(struct ArmMem *mem, uint32_t adr, uint32_t sz, uint32_t* buf)
 {
-	struct ArmRam *ram = (struct ArmRam*)malloc(sizeof(*ram));
+	struct ArmRam *ram = (struct ArmRam*)sys_malloc(sizeof(*ram));
 	
 	if (ram) {
-		memset(ram, 0, sizeof (*ram));
+		sys_memset(ram, 0, sizeof (*ram));
 		ram->adr = adr;
 		ram->sz = sz;
 		ram->buf = buf;
@@ -141,6 +137,6 @@ struct ArmRam *ramInit(struct ArmMem *mem, uint32_t adr, uint32_t sz, uint32_t* 
 
 void ramDeinit(struct ArmRam *ram) {
   if (ram) {
-    free(ram);
+    sys_free(ram);
   }
 }

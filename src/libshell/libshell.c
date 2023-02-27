@@ -1,10 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "sys.h"
 #include "script.h"
 #include "thread.h"
@@ -150,7 +143,7 @@ static int libshell_write_aux(shell_t *shell, int err, char *buf, int len) {
   int r;
 
   if (len == -1) {
-    len = strlen(buf);
+    len = sys_strlen(buf);
   }
 
   if (shell->fout && !err) {
@@ -167,11 +160,11 @@ static int libshell_write(shell_t *shell, char *buf, int len) {
 }
 
 static void libshell_print(shell_t *shell, int err, char *fmt, ...) {
-  va_list ap;
+  sys_va_list ap;
 
-  va_start(ap, fmt);
-  vsnprintf(shell->buf, MAX_BUF, fmt, ap);
-  va_end(ap);
+  sys_va_start(ap, fmt);
+  sys_vsnprintf(shell->buf, MAX_BUF, fmt, ap);
+  sys_va_end(ap);
 
   if (err) debug(DEBUG_ERROR, "SHELL", shell->buf);
   libshell_write_aux(shell, err, shell->buf, -1);
@@ -206,15 +199,15 @@ static char *libshell_ret(int pe, script_arg_t *ret) {
 
   switch (ret->type) {
     case SCRIPT_ARG_INTEGER:
-      snprintf(buf, sizeof(buf)-1, "%d", ret->value.i);
+      sys_snprintf(buf, sizeof(buf)-1, "%d", ret->value.i);
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_REAL:
-      snprintf(buf, sizeof(buf)-1, "%f", ret->value.d);
+      sys_snprintf(buf, sizeof(buf)-1, "%f", ret->value.d);
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_BOOLEAN:
-      strcpy(buf, ret->value.i ? "true" : "false");
+      sys_strcpy(buf, ret->value.i ? "true" : "false");
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_STRING:
@@ -228,24 +221,24 @@ static char *libshell_ret(int pe, script_arg_t *ret) {
       xfree(ret->value.l.s);
       break;
     case SCRIPT_ARG_OBJECT:
-      strcpy(buf, "<object>");
+      sys_strcpy(buf, "<object>");
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
     case SCRIPT_ARG_FUNCTION:
-      strcpy(buf, "<function>");
+      sys_strcpy(buf, "<function>");
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
     case SCRIPT_ARG_FILE:
-      strcpy(buf, "<file>");
+      sys_strcpy(buf, "<file>");
       val = xstrdup(buf);
       break;
     case SCRIPT_ARG_NULL:
       val = NULL;
       break;
     default:
-      snprintf(buf, sizeof(buf)-1, "type(%c)", ret->type);
+      sys_snprintf(buf, sizeof(buf)-1, "type(%c)", ret->type);
       val = xstrdup(buf);
       break;
   }
@@ -257,7 +250,7 @@ static char *libshell_eval(shell_t *shell, char *s) {
   script_arg_t ret;
   char *val = NULL;
 
-  if (libshell_script_call(shell->pe, shell->ref, (uint8_t *)s, strlen(s), &ret) == 0) {
+  if (libshell_script_call(shell->pe, shell->ref, (uint8_t *)s, sys_strlen(s), &ret) == 0) {
     val = libshell_ret(shell->pe, &ret);
   }
 
@@ -266,7 +259,7 @@ static char *libshell_eval(shell_t *shell, char *s) {
 
 static int cmd_date(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
   int day, month, year, wday, hour, min, sec;
-  time_t t;
+  uint64_t t;
 
   t = sys_time();
   ts2time(t, &day, &month, &year, &wday, &hour, &min, &sec);
@@ -281,7 +274,7 @@ static int cmd_cls(shell_t *shell, vfs_session_t *session, int pe, int argc, cha
 }
 
 static int cmd_pid(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
-  libshell_print(shell, 0, "%u\r\n", getpid());
+  libshell_print(shell, 0, "%u\r\n", sys_get_pid());
   return 0;
 }
 
@@ -320,9 +313,9 @@ static int cmd_ps(shell_t *shell, vfs_session_t *session, int pe, int argc, char
 static int cmd_kill(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
   int handle, r;
 
-  handle = atoi(argv[1]);
+  handle = sys_atoi(argv[1]);
 
-  if (handle == 0 || !strcmp(argv[2], "MAIN")) {
+  if (handle == 0 || !sys_strcmp(argv[2], "MAIN")) {
     libshell_write(shell, "Can not kill main thread.\r\n", -1);
 
   } else {
@@ -407,7 +400,7 @@ static int cmd_rm(shell_t *shell, vfs_session_t *session, int pe, int argc, char
 }
 
 static int cmd_echo(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
-  libshell_write(shell, argv[1], strlen(argv[1]));
+  libshell_write(shell, argv[1], sys_strlen(argv[1]));
   return 0;
 }
 
@@ -500,10 +493,10 @@ static int cmd_dump(shell_t *shell, vfs_session_t *session, int pe, int argc, ch
       return -1;
     }
     if (argc > 2) {
-      if (!strncmp(argv[2], "0x", 2)) {
-        offset = strtoul(&argv[2][2], NULL, 16);
+      if (!sys_strncmp(argv[2], "0x", 2)) {
+        offset = sys_strtoul(&argv[2][2], NULL, 16);
       } else {
-        offset = atoi(argv[2]);
+        offset = sys_atoi(argv[2]);
       }
       debug(DEBUG_TRACE, "SHELL", "dump offset %u", offset);
       if (vfs_seek(file, offset, 0) == -1) {
@@ -512,10 +505,10 @@ static int cmd_dump(shell_t *shell, vfs_session_t *session, int pe, int argc, ch
       }
     }
     if (argc > 3) {
-      if (!strncmp(argv[3], "0x", 2)) {
-        len = strtoul(&argv[3][2], NULL, 16);
+      if (!sys_strncmp(argv[3], "0x", 2)) {
+        len = sys_strtoul(&argv[3][2], NULL, 16);
       } else {
-        len = atoi(argv[3]);
+        len = sys_atoi(argv[3]);
       }
       debug(DEBUG_TRACE, "SHELL", "dump length %u", len);
     }
@@ -543,7 +536,7 @@ static int cmd_dump(shell_t *shell, vfs_session_t *session, int pe, int argc, ch
     }
 
     xmemset(hbuf, ' ', sizeof(hbuf));
-    sprintf(aux, "%08X", offset & 0xFFFFFFF0);
+    sys_sprintf(aux, "%08X", offset & 0xFFFFFFF0);
     offset += n;
     nread += n;
 
@@ -561,7 +554,7 @@ static int cmd_dump(shell_t *shell, vfs_session_t *session, int pe, int argc, ch
       hbuf[j++] = ' ';
 
       for (i = 0, k = j + 8*3 + 1 + 8*3 + 1; i < i0+n; i++) {
-        sprintf(aux, "%02X", buf[i]);
+        sys_sprintf(aux, "%02X", buf[i]);
         hbuf[j++] = i >= i0 ? aux[0] : ' ';
         hbuf[j++] = i >= i0 ? aux[1] : ' ';
         hbuf[j++] = ' ';
@@ -673,8 +666,8 @@ static int libshell_window(shell_t *shell, int *cols, int *rows) {
 static int cmd_window(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
   int cols, rows;
 
-  cols = atoi(argv[1]);
-  rows = atoi(argv[2]);
+  cols = sys_atoi(argv[1]);
+  rows = sys_atoi(argv[2]);
 
   if (cols > 0 && rows > 0) {
     shell->cols = cols;
@@ -701,7 +694,7 @@ static int cmd_env(shell_t *shell, vfs_session_t *session, int pe, int argc, cha
 static int cmd_finish(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
   int code;
 
-  code = atoi(argv[1]);
+  code = sys_atoi(argv[1]);
   sys_set_finish(code);
 
   return 0;
@@ -750,7 +743,7 @@ static int cmd_help(shell_t *shell, vfs_session_t *session, int pe, int argc, ch
 
     } else {
       for (i = 0; i < ncmds; i++) {
-        if (!strcmp(argv[1], cmd[i].name)) {
+        if (!sys_strcmp(argv[1], cmd[i].name)) {
           libshell_write(shell, cmd[i].help, -1);
           libshell_write(shell, CRLF, -1);
           libshell_write(shell, "Usage: ", -1);
@@ -934,7 +927,7 @@ static int libshell_cmd(shell_t *shell, char *line) {
 
     if (mutex_lock(mutex) == 0) {
       for (i = 0; i < ncmds; i++) {
-        if (!strcmp(argv[0], cmd[i].name)) {
+        if (!sys_strcmp(argv[0], cmd[i].name)) {
           if ((argc-1) < cmd[i].minargs || (argc-1) > cmd[i].maxargs) {
             libshell_write(shell, "Usage: ", -1);
             libshell_write(shell, cmd[i].usage, -1);
@@ -1021,8 +1014,8 @@ static void libshell_line(shell_t *shell, char *line) {
       libshell_add_history(shell, line);
     }
 
-    snprintf(tmp1, sizeof(tmp1), "%c_tmp1", FILE_SEP);
-    snprintf(tmp2, sizeof(tmp2), "%c_tmp2", FILE_SEP);
+    sys_snprintf(tmp1, sizeof(tmp1), "%c_tmp1", FILE_SEP);
+    sys_snprintf(tmp2, sizeof(tmp2), "%c_tmp2", FILE_SEP);
 
     for (i = 0, s = 0, p = line, usepipe = 0, err = 0, in = tmp1, out = tmp2; p[i] && !err;) {
       switch (s) {
@@ -1089,49 +1082,49 @@ static int libshell_escape_sequence(shell_t *shell, char *seq) {
 
  debug(DEBUG_TRACE, "SHELL", "escape sequence [%s]", seq);
 
-  if (!strcmp(seq, CURSOR_UP)) {
+  if (!sys_strcmp(seq, CURSOR_UP)) {
     debug(DEBUG_TRACE, "SHELL", "cursor up");
     s = libshell_get_history(shell, 1);
 
-  } else if (!strcmp(seq, CURSOR_DOWN)) {
+  } else if (!sys_strcmp(seq, CURSOR_DOWN)) {
     debug(DEBUG_TRACE, "SHELL", "cursor down");
     s = libshell_get_history(shell, 0);
 
-  } else if (!strcmp(seq, CURSOR_LEFT)) {
+  } else if (!sys_strcmp(seq, CURSOR_LEFT)) {
     debug(DEBUG_TRACE, "SHELL", "cursor left");
     if (shell->linepos) {
       libshell_write(shell, "\b", 1);
       shell->linepos--;
     }
 
-  } else if (!strcmp(seq, CURSOR_RIGHT)) {
+  } else if (!sys_strcmp(seq, CURSOR_RIGHT)) {
     debug(DEBUG_TRACE, "SHELL", "cursor right");
     if (shell->linepos < shell->linelen) {
       libshell_write(shell, &shell->line[shell->linepos], 1);
       shell->linepos++;
     }
 
-  } else if (!strcmp(seq, PF1)) {
+  } else if (!sys_strcmp(seq, PF1)) {
     debug(DEBUG_TRACE, "SHELL", "PF1");
     libshell_write(shell, CRLF, -1);
     cmd_help(shell, shell->session, shell->pe, 1, NULL, NULL);
     libshell_prompt(shell);
 
-  } else if (!strcmp(seq, PF2)) {
+  } else if (!sys_strcmp(seq, PF2)) {
     debug(DEBUG_TRACE, "SHELL", "PF2");
 
-  } else if (!strcmp(seq, PF3)) {
+  } else if (!sys_strcmp(seq, PF3)) {
     debug(DEBUG_TRACE, "SHELL", "PF3");
 
-  } else if (!strcmp(seq, PF4)) {
+  } else if (!sys_strcmp(seq, PF4)) {
     debug(DEBUG_TRACE, "SHELL", "PF4");
   }
 
   if (s) {
     libshell_write(shell, ERASELINE, -1);
     libshell_prompt(shell);
-    strncpy(shell->line, s, MAX_LINE-1);
-    shell->linelen = strlen(s);
+    sys_strncpy(shell->line, s, MAX_LINE-1);
+    shell->linelen = sys_strlen(s);
     shell->linepos = shell->linelen;
     libshell_write(shell, shell->line, shell->linelen);
     shell->used_history = 1;
@@ -1237,8 +1230,8 @@ static int libshell_loop(int fd, int ptr) {
   newshell.pe = shell->pe;
   newshell.ref = script_dup_ref(shell->pe, shell->ref);
   newshell.dotelnet = shell->dotelnet;
-  strncpy(newshell.login, shell->login, MAX_LOGIN-1);
-  strncpy(newshell.password, shell->password, MAX_PASSWORD-1);
+  sys_strncpy(newshell.login, shell->login, MAX_LOGIN-1);
+  sys_strncpy(newshell.password, shell->password, MAX_PASSWORD-1);
   ptr_unlock(ptr, TAG_SHELL);
   newshell.session = vfs_open_session();
 
@@ -1323,8 +1316,8 @@ static int libshell_server(int pe) {
         if (io_fill_addr(host, port, &addr) == 0) {
           shell->pe = pe;
           shell->ref = ref;
-          strncpy(shell->login, login, MAX_LOGIN-1);
-          strncpy(shell->password, password, MAX_PASSWORD-1);
+          sys_strncpy(shell->login, login, MAX_LOGIN-1);
+          sys_strncpy(shell->password, password, MAX_PASSWORD-1);
           bt = script_get_pointer(pe, BT_PROVIDER);
 
           switch (addr.addr_type) {

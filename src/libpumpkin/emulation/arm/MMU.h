@@ -4,8 +4,6 @@
 #define _MMU_H_
 
 
-#include <stdbool.h>
-#include <stdint.h>
 #include "armem.h"
 
 
@@ -21,19 +19,19 @@ struct ArmMmu;
 #define MMU_MAPPING_SW			0x0020
 
 
-struct ArmMmu* mmuInit(struct ArmMem *mem, bool xscaleMode);
+struct ArmMmu* mmuInit(struct ArmMem *mem, int xscaleMode);
 void mmuDeinit(struct ArmMmu *mmu);
-bool mmuTranslate(struct ArmMmu *mmu, uint32_t va, bool priviledged, bool write, uint32_t* paP, uint8_t* fsrP, uint8_t *mappingInfoP);
+int mmuTranslate(struct ArmMmu *mmu, uint32_t va, int priviledged, int write, uint32_t* paP, uint8_t* fsrP, uint8_t *mappingInfoP);
 
-bool mmuIsOn(struct ArmMmu *mmu);
+int mmuIsOn(struct ArmMmu *mmu);
 
 uint32_t mmuGetTTP(struct ArmMmu *mmu);
 void mmuSetTTP(struct ArmMmu *mmu, uint32_t ttp);
 
-void mmuSetS(struct ArmMmu *mmu, bool on);
-void mmuSetR(struct ArmMmu *mmu, bool on);
-bool mmuGetS(struct ArmMmu *mmu);
-bool mmuGetR(struct ArmMmu *mmu);
+void mmuSetS(struct ArmMmu *mmu, int on);
+void mmuSetR(struct ArmMmu *mmu, int on);
+int mmuGetS(struct ArmMmu *mmu);
+int mmuGetR(struct ArmMmu *mmu);
 
 uint32_t mmuGetDomainCfg(struct ArmMmu *mmu);
 void mmuSetDomainCfg(struct ArmMmu *mmu, uint32_t val);

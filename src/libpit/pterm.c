@@ -526,7 +526,7 @@ void pterm_send(pterm_t *t, uint8_t *buf, int n) {
           sys_strcpy(dbuf, "ESC [");
           for (i = 0; i < t->vt100_num; i++) {
             if (i > 0) sys_strcat(dbuf, ";");
-            sprintf(&dbuf[sys_strlen(dbuf)], "%d", t->vt100_arg[i]);
+            sys_snprintf(&dbuf[sys_strlen(dbuf)], sizeof(dbuf)-sys_strlen(dbuf)-1, "%d", t->vt100_arg[i]);
           }
           i =sys_strlen(dbuf);
           dbuf[i++] = c;
@@ -677,7 +677,7 @@ void pterm_send(pterm_t *t, uint8_t *buf, int n) {
           case 'n':
             if (t->vt100_num == 1 && t->vt100_arg[0] == 6) {
               // Query cursor position
-              snprintf(abuf, sizeof(abuf)-1, "%c[%d;%dR", ESC, t->row + 1, t->col + 1);
+              sys_snprintf(abuf, sizeof(abuf)-1, "%c[%d;%dR", ESC, t->row + 1, t->col + 1);
               if (t->cb) t->cb->reply(abuf, sys_strlen(abuf), t->cb->data);
             }
             break;

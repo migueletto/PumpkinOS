@@ -581,22 +581,22 @@ static void getLabel(bmp_edit_t *data) {
   switch (bmp->version) {
     case 0:
       bmpV0 = (BitmapTypeV0 *)bmp;
-      snprintf(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, bmpV0->width, bmpV0->height);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, bmpV0->width, bmpV0->height);
       break;
     case 1:
       bmpV1 = (BitmapTypeV1 *)bmp;
-      snprintf(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, bmpV1->width, bmpV1->height, bmpV1->pixelSize);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, bmpV1->width, bmpV1->height, bmpV1->pixelSize);
       break;
     case 2:
       bmpV2 = (BitmapTypeV2 *)bmp;
-      snprintf(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, bmpV2->width, bmpV2->height, bmpV2->pixelSize);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, bmpV2->width, bmpV2->height, bmpV2->pixelSize);
       break;
     case 3:
       bmpV3 = (BitmapTypeV3 *)bmp;
-      snprintf(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
       break;
     default:
-      snprintf(data->title, MAX_TITLE-1, "%s: V?", data->prefix);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V?", data->prefix);
       break;
   }
 }

@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <stdarg.h>
-
 #include <PalmOS.h>
 #include <VFSMgr.h>
 #include <FrmGlue.h>
@@ -147,7 +144,7 @@ void palmos_accessortrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       break;
 #endif
     default:
-      snprintf(buf, sizeof(buf)-1, "AccessorDispatch selector %d not mapped", sel);
+      sys_snprintf(buf, sizeof(buf)-1, "AccessorDispatch selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }

@@ -25,7 +25,7 @@ language_t *LanguageInit(UInt32 id) {
   void *lib;
   Err err;
 
-  snprintf(stype, sizeof(stype)-1, "%04d", id);
+  sys_snprintf(stype, sizeof(stype)-1, "%04d", id);
   pumpkin_s2id(&type, stype);
   langName = PrefLanguageName(id);
 

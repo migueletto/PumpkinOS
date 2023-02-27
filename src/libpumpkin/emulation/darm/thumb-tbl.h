@@ -28,7 +28,6 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 #ifndef __THUMB_TBL__
 #define __THUMB_TBL__
-#include <stdint.h>
 #include "darm-tbl.h"
 extern darm_enctype_t thumb_instr_types[256];
 extern darm_instr_t thumb_instr_labels[256];

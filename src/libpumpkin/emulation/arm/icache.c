@@ -1,9 +1,7 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include "icache.h"
+#include "sys.h"
+#include "MMU.h"
 #include "CPU.h"
 #include "debug.h"
 
@@ -51,10 +49,10 @@ void icacheInval(struct icache *ic)
 
 struct icache* icacheInit(struct ArmMem* mem, struct ArmMmu *mmu)
 {
-	struct icache *ic = (struct icache*)malloc(sizeof(*ic));
+	struct icache *ic = (struct icache*)sys_malloc(sizeof(*ic));
 	
 	if (ic) {
-		memset(ic, 0, sizeof (*ic));
+		sys_memset(ic, 0, sizeof (*ic));
 	
 		ic->mem = mem;
 		ic->mmu = mmu;
@@ -67,7 +65,7 @@ struct icache* icacheInit(struct ArmMem* mem, struct ArmMmu *mmu)
 
 void icacheDeinit(struct icache *ic) {
   if (ic) {
-    free(ic);
+    sys_free(ic);
   }
 }
 
@@ -100,12 +98,12 @@ void icacheInvalAddr(struct icache* ic, uint32_t va)
 	}
 }
 
-bool icacheFetch(struct icache* ic, uint32_t va, uint_fast8_t sz, bool priviledged, uint_fast8_t* fsrP, void* buf)
+int icacheFetch(struct icache* ic, uint32_t va, uint_fast8_t sz, int priviledged, uint_fast8_t* fsrP, void* buf)
 {
 	struct icacheLine *lines, *line = NULL;
 	uint32_t off = va % ICACHE_LINE_SZ;
 	int_fast16_t i, j, bucket;
-	bool needRead = false;
+	int needRead = 0;
 	
 	va -= off;
 	
@@ -114,7 +112,7 @@ bool icacheFetch(struct icache* ic, uint32_t va, uint_fast8_t sz, bool priviledg
 		if (fsrP)
 			*fsrP = 3;
 debug(1, "XXX", "icacheFetch alignment issue");
-		return false;
+		return 0;
 	}
 
 	bucket = icachePrvHash(va);
@@ -130,7 +128,7 @@ debug(1, "XXX", "icacheFetch alignment issue");
 			if (!priviledged && (lines[j].info & ICACHE_PRIV_MASK)) {	//we found a line but it was cached as priviledged and we are not sure if unpriv can access it
 				
 				//attempt a re-read. if it passes, remove priv flag
-				needRead = true;
+				needRead = 1;
 			}
 			
 			line = &lines[j];
@@ -140,7 +138,7 @@ debug(1, "XXX", "icacheFetch alignment issue");
 	
 	if (!line) {
 		
-		needRead = true;
+		needRead = 1;
 		
 		j = ic->ptr[bucket]++;
 		if (ic->ptr[bucket] == ICACHE_BUCKET_SZ)
@@ -155,9 +153,9 @@ debug(1, "XXX", "icacheFetch alignment issue");
 	
 		//if we're here, we found nothing - maybe time to populate the cache
 		
-		if (!mmuTranslate(ic->mmu, va, priviledged, false, &pa, fsrP, &mappingInfo)) {
+		if (!mmuTranslate(ic->mmu, va, priviledged, 0, &pa, fsrP, &mappingInfo)) {
 debug(1, "XXX", "icacheFetch mmuTranslate");
-			return false;
+			return 0;
 		}
 		
 		if (!mmuIsOn(ic->mmu) || !(mappingInfo & MMU_MAPPING_CACHEABLE)) {	//uncacheable mapping or mmu is off - just do the read we were asked to and do not fill the line
@@ -168,10 +166,10 @@ debug(1, "XXX", "icacheFetch mmuTranslate");
 					*fsrP = 0x0d;	//perm error
 				
 debug(1, "XXX", "icacheFetch memAccess (mmuIsOn %d, mapping %d)", mmuIsOn(ic->mmu), (mappingInfo & MMU_MAPPING_CACHEABLE) ? 1 : 0);
-				return false;
+				return 0;
 			}
 			
-			return true;
+			return 1;
 		}
 		
 		if (!memAccess(ic->mem, pa, ICACHE_LINE_SZ, MEM_ACCESS_TYPE_READ, data)) {
@@ -180,10 +178,10 @@ debug(1, "XXX", "icacheFetch memAccess (mmuIsOn %d, mapping %d)", mmuIsOn(ic->mm
 				*fsrP = 0x0d;	//perm error
 			
 debug(1, "XXX", "icacheFetch memAccess2");
-			return false;
+			return 0;
 		}
 	
-		memcpy(line->data, data, ICACHE_LINE_SZ);
+		sys_memcpy(line->data, data, ICACHE_LINE_SZ);
 		line->info = va | (priviledged ? ICACHE_PRIV_MASK : 0) | ICACHE_USED_MASK;
 	}
 		
@@ -202,7 +200,7 @@ debug(1, "XXX", "icacheFetch memAccess2");
 		#endif
 	}
 	else
-		memcpy(buf, line->data + off, sz);
+		sys_memcpy(buf, line->data + off, sz);
 	
 debug(1, "XXX", "icacheFetch return %d", priviledged || !(line->info & ICACHE_PRIV_MASK) ? 1 : 0);
 	return priviledged || !(line->info & ICACHE_PRIV_MASK);

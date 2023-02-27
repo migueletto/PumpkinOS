@@ -1,6 +1,4 @@
-#include <stdint.h>
-#include <stdarg.h>
-
+#include "sys.h"
 #include "disasm.h"
 #include "darm.h"
 #include "debug.h"

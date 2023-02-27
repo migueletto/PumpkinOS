@@ -51,10 +51,10 @@ AppRegistryType *AppRegistryInit(char *regname) {
       }
       if (sys_readdir(dir, name, sizeof(name)-1) == -1) break;
       screator[4] = 0;
-      if (sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator+1, screator+2, screator+3, &aux, &id, &seq) != 7) continue;
+      if (sys_sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator+1, screator+2, screator+3, &aux, &id, &seq) != 7) continue;
       if (id < appRegistryCompat || id >= appRegistryLast) continue;
 
-      snprintf(path, sizeof(path)-1, "%s%s", regname, name);
+      sys_snprintf(path, sizeof(path)-1, "%s%s", regname, name);
       if ((fd = sys_open(path, SYS_READ)) == -1) continue;
 
       if ((size = sys_seek(fd, 0, SYS_SEEK_END)) != -1) {
@@ -90,7 +90,7 @@ static int AppRegistrySave(AppRegistryType *ar, int i) {
   int fd, r = -1;
 
   pumpkin_id2s(ar->registry[i].creator, screator);
-  snprintf(path, sizeof(path)-1, "%s%4s.%08X.%d.%d", ar->regname, screator, ar->registry[i].creator, ar->registry[i].id, ar->registry[i].seq);
+  sys_snprintf(path, sizeof(path)-1, "%s%4s.%08X.%d.%d", ar->regname, screator, ar->registry[i].creator, ar->registry[i].id, ar->registry[i].seq);
 
   if ((fd = sys_create(path, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
     debug(DEBUG_INFO, "AppReg", "saving registry creator '%s' id %d seq %d", screator, ar->registry[i].id, ar->registry[i].seq);

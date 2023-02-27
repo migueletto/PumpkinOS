@@ -1,8 +1,5 @@
 #include <PalmOS.h>
 
-#include <string.h>
-#include <setjmp.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
@@ -47,9 +44,9 @@ void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const fun
   }
   m = msg ? (char *)msg : "no message";
   if (function) {
-    snprintf(buf, sizeof(buf) - 1, "Fatal Alert %s, %s, Line:%d: %s", fn, function, lineNo, m);
+    sys_snprintf(buf, sizeof(buf) - 1, "Fatal Alert %s, %s, Line:%d: %s", fn, function, lineNo, m);
   } else {
-    snprintf(buf, sizeof(buf) - 1, "Fatal Alert %s, Line:%d: %s", fn, lineNo, m);
+    sys_snprintf(buf, sizeof(buf) - 1, "Fatal Alert %s, Line:%d: %s", fn, lineNo, m);
   }
   SysFatalAlert(buf);
 

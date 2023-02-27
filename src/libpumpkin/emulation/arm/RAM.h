@@ -3,8 +3,7 @@
 #ifndef _RAM_H_
 #define _RAM_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "sys.h"
 
 struct ArmRam;
 

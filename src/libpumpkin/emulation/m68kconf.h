@@ -197,7 +197,7 @@
 #define M68K_USE_64_BIT  OPT_ON
 
 
-#include <stdint.h>
+#include "sys.h"
 #include "emupalmosinc.h"
 
 #define m68k_read_memory_8(A) cpu_read_byte(A)

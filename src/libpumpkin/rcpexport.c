@@ -1,14 +1,11 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <string.h>
-
+#include "sys.h"
 #include "rcpexport.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
 #include "rgb.h"
-#include "sys.h"
 #include "bytes.h"
 #include "AppRegistry.h"
 #include "storage.h"

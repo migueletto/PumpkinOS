@@ -1,15 +1,14 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdarg.h>
-
-extern void exit(int);
+#include "sys.h"
+#include "emulation/emupalmosinc.h"
 
 static void fatalerror(char *format, ...) {
-      va_list ap;
-      va_start(ap,format);
-      vfprintf(stderr,format,ap);  // JFF: fixed. Was using fprintf and arguments were wrong
-      va_end(ap);
-      exit(1);
+      sys_va_list ap;
+      char buf[256];
+
+      sys_va_start(ap, format);
+      sys_vsnprintf(buf, sizeof(buf)-1, format, ap);
+      sys_va_end(ap);
+      emupalmos_panic(buf, EMUPALMOS_INVALID_INSTRUCTION);
 }
 
 #define FPCC_N			0x08000000
@@ -128,7 +127,7 @@ static inline floatx80 load_pack_float80(m68k_state_t *m68k_state, uint32 ea)
 	*ch++ = (char)(((dw1 >> 16) & 0xf) + '0');
 	*ch = '\0';
 
-	sscanf(str, "%le", &tmp);
+	sys_sscanf(str, "%le", &tmp);
 
 	result = double_to_fx80(tmp);
 
@@ -144,7 +143,7 @@ static inline void store_pack_float80(m68k_state_t *m68k_state, uint32 ea, int k
 	dw1 = dw2 = dw3 = 0;
 	ch = &str[0];
 
-	sprintf(str, "%.16e", fx80_to_double(fpr));
+	sys_sprintf(str, "%.16e", fx80_to_double(fpr));
 
 	if (*ch == '-')
 	{

@@ -1,9 +1,9 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <string.h>
+#include "sys.h"
 #include "pxa_IC.h"
 #include "armem.h"
+#include "debug.h"
 
 
 #define PXA_IC_BASE	0x40D00000UL
@@ -22,13 +22,13 @@ struct SocIc {
 	uint8_t prio[40];
 	uint8_t iccr;
 	
-	bool wasIrq, wasFiq, gen2;
+	int wasIrq, wasFiq, gen2;
 };
 
 
 static void socIcPrvHandleChanges(struct SocIc *ic)
 {
-	bool nowIrq = false, nowFiq = false;
+	int nowIrq = 0, nowFiq = 0;
 	uint_fast8_t i;
 	
 	for (i = 0; i < 2; i++) {
@@ -39,9 +39,9 @@ static void socIcPrvHandleChanges(struct SocIc *ic)
 	}
 	
 	if (nowFiq != ic->wasFiq)
-		cpuIrq(ic->cpu, true, nowFiq);
+		cpuIrq(ic->cpu, 1, nowFiq);
 	if (nowIrq != ic->wasIrq)
-		cpuIrq(ic->cpu, false, nowIrq);
+		cpuIrq(ic->cpu, 0, nowIrq);
 
 	ic->wasFiq = nowFiq;
 	ic->wasIrq = nowIrq;
@@ -92,14 +92,14 @@ static uint32_t socIcPrvGetIcfp(struct SocIc *ic, uint_fast8_t idx)
 	return ic->ICPR[idx] & ic->ICMR[idx] & ic->ICLR[idx];
 }
 
-static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, bool write, void* buf)
+static int socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, int write, void* buf)
 {
 	struct SocIc *ic = (struct SocIc*)userData;
 	uint32_t val = 0;
 	
 	if (size != 4) {
-		fprintf(stderr, "%s: Unexpected %s of %u bytes to 0x%08lx\n", __func__, write ? "write" : "read", size, (unsigned long)pa);
-		return false;
+		debug(DEBUG_ERROR, "ARM", "%s: Unexpected %s of %u bytes to 0x%08lx", __func__, write ? "write" : "read", size, (unsigned long)pa);
+		return 0;
 	}
 	
 	pa = (pa - PXA_IC_BASE) >> 2;
@@ -111,7 +111,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 	switch (pa) {
 		case 0x9C / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			pa -= 0x9C / 4;
 			pa += 0x00 / 4;
 			pa += 1;
@@ -125,7 +125,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 		
 		case 0xA0 / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			pa -= 0xA0 / 4;
 			pa += 0x04 / 4;
 			pa += 1;
@@ -139,7 +139,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 		
 		case 0xA4 / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			pa -= 0xA4 / 4;
 			pa += 0x08 / 4;
 			pa += 1;
@@ -153,7 +153,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 		
 		case 0xA8 / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			pa -= 0xA8 / 4;
 			pa += 0x0C / 4;
 			pa += 1;
@@ -167,7 +167,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 		
 		case 0xAC / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			pa -= 0xAC / 4;
 			pa += 0x10 / 4;
 			pa += 1;
@@ -188,7 +188,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 		
 		case 0x18 / 4:
 			if (!ic->gen2)
-				return false;
+				return 0;
 			if (write)
 				;		//ignored
 			else
@@ -208,7 +208,7 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 			break;
 		
 		default:
-			return false;
+			return 0;
 	}
 	
 	if (write)
@@ -216,17 +216,17 @@ static bool socIcPrvMemAccessF(void* userData, uint32_t pa, uint_fast8_t size, b
 	else
 		*(uint32_t*)buf = val;
 
-	return true;
+	return 1;
 }
 
-bool pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, bool two/* MCR2/MRC2 ? */, bool MRC, uint8_t op1, uint8_t Rx, uint8_t CRn, uint8_t CRm, uint8_t op2)
+int pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, int two/* MCR2/MRC2 ? */, int MRC, uint8_t op1, uint8_t Rx, uint8_t CRn, uint8_t CRm, uint8_t op2)
 {
 	struct SocIc *ic = (struct SocIc*)userData;
-	bool write = !MRC;
+	int write = !MRC;
 	uint32_t val = 0;
 	
 	if (CRm || op1 || op2 || two)
-		return false;
+		return 0;
 	
 	if (write)
 		val = cpuGetRegExternal(cpu, Rx);
@@ -238,7 +238,7 @@ bool pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, bool two/* MCR2
 			//fallthrough
 		case 0:
 			if (write)
-				return false;
+				return 0;
 			else
 				val = socIcPrvGetIcip(ic, CRn - 0);
 			break;
@@ -268,7 +268,7 @@ bool pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, bool two/* MCR2
 			//fallthrough
 		case 3:
 			if (write)
-				return false;
+				return 0;
 			else
 				val = socIcPrvGetIcfp(ic, CRn - 3);
 			break;
@@ -278,20 +278,20 @@ bool pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, bool two/* MCR2
 			//fallthrough
 		case 4:
 			if (write)
-				return false;
+				return 0;
 			else
 				val = ic->ICPR[CRn - 4];
 			break;
 		
 		case 5:
 			if (write)
-				return false;
+				return 0;
 			else
 				val = socIcPrvCalcHighestPrio(ic);
 			break;
 		
 		default:
-			return false;
+			return 0;
 	}
 	
 	if (write)
@@ -299,18 +299,18 @@ bool pxa270icPrvCoprocAccess(struct ArmCpu* cpu, void* userData, bool two/* MCR2
 	else
 		cpuSetReg(cpu, Rx, val);
 	
-	return true;
+	return 1;
 }
 
 struct SocIc* socIcInit(struct ArmCpu *cpu, struct ArmMem *physMem, uint_fast8_t socRev)
 {
-	struct SocIc *ic = (struct SocIc*)malloc(sizeof(*ic));
+	struct SocIc *ic = (struct SocIc*)sys_malloc(sizeof(*ic));
 	struct ArmCoprocessor cp = {
 		.regXfer = pxa270icPrvCoprocAccess,
 		.userData = ic,
 	};
 	
-	memset(ic, 0, sizeof (*ic));
+	sys_memset(ic, 0, sizeof (*ic));
 	
 	ic->cpu = cpu;
 	ic->gen2 = socRev == 2;
@@ -325,11 +325,11 @@ struct SocIc* socIcInit(struct ArmCpu *cpu, struct ArmMem *physMem, uint_fast8_t
 
 void socIcDeinit(struct SocIc *ic) {
   if (ic) {
-    free(ic);
+    sys_free(ic);
   }
 }
 
-void socIcInt(struct SocIc *ic, uint_fast8_t intNum, bool raise)		//interrupt caused by emulated hardware
+void socIcInt(struct SocIc *ic, uint_fast8_t intNum, int raise)		//interrupt caused by emulated hardware
 {
 	uint32_t old = ic->ICPR[intNum / 32];
 	

@@ -1,5 +1,3 @@
-#include <stdarg.h>
-
 #include "sys.h"
 #include "script.h"
 #include "vfs.h"
@@ -570,7 +568,7 @@ int vfs_write(vfs_file_t *f, uint8_t *buf, uint32_t len) {
 
 int vfs_getc(vfs_file_t *f) {
   uint8_t b;
-  int r = EOF;
+  int r = SYS_EOF;
 
   if (vfs_read(f, &b, 1) == 1) {
     r = b;
@@ -589,7 +587,7 @@ char *vfs_gets(vfs_file_t *f, char *s, uint32_t len) {
 
   for (i = 0; i < len-1;) {
     c = vfs_getc(f);
-    if (c == EOF) break;
+    if (c == SYS_EOF) break;
     s[i++] = c;
     if (c == '\n') break;
   }
@@ -600,7 +598,7 @@ char *vfs_gets(vfs_file_t *f, char *s, uint32_t len) {
 
 int vfs_putc(vfs_file_t *f, int c) {
   uint8_t b;
-  int r = EOF;
+  int r = SYS_EOF;
 
   b = c;
   if (vfs_write(f, &b, 1) == 1) {
@@ -611,14 +609,14 @@ int vfs_putc(vfs_file_t *f, int c) {
 }
 
 int vfs_printf(vfs_file_t *f, char *fmt, ...) {
-  va_list ap;
+  sys_va_list ap;
   int r;
 
   xmemset(f->buf, 0, MAX_BUF);
 
-  va_start(ap, fmt);
-  vsnprintf(f->buf, MAX_BUF-1, fmt, ap);
-  va_end(ap);
+  sys_va_start(ap, fmt);
+  sys_vsnprintf(f->buf, MAX_BUF-1, fmt, ap);
+  sys_va_end(ap);
 
   r = sys_strlen(f->buf);
   if (r > 0) vfs_write(f, (uint8_t *)f->buf, r);

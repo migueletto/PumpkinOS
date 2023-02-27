@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <stdarg.h>
-
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
@@ -36,7 +33,7 @@ void palmos_flptrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t sP = ARG32;
       char *s = emupalmos_trap_sel_in(sP, sysTrapFlpDispatch, sel, 1);
       flp_double_t d;
-      d.d = atof(s);
+      d.d = sys_atof(s);
       RES_DOUBLE(d, resP);
       debug(DEBUG_TRACE, "EmuPalmOS", "FlpAToF(\"%s\"): %f", s ? s : "", d.d);
     }
@@ -50,7 +47,7 @@ void palmos_flptrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       // void FlpBufferCorrectedSub(FlpDouble *result, FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
     //  break;
     default:
-      snprintf(buf, sizeof(buf)-1, "FlpDispatch selector %d not mapped", sel);
+      sys_snprintf(buf, sizeof(buf)-1, "FlpDispatch selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }

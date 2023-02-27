@@ -1,5 +1,3 @@
-#include <stdarg.h>
-
 #include "sys.h"
 #include "script.h"
 #include "ptr.h"
@@ -244,36 +242,33 @@ int script_call_args(int pe, script_ref_t ref, script_arg_t *ret, int n, script_
 }
 
 int script_call(int pe, script_ref_t ref, script_arg_t *ret, char *types, ...) {
-  va_list ap;
+  sys_va_list ap;
   script_arg_t args[MAX_ARGC];
   script_lstring_t *lstr;
   int i, r = 0;
 
-  va_start(ap, types);
+  sys_va_start(ap, types);
 
   for (i = 0; types[i] && i < MAX_ARGC; i++) {
     args[i].type = types[i];
 
     switch (types[i]) {
       case SCRIPT_ARG_INTEGER:
-        args[i].value.i = va_arg(ap, script_int_t);
+        args[i].value.i = sys_va_arg(ap, script_int_t);
         break;
       case SCRIPT_ARG_BOOLEAN:
-        args[i].value.i = va_arg(ap, int);
+        args[i].value.i = sys_va_arg(ap, int);
         break;
       case SCRIPT_ARG_REAL:
-        args[i].value.d = va_arg(ap, script_real_t);
+        args[i].value.d = sys_va_arg(ap, script_real_t);
         break;
       case SCRIPT_ARG_STRING:
-        args[i].value.s = va_arg(ap, char *);
+        args[i].value.s = sys_va_arg(ap, char *);
         break;
       case SCRIPT_ARG_LSTRING:
-        lstr = va_arg(ap, script_lstring_t *);
+        lstr = sys_va_arg(ap, script_lstring_t *);
         args[i].value.l.s = lstr->s;
         args[i].value.l.n = lstr->n;
-        break;
-      case SCRIPT_ARG_FILE:
-        args[i].value.f = va_arg(ap, FILE *);
         break;
       default:
         debug(DEBUG_ERROR, "SCRIPT", "invalid argument type '%c'", types[i]);
@@ -281,7 +276,7 @@ int script_call(int pe, script_ref_t ref, script_arg_t *ret, char *types, ...) {
     }
   }
 
-  va_end(ap);
+  sys_va_end(ap);
 
   if (r == 0) {
     r = script_call_args(pe, ref, ret, i, args);
@@ -664,15 +659,6 @@ int script_push_object(int pe, script_ref_t r) {
   return script_push_value(pe, &ret);
 }
 
-int script_push_file(int pe, FILE *f) {
-  script_arg_t ret;
-
-  ret.type = SCRIPT_ARG_FILE;
-  ret.value.f = f;
-
-  return script_push_value(pe, &ret);
-}
-
 int script_push_null(int pe) {
   script_arg_t ret;
 
@@ -748,9 +734,9 @@ script_ref_t script_loadlib(int pe, char *libname) {
     return -1;
   }
 
-  snprintf(lname, sizeof(lname)-1, "%s_load", module);
-  snprintf(iname, sizeof(iname)-1, "%s_init", module);
-  snprintf(uname, sizeof(uname)-1, "%s_unload", module);
+  sys_snprintf(lname, sizeof(lname)-1, "%s_load", module);
+  sys_snprintf(iname, sizeof(iname)-1, "%s_init", module);
+  sys_snprintf(uname, sizeof(uname)-1, "%s_unload", module);
   load_f = sys_lib_defsymbol(lib, lname, 0);
   init_f = sys_lib_defsymbol(lib, iname, 0);
   unload_f = sys_lib_defsymbol(lib, uname, 0);

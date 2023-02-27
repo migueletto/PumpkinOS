@@ -1,8 +1,5 @@
 #include <PalmOS.h>
 
-#include <stdio.h>
-#include <unistd.h>
-
 #include "sys.h"
 #include "mutex.h"
 #include "pwindow.h"

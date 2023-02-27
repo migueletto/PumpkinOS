@@ -62,8 +62,6 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
   }
 
   if (err || script_engine == NULL || script_argv == NULL) {
-    fprintf(stderr, "%s\n", SYSTEM_NAME);
-    fprintf(stderr, "usage: %s [ -b ] [ -f <debugfile> ] [ -d level ] -s <libname.so> [ <script> <arg> ... ]\n", argv[0]);
     return STATUS_ERROR;
   }
 

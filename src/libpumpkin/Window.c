@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include <math.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
@@ -915,9 +913,11 @@ static void draw_gline(int x1, int y1, int x2, int y2, PatternType pattern) {
   int dx, dy, sx, sy, err, e2;
   UInt32 c, d;
 
-  dx = abs(x2 - x1);
+  dx = x2 - x1;
+  if (dx < 0) dx = -dx;
   sx = x1 < x2 ? 1 : -1;
-  dy = abs(y2 - y1);
+  dy = y2 - y1;
+  if (dy < 0) dy = -dy;
   sy = y1 < y2 ? 1 : -1;
   err = (dx > dy ? dx : -dy)/2;
 

@@ -1,5 +1,5 @@
 #ifndef MEM_H
-#include <stdint.h>
+#include "sys.h"
 
 typedef struct mem_chunk_t mem_chunk_t;
 typedef void *mem_handle_t;

@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include <string.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "mutex.h"
@@ -483,7 +481,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           oldb = WinSetBackColor(formFrame);
 //WinSetBackColorRGB(&rgb, NULL);
           oldt = WinSetTextColor(formTitle);
-          tw = obj.title->text ? FntCharsWidth(obj.title->text, strlen(obj.title->text)) : 4;
+          tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
           th = FntCharHeight();
           if (formP->window.windowFlags.modal) {
             RctSetRectangle(&rect, 0, 0, formP->window.windowBounds.extent.x, th+2);
@@ -502,7 +500,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           }
           if (obj.title->text) {
             WinDrawOperation prev = WinSetDrawMode(winOverlay);
-            WinPaintChars(obj.title->text, strlen(obj.title->text), x, y);
+            WinPaintChars(obj.title->text, sys_strlen(obj.title->text), x, y);
             WinSetDrawMode(prev);
           }
           if (formP->window.windowFlags.modal && formP->helpRscId) {
@@ -2532,7 +2530,7 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   } else {
     *i += pumpkin_getstr(&text, p, *i);
     *i += palign(2, *i);
-    len = strlen(text);
+    len = sys_strlen(text);
     if ((c = pumpkin_heap_alloc(sizeof(ControlType) + len + 1, "Control")) != NULL) {
       c->id = id;
       c->bounds.topLeft.x = x;
@@ -2836,7 +2834,7 @@ static FormLabelType *pumpkin_create_label(uint8_t *p, int *i) {
   *i += get4b(&dummy32, p, *i);
   *i += pumpkin_getstr(&text, p, *i);
   *i += palign(2, *i);
-  len = strlen(text);
+  len = sys_strlen(text);
   if (len < 32) len = 32; // XXX I had to do this so that FrmCopyLabel in Find in Launcher works
   debug(DEBUG_TRACE, "Form", "label id %d text \"%s\" font %d at (%d,%d)", id, text, font, x, y);
 
@@ -2868,7 +2866,7 @@ static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
   *i += get2b(&h, p, *i);
   *i += get4b(&dummy32, p, *i);
   *i += pumpkin_getstr(&title, p, *i);
-  len = strlen(title);
+  len = sys_strlen(title);
   debug(DEBUG_TRACE, "Form",  "title \"%s\" at (%d,%d,%d,%d)", title, x, y, w, h);
   *i += palign(2, *i);
 

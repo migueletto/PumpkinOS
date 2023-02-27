@@ -2202,7 +2202,6 @@ static inline void m68ki_check_interrupts(void)
 }
 
 
-#include <stdint.h>
 extern uint32_t palmos_systrap(uint16_t trap);
 extern int cpu_instr_callback(int pc);
 

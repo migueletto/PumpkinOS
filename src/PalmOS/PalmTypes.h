@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-
 /******************************************************************************
  *
  * Copyright (c) 1994-2003 PalmSource, Inc. All rights reserved.
@@ -115,7 +110,7 @@ typedef Int32 (*ProcPtr)();
 
 
 //#define OffsetOf(type, member)	((UInt32) &(((type *) 0)->member))
-#define OffsetOf(type, member)	offsetof(type, member)
+#define OffsetOf(type, member) __builtin_offsetof (type, member)
 
 
 

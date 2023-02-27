@@ -1,7 +1,3 @@
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-
 #include <PalmOS.h>
 #include <VFSMgr.h>
 #include <DLServer.h>
@@ -36,7 +32,7 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
       palmos_netlibtrap(trap);
       break;
     default:
-      snprintf(buf, sizeof(buf)-1, "trap 0x%04X refNum %d not mapped", trap, refNum);
+      sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X refNum %d not mapped", trap, refNum);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }
@@ -1308,8 +1304,8 @@ uint32_t palmos_systrap(uint16_t trap) {
                   k++;
                   fmt[j++] = f[i];
                   fmt[j] = 0;
-                  sprintf(p, fmt, arg);
-                  p += strlen(p);
+                  sys_sprintf(p, fmt, arg);
+                  p += sys_strlen(p);
                   t = 0;
                   break;
                 case 'c':
@@ -1318,8 +1314,8 @@ uint32_t palmos_systrap(uint16_t trap) {
                   k++;
                   fmt[j++] = f[i];
                   fmt[j] = 0;
-                  sprintf(p, fmt, arg);
-                  p += strlen(p);
+                  sys_sprintf(p, fmt, arg);
+                  p += sys_strlen(p);
                   t = 0;
                   break;
                 case 's':
@@ -1329,11 +1325,11 @@ uint32_t palmos_systrap(uint16_t trap) {
                   fmt[j++] = f[i];
                   fmt[j] = 0;
                   if (arglen < 0) {
-                    sprintf(p, fmt, q);
+                    sys_sprintf(p, fmt, q);
                   } else {
-                    sprintf(p, fmt, arglen, q);
+                    sys_sprintf(p, fmt, arglen, q);
                   }
-                  p += strlen(p);
+                  p += sys_strlen(p);
                   t = 0;
                   break;
                 case '*':
@@ -1352,7 +1348,7 @@ uint32_t palmos_systrap(uint16_t trap) {
           }
         }
         *p = 0;
-        res = strlen(s);
+        res = sys_strlen(s);
       }
       debug(DEBUG_TRACE, "EmuPalmOS", "StrPrintF(0x%08X \"%s\", 0x%08X \"%s\", ...): %d", str, s ? s : "", formatStr, f ? f : "", res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -2716,17 +2712,17 @@ uint32_t palmos_systrap(uint16_t trap) {
           r = emupalmos_trap_out(addr);
         } else {
           if (s) {
-            snprintf(buf, sizeof(buf)-1, "sysLibTrap%s refNum=%d index=%d: no dispatch table", s, refNum, index);
+            sys_snprintf(buf, sizeof(buf)-1, "sysLibTrap%s refNum=%d index=%d: no dispatch table", s, refNum, index);
           } else {
-            snprintf(buf, sizeof(buf)-1, "sysLibTrapCustom %d refNum=%d index=%d: no dispatch table", num, refNum, index);
+            sys_snprintf(buf, sizeof(buf)-1, "sysLibTrapCustom %d refNum=%d index=%d: no dispatch table", num, refNum, index);
           }
           emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
         }
       } else if (getTrapName(trap)) {
-        snprintf(buf, sizeof(buf)-1, "trap %s not mapped", getTrapName(trap));
+        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", getTrapName(trap));
         emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       } else {
-        snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown", trap);
+        sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown", trap);
         emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       }
       break;

@@ -120,7 +120,7 @@ static int vfs_local_checktype(char *path, void *_data) {
   if ((aux = xcalloc(1, VFS_PATH)) == NULL) {
     return -1;
   }
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
 
   if (sys_stat(aux, &st) == -1) {
     xfree(aux);
@@ -207,7 +207,7 @@ static vfs_priv_t *vfs_local_opendir(char *path, void *_data) {
   if (path[0] == 0) {
     sys_strncpy(priv->path, data->local, VFS_PATH-1);
   } else {
-    snprintf(priv->path, VFS_PATH-1, "%s%s%c", data->local, path, '/');
+    sys_snprintf(priv->path, VFS_PATH-1, "%s%s%c", data->local, path, '/');
   }
   debug(DEBUG_TRACE, "VFS", "aux \"%s\"", priv->path);
 
@@ -304,7 +304,7 @@ static vfs_ent_t *vfs_local_stat(char *path, void *_data, vfs_ent_t *ent) {
     return NULL;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
   debug(DEBUG_TRACE, "VFS", "aux \"%s\"", aux);
 
   if (sys_stat(aux, &st) == 0) {
@@ -327,7 +327,7 @@ static vfs_ent_t *vfs_local_stat(char *path, void *_data, vfs_ent_t *ent) {
 }
 
 static uint32_t vfs_local_seek(vfs_fpriv_t *fpriv, uint32_t pos, int fromend) {
-  int whence = SEEK_SET;
+  int whence = SYS_SEEK_SET;
   uint32_t r = -1;
 
   switch (fromend) {
@@ -356,7 +356,7 @@ static vfs_fpriv_t *vfs_local_open(char *path, int mode, void *_data) {
     return NULL;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
   debug(DEBUG_TRACE, "VFS", "aux \"%s\"", aux);
 
   // vfs mode == sys mode
@@ -403,8 +403,8 @@ static int vfs_local_rename(char *path1, char *path2, void *_data) {
     return -1;
   }
 
-  snprintf(aux1, VFS_PATH-1, "%s%s", data->local, path1);
-  snprintf(aux2, VFS_PATH-1, "%s%s", data->local, path2);
+  sys_snprintf(aux1, VFS_PATH-1, "%s%s", data->local, path1);
+  sys_snprintf(aux2, VFS_PATH-1, "%s%s", data->local, path2);
 
   r = sys_rename(aux1, aux2);
   xfree(aux2);
@@ -425,7 +425,7 @@ static int vfs_local_unlink(char *path, void *_data) {
     return -1;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
 
   switch (vfs_local_checktype(path, _data)) {
     case VFS_FILE:
@@ -460,7 +460,7 @@ static int vfs_local_mkdir(char *path, void *_data) {
     return -1;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
   r = sys_mkdir(aux);
   xfree(aux);
 
@@ -480,7 +480,7 @@ static int vfs_local_statfs(char *path, uint64_t *total, uint64_t *free, void *_
     return -1;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
   r = sys_statfs(aux, &sb);
   xfree(aux);
 
@@ -504,7 +504,7 @@ static void *vfs_local_loadlib(char *path, int *first_load, void *_data) {
     return NULL;
   }
 
-  snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
+  sys_snprintf(aux, VFS_PATH-1, "%s%s", data->local, path);
   if (vfs_local_checktype(path, _data) == VFS_FILE) {
     lib = sys_lib_load(aux, first_load);
   }

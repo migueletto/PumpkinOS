@@ -30,7 +30,7 @@ debug_errno_full(const char *file, const char *func, int line, const char *sys, 
                  ...);
 
 void debugva_full(const char *file, const char *func, int line, int level, const char *sys,
-                  const char *fmt, va_list ap);
+                  const char *fmt, sys_va_list ap);
 
 void debug_full(const char *file, const char *func, int line, int level, const char *sys,
                 const char *fmt, ...);

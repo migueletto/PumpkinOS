@@ -1,6 +1,4 @@
 #include <PalmOS.h>
-#include <string.h>
-#include <setjmp.h>
 
 #include "sys.h"
 #include "thread.h"

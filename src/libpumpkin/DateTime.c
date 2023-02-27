@@ -115,7 +115,7 @@ static void tim_t2tm(UInt32 seconds, sys_tm_t *tm) {
   TimGmTime(seconds, tm);
 }
 
-static time_t tim_tm2t(sys_tm_t *tm) {
+static uint64_t tim_tm2t(sys_tm_t *tm) {
   Int32 zone, dls;
   UInt32 seconds;
 
@@ -205,7 +205,7 @@ Int16 DaysInMonth(Int16 month, Int16 year) {
 
 Int16 DayOfWeek(Int16 month, Int16 day, Int16 year) {
   sys_tm_t tm;
-  time_t t;
+  uint64_t t;
 
   xmemset(&tm, 0, sizeof(sys_tm_t));
   tm.tm_year = year - 1900;

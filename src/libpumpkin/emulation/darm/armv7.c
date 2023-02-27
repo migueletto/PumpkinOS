@@ -27,9 +27,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+#include "sys.h"
 #include "darm.h"
 #include "darm-internal.h"
 #include "armv7-tbl.h"
@@ -929,7 +927,7 @@ darm_cond_t darm_condition_index(const char *condition_code)
     if(condition_code[0] == 0) return C_AL;
 
     for (uint32_t i = 0; i < ARRAYSIZE(g_condition_codes); i++) {
-        if(!strcmp(condition_code, g_condition_codes[i].mnemonic_extension)) {
+        if(!sys_strcmp(condition_code, g_condition_codes[i].mnemonic_extension)) {
             return i;
         }
     }

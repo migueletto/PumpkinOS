@@ -1,12 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdarg.h>
 #include <string.h>
 #include <math.h>
-
-#ifdef WASM
-#include <emscripten.h>
-#endif
 
 #ifdef WINDOWS
 #include <winsock2.h>
@@ -596,9 +591,7 @@ int sys_language(char *language, int len) {
 }
 
 uint32_t sys_get_pid(void) {
-#if WASM
-  return 0;
-#elif WINDOWS
+#if WINDOWS
   return getpid();
 #else
   return getpid();
@@ -646,19 +639,17 @@ void sys_strerror(int err, char *msg, int len) {
 #endif
 }
 
-void sys_lockfile(FILE *fd) {
+void sys_lockfile(void *fd) {
 #if WINDOWS
-#elif WASM
 #else
-  flockfile(fd);
+  flockfile((FILE *)fd);
 #endif
 }
 
-void sys_unlockfile(FILE *fd) {
+void sys_unlockfile(void *fd) {
 #if WINDOWS
-#elif WASM
 #else
-  funlockfile(fd);
+  funlockfile((FILE *)fd);
 #endif
 }
 
@@ -1871,9 +1862,7 @@ static int64_t gettime(int type) {
 int64_t sys_get_clock(void) {
   int64_t ts = -1;
 
-#if WASM
-  return (int64_t)emscripten_get_now() * 1000;
-#elif WINDOWS
+#if WINDOWS
   LARGE_INTEGER ticks_per_second, ticks;
   QueryPerformanceFrequency(&ticks_per_second);
   QueryPerformanceCounter(&ticks);
@@ -2837,8 +2826,8 @@ int sys_fork_exec(char *filename, char *argv[], int fd) {
 #endif
 }
 
-int sys_tmpname(char *buf, int max) {
 #ifdef WINDOWS
+int sys_tmpname(char *buf, int max) {
   char *t;
   int n, r = -1;
 
@@ -2853,27 +2842,17 @@ int sys_tmpname(char *buf, int max) {
   }
 
   return r;
-#else
-  return 0;
+}
 #endif
+
+int sys_mkstemp(void) {
+  char buf[32];
+
+  strcpy(buf, "tmpXXXXXX");
+  return mkstemp(buf);
 }
 
-FILE *sys_tmpfile(void) {
-#ifdef WINDOWS
-  char buf[256 + L_tmpnam + 1];
-  FILE *f = NULL;
-
-  if (sys_tmpname(buf, sizeof(buf)) == 0) {
-    f = fopen(buf, "w+");
-  }
-
-  return f;
-#else
-  return tmpfile();
-#endif
-}
-
-void *sys_malloc(size_t size) {
+void *sys_malloc(sys_size_t size) {
   return malloc(size);
 }
 
@@ -2881,11 +2860,11 @@ void sys_free(void *ptr) {
   free(ptr);
 }
 
-void *sys_calloc(size_t nmemb, size_t size) {
+void *sys_calloc(sys_size_t nmemb, sys_size_t size) {
   return calloc(nmemb, size);
 }
 
-void *sys_realloc(void *ptr, size_t size) {
+void *sys_realloc(void *ptr, sys_size_t size) {
   return realloc(ptr, size);
 }
 
@@ -2897,7 +2876,7 @@ char *sys_strcpy(char *dest, const char *src) {
   return strcpy(dest, src);
 }
 
-char *sys_strncpy(char *dest, const char *src, size_t n) {
+char *sys_strncpy(char *dest, const char *src, sys_size_t n) {
   return strncpy(dest, src, n);
 }
 
@@ -2917,11 +2896,19 @@ int sys_atoi(const char *nptr) {
   return atoi(nptr);
 }
 
+double sys_atof(const char *nptr) {
+  return atof(nptr);
+}
+
+unsigned long int sys_strtoul(const char *nptr, char **endptr, int base) {
+  return strtoul(nptr, endptr, base);
+}
+
 int sys_strcmp(const char *s1, const char *s2) {
   return strcmp(s1, s2);
 }
 
-int sys_strncmp(const char *s1, const char *s2, size_t n) {
+int sys_strncmp(const char *s1, const char *s2, sys_size_t n) {
   return strncmp(s1, s2, n);
 }
 
@@ -2929,7 +2916,7 @@ int sys_strcasecmp(const char *s1, const char *s2) {
   return strcasecmp(s1, s2);
 }
 
-int sys_strncasecmp(const char *s1, const char *s2, size_t n) {
+int sys_strncasecmp(const char *s1, const char *s2, sys_size_t n) {
   return strncasecmp(s1, s2, n);
 }
 
@@ -2937,16 +2924,24 @@ char *sys_strcat(char *dest, const char *src) {
   return strcat(dest, src);
 }
 
-char *sys_strncat(char *dest, const char *src, size_t n) {
+char *sys_strncat(char *dest, const char *src, sys_size_t n) {
   return strncat(dest, src, n);
 }
 
-void *sys_memcpy(void *dest, const void *src, size_t n) {
+int sys_memcmp(const void *s1, const void *s2, sys_size_t n) {
+  return memcmp(s1, s2, n);
+}
+
+void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
   return memcpy(dest, src, n);
 }
 
-void *sys_memset(void *s, int c, size_t n) {
+void *sys_memset(void *s, int c, sys_size_t n) {
   return memset(s, c, n);
+}
+
+double sys_fabs(double x) {
+  return fabs(x);
 }
 
 double sys_sqrt(double x) {
@@ -2963,6 +2958,55 @@ double sys_cos(double x) {
 
 double sys_pi(void) {
   return M_PI;
+}
+
+void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
+  return qsort(base, nmemb, size, compar);
+}
+
+int sys_toupper(int c) {
+  return toupper(c);
+}
+
+int sys_tolower(int c) {
+  return tolower(c);
+}
+
+int sys_sprintf(char *str, const char *format, ...) {
+  sys_va_list ap;
+  int r;
+
+  sys_va_start(ap, format);
+  r = vsprintf(str, format, ap);
+  sys_va_end(ap);
+
+  return r;
+}
+
+int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap) {
+  return vsnprintf(str, size, format, ap);
+}
+
+int sys_snprintf(char *str, sys_size_t size, const char *format, ...) {
+  sys_va_list ap;
+  int r;
+
+  sys_va_start(ap, format);
+  r = sys_vsnprintf(str, size, format, ap);
+  sys_va_end(ap);
+
+  return r;
+}
+
+int sys_sscanf(const char *str, const char *format, ...) {
+  sys_va_list ap;
+  int r;
+
+  sys_va_start(ap, format);
+  r = vsscanf(str, format, ap);
+  sys_va_end(ap);
+
+  return r;
 }
 
 /*

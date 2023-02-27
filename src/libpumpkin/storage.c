@@ -1,14 +1,9 @@
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <string.h>
-
 #include <PalmOS.h>
 
+#include "sys.h"
 #include "thread.h"
 #include "mutex.h"
 #include "pwindow.h"
-#include "sys.h"
 #include "vfs.h"
 #include "bytes.h"
 #include "util.h"
@@ -197,7 +192,7 @@ static void StoEscapeName(char *src, char *dst, int n) {
   dst[j++] = '_';
 
   for (i = 0; src[i] && j < n-1; i++, j += 2) {
-    snprintf(&dst[j], n-j, "%02X", src[i]);
+    sys_snprintf(&dst[j], n-j, "%02X", src[i]);
   }
   dst[j++] = 0;
 
@@ -216,7 +211,7 @@ static void StoUnescapeName(char *src, char *dst, int n) {
     buf[0] = src[i];
     buf[1] = src[i+1];
     buf[2] = 0;
-    sscanf(buf, "%02X", &c);
+    sys_sscanf(buf, "%02X", &c);
     dst[j++] = c;
   }
   dst[j] = 0;
@@ -261,27 +256,27 @@ static void storage_name(storage_t *sto, char *name, int file, int id, uint32_t 
   int n, i;
 
   StoEscapeName(name, escaped, sizeof(escaped)-1);
-  snprintf(buf, VFS_PATH - 1, "%s%s", sto->path, escaped);
-  n = strlen(buf);
+  sys_snprintf(buf, VFS_PATH - 1, "%s%s", sto->path, escaped);
+  n = sys_strlen(buf);
 
   switch (file) {
     case STO_FILE_HEADER:
-      strncat(buf, "/header", VFS_PATH-n-1);
+      sys_strncat(buf, "/header", VFS_PATH-n-1);
       break;
     case STO_FILE_INDEX:
-      strncat(buf, "/index", VFS_PATH-n-1);
+      sys_strncat(buf, "/index", VFS_PATH-n-1);
       break;
     case STO_FILE_DATA:
-      strncat(buf, "/data", VFS_PATH-n-1);
+      sys_strncat(buf, "/data", VFS_PATH-n-1);
       break;
     case STO_FILE_AINFO:
-      strncat(buf, "/appInfo", VFS_PATH-n-1);
+      sys_strncat(buf, "/appInfo", VFS_PATH-n-1);
       break;
     case STO_FILE_SINFO:
-      strncat(buf, "/sortInfo", VFS_PATH-n-1);
+      sys_strncat(buf, "/sortInfo", VFS_PATH-n-1);
       break;
     case STO_FILE_LOCK:
-      strncat(buf, "/lock", VFS_PATH-n-1);
+      sys_strncat(buf, "/lock", VFS_PATH-n-1);
       break;
     case STO_FILE_ELEMENT:
       if (type) {
@@ -289,9 +284,9 @@ static void storage_name(storage_t *sto, char *name, int file, int id, uint32_t 
         for (i = 0; i < 4; i++) {
           if (!((st[i] >= 'a' && st[i] <= 'z') || (st[i] >= 'A' && st[i] <= 'Z') || (st[i] >= '0' && st[i] <= '9'))) st[i] = '_';
         }
-        snprintf(&buf[n], VFS_PATH-n-1, "/%s.%08X.%d", st, type, id);
+        sys_snprintf(&buf[n], VFS_PATH-n-1, "/%s.%08X.%d", st, type, id);
       } else {
-        snprintf(&buf[n], VFS_PATH-n-1, "/%08X.%02X", uniqueId, attr);
+        sys_snprintf(&buf[n], VFS_PATH-n-1, "/%08X.%02X", uniqueId, attr);
       }
       break;
     case 0:
@@ -314,7 +309,7 @@ static int StoWriteIndex(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
     for (i = 0; i < db->numRecs; i++) {
       h = db->elements[i];
-      snprintf(buf, sizeof(buf)-1, "%08X.%02X\n", h->d.rec.uniqueID, h->d.rec.attr & ATTR_MASK);
+      sys_snprintf(buf, sizeof(buf)-1, "%08X.%02X\n", h->d.rec.uniqueID, h->d.rec.attr & ATTR_MASK);
       if (vfs_write(f, (uint8_t *)buf, 12) != 12) break;
     }
     r = 0;
@@ -333,9 +328,9 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
 
   storage_name(sto, db->name, STO_FILE_HEADER, 0, 0, 0, 0, buf);
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-    snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
       db->ftype, db->type, db->creator, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
-    n = strlen(buf);
+    n = sys_strlen(buf);
     if (vfs_write(f, (uint8_t *)buf, n) == n) {
       r = 0;
     }
@@ -356,7 +351,7 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
     xmemset(buf, 0, sizeof(buf));
     if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-      if (sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
                &db->ftype, &db->type, &db->creator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
         r = 0;
       } else {
@@ -382,7 +377,7 @@ static int StoGetFileLocks(storage_t *sto, storage_db_t *db, int *read_locks, in
     if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
       xmemset(buf, 0, sizeof(buf));
       if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-        if (sscanf(buf, "read=%u\nwrite=%u\n", read_locks, write_locks) == 2) {
+        if (sys_sscanf(buf, "read=%u\nwrite=%u\n", read_locks, write_locks) == 2) {
           r = 0;
         } else {
           debug(DEBUG_ERROR, "STOR", "invalid lock \"%s\"", buf);
@@ -405,8 +400,8 @@ static int StoPutFileLocks(storage_t *sto, storage_db_t *db, int read_locks, int
 
   storage_name(sto, db->name, STO_FILE_LOCK, 0, 0, 0, 0, buf);
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-    snprintf(buf, sizeof(buf)-1, "read=%u\nwrite=%u\n", read_locks, write_locks);
-    n = strlen(buf);
+    sys_snprintf(buf, sizeof(buf)-1, "read=%u\nwrite=%u\n", read_locks, write_locks);
+    n = sys_strlen(buf);
     if (vfs_write(f, (uint8_t *)buf, n) == n) {
       r = 0;
     }
@@ -639,8 +634,8 @@ void StoRemoveLocks(char *path) {
         if (ent == NULL) break;
         if (ent->type != VFS_DIR) continue;
         if (ent->name[0] == '.') continue;
-        if (strlen(ent->name) >= dmDBNameLength) continue;
-        snprintf(buf, VFS_PATH-1, "%s%s/lock", path, ent->name);
+        if (sys_strlen(ent->name) >= dmDBNameLength) continue;
+        sys_snprintf(buf, VFS_PATH-1, "%s%s/lock", path, ent->name);
         StoVfsUnlink(session, buf);
       }
       vfs_closedir(dir);
@@ -677,7 +672,7 @@ int StoInit(char *path, mutex_t *mutex) {
     sto->base = pumpkin_heap_base();
     sto->size = pumpkin_heap_size();
     sto->end = sto->base + sto->size;
-    strncpy(sto->path, path, MAX_STORAGE_PATH - 1);
+    sys_strncpy(sto->path, path, MAX_STORAGE_PATH - 1);
     if ((sto->session = vfs_open_session()) != NULL) {
       if ((dir = StoVfsOpendir(sto->session, sto->path)) != NULL) {
         for (;;) {
@@ -736,11 +731,11 @@ int StoRefresh(void) {
           if (ent == NULL) break;
           StoUnescapeName(ent->name, name, dmDBNameLength);
           for (old = oldList, found = 0; old && !found; old = old->next) {
-            found = strncmp(old->name, name, strlen(name)) == 0;
+            found = sys_strncmp(old->name, name, sys_strlen(name)) == 0;
           }
           if (!found) {
             if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) != NULL) {
-              strncpy(db->name, name, dmDBNameLength-1);
+              sys_strncpy(db->name, name, dmDBNameLength-1);
               if (StoReadHeader(sto, db) == 0) {
                 dbID = (uint8_t *)db - sto->base;
                 debug(DEBUG_INFO, "STOR", "StoRefresh 0x%08X database \"%s\"", dbID, db->name);
@@ -907,7 +902,7 @@ Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP,
 
   if (dbID < (sto->size - sizeof(storage_db_t))) {
     db = (storage_db_t *)(sto->base + dbID);
-    if (nameP) strncpy(nameP, db->name, dmDBNameLength-1);
+    if (nameP) sys_strncpy(nameP, db->name, dmDBNameLength-1);
     if (attributesP) *attributesP = db->attributes;
     if (versionP) *versionP = db->version;
     if (crDateP) *crDateP = db->crDate;
@@ -959,11 +954,11 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
         StoWriteSortInfo(sto, db);
       }
       if (StoWriteHeader(sto, db) == 0) {
-        if (nameP && strcmp(db->name, nameP)) {
+        if (nameP && sys_strcmp(db->name, nameP)) {
           storage_name(sto, db->name, 0, 0, 0, 0, 0, buf1);
           storage_name(sto, (char *)nameP, 0, 0, 0, 0, 0, buf2);
           if (StoVfsRename(sto->session, buf1, buf2) == 0) {
-            strncpy(db->name, nameP, dmDBNameLength - 1);
+            sys_strncpy(db->name, nameP, dmDBNameLength - 1);
             err = errNone;
           }
         } else {
@@ -1034,7 +1029,7 @@ LocalID DmFindDatabase(UInt16 cardNo, const Char *nameP) {
 
   if (nameP) {
     for (db = sto->list; db; db = db->next) {
-      if (strcmp(db->name, nameP) == 0) {
+      if (sys_strcmp(db->name, nameP) == 0) {
         dbID = (uint8_t *)db - sto->base;
         if (dbID == sto->watchID) {
           debug(DEBUG_INFO, "STOR", "WATCH DmFindDatabase(\"%s\"): 0x%08X", nameP, dbID);
@@ -1196,7 +1191,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
   if (nameP && creator) {
     if (mutex_lock(sto->mutex) == 0) {
       for (db = sto->list; db; db = db->next) {
-        if (strcmp(nameP, db->name) == 0) {
+        if (sys_strcmp(nameP, db->name) == 0) {
           existing = db;
           break;
         }
@@ -1243,7 +1238,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
         }
       }
 
-      strncpy(db->name, nameP, dmDBNameLength-1);
+      sys_strncpy(db->name, nameP, dmDBNameLength-1);
       if (attr & dmHdrAttrResDB) {
         db->ftype = STO_TYPE_RES;
       } else if (attr & dmHdrAttrStream) {
@@ -1408,7 +1403,7 @@ static int StoMapRecords(storage_t *sto, storage_db_t *db) {
       for (max = 0; !thread_must_end();) {
         xmemset(rec, 0, sizeof(rec));
         if (vfs_read(f, rec, 12) != 12) break;
-        if (sscanf((char *)rec, "%08X.%02X\n", &uniqueID, &attr) == 2) {
+        if (sys_sscanf((char *)rec, "%08X.%02X\n", &uniqueID, &attr) == 2) {
           if (uniqueID > max) max = uniqueID;
           storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, attr & ATTR_MASK, uniqueID, buf);
           if ((f2 = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
@@ -1447,10 +1442,10 @@ static int StoMapResources(storage_t *sto, storage_db_t *db) {
         ent = StoVfsReaddir(dir);
         if (ent == NULL) break;
         if (ent->type != VFS_FILE) continue;
-        if (!strcmp(ent->name, ".") || !strcmp(ent->name, "..")) continue;
+        if (!sys_strcmp(ent->name, ".") || !sys_strcmp(ent->name, "..")) continue;
 st[0] = 0;
         st[4] = 0;
-        if ((n = sscanf(ent->name, "%c%c%c%c.%08X.%d", st, st+1, st+2, st+3, &type, &id)) == 6) {
+        if ((n = sys_sscanf(ent->name, "%c%c%c%c.%08X.%d", st, st+1, st+2, st+3, &type, &id)) == 6) {
           StoAddRes(sto, db, type, id, ent->size);
         }
       }
@@ -1715,10 +1710,10 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
               ent = StoVfsReaddir(dir);
               if (ent == NULL) break;
               if (ent->type != VFS_FILE) continue;
-              if (!strcmp(ent->name, ".") || !strcmp(ent->name, "..")) continue;
-              strncpy(buf2, buf, VFS_PATH-1);
-              strncat(buf2, "/", VFS_PATH-strlen(buf2)-1);
-              strncat(buf2, ent->name, VFS_PATH-strlen(buf2)-1);
+              if (!sys_strcmp(ent->name, ".") || !sys_strcmp(ent->name, "..")) continue;
+              sys_strncpy(buf2, buf, VFS_PATH-1);
+              sys_strncat(buf2, "/", VFS_PATH-sys_strlen(buf2)-1);
+              sys_strncat(buf2, ent->name, VFS_PATH-sys_strlen(buf2)-1);
               StoVfsUnlink(sto->session, buf2);
             }
             vfs_closedir(dir);
@@ -1886,7 +1881,7 @@ Err DmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueID
           if (attrP) h->d.rec.attr = *attrP;
           if (uniqueIDP) h->d.rec.uniqueID = *uniqueIDP;
           storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, newName);
-          if (strcmp(oldName, newName)) {
+          if (sys_strcmp(oldName, newName)) {
             if (StoVfsRename(sto->session, oldName, newName) == 0) {
               err = errNone;
             }
@@ -2871,7 +2866,7 @@ Err DmDeleteRecord(DmOpenRef dbP, UInt16 index) {
               h->d.rec.attr |= dmRecAttrDelete;
               storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, newName);
 //debug(1, "XXX", "DmDeleteRecord rename [%s] to [%s]", oldName, newName);
-              if (strcmp(oldName, newName)) {
+              if (sys_strcmp(oldName, newName)) {
 //debug(1, "XXX", "DmDeleteRecord renaming");
                 if (StoVfsRename(sto->session, oldName, newName) == 0) {
 //debug(1, "XXX", "DmDeleteRecord rename ok");
@@ -3905,7 +3900,7 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
   uint8_t *p;
   int r = -1;
 
-  if (path && (ext = getext(path)) != NULL && (!strcasecmp(ext, "prc") || !strcasecmp(ext, "pdb"))) {
+  if (path && (ext = getext(path)) != NULL && (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb"))) {
     if ((f = StoVfsOpen(sto->session, path, VFS_READ)) != NULL) {
       size = vfs_seek(f, 0, 1);
       hsize = 78;
@@ -3972,24 +3967,24 @@ int StoDeployFiles(char *path, AppRegistryType *ar) {
         if ((ent = StoVfsReaddir(dir)) == NULL) break;
         if (ent->type != VFS_FILE) continue;
         ext = getext(ent->name);
-        if (!strcasecmp(ext, "prc") || !strcasecmp(ext, "pdb")) {
+        if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
           xmemset(buf, 0, sizeof(buf));
-          snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
+          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
           rr = StoDeployFile(buf, ar);
           StoVfsUnlink(sto->session, buf);
           if (rr == 0) {
             r = 0;
           } else {
-            snprintf(buf, sizeof(buf)-1, "Error deploying \"%s\"", ent->name);
+            sys_snprintf(buf, sizeof(buf)-1, "Error deploying \"%s\"", ent->name);
             debug(DEBUG_ERROR, "STOR", "StoDeployFiles: %s", buf);
             if (!spawner) {
               pumpkin_error_dialog(buf);
             }
           }
         } else {
-          snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
+          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
           StoVfsUnlink(sto->session, buf);
-          snprintf(buf, sizeof(buf)-1, "Cannot deploy file \"%s\"", ent->name);
+          sys_snprintf(buf, sizeof(buf)-1, "Cannot deploy file \"%s\"", ent->name);
           debug(DEBUG_ERROR, "STOR", "StoDeployFiles: %s", buf);
           if (!spawner) {
             pumpkin_error_dialog(buf);
@@ -4413,7 +4408,7 @@ Int16 MemCmp(const void *s1, const void *s2, Int32 numBytes) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   Int16 r;
   if (s1 == NULL || s2 == NULL) ErrFatalDisplayEx("MemCmp NULL", 1);
-  r = s1 && s2 ? memcmp(s1, s2, numBytes) : -1;
+  r = s1 && s2 ? sys_memcmp(s1, s2, numBytes) : -1;
   sto->lastErr = errNone;
   return r;
 }
@@ -4875,7 +4870,7 @@ Err MemHeapCheck(UInt16 heapID) {
 Err MemCardInfo(UInt16 cardNo, Char *cardNameP, Char *manufNameP, UInt16 *versionP, UInt32 *crDateP, UInt32 *romSizeP, UInt32 *ramSizeP, UInt32 *freeBytesP) {
   if (cardNameP) StrNCopy(cardNameP, "RAM", 32);
   if (manufNameP) StrNCopy(manufNameP, SYSTEM_NAME, 32);
-  if (versionP) *versionP = atoi(SYSTEM_VERSION);
+  if (versionP) *versionP = sys_atoi(SYSTEM_VERSION);
   if (crDateP) *crDateP = pumpkin_dt() + CRDATE;
   if (romSizeP) *romSizeP = 8*1024*1024; // XXX
   if (ramSizeP) *ramSizeP = MemHeapSize(1);
@@ -5027,7 +5022,7 @@ static Err StoSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 o
             sto->other = other;
             sto->appInfoH = db->appInfoID ? MemLocalIDToHandle(db->appInfoID) : NULL;
             debug(DEBUG_INFO, "STOR", "StoSort sorting database \"%s\" with %d records (%s)", db->name, db->numRecs, comparF ? "native" : "68K");
-            qsort(db->elements, db->numRecs, sizeof(storage_handle_t *), StoCompareHandle);
+            sys_qsort(db->elements, db->numRecs, sizeof(storage_handle_t *), StoCompareHandle);
             sto->comparF = NULL;
             sto->comparF68K = 0;
             sto->other = 0;

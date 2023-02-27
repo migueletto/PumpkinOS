@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include <string.h>
-
 #include "sys.h"
 #include "thread.h"
 #include "mutex.h"
@@ -164,9 +162,9 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
     WinSetBackColor(mFill);
     WinSetTextColor(mFore);
   }
-  RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, strlen(pd->title))+3, menu->barWin->windowBounds.extent.y-2);
+  RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, menu->barWin->windowBounds.extent.y-2);
   WinEraseRectangle(&rect, 0);
-  WinDrawChars(pd->title, strlen(pd->title), pd->titleBounds.topLeft.x+3, pd->titleBounds.topLeft.y+1);
+  WinDrawChars(pd->title, sys_strlen(pd->title), pd->titleBounds.topLeft.x+3, pd->titleBounds.topLeft.y+1);
 
   FntSetFont(old);
   WinSetBackColor(oldb);
@@ -205,7 +203,7 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
   }
 
   WinEraseRectangle(&item->localBounds, 0);
-  WinDrawChars(item->itemStr, strlen(item->itemStr), 2, y);
+  WinDrawChars(item->itemStr, sys_strlen(item->itemStr), 2, y);
   if (item->command) {
     cmd[1] = item->command;
     WinDrawChars(cmd, 2, item->localBounds.extent.x - px, y);

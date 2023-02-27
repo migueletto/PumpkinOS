@@ -1,4 +1,3 @@
-#include <stdarg.h>
 #define __USE_GNU
 #include <pthread.h>
 #undef __USE_GNU

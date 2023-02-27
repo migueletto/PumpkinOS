@@ -389,7 +389,7 @@ void CategoryInitialize(AppInfoPtr appInfoP, UInt16 localizedAppInfoStrID) {
       if ((s = MemHandleLock(h)) != NULL) {
         for (index = 0; s[0] && index < dmRecNumCategories; index++) {
           debug(DEBUG_TRACE, PALMOS_MODULE, "CategoryInitialize %d: \"%s\"", index, s);
-          DmStrCopy(appInfoP, offsetof(AppInfoType, categoryLabels[index]), s);
+          DmStrCopy(appInfoP, OffsetOf(AppInfoType, categoryLabels[index]), s);
           s += StrLen(s)+1;
         }
         MemHandleUnlock(h);

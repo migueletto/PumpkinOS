@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <stdarg.h>
-
 //#define VISUAL_HEAP 1
 
 #include "sys.h"
@@ -160,11 +155,11 @@ static void heap_draw(heap_t *heap, uint8_t *from, uint8_t *to, int incr) {
 }
 #endif
 
-void *heap_alloc(heap_t *heap, size_t size) {
+void *heap_alloc(heap_t *heap, sys_size_t size) {
   void *p = dlmalloc(size);
   if (p) {
     UIntPtr *q = (UIntPtr *)p;
-    size_t realsize = (size_t)(q[-1] & ~1);
+    sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
@@ -174,10 +169,10 @@ void *heap_alloc(heap_t *heap, size_t size) {
   return p;
 }
 
-void *heap_realloc(heap_t *heap, void *p, size_t size) {
+void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
   if (p) {
     UIntPtr *q = (UIntPtr *)p;
-    size_t realsize = (size_t)(q[-1] & ~1);
+    sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
@@ -186,7 +181,7 @@ void *heap_realloc(heap_t *heap, void *p, size_t size) {
 
     p = dlrealloc(p, size);
     q = (UIntPtr *)p;
-    realsize = (size_t)(q[-1] & ~1);
+    realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
@@ -198,12 +193,12 @@ void *heap_realloc(heap_t *heap, void *p, size_t size) {
 }
 
 void heap_free(heap_t *heap, void *p) {
-  size_t realsize;
+  sys_size_t realsize;
   UIntPtr *q;
 
   if (p) {
     q = (UIntPtr *)p;
-    realsize = (size_t)(q[-1] & ~1);
+    realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
@@ -218,7 +213,7 @@ void *dlmalloc_get_state(void) {
   return heap->state;
 }
 
-void *heap_morecore(size_t size) {
+void *heap_morecore(sys_size_t size) {
   heap_t *heap = heap_get();
   void *p = NULL;
 
@@ -285,9 +280,9 @@ void heap_assert(const char *file, int line, const char *func, const char *cond)
   dlmalloc_init_state();
 
   if (func) {
-    snprintf(buf, sizeof(buf) - 1, "assert %s, %s, line %d: %s", file, func, line, cond);
+    sys_snprintf(buf, sizeof(buf) - 1, "assert %s, %s, line %d: %s", file, func, line, cond);
   } else {
-    snprintf(buf, sizeof(buf) - 1, "assert %s, line %d: %s", file, line, cond);
+    sys_snprintf(buf, sizeof(buf) - 1, "assert %s, line %d: %s", file, line, cond);
   }
   debug(DEBUG_ERROR, "Heap", buf);
 

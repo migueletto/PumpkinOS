@@ -28,17 +28,6 @@ char *load_fd(int fd, unsigned int *len) {
   return buf;
 }
 
-char *load_stream(FILE *f, unsigned int *len) {
-  int fd;
-
-  if ((fd = fileno(f)) == -1) {
-    debug_errno("LOAD", "fileno");
-    return NULL;
-  }
-
-  return load_fd(fd, len);
-}
-
 char *load_file(char *filename, unsigned int *len) {
   int fd;
   char *s;

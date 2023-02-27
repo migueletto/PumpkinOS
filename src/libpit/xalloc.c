@@ -2,7 +2,7 @@
 #include "xalloc.h"
 #include "debug.h"
 
-void *xmalloc_debug(const char *file, const char *func, int line, size_t size) {
+void *xmalloc_debug(const char *file, const char *func, int line, sys_size_t size) {
   void *ptr = sys_malloc(size);
 
   if (ptr) {
@@ -15,12 +15,12 @@ void *xmalloc_debug(const char *file, const char *func, int line, size_t size) {
   return ptr;
 }
 
-void *xcalloc_debug(const char *file, const char *func, int line, size_t nmemb, size_t size) {
-  size_t len = nmemb * size;
+void *xcalloc_debug(const char *file, const char *func, int line, sys_size_t nmemb, sys_size_t size) {
+  sys_size_t len = nmemb * size;
   return xmalloc_debug(file, func, line, len);
 }
 
-void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, size_t size) {
+void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, sys_size_t size) {
   void *ptr2 = NULL;
 
   ptr2 = sys_realloc(ptr, size);
@@ -66,7 +66,7 @@ char *xstrdup_debug(const char *file, const char *func, int line, const char *s)
   return r;
 }
 
-void *xmemcpy_debug(const char *file, const char *func, int line, void *dest, const void *src, size_t n) {
+void *xmemcpy_debug(const char *file, const char *func, int line, void *dest, const void *src, sys_size_t n) {
   void *r = NULL;
 
   if (dest) {
@@ -79,7 +79,7 @@ void *xmemcpy_debug(const char *file, const char *func, int line, void *dest, co
   return r;
 }
 
-void *xmemset_debug(const char *file, const char *func, int line, void *s, int c, size_t n) {
+void *xmemset_debug(const char *file, const char *func, int line, void *s, int c, sys_size_t n) {
   void *r = NULL;
 
   if (s) {

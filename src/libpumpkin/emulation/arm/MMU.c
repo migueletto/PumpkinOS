@@ -1,7 +1,6 @@
 //(c) uARM project    https://github.com/uARM-Palm/uARM    uARM@dmitry.gr
 
-#include <stdlib.h>
-#include <string.h>
+#include "sys.h"
 #include "MMU.h"
 #include "armem.h"
 
@@ -44,12 +43,12 @@ void mmuTlbFlush(struct ArmMmu *mmu)
 	}	
 }
 
-struct ArmMmu* mmuInit(struct ArmMem *mem, bool xscaleMode)
+struct ArmMmu* mmuInit(struct ArmMem *mem, int xscaleMode)
 {
-	struct ArmMmu *mmu = (struct ArmMmu*)malloc(sizeof(*mmu));
+	struct ArmMmu *mmu = (struct ArmMmu*)sys_malloc(sizeof(*mmu));
 	
 	if (mmu) {
-		memset(mmu, 0, sizeof (*mmu));
+		sys_memset(mmu, 0, sizeof (*mmu));
 		mmu->mem = mem;
 		mmu->transTablPA = MMU_DISABLED_TTP;
 		mmu->xscale = xscaleMode;
@@ -61,11 +60,11 @@ struct ArmMmu* mmuInit(struct ArmMem *mem, bool xscaleMode)
 
 void mmuDeinit(struct ArmMmu *mmu) {
   if (mmu) {
-    free(mmu);
+    sys_free(mmu);
   }
 }
 
-bool mmuIsOn(struct ArmMmu *mmu)
+int mmuIsOn(struct ArmMmu *mmu)
 {
 	return mmu->transTablPA != MMU_DISABLED_TTP;
 }
@@ -79,10 +78,10 @@ static uint16_t mmuPrvHashAddr(uint32_t addr)	//addresses are granular on 1K
 	return addr % MMU_TLB_BUCKET_NUM;
 }
 
-bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write, uint32_t* paP, uint8_t* fsrP, uint8_t *mappingInfoP)
+int mmuTranslate(struct ArmMmu *mmu, uint32_t adr, int priviledged, int write, uint32_t* paP, uint8_t* fsrP, uint8_t *mappingInfoP)
 {
-	bool c = false, b = false, ur = false, uw = false, sr = false, sw = false;
-	bool section = false, coarse = true, pxa_tex_page = false;
+	int c = 0, b = 0, ur = 0, uw = 0, sr = 0, sw = 0;
+	int section = 0, coarse = 1, pxa_tex_page = 0;
 	uint32_t va, pa = 0, sz, t;
 	int16_t i, j, bucket;
 	uint8_t dom, ap = 0;
@@ -125,14 +124,14 @@ bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write
 	if (mmu->transTablPA & 3) {
 		if (fsrP)
 			*fsrP = 0x01;	//alignment fault
-		return false;
+		return 0;
 	}
 	
 	if (!memAccess(mmu->mem, mmu->transTablPA + ((adr & 0xFFF00000ul) >> 18), 4, MEM_ACCESS_TYPE_READ, &t)) {
 		
 		if (fsrP)
 			*fsrP = 0x0C;	//translation external abort first level
-		return false;
+		return 0;
 	}
 	
 	dom = (t >> 5) & 0x0F;
@@ -142,7 +141,7 @@ bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write
 		
 			if (fsrP)
 				*fsrP = 0x5;	//section translation fault
-			return false;
+			return 0;
 		
 		case 1:	//coarse pagetable
 			
@@ -158,12 +157,12 @@ bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write
 			ap = (t >> 10) & 3;
 			c = !!(t & 0x08);
 			b = !!(t & 0x04);
-			section = true;
+			section = 1;
 			goto translated;
 			
 		case 3:	//fine page table
 			
-			coarse = false;
+			coarse = 0;
 			t &= 0xFFFFF000UL;
 			t += (adr & 0x000FFC00UL) >> 8;
 			break;
@@ -174,7 +173,7 @@ bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write
 	if (!memAccess(mmu->mem, t, 4, MEM_ACCESS_TYPE_READ, &t)) {
 		if (fsrP)
 			*fsrP = 0x0E | (dom << 4);	//translation external abort second level
-		return false;
+		return 0;
 	}
 	
 	c = !!(t & 0x08);
@@ -186,7 +185,7 @@ bool mmuTranslate(struct ArmMmu *mmu, uint32_t adr, bool priviledged, bool write
 		
 			if (fsrP)
 				*fsrP = 0x07 | (dom << 4);	//page translation fault
-			return false;
+			return 0;
 		
 		case 1:	//64K mapping
 			
@@ -212,7 +211,7 @@ page_size_4k:
 			if (coarse) {
 				
 				if (mmu->xscale) {
-					pxa_tex_page = true;
+					pxa_tex_page = 1;
 					ap = 0;
 					goto page_size_4k;	
 				}
@@ -274,7 +273,7 @@ check:
 			
 			if (fsrP)
 				*fsrP = (section ? 0x08 : 0xB) | (dom << 4);	//section or page domain fault
-			return false;
+			return 0;
 			
 			
 		case 1:	//CLIENT: check permissions
@@ -284,10 +283,10 @@ check:
 			
 		case 3:	//MANAGER: allow all access
 			
-			ur = true;
-			uw = true;
-			sr = true;
-			sw = true;
+			ur = 1;
+			uw = 1;
+			sr = 1;
+			sw = 1;
 			
 			goto calc;
 		
@@ -308,8 +307,8 @@ check:
 		
 		case 1:
 		
-			sr = true;
-			sw = true;
+			sr = 1;
+			sw = 1;
 			
 			if (!priviledged)
 				break;
@@ -317,9 +316,9 @@ check:
 
 		case 2:
 		
-			ur = true;
-			sr = true;
-			sw = true;
+			ur = 1;
+			sr = 1;
+			sw = 1;
 			
 			if (!priviledged && write)
 				break;
@@ -327,10 +326,10 @@ check:
 		
 		case 3:
 		
-			ur = true;
-			uw = true;
-			sr = true;
-			sw = true;
+			ur = 1;
+			uw = 1;
+			sr = 1;
+			sw = 1;
 		
 			//all is good, allow access!
 			goto calc;
@@ -340,7 +339,7 @@ check:
 
 	if (fsrP)
 		*fsrP = (section ? 0x0D : 0x0F) | (dom << 4);		//section or subpage permission fault
-	return false;
+	return 0;
 	
 calc:
 	if (mappingInfoP) {
@@ -353,7 +352,7 @@ calc:
 					(sw ? MMU_MAPPING_SW : 0);
 	}
 	*paP = adr - va + pa;
-	return true;
+	return 1;
 }
 
 uint32_t mmuGetTTP(struct ArmMmu *mmu)
@@ -367,22 +366,22 @@ void mmuSetTTP(struct ArmMmu *mmu, uint32_t ttp)
 	mmu->transTablPA = ttp;
 }
 
-void mmuSetS(struct ArmMmu *mmu, bool on)
+void mmuSetS(struct ArmMmu *mmu, int on)
 {
 	mmu->S = on;	
 }
 
-void mmuSetR(struct ArmMmu *mmu, bool on)
+void mmuSetR(struct ArmMmu *mmu, int on)
 {
 	mmu->R = on;	
 }
 
-bool mmuGetS(struct ArmMmu *mmu)
+int mmuGetS(struct ArmMmu *mmu)
 {
 	return mmu->S;
 }
 
-bool mmuGetR(struct ArmMmu *mmu)
+int mmuGetR(struct ArmMmu *mmu)
 {
 	return mmu->R;
 }
@@ -411,16 +410,16 @@ static uint32_t mmuPrvDebugRead(struct ArmMmu *mmu, uint32_t addr)
 	return t;
 }
 
-static void mmuPrvDumpUpdate(uint32_t va, uint32_t pa, uint32_t len, uint8_t dom, uint8_t ap, bool c, bool b, bool valid)
+static void mmuPrvDumpUpdate(uint32_t va, uint32_t pa, uint32_t len, uint8_t dom, uint8_t ap, int c, int b, int valid)
 {	
-	static bool wasValid = false;
+	static int wasValid = 0;
 	static uint32_t expectPa = 0;
 	//static uint32_t startVa = 0;
 	//static uint32_t startPa = 0;
 	static uint8_t wasDom = 0;
 	static uint8_t wasAp = 0;
-	static bool wasB = 0;
-	static bool wasC = 0;
+	static int wasB = 0;
+	static int wasC = 0;
 	//uint32_t va_end;
 	
 	
@@ -450,7 +449,7 @@ static void mmuPrvDumpUpdate(uint32_t va, uint32_t pa, uint32_t len, uint8_t dom
 void __attribute__((used)) mmuDump(struct ArmMmu *mmu)
 {
 	uint32_t i, j, t, sla, va, psz;
-	bool coarse = false;
+	int coarse = 0;
 	uint8_t dom;
 	
 	for (i = 0; i < 0x1000; i++) {
@@ -461,16 +460,16 @@ void __attribute__((used)) mmuDump(struct ArmMmu *mmu)
 		switch (t & 3) {
 			
 			case 0:		//done
-				mmuPrvDumpUpdate(va, 0, 1UL << 20, 0, 0, false, false, false);
+				mmuPrvDumpUpdate(va, 0, 1UL << 20, 0, 0, 0, 0, 0);
 				continue;
 			
 			case 1:		//coarse page table
-				coarse = true;
+				coarse = 1;
 				t &= 0xFFFFFC00UL;
 				break;
 			
 			case 2:		//section
-				mmuPrvDumpUpdate(va, t & 0xFFF00000UL, 1UL << 20, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), true);
+				mmuPrvDumpUpdate(va, t & 0xFFF00000UL, 1UL << 20, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), 1);
 				continue;
 			
 			case 3:		//fine page table
@@ -486,34 +485,34 @@ void __attribute__((used)) mmuDump(struct ArmMmu *mmu)
 			switch (t & 3) {
 				
 				case 0:		//invalid
-					mmuPrvDumpUpdate(va, 0, psz, 0, 0, false, false, false);
+					mmuPrvDumpUpdate(va, 0, psz, 0, 0, 0, 0, 0);
 					break;
 				
 				case 1:		//large 64k page
-					mmuPrvDumpUpdate(va + 0 * 16384UL, (t & 0xFFFF0000UL) + 0 * 16384UL, 16384, dom, (t >>  4) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 1 * 16384UL, (t & 0xFFFF0000UL) + 1 * 16384UL, 16384, dom, (t >>  6) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 2 * 16384UL, (t & 0xFFFF0000UL) + 2 * 16384UL, 16384, dom, (t >>  8) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 3 * 16384UL, (t & 0xFFFF0000UL) + 3 * 16384UL, 16384, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), true);
+					mmuPrvDumpUpdate(va + 0 * 16384UL, (t & 0xFFFF0000UL) + 0 * 16384UL, 16384, dom, (t >>  4) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 1 * 16384UL, (t & 0xFFFF0000UL) + 1 * 16384UL, 16384, dom, (t >>  6) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 2 * 16384UL, (t & 0xFFFF0000UL) + 2 * 16384UL, 16384, dom, (t >>  8) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 3 * 16384UL, (t & 0xFFFF0000UL) + 3 * 16384UL, 16384, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), 1);
 					j += coarse ? 15 : 63;
 					break;
 				
 				case 2:		//small 4k page
-					mmuPrvDumpUpdate(va + 0 * 1024, (t & 0xFFFFF000UL) + 0 * 1024, 1024, dom, (t >>  4) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 1 * 1024, (t & 0xFFFFF000UL) + 1 * 1024, 1024, dom, (t >>  6) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 2 * 1024, (t & 0xFFFFF000UL) + 2 * 1024, 1024, dom, (t >>  8) & 3, !!(t & 8), !!(t & 4), true);
-					mmuPrvDumpUpdate(va + 3 * 1024, (t & 0xFFFFF000UL) + 3 * 1024, 1024, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), true);
+					mmuPrvDumpUpdate(va + 0 * 1024, (t & 0xFFFFF000UL) + 0 * 1024, 1024, dom, (t >>  4) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 1 * 1024, (t & 0xFFFFF000UL) + 1 * 1024, 1024, dom, (t >>  6) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 2 * 1024, (t & 0xFFFFF000UL) + 2 * 1024, 1024, dom, (t >>  8) & 3, !!(t & 8), !!(t & 4), 1);
+					mmuPrvDumpUpdate(va + 3 * 1024, (t & 0xFFFFF000UL) + 3 * 1024, 1024, dom, (t >> 10) & 3, !!(t & 8), !!(t & 4), 1);
 					if(!coarse)
 						j += 3;
 					break;
 				
 				case 3:		//tiny 1k page or TEX page on pxa
 					if (coarse)
-						mmuPrvDumpUpdate(va, t & 0xFFFFF000UL, 4096, dom, (t >> 4) & 3, !!(t & 8), !!(t & 4), true);
+						mmuPrvDumpUpdate(va, t & 0xFFFFF000UL, 4096, dom, (t >> 4) & 3, !!(t & 8), !!(t & 4), 1);
 					else
-						mmuPrvDumpUpdate(va, t & 0xFFFFFC00UL, 1024, dom, (t >> 4) & 3, !!(t & 8), !!(t & 4), true);
+						mmuPrvDumpUpdate(va, t & 0xFFFFFC00UL, 1024, dom, (t >> 4) & 3, !!(t & 8), !!(t & 4), 1);
 					break;
 			}
 		}
 	}
-	mmuPrvDumpUpdate(0, 0, 0, 0, 0, false, false, false);	//finish things off
+	mmuPrvDumpUpdate(0, 0, 0, 0, 0, 0, 0, 0);	//finish things off
 }

@@ -1,10 +1,5 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "sys.h"
 #include "pumpkin.h"
 #include "editor.h"
@@ -80,7 +75,7 @@ static void process_lines(edit_t *data, char *buf, int size) {
           line = xcalloc(1, sizeof(edit_line_t));
           line->buf = xcalloc(1, 1);
         } else {
-          len = strlen(line->buf);
+          len = sys_strlen(line->buf);
           line->buf = xrealloc(line->buf, len+1);
         }
         debug(DEBUG_TRACE, "EDIT", "line %d: \"%s\"", k++, line->buf);
@@ -110,7 +105,7 @@ static void process_lines(edit_t *data, char *buf, int size) {
 
   if (line) {
     if (line->buf) {
-      len = strlen(line->buf);
+      len = sys_strlen(line->buf);
       line->buf = xrealloc(line->buf, len+1);
       debug(DEBUG_TRACE, "EDIT", "line %d: \"%s\"", k++, line->buf);
       if (data->first == NULL) {
@@ -133,7 +128,7 @@ static void save_file(editor_t *e, edit_t *data) {
 
   if ((f = e->fopen(e->data, data->filename, 1)) != NULL) {
     for (line = data->first; line; line = line->next) {
-      e->fwrite(e->data, f, line->buf, strlen(line->buf));
+      e->fwrite(e->data, f, line->buf, sys_strlen(line->buf));
       e->fwrite(e->data, f, &lf, 1);
       e->fclose(e->data, f);
     }
@@ -171,7 +166,7 @@ static void draw_page(editor_t *e, edit_t *data, int from_current, int all) {
 
   for (i = 0, line = data->page; i < data->nrows-1 && line; line = line->next) {
     oldspan = line->span;
-    len = strlen(line->buf);
+    len = sys_strlen(line->buf);
     line->span = len ? (len + data->ncols - 1) / data->ncols : 1;
     if (i+line->span > data->nrows-1) {
       debug(DEBUG_TRACE, "EDIT", "row %d: \"%s\" (span %d) does not fit", i, line->buf, line->span);
@@ -216,7 +211,7 @@ static void draw_status(editor_t *e, edit_t *data, char *status, int inverse) {
     } else {
       e->color(e->data, data->foregroundColor, data->emptyColor);
     }
-    len = strlen(status);
+    len = sys_strlen(status);
     if (len >= data->ncols) len = data->ncols-1;
     e->write(e->data, status, len);
   }
@@ -231,7 +226,7 @@ static void draw_status(editor_t *e, edit_t *data, char *status, int inverse) {
 static void draw_pos(editor_t *e, edit_t *data) {
   char buf[256];
 
-  snprintf(buf, sizeof(buf)-1, "\"%s\"  %d,%d of %d", data->filename, data->line+1, data->iline+1, data->nlines);
+  sys_snprintf(buf, sizeof(buf)-1, "\"%s\"  %d,%d of %d", data->filename, data->line+1, data->iline+1, data->nlines);
   draw_status(e, data, buf, 0);
 }
 
@@ -267,7 +262,7 @@ debug(1, "XXX", "adjust line == old_line new row=%d line=%d start=%d end=%d row0
         data->current = data->current->prev;
         if (data->page->prev) data->page = data->page->prev;
       }
-      data->len = strlen(data->current->buf);
+      data->len = sys_strlen(data->current->buf);
       data->col = 0;
       data->row = 0;
       for (line = data->page; line != data->current; line = line->next) {
@@ -280,7 +275,7 @@ debug(1, "XXX", "adjust line == old_line new row=%d line=%d start=%d end=%d row0
         data->current = data->current->prev;
         data->row -= data->current->span;
       }
-      data->len = strlen(data->current->buf);
+      data->len = sys_strlen(data->current->buf);
       if (data->iline >= data->len) {
         data->iline = data->len ? data->len-1 : 0;
       }
@@ -297,7 +292,7 @@ debug(1, "XXX", "adjust line > end (%d)", data->line - data->old_line);
         data->current = data->current->next;
         if (data->page->next) data->page = data->page->next;
       }
-      data->len = strlen(data->current->buf);
+      data->len = sys_strlen(data->current->buf);
       data->col = 0;
       data->row = 0;
       for (line = data->page; line != data->current; line = line->next) {
@@ -313,7 +308,7 @@ debug(1, "XXX", "adjust row = %d + %d = %d", data->row, data->current->span, dat
         data->row += data->current->span;
         data->current = data->current->next;
       }
-      data->len = strlen(data->current->buf);
+      data->len = sys_strlen(data->current->buf);
     }
     if (data->iline >= data->len) {
       data->iline = data->len ? data->len-1 : 0;
@@ -337,7 +332,7 @@ static void edit_command(editor_t *e, edit_t *data, char *cmd) {
     data->row = data->saved_row;
     e->cursor(e->data, data->col, data->row);
 
-  } else if (!strcmp(cmd, "q") || !strcmp(cmd, "q!")) {
+  } else if (!sys_strcmp(cmd, "q") || !sys_strcmp(cmd, "q!")) {
     if (data->changed && cmd[1] == 0) {
       draw_status(e, data, (char *)UNSAVED, 1);
       data->state = state_initial;
@@ -350,7 +345,7 @@ static void edit_command(editor_t *e, edit_t *data, char *cmd) {
       data->state = state_exit;
     }
 
-  } else if (!strcmp(cmd, "w") || !strcmp(cmd, "wq")) {
+  } else if (!sys_strcmp(cmd, "w") || !sys_strcmp(cmd, "wq")) {
     if (data->filename) {
       save_file(e, data);
     }
@@ -369,7 +364,7 @@ static void edit_command(editor_t *e, edit_t *data, char *cmd) {
       if (cmd[i] < '0' || cmd[i] > '9') break;
     }
     if (cmd[i] == 0 && data->nlines > 0) {
-      num = atoi(cmd);
+      num = sys_atoi(cmd);
       if (num > 0) num--;
       if (num >= data->nlines) num = data->nlines-1;
       for (i = 0, line = data->first; line; i++, line = line->next) {
@@ -396,7 +391,7 @@ static int getnum(edit_t *data) {
       if (data->cmd[i] < '0' || data->cmd[i] > '9') break;
     }
     if (data->cmd[i] == 0) {
-      num = atoi(data->cmd);
+      num = sys_atoi(data->cmd);
     }
     data->ncmd = 0;
   }
@@ -411,7 +406,7 @@ static void doit(editor_t *e, edit_t *data) {
   char c;
 
   data->current = data->first;
-  data->len = strlen(data->current->buf);
+  data->len = sys_strlen(data->current->buf);
   data->iline = 0;
   data->col = data->row = 0;
   data->page = data->first;
@@ -490,7 +485,7 @@ debug(1, "XXX", "current line back %d to %d", i, data->line);
               data->row = 0;
               for (line = data->current; line != data->page; line = line->prev, data->line--);
               data->current = data->page;
-              data->len = strlen(data->current->buf);
+              data->len = sys_strlen(data->current->buf);
               e->cursor(e->data, data->col, data->row);
               break;
             case 'M': // middle row
@@ -500,7 +495,7 @@ debug(1, "XXX", "current line back %d to %d", i, data->line);
               for (line = data->current; line != data->page; line = line->prev, data->line--);
               for (i = 0; i < data->shown/2; line = line->next, data->row += line->span, data->line++, i++);
               data->current = line;
-              data->len = strlen(data->current->buf);
+              data->len = sys_strlen(data->current->buf);
               e->cursor(e->data, data->col, data->row);
               break;
             case 'L': // lower left corner
@@ -510,7 +505,7 @@ debug(1, "XXX", "current line back %d to %d", i, data->line);
               for (line = data->page; line != data->current; line = line->next, data->row += line->span);
               for (; data->row+line->span < data->nrows-1; line = line->next, data->line++, data->row += line->span);
               data->current = line;
-              data->len = strlen(data->current->buf);
+              data->len = sys_strlen(data->current->buf);
               e->cursor(e->data, data->col, data->row);
               break;
             case vchrPageUp:
@@ -631,10 +626,10 @@ debug(1, "XXX", "cursor down to line %d", data->line);
               break;
             case 'J': // join lines
               if (data->line < data->nlines-1) {
-                data->current->buf = xrealloc(data->current->buf, data->len + 1 + strlen(data->current->next->buf) + 1);
-                strcat(data->current->buf, " ");
-                strcat(data->current->buf, data->current->next->buf);
-                data->len = strlen(data->current->buf);
+                data->current->buf = xrealloc(data->current->buf, data->len + 1 + sys_strlen(data->current->next->buf) + 1);
+                sys_strcat(data->current->buf, " ");
+                sys_strcat(data->current->buf, data->current->next->buf);
+                data->len = sys_strlen(data->current->buf);
                 data->nlines--;
                 xfree(data->current->next->buf);
                 data->current->next = data->current->next->next;
@@ -831,11 +826,11 @@ debug(1, "XXX", "cursor down to line %d", data->line);
                 data->old_iline = data->iline;
                 if (line->next) {
                   data->current = line->next;
-                  data->len = strlen(data->current->buf);
+                  data->len = sys_strlen(data->current->buf);
                 } else if (line->prev) {
                   data->line--;
                   data->current = line->prev;
-                  data->len = strlen(data->current->buf);
+                  data->len = sys_strlen(data->current->buf);
                 } else {
                   data->line = 0;
                   data->current = NULL;
@@ -855,7 +850,7 @@ debug(1, "XXX", "cursor down to line %d", data->line);
           switch (key) {
             case 27:
               draw_status(e, data, NULL, 0);
-              data->len = strlen(data->current->buf);
+              data->len = sys_strlen(data->current->buf);
               data->current->buf = xrealloc(data->current->buf, data->len+1);
               data->old_line = data->line;
               data->old_iline = data->iline;

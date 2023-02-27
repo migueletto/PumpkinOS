@@ -27,7 +27,6 @@
 #include "Datebook.h"
 #include "DateTime.h"
 #include "ToDoDB.h"
-#include <stddef.h>
 
 #include "debug.h"
 
@@ -594,7 +593,7 @@ static Err AgendaViewGetApptDesc (
 		if ( apptRec.description != NULL )
 			{
 			//*outOffsetP = (UInt16) ((UInt32) apptRec.description - (UInt32) apptRec.when);
-			*outOffsetP = (UInt16) (offsetof(ApptDBRecordType, description) - offsetof(ApptDBRecordType, when));
+			*outOffsetP = (UInt16) (OffsetOf(ApptDBRecordType, description) - OffsetOf(ApptDBRecordType, when));
 			*outSizeP = StrLen (apptRec.description) + 1;  // one for null terminator
 			}
 		else

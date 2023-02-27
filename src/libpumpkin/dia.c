@@ -1,13 +1,10 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <string.h>
-
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
 #include "media.h"
-#include "sys.h"
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"

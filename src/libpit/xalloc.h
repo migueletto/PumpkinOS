@@ -5,20 +5,20 @@
 extern "C" {
 #endif
 
-void *xmalloc_debug(const char *file, const char *func, int line, size_t size);
+void *xmalloc_debug(const char *file, const char *func, int line, sys_size_t size);
 
 void xfree_debug(const char *file, const char *func, int line, void *ptr);
 
-void *xcalloc_debug(const char *file, const char *func, int line, size_t nmemb, size_t size);
+void *xcalloc_debug(const char *file, const char *func, int line, sys_size_t nmemb, sys_size_t size);
 
-void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, size_t size);
+void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, sys_size_t size);
 
 char *xstrdup_debug(const char *file, const char *func, int line, const char *s);
 
 void *
-xmemcpy_debug(const char *file, const char *func, int line, void *dest, const void *src, size_t n);
+xmemcpy_debug(const char *file, const char *func, int line, void *dest, const void *src, sys_size_t n);
 
-void *xmemset_debug(const char *file, const char *func, int line, void *s, int c, size_t n);
+void *xmemset_debug(const char *file, const char *func, int line, void *s, int c, sys_size_t n);
 
 #define xmalloc(size) xmalloc_debug(__FILE__, __FUNCTION__, __LINE__, size)
 #define xfree(ptr) xfree_debug(__FILE__, __FUNCTION__, __LINE__, ptr)

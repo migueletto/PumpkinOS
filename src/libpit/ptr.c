@@ -93,7 +93,7 @@ static int ptr_new_aux(void *p, void (*destructor)(void *p), int c) {
       index = id % MAX_PTRS;
 
       if (!table[index].used) {
-        snprintf(buf, sizeof(buf)-1, "ptr%d", id);
+        sys_snprintf(buf, sizeof(buf)-1, "ptr%d", id);
         table[index].mutex = mutex_create(buf);
 
         if (table[index].mutex == NULL) {

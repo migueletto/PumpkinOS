@@ -1,5 +1,4 @@
-#include <stdint.h>
-
+#include "sys.h"
 #include "rgb.h"
 
 uint16_t rgb565(uint16_t r, uint16_t g, uint16_t b) {

@@ -1,10 +1,6 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "sys.h"
 #include "pumpkin.h"
 #ifdef ARMEMU
@@ -1251,72 +1247,72 @@ static void getp(uint32_t addr, char *a, char *buf) {
   char st[8];
 
   if (addr) {
-    if (!strcmp(a, "Wp")) {
+    if (!sys_strcmp(a, "Wp")) {
       W = m68k_read_memory_16(addr);
-      sprintf(buf, "W[%u]", W);
-    } else if (!strcmp(a, "wp")) {
+      sys_sprintf(buf, "W[%u]", W);
+    } else if (!sys_strcmp(a, "wp")) {
       w = m68k_read_memory_16(addr);
-      sprintf(buf, "w[%d]", w);
-    } else if (!strcmp(a, "Bp")) {
+      sys_sprintf(buf, "w[%d]", w);
+    } else if (!sys_strcmp(a, "Bp")) {
       B = m68k_read_memory_8(addr);
-      sprintf(buf, "B[%u]", B);
-    } else if (!strcmp(a, "bp")) {
+      sys_sprintf(buf, "B[%u]", B);
+    } else if (!sys_strcmp(a, "bp")) {
       b = m68k_read_memory_8(addr);
-      sprintf(buf, "b[%d]", b);
-    } else if (!strcmp(a, "Lp")) {
+      sys_sprintf(buf, "b[%d]", b);
+    } else if (!sys_strcmp(a, "Lp")) {
       L = m68k_read_memory_32(addr);
-      sprintf(buf, "L[%u]", L);
-    } else if (!strcmp(a, "lp")) {
+      sys_sprintf(buf, "L[%u]", L);
+    } else if (!sys_strcmp(a, "lp")) {
       l = m68k_read_memory_32(addr);
-      sprintf(buf, "l[%d]", l);
-    } else if (!strcmp(a, "4p")) {
+      sys_sprintf(buf, "l[%d]", l);
+    } else if (!sys_strcmp(a, "4p")) {
       L = m68k_read_memory_32(addr);
       pumpkin_id2s(L, st);
-      sprintf(buf, "L['%s']", st);
-    } else if (!strcmp(a, "frmp")) {
+      sys_sprintf(buf, "L['%s']", st);
+    } else if (!sys_strcmp(a, "frmp")) {
       W = m68k_read_memory_16(addr+104);
       W = be16toh(W);
-      sprintf(buf, "Form[%u]", W);
-    } else if (!strcmp(a, "fobjp")) {
-      sprintf(buf, "FormObj");
-    } else if (!strcmp(a, "ctlp")) {
+      sys_sprintf(buf, "Form[%u]", W);
+    } else if (!sys_strcmp(a, "fobjp")) {
+      sys_sprintf(buf, "FormObj");
+    } else if (!sys_strcmp(a, "ctlp")) {
       W = m68k_read_memory_16(addr);
-      sprintf(buf, "Control[%u]", W);
-    } else if (!strcmp(a, "lstp")) {
-      W = m68k_read_memory_16(addr);
-      W = be16toh(W);
-      sprintf(buf, "List[%u]", W);
-    } else if (!strcmp(a, "fldp")) {
+      sys_sprintf(buf, "Control[%u]", W);
+    } else if (!sys_strcmp(a, "lstp")) {
       W = m68k_read_memory_16(addr);
       W = be16toh(W);
-      sprintf(buf, "Field[%u]", W);
-    } else if (!strcmp(a, "tblp")) {
+      sys_sprintf(buf, "List[%u]", W);
+    } else if (!sys_strcmp(a, "fldp")) {
       W = m68k_read_memory_16(addr);
       W = be16toh(W);
-      sprintf(buf, "Table[%u]", W);
-    } else if (!strcmp(a, "sclp")) {
+      sys_sprintf(buf, "Field[%u]", W);
+    } else if (!sys_strcmp(a, "tblp")) {
+      W = m68k_read_memory_16(addr);
+      W = be16toh(W);
+      sys_sprintf(buf, "Table[%u]", W);
+    } else if (!sys_strcmp(a, "sclp")) {
       W = m68k_read_memory_16(addr+8);
-      sprintf(buf, "ScrollBar[%u]", W);
-    } else if (!strcmp(a, "gadp")) {
+      sys_sprintf(buf, "ScrollBar[%u]", W);
+    } else if (!sys_strcmp(a, "gadp")) {
       W = m68k_read_memory_16(addr);
-      sprintf(buf, "Gadget[%u]", W);
-    } else if (!strcmp(a, "evtp")) {
+      sys_sprintf(buf, "Gadget[%u]", W);
+    } else if (!sys_strcmp(a, "evtp")) {
       char *name;
       W = m68k_read_memory_16(addr);
       name = EvtGetEventName(W);
       if (name) {
-        sprintf(buf, "Event[%s]", name);
+        sys_sprintf(buf, "Event[%s]", name);
       } else {
-        sprintf(buf, "Event[%u]", W);
+        sys_sprintf(buf, "Event[%u]", W);
       }
-    } else if (!strcmp(a, "rctp")) {
+    } else if (!sys_strcmp(a, "rctp")) {
       int16_t x, y, width, height;
       x = m68k_read_memory_16(addr);
       y = m68k_read_memory_16(addr+2);
       width = m68k_read_memory_16(addr+4);
       height = m68k_read_memory_16(addr+6);
-      sprintf(buf, "Rect[%d,%d,%d,%d]", x, y, width, height);
-    } else if (!strcmp(a, "dttp")) {
+      sys_sprintf(buf, "Rect[%d,%d,%d,%d]", x, y, width, height);
+    } else if (!sys_strcmp(a, "dttp")) {
       int16_t second, minute, hour, day, month, year;
       second = m68k_read_memory_16(addr);
       minute = m68k_read_memory_16(addr+2);
@@ -1324,27 +1320,27 @@ static void getp(uint32_t addr, char *a, char *buf) {
       day = m68k_read_memory_16(addr+6);
       month = m68k_read_memory_16(addr+8);
       year = m68k_read_memory_16(addr+10);
-      sprintf(buf, "DateTime[%04d-%02d-%02d_%02d:%02d:%02d]", year, month, day, hour, minute, second);
-    } else if (!strcmp(a, "bmpp")) {
+      sys_sprintf(buf, "DateTime[%04d-%02d-%02d_%02d:%02d:%02d]", year, month, day, hour, minute, second);
+    } else if (!sys_strcmp(a, "bmpp")) {
       uint16_t width, height, version;
       width = m68k_read_memory_16(addr);
       height = m68k_read_memory_16(addr+2);
       version = m68k_read_memory_16(addr+8) & 0xFF;
-      sprintf(buf, "Bitmap[V%d_%dx%d]", version, width, height);
-    } else if (!strcmp(a, "winp")) {
+      sys_sprintf(buf, "Bitmap[V%d_%dx%d]", version, width, height);
+    } else if (!sys_strcmp(a, "winp")) {
       int16_t width, height;
       width = m68k_read_memory_16(addr);
       height = m68k_read_memory_16(addr+2);
-      sprintf(buf, "Window[%dx%d]", width, height);
-    } else if (!strcmp(a, "lid")) {
-      sprintf(buf, "LocalID");
-    } else if (!strcmp(a, "lidp")) {
-      sprintf(buf, "LocalID[]");
+      sys_sprintf(buf, "Window[%dx%d]", width, height);
+    } else if (!sys_strcmp(a, "lid")) {
+      sys_sprintf(buf, "LocalID");
+    } else if (!sys_strcmp(a, "lidp")) {
+      sys_sprintf(buf, "LocalID[]");
     } else {
-      sprintf(buf, "0x%08X", addr);
+      sys_sprintf(buf, "0x%08X", addr);
     }
   } else {
-    strcpy(buf, "NULL");
+    sys_strcpy(buf, "NULL");
   }
 }
 
@@ -1369,36 +1365,36 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
     case 'c':
     case 'b':
       b = ARG8;
-      sprintf(buf, "%d", b);
+      sys_sprintf(buf, "%d", b);
       break;
     case 'B':
       B = ARG8;
-      sprintf(buf, "%u", B);
+      sys_sprintf(buf, "%u", B);
       break;
     case 'w':
       w = ARG16;
-      sprintf(buf, "%d", w);
+      sys_sprintf(buf, "%d", w);
       break;
     case 'W':
       W = ARG16;
-      sprintf(buf, "%u", W);
+      sys_sprintf(buf, "%u", W);
       break;
     case 'l':
       l = ARG32;
-      sprintf(buf, "%d", l);
+      sys_sprintf(buf, "%d", l);
       break;
     case 'L':
       L = ARG32;
-      sprintf(buf, "%u", L);
+      sys_sprintf(buf, "%u", L);
       break;
     case 'p':
       L = ARG32;
-      sprintf(buf, "0x%08X", L);
+      sys_sprintf(buf, "0x%08X", L);
       break;
     case '4':
       L = ARG32;
       pumpkin_id2s(L, st);
-      sprintf(buf, "'%s'", st);
+      sys_sprintf(buf, "'%s'", st);
       break;
     case 'S': {
       int i = 0, j = 0;
@@ -1414,7 +1410,7 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
         buf[i++] = '"';
         buf[i] = 0;
       } else {
-        strcpy(buf, "NULL");
+        sys_strcpy(buf, "NULL");
       }
       }
       break;
@@ -1423,7 +1419,7 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
     if (isoutput || !output) {
       getp(L, a, buf);
     } else {
-      strcpy(buf, L ? "addr" : "NULL");
+      sys_strcpy(buf, L ? "addr" : "NULL");
     }
   }
 
@@ -1433,8 +1429,8 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
 #define doarg(n) \
   if (allTraps[trap].nArgs > n-1) { \
     idx = getarg(allTraps[trap].arg##n, sp, idx, buf, isoutput); \
-    strcat(line, " "); \
-    strcat(line, buf); \
+    sys_strcat(line, " "); \
+    sys_strcat(line, buf); \
   }
 
 #define doargs() \
@@ -1465,42 +1461,42 @@ static int getret(char *rType, char *buf) {
 
   switch (rType[0]) {
     case '?':
-      strcpy(buf, "unknown");
+      sys_strcpy(buf, "unknown");
       break;
     case 'v':
       ret = 0;
       break;
     case 'p':
       d = m68k_get_reg(NULL, M68K_REG_A0);
-      sprintf(buf, "0x%08X", d);
+      sys_sprintf(buf, "0x%08X", d);
       break;
     case 'c':
     case 'b':
       d = m68k_get_reg(NULL, M68K_REG_D0) & 0xFF;
       b = d;
-      sprintf(buf, "%d", b);
+      sys_sprintf(buf, "%d", b);
       break;
     case 'w':
       d = m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF;
       w = d;
-      sprintf(buf, "%d", w);
+      sys_sprintf(buf, "%d", w);
       break;
     case 'l':
       d = m68k_get_reg(NULL, M68K_REG_D0);
       l = d;
-      sprintf(buf, "%d", l);
+      sys_sprintf(buf, "%d", l);
       break;
     case 'B':
       d = m68k_get_reg(NULL, M68K_REG_D0) & 0xFF;
-      sprintf(buf, "%u", d);
+      sys_sprintf(buf, "%u", d);
       break;
     case 'W':
       d = m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF;
-      sprintf(buf, "%u", d);
+      sys_sprintf(buf, "%u", d);
       break;
     case 'L':
       d = m68k_get_reg(NULL, M68K_REG_D0);
-      sprintf(buf, "%u", d);
+      sys_sprintf(buf, "%u", d);
       break;
   }
 

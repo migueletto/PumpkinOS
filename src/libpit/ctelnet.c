@@ -374,7 +374,7 @@ pass:
             break;
           case TELOPT_TSPEED:
             debug(DEBUG_INFO, "TELNET", "< SB TSPEED SEND");
-            snprintf(aux, sizeof(aux)-1, "%d,%d", 19200, 19200);
+            sys_snprintf(aux, sizeof(aux)-1, "%d,%d", 19200, 19200);
             j = 0;
             outbuf[j++] = TELNET_IAC;
             outbuf[j++] = TELNET_SB;

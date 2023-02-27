@@ -3,7 +3,6 @@
 #include "pwindow.h"
 #include "pfont.h"
 #include "graphic.h"
-#include "image.h"
 #include "surface.h"
 #include "gps.h"
 

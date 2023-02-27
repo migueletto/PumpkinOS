@@ -1,9 +1,5 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "sys.h"
 #include "pumpkin.h"
 #include "syntax.h"
@@ -168,7 +164,7 @@ static uint32_t syntax_color(syntax_highlight_t *shigh, char *s) {
               color = shigh->numberColor;
             } else {
               // all chars are alphanumeric
-              if (!strncmp(s, "0x", 2)) {
+              if (!sys_strncmp(s, "0x", 2)) {
                 debug(DEBUG_TRACE, "SYNTAX", "hexa numeric symbol \"%s\"", s);
                 color = shigh->numberColor;
               } else {

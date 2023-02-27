@@ -1,15 +1,12 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-
 #include "sys.h"
 #include "pumpkin.h"
 #include "bytes.h"
 #include "rgb.h"
+#include "dbg.h"
 #include "debug.h"
 #include "xalloc.h"
-
-#include "dbg.h"
 
 #define WIDTH  960
 #define HEIGHT 640

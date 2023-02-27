@@ -34,7 +34,7 @@ static void SelectTimeZoneDrawItem(Int16 itemNum, RectangleType *bounds, Char **
         tz = item->tz;
         s = ' ';
       }
-      snprintf(buf, sizeof(buf)-1, "%c%d:%02d", s, tz/60, tz%60);
+      sys_snprintf(buf, sizeof(buf)-1, "%c%d:%02d", s, tz/60, tz%60);
       n = StrLen(buf);
       WinDrawChars(buf, n, bounds->topLeft.x + bounds->extent.x - FntCharsWidth(buf, n) - 10, bounds->topLeft.y);
       WinDrawChars(item->name, StrLen(item->name), bounds->topLeft.x+1, bounds->topLeft.y);
@@ -134,7 +134,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
           for (j = 0; j < max; j++) {
             i += pumpkin_getstr(&str, p, i);
             if (choices && choices[j]) {
-              snprintf(buf, sizeof(buf)-1, "%s%s", prefix, str);
+              sys_snprintf(buf, sizeof(buf)-1, "%s%s", prefix, str);
               choices[j]->name = xstrdup(buf);
             }
           }

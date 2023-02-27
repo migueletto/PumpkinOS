@@ -1,10 +1,7 @@
 #include <PalmOS.h>
 
-#include <stdarg.h>
-#include <string.h>
-
-#include "pwindow.h"
 #include "sys.h"
+#include "pwindow.h"
 #include "vfs.h"
 #include "mem.h"
 #include "pumpkin.h"
@@ -63,7 +60,7 @@ NetIPAddr NetLibAddrAToIN(UInt16 libRefnum, const Char *a) {
   NetIPAddr inet = -1;
 
   if (a) {
-    if (sscanf(a, "%d.%d.%d.%d", &b1, &b2, &b3, &b4) == 4) {
+    if (sys_sscanf(a, "%d.%d.%d.%d", &b1, &b2, &b3, &b4) == 4) {
       inet = (b1 & 0xFF) | ((b2 & 0XFF) << 8) | ((b3 & 0xFF) << 16) | ((b4 & 0xFF) << 24);
     }
   }

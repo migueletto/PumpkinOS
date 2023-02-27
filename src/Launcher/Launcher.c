@@ -3,9 +3,6 @@
 #include <BmpGlue.h>
 #include <VFSMgr.h>
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "sys.h"
 #include "resedit.h"
 #include "script.h"
@@ -124,9 +121,9 @@ static void ErrorDialog(char *msg, Err err, UInt16 num) {
   char cod[64], s[8];
 
   if (err) {
-    snprintf(cod, sizeof(cod)-1, "\nError code: %d", err);
+    sys_snprintf(cod, sizeof(cod)-1, "\nError code: %d", err);
     s[0] = 0;
-    if (num) snprintf(s, sizeof(s)-1, "(%x)", num);
+    if (num) sys_snprintf(s, sizeof(s)-1, "(%x)", num);
     FrmCustomAlert(ErrorAlert, msg, cod, s);
   } else {
     FrmCustomAlert(InfoAlert, msg, "", "");
@@ -136,7 +133,7 @@ static void ErrorDialog(char *msg, Err err, UInt16 num) {
 static void OpenErrorDialog(char *name, Err err) {
   char buf[256];
 
-  snprintf(buf, sizeof(buf)-1, "Could not open '%s' for writing.", name);
+  sys_snprintf(buf, sizeof(buf)-1, "Could not open '%s' for writing.", name);
   ErrorDialog(buf, err, 0);
 }
 
@@ -666,9 +663,9 @@ static void launcherScanResources(launcher_data_t *data) {
             get2b(&y, b, 12);
             get2b(&width, b, 14);
             get2b(&height, b, 16);
-            snprintf(buf, sizeof(buf)-1, "Form %dx%d at %d,%d%s", width, height, x, y, flags.wflags.modal ? " modal" : "");
+            sys_snprintf(buf, sizeof(buf)-1, "Form %dx%d at %d,%d%s", width, height, x, y, flags.wflags.modal ? " modal" : "");
           } else {
-            snprintf(buf, sizeof(buf)-1, "Form");
+            sys_snprintf(buf, sizeof(buf)-1, "Form");
           }
           data->item[index].info = xstrdup(buf);
           break;
@@ -681,22 +678,22 @@ static void launcherScanResources(launcher_data_t *data) {
             case errorAlert:        s = "Error";        break;
             default:                s = "Unknown";      break;
           }
-          snprintf(buf, sizeof(buf)-1, "%s alert", s);
+          sys_snprintf(buf, sizeof(buf)-1, "%s alert", s);
           data->item[index].info = xstrdup(buf);
           break;
         case MenuRscType:
           menu = (MenuBarType *)p;
-          snprintf(buf, sizeof(buf)-1, "Menu with %d pulldown(s)", menu->numMenus);
+          sys_snprintf(buf, sizeof(buf)-1, "Menu with %d pulldown(s)", menu->numMenus);
           data->item[index].info = xstrdup(buf);
           break;
         case fontRscType:
           font = (FontType *)p;
-          snprintf(buf, sizeof(buf)-1, "Font V%d", font->v);
+          sys_snprintf(buf, sizeof(buf)-1, "Font V%d", font->v);
           data->item[index].info = xstrdup(buf);
           break;
         case fontExtRscType:
           font = (FontType *)p;
-          snprintf(buf, sizeof(buf)-1, "Font V%d", font->v);
+          sys_snprintf(buf, sizeof(buf)-1, "Font V%d", font->v);
           data->item[index].info = xstrdup(buf);
           break;
         case iconType:
@@ -707,57 +704,57 @@ static void launcherScanResources(launcher_data_t *data) {
           switch (bmp->version) {
             case 0:
               bmpV0 = (BitmapTypeV0 *)bmp;
-              snprintf(buf, sizeof(buf)-1, "%s V0, %dx%d, 1 bpp%s", s, bmpV0->width, bmpV0->height, bmpV0->next ? ", chain" : "");
+              sys_snprintf(buf, sizeof(buf)-1, "%s V0, %dx%d, 1 bpp%s", s, bmpV0->width, bmpV0->height, bmpV0->next ? ", chain" : "");
               break;
             case 1:
               bmpV1 = (BitmapTypeV1 *)bmp;
-              snprintf(buf, sizeof(buf)-1, "%s V1, %dx%d, %d bpp%s", s, bmpV1->width, bmpV1->height, bmpV1->pixelSize, bmpV1->next ? ", chain" : "");
+              sys_snprintf(buf, sizeof(buf)-1, "%s V1, %dx%d, %d bpp%s", s, bmpV1->width, bmpV1->height, bmpV1->pixelSize, bmpV1->next ? ", chain" : "");
               break;
             case 2:
               bmpV2 = (BitmapTypeV2 *)bmp;
-              snprintf(buf, sizeof(buf)-1, "%s V2, %dx%d, %d bpp%s", s, bmpV2->width, bmpV2->height, bmpV2->pixelSize, bmpV2->next ? ", chain" : "");
+              sys_snprintf(buf, sizeof(buf)-1, "%s V2, %dx%d, %d bpp%s", s, bmpV2->width, bmpV2->height, bmpV2->pixelSize, bmpV2->next ? ", chain" : "");
               break;
             case 3:
               bmpV3 = (BitmapTypeV3 *)bmp;
-              snprintf(buf, sizeof(buf)-1, "%s V3, %dx%d, %d bpp, format %d, density %d%s", s, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->pixelFormat,
+              sys_snprintf(buf, sizeof(buf)-1, "%s V3, %dx%d, %d bpp, format %d, density %d%s", s, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->pixelFormat,
                 bmpV3->density, bmpV3->next ? ", chain" : "");
               break;
             default:
-              snprintf(buf, sizeof(buf)-1, "Invalid %s", s);
+              sys_snprintf(buf, sizeof(buf)-1, "Invalid %s", s);
               break;
           }
           data->item[index].info = xstrdup(buf);
           break;
         case strRsc:
           s = (char *)p;
-          snprintf(buf, sizeof(buf)-1, "\"%s\"", s);
+          sys_snprintf(buf, sizeof(buf)-1, "\"%s\"", s);
           data->item[index].info = xstrdup(buf);
           break;
         case constantRscType:
           value = (UInt32 *)p;
-          snprintf(buf, sizeof(buf)-1, "Constant %d (0x%08X)", *value, *value);
+          sys_snprintf(buf, sizeof(buf)-1, "Constant %d (0x%08X)", *value, *value);
           data->item[index].info = xstrdup(buf);
           break;
         case wrdListRscType:
-          snprintf(buf, sizeof(buf)-1, "Word list");
+          sys_snprintf(buf, sizeof(buf)-1, "Word list");
           data->item[index].info = xstrdup(buf);
           break;
         case strListRscType:
-          snprintf(buf, sizeof(buf)-1, "String list");
+          sys_snprintf(buf, sizeof(buf)-1, "String list");
           data->item[index].info = xstrdup(buf);
           break;
         case ainRsc:
           s = (char *)p;
-          snprintf(buf, sizeof(buf)-1, "App name \"%s\"", s);
+          sys_snprintf(buf, sizeof(buf)-1, "App name \"%s\"", s);
           data->item[index].info = xstrdup(buf);
           break;
         case verRsc:
           s = (char *)p;
-          snprintf(buf, sizeof(buf)-1, "Version \"%s\"", s);
+          sys_snprintf(buf, sizeof(buf)-1, "Version \"%s\"", s);
           data->item[index].info = xstrdup(buf);
           break;
         case defaultCategoryRscType:
-          snprintf(buf, sizeof(buf)-1, "Default category");
+          sys_snprintf(buf, sizeof(buf)-1, "Default category");
           data->item[index].info = xstrdup(buf);
           break;
         case sysRsrcTypeDlib:
@@ -765,46 +762,46 @@ static void launcherScanResources(launcher_data_t *data) {
           sys_size = id & 0x07;
           sys_cpu = (id & 0x38) >> 3;
           sys_os  = (id & 0x1C0) >> 6;
-          snprintf(buf, sizeof(buf)-1, "Code (%d bits %s CPU for %s)", (sys_size == 1) ? 32 : 64, (sys_cpu == 1) ? "ARM" : "x86", (sys_os == 1) ? "Linux" : "Windows");
+          sys_snprintf(buf, sizeof(buf)-1, "Code (%d bits %s CPU for %s)", (sys_size == 1) ? 32 : 64, (sys_cpu == 1) ? "ARM" : "x86", (sys_os == 1) ? "Linux" : "Windows");
           data->item[index].info = xstrdup(buf);
           break;
         case sysFileTLibrary:
-          snprintf(buf, sizeof(buf)-1, "Library (68K)");
+          sys_snprintf(buf, sizeof(buf)-1, "Library (68K)");
           data->item[index].info = xstrdup(buf);
           break;
         case sysRsrcTypeWinD:
           get2b(&width, p, 0);
           get2b(&height, p, 2);
-          snprintf(buf, sizeof(buf)-1, "Absolute window dimensions %dx%d", width, height);
+          sys_snprintf(buf, sizeof(buf)-1, "Absolute window dimensions %dx%d", width, height);
           data->item[index].info = xstrdup(buf);
           break;
         case sysRsrcTypeWinR:
           b = (UInt8 *)p;
-          snprintf(buf, sizeof(buf)-1, "Relative window dimensions %d/%d x %d/%d", b[0], b[1], b[2], b[3]);
+          sys_snprintf(buf, sizeof(buf)-1, "Relative window dimensions %d/%d x %d/%d", b[0], b[1], b[2], b[3]);
           data->item[index].info = xstrdup(buf);
           break;
         case sysResTAppCode:
           if (id == 0) {
-            snprintf(buf, sizeof(buf)-1, "App information (68K)");
+            sys_snprintf(buf, sizeof(buf)-1, "App information (68K)");
           } else {
-            snprintf(buf, sizeof(buf)-1, "Code (68K)");
+            sys_snprintf(buf, sizeof(buf)-1, "Code (68K)");
           }
           data->item[index].info = xstrdup(buf);
           break;
         case sysResTAppGData:
-          snprintf(buf, sizeof(buf)-1, "Global data (68K)");
+          sys_snprintf(buf, sizeof(buf)-1, "Global data (68K)");
           data->item[index].info = xstrdup(buf);
           break;
         case sysResTAppPrefs:
-          snprintf(buf, sizeof(buf)-1, "App prefs (68K)");
+          sys_snprintf(buf, sizeof(buf)-1, "App prefs (68K)");
           data->item[index].info = xstrdup(buf);
           break;
         case 'rloc':
-          snprintf(buf, sizeof(buf)-1, "Relocation (68K)");
+          sys_snprintf(buf, sizeof(buf)-1, "Relocation (68K)");
           data->item[index].info = xstrdup(buf);
           break;
         case 'locs':
-          snprintf(buf, sizeof(buf)-1, "Localization");
+          sys_snprintf(buf, sizeof(buf)-1, "Localization");
           data->item[index].info = xstrdup(buf);
           break;
       }
@@ -854,8 +851,8 @@ static void launcherScanFiles(launcher_data_t *data) {
       } else {
         data->item[index].dir = false;
         if (StrLen(data->path) + StrLen(name) < MAX_NAME - 1) {
-          strncpy(aux, data->path, sizeof(aux)-1);
-          strncat(aux, name, sizeof(aux)-strlen(aux)-1);
+          sys_strncpy(aux, data->path, sizeof(aux)-1);
+          sys_strncat(aux, name, sizeof(aux)-sys_strlen(aux)-1);
           if (VFSFileOpen(1, aux, vfsModeRead, &fileRef) == errNone) {
             VFSFileSize(fileRef, &size);
             data->item[index].size = size;
@@ -1201,7 +1198,7 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
   if (!pumpkin_dia_enabled()) {
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
-    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+    if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
   }
   lastColumn(data, x, y);
@@ -1217,9 +1214,9 @@ static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, i
   if (!pumpkin_dia_enabled()) {
     x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
-    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
+    if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
     x = printColumn(data, item, "Recs", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
-    if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+    if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
   }
   lastColumn(data, x, y);
@@ -1234,7 +1231,7 @@ static void printFile(launcher_data_t *data, launcher_item_t *item, int x, int y
     if (item->dir) {
       StrCopy(buf, " ");
     } else {
-      snprintf(buf, sizeof(buf)-1, "%u", item->size);
+      sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
     }
   }
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
@@ -1245,7 +1242,7 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
   char buf[32];
 
   firstColumn(data, x, y, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->id);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->id);
   x = printColumn(data, item, "ID", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
   x = spaceColumn(data, x, y, 10);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? (item->m68k ? m68kBmp : pumpkinBmp) : 0, x, y, 28 * FntCharWidth('a'), inverted);
@@ -1260,7 +1257,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
   dia = pumpkin_dia_enabled();
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), false, inverted);
 
   if (item) {
@@ -1299,7 +1296,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
             s = "other error";
             break;
         }
-        snprintf(buf, sizeof(buf)-1, "Crash: %s", s);
+        sys_snprintf(buf, sizeof(buf)-1, "Crash: %s", s);
         bmpId = errorBmp;
         break;
     }
@@ -1317,9 +1314,9 @@ static void printResource(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->id);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->id);
   x = printColumn(data, item, "ID", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
   if (!pumpkin_dia_enabled()) {
     x = spaceColumn(data, x, y, 10);
@@ -1342,7 +1339,7 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
   if ((dbRef = DmOpenDatabase(0, data->dbID, dmModeReadWrite)) != NULL) {
     if ((h = DmGetResourceIndex(dbRef, item->index)) != NULL) {
       pumpkin_id2s(item->type, st);
-      snprintf(title, sizeof(title)-1, "%s %d", st, item->id);
+      sys_snprintf(title, sizeof(title)-1, "%s %d", st, item->id);
       formId = EditBinForm;
       editor = editBinary;
 
@@ -1422,9 +1419,9 @@ static void printRecord(launcher_data_t *data, launcher_item_t *item, int x, int
   char buf[32];
 
   firstColumn(data, x, y, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->index);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->index);
   x = printColumn(data, item, "Index", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
-  if (item) snprintf(buf, sizeof(buf)-1, "%u", item->size);
+  if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
   lastColumn(data, x, y);
 }
@@ -1449,7 +1446,7 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
           WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
           frm->window.windowBounds.topLeft.x = (swidth - frm->window.windowBounds.extent.x) / 2;
           frm->window.windowBounds.topLeft.y = (sheight - frm->window.windowBounds.extent.y) / 2;
-          snprintf(title, sizeof(title)-1, "Record %d", item->index);
+          sys_snprintf(title, sizeof(title)-1, "Record %d", item->index);
           changed = editBinary(frm, title, h);
           FrmDeleteForm(frm);
         }
@@ -2168,7 +2165,7 @@ void setFieldNum(FormType *frm, UInt16 fieldId, UInt32 value, Boolean focus) {
   char buf[8];
 
   if (value != 0xffffffff) {
-    snprintf(buf, sizeof(buf)-1, "%d", value);
+    sys_snprintf(buf, sizeof(buf)-1, "%d", value);
     setField(frm, fieldId, buf, focus);
   }
 }
@@ -2207,7 +2204,7 @@ UInt32 getFieldNum(FormType *frm, UInt16 fieldId) {
   UInt32 value = 0xffffffff;
 
   if (getField(frm, fieldId, buf, sizeof(buf))) {
-    value = atoi(buf);
+    value = sys_atoi(buf);
   }
 
   return value;

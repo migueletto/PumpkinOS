@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdint.h>
-
+#include "sys.h"
 #include "armemu.h"
 #include "armem.h"
 #include "RAM.h"
@@ -25,9 +22,9 @@ struct arm_emu_t {
 arm_emu_t *armInit(uint8_t *buf, uint32_t size) {
   arm_emu_t *arm;
 
-  if ((arm = xcalloc(1, sizeof(arm_emu_t))) != NULL) {
+  if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     arm->mem = memInit();
-    arm->cpu = cpuInit(ROM_BASE, arm->mem, true, false, CPUID_PXA255, 0x0B16A16AUL);
+    arm->cpu = cpuInit(ROM_BASE, arm->mem, 1, 0, CPUID_PXA255, 0x0B16A16AUL);
     arm->ram = ramInit(arm->mem, 0, size, (uint32_t *)buf);
     arm->ic = socIcInit(arm->cpu, arm->mem, 0);
   }
@@ -41,7 +38,7 @@ void armFinish(arm_emu_t *arm) {
     ramDeinit(arm->ram);
     cpuDeinit(arm->cpu);
     memDeinit(arm->mem);
-    free(arm);
+    sys_free(arm);
   }
 }
 

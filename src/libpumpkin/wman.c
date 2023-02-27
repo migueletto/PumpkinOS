@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdint.h>
-
+#include "sys.h"
 #include "pwindow.h"
 #include "rgb.h"
 #include "debug.h"

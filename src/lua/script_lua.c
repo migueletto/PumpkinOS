@@ -1,10 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
+//#include <stdlib.h>
+//#include <stdio.h>
+//#include <stdint.h>
+//#include <stdarg.h>
+//#include <string.h>
+//#include <unistd.h>
 
+#include "sys.h"
 #include "script.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -38,7 +39,7 @@ static void script_hook(lua_State *L, lua_Debug *ar) {
         for (i = 1;; i++) {
           vname = (char *)lua_getlocal(L, ar, i);
           if (vname == NULL) break;
-          if (vname[0] == '(' && strcmp(what, "field")) break; // XXX find another way to filter these
+          if (vname[0] == '(' && sys_strcmp(what, "field")) break; // XXX find another way to filter these
           if (lua_isnoneornil(L, i)) {
             value = "nil";
           } else if (lua_isboolean(L, i)) {
@@ -239,14 +240,7 @@ int ext_script_call(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, in
   return err ? -1 : 0;
 }
 
-static int close_file(lua_State *L) {
-  (void)L;
-  return 0;
-}
-
 static int push_value(lua_State *L, script_arg_t *arg) {
-  luaL_Stream *p;
-
   switch(arg->type) {
     case SCRIPT_ARG_BOOLEAN:
       lua_pushboolean(L, arg->value.i);
@@ -284,13 +278,6 @@ static int push_value(lua_State *L, script_arg_t *arg) {
       lua_pushlightuserdata(L, arg->value.p);
       break;
 
-    case SCRIPT_ARG_FILE:
-      p = (luaL_Stream *)lua_newuserdata(L, sizeof(luaL_Stream));
-      p->f = arg->value.f;
-      p->closef = close_file;
-      luaL_setmetatable(L, LUA_FILEHANDLE);
-      break;
-
     default:
       debug(DEBUG_ERROR, "LUA", "invalid pushed value type '%c'", arg->type);
       return -1;
@@ -312,7 +299,6 @@ static void get_context(script_priv_t *priv, int i, int type) {
 int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg) {
   lua_Number number;
   lua_Integer integer;
-  luaL_Stream *p;
   size_t len;
   char *s;
 
@@ -362,13 +348,6 @@ int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg
         } else {
           return -1;
         }
-      } else if (luaL_testudata(priv->L, i+1, LUA_FILEHANDLE) != NULL) {
-        if ((p = luaL_checkudata(priv->L, i+1, LUA_FILEHANDLE)) != NULL) {
-          arg->type = SCRIPT_ARG_FILE;
-          arg->value.f = p->f;
-        } else {
-          return -1;
-        }
       } else {
         return -1;
       }
@@ -383,11 +362,11 @@ int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg
         arg->value.i = lua_toboolean(priv->L, i+1);
       } else {
         s = (char *)lua_tostring(priv->L, i+1);
-        if (s && !strcmp(s, "true")) {
+        if (s && !sys_strcmp(s, "true")) {
           arg->type = SCRIPT_ARG_BOOLEAN;
           arg->value.i = 1;
         } else {
-          integer = s ? atoi(s) : lua_tointeger(priv->L, i+1);
+          integer = s ? sys_atoi(s) : lua_tointeger(priv->L, i+1);
           arg->type = SCRIPT_ARG_BOOLEAN;
           arg->value.i = lua_isnumber(priv->L, i+1) ? integer : 0;
         }
@@ -445,7 +424,7 @@ int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg
         s = lua_toboolean(priv->L, i+1) ? "true" : "false";
         arg->type = SCRIPT_ARG_LSTRING;
         arg->value.l.s = s;
-        arg->value.l.n = strlen(s);
+        arg->value.l.n = sys_strlen(s);
       } else {
         s = (char *)luaL_checklstring(priv->L, i+1, &len);
         arg->type = SCRIPT_ARG_LSTRING;

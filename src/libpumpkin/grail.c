@@ -1,8 +1,6 @@
 #include <PalmOS.h>
 
-#include <string.h>
-#include <math.h>
-
+#include "sys.h"
 #include "grail.h"
 #include "debug.h"
 
@@ -114,8 +112,8 @@ static int alpha, num;
 static double perpendicular_distance(PointType *p, PointType *p1, PointType *p2) {
   double dx = p2->x - p1->x;
   double dy = p2->y - p1->y;
-  double d = sqrt(dx * dx + dy * dy);
-  return fabs(p->x * dy - p->y * dx + p2->x * p1->y - p2->y * p1->x) / d;
+  double d = sys_sqrt(dx * dx + dy * dy);
+  return sys_fabs(p->x * dy - p->y * dx + p2->x * p1->y - p2->y * p1->x) / d;
 }
 
 // https://rosettacode.org/wiki/Ramer-Douglas-Peucker_line_simplification#C
@@ -223,13 +221,13 @@ static int grail_match(char *path, PointType *p0, PointType *p1, int gx, int gy,
         dis[2] = 0;
         debug(DEBUG_TRACE, "GRAIL", "dis \"%s\" dx=%d dy=%d", dis, dx, dy);
 
-        if (!strcmp(dis, glyphs[i].dis0)) {
+        if (!sys_strcmp(dis, glyphs[i].dis0)) {
           debug(DEBUG_TRACE, "GRAIL", "dis0 \"%s\"", dis);
           g = glyphs[i].glyph[0];
-        } else if (!strcmp(dis, glyphs[i].dis1)) {
+        } else if (!sys_strcmp(dis, glyphs[i].dis1)) {
           debug(DEBUG_TRACE, "GRAIL", "dis1 \"%s\"", dis);
           g = glyphs[i].glyph[1];
-        } else if (glyphs[i].dis2 && !strcmp(dis, glyphs[i].dis2)) {
+        } else if (glyphs[i].dis2 && !sys_strcmp(dis, glyphs[i].dis2)) {
           debug(DEBUG_TRACE, "GRAIL", "dis2 \"%s\"", dis);
           g = glyphs[i].glyph[2];
         }

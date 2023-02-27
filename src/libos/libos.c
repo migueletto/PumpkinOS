@@ -1,13 +1,10 @@
 #include <PalmOS.h>
 
-#include <stdlib.h>
-#include <string.h>
-
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
 #include "media.h"
-#include "sys.h"
 #include "pumpkin.h"
 #include "secure.h"
 #include "dbg.h"
@@ -33,7 +30,7 @@ static void EventLoop(libos_t *data) {
 
   debug(DEBUG_INFO, PUMPKINOS, "starting launcher");
   xmemset(&request, 0, sizeof(request));
-  strncpy(request.name, data->launcher, dmDBNameLength-1);
+  sys_strncpy(request.name, data->launcher, dmDBNameLength-1);
   request.code = sysAppLaunchCmdNormalLaunch;
   request.opendb = 1;
   pumpkin_launch(&request);
@@ -153,7 +150,7 @@ static int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, 
       data->fullscreen = fullscreen;
       data->dia = dia;
       data->single = single;
-      strncpy(data->launcher, launcher, 256);
+      sys_strncpy(data->launcher, launcher, 256);
 
       // Calling in the same thread. As a result, the script engine will remain locked.
       // This could be a problem only if an application calls the engine, which is unlikely.

@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
 #include <stdint.h>
 
 typedef enum {
@@ -48,6 +47,10 @@ typedef enum {
 #define IP_STREAM    1
 #define IP_DGRAM     2
 
+#define SYS_EOF      -1
+
+#define NULL ((void *)0)
+
 typedef struct {
   uint32_t mode;   // file type and mode
   uint64_t size;   // total size, in bytes
@@ -87,9 +90,22 @@ typedef struct {
   uint64_t tv_nsec;
 } sys_timespec_t;
 
+#if UINTPTR_MAX == 0xffffffff
+typedef uint32_t sys_size_t;
+#elif UINTPTR_MAX == 0xffffffffffffffff
+typedef uint64_t sys_size_t;
+#else
+#error "Word size not known"
+#endif
+
 typedef struct sys_dir_t sys_dir_t;
 
 typedef uint32_t sys_fdset_t;
+
+typedef __builtin_va_list sys_va_list;
+#define sys_va_start(v,l) __builtin_va_start(v,l)
+#define sys_va_end(v)     __builtin_va_end(v)
+#define sys_va_arg(v,l)   __builtin_va_arg(v,l)
 
 void sys_init(void);
 
@@ -222,9 +238,9 @@ void *sys_lib_defsymbol(void *lib, char *name, int mandatory);
 
 int sys_lib_close(void *lib);
 
-void sys_lockfile(FILE *fd);
+void sys_lockfile(void *fd);
 
-void sys_unlockfile(FILE *fd);
+void sys_unlockfile(void *fd);
 
 uint32_t sys_socket_ipv4(char *host);
 
@@ -265,21 +281,21 @@ int sys_list_symbols(char *libname);
 
 int sys_tmpname(char *buf, int max);
 
-FILE *sys_tmpfile(void);
+int sys_mkstemp(void);
 
-void *sys_malloc(size_t size);
+void *sys_malloc(sys_size_t size);
 
 void sys_free(void *ptr);
 
-void *sys_calloc(size_t nmemb, size_t size);
+void *sys_calloc(sys_size_t nmemb, sys_size_t size);
 
-void *sys_realloc(void *ptr, size_t size);
+void *sys_realloc(void *ptr, sys_size_t size);
 
 char *sys_strdup(const char *s);
 
 char *sys_strcpy(char *dest, const char *src);
 
-char *sys_strncpy(char *dest, const char *src, size_t n);
+char *sys_strncpy(char *dest, const char *src, sys_size_t n);
 
 uint32_t sys_strlen(const char *s);
 
@@ -289,21 +305,29 @@ char *sys_strstr(const char *haystack, const char *needle);
 
 int sys_strcmp(const char *s1, const char *s2);
 
-int sys_strncmp(const char *s1, const char *s2, size_t n);
+int sys_strncmp(const char *s1, const char *s2, sys_size_t n);
 
 int sys_strcasecmp(const char *s1, const char *s2);
 
-int sys_strncasecmp(const char *s1, const char *s2, size_t n);
+int sys_strncasecmp(const char *s1, const char *s2, sys_size_t n);
 
 char *sys_strcat(char *dest, const char *src);
 
-char *sys_strncat(char *dest, const char *src, size_t n);
+char *sys_strncat(char *dest, const char *src, sys_size_t n);
 
 int sys_atoi(const char *nptr);
 
-void *sys_memcpy(void *dest, const void *src, size_t n);
+double sys_atof(const char *nptr);
 
-void *sys_memset(void *s, int c, size_t n);
+unsigned long int sys_strtoul(const char *nptr, char **endptr, int base);
+
+int sys_memcmp(const void *s1, const void *s2, sys_size_t n) ;
+
+void *sys_memcpy(void *dest, const void *src, sys_size_t n);
+
+void *sys_memset(void *s, int c, sys_size_t n);
+
+double sys_fabs(double x);
 
 double sys_sqrt(double x);
 
@@ -312,6 +336,20 @@ double sys_sin(double x);
 double sys_cos(double x);
 
 double sys_pi(void);
+
+void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *));
+
+int sys_toupper(int c);
+
+int sys_tolower(int c);
+
+int sys_sprintf(char *str, const char *format, ...);
+
+int sys_snprintf(char *str, sys_size_t size, const char *format, ...);
+
+int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap);
+
+int sys_sscanf(const char *str, const char *format, ...);
 
 #ifdef __cplusplus
 }

@@ -143,7 +143,7 @@ static int authenticate(char *s, char *correct_user, char *correct_password) {
  
   r[j] = '\0';
  
-  if (sys_strlen(r) > 128 || sscanf(r, "%255[^:]:%255s", user, password) != 2) {
+  if (sys_strlen(r) > 128 || sys_sscanf(r, "%255[^:]:%255s", user, password) != 2) {
     return -1;
   }
  
@@ -168,7 +168,7 @@ static uint64_t parse_date(char *date) {
   t = 0;
   n = 0;
 
-  if (date && (n = sscanf(date, "%c%c%c, %d %c%c%c %d %02d:%02d:%02d %c%c%c", wday, wday+1, wday+2, &day, mon, mon+1, mon+2,
+  if (date && (n = sys_sscanf(date, "%c%c%c, %d %c%c%c %d %02d:%02d:%02d %c%c%c", wday, wday+1, wday+2, &day, mon, mon+1, mon+2,
     &year, &hour, &min, &sec, tz, tz+1, tz+2)) == 14) {
 
     if (!sys_strcmp(tz, "GMT")) {
@@ -426,7 +426,7 @@ static char *make_date(uint64_t t, char *s, int n) {
   int day, mon, year, wday, hour, min, sec;
 
   ts2time(t, &day, &mon, &year, &wday, &hour, &min, &sec);
-  snprintf(s, n, "%s, %02d %s %02d %02d:%02d:%02d GMT", weekday[wday], day, month[mon-1], year, hour, min, sec);
+  sys_snprintf(s, n, "%s, %02d %s %02d %02d:%02d:%02d GMT", weekday[wday], day, month[mon-1], year, hour, min, sec);
 
   return s;
 }
@@ -435,7 +435,7 @@ static void make_reply(char *header, int hlen, int code, char *msg, char *system
   char date[80];
 
   make_date(sys_time(), date, sizeof(date)-1);
-  snprintf(header, hlen, "HTTP/1.1 %d %s\r\nServer: %s\r\nDate: %s\r\n", code, msg, system, date);
+  sys_snprintf(header, hlen, "HTTP/1.1 %d %s\r\nServer: %s\r\nDate: %s\r\n", code, msg, system, date);
 }
 
 static void make_header(char *header, int hlen, int code, char *status, char *type, int length, uint64_t modified, int cache, http_connection_t *con) {
@@ -447,7 +447,7 @@ static void make_header(char *header, int hlen, int code, char *status, char *ty
 
   if (type) {
     if (length >= 0) {
-      snprintf(op_length, sizeof(op_length)-1, "\r\nContent-Length: %d", length);
+      sys_snprintf(op_length, sizeof(op_length)-1, "\r\nContent-Length: %d", length);
     } else {
       op_length[0] = '\0';
     }
@@ -466,18 +466,18 @@ static void make_header(char *header, int hlen, int code, char *status, char *ty
       op_cache[0] = '\0';
     }
 
-    snprintf(header+n, hlen-n, "MIME-version: 1.0%s\r\nContent-Type: %s%s%s\r\n", op_cache, type, op_length, op_mod);
+    sys_snprintf(header+n, hlen-n, "MIME-version: 1.0%s\r\nContent-Type: %s%s%s\r\n", op_cache, type, op_length, op_mod);
     n = sys_strlen(header);
   }
 
   for (i = 0; i < con->num_res_headers; i++) {
     if (con->res_header_name[i] && con->res_header_value[i]) {
-      snprintf(header+n, hlen-n, "%s: %s\r\n", con->res_header_name[i], con->res_header_value[i]);
+      sys_snprintf(header+n, hlen-n, "%s: %s\r\n", con->res_header_name[i], con->res_header_value[i]);
       n = sys_strlen(header);
     }
   }
 
-  snprintf(header+n, hlen-n, "Connection: %s\r\n\r\n", con->keepalive ? KEEP_ALIVE : CLOSE);
+  sys_snprintf(header+n, hlen-n, "Connection: %s\r\n\r\n", con->keepalive ? KEEP_ALIVE : CLOSE);
 }
 
 int httpd_set_header(http_connection_t *con, char *name, char *value) {
@@ -560,16 +560,16 @@ int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
   return 0;
 }
 
-int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, uint64_t mtime) {
+int httpd_file_stream(http_connection_t *con, int fd, char *mime, uint64_t mtime) {
   int len, n, i;
   char *buffer;
 
-  if (fseek(fd, 0, SEEK_END) == -1) {
+  if (sys_seek(fd, 0, SYS_SEEK_END) == -1) {
     return httpd_reply(con, 500);
   }
-  len = ftell(fd);
+  len = sys_seek(fd, 0, SYS_SEEK_CUR);
 
-  if (fseek(fd, 0, SEEK_SET) == -1) {
+  if (sys_seek(fd, 0, SYS_SEEK_SET) == -1) {
     return httpd_reply(con, 500);
   }
 
@@ -586,7 +586,7 @@ int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, uint64_t mti
   debug(DEBUG_TRACE, "WEB", "sending header \"%s\"", buffer);
 
   for (; !thread_must_end();) {
-    if ((i = fread(buffer, 1, n, fd)) <= 0) break;
+    if ((i = sys_read(fd, (uint8_t *)buffer, n)) <= 0) break;
     httpd_write(con, (uint8_t *)buffer, i);
   }
 
@@ -598,14 +598,13 @@ int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, uint64_t mti
 int httpd_file(http_connection_t *con, char *filename) {
   sys_stat_t statbuf;
   char *ext, *mimetype;
-  FILE *f;
-  int i, r;
+  int i, f, r;
 
   if (sys_stat(filename, &statbuf) == -1) {
     return httpd_reply(con, 404);
   }
 
-  if ((f = fopen(filename, "r")) == NULL) {
+  if ((f = sys_open(filename, SYS_READ)) == -1) {
     return httpd_reply(con, 404);
   }
 
@@ -638,7 +637,7 @@ int httpd_file(http_connection_t *con, char *filename) {
   }
 
   r = httpd_file_stream(con, f, mimetype ? mimetype : MIME_TYPE_BINARY, statbuf.mtime);
-  fclose(f);
+  sys_close(f);
 
   return r;
 }
@@ -657,15 +656,15 @@ int httpd_reply(http_connection_t *con, int code) {
 
   body[0] = 0;
   if (code >= 400 && code < 600) {
-    snprintf(body, sizeof(body)-1, "<head><title>%d %s</title></head>\n<body><h1>%d %s</h1></body></html>", code, msg, code, msg);
+    sys_snprintf(body, sizeof(body)-1, "<head><title>%d %s</title></head>\n<body><h1>%d %s</h1></body></html>", code, msg, code, msg);
   }
 
   if (code == 401) {
-    snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "WWW-Authenticate: Basic realm=\"%s\"\r\n", REALM);
+    sys_snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "WWW-Authenticate: Basic realm=\"%s\"\r\n", REALM);
   }
 
   if (body[0]) {
-    snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "MIME-version: 1.0\r\nContent-Type: text/html\r\nContent-Length: %d\r\n", (int)sys_strlen(body));
+    sys_snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "MIME-version: 1.0\r\nContent-Type: text/html\r\nContent-Length: %d\r\n", (int)sys_strlen(body));
   }
 
   sys_strncat(buffer, "Connection: close\r\n\r\n", sizeof(buffer)-sys_strlen(buffer)-1);
@@ -706,8 +705,7 @@ static int con_save(http_connection_t *con, uint32_t us) {
     }
     if (nread == 0) break;
 
-    if (fwrite(buf, 1, nread, con->body_fd) != nread) {
-      if (ferror(con->body_fd)) debug(DEBUG_ERROR, "WEB", "fwrite failed");
+    if (sys_write(con->body_fd, buf, nread) != nread) {
       r = -1;
       break;
     }
@@ -738,7 +736,7 @@ static int conn_action(void *arg) {
     timeouts = 0;
     n += nread;
     con->buffer[n] = 0;
-    con->body_fd = NULL;
+    con->body_fd = 0;
     debug(DEBUG_TRACE, "WEB", "buffer \"%s\"", con->buffer);
 
     if ((p = sys_strstr(con->buffer, "\r\n\r\n")) == NULL) {
@@ -747,14 +745,13 @@ static int conn_action(void *arg) {
 
     // XXX
     if ((p = sys_strstr(con->buffer, "\r\n\r\n")) != NULL) {
-      if ((con->body_fd = sys_tmpfile()) != NULL) {
+      if ((con->body_fd = sys_mkstemp()) != -1) {
         n -= (p + 4 - con->buffer);
         p[2] = 0;
         err = 0;
 
         if (n > 0) {
-          if (fwrite(p+4, 1, n, con->body_fd) != n) {
-            if (ferror(con->body_fd)) debug(DEBUG_ERROR, "WEB", "fwrite failed");
+          if (sys_write(con->body_fd, (uint8_t *)(p+4), n) != n) {
             err = -1;
           } else {
             err = con_save(con, 100000);
@@ -765,12 +762,12 @@ static int conn_action(void *arg) {
           httpd_reply(con, 500);
           r = -1;
         } else {
-          rewind(con->body_fd);
+          sys_seek(con->body_fd, 0, SYS_SEEK_SET);
           r = httpd_handle(con);
         }
 
-        fclose(con->body_fd);
-        con->body_fd = NULL;
+        sys_close(con->body_fd);
+        con->body_fd = 0;
         n = 0;
         if (!con->keepalive || r != 0) break;
 
