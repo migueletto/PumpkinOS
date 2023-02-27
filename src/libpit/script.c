@@ -777,30 +777,6 @@ script_ref_t script_loadlib(int pe, char *libname) {
   return obj;
 }
 
-#ifdef PIT_STATIC
-#define ENGINE_SYMBOL_STATIC(sym) dl_##sym = sym
-
-int script_load_engine_static(void) {
-  ENGINE_SYMBOL_STATIC(ext_script_init);
-  ENGINE_SYMBOL_STATIC(ext_script_create);
-  ENGINE_SYMBOL_STATIC(ext_script_run);
-  ENGINE_SYMBOL_STATIC(ext_script_destroy);
-  ENGINE_SYMBOL_STATIC(ext_script_call);
-  ENGINE_SYMBOL_STATIC(ext_script_get_value);
-  ENGINE_SYMBOL_STATIC(ext_script_create_object);
-  ENGINE_SYMBOL_STATIC(ext_script_global_get);
-  ENGINE_SYMBOL_STATIC(ext_script_global_set);
-  ENGINE_SYMBOL_STATIC(ext_script_object_get);
-  ENGINE_SYMBOL_STATIC(ext_script_object_set);
-  ENGINE_SYMBOL_STATIC(ext_script_create_function);
-  ENGINE_SYMBOL_STATIC(ext_script_dup_ref);
-  ENGINE_SYMBOL_STATIC(ext_script_remove_ref);
-  ENGINE_SYMBOL_STATIC(ext_script_push_value);
-
-  return 0;
-}
-#endif
-
 #define ENGINE_SYMBOL(sym) *(void **)(&dl_##sym) = sys_lib_defsymbol(lib, #sym, 1), err += ((dl_##sym) == NULL) ? 1 : 0
 
 int script_load_engine(char *libname) {
