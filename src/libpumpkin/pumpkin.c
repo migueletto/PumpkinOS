@@ -1006,9 +1006,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   MenuInitModule();
   EvtInitModule();
   SysInitModule();
-#ifdef GPSLIB
   GPSInitModule(pumpkin_module.gps_parse_line, pumpkin_module.bt);
-#endif
   VFSInitModule(VFS_CARD);
   KeyboardInitModule();
   ClpInitModule();
@@ -1094,9 +1092,7 @@ static int pumpkin_local_finish(UInt32 creator) {
   ClpFinishModule();
   KeyboardFinishModule();
   VFSFinishModule();
-#ifdef GPSLIB
   GPSFinishModule();
-#endif
   SysFinishModule();
   if (!pumpkin_module.dia && !pumpkin_module.single) {
     SysUFinishModule();

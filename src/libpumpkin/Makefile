@@ -11,7 +11,7 @@ GPDLIB=GPDLib.o
 
 PALMOS=$(SRC)/PalmOS
 
-CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -DGPSLIB=$(GPSLIB) -I./emulation -I./emulation/arm -I./emulation/darm -Wno-multichar -DUSE_DL_PREFIX=1 -DHAVE_MMAP=0 -DMORECORE_CONTIGUOUS=0 -DMORECORE_CANNOT_TRIM=1 -DMORECORE_FAILURE=0 -DDL_DEBUG=1 -DMORECORE=heap_morecore -I./dlmalloc -DARMEMU
+CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -Wno-multichar -DUSE_DL_PREFIX=1 -DHAVE_MMAP=0 -DMORECORE_CONTIGUOUS=0 -DMORECORE_CANNOT_TRIM=1 -DMORECORE_FAILURE=0 -DDL_DEBUG=1 -DMORECORE=heap_morecore -I./dlmalloc -DARMEMU
 
 ARMOBJS=emulation/arm/armem.o emulation/arm/armemu.o emulation/arm/CPU.o emulation/arm/icache.o emulation/arm/MMU.o emulation/arm/RAM.o \
         emulation/arm/pxa_IC.o emulation/arm/cp15.o

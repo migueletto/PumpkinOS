@@ -433,10 +433,8 @@ int SndInitModule(window_provider_t *wp);
 int SndFinishModule(void);
 int SelTimeInitModule(void);
 int SelTimeFinishModule(void);
-#ifdef GPSLIB
 int GPSInitModule(gps_parse_line_f parse_line, bt_provider_t *bt);
 int GPSFinishModule(void);
-#endif
 
 void pumpkin_crash_log(UInt32 creator, int code, char *msg);
 void pumpkin_test_exception(int fatal);
