@@ -2,12 +2,11 @@
 
 #include <windows.h>
 
-#include <stdint.h>
 #include <PalmOS.h>
 
+#include "sys.h"
 #include "drop.h"
 #include "thread.h"
-#include "sys.h"
 #include "pumpkin.h"
 #include "xalloc.h"
 #include "debug.h"
@@ -148,7 +147,7 @@ static int getName(char *src, char *dst, int max) {
 
   if (src[i] != '\\') return -1;
 
-  snprintf(dst, max, "vfs/app_install/%s", &src[i+1]);
+  sys_snprintf(dst, max, "vfs/app_install/%s", &src[i+1]);
   return 0;
 }
 

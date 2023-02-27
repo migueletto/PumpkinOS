@@ -49,7 +49,9 @@ typedef enum {
 
 #define SYS_EOF      -1
 
+#ifndef NULL
 #define NULL ((void *)0)
+#endif
 
 typedef struct {
   uint32_t mode;   // file type and mode

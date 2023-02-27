@@ -1,5 +1,6 @@
 #include <windows.h>
 
+#include "sys.h"
 #include "midi.h"
 #include "debug.h"
 
