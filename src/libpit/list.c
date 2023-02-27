@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <unistd.h>
-
+#include "sys.h"
 #include "plist.h"
 #include "debug.h"
 #include "xalloc.h"

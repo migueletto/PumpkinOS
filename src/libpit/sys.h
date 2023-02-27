@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <stdint.h>
 
 typedef enum {
@@ -265,6 +266,52 @@ int sys_list_symbols(char *libname);
 int sys_tmpname(char *buf, int max);
 
 FILE *sys_tmpfile(void);
+
+void *sys_malloc(size_t size);
+
+void sys_free(void *ptr);
+
+void *sys_calloc(size_t nmemb, size_t size);
+
+void *sys_realloc(void *ptr, size_t size);
+
+char *sys_strdup(const char *s);
+
+char *sys_strcpy(char *dest, const char *src);
+
+char *sys_strncpy(char *dest, const char *src, size_t n);
+
+uint32_t sys_strlen(const char *s);
+
+char *sys_strchr(const char *s, int c);
+
+char *sys_strstr(const char *haystack, const char *needle);
+
+int sys_strcmp(const char *s1, const char *s2);
+
+int sys_strncmp(const char *s1, const char *s2, size_t n);
+
+int sys_strcasecmp(const char *s1, const char *s2);
+
+int sys_strncasecmp(const char *s1, const char *s2, size_t n);
+
+char *sys_strcat(char *dest, const char *src);
+
+char *sys_strncat(char *dest, const char *src, size_t n);
+
+int sys_atoi(const char *nptr);
+
+void *sys_memcpy(void *dest, const void *src, size_t n);
+
+void *sys_memset(void *s, int c, size_t n);
+
+double sys_sqrt(double x);
+
+double sys_sin(double x);
+
+double sys_cos(double x);
+
+double sys_pi(void);
 
 #ifdef __cplusplus
 }

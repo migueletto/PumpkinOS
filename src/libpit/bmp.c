@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-
+#include "sys.h"
 #include "bmp.h"
 
 #pragma pack(2)

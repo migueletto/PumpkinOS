@@ -1,14 +1,9 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
+#include "sys.h"
 #include "main.h"
 #include "sig.h"
 #include "script.h"
 #include "vfs.h"
 #include "ptr.h"
-#include "sys.h"
 #include "thread.h"
 #include "vfont.h"
 #include "endianness.h"
@@ -39,8 +34,8 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
             break;
           case 'd':
             d = argv[++i];
-            dlevel = atoi(d);
-            s = strchr(d, ':');
+            dlevel = sys_atoi(d);
+            s = sys_strchr(d, ':');
             debug_setsyslevel(s ? s+1 : NULL, dlevel);
             break;
           case 's':

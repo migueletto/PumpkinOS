@@ -1,9 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-
+#include "sys.h"
 #include "pfont.h"
 #include "font5x8.h"
 #include "font6x8coco.h"
@@ -13,7 +8,6 @@
 #include "font12x16coco.h"
 #include "font16x16.h"
 #include "font16x16cp437.h"
-
 #include "graphic.h"
 #include "surface.h"
 #include "util.h"

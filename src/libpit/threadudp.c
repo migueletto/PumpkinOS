@@ -1,17 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
 #define __USE_GNU
 #include <pthread.h>
 #undef __USE_GNU
-#include <errno.h>
 
+#include "sys.h"
 #include "thread.h"
 #include "mutex.h"
-#include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -62,7 +56,7 @@ static void dummy_destructor(void *value) {
 }
 
 thread_key_t *thread_key(void) {
-  struct thread_key_t *key = malloc(sizeof(struct thread_key_t));
+  struct thread_key_t *key = sys_malloc(sizeof(struct thread_key_t));
   if (key) {
     pthread_key_create(&key->key, dummy_destructor);
   }
@@ -82,8 +76,7 @@ static int thread_create(void *(*action)(void *), void *arg) {
   int err, r = 0;
 
   if ((err = pthread_create(&t, NULL, action, arg)) != 0) {
-    errno = err;
-    debug_errno("THREAD", "pthread_create");
+    debug(DEBUG_ERROR, "THREAD", "pthread_create: %d", err);
     r = -1;
   }
 
@@ -100,7 +93,7 @@ void thread_init(void) {
   local = thread_key();
   tname = thread_key();
 
-  memset(&main_targ, 0, sizeof(main_targ));
+  sys_memset(&main_targ, 0, sizeof(main_targ));
   port = 0;
   main_targ.sock = sys_socket_bind(LOCALHOST, &port, IP_DGRAM);
   main_targ.port = port;
@@ -109,7 +102,7 @@ void thread_init(void) {
   thread_set(local, &main_targ);
   thread_set(tname, "MAIN");
 
-  xmemset(ps, 0, sizeof(ps));
+  sys_memset(ps, 0, sizeof(ps));
   ps[0].handle = port;
   ps[0].name = "MAIN";
 
@@ -270,7 +263,7 @@ static void *thread_action(void *arg) {
   if (mutex_lock(mutex) == 0) {
     num_threads--;
     for (i = 1; i < MAX_PS_THREADS; i++) {
-      if (ps[i].tid == tid && !strcmp(ps[i].name, targ->name)) {
+      if (ps[i].tid == tid && !sys_strcmp(ps[i].name, targ->name)) {
         ps[i].tid = 0;
         ps[i].handle = 0;
         ps[i].name = NULL;

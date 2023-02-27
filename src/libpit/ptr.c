@@ -1,13 +1,6 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
+#include "sys.h"
 #include "ptr.h"
 #include "mutex.h"
-#include "sys.h"
 #include "debug.h"
 
 #define MAX_PTRS 1024
@@ -162,7 +155,7 @@ static void *ptr_access(const char *file, const char *func, int line, int id, ch
           if (table[index].id == id) {
             p = (generic_t *)table[index].p;
 
-            if (!strcmp(p->tag, tag)) {
+            if (!sys_strcmp(p->tag, tag)) {
               switch (op) {
                 case OP_LOCK:
                   table[index].locking++;
@@ -300,7 +293,7 @@ int ptr_check_tag(char *received, char *expected) {
   int r = 0;
 
   if (received) {
-    if (strcmp(received, expected) == 0) {
+    if (sys_strcmp(received, expected) == 0) {
       r = 1;
     } else {
       debug(DEBUG_ERROR, "PTR", "expecting tag '%s' but received tag '%s'", expected, received);

@@ -1,10 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
-#include "thread.h"
 #include "sys.h"
+#include "thread.h"
 #include "pit_io.h"
 #include "filter.h"
 #include "secure.h"
@@ -24,7 +19,7 @@ static void http_parse_headers(char *buf, http_client_t *hc) {
   int minor, code, len;
   char *p;
 
-  if (!strncmp(buf, "HTTP/1.", 7)) {
+  if (!sys_strncmp(buf, "HTTP/1.", 7)) {
     if (sscanf(buf, "HTTP/1.%d %d ", &minor, &code) == 2) {
       hc->response_ok = 1;
       hc->response_code = code;
@@ -35,18 +30,18 @@ static void http_parse_headers(char *buf, http_client_t *hc) {
 
   } else {
     if (!hc->response_end_header && hc->response_num_headers < MAX_RES_HEADERS) {
-      p = strstr(buf, ": ");
+      p = sys_strstr(buf, ": ");
       if (p && p > buf) {
         len = p - buf;
         hc->response_header_name[hc->response_num_headers] = xcalloc(len+1, 1);
         if (hc->response_header_name[hc->response_num_headers]) {
-          strncpy(hc->response_header_name[hc->response_num_headers], buf, len);
+          sys_strncpy(hc->response_header_name[hc->response_num_headers], buf, len);
           p += 2;
-          len = strlen(p);
+          len = sys_strlen(p);
           if (len) {
             hc->response_header_value[hc->response_num_headers] = xcalloc(len+1, 1);
             if (hc->response_header_value[hc->response_num_headers]) {
-              strncpy(hc->response_header_value[hc->response_num_headers], p, len);
+              sys_strncpy(hc->response_header_value[hc->response_num_headers], p, len);
               debug(DEBUG_INFO, "WEB", "header \"%s\" = \"%s\"", hc->response_header_name[hc->response_num_headers], hc->response_header_value[hc->response_num_headers]);
             }
           } else {
@@ -107,7 +102,7 @@ static int io_callback(io_arg_t *arg) {
 
   switch (arg->event) {
     case IO_CONNECT:
-      memset(header, 0, sizeof(header));
+      sys_memset(header, 0, sizeof(header));
 
       if (hc->request_type) {
         snprintf(header, sizeof(header)-1, "%s %s HTTP/1.1\r\nUser-Agent: %s\r\nAccept: */*\r\nHost: %s:%d\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n", hc->request_method, hc->request_path, hc->user_agent, hc->request_host, hc->request_port, hc->request_type, hc->request_body_length);
@@ -117,7 +112,7 @@ static int io_callback(io_arg_t *arg) {
 
       if (hc->s) {
         debug(DEBUG_INFO, "WEB", "sending secure header");
-        wr = hc->secure->write(hc->s, header, strlen(header));
+        wr = hc->secure->write(hc->s, header, sys_strlen(header));
         debug(DEBUG_INFO, "WEB", "result: %d", wr);
         if (hc->request_body) {
           debug(DEBUG_INFO, "WEB", "sending secure body");
@@ -126,7 +121,7 @@ static int io_callback(io_arg_t *arg) {
         }
       } else {
         debug(DEBUG_INFO, "WEB", "sending header");
-        sys_write(arg->fd, (uint8_t *)header, strlen(header));
+        sys_write(arg->fd, (uint8_t *)header, sys_strlen(header));
         if (hc->request_body) {
           sys_write(arg->fd, (uint8_t *)hc->request_body, hc->request_body_length);
         }
@@ -252,10 +247,10 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
     return -1;
   }
 
-  if (body) memcpy(hc->request_body, body, len);
+  if (body) sys_memcpy(hc->request_body, body, len);
   hc->request_body_length = len;
 
-  if (!strncmp(hc->request_url, "https://", 8)) {
+  if (!sys_strncmp(hc->request_url, "https://", 8)) {
     if (!secure) {
       debug(DEBUG_ERROR, "WEB", "https was used but no secure provider was passed");
       free_http_client(hc);
@@ -264,7 +259,7 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
     hc->request_host = hc->request_url + 8;
     hc->request_port = DEFAULT_SECURE_PORT;
     hc->secure = secure;
-  } else if (!strncmp(hc->request_url, "http://", 7)) {
+  } else if (!sys_strncmp(hc->request_url, "http://", 7)) {
     hc->request_host = hc->request_url + 7;
     hc->request_port = DEFAULT_PORT;
   } else {
@@ -274,7 +269,7 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
 
   hc->request_host = xstrdup(hc->request_host);
   hc->request_path = NULL;
-  p = strchr(hc->request_host, '/');
+  p = sys_strchr(hc->request_host, '/');
   if (p == NULL) {
     hc->request_path = xstrdup("/");
   } else  {
@@ -282,9 +277,9 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
     p[0] = 0;
   }
 
-  p = strchr(hc->request_host, ':');
+  p = sys_strchr(hc->request_host, ':');
   if (p) {
-    hc->request_port = atoi(p+1);
+    hc->request_port = sys_atoi(p+1);
     p[0] = 0;
   }
 
@@ -299,9 +294,9 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
   debug(DEBUG_INFO, "WEB", "port %d (%s)", hc->request_port, hc->secure ? "secure" : "not secure");
   debug(DEBUG_INFO, "WEB", "path \"%s\"", hc->request_path);
 
-  memset(&addr, 0, sizeof(addr));
+  sys_memset(&addr, 0, sizeof(addr));
   addr.addr_type = IO_IP_ADDR;
-  strncpy(addr.addr.ip.host, hc->request_host, MAX_HOST-1);
+  sys_strncpy(addr.addr.ip.host, hc->request_host, MAX_HOST-1);
   addr.addr.ip.port = hc->request_port;
 
   if (io_stream_client(TAG_HTTPC, &addr, io_callback, hc, TIMEOUT, NULL) == -1) {

@@ -28,7 +28,7 @@ typedef struct gps_t {
   int day, month, year;
   int hour, min, sec;
   script_real_t lat, lon, height, speed, course;
-  time_t ts;
+  uint64_t ts;
   int pe;
   script_ref_t ref;
   void *priv;

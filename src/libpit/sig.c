@@ -1,11 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
 #include <signal.h>
 
-#include "thread.h"
 #include "sys.h"
+#include "thread.h"
 #include "sig.h"
 #include "debug.h"
 

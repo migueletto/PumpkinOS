@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
+#include "sys.h"
 #include "pterm.h"
 #include "xalloc.h"
 #include "debug.h"
@@ -526,12 +523,12 @@ void pterm_send(pterm_t *t, uint8_t *buf, int n) {
 
       case 2:
         if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-          strcpy(dbuf, "ESC [");
+          sys_strcpy(dbuf, "ESC [");
           for (i = 0; i < t->vt100_num; i++) {
-            if (i > 0) strcat(dbuf, ";");
-            sprintf(&dbuf[strlen(dbuf)], "%d", t->vt100_arg[i]);
+            if (i > 0) sys_strcat(dbuf, ";");
+            sprintf(&dbuf[sys_strlen(dbuf)], "%d", t->vt100_arg[i]);
           }
-          i =strlen(dbuf);
+          i =sys_strlen(dbuf);
           dbuf[i++] = c;
           dbuf[i++] = 0;
           debug(DEBUG_TRACE, "TERM", "%s", dbuf);
@@ -681,7 +678,7 @@ void pterm_send(pterm_t *t, uint8_t *buf, int n) {
             if (t->vt100_num == 1 && t->vt100_arg[0] == 6) {
               // Query cursor position
               snprintf(abuf, sizeof(abuf)-1, "%c[%d;%dR", ESC, t->row + 1, t->col + 1);
-              if (t->cb) t->cb->reply(abuf, strlen(abuf), t->cb->data);
+              if (t->cb) t->cb->reply(abuf, sys_strlen(abuf), t->cb->data);
             }
             break;
           case 'r':  // Change scrolling region (VT100)

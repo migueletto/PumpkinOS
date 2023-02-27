@@ -1,15 +1,10 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 #include <stdarg.h>
-#include <unistd.h>
 
+#include "sys.h"
 #include "script.h"
 #include "ptr.h"
 #include "thread.h"
 #include "mutex.h"
-#include "sys.h"
 #include "pit_io.h"
 #include "timeutc.h"
 #include "debug.h"
@@ -55,7 +50,7 @@ int script_init(void) {
   }
 
   num_lib_unload = 0;
-  memset(lib_unload_f, 0, sizeof(lib_unload_f));
+  sys_memset(lib_unload_f, 0, sizeof(lib_unload_f));
 
   if ((unload_mutex = mutex_create("unload")) == NULL) {
     return -1;
@@ -226,7 +221,7 @@ static int script_dup_string(script_arg_t *arg) {
     if (arg->value.l.s == NULL) {
       r = -1;
     } else {
-      xmemcpy(arg->value.l.s, s, arg->value.l.n);
+      sys_memcpy(arg->value.l.s, s, arg->value.l.n);
     }
   }
 
@@ -720,7 +715,7 @@ script_ref_t script_loadlib(int pe, char *libname) {
     return -1;
   }
 
-  len = strlen(libname);
+  len = sys_strlen(libname);
   idot = islash = -1;
   for (i = len-1; i > 0; i--) {
     if (libname[i] == '.') {
@@ -735,9 +730,9 @@ script_ref_t script_loadlib(int pe, char *libname) {
     }
   }
 
-  strncpy(libnameext, libname, FILE_PATH);
+  sys_strncpy(libnameext, libname, FILE_PATH);
   if (idot == -1) {
-    strncat(libnameext, SOEXT, FILE_PATH - len - strlen(SOEXT));
+    sys_strncat(libnameext, SOEXT, FILE_PATH - len - sys_strlen(SOEXT));
     idot = len;
   }
   len = idot - islash - 1;
@@ -745,7 +740,7 @@ script_ref_t script_loadlib(int pe, char *libname) {
     debug(DEBUG_ERROR, "SCRIPT", "library name %s is too long", libname);
     return -1;
   }
-  memcpy(module, &libname[islash+1], len);
+  sys_memcpy(module, &libname[islash+1], len);
   module[len] = 0;
   debug(DEBUG_TRACE, "SCRIPT", "module name %s", module);
 

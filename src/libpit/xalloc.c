@@ -1,16 +1,13 @@
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-
+#include "sys.h"
 #include "xalloc.h"
 #include "debug.h"
 
 void *xmalloc_debug(const char *file, const char *func, int line, size_t size) {
-  void *ptr = malloc(size);
+  void *ptr = sys_malloc(size);
 
   if (ptr) {
     debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %d", ptr, size);
-    memset(ptr, 0, size);
+    sys_memset(ptr, 0, size);
   } else {
     debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %d", size);
   }
@@ -26,7 +23,7 @@ void *xcalloc_debug(const char *file, const char *func, int line, size_t nmemb, 
 void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, size_t size) {
   void *ptr2 = NULL;
 
-  ptr2 = realloc(ptr, size);
+  ptr2 = sys_realloc(ptr, size);
 
   if (ptr2) {
     debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory free %p", ptr);
@@ -45,7 +42,7 @@ void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, si
 void xfree_debug(const char *file, const char *func, int line, void *ptr) {
   if (ptr) {
     debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory free %p", ptr);
-    free(ptr);
+    sys_free(ptr);
   } else {
     debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory free null");
   }
@@ -55,12 +52,12 @@ char *xstrdup_debug(const char *file, const char *func, int line, const char *s)
   char *r = NULL;
 
   if (s) {
-    r = strdup(s);
+    r = sys_strdup(s);
 
     if (r) {
-      debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %d", r, strlen(s)+1);
+      debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %p", s, r);
     } else {
-      debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %d", strlen(s)+1);
+      debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %p", s);
     }
   } else {
     debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new null");
@@ -73,10 +70,10 @@ void *xmemcpy_debug(const char *file, const char *func, int line, void *dest, co
   void *r = NULL;
 
   if (dest) {
-    //debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memcpy %08x %08x %d", dest, src ,n);
-    r = memcpy(dest, src, n);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memcpy %p %p %d", dest, src ,n);
+    r = sys_memcpy(dest, src, n);
   } else {
-    //debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memcpy null");
+    debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memcpy null");
   }
 
   return r;
@@ -86,10 +83,10 @@ void *xmemset_debug(const char *file, const char *func, int line, void *s, int c
   void *r = NULL;
 
   if (s) {
-    //debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memset %08x %d %d", s, c, n);
-    r = memset(s, c, n);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memset %p %d %d", s, c, n);
+    r = sys_memset(s, c, n);
   } else {
-    //debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memset null");
+    debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memset null");
   }
 
   return r;

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-time_t time2ts(int day, int month, int year, int hour, int min, int sec);
+uint64_t time2ts(int day, int month, int year, int hour, int min, int sec);
 
 void ts2time(uint64_t ts, int *day, int *month, int *year, int *wday, int *hour, int *min, int *sec);
 

@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "sys.h"
 #include "pit_io.h"
 #include "filter.h"
@@ -351,7 +346,7 @@ pass:
             switch (telnet->telnetSB) {
               case TELOPT_TTYPE:
                 telnet->value[telnet->ivalue] = 0;
-                strncpy(telnet->term, (char *)telnet->value, MAX_VALUE-1);
+                sys_strncpy(telnet->term, (char *)telnet->value, MAX_VALUE-1);
                 debug(DEBUG_INFO, "TELNET", "client terminal is \"%s\"", telnet->term);
                 break;
               case TELOPT_NAWS:
@@ -477,7 +472,7 @@ int telnet_term(conn_filter_t *filter, char *term, int n, int *cols, int *rows) 
 
   *cols = telnet->cols;
   *rows = telnet->rows;
-  strncpy(term, telnet->term, n);
+  sys_strncpy(term, telnet->term, n);
 
   return 0;
 }

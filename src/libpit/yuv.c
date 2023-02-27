@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-
+#include "sys.h"
 #include "yuv.h"
 
 static void yuv2rgb(int y, int u, int v, int *r, int *g, int *b) {
@@ -560,7 +557,7 @@ void yuyv_rgba(unsigned char *yuyv, int yuyv_len, unsigned char *rgba) {
 
 void desaturate_i420(unsigned char *buf, int len) {
   int ylen = (len * 2) / 3;
-  memset(buf + ylen, 0x80, ylen / 2);
+  sys_memset(buf + ylen, 0x80, ylen / 2);
 }
 
 void desaturate_yuyv(unsigned char *buf, int len) {

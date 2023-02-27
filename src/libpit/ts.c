@@ -1,15 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-
 #include "sys.h"
 #include "ts.h"
 #include "timeutc.h"
-#include "xalloc.h"
 
-time_t time2ts(int day, int month, int year, int hour, int min, int sec) {
+uint64_t time2ts(int day, int month, int year, int hour, int min, int sec) {
   sys_tm_t tm;
 
-  xmemset(&tm, 0, sizeof(tm));
+  sys_memset(&tm, 0, sizeof(tm));
   tm.tm_year = year - 1900;
   tm.tm_mon = month - 1;
   tm.tm_mday = day;

@@ -1,5 +1,4 @@
-#include <stdint.h>
-
+#include "sys.h"
 #include "endianness.h"
 
 static const int e = 1;

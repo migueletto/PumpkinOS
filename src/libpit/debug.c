@@ -1,16 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
 
-#ifdef ANDROID
-#include <android/log.h>
-#endif
-
-#include "thread.h"
 #include "sys.h"
+#include "thread.h"
 #include "timeutc.h"
 #include "debug.h"
 
@@ -34,8 +25,8 @@ static char level_name[] = { 'E', 'I', 'T' };
 
 int debug_init(char *filename) {
   if (filename) {
-    if (!strcmp(filename, "stdout")) fd = stdout;
-    else if (!strcmp(filename, "stderr")) fd = stderr;
+    if (!sys_strcmp(filename, "stdout")) fd = stdout;
+    else if (!sys_strcmp(filename, "stderr")) fd = stderr;
     else fd = fopen(filename, "w");
   } else {
     fd = stderr;
@@ -74,7 +65,7 @@ void debug_setsyslevel(char *sys, int _level) {
   if (sys) {
     for (i = 0; i < nlevels; i++) {
       if (sys_level[i].sys != NULL) {
-        if (!strcmp(sys_level[i].sys, sys)) {
+        if (!sys_strcmp(sys_level[i].sys, sys)) {
           sys_level[i].level = _level;
           return;
         }
@@ -97,7 +88,7 @@ int debug_getsyslevel(char *sys) {
   if (sys) {
     for (i = 0; i < nlevels; i++) {
       if (sys_level[i].sys != NULL) {
-        if (!strcmp(sys_level[i].sys, sys)) {
+        if (!sys_strcmp(sys_level[i].sys, sys)) {
           return sys_level[i].level;
         }
       }
@@ -222,20 +213,10 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     s += ch('\n', s, tmp + MAX_BUF - s);
     *s = 0;
 
-#ifdef ANDROID
-    switch (_level) {
-      case DEBUG_TRACE: _level = ANDROID_LOG_INFO; break;
-      case DEBUG_INFO:  _level = ANDROID_LOG_INFO; break;
-      case DEBUG_ERROR: _level = ANDROID_LOG_ERROR; break;
-      default: _level = ANDROID_LOG_INFO;
-    }
-    __android_log_buf_write(LOG_ID_MAIN, _level, "pit", tmp);
-#else
     sys_lockfile(fd);
     fwrite((uint8_t *)tmp, 1, s - tmp, fd);
     fflush(fd);
     sys_unlockfile(fd);
-#endif
   }
 }
 
@@ -268,7 +249,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
 
   p = sbuf;
   sprintf(p, "%04X: ", 0);
-  n = strlen(p);
+  n = sys_strlen(p);
   p += n;
   e = p + 1024 - n - 4;
 
@@ -287,7 +268,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       debug_full(file, func, line, level, sys, "%s %s", sbuf, abuf);
       p = sbuf;
       sprintf(p, "%04X: ", i+1);
-      n = strlen(p);
+      n = sys_strlen(p);
       p += n;
       e = p + 1024 - n - 4;
       j = 0;

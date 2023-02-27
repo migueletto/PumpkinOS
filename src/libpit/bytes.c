@@ -1,6 +1,4 @@
-#include <stdlib.h>
-#include <stdint.h>
-
+#include "sys.h"
 #include "bytes.h"
 
 int put1(uint8_t w, uint8_t *buf, int i) {

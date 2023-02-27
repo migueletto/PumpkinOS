@@ -1,12 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "loadfile.h"
 #include "sys.h"
+#include "loadfile.h"
 #include "debug.h"
 #include "xalloc.h"
 

@@ -1,10 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdarg.h>
-#include <unistd.h>
-
 #include "sys.h"
 #include "pit_io.h"
 #include "ptr.h"
@@ -49,7 +42,7 @@ typedef struct {
   int line, pos, remain_start, remain_len;
   unsigned char buffer[MAX_BUFFER];
   unsigned char reply[MAX_BUFFER];
-  time_t next_try, lastdata;
+  uint64_t next_try, lastdata;
   conn_filter_t *filter;
   void *data;
   io_callback_f callback;
@@ -226,26 +219,26 @@ int io_fill_addr(char *host, int port, io_addr_t *addr) {
   int i, nsep, sep2, r = -1;
 
   if (host && host[0] && addr) {
-    memset(addr, 0, sizeof(io_addr_t));
+    sys_memset(addr, 0, sizeof(io_addr_t));
 
-    if (!strcmp(host, "fd")) {
+    if (!sys_strcmp(host, "fd")) {
       addr->addr_type = IO_FD_ADDR;
       addr->addr.fd.fd = port;
 
     } else if (host[0] == '/') {
       addr->addr_type = IO_DEVICE_ADDR;
-      strncpy(addr->addr.dev.device, host, MAX_DEVICE-1);
-      strncpy(addr->addr.dev.word, "N81", MAX_WORD);
+      sys_strncpy(addr->addr.dev.device, host, MAX_DEVICE-1);
+      sys_strncpy(addr->addr.dev.word, "N81", MAX_WORD);
       addr->addr.dev.baud = port;
 
     } else if (host[0] == '\\' && host[1] == '\\') {
       addr->addr_type = IO_DEVICE_ADDR;
-      strncpy(addr->addr.dev.device, host, MAX_DEVICE-1);
-      strncpy(addr->addr.dev.word, "N81", MAX_WORD);
+      sys_strncpy(addr->addr.dev.device, host, MAX_DEVICE-1);
+      sys_strncpy(addr->addr.dev.word, "N81", MAX_WORD);
       addr->addr.dev.baud = port;
 
     } else {
-      if (strchr(host, ':') != NULL) {
+      if (sys_strchr(host, ':') != NULL) {
         for (i = 0, nsep = 0, sep2 = 0; host[i]; i++) {
           if (host[i] == ':') {
             if (i && host[i-1] == ':') sep2 = 1;
@@ -255,18 +248,18 @@ int io_fill_addr(char *host, int port, io_addr_t *addr) {
 
         if (!sep2 && nsep == 5) {
           addr->addr_type = IO_BT_ADDR;
-          strncpy(addr->addr.bt.addr, host, MAX_ADDR-1);
+          sys_strncpy(addr->addr.bt.addr, host, MAX_ADDR-1);
           addr->addr.bt.port = port;
           addr->addr.bt.type = port > 0x1000 ? BT_L2CAP : BT_RFCOMM;
 
         } else {
           addr->addr_type = IO_IP_ADDR;
-          strncpy(addr->addr.ip.host, host, MAX_HOST-1);
+          sys_strncpy(addr->addr.ip.host, host, MAX_HOST-1);
           addr->addr.ip.port = port;
         }
       } else {
         addr->addr_type = IO_IP_ADDR;
-        strncpy(addr->addr.ip.host, host, MAX_HOST-1);
+        sys_strncpy(addr->addr.ip.host, host, MAX_HOST-1);
         addr->addr.ip.port = port;
       }
     }
@@ -342,7 +335,7 @@ static int io_stream_connection_loop(io_connection_t *con, int handle) {
   int r, nread;
   unsigned char *buf;
   unsigned int n;
-  time_t t;
+  uint64_t t;
 
   t = sys_time();
 
@@ -514,10 +507,10 @@ static int io_new_stream(char *tag, int fd, int line, int timeout, int timer, in
   }
 
   if (src) {
-    memcpy(&con->src, src, sizeof(io_addr_t));
+    sys_memcpy(&con->src, src, sizeof(io_addr_t));
     con->has_src = 1;
   }
-  memcpy(&con->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&con->addr, addr, sizeof(io_addr_t));
   con->tag = tag;
   con->bt = bt;
   con->fd = fd;
@@ -680,7 +673,7 @@ static int io_simple_server_action(void *arg) {
   }
 
   for (; !thread_must_end();) {
-    xmemset(&addr, 0, sizeof(io_addr_t));
+    sys_memset(&addr, 0, sizeof(io_addr_t));
     tv.tv_sec = 0;
     tv.tv_usec = 100000;
 
@@ -707,7 +700,7 @@ static int io_simple_server_action(void *arg) {
     if (fd == -1) break;
     if ((conn = xcalloc(1, sizeof(io_simple_t))) == NULL) break;
 
-    xmemcpy(&conn->addr, &addr, sizeof(io_addr_t));
+    sys_memcpy(&conn->addr, &addr, sizeof(io_addr_t));
     conn->tag = server->tag;
     conn->bt = server->bt;
     conn->loop = server->loop;
@@ -845,7 +838,7 @@ int io_stream_server(char *tag, io_addr_t *addr, io_callback_f callback, void *d
     return -1;
   }
 
-  memcpy(&server->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&server->addr, addr, sizeof(io_addr_t));
   server->tag = tag;
   server->bt = bt;
   server->callback = callback;
@@ -880,7 +873,7 @@ int io_simple_server(char *tag, io_addr_t *addr, io_loop_f loop, int ptr, bt_pro
     return -1;
   }
 
-  memcpy(&server->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&server->addr, addr, sizeof(io_addr_t));
   server->tag = tag;
   server->bt = bt;
   server->loop = loop;
@@ -914,7 +907,7 @@ int io_simple_client(char *tag, io_addr_t *addr, io_loop_f loop, int ptr, bt_pro
     return -1;
   }
 
-  memcpy(&client->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&client->addr, addr, sizeof(io_addr_t));
   client->tag = tag;
   client->bt = bt;
   client->loop = loop;
@@ -946,7 +939,7 @@ int io_dgram_server(char *tag, io_addr_t *addr, io_callback_f callback, void *da
     return -1;
   }
 
-  memcpy(&server->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&server->addr, addr, sizeof(io_addr_t));
   server->tag = tag;
   server->bt = bt;
   server->callback = callback;
@@ -999,9 +992,9 @@ int io_sendto_handle(char *tag, int handle, io_addr_t *addr, unsigned char *buf,
     return -1;
   }
 
-  memcpy(&arg->addr, addr, sizeof(io_addr_t));
+  sys_memcpy(&arg->addr, addr, sizeof(io_addr_t));
   arg->len = len;
-  memcpy(&arg->buf, buf, len);
+  sys_memcpy(&arg->buf, buf, len);
 
   r = thread_client_write(handle, (unsigned char *)arg, n);
   xfree(arg);

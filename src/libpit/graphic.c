@@ -1,9 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-
+#include "sys.h"
 #include "script.h"
 #include "pwindow.h"
 #include "ptr.h"
@@ -261,7 +256,7 @@ void graphic_ellipse(void *data, int x, int y, int rx, int ry, int filled, uint3
   if (filled) {
     for (i = 0; i < ry; i++) {
       d = (double)i / (double)ry;
-      d = sqrt(1.0 - d * d) * (double)rx;
+      d = sys_sqrt(1.0 - d * d) * (double)rx;
       k = (int)d;
       graphic_line(data, x, y+i, x+k, y+i, color, p, a);
       graphic_line(data, x, y+i, x-k, y+i, color, p, a);
@@ -271,7 +266,7 @@ void graphic_ellipse(void *data, int x, int y, int rx, int ry, int filled, uint3
   } else {
     for (i = 0; i < ry; i++) {
       d = (double)i / (double)ry;
-      d = sqrt(1.0 - d * d) * (double)rx;
+      d = sys_sqrt(1.0 - d * d) * (double)rx;
       k = (int)d;
       p(data, x+k, y+i, color);
       p(data, x-k, y+i, color);
@@ -280,7 +275,7 @@ void graphic_ellipse(void *data, int x, int y, int rx, int ry, int filled, uint3
     }
     for (i = 0; i < rx; i++) {
       d = (double)i / (double)rx;
-      d = sqrt(1.0 - d * d) * (double)ry;
+      d = sys_sqrt(1.0 - d * d) * (double)ry;
       k = (int)d;
       p(data, x+i, y+k, color);
       p(data, x+i, y-k, color);
@@ -518,9 +513,9 @@ graphic_vfont_t *graphic_vfont_init(void) {
 
   if ((f = xcalloc(1, sizeof(graphic_vfont_t))) != NULL) {
     for (i = 0; i < 360; i++) {
-      a = (i * M_PI) / 180;
-      f->cos_table[i] = cos(a);
-      f->sin_table[i] = sin(a);
+      a = (i * sys_pi()) / 180;
+      f->cos_table[i] = sys_cos(a);
+      f->sin_table[i] = sys_sin(a);
     }
 
     for (i = 0; glyph[i].nsegs; i++) {

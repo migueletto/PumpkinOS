@@ -1,17 +1,10 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <time.h>
-#include <sys/time.h>
 #include <errno.h>
 
-#include "mutex.h"
 #include "sys.h"
+#include "mutex.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -38,7 +31,7 @@ mutex_t *mutex_create(char *name) {
   pthread_mutexattr_t attr;
 
   if ((m = xcalloc(1, sizeof(mutex_t))) != NULL) {
-    strncpy(m->name, name, sizeof(m->name)-1);
+    sys_strncpy(m->name, name, sizeof(m->name)-1);
 
     if (pthread_mutexattr_init(&attr) == 0) {
       pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
@@ -128,12 +121,11 @@ cond_t *cond_create(char *name) {
   int r;
 
   if ((c = xcalloc(1, sizeof(cond_t))) != NULL) {
-    strncpy(c->name, name, sizeof(c->name)-1);
+    sys_strncpy(c->name, name, sizeof(c->name)-1);
 
     r = pthread_cond_init(&c->cond, NULL);
     if (r != 0) {
-      errno = r;
-      debug_errno("MUTEX", "pthread_cond_init");
+      debug(DEBUG_ERROR, "MUTEX", "pthread_cond_init: %d", r);
       xfree(c);
       c = NULL;
     }
@@ -152,8 +144,7 @@ int cond_destroy(cond_t *c) {
   if (c) {
     r = pthread_cond_destroy(&c->cond);
     if (r != 0) {
-      errno = r;
-      debug_errno("MUTEX", "pthread_cond_destroy");
+      debug(DEBUG_ERROR, "MUTEX", "pthread_cond_destroy: %d", r);
       r = -1;
     }
     debug(DEBUG_TRACE, "MUTEX", "destroyed cond %s (%08x)", c->name, c);
@@ -169,8 +160,7 @@ int cond_signal(cond_t *c) {
   if (c) {
     r = pthread_cond_signal(&c->cond);
     if (r != 0) {
-      errno = r;
-      debug_errno("MUTEX", "pthread_cond_signal \"%s\"", c->name);
+      debug(DEBUG_ERROR, "MUTEX", "pthread_cond_signal \"%s\": %d", c->name, r);
       r = -1;
     }
   }
@@ -184,8 +174,7 @@ int cond_broadcast(cond_t *c) {
   if (c) {
     r = pthread_cond_broadcast(&c->cond);
     if (r != 0) {
-      errno = r;
-      debug_errno("MUTEX", "pthread_cond_broadcast \"%s\"", c->name);
+      debug(DEBUG_ERROR, "MUTEX", "pthread_cond_broadcast \"%s\": %d", c->name, r);
       r = -1;
     }
   }
@@ -199,8 +188,7 @@ int cond_wait(cond_t *c, mutex_t *m) {
   if (c && m) {
     r = pthread_cond_wait(&c->cond, &m->mutex);
     if (r != 0) {
-      errno = r;
-      debug_errno("MUTEX", "pthread_cond_wait \"%s\"", c->name);
+      debug(DEBUG_ERROR, "MUTEX", "pthread_cond_wait \"%s\": %d", c->name, r);
       r = -1;
     }
   }
@@ -226,8 +214,7 @@ int cond_timedwait(cond_t *c, mutex_t *m, int us) {
     r = pthread_cond_timedwait(&c->cond, &m->mutex, &t);
     if (r != 0) {
       if (r != ETIMEDOUT) {
-        errno = r;
-        debug_errno("MUTEX", "pthread_cond_timedwait \"%s\"", c->name);
+        debug(DEBUG_ERROR, "MUTEX", "pthread_cond_timedwait \"%s\": %d", c->name, r);
       }
       r = -1;
     }

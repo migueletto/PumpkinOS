@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "sys.h"
 #include "pit_io.h"
 #include "filter.h"
@@ -497,7 +492,7 @@ static telnet_t *telnet_init(char *term, int cols, int rows) {
 
     telnet->cols = cols;
     telnet->rows = rows;
-    strncpy(telnet->term, term, MAX_BUF-1);
+    sys_strncpy(telnet->term, term, MAX_BUF-1);
   }
 
   return telnet;

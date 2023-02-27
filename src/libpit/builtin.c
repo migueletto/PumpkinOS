@@ -1,13 +1,6 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdarg.h>
-#include <unistd.h>
-
+#include "sys.h"
 #include "script.h"
 #include "thread.h"
-#include "sys.h"
 #include "timeutc.h"
 #include "pit_io.h"
 #include "vfs.h"
@@ -46,7 +39,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = 0;
             if (script_get_integer(pe, iarg++, &integer) == -1) return -1;
             snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, (char)integer);
-            ibuf = strlen(buf);
+            ibuf = sys_strlen(buf);
           }
           escape = 0;
           break;
@@ -56,7 +49,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = 0;
             if (script_get_integer(pe, iarg++, &integer) == -1) return -1;
             snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, integer);
-            ibuf = strlen(buf);
+            ibuf = sys_strlen(buf);
           }
           escape = 0;
           break;
@@ -67,7 +60,7 @@ static int pit_sprintf(int pe) {
             lfmt[ilfmt++] = 0;
             if (script_get_real(pe, iarg++, &d) == -1) return -1;
             snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, d);
-            ibuf = strlen(buf);
+            ibuf = sys_strlen(buf);
           }
           escape = 0;
           break;
@@ -78,7 +71,7 @@ static int pit_sprintf(int pe) {
             if (script_get_string(pe, iarg++, &s) == -1) return -1;
             snprintf(buf+ibuf, sizeof(buf)-ibuf-1, lfmt, s);
             xfree(s);
-            ibuf = strlen(buf);
+            ibuf = sys_strlen(buf);
           }
           escape = 0;
           break;
@@ -168,7 +161,7 @@ PIT_LIB_CODE
   if ((dir = sys_opendir(path)) != NULL) {
     for (;;) {
       if (sys_readdir(dir, name, sizeof(name)) != 0) break;
-      if (!strcmp(name, ".") || !strcmp(name, "..")) continue;
+      if (!sys_strcmp(name, ".") || !sys_strcmp(name, "..")) continue;
       script_call(pe, callback, &ret, "S", name);
     }
     sys_closedir(dir);
@@ -213,7 +206,7 @@ PIT_LIB_CODE
 PIT_LIB_END_I(c)
 
 PIT_LIB_FUNCTION(builtin,time)
-  time_t t = sys_time();
+  uint64_t t = sys_time();
 PIT_LIB_CODE
   r = 0;
 PIT_LIB_END_I(t)

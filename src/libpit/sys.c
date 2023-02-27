@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef WASM
 #include <emscripten.h>
@@ -2870,6 +2871,98 @@ FILE *sys_tmpfile(void) {
 #else
   return tmpfile();
 #endif
+}
+
+void *sys_malloc(size_t size) {
+  return malloc(size);
+}
+
+void sys_free(void *ptr) {
+  free(ptr);
+}
+
+void *sys_calloc(size_t nmemb, size_t size) {
+  return calloc(nmemb, size);
+}
+
+void *sys_realloc(void *ptr, size_t size) {
+  return realloc(ptr, size);
+}
+
+char *sys_strdup(const char *s) {
+  return strdup(s);
+}
+
+char *sys_strcpy(char *dest, const char *src) {
+  return strcpy(dest, src);
+}
+
+char *sys_strncpy(char *dest, const char *src, size_t n) {
+  return strncpy(dest, src, n);
+}
+
+uint32_t sys_strlen(const char *s) {
+  return strlen(s);
+}
+
+char *sys_strchr(const char *s, int c) {
+  return strchr(s, c);
+}
+
+char *sys_strstr(const char *haystack, const char *needle) {
+  return strstr(haystack, needle);
+}
+
+int sys_atoi(const char *nptr) {
+  return atoi(nptr);
+}
+
+int sys_strcmp(const char *s1, const char *s2) {
+  return strcmp(s1, s2);
+}
+
+int sys_strncmp(const char *s1, const char *s2, size_t n) {
+  return strncmp(s1, s2, n);
+}
+
+int sys_strcasecmp(const char *s1, const char *s2) {
+  return strcasecmp(s1, s2);
+}
+
+int sys_strncasecmp(const char *s1, const char *s2, size_t n) {
+  return strncasecmp(s1, s2, n);
+}
+
+char *sys_strcat(char *dest, const char *src) {
+  return strcat(dest, src);
+}
+
+char *sys_strncat(char *dest, const char *src, size_t n) {
+  return strncat(dest, src, n);
+}
+
+void *sys_memcpy(void *dest, const void *src, size_t n) {
+  return memcpy(dest, src, n);
+}
+
+void *sys_memset(void *s, int c, size_t n) {
+  return memset(s, c, n);
+}
+
+double sys_sqrt(double x) {
+  return sqrt(x);
+}
+
+double sys_sin(double x) {
+  return sin(x);
+}
+
+double sys_cos(double x) {
+  return cos(x);
+}
+
+double sys_pi(void) {
+  return M_PI;
 }
 
 /*

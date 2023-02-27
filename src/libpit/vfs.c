@@ -1,11 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <stdarg.h>
-#include <string.h>
 
-#include "script.h"
 #include "sys.h"
+#include "script.h"
 #include "vfs.h"
 #include "mutex.h"
 #include "xalloc.h"
@@ -138,8 +134,8 @@ char *vfs_abspath(char *cwd, char *relpath) {
 
   i = j = 0;
   if (relpath[i] != '/') {
-    strncpy(abspath, cwd, VFS_PATH-1);
-    j = strlen(abspath);
+    sys_strncpy(abspath, cwd, VFS_PATH-1);
+    j = sys_strlen(abspath);
   }
 
   for (s = 0; relpath[i] && j < VFS_PATH-1; i++) {
@@ -211,8 +207,8 @@ static vfs_mount_t *vfs_find(char *path, int *pos) {
   }
 
   for (i = 0, imax = -1, max = 0; i < nmounts; i++) {
-    len = strlen(mounts[i].path);
-    r = strncmp(mounts[i].path, path, len);
+    len = sys_strlen(mounts[i].path);
+    r = sys_strncmp(mounts[i].path, path, len);
     if (r == 0) {
       if (len > max) {
         imax = i;
@@ -365,8 +361,8 @@ int vfs_chdir(vfs_session_t *session, char *path) {
   }
   mutex_unlock(mutex);
 
-  strncpy(session->cwd, abspath, VFS_PATH-2);
-  n = strlen(session->cwd);
+  sys_strncpy(session->cwd, abspath, VFS_PATH-2);
+  n = sys_strlen(session->cwd);
   if (n && session->cwd[n-1] != '/') {
     session->cwd[n] = '/';
     session->cwd[n+1] = 0;
@@ -624,7 +620,7 @@ int vfs_printf(vfs_file_t *f, char *fmt, ...) {
   vsnprintf(f->buf, MAX_BUF-1, fmt, ap);
   va_end(ap);
 
-  r = strlen(f->buf);
+  r = sys_strlen(f->buf);
   if (r > 0) vfs_write(f, (uint8_t *)f->buf, r);
 
   return r;

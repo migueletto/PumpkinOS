@@ -1,14 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "script.h"
-#include "vfs.h"
-#include "vfslocal.h"
 #include "sys.h"
+#include "vfs.h"
+#include "script.h"
+#include "vfslocal.h"
 #include "xalloc.h"
 #include "debug.h"
 
@@ -162,8 +155,8 @@ static vfs_ent_t *vfs_local_readdir(vfs_priv_t *priv) {
       return NULL;
     }
 
-    strncpy(priv->aux, priv->path, VFS_PATH-1);
-    strncat(priv->aux, name, VFS_PATH-strlen(priv->aux)-1);
+    sys_strncpy(priv->aux, priv->path, VFS_PATH-1);
+    sys_strncat(priv->aux, name, VFS_PATH-sys_strlen(priv->aux)-1);
 
     if (sys_stat(priv->aux, &st) == -1) {
       return NULL;
@@ -174,8 +167,8 @@ static vfs_ent_t *vfs_local_readdir(vfs_priv_t *priv) {
     }
   }
 
-  xmemset(&priv->current, 0, sizeof(vfs_ent_t));
-  strncpy(priv->current.name, name, VFS_NAME-1);
+  sys_memset(&priv->current, 0, sizeof(vfs_ent_t));
+  sys_strncpy(priv->current.name, name, VFS_NAME-1);
   priv->current.size  = st.size;
   priv->current.atime = st.atime;
   priv->current.mtime = st.mtime;
@@ -212,7 +205,7 @@ static vfs_priv_t *vfs_local_opendir(char *path, void *_data) {
 
   debug(DEBUG_TRACE, "VFS", "vfs_local_opendir \"%s\"", path);
   if (path[0] == 0) {
-    strncpy(priv->path, data->local, VFS_PATH-1);
+    sys_strncpy(priv->path, data->local, VFS_PATH-1);
   } else {
     snprintf(priv->path, VFS_PATH-1, "%s%s%c", data->local, path, '/');
   }

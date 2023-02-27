@@ -25,9 +25,9 @@ int vfs_finish(void);
 typedef struct vfs_ent_t {
   char name[VFS_NAME];
   uint32_t size;
-  time_t atime;
-  time_t mtime;
-  time_t ctime;
+  uint64_t atime;
+  uint64_t mtime;
+  uint64_t ctime;
   uint8_t type;
   uint8_t rd, wr;
 } vfs_ent_t;

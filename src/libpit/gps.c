@@ -1,17 +1,12 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-
-#include "script.h"
 #include "sys.h"
+#include "script.h"
 #include "pit_io.h"
 #include "gps.h"
 #include "sock.h"
 #include "debug.h"
 #include "xalloc.h"
 
-static int gps_callback(int pe, int mode, time_t ts, int year, int mon, int day, int hour, int min, int sec, script_real_t lon, script_real_t lat, script_real_t alt, script_real_t speed, script_real_t course, script_ref_t ref) {
+static int gps_callback(int pe, int mode, uint64_t ts, int year, int mon, int day, int hour, int min, int sec, script_real_t lon, script_real_t lat, script_real_t alt, script_real_t speed, script_real_t course, script_ref_t ref) {
   script_arg_t ret;
 
   return script_call(pe, ref, &ret, "IIIIIIIIIDDDDD", mkint(1), mkint(mode), mkint(ts), mkint(year), mkint(mon), mkint(day), mkint(hour), mkint(min), mkint(sec), lon, lat, alt, speed, course);

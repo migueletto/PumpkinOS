@@ -1,14 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include "script.h"
 #include "sys.h"
+#include "script.h"
 #include "pit_io.h"
 #include "secure.h"
 #include "httpd.h"
@@ -93,7 +84,7 @@ static int httpd_spawn(int sock, char *host, int port, char *system, char *home,
   con->num_types = num_types;
 
   con->remote_port = port;
-  strncpy(con->host, host, MAX_HOST-1);
+  sys_strncpy(con->host, host, MAX_HOST-1);
   debug(DEBUG_INFO, "WEB", "connection from client %s:%d", con->host, con->remote_port);
 
   if ((handle = thread_begin(TAG_WORKER, conn_action, con)) == -1) {
@@ -142,7 +133,7 @@ static int authenticate(char *s, char *correct_user, char *correct_password) {
     r[j++] = (c2 << 6) | c3;
   }
 
-  i = strlen((char *)s)-1;
+  i = sys_strlen((char *)s)-1;
   if (s[i] == '=') {
     j--;
   }
@@ -152,18 +143,18 @@ static int authenticate(char *s, char *correct_user, char *correct_password) {
  
   r[j] = '\0';
  
-  if (strlen(r) > 128 || sscanf(r, "%255[^:]:%255s", user, password) != 2) {
+  if (sys_strlen(r) > 128 || sscanf(r, "%255[^:]:%255s", user, password) != 2) {
     return -1;
   }
  
-  if (!strcmp(user, correct_user) && !strcmp(password, correct_password)) {
+  if (!sys_strcmp(user, correct_user) && !sys_strcmp(password, correct_password)) {
     return 0;
   }
 
   return -1;
 }
 
-static time_t parse_date(char *date) {
+static uint64_t parse_date(char *date) {
   int day, year, hour, min, sec, i, j, n;
   char wday[4], mon[4], tz[4];
   sys_tm_t tm;
@@ -180,13 +171,13 @@ static time_t parse_date(char *date) {
   if (date && (n = sscanf(date, "%c%c%c, %d %c%c%c %d %02d:%02d:%02d %c%c%c", wday, wday+1, wday+2, &day, mon, mon+1, mon+2,
     &year, &hour, &min, &sec, tz, tz+1, tz+2)) == 14) {
 
-    if (!strcmp(tz, "GMT")) {
+    if (!sys_strcmp(tz, "GMT")) {
       for (i = 0; i < 7; i++) {
-        if (!strcmp(wday, weekday[i])) break;
+        if (!sys_strcmp(wday, weekday[i])) break;
       }
       if (i < 7) {
         for (j = 0; j < 12; j++) {
-          if (!strcmp(mon, month[j])) break;
+          if (!sys_strcmp(mon, month[j])) break;
         }
         if (j < 12) {
           tm.tm_year = year - 1900;
@@ -214,27 +205,27 @@ static time_t parse_date(char *date) {
 
 static int httpd_handle(http_connection_t *con) {
   char *path, *p, *q, *e;
-  struct stat statbuf;
-  time_t if_modified_since;
+  sys_stat_t statbuf;
+  uint64_t if_modified_since;
   char *value;
   int n, i, isget, r;
 
   isget = 0;
 
-  if (!strncmp(con->buffer, "GET /", 5)) {
+  if (!sys_strncmp(con->buffer, "GET /", 5)) {
     con->buffer[3] = 0;
     con->uri = &con->buffer[4];
     isget = 1;
 
-  } else if (!strncmp(con->buffer, "POST /", 6)) {
+  } else if (!sys_strncmp(con->buffer, "POST /", 6)) {
     con->buffer[4] = 0;
     con->uri = &con->buffer[5];
 
-  } else if (!strncmp(con->buffer, "PUT /", 5)) {
+  } else if (!sys_strncmp(con->buffer, "PUT /", 5)) {
     con->buffer[3] = 0;
     con->uri = &con->buffer[4];
 
-  } else if (!strncmp(con->buffer, "DELETE /", 8)) {
+  } else if (!sys_strncmp(con->buffer, "DELETE /", 8)) {
     con->buffer[6] = 0;
     con->uri = &con->buffer[7];
 
@@ -246,7 +237,7 @@ static int httpd_handle(http_connection_t *con) {
   con->method = con->buffer;
   debug(DEBUG_TRACE, "WEB", "method %s", con->method);
 
-  if ((p = strchr(con->uri, ' ')) == NULL) {
+  if ((p = sys_strchr(con->uri, ' ')) == NULL) {
     debug(DEBUG_ERROR, "WEB", "no space in uri");
     return httpd_reply(con, 400);
   }
@@ -256,12 +247,12 @@ static int httpd_handle(http_connection_t *con) {
   unescape_url(con->uri);
   debug(DEBUG_INFO, "WEB", "%s \"%s\"", con->method, con->uri);
 
-  if (strchr(con->uri, '\\') || strstr(con->uri, "..")) {
+  if (sys_strchr(con->uri, '\\') || sys_strstr(con->uri, "..")) {
     debug(DEBUG_ERROR, "WEB", "\\ or .. in uri");
     return httpd_reply(con, 400);
   }
 
-  if ((p = strstr(con->protocol, "\r\n")) == NULL) {
+  if ((p = sys_strstr(con->protocol, "\r\n")) == NULL) {
     debug(DEBUG_ERROR, "WEB", "\\r\\n not found after protocol");
     return httpd_reply(con, 400);
   }
@@ -269,7 +260,7 @@ static int httpd_handle(http_connection_t *con) {
   con->headers = p+2;
   debug(DEBUG_TRACE, "WEB", "protocol %s", con->protocol);
 
-  if (strlen(con->protocol) != 8 || strncmp(con->protocol, "HTTP/1.", 7) ||
+  if (sys_strlen(con->protocol) != 8 || sys_strncmp(con->protocol, "HTTP/1.", 7) ||
       (con->protocol[7] != '0' && con->protocol[7] != '1')) {
     debug(DEBUG_ERROR, "WEB", "invalid protocol");
     return httpd_reply(con, 400);
@@ -277,7 +268,7 @@ static int httpd_handle(http_connection_t *con) {
 
   con->num_params = 0;
 
-  if ((p = strchr(con->uri, '?')) != NULL) {
+  if ((p = sys_strchr(con->uri, '?')) != NULL) {
     p[0] = 0;
     p++;
     plus2space(p);
@@ -285,8 +276,8 @@ static int httpd_handle(http_connection_t *con) {
     for (; p[0] && con->num_params < MAX_REQ_PARAMS;) {
       con->param_name[con->num_params] = p;
 
-      q = strchr(p, '&');
-      e = strchr(p, '=');
+      q = sys_strchr(p, '&');
+      e = sys_strchr(p, '=');
 
       if (q && e) {
         if (q < e) {
@@ -306,16 +297,16 @@ static int httpd_handle(http_connection_t *con) {
         con->param_value[con->num_params] = e+1;
         p = e+1;
 
-        if ((q = strchr(p, '&')) != NULL) {
+        if ((q = sys_strchr(p, '&')) != NULL) {
           q[0] = 0;
           p = q+1;
 
         } else {
-          p += strlen(p);
+          p += sys_strlen(p);
         }
 
       } else {
-        p += strlen(p);
+        p += sys_strlen(p);
       }
 
       con->num_params++;
@@ -328,10 +319,10 @@ static int httpd_handle(http_connection_t *con) {
 
   con->num_headers = 0;
   for (p = con->headers; p && p[0] && con->num_headers < MAX_HEADERS;) {
-    if ((q = strstr(p, "\r\n")) == NULL) break;
+    if ((q = sys_strstr(p, "\r\n")) == NULL) break;
     q[0] = 0;
 
-    if ((value = strstr(p, ": ")) == NULL) {
+    if ((value = sys_strstr(p, ": ")) == NULL) {
       debug(DEBUG_ERROR, "WEB", "\":\" not found in header ");
       return httpd_reply(con, 400);
     }
@@ -341,21 +332,21 @@ static int httpd_handle(http_connection_t *con) {
     con->header_value[con->num_headers] = value;
     p = q+2;
 
-    if (!strcmp(con->header_name[con->num_headers], "Authorization") &&
-        !strncmp(con->header_value[con->num_headers], "Basic ", 6)) {
+    if (!sys_strcmp(con->header_name[con->num_headers], "Authorization") &&
+        !sys_strncmp(con->header_value[con->num_headers], "Basic ", 6)) {
       con->authorization = con->header_value[con->num_headers] + 6;
 
-    } else if (!strcmp(con->header_name[con->num_headers], "Content-Length")) {
-      con->content_length = atoi(con->header_value[con->num_headers]);
+    } else if (!sys_strcmp(con->header_name[con->num_headers], "Content-Length")) {
+      con->content_length = sys_atoi(con->header_value[con->num_headers]);
 
-    } else if (!strcmp(con->header_name[con->num_headers], "Content-Type")) {
+    } else if (!sys_strcmp(con->header_name[con->num_headers], "Content-Type")) {
       con->content_type = con->header_value[con->num_headers];
 
-    } else if (!strcmp(con->header_name[con->num_headers], "Connection")) {
-      con->keepalive = !strcasecmp(con->header_value[con->num_headers], "keep-alive");
+    } else if (!sys_strcmp(con->header_name[con->num_headers], "Connection")) {
+      con->keepalive = !sys_strcasecmp(con->header_value[con->num_headers], "keep-alive");
       debug(DEBUG_TRACE, "WEB", "keep alive %d", con->keepalive);
 
-    } else if (!strcmp(con->header_name[con->num_headers], "If-Modified-Since")) {
+    } else if (!sys_strcmp(con->header_name[con->num_headers], "If-Modified-Since")) {
       if_modified_since = parse_date(con->header_value[con->num_headers]);
       debug(DEBUG_TRACE, "WEB", "if modified since %d (%s)", if_modified_since, con->header_value[con->num_headers]);
     }
@@ -384,23 +375,23 @@ static int httpd_handle(http_connection_t *con) {
   }
 
   if (con->home) {
-    strncpy(path, con->home, MAX_PATH-1);
+    sys_strncpy(path, con->home, MAX_PATH-1);
   }
 
-  if (!strcmp(con->uri, "/")) {
-    strncat(path, "/index.html", MAX_PATH-strlen(path)-1);
+  if (!sys_strcmp(con->uri, "/")) {
+    sys_strncat(path, "/index.html", MAX_PATH-sys_strlen(path)-1);
   } else {
-    strncat(path, con->uri, MAX_PATH-strlen(path)-1);
+    sys_strncat(path, con->uri, MAX_PATH-sys_strlen(path)-1);
   }
 
-  n = strlen(path);
+  n = sys_strlen(path);
   if (n > 0 && path[n-1] == '/') {
     path[n-1] = 0;
   }
 
   debug(DEBUG_TRACE, "WEB", "path \"%s\"", path);
 
-  if (stat(path, &statbuf) == -1 || (statbuf.st_mode & S_IFDIR)) {
+  if (sys_stat(path, &statbuf) == -1 || (statbuf.mode & SYS_IFDIR)) {
     debug(DEBUG_TRACE, "WEB", "calling callback");
     if ((r = con->callback(con)) != 0) {
       debug(DEBUG_ERROR, "WEB", "callback failed (%d)", r);
@@ -417,7 +408,7 @@ static int httpd_handle(http_connection_t *con) {
     return httpd_reply(con, 400);
   }
 
-  if (if_modified_since && statbuf.st_mtime <= if_modified_since) {
+  if (if_modified_since && statbuf.mtime <= if_modified_since) {
     debug(DEBUG_TRACE, "WEB", "\"%s\" not modified", path);
     xfree(path);
     httpd_reply(con, 304);
@@ -431,7 +422,7 @@ static int httpd_handle(http_connection_t *con) {
   return r;
 }
 
-static char *make_date(time_t t, char *s, int n) {
+static char *make_date(uint64_t t, char *s, int n) {
   int day, mon, year, wday, hour, min, sec;
 
   ts2time(t, &day, &mon, &year, &wday, &hour, &min, &sec);
@@ -447,12 +438,12 @@ static void make_reply(char *header, int hlen, int code, char *msg, char *system
   snprintf(header, hlen, "HTTP/1.1 %d %s\r\nServer: %s\r\nDate: %s\r\n", code, msg, system, date);
 }
 
-static void make_header(char *header, int hlen, int code, char *status, char *type, int length, time_t modified, int cache, http_connection_t *con) {
+static void make_header(char *header, int hlen, int code, char *status, char *type, int length, uint64_t modified, int cache, http_connection_t *con) {
   char data_mod[80], op_mod[80], op_length[80], op_cache[80];
   int n, i;
 
   make_reply(header, hlen, code, status, con->system);
-  n = strlen(header);
+  n = sys_strlen(header);
 
   if (type) {
     if (length >= 0) {
@@ -463,26 +454,26 @@ static void make_header(char *header, int hlen, int code, char *status, char *ty
 
     if (modified) {
       make_date(modified, data_mod, sizeof(data_mod)-1);
-      strncpy(op_mod, "\r\nLast-modified: ", sizeof(op_mod)-1);
-      strncat(op_mod, data_mod, sizeof(op_mod)-strlen(op_mod)-1);
+      sys_strncpy(op_mod, "\r\nLast-modified: ", sizeof(op_mod)-1);
+      sys_strncat(op_mod, data_mod, sizeof(op_mod)-sys_strlen(op_mod)-1);
     } else {
       op_mod[0] = '\0';
     }
 
     if (!cache) {
-      strncpy(op_cache, "\r\nPragma: no-cache", sizeof(op_cache)-1);
+      sys_strncpy(op_cache, "\r\nPragma: no-cache", sizeof(op_cache)-1);
     } else {
       op_cache[0] = '\0';
     }
 
     snprintf(header+n, hlen-n, "MIME-version: 1.0%s\r\nContent-Type: %s%s%s\r\n", op_cache, type, op_length, op_mod);
-    n = strlen(header);
+    n = sys_strlen(header);
   }
 
   for (i = 0; i < con->num_res_headers; i++) {
     if (con->res_header_name[i] && con->res_header_value[i]) {
       snprintf(header+n, hlen-n, "%s: %s\r\n", con->res_header_name[i], con->res_header_value[i]);
-      n = strlen(header);
+      n = sys_strlen(header);
     }
   }
 
@@ -551,7 +542,7 @@ int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
   int len, n;
   char *buffer;
 
-  len = strlen(str);
+  len = sys_strlen(str);
 
   n = len;
   if (n < MAX_PACKET) n = MAX_PACKET;
@@ -562,14 +553,14 @@ int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
   }
 
   make_header(buffer, n-1, code, status_msg(code), mime, len, 0, 1, con);
-  httpd_write(con, (uint8_t *)buffer, strlen(buffer));
+  httpd_write(con, (uint8_t *)buffer, sys_strlen(buffer));
   httpd_write(con, (uint8_t *)str, len);
   xfree(buffer);
 
   return 0;
 }
 
-int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, time_t mtime) {
+int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, uint64_t mtime) {
   int len, n, i;
   char *buffer;
 
@@ -591,7 +582,7 @@ int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, time_t mtime
   }
 
   make_header(buffer, n-1, 200, "OK", mime, len, mtime, 1, con);
-  httpd_write(con, (uint8_t *)buffer, strlen(buffer));
+  httpd_write(con, (uint8_t *)buffer, sys_strlen(buffer));
   debug(DEBUG_TRACE, "WEB", "sending header \"%s\"", buffer);
 
   for (; !thread_must_end();) {
@@ -605,12 +596,12 @@ int httpd_file_stream(http_connection_t *con, FILE *fd, char *mime, time_t mtime
 }
 
 int httpd_file(http_connection_t *con, char *filename) {
-  struct stat statbuf;
+  sys_stat_t statbuf;
   char *ext, *mimetype;
   FILE *f;
   int i, r;
 
-  if (stat(filename, &statbuf) == -1) {
+  if (sys_stat(filename, &statbuf) == -1) {
     return httpd_reply(con, 404);
   }
 
@@ -623,30 +614,30 @@ int httpd_file(http_connection_t *con, char *filename) {
 
   if (ext) {
     for (i = 0; i < con->num_types; i++) {
-      if (!strcmp(ext, con->types[i].ext)) {
+      if (!sys_strcmp(ext, con->types[i].ext)) {
         mimetype = con->types[i].mimetype;
         break;
       }
     }
 
     if (mimetype == NULL) {
-      if (!strcmp(ext, "jpg")) {
+      if (!sys_strcmp(ext, "jpg")) {
         mimetype = MIME_TYPE_JPEG;
-      } else if (!strcmp(ext, "png")) {
+      } else if (!sys_strcmp(ext, "png")) {
         mimetype = MIME_TYPE_PNG;
-      } else if (!strcmp(ext, "html")) {
+      } else if (!sys_strcmp(ext, "html")) {
         mimetype = MIME_TYPE_HTML;
-      } else if (!strcmp(ext, "js")) {
+      } else if (!sys_strcmp(ext, "js")) {
         mimetype = MIME_TYPE_JS;
-      } else if (!strcmp(ext, "css")) {
+      } else if (!sys_strcmp(ext, "css")) {
         mimetype = MIME_TYPE_CSS;
-      } else if (!strcmp(ext, "txt")) {
+      } else if (!sys_strcmp(ext, "txt")) {
         mimetype = MIME_TYPE_TEXT;
       }
     }
   }
 
-  r = httpd_file_stream(con, f, mimetype ? mimetype : MIME_TYPE_BINARY, statbuf.st_mtime);
+  r = httpd_file_stream(con, f, mimetype ? mimetype : MIME_TYPE_BINARY, statbuf.mtime);
   fclose(f);
 
   return r;
@@ -670,18 +661,18 @@ int httpd_reply(http_connection_t *con, int code) {
   }
 
   if (code == 401) {
-    snprintf(&buffer[strlen(buffer)], sizeof(buffer)-strlen(buffer)-1, "WWW-Authenticate: Basic realm=\"%s\"\r\n", REALM);
+    snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "WWW-Authenticate: Basic realm=\"%s\"\r\n", REALM);
   }
 
   if (body[0]) {
-    snprintf(&buffer[strlen(buffer)], sizeof(buffer)-strlen(buffer)-1, "MIME-version: 1.0\r\nContent-Type: text/html\r\nContent-Length: %d\r\n", (int)strlen(body));
+    snprintf(&buffer[sys_strlen(buffer)], sizeof(buffer)-sys_strlen(buffer)-1, "MIME-version: 1.0\r\nContent-Type: text/html\r\nContent-Length: %d\r\n", (int)sys_strlen(body));
   }
 
-  strncat(buffer, "Connection: close\r\n\r\n", sizeof(buffer)-strlen(buffer)-1);
-  httpd_write(con, (uint8_t *)buffer, strlen(buffer));
+  sys_strncat(buffer, "Connection: close\r\n\r\n", sizeof(buffer)-sys_strlen(buffer)-1);
+  httpd_write(con, (uint8_t *)buffer, sys_strlen(buffer));
 
   if (body[0]) {
-    httpd_write(con, (uint8_t *)body, strlen(body));
+    httpd_write(con, (uint8_t *)body, sys_strlen(body));
   }
 
   return r;
@@ -750,12 +741,12 @@ static int conn_action(void *arg) {
     con->body_fd = NULL;
     debug(DEBUG_TRACE, "WEB", "buffer \"%s\"", con->buffer);
 
-    if ((p = strstr(con->buffer, "\r\n\r\n")) == NULL) {
+    if ((p = sys_strstr(con->buffer, "\r\n\r\n")) == NULL) {
       continue;
     }
 
     // XXX
-    if ((p = strstr(con->buffer, "\r\n\r\n")) != NULL) {
+    if ((p = sys_strstr(con->buffer, "\r\n\r\n")) != NULL) {
       if ((con->body_fd = sys_tmpfile()) != NULL) {
         n -= (p + 4 - con->buffer);
         p[2] = 0;
@@ -834,8 +825,8 @@ static int unescape_url(char *url) {
   int i, j;
   char aux[1024];
 
-  memset(aux, 0, sizeof(aux));
-  strncpy(aux, url, sizeof(aux)-1);
+  sys_memset(aux, 0, sizeof(aux));
+  sys_strncpy(aux, url, sizeof(aux)-1);
 
   for (i = 0, j = 0; aux[j]; i++, j++) {
     url[i] = aux[j];
@@ -860,7 +851,7 @@ static int httpd_action(void *arg) {
   unsigned int n;
 
   server = (httpd_server_t *)arg;
-  xmemset(&con, 0, sizeof(http_connection_t));
+  sys_memset(&con, 0, sizeof(http_connection_t));
   con.status = 1;
   con.data = server->data;
   server->callback(&con);
@@ -891,7 +882,7 @@ static int httpd_action(void *arg) {
           type = xcalloc(n, sizeof(ext_type_t));
           if (type) {
             for (i = 0, node = list_next(server->types); node; node = list_next(node), i++) {
-              memcpy(&type[i], list_element(node), sizeof(ext_type_t));
+              sys_memcpy(&type[i], list_element(node), sizeof(ext_type_t));
             }
           } else {
             n = 0;
@@ -931,8 +922,8 @@ int httpd_mimetype(int handle, char *ext, char *mimetype) {
   int r = -1;
 
   if (ext && ext[0] && mimetype && mimetype[0]) {
-    strncpy(arg.ext, ext, MAX_EXT-1);
-    strncpy(arg.mimetype, mimetype, MAX_MIME-1);
+    sys_strncpy(arg.ext, ext, MAX_EXT-1);
+    sys_strncpy(arg.mimetype, mimetype, MAX_MIME-1);
     r = thread_client_write(handle, (unsigned char *)&arg, sizeof(ext_type_t));
   }
 

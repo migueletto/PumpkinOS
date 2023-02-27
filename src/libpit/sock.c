@@ -1,11 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-
-#include "script.h"
 #include "sys.h"
+#include "script.h"
 #include "pit_io.h"
 #include "sock.h"
 #include "debug.h"
@@ -71,7 +65,7 @@ int sock_client(char *tag, int pe, io_callback_f cb, int index, void *data, bt_p
   io_addr_t addr;
   int handle, r = -1;
 
-  memset(&addr, 0, sizeof(addr));
+  sys_memset(&addr, 0, sizeof(addr));
 
   if (script_get_string(pe, index, &peer) == 0 &&
       script_get_integer(pe, index+1, &port) == 0 &&

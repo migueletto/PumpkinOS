@@ -1,10 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-
+#include "sys.h"
 #include "script.h"
 #include "media.h"
 #include "audio.h"
@@ -216,7 +210,7 @@ int node_create(char *name, node_dispatch_t *dispatch, void *data) {
 
   if ((node = xcalloc(1, sizeof(media_node_t))) != NULL) {
     node->tag = TAG_MEDIA_NODE;
-    strncpy(node->name, name, MAX_NAME-1);
+    sys_strncpy(node->name, name, MAX_NAME-1);
     node->dispatch.process = dispatch->process;
     node->dispatch.option = dispatch->option;
     node->dispatch.next = dispatch->next;
@@ -266,7 +260,7 @@ int node_call(int ptr, char *name, int (*callback)(void *data, void *arg), void 
   int r = -1;
 
   if ((node = (media_node_t *)ptr_lock(ptr, TAG_MEDIA_NODE)) != NULL) {
-    if (!strcmp(node->name, name)) {
+    if (!sys_strcmp(node->name, name)) {
       r = callback(node->data, arg);
     } else {
       debug(DEBUG_ERROR, "MEDIA", "called node %d (%s) as if it were (%s)", ptr, node->name, name);
