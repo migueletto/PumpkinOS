@@ -3,7 +3,6 @@
 #include "sys.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -67,7 +66,7 @@ void CtlDrawControl(ControlType *controlP) {
       case selectorTriggerCtl:
         if (controlP->attr.graphical) {
           debug(DEBUG_TRACE, "Control", "GraphicControl id=%d, bitmapID=%d, selectedBitmapID=%d, selected=%d", controlP->id, controlP->bitmapID, controlP->selectedBitmapID, controlP->attr.on);
-          if ((h = DmGetResource(bitmapRsc, (controlP->attr.on && controlP->selectedBitmapID) ? controlP->selectedBitmapID : controlP->bitmapID)) != NULL_HANDLE) {
+          if ((h = DmGetResource(bitmapRsc, (controlP->attr.on && controlP->selectedBitmapID) ? controlP->selectedBitmapID : controlP->bitmapID)) != NULL) {
             if ((bmp = MemHandleLock(h)) != NULL) {
               debug(DEBUG_TRACE, "Control", "GraphicControl draw id=%d, bitmapID=%d, selectedBitmapID=%d", controlP->id, controlP->bitmapID, controlP->selectedBitmapID);
               BmpGetDimensions(bmp, &bw, &bh, &rb);
@@ -151,14 +150,14 @@ void CtlDrawControl(ControlType *controlP) {
         sc = (SliderControlType *)controlP;
         debug(DEBUG_TRACE, "Control", "CtlDrawControl slider %d (%d,%d)", sc->id, sc->backgroundID, sc->thumbID);
         mode = WinSetDrawMode(winPaint);
-        if ((h = DmGetResource(bitmapRsc, sc->backgroundID)) != NULL_HANDLE) {
+        if ((h = DmGetResource(bitmapRsc, sc->backgroundID)) != NULL) {
           if ((bmp = MemHandleLock(h)) != NULL) {
             WinPaintBitmap(bmp, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y);
             MemHandleUnlock(h);
           }
           DmReleaseResource(h);
         }
-        if ((h = DmGetResource(bitmapRsc, sc->thumbID)) != NULL_HANDLE) {
+        if ((h = DmGetResource(bitmapRsc, sc->thumbID)) != NULL) {
           if ((bmp = MemHandleLock(h)) != NULL) {
             BmpGetDimensions(bmp, &bw, &bh, &rb);
             x = ((sc->value - sc->minValue) * (controlP->bounds.extent.x - bw)) / (sc->maxValue - sc->minValue);

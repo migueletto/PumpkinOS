@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "dia.h"
 #include "debug.h"
@@ -466,7 +465,7 @@ void SysKeyboardDialog(KeyboardType kbd) {
           debug(DEBUG_INFO, PALMOS_MODULE, "SysKeyboardDialog object ptr ok");
           textHandle = FldGetTextHandle(fldP);
 
-          if (textHandle != NULL_HANDLE) {
+          if (textHandle != NULL) {
             debug(DEBUG_INFO, PALMOS_MODULE, "SysKeyboardDialog text handle ok");
 
             if ((kbdFormP = FrmInitForm(32000)) != NULL) {
@@ -504,12 +503,12 @@ void SysKeyboardDialog(KeyboardType kbd) {
                   debug(DEBUG_INFO, PALMOS_MODULE, "SysKeyboardDialog do dialog done button");
                   module->pos = FldGetInsPtPosition(kbdFldP);
                   textHandle = FldGetTextHandle(kbdFldP);
-                  FldSetTextHandle(kbdFldP, NULL_HANDLE);
+                  FldSetTextHandle(kbdFldP, NULL);
                   FldSetTextHandle(fldP, textHandle);
                 } else {
                   debug(DEBUG_INFO, PALMOS_MODULE, "SysKeyboardDialog do dialog other button");
                   module->pos = FldGetInsPtPosition(kbdFldP);
-                  FldSetTextHandle(kbdFldP, NULL_HANDLE);
+                  FldSetTextHandle(kbdFldP, NULL);
                 }
                 FldSetInsPtPosition(fldP, module->pos);
                 FldSetActiveField(fldP);

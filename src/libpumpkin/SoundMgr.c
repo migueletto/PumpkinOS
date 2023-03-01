@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"

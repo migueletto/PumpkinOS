@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <setjmp.h>
 
 typedef enum {
   SYS_SEEK_SET, SYS_SEEK_CUR, SYS_SEEK_END
@@ -108,6 +109,8 @@ typedef __builtin_va_list sys_va_list;
 #define sys_va_start(v,l) __builtin_va_start(v,l)
 #define sys_va_end(v)     __builtin_va_end(v)
 #define sys_va_arg(v,l)   __builtin_va_arg(v,l)
+
+typedef jmp_buf sys_jmp_buf;
 
 void sys_init(void);
 
@@ -240,10 +243,6 @@ void *sys_lib_defsymbol(void *lib, char *name, int mandatory);
 
 int sys_lib_close(void *lib);
 
-void sys_lockfile(void *fd);
-
-void sys_unlockfile(void *fd);
-
 uint32_t sys_socket_ipv4(char *host);
 
 int sys_socket_fill_addr(void *a, char *host, int port, int *len);
@@ -352,6 +351,12 @@ int sys_snprintf(char *str, sys_size_t size, const char *format, ...);
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap);
 
 int sys_sscanf(const char *str, const char *format, ...);
+
+sys_size_t sys_getpagesize(void);
+
+int sys_setjmp(sys_jmp_buf env);
+
+void sys_longjmp(sys_jmp_buf env, int val);
 
 #ifdef __cplusplus
 }

@@ -328,7 +328,7 @@ typedef uint32 uint64;
 #define m68ki_aerr_address      m68k_state->s_m68ki_aerr_address
 #define m68ki_aerr_write_mode   m68k_state->s_m68ki_aerr_write_mode
 #define m68ki_aerr_fc           m68k_state->s_m68ki_aerr_fc
-#define m68ki_bus_error_jmp_buf m68k_state->s_m68ki_bus_error_jmp_buf
+//#define m68ki_bus_error_jmp_buf m68k_state->s_m68ki_bus_error_jmp_buf
 
 /* ------------------------------ CPU Access ------------------------------ */
 
@@ -1026,7 +1026,7 @@ typedef struct {
   uint s_m68ki_aerr_address;
   uint s_m68ki_aerr_write_mode;
   uint s_m68ki_aerr_fc;
-  jmp_buf s_m68ki_bus_error_jmp_buf;
+  //jmp_buf s_m68ki_bus_error_jmp_buf;
 } m68k_state_t;
 
 m68k_state_t *m68k_get_state(void);
@@ -1964,6 +1964,7 @@ static inline void m68ki_exception_privilege_violation(void)
 
 //extern jmp_buf m68ki_bus_error_jmp_buf;
 
+#if 0
 #define m68ki_check_bus_error_trap() setjmp(m68ki_bus_error_jmp_buf)
 
 /* Exception for bus error */
@@ -1997,6 +1998,7 @@ m68k_read_memory_8(0x00ffff01);
 	m68ki_jump_vector(EXCEPTION_BUS_ERROR);
 	longjmp(m68ki_bus_error_jmp_buf, 1);
 }
+#endif
 
 //extern int cpu_log_enabled;
 

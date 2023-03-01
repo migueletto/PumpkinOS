@@ -601,7 +601,6 @@ case sysTrapDmDatabaseInfo: {
   uint32_t creatorP = ARG32;
   UInt32 l_creatorP;
   Err res = DmDatabaseInfo(cardNo, dbID, nameP ? s_nameP : NULL, attributesP ? &l_attributesP : NULL, versionP ? &l_versionP : NULL, crDateP ? &l_crDateP : NULL, modDateP ? &l_modDateP : NULL, bckUpDateP ? &l_bckUpDateP : NULL, modNumP ? &l_modNumP : NULL, appInfoIDP ? &l_appInfoIDP : NULL, sortInfoIDP ? &l_sortInfoIDP : NULL, typeP ? &l_typeP : NULL, creatorP ? &l_creatorP : NULL);
-l_attributesP |= 0x8000; // XXX temporario, para nao dar diferenca no trace comparado com o Mu
   if (attributesP) m68k_write_memory_16(attributesP, l_attributesP);
   if (versionP) m68k_write_memory_16(versionP, l_versionP);
   if (crDateP) m68k_write_memory_32(crDateP, l_crDateP);
@@ -3390,23 +3389,23 @@ case sysTrapTblSetRowID: {
 }
 break;
 case sysTrapTblGetRowData: {
-  // UIntPtr TblGetRowData(in TableType *tableP, Int16 row)
+  // UInt32 TblGetRowData(in TableType *tableP, Int16 row)
   uint32_t tableP = ARG32;
   TableType *s_tableP = emupalmos_trap_in(tableP, trap, 0);
   int16_t row = ARG16;
-  UIntPtr res = TblGetRowData(tableP ? s_tableP : NULL, row); // XXX precisa tratar UIntPtr ?
+  UIntPtr res = TblGetRowData(tableP ? s_tableP : NULL, row);
   m68k_set_reg(M68K_REG_D0, res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d): %d", tableP, row, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d): 0x%08X", tableP, row, res);
 }
 break;
 case sysTrapTblSetRowData: {
-  // void TblSetRowData(in TableType *tableP, Int16 row, UIntPtr data)
+  // void TblSetRowData(in TableType *tableP, Int16 row, UInt32 data)
   uint32_t tableP = ARG32;
   TableType *s_tableP = emupalmos_trap_in(tableP, trap, 0);
   int16_t row = ARG16;
   uint32_t data = ARG32;
-  TblSetRowData(tableP ? s_tableP : NULL, row, data); // XXX precisa tratar UIntPtr ?
-  debug(DEBUG_TRACE, "EmuPalmOS", "TblSetRowData(tableP=0x%08X, row=%d, data=%d)", tableP, row, data);
+  TblSetRowData(tableP ? s_tableP : NULL, row, data);
+  debug(DEBUG_TRACE, "EmuPalmOS", "TblSetRowData(tableP=0x%08X, row=%d, data=0x%08X)", tableP, row, data);
 }
 break;
 case sysTrapTblRowInvalid: {

@@ -18,7 +18,7 @@ static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
     FrmCopyLabel(frm, 11001, name);
 
     MemSet(buf, sizeof(buf), 0);
-    if ((h = DmGet1Resource(verRsc, 1)) != NULL_HANDLE) {
+    if ((h = DmGet1Resource(verRsc, 1)) != NULL) {
       if ((s = MemHandleLock(h)) != NULL) {
         if (StrLen(s) < 16) {
           StrPrintF(buf, "v. %s", s);

@@ -1875,7 +1875,7 @@ static void find(launcher_data_t *data) {
     debug(DEBUG_INFO, "Launcher", "find query");
     if (FrmDoDialog(frm) == 10504) {
       if ((fld = (FieldType *)FrmGetObjectPtr(frm, index)) != NULL) {
-        if ((h = FldGetTextHandle(fld)) != NULL_HANDLE) {
+        if ((h = FldGetTextHandle(fld)) != NULL) {
           if ((s = MemHandleLock(h)) != NULL) {
             StrNCopy(find.strAsTyped, s, maxFindStrLen);
             MemHandleUnlock(h);

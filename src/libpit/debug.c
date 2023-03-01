@@ -2,6 +2,7 @@
 
 #include "sys.h"
 #include "thread.h"
+#include "mutex.h"
 #include "timeutc.h"
 #include "debug.h"
 
@@ -13,6 +14,7 @@ typedef struct {
   int level;
 } debug_sys_t;
 
+static mutex_t *mutex;
 static FILE *fd = NULL;
 static int level = DEBUG_ERROR;
 static debug_sys_t sys_level[MAX_SYS];
@@ -20,10 +22,12 @@ static int nlevels = 0;
 static int show_scope = 0;
 static int indent = 0;
 static int raw = 0;
+static int inited = 0;
 
 static char level_name[] = { 'E', 'I', 'T' };
 
 int debug_init(char *filename) {
+  mutex = mutex_create("debug");
   if (filename) {
     if (!sys_strcmp(filename, "stdout")) fd = stdout;
     else if (!sys_strcmp(filename, "stderr")) fd = stderr;
@@ -32,6 +36,7 @@ int debug_init(char *filename) {
     fd = stderr;
   }
   if (fd == NULL) fd = stderr;
+  inited = 1;
   return 0;
 }
 
@@ -40,6 +45,7 @@ int debug_close(void) {
     fclose(fd);
     fd = NULL;
   }
+  mutex_destroy(mutex);
 
   return 0;
 }
@@ -146,11 +152,12 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
   sys_tm_t tm;
   uint64_t ts;
 
+  if (!inited) return;
   if (_level < DEBUG_ERROR) _level = DEBUG_ERROR;
   if (_level > DEBUG_TRACE) _level = DEBUG_TRACE;
 
   if (_level <= debug_getsyslevel((char *)sys)) {
-    vsnprintf(tmp, sizeof(tmp)-1, fmt, ap);
+    sys_vsnprintf(tmp, sizeof(tmp)-1, fmt, ap);
 
     for (i = 0, j = 0; tmp[i] && j < MAX_BUF-5; i++) {
       if (tmp[i] >= 32) {
@@ -213,16 +220,17 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     s += ch('\n', s, tmp + MAX_BUF - s);
     *s = 0;
 
-    sys_lockfile(fd);
+    mutex_lock_only(mutex);
     fwrite((uint8_t *)tmp, 1, s - tmp, fd);
     fflush(fd);
-    sys_unlockfile(fd);
+    mutex_unlock_only(mutex);
   }
 }
 
 void debug_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, ...) {
   sys_va_list ap;
 
+  if (!inited) return;
   sys_va_start(ap, fmt);
   debugva_full(file, func, line, _level, sys, fmt, ap);
   sys_va_end(ap);
@@ -233,11 +241,12 @@ void debug_errno_full(const char *file, const char *func, int line, const char *
   char buf[MAX_BUF], msg[MAX_BUF];
   int err;
 
+  if (!inited) return;
   err = sys_errno();
   sys_strerror(err, msg, sizeof(msg));
 
   sys_va_start(ap, fmt);
-  vsnprintf(buf, sizeof(buf)-1, fmt, ap);
+  sys_vsnprintf(buf, sizeof(buf)-1, fmt, ap);
   sys_va_end(ap);
 
   debug_full(file, func, line, DEBUG_ERROR, sys, "%s failed: %d (%s)", buf, err, msg);
@@ -247,6 +256,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
   char sbuf[1024], abuf[32], *p, *e;
   uint32_t i, j, n;
 
+  if (!inited) return;
   p = sbuf;
   sys_snprintf(p, 6, "%04X: ", 0);
   n = sys_strlen(p);

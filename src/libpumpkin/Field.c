@@ -8,7 +8,6 @@ static void nop(Err err);
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -255,7 +254,7 @@ void FldFreeMemory(FieldType *fldP) {
     if (fldP->textHandle) {
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle");
       MemHandleFree(fldP->textHandle);
-      fldP->textHandle = NULL_HANDLE;
+      fldP->textHandle = NULL;
     }
     if (fldP->textBuf) {
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text buf");
@@ -363,7 +362,7 @@ then set the field’s text handle again.
 */
 MemHandle FldGetTextHandle(const FieldType *_fldP) {
   FieldType *fldP;
-  MemHandle h = NULL_HANDLE;
+  MemHandle h = NULL;
 
   IN;
   fldP = (FieldType *)_fldP;
@@ -513,7 +512,7 @@ void FldPaste(FieldType *fldP) {
 
   IN;
   if (fldP) {
-    if ((h = ClipboardGetItem(clipboardText, &length)) != NULL_HANDLE) {
+    if ((h = ClipboardGetItem(clipboardText, &length)) != NULL) {
       if (length > 0 && (s = MemHandleLock(h)) != NULL) {
         FldInsert(fldP, s, length);
         MemHandleUnlock(h);
@@ -609,7 +608,7 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
   IN;
   if (fldP) {
     debug(DEBUG_TRACE, "Field", "FldSetText fld %p handle %p offset %d size %d", fldP, textHandle, offset, size);
-    fldP->textHandle = NULL_HANDLE;
+    fldP->textHandle = NULL;
     fldP->offset = 0;
     fldP->size = 0;
     fldP->textBlockSize = 0;

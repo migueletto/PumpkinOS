@@ -6,6 +6,8 @@
 #define MORECORE_FAILURE 0
 #define DL_DEBUG 1
 #define MORECORE heap_morecore
+#define MALLOC_FAILURE_ACTION
+#define malloc_getpagesize sys_getpagesize()
 
 #include "dlmalloc.h"
 
@@ -374,8 +376,6 @@ extern "C" {
 #include <stdint.h>
 #include "heap.h"
 
-#include "mem.h"
-
 #if DL_DEBUG
 //#include <assert.h>
 
@@ -391,7 +391,7 @@ extern "C" {
 
 #ifndef CHUNK_SIZE_T
 //#define CHUNK_SIZE_T unsigned long
-#define CHUNK_SIZE_T UIntPtr
+#define CHUNK_SIZE_T sys_size_t
 #endif
 
 /* 
@@ -401,7 +401,7 @@ extern "C" {
 */
 #ifndef PTR_UINT
 //#define PTR_UINT unsigned long
-#define PTR_UINT UIntPtr
+#define PTR_UINT sys_size_t
 #endif
 
 
@@ -438,7 +438,7 @@ extern "C" {
 
 #ifndef INTERNAL_SIZE_T
 //#define INTERNAL_SIZE_T sys_size_t
-#define INTERNAL_SIZE_T UIntPtr
+#define INTERNAL_SIZE_T sys_size_t
 #endif
 
 /* The corresponding word size */
@@ -1767,8 +1767,8 @@ int public_mALLOPt(int p, int v) {
   so the (usually slower) memmove is not needed.
 */
 
-#define MALLOC_COPY(dest, src, nbytes)  memcpy(dest, src, nbytes)
-#define MALLOC_ZERO(dest, nbytes)       memset(dest, 0,   nbytes)
+#define MALLOC_COPY(dest, src, nbytes)  sys_memcpy(dest, src, nbytes)
+#define MALLOC_ZERO(dest, nbytes)       sys_memset(dest, 0,   nbytes)
 
 #else /* !USE_MEMCPY */
 

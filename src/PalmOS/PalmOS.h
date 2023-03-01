@@ -16,7 +16,7 @@
 #define	__PALMOS_H__ 
 
 #ifndef PALMOS
-#include "mem.h"
+#include "sys.h"
 #endif
 #include <PalmTypes.h>
 #include <SystemPublic.h>

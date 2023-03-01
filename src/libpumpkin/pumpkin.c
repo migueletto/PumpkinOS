@@ -8,7 +8,6 @@
 #include "pwindow.h"
 #include "bytes.h"
 #include "vfs.h"
-#include "mem.h"
 #include "ptr.h"
 #include "pit_io.h"
 #include "gps.h"
@@ -2343,7 +2342,7 @@ int pumpkin_script_create(void) {
 }
 
 int pumpkin_script_init(int pe, uint32_t type, uint16_t id) {
-  mem_handle_t h;
+  MemHandle h;
   UInt32 len;
   char *s, *p;
   int r = -1;

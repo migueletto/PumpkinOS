@@ -3,7 +3,6 @@
 #include "sys.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "timeutc.h"
 #include "debug.h"

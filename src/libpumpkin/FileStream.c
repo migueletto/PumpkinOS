@@ -4,7 +4,6 @@
 #include "mutex.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"

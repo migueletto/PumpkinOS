@@ -10,7 +10,6 @@
 #include "pit_io.h"
 #include "ptr.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "gps.h"
 #include "debug.h"

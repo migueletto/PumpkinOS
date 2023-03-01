@@ -5,7 +5,6 @@
 #include "mutex.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "pumpkin.h"
 #include "AppRegistry.h"
@@ -66,7 +65,7 @@ MenuBarType *MenuInit(UInt16 resourceId) {
   Int16 height, i;
 
   debug(DEBUG_TRACE, "Menu", "MenuInit %d", resourceId);
-  if ((menuH = DmGetResource(MenuRscType, resourceId)) != NULL_HANDLE) {
+  if ((menuH = DmGetResource(MenuRscType, resourceId)) != NULL) {
     mbar = MemHandleLock(menuH);
     old = FntSetFont(boldFont);
     height = FntCharHeight() + 4;

@@ -178,7 +178,7 @@ static MemHandle TxtParamStringHandle(const Char *inTemplate, const Char *param0
     inTemplate, param0 ? param0 : "NULL", param1 ? param1 : "NULL", param2 ? param2 : "NULL", param3 ? param3 : "NULL");
 
   max = 1024;
-  if ((h = MemHandleNew(max)) != NULL_HANDLE) {
+  if ((h = MemHandleNew(max)) != NULL) {
     s = MemHandleLock(h);
     st = 0;
     for (i = 0, j = 0; inTemplate[i]; i++) {
@@ -223,7 +223,7 @@ Char *TxtParamString(const Char *inTemplate, const Char *param0, const Char *par
   MemHandle h;
   char *s = NULL;
 
-  if ((h = TxtParamStringHandle(inTemplate, param0, param1, param2, param3)) != NULL_HANDLE) {
+  if ((h = TxtParamStringHandle(inTemplate, param0, param1, param2, param3)) != NULL) {
     s = MemHandleLock(h);
   }
 

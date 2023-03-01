@@ -72,6 +72,14 @@ int mutex_destroy(mutex_t *m) {
   return r;
 }
 
+int mutex_lock_only(mutex_t *m) {
+  return pthread_mutex_lock(&m->mutex);
+}
+
+int mutex_unlock_only(mutex_t *m) {
+  return pthread_mutex_unlock(&m->mutex);
+}
+
 int mutex_lock(mutex_t *m) {
   int r = -1;
 
@@ -85,7 +93,7 @@ int mutex_lock(mutex_t *m) {
         m->t = sys_get_clock();
       }
       m->count++;
-     debug(DEBUG_TRACE, "MUTEX", "locked mutex %s (%08x) count %d", m->name, m, m->count);
+      debug(DEBUG_TRACE, "MUTEX", "locked mutex %s (%08x) count %d", m->name, m, m->count);
     }
   }
 

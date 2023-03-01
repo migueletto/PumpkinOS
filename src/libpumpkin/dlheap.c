@@ -11,7 +11,6 @@
 #include "surface.h"
 #endif
 #include "emulation/emupalmosinc.h"
-#include "mem.h"
 #include "dlmalloc.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -158,7 +157,7 @@ static void heap_draw(heap_t *heap, uint8_t *from, uint8_t *to, int incr) {
 void *heap_alloc(heap_t *heap, sys_size_t size) {
   void *p = dlmalloc(size);
   if (p) {
-    UIntPtr *q = (UIntPtr *)p;
+    sys_size_t *q = (sys_size_t *)p;
     sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
@@ -171,7 +170,7 @@ void *heap_alloc(heap_t *heap, sys_size_t size) {
 
 void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
   if (p) {
-    UIntPtr *q = (UIntPtr *)p;
+    sys_size_t *q = (sys_size_t *)p;
     sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
@@ -180,7 +179,7 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
 #endif
 
     p = dlrealloc(p, size);
-    q = (UIntPtr *)p;
+    q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
@@ -194,10 +193,10 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
 
 void heap_free(heap_t *heap, void *p) {
   sys_size_t realsize;
-  UIntPtr *q;
+  sys_size_t *q;
 
   if (p) {
-    q = (UIntPtr *)p;
+    q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
@@ -243,8 +242,8 @@ void heap_dump(heap_t *heap) {
 }
 
 typedef struct {
-  UIntPtr prev_size;
-  UIntPtr size;
+  sys_size_t prev_size;
+  sys_size_t size;
 } header_t;
 
 void heap_walk(heap_t *heap, void (*callback)(uint32_t *p, uint32_t size, uint32_t task), uint32_t task) {

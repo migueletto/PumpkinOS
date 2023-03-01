@@ -83,21 +83,25 @@ typedef UInt16		WChar;		// 'wide' int'l character type.
 
 typedef UInt16		Err;
 
-//typedef UInt32		LocalID;		// local (card relative) chunk ID
-//typedef void *		LocalID;		// local (card relative) chunk ID
-typedef local_id_t		LocalID;		// local (card relative) chunk ID
+typedef UInt32		LocalID;		// local (card relative) chunk ID
 
 typedef Int16 		Coord;		// screen/window coordinate
 
 
 typedef void *		MemPtr;		// global pointer
-//typedef void *    	MemHandle;	// global handle
 //typedef UInt32    	MemHandle;	// global handle
-typedef mem_handle_t    MemHandle;	// global handle
+typedef void *    MemHandle;	// global handle
 
 
 typedef Int32 (*ProcPtr)();
 
+#if UINTPTR_MAX == 0xffffffff
+typedef uint32_t UIntPtr;
+#elif UINTPTR_MAX == 0xffffffffffffffff
+typedef uint64_t UIntPtr;
+#else
+#error "Word size not known"
+#endif
 
 /************************************************************
  * Useful Macros 

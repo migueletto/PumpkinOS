@@ -8,7 +8,7 @@ UInt16 LmGetNumLocales(void) {
   UInt8 *p;
   UInt16 i, num = 0;
 
-  if ((h = DmGetResource('locs', 10000)) != NULL_HANDLE) {
+  if ((h = DmGetResource('locs', 10000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       i  = get2b(&num, p, 0); // version ???
       i += get2b(&num, p, i); // number of locales
@@ -31,7 +31,7 @@ Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL_HANDLE) {
+  if ((h = DmGetResource('locs', 10000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       i  = get2b(&num, p, 0); // version ???
       i += get2b(&num, p, i); // number of locales
@@ -70,7 +70,7 @@ Err LmLocaleToIndex(const LmLocaleType *iLocale, UInt16 *oLocaleIndex) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL_HANDLE) {
+  if ((h = DmGetResource('locs', 10000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       i  = get2b(&num, p, 0); // version ???
       i += get2b(&num, p, i); // number of locales
@@ -129,7 +129,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL_HANDLE) {
+  if ((h = DmGetResource('locs', 10000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       i  = get2b(&num, p, 0); // version ???
       i += get2b(&num, p, i); // number of locales

@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "rgb.h"
 #include "bytes.h"
 #include "pumpkin.h"
@@ -1216,7 +1215,7 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
 void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   PatternType oldp = module->pattern;
-  module->pattern = blackPattern; // XXX is this correct ?  se nao for blackPattern, ChemTable nao pinta toda a celula
+  module->pattern = blackPattern; // XXX is this correct ? if it is not blackPattern, ChemTable does not paint the whole cell
   WinPaintRectangleF(rP, 1, cornerDiam, true, false);
   module->pattern = oldp;
 }

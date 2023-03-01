@@ -13,6 +13,10 @@ mutex_t *mutex_create(char *name);
 
 int mutex_destroy(mutex_t *m);
 
+int mutex_lock_only(mutex_t *m);
+
+int mutex_unlock_only(mutex_t *m);
+
 int mutex_lock(mutex_t *m);
 
 int mutex_unlock(mutex_t *m);

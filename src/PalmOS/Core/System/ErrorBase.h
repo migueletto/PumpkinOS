@@ -100,7 +100,7 @@
 #include <setjmp.h>
 #endif
 #else
-#include <setjmp.h>
+//#include <setjmp.h>
 #endif
 
 // Max message length supported by ErrCustomAlert
@@ -198,7 +198,7 @@
 	typedef long* ErrJumpBuf[12];			// D3-D7,PC,A2-A7
 #endif
 #else
-	#define	ErrJumpBuf	jmp_buf
+	#define	ErrJumpBuf	sys_jmp_buf
 #endif
 	
 // Structure used to store Try state.
@@ -260,8 +260,8 @@ extern "C" {
 								SYS_TRAP(sysTrapErrLongJump);
 #endif
 #else
-	#define	ErrSetJump(buf)			setjmp(buf)
-	#define	ErrLongJump(buf,res) 	longjmp(buf,res)
+	#define	ErrSetJump(buf)			sys_setjmp(buf)
+	#define	ErrLongJump(buf,res) 	sys_longjmp(buf,res)
 #endif
 						
 MemPtr*	ErrExceptionList(void)

@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "pumpkin.h"
 #include "debug.h"
@@ -48,7 +47,7 @@ void SysCopyStringResource(Char *string, Int16 theID) {
   Char *s;
 
   if (string) {
-    if ((h = DmGetResource(strRsc, theID)) != NULL_HANDLE) {
+    if ((h = DmGetResource(strRsc, theID)) != NULL) {
       if ((s = MemHandleLock(h)) != NULL) {
         StrCopy(string, s);
         MemHandleUnlock(h);
@@ -63,12 +62,12 @@ void SysCopyStringResource(Char *string, Int16 theID) {
 // Form an array of pointers to strings in a block. Useful for setting the items of a list.
 
 MemHandle SysFormPointerArrayToStrings(Char *c, Int16 stringCount) {
-  MemHandle h = NULL_HANDLE;
+  MemHandle h = NULL;
   Char **p;
   Int16 i, j;
 
   if (c) {
-    if ((h = MemHandleNew(stringCount * sizeof(Char *))) != NULL_HANDLE) {
+    if ((h = MemHandleNew(stringCount * sizeof(Char *))) != NULL) {
       if ((p = MemHandleLock(h)) != NULL) {
         for (i = 0, j = 0; j < stringCount;) {
           if (c[i] == 0) {
@@ -122,7 +121,7 @@ Char *SysStringByIndex(UInt16 resID, UInt16 index, Char *strP, UInt16 maxLen) {
   if (strP) {
     strP[0] = 0;
 
-    if ((h = DmGetResource(strListRscType, resID)) != NULL_HANDLE) {
+    if ((h = DmGetResource(strListRscType, resID)) != NULL) {
       if ((p = MemHandleLock(h)) != NULL) {
         i = 0;
         i += pumpkin_getstr(&prefix, p, 0);

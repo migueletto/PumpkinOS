@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "xalloc.h"
 #include "debug.h"
@@ -200,7 +199,7 @@ Err ClipboardAppendItem(const ClipboardFormatType format, const void *ptr, UInt1
 
 MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length) {
   clp_module_t *module = (clp_module_t *)thread_get(clp_key);
-  MemHandle h = NULL_HANDLE;
+  MemHandle h = NULL;
   char *s;
   int len;
 
@@ -210,12 +209,12 @@ MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length) {
     case clipboardText:
       if (module->textHandle) {
         MemHandleFree(module->textHandle);
-        module->textHandle = NULL_HANDLE;
+        module->textHandle = NULL;
       }
 
       len = cbdMaxTextLength;
       if (pumpkin_clipboard_get_text(module->text, &len) == 0) {
-        if ((h = MemHandleNew(len)) != NULL_HANDLE) {
+        if ((h = MemHandleNew(len)) != NULL) {
           if ((s = MemHandleLock(h)) != NULL) {
             MemMove(s, module->text, len);
             MemHandleUnlock(h);

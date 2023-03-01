@@ -977,7 +977,7 @@ int m68k_execute(m68k_state_t *m68k_state, int num_cycles)
 		/* Return point if we had an address error */
 		m68ki_set_address_error_trap(); /* auto-disable (see m68kcpu.h) */
 
-		m68ki_check_bus_error_trap();
+		//m68ki_check_bus_error_trap();
 
 		/* Main loop.  Keep going until we run out of clock cycles */
 		do
@@ -1108,11 +1108,13 @@ void m68k_init(void)
 	m68k_set_instr_hook_callback(NULL);
 }
 
+#if 0
 /* Trigger a Bus Error exception */
 void m68k_pulse_bus_error(void)
 {
 	m68ki_exception_bus_error();
 }
+#endif
 
 /* Pulse the RESET line on the CPU */
 void m68k_pulse_reset(void)

@@ -4,7 +4,6 @@
 #include "mutex.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
@@ -73,13 +72,13 @@ void CategoryCreateList(DmOpenRef db, ListType *listP, UInt16 currentCategory, B
           itemsText[numItems++] = appInfo->categoryLabels[index];
         }
 
-        editHandle = NULL_HANDLE;
+        editHandle = NULL;
         editStr = NULL;
         if (editingStrID == 0 || editingStrID == categoryDefaultEditCategoryString) {
           // #define categoryEditStrID  10005
           editStr = "Edit Categories\x85";
         } else if (editingStrID != categoryHideEditCategory) {
-          if ((editHandle = DmGetResource(strRsc, editingStrID)) != NULL_HANDLE) {
+          if ((editHandle = DmGetResource(strRsc, editingStrID)) != NULL) {
             editStr = MemHandleLock(editHandle);
           }
         }
@@ -193,14 +192,14 @@ Boolean CategoryEdit(DmOpenRef db, UInt16 *category, UInt32 titleStrID, UInt8 nu
   FormType *frm, *previous;
   ListType *list;
   UInt16 index;
-  MemHandle h = NULL_HANDLE;
+  MemHandle h = NULL;
   char *title = NULL;
   Boolean r = false;
 
   frm = FrmInitForm(CategoriesEditForm); // edit categories dialog
 
   if (titleStrID != categoryDefaultEditCategoryString) {
-    if ((h = DmGetResource(strRsc, titleStrID)) != NULL_HANDLE) {
+    if ((h = DmGetResource(strRsc, titleStrID)) != NULL) {
       if ((title = MemHandleLock(h)) != NULL) {
         FrmSetTitle(frm, title);
       }
@@ -385,7 +384,7 @@ void CategoryInitialize(AppInfoPtr appInfoP, UInt16 localizedAppInfoStrID) {
   if (appInfoP) {
     MemSet(&appInfoP->categoryLabels[0], dmRecNumCategories * dmCategoryLength, 0);
 
-    if ((h = DmGetResource(appInfoStringsRsc, localizedAppInfoStrID)) != NULL_HANDLE) {
+    if ((h = DmGetResource(appInfoStringsRsc, localizedAppInfoStrID)) != NULL) {
       if ((s = MemHandleLock(h)) != NULL) {
         for (index = 0; s[0] && index < dmRecNumCategories; index++) {
           debug(DEBUG_TRACE, PALMOS_MODULE, "CategoryInitialize %d: \"%s\"", index, s);

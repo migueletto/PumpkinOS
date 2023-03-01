@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "pumpkin.h"
 #include "debug.h"
 
@@ -52,16 +51,6 @@ void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const fun
 
   pumpkin_fatal_error(finish);
 }
-
-/*
-Int16 ErrSetJump(ErrJumpBuf buf) {
-  return setjmp(buf);
-}
-
-void ErrLongJump(ErrJumpBuf buf, Int16 result) {
-  longjmp(buf, result);
-}
-*/
 
 UInt16 ErrAlertCustom(Err errCode, Char *errMsgP, Char *preMsgP, Char *postMsgP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "ErrAlertCustom not implemented");

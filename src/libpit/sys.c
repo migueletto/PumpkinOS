@@ -8,7 +8,6 @@
 #include <ws2ipdef.h>
 #include <ws2tcpip.h>
 #include <windows.h>
-//#include <direct.h>
 #include <winnls.h>
 #include <dbghelp.h>
 #define _WINSOCK2API_
@@ -54,9 +53,9 @@
 #include <netdb.h>
 #endif
 
+#include "sys.h"
 #include "thread.h"
 #include "ptr.h"
-#include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -157,34 +156,6 @@ typedef struct {
   uint8_t buf[MAXBUF];
 } fd_t;
 
-/*
-static int inet_pton(int af, char *src, void *dst) {
-  //char *t;
-  int r = -1;
-
-  if (af == AF_INET6) {
-    //r = RtlIpv6StringToAddressA(src, &t, dst);
-    if (r == STATUS_SUCCESS) {
-      r = 1;
-    } else if (r == STATUS_INVALID_PARAMETER) {
-      r = 0;
-    } else {
-      r = -1;
-    }
-  }
-
-  return r;
-}
-
-static const char *inet_ntop(int af, const void *src, char *dst, int size) {
-  if (af == AF_INET6) {
-  }
-
-  //return dst;
-  return NULL;
-}
-*/
-
 static void fd_destructor(void *p) {
   fd_t *f;
 
@@ -262,7 +233,7 @@ static int fd_read_timeout(fd_t *f, unsigned char *buf, int n, int *nread, uint3
   // if not waiting for data to arrive
   if (!f->waiting) {
     // try to read
-    // XXX: se tiver ovrl no ReadFile, o ponteiro do arquivo nao avanca!
+    // XXX if ReadFile uses ovrl, file pointer does not advance
     if (ReadFile(f->handle, f->buf, n, &nbread, f->type == FD_FILE ? NULL : &f->ovlr)) {
       // data was read, return immediatelly
       xmemcpy(buf, f->buf, nbread);
@@ -639,20 +610,6 @@ void sys_strerror(int err, char *msg, int len) {
 #endif
 }
 
-void sys_lockfile(void *fd) {
-#if WINDOWS
-#else
-  flockfile((FILE *)fd);
-#endif
-}
-
-void sys_unlockfile(void *fd) {
-#if WINDOWS
-#else
-  funlockfile((FILE *)fd);
-#endif
-}
-
 #ifdef WINDOWS
 static void normalize_path(const char *src, char *dst, int len) {
   int i;
@@ -869,7 +826,7 @@ int sys_select(int fd, uint32_t us) {
       if (PeekNamedPipe(f->handle, NULL, 0, NULL, &available, NULL)) {
         r = available > 0 ? 1 : 0;
         if (r == 0 && us > 0) {
-          usleep(us); // XXX dorme sempre o tempo total
+          usleep(us); // XXX always sleeps for us microseconds
           if (PeekNamedPipe(f->handle, NULL, 0, NULL, &available, NULL)) {
             r = available > 0 ? 1 : 0;
           } else {
@@ -1070,7 +1027,6 @@ int sys_read(int fd, uint8_t *buf, int len) {
     if (nread >= len) break;
   }
 
-  //return nread ? nread : -1;
   return nread ? nread : 0;
 }
 
@@ -1106,7 +1062,7 @@ int sys_write(int fd, uint8_t *buf, int len) {
 #else
   int j, r;
 
-  for (i = 0, j = 0; i < len && j < 20 /*!thread_get_flags(FLAG_FINISH)*/; j++) {
+  for (i = 0, j = 0; i < len && j < 20; j++) {
     r = write(fd, buf+i, len-i);
 
     if (r == -1) {
@@ -1986,8 +1942,6 @@ void sys_install_handler(int signum, void (*handler)(int)) {
 #else
   struct sigaction action;
   xmemset(&action, 0, sizeof(action));
-  //action.sa_flags = SA_SIGINFO;
-  //action.sa_sigaction = handler;
   action.sa_handler = handler;
   sigaction(signum, &action, NULL);
 #endif
@@ -2012,7 +1966,6 @@ void *sys_lib_load(char *libname, int *first_load) {
   if (strstr(buf, ".dll") == NULL && strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
     strcat(buf, ".dll");
   }
-  //sys_list_symbols(buf);
 
   // check if library is already loaded
   lib = (void *)GetModuleHandle(buf);
@@ -3009,8 +2962,20 @@ int sys_sscanf(const char *str, const char *format, ...) {
   return r;
 }
 
+sys_size_t sys_getpagesize(void) {
+  return sysconf(_SC_PAGE_SIZE);
+}
+
+int sys_setjmp(sys_jmp_buf env) {
+  return setjmp(env);
+}
+
+void sys_longjmp(sys_jmp_buf env, int val) {
+  longjmp(env, val);
+}
+
 /*
-// linkar com -ldbghelp
+// link with -ldbghelp
 
 #ifdef WINDOWS
 static BOOL CALLBACK EnumSymProc(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {

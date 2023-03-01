@@ -22,7 +22,7 @@ UInt32 ResLoadConstant(UInt16 rscID) {
   MemHandle h;
   UInt32 *p, r = 0;
 
-  if ((h = DmGetResource(constantRscType, rscID)) != NULL_HANDLE) {
+  if ((h = DmGetResource(constantRscType, rscID)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       r = *p;
       MemHandleUnlock(h);

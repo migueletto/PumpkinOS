@@ -5,7 +5,6 @@
 #include "mutex.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
@@ -306,7 +305,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
 
       case frmBitmapObj:
-        if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL_HANDLE) {
+        if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
           if ((bmp = MemHandleLock(h)) != NULL) {
             RctSetRectangle(&rect, obj.bitmap->pos.x, obj.bitmap->pos.y, bmp->width, bmp->height);
             erase = true;
@@ -453,7 +452,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
       case frmBitmapObj:
         if (setUsable) obj.bitmap->attr.usable = 1;
         if (obj.bitmap->attr.usable && formP->attr.visible) {
-          if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL_HANDLE) {
+          if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
             if ((bmp = MemHandleLock(h)) != NULL) {
               mode = WinSetDrawMode(winPaint);
               WinPaintBitmap(bmp, obj.bitmap->pos.x, obj.bitmap->pos.y);
@@ -1524,7 +1523,7 @@ UInt16 FrmAlert(UInt16 alertId) {
   MemHandle h;
   UInt16 r = 0;
 
-  if ((h = DmGetResource(alertRscType, alertId)) != NULL_HANDLE) {
+  if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
     if ((alert = MemHandleLock(h)) != NULL) {
       r = FrmShowAlert(alertId, alert, alert->message);
       MemHandleUnlock(h);
@@ -1578,7 +1577,7 @@ void FrmHelp(UInt16 helpMsgId) {
   Boolean old;
   UInt16 index;
 
-  if ((h = DmGetResource(strRsc, helpMsgId)) != NULL_HANDLE) {
+  if ((h = DmGetResource(strRsc, helpMsgId)) != NULL) {
     if ((formP = FrmInitForm(10400)) != NULL) {
       if ((index = FrmGetObjectIndex(formP, 10402)) != frmInvalidObjectId) {
         if (formP->objects[index].objectType == frmFieldObj) {
@@ -1595,7 +1594,7 @@ void FrmHelp(UInt16 helpMsgId) {
           FrmDoDialog(formP);
           attr.editable = true;
           FldSetAttributes(fldP, &attr);
-          FldSetTextHandle(fldP, NULL_HANDLE);
+          FldSetTextHandle(fldP, NULL);
           attr.editable = old;
           FldSetAttributes(fldP, &attr);
           FrmDeleteForm(formP);
@@ -1881,7 +1880,7 @@ UInt16 FrmCustomAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char
   char *s;
   UInt16 r = 0;
 
-  if ((h = DmGetResource(alertRscType, alertId)) != NULL_HANDLE) {
+  if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
     if ((alert = MemHandleLock(h)) != NULL) {
       if (alert->message != NULL) {
         if ((s = TxtParamString(alert->message, NULL, s1, s2, s3)) != NULL) {
@@ -2070,7 +2069,7 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         MemMove(rP, &formP->objects[objIndex].object.table->bounds, sizeof(RectangleType));
         break;
       case frmBitmapObj:
-        if ((h = DmGetResource(bitmapRsc, formP->objects[objIndex].object.bitmap->rscID)) != NULL_HANDLE) {
+        if ((h = DmGetResource(bitmapRsc, formP->objects[objIndex].object.bitmap->rscID)) != NULL) {
           if ((bmp = MemHandleLock(h)) != NULL) {
             BmpGetDimensions(bmp, &width, &height, NULL);
             rP->topLeft.x = formP->objects[objIndex].object.bitmap->pos.x;

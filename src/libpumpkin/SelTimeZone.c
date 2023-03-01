@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
-#include "mem.h"
 #include "bytes.h"
 #include "pumpkin.h"
 #include "debug.h"
@@ -80,7 +79,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     choices = NULL;
     max = 0;
 
-    if ((h = DmGetResource(wrdListRscType, 13400)) != NULL_HANDLE) {
+    if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
       if ((tz = MemHandleLock(h)) != NULL) {
         max = tz[0];
         if (max > 0) {
@@ -108,7 +107,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     // 00 db 00 22 00 16 00 17 00 17 00 17 00 17 00 17
     // 00 17 00 0a 00 0e 00 19 00 19 00 19 00 1b 00 0f
 
-    if ((h = DmGetResource(wrdListRscType, 13401)) != NULL_HANDLE) {
+    if ((h = DmGetResource(wrdListRscType, 13401)) != NULL) {
       if ((country = MemHandleLock(h)) != NULL) {
         maxc = tz[0];
         if (maxc == max) {
@@ -125,7 +124,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
 
     // DmGetResource('tSTL', 13400)  0x3458  71 strings with timezone names, first = "Afghanistan", last = "Mexico (Mountain)"
 
-    if ((h = DmGetResource(strListRscType, 13400)) != NULL_HANDLE) {
+    if ((h = DmGetResource(strListRscType, 13400)) != NULL) {
       if ((p = MemHandleLock(h)) != NULL) {
         i = 0;
         i += pumpkin_getstr(&prefix, p, 0);
