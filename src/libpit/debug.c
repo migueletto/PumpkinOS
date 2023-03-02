@@ -258,7 +258,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
 
   if (!inited) return;
   p = sbuf;
-  sys_snprintf(p, 6, "%04X: ", 0);
+  sys_sprintf(p, "%04X: ", 0);
   n = sys_strlen(p);
   p += n;
   e = p + 1024 - n - 4;
@@ -268,7 +268,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       *p = ' ';
       p++;
     }
-    sys_snprintf(p, 2, "%02X", buf[i]);
+    sys_sprintf(p, "%02X", buf[i]);
     abuf[j] = (buf[i] >= 32 && buf[i] < 127) ? buf[i] : '.';
     p += 2;
     j++;
@@ -277,7 +277,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       abuf[j] = 0;
       debug_full(file, func, line, level, sys, "%s %s", sbuf, abuf);
       p = sbuf;
-      sys_snprintf(p, 6, "%04X: ", i+1);
+      sys_sprintf(p, "%04X: ", i+1);
       n = sys_strlen(p);
       p += n;
       e = p + 1024 - n - 4;
