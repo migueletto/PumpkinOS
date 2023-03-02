@@ -839,8 +839,10 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   uint32_t r;
   LocalID dbID;
   DmOpenRef dbRef;
+  MemHandle h;
   Boolean firstLoad;
   void *lib;
+  int m68k;
 
   if (request) {
     pilot_main = request->pilot_main;
@@ -857,6 +859,12 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
               debug(DEBUG_ERROR, PUMPKINOS, "PilotMain not found in dlib");
+            }
+          } else {
+            if ((h = DmGet1Resource(sysRsrcTypeScript, 1)) != NULL) {
+              pilot_main = pumpkin_script_main;
+              opendb = 1;
+              DmReleaseResource(h);
             }
           }
           DmCloseDatabase(dbRef);
@@ -876,7 +884,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
     } else {
-      int m68k = pumpkin_is_m68k();
+      m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);

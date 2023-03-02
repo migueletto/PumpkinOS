@@ -441,6 +441,9 @@ void pumpkin_test_exception(int fatal);
 void pumpkin_debug_init(void);
 void pumpkin_debug_check(void);
 
+uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
+int pumpkin_script_appenv(int pe);
+
 #ifdef __cplusplus
 }
 #endif

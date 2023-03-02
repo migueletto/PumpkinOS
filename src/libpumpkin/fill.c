@@ -47,7 +47,7 @@ static void WritePixel(Int16 x, Int16 y) {
   WinPaintPixel(x, y);
 }
 
-Err SeedFill(Int16 x, Int16 y, RectangleType *rect, RGBColorType *c) {
+Err AppSeedFill(Int16 x, Int16 y, RectangleType *rect, RGBColorType *c) {
   UInt32 fillColor, areaColor, oldColor;
   Int16 l, x1, x2, dy;
   FillWindow window, *win;

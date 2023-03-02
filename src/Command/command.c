@@ -19,6 +19,8 @@
 #include "xalloc.h"
 #include "color.h"
 #include "fill.h"
+#include "file.h"
+#include "deploy.h"
 #include "resource.h"
 
 #define TAG_DB   "cmd_db"
@@ -30,7 +32,6 @@
 #define SCREEN_PEN_MOVE 2
 #define SCREEN_PEN_UP   3
 
-//#define FONT font16x16Id
 #define FONT font8x14Id
 
 typedef struct {
@@ -438,7 +439,7 @@ static void check_prefix(char *path, char *buf, int n) {
   }
 }
 
-static Int32 read_file(char *name, char *b, Int32 max) {
+Int32 read_file(char *name, char *b, Int32 max) {
   UInt32 iterator, nread;
   UInt16 volume;
   FileRef fr;
@@ -513,379 +514,30 @@ static int command_script_load(int pe) {
   return command_script_file(pe, 1);
 }
 
-static int command_script_screen_rgb(int pe) {
-  script_int_t red, green, blue;
-  RGBColorType rgb;
-  UInt32 c;
-  int r = -1;
+static int command_script_deploy(int pe) {
+  command_data_t *data = pumpkin_get_data();
+  UInt32 creator;
+  char *name = NULL;
+  char *screator = NULL;
+  char *script = NULL;
 
-  if (script_get_integer(pe, 0, &red) == 0 &&
-      script_get_integer(pe, 1, &green) == 0 &&
-      script_get_integer(pe, 2, &blue) == 0) {
+  if (script_get_string(pe, 0, &name) == 0 &&
+      script_get_string(pe, 1, &screator) == 0 &&
+      script_get_string(pe, 2, &script) == 0) {
 
-    rgb.r = red;
-    rgb.g = green;
-    rgb.b = blue;
-    c = RGBToLong(&rgb);
-    r = script_push_integer(pe, c);
-  }
-
-  return r;
-}
-
-static int command_script_screen_width(int pe) {
-  UInt32 width;
-
-  WinScreenMode(winScreenModeGet, &width, NULL, NULL, NULL);
-
-  return script_push_integer(pe, width);
-}
-
-static int command_script_screen_height(int pe) {
-  UInt32 height;
-
-  WinScreenMode(winScreenModeGet, NULL, &height, NULL, NULL);
-
-  return script_push_integer(pe, height);
-}
-
-static int command_script_setpixel(int pe) {
-  script_int_t x, y, c;
-  RGBColorType rgb, old;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &x) == 0 &&
-      script_get_integer(pe, 1, &y) == 0 &&
-      script_get_integer(pe, 2, &c) == 0) {
-
-    LongToRGB(c, &rgb);
-    WinSetForeColorRGB(&rgb, &old);
-    WinPaintPixel(x, y);
-    WinSetForeColorRGB(&old, NULL);
-    r = 0;
-  }
-
-  return r;
-}
-
-static int command_script_clear(int pe) {
-  script_int_t c;
-  RGBColorType rgb, old;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &c) == 0) {
-    LongToRGB(c, &rgb);
-    WinSetBackColorRGB(&rgb, &old);
-    WinEraseWindow();
-    WinSetBackColorRGB(&old, NULL);
-    r =  0;
-  }
-
-  return r;
-}
-
-static int command_script_draw_text(int pe) {
-  script_int_t x, y, fg, bg;
-  char *s = NULL;
-  RGBColorType rgb, oldt, oldb;
-  int r = -1;
-
-  if (script_get_string(pe, 0, &s) == 0 &&
-      script_get_integer(pe, 1, &x) == 0 &&
-      script_get_integer(pe, 2, &y) == 0 &&
-      script_get_integer(pe, 3, &fg) == 0 &&
-      script_get_integer(pe, 4, &bg) == 0) {
-
-    LongToRGB(fg, &rgb);
-    WinSetTextColorRGB(&rgb, &oldt);
-    LongToRGB(bg, &rgb);
-    WinSetBackColorRGB(&rgb, &oldb);
-    WinPaintChars(s, StrLen(s), x, y);
-    WinSetBackColorRGB(&oldb, NULL);
-    WinSetTextColorRGB(&oldt, NULL);
-
-    r = 0;
-  }
-
-  if (s) xfree(s);
-
-  return r;
-}
-
-static int command_script_draw_line(int pe) {
-  script_int_t x1, y1, x2, y2, c;
-  RGBColorType rgb, old;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &x1) == 0 &&
-      script_get_integer(pe, 1, &y1) == 0 &&
-      script_get_integer(pe, 2, &x2) == 0 &&
-      script_get_integer(pe, 3, &y2) == 0 &&
-      script_get_integer(pe, 4, &c) == 0) {
-
-    LongToRGB(c, &rgb);
-    WinSetForeColorRGB(&rgb, &old);
-    WinPaintLine(x1, y1, x2, y2);
-    WinSetForeColorRGB(&old, NULL);
-    r = 0;
-  }
-
-  return r;
-}
-
-static int command_script_draw_rect(int pe) {
-  script_int_t x, y, w, h, c;
-  RectangleType rect;
-  RGBColorType rgb, old;
-  int filled, r = -1;
-
-  if (script_get_integer(pe, 0, &x) == 0 &&
-      script_get_integer(pe, 1, &y) == 0 &&
-      script_get_integer(pe, 2, &w) == 0 &&
-      script_get_integer(pe, 3, &h) == 0 &&
-      script_get_boolean(pe, 4, &filled) == 0 &&
-      script_get_integer(pe, 5, &c) == 0) {
-
-    LongToRGB(c, &rgb);
-    WinSetForeColorRGB(&rgb, &old);
-    if (filled) {
-      RctSetRectangle(&rect, x, y, w, h);
-      WinPaintRectangle(&rect, 0);
+    pumpkin_s2id(&creator, screator);
+    if (command_app_deploy(name, creator, script) == errNone) {
+      command_puts(data, "Script deployed\r\n");
     } else {
-      WinPaintLine(x, y, x+w-1, y);
-      WinPaintLine(x+w-1, y, x+w-1, y+h-1);
-      WinPaintLine(x+w-1, y+h-1, x, y+h-1);
-      WinPaintLine(x, y+h-1, x, y);
-    }
-    WinSetForeColorRGB(&old, NULL);
-    r = 0;
-  }
-
-  return r;
-}
-
-static void command_graphic_setpixel(void *data, int x, int y, uint32_t color) {
-  RGBColorType rgb, old;
-
-  LongToRGB(color, &rgb);
-  WinSetForeColorRGB(&rgb, &old);
-  WinPaintPixel(x, y);
-  WinSetForeColorRGB(&old, NULL);
-}
-
-static int command_script_draw_circle(int pe) {
-  script_int_t x, y, rx, ry, c;
-  int filled, r = -1;
-
-  if (script_get_integer(pe, 0, &x) == 0 &&
-      script_get_integer(pe, 1, &y) == 0 &&
-      script_get_integer(pe, 2, &rx) == 0 &&
-      script_get_integer(pe, 3, &ry) == 0 &&
-      script_get_boolean(pe, 4, &filled) == 0 &&
-      script_get_integer(pe, 5, &c) == 0) {
-
-    graphic_ellipse(NULL, x, y, rx, ry, filled, c, command_graphic_setpixel, NULL);
-    r = 0;
-  }
-
-  return r;
-}
-
-static int command_script_fill(int pe) {
-  script_int_t x, y, c;
-  RectangleType rect;
-  RGBColorType rgb, old;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &x) == 0 &&
-      script_get_integer(pe, 1, &y) == 0 &&
-      script_get_integer(pe, 2, &c) == 0) {
-
-    LongToRGB(c, &rgb);
-    WinSetForeColorRGB(&rgb, &old);
-    RctSetRectangle(&rect, 0, 0, 0, 0);
-    SeedFill(x, y, &rect, &rgb);
-    WinSetForeColorRGB(NULL, &old);
-    r = 0;
-  }
-
-  return r;
-}
-
-static void db_destructor(void *p) {
-  command_db_t *db;
-
-  if (p) {
-    db = (command_db_t *)p;
-    if (db->dbRef) DmCloseDatabase(db->dbRef);
-    xfree(db);
-  }
-}
-
-static int command_script_open_db(int pe) {
-  command_db_t *db;
-  LocalID dbID;
-  char *dbname = NULL;
-  int ptr, r = -1;
-
-  if (script_get_string(pe, 0, &dbname) == 0) {
-    if ((db = xcalloc(1, sizeof(command_db_t))) != NULL) {
-      if ((dbID = DmFindDatabase(0, dbname)) != 0) {
-        if ((db->dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
-          db->tag = TAG_DB;
-          ptr = ptr_new(db, db_destructor);
-          r = script_push_integer(pe, ptr);
-        } else {
-          xfree(db);
-        }
-      } else {
-        xfree(db);
-      }
+      command_puts(data, "Error deploying script\r\n");
     }
   }
 
-  if (dbname) xfree(dbname);
+  if (name) xfree(name);
+  if (screator) xfree(screator);
+  if (script) xfree(script);
 
-  return r;
-}
-
-static int command_script_close_db(int pe) {
-  script_int_t ptr;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &ptr) == 0) {
-    r = ptr_free(ptr, TAG_DB);
-  }
-
-  return r;
-}
-
-static void rsrc_destructor(void *p) {
-  command_resource_t *rsrc;
-
-  if (p) {
-    rsrc = (command_resource_t *)p;
-    if (rsrc->h) DmReleaseResource(rsrc->h);
-    xfree(rsrc);
-  }
-}
-
-static int command_script_get_rsrc(int pe, Boolean one) {
-  UInt32 ptype;
-  script_int_t id;
-  command_resource_t *rsrc;
-  char *type = NULL;
-  int ptr, r = -1;
-
-  if (script_get_string(pe, 0, &type) == 0 &&
-      script_get_integer(pe, 1, &id) == 0) {
-
-    if ((rsrc = xcalloc(1, sizeof(command_resource_t))) != NULL) {
-      pumpkin_s2id(&ptype, type);
-      rsrc->h = one ? DmGet1Resource(ptype, id) : DmGetResource(ptype, id);
-      if (rsrc->h != NULL) {
-        rsrc->tag = TAG_RSRC;
-        rsrc->type = ptype;
-        rsrc->id = id;
-        ptr = ptr_new(rsrc, rsrc_destructor);
-        r = script_push_integer(pe, ptr);
-      } else {
-        xfree(rsrc);
-      }
-    }
-  }
-
-  if (type) xfree(type);
-
-  return r;
-}
-
-static int command_script_get_resource(int pe) {
-  return command_script_get_rsrc(pe, false);
-}
-
-static int command_script_get1_resource(int pe) {
-  return command_script_get_rsrc(pe, true);
-}
-
-static int command_script_release_resource(int pe) {
-  script_int_t ptr;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &ptr) == 0) {
-    r = ptr_free(ptr, TAG_RSRC);
-  }
-
-  return r;
-}
-
-static int command_script_bitmap_draw(int pe) {
-  BitmapType *bmp;
-  command_resource_t *rsrc;
-  script_int_t ptr, x, y;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &ptr) == 0 &&
-      script_get_integer(pe, 1, &x) == 0 &&
-      script_get_integer(pe, 2, &y) == 0) {
-
-    if ((rsrc = ptr_lock(ptr, TAG_RSRC)) != NULL) {
-      if (rsrc->type == bitmapRsc || rsrc->type == iconType) {
-        if (rsrc->h && (bmp = MemHandleLock(rsrc->h)) != NULL) {
-          WinPaintBitmap(bmp, x, y);
-          MemHandleUnlock(rsrc->h);
-          r = 0;
-        }
-      }
-      ptr_unlock(ptr, TAG_RSRC);
-    }
-  }
-
-  return r;
-}
-
-static int command_script_bitmap_dimensions(int pe, Coord *width, Coord *height) {
-  BitmapType *bmp;
-  command_resource_t *rsrc;
-  script_int_t ptr;
-  int r = -1;
-
-  if (script_get_integer(pe, 0, &ptr) == 0) {
-    if ((rsrc = ptr_lock(ptr, TAG_RSRC)) != NULL) {
-      if (rsrc->type == bitmapRsc || rsrc->type == iconType) {
-        if (rsrc->h && (bmp = MemHandleLock(rsrc->h)) != NULL) {
-          BmpGetDimensions(bmp, width, height, NULL);
-          MemHandleUnlock(rsrc->h);
-          r = 0;
-        }
-      }
-      ptr_unlock(ptr, TAG_RSRC);
-    }
-  }
-
-  return r;
-}
-
-static int command_script_bitmap_width(int pe) {
-  Coord width, height;
-  int r;
-
-  if ((r = command_script_bitmap_dimensions(pe, &width, &height)) == 0) {
-    r = script_push_integer(pe, width);
-  }
-
-  return r;
-}
-
-static int command_script_bitmap_height(int pe) {
-  Coord width, height;
-  int r;
-
-  if ((r = command_script_bitmap_dimensions(pe, &width, &height)) == 0) {
-    r = script_push_integer(pe, height);
-  }
-
-  return r;
+  return 0;
 }
 
 static int command_script_kill(int pe) {
@@ -989,67 +641,16 @@ static int command_script_print(int pe) {
   return 0;
 }
 
-static int command_script_event(int pe) {
-  script_int_t wait;
-  EventType event;
-  Err err;
-
-  event.eType = nilEvent;
-
-  if (script_get_integer(pe, 0, &wait) == 0) {
-    EvtGetEvent(&event, wait);
-    if (!SysHandleEvent(&event)) {
-      if (!MenuHandleEvent(NULL, &event, &err)) {
-        FrmDispatchEvent(&event);
-      }
-    }
-  }
-
-  return script_push_integer(pe, event.eType);
-}
-
 static UInt32 ScriptPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   command_data_t *data;
   LocalID dbID;
   DmOpenRef dbRef;
-  int pe, obj, max, n;
+  int pe, max, n;
   int32_t r;
   char *name, *buf;
 
   if ((pe = pumpkin_script_create()) > 0) {
-    pumpkin_script_global_function(pe, "event", command_script_event);
-    pumpkin_script_global_iconst(pe, "keyDown", keyDownEvent);
-    pumpkin_script_global_iconst(pe, "appStop", appStopEvent);
-
-    if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
-      pumpkin_script_obj_function(pe, obj, "width",    command_script_screen_width);
-      pumpkin_script_obj_function(pe, obj, "height",   command_script_screen_height);
-      pumpkin_script_obj_function(pe, obj, "rgb",      command_script_screen_rgb);
-      pumpkin_script_obj_function(pe, obj, "setpixel", command_script_setpixel);
-      pumpkin_script_obj_function(pe, obj, "clear",    command_script_clear);
-      pumpkin_script_obj_function(pe, obj, "draw",     command_script_draw_text);
-      pumpkin_script_obj_function(pe, obj, "line",     command_script_draw_line);
-      pumpkin_script_obj_function(pe, obj, "rect",     command_script_draw_rect);
-      pumpkin_script_obj_function(pe, obj, "circle",   command_script_draw_circle);
-      pumpkin_script_obj_function(pe, obj, "fill",     command_script_fill);
-    }
-
-    if ((obj = pumpkin_script_create_obj(pe, "db")) != -1) {
-      pumpkin_script_obj_function(pe, obj, "open",     command_script_open_db);
-      pumpkin_script_obj_function(pe, obj, "close",    command_script_close_db);
-    }
-
-    if ((obj = pumpkin_script_create_obj(pe, "rsrc")) != -1) {
-      pumpkin_script_obj_function(pe, obj, "get",      command_script_get_resource);
-      pumpkin_script_obj_function(pe, obj, "get1",     command_script_get1_resource);
-      pumpkin_script_obj_function(pe, obj, "release",  command_script_release_resource);
-    }
-
-    if ((obj = pumpkin_script_create_obj(pe, "bitmap")) != -1) {
-      pumpkin_script_obj_function(pe, obj, "draw",     command_script_bitmap_draw);
-      pumpkin_script_obj_function(pe, obj, "width",    command_script_bitmap_width);
-      pumpkin_script_obj_function(pe, obj, "height",   command_script_bitmap_height);
-    }
+    pumpkin_script_appenv(pe);
 
     data = xcalloc(1, sizeof(command_data_t));
     StrCopy(data->cwd, "/");
@@ -1542,6 +1143,7 @@ static Err StartApplication(void *param) {
     pumpkin_script_global_function(data->pe, "kill",   command_script_kill);
     pumpkin_script_global_function(data->pe, "cat",    command_script_cat);
     pumpkin_script_global_function(data->pe, "read",   command_script_load);
+    pumpkin_script_global_function(data->pe, "deploy", command_script_deploy);
     pumpkin_script_global_function(data->pe, "edit",   command_script_edit);
     pumpkin_script_global_function(data->pe, "telnet", command_script_telnet);
     pumpkin_script_global_function(data->pe, "exit",   command_script_exit);

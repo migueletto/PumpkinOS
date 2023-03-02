@@ -3,7 +3,7 @@ include ../commonp.mak
 
 PROGRAM=Command
 PRC=$(VFS)/app_install/$(PROGRAM).prc
-OBJS=command.o db.o fill.o
+OBJS=command.o deploy.o
 
 $(PROGRAM).prc: $(DLIB) res
 	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c CmdP -n $(PROGRAM) *.bin
