@@ -15,6 +15,9 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
   LocalID dbID;
   DmOpenRef dbRef;
   MemHandle icon;
+  SysNotifyParamType notify;
+  SysNotifyDBCreatedType dbCreated;
+  UInt32 type;
   Int32 len, iconLen;
   char *buf;
   void *p;
@@ -30,7 +33,7 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
         if ((dbID = DmFindDatabase(0, name)) != 0) {
           DmDeleteDatabase(0, dbID);
         }
-        if ((err = DmCreateDatabase(0, name, creator, sysFileTApplication, true)) == errNone) {
+        if ((err = DmCreateDatabase(0, name, creator, 'temp', true)) == errNone) {
           if ((dbID = DmFindDatabase(0, name)) != 0) {
             if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
               if (DmNewResourceEx(dbRef, sysRsrcTypeScript, 1, len, buf) != NULL) {
@@ -38,6 +41,26 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
                 err = errNone;
               }
               DmCloseDatabase(dbRef);
+
+              if (err == errNone) {
+                type = sysFileTApplication;
+                DmSetDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, NULL);
+
+                // trigger a sysNotifyDBCreatedEvent notification only after the database is
+                // closed, otherwise Launcher could fail to open it.
+                MemSet(&dbCreated, sizeof(dbCreated), 0);
+                dbCreated.newDBID = dbID;
+                dbCreated.creator = creator;
+                dbCreated.type = type;
+                dbCreated.resDB = dmHdrAttrResDB;
+                StrNCopy(dbCreated.dbName, name, dmDBNameLength-1);
+
+                MemSet(&notify, sizeof(notify), 0);
+                notify.notifyType = sysNotifyDBCreatedEvent;
+                notify.broadcaster = 0;
+                notify.notifyDetailsP = &dbCreated;
+                SysNotifyBroadcast(&notify);
+              }
             }
           }
         }
