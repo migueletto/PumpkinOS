@@ -594,58 +594,6 @@ Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *
 
 Err VFSExportDatabaseToFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP) {
   return vfsErrBadName;
-/*
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
-  vfs_file_t *f;
-  mem_handle_t res;
-  pdb_t *pdb;
-  char name [dmDBNameLength];
-  int ftype, numrecs, index;
-  uint32_t creator, type;
-  uint16_t recsize, id;
-  uint8_t *p;
-  Err err = vfsErrBadName;
-
-  if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
-  }
-
-  if (libpalmos_storage_info_by_id(name, dbID, NULL, NULL, &ftype, &creator, &type, NULL, NULL) == -1) {
-    return err;
-  }
-
-  if ((dbID = libpalmos_storage_open(name, SYS_READ)) == NULL) {
-    return err;
-  }
-
-  if (pathNameP && pathNameP[0]) {
-    if ((f = vfs_open(module->session, (char *)pathNameP, 0)) != NULL) {
-      numrecs = libpalmos_storage_numrecs(dbID);
-      if ((pdb = pdb_new(ftype, name, creator, type)) != NULL) {
-        for (index = 0; index < numrecs; index++) {
-          if ((res = libpalmos_storage_queryrec(dbID, index, 0)) == NULL) break;
-          recsize = libpalmos_resource_size(res);
-          if ((p = libpalmos_resource_data(res)) != NULL) {
-            if (ftype == STORAGE_RES) {
-              libpalmos_resource_type_id(res, &type, &id);
-              pdb_add_res(pdb, p, recsize, type, id);
-            } else {
-              pdb_add_rec(pdb, p, recsize, 0); // XXX category 0
-            }
-          }
-          if (libpalmos_storage_releaserec(dbID, index, 0) == -1) break;
-        }
-        pdb_save(pdb, f);
-      }
-      vfs_close(f);
-      err = errNone;
-    }
-  }
-
-  libpalmos_storage_close(dbID, 0);
-
-  return err;
-*/
 }
 
 Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID) {
