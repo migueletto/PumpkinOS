@@ -112,6 +112,62 @@ static void command_prompt(command_data_t *data) {
   command_putc(data, '>');
 }
 
+static void command_expand(command_data_t *data) {
+  FileInfoType info;
+  FileRef f;
+  UInt32 op;
+  char buf[MAXCMD];
+  int i, first, last, len;
+
+  if (data->cmdIndex > 0 && data->cmd[data->cmdIndex-1] != '/') {
+    data->cmd[data->cmdIndex] = 0;
+
+    for (i = data->cmdIndex-1; i >= 0; i--) {
+      if (data->cmd[i] == '"') break;
+    }
+
+    if (i >= 0 && data->cmd[i] == '"') {
+      i++;
+      if (data->cmd[i] == '/') {
+        first = last = i;
+        for (i++; data->cmd[i]; i++) {
+          if (data->cmd[i] == '/') last = i;
+        }
+        MemSet(buf, sizeof(buf), 0);
+        if (last == first) {
+          StrCopy(buf, "/");
+        } else {
+          StrNCopy(buf, &data->cmd[first], last - first);
+        }
+        if (VFSFileOpen(1, buf, vfsModeRead, &f) == errNone) {
+          for (op = vfsIteratorStart;;) {
+            MemSet(buf, sizeof(buf), 0);
+            info.nameP = buf;
+            info.nameBufLen = sizeof(buf)-1;
+            if (VFSDirEntryEnumerate(f, &op, &info) != errNone) break;
+            len = StrLen(&data->cmd[last+1]);
+            if (StrNCompare(&data->cmd[last+1], info.nameP, len) == 0) {
+              data->cmdIndex = last + 1 + len;
+              for (i = len; info.nameP[i]; i++) {
+                if (data->cmdIndex < MAXCMD-1) {
+                  command_putc(data, info.nameP[i]);
+                  data->cmd[data->cmdIndex++] = info.nameP[i];
+                }
+              }
+              if (data->cmdIndex < MAXCMD-1 && info.attributes & vfsFileAttrDirectory) {
+                command_putc(data, '/');
+                data->cmd[data->cmdIndex++] = '/';
+              }
+              break;
+            }
+          }
+          VFSFileClose(f);
+        }
+      }
+    }
+  }
+}
+
 static void command_key(command_data_t *data, UInt8 c) {
   conn_filter_t *conn, *telnet;
 
@@ -133,6 +189,9 @@ static void command_key(command_data_t *data, UInt8 c) {
           command_putc(data, '\b');
           data->cmdIndex--;
         }
+        break;
+      case '\t':
+        command_expand(data);
         break;
       case '\n':
         command_putc(data, '\r');
