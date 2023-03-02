@@ -725,6 +725,9 @@ static void launcherScanResources(launcher_data_t *data) {
           }
           data->item[index].info = xstrdup(buf);
           break;
+        case sysRsrcTypeScript:
+          data->item[index].info = xstrdup("Lua script");
+          break;
         case strRsc:
           s = (char *)p;
           sys_snprintf(buf, sizeof(buf)-1, "\"%s\"", s);
