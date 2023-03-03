@@ -1,0 +1,188 @@
+ALERT 1002
+INFORMATION
+BEGIN
+  TITLE "Mine Hunt"
+  MESSAGE "CONGRATULATIONS - YOU WON!"
+  BUTTONS "OK"
+END
+
+ALERT 1003
+CONFIRMATION
+BEGIN
+  TITLE "Mine Hunt"
+  MESSAGE "Start a new game?"
+  BUTTONS "Yes" "No"
+END
+
+ALERT 1004
+ERROR
+BEGIN
+  TITLE "System Incompatible"
+  MESSAGE "System Version 3.5 or greater is required to run this application."
+  BUTTONS "OK"
+END
+
+MENU 1000
+BEGIN
+  PULLDOWN "Game"
+  BEGIN
+    MENUITEM "Instructions" 100 "I"
+    MENUITEM "Preferences"  101 "P"
+    MENUITEM "-"  102
+    MENUITEM "About MineHunt"  103
+  END
+END
+
+STRING 1001 "MineHunt Instructions\n" \
+            "\n" \
+            "There are several mines hidden in the playing field.  The number of " \
+            "mines is indicated by the number at the top of the screen.  The " \
+            "objective is to find out where they are located.\n" \
+            "\n" \
+            "To uncover a square, tap on the square.  This will reveal the number " \
+            "of adjacent mines, if any.  If you expose a mine, it blows up and the " \
+            "game is over.\n" \
+            "\n" \
+            "To mark a square as a mine, tap on the square once while holding the " \
+            "page-up or the page-down button.  The mine counter at the top of the " \
+            "display indicates how many mines still need to be marked.\n" \
+            "\n" \
+            "To mark a square as unknown, tap on the square twice while holding the " \
+            "page-up or the page-down button.\n" \
+            "\n" \
+            "To change a square marked as a mine into unknown, tap on the square " \
+            "once while holding the page-up or the page-down button.\n" \
+            "\n" \
+            "To clear a square marked as a mine, tap on the square twice while " \
+            "holding the page-up or the page-down button.\n" \
+            "\n" \
+            "The level of difficulty can be selected by choosing the Preferences " \
+            "item from the Game menu.\n" \
+            "\n" \
+            "The Classic Appearance preference will determine whether to use " \
+            "the classic game colors, or to use the current system colors."
+
+            //"\n" \
+            //"Select the Automatic Scrolling checkbox to automatically " \
+            //"reposition the game board and display covered squares.  Uncheck this " \
+            //"preference to scroll manually."
+
+
+FORM 1000 0 0 160 160
+USABLE
+NOFRAME
+MENUID 1000
+BEGIN
+  TITLE "MineHunt"
+  BUTTON "New Game" 1002 101 1 55 10 LEFTANCHOR
+END
+
+FORM 1200 2 2 156 156
+USABLE
+MODAL
+BEGIN
+  TITLE "Preferences"
+  CHECKBOX "Classic Appearance" 1201 17 96 95 13
+  BUTTON "OK" 1202 5 139 25 12 LEFTANCHOR
+  BUTTON "Cancel" 1203 36 139 36 12 LEFTANCHOR
+  //CHECKBOX "Automatic Scrolling" 1204 17 115 97 13
+  PUSHBUTTON "Easy" 1210 18 32 120 12 GROUP 1
+  PUSHBUTTON "Intermediate" 1211 18 45 120 12 GROUP 1
+  PUSHBUTTON "More Difficult" 1212 18 58 120 12 GROUP 1
+  PUSHBUTTON "Impossible" 1213 18 71 120 12 GROUP 1
+END
+
+ICONFAMILYEX
+BEGIN
+  BITMAP "bmp/AppIcon_Large-1.bmp"     BPP 1 DENSITY 72
+  BITMAP "bmp/AppIcon_Large-2.bmp"     BPP 2 DENSITY 72
+  BITMAP "bmp/AppIcon_Large-8.bmp"     BPP 8 DENSITY 72  TRANSPARENT 0 255 0
+  BITMAP "bmp/AppIcon_Large-X2-1.bmp"  BPP 1 DENSITY 144
+  BITMAP "bmp/AppIcon_Large-X2-2.bmp"  BPP 2 DENSITY 144
+  BITMAP "bmp/AppIcon_Large-X2-8.bmp"  BPP 8 DENSITY 144 TRANSPARENT 0 255 0
+END
+
+BITMAPFAMILYEX ID 2001
+BEGIN
+  BITMAP "bmp/Bitmap_2001-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2001-2.bmp"    BPP 2 DENSITY 72
+  BITMAP "bmp/Bitmap_2001-8.bmp"    BPP 8 DENSITY 72
+  BITMAP "bmp/Bitmap_2001-X2-1.bmp" BPP 1 DENSITY 144
+  BITMAP "bmp/Bitmap_2001-X2-2.bmp" BPP 2 DENSITY 144
+  BITMAP "bmp/Bitmap_2001-X2-8.bmp" BPP 8 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2002
+BEGIN
+  BITMAP "bmp/Bitmap_2002-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2002-2.bmp"    BPP 2 DENSITY 72
+  BITMAP "bmp/Bitmap_2002-8.bmp"    BPP 8 DENSITY 72
+  BITMAP "bmp/Bitmap_2002-X2-1.bmp" BPP 1 DENSITY 144
+  BITMAP "bmp/Bitmap_2002-X2-2.bmp" BPP 2 DENSITY 144
+  BITMAP "bmp/Bitmap_2002-X2-8.bmp" BPP 8 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2003
+BEGIN
+  BITMAP "bmp/Bitmap_2003-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2003-2.bmp"    BPP 2 DENSITY 72
+  BITMAP "bmp/Bitmap_2003-8.bmp"    BPP 8 DENSITY 72
+  BITMAP "bmp/Bitmap_2003-X2-1.bmp" BPP 1 DENSITY 144
+  BITMAP "bmp/Bitmap_2003-X2-2.bmp" BPP 2 DENSITY 144
+  BITMAP "bmp/Bitmap_2003-X2-8.bmp" BPP 8 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2004
+BEGIN
+  BITMAP "bmp/Bitmap_2004-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2004-2.bmp"    BPP 2 DENSITY 72
+  BITMAP "bmp/Bitmap_2004-8.bmp"    BPP 8 DENSITY 72
+  BITMAP "bmp/Bitmap_2004-X2-1.bmp" BPP 1 DENSITY 144
+  BITMAP "bmp/Bitmap_2004-X2-2.bmp" BPP 2 DENSITY 144
+  BITMAP "bmp/Bitmap_2004-X2-8.bmp" BPP 8 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2005
+BEGIN
+  BITMAP "bmp/Bitmap_2005-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2005-2.bmp"    BPP 2 DENSITY 72
+  BITMAP "bmp/Bitmap_2005-8.bmp"    BPP 8 DENSITY 72
+  BITMAP "bmp/Bitmap_2005-X2-1.bmp" BPP 1 DENSITY 144
+  BITMAP "bmp/Bitmap_2005-X2-2.bmp" BPP 2 DENSITY 144
+  BITMAP "bmp/Bitmap_2005-X2-8.bmp" BPP 8 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2006
+BEGIN
+  BITMAP "bmp/Bitmap_2006-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2006-X2-1.bmp" BPP 1 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2102
+BEGIN
+  BITMAP "bmp/Bitmap_2102-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2102-X2-1.bmp" BPP 1 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2103
+BEGIN
+  BITMAP "bmp/Bitmap_2103-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2103-X2-1.bmp" BPP 1 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2104
+BEGIN
+  BITMAP "bmp/Bitmap_2104-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2104-X2-1.bmp" BPP 1 DENSITY 144
+END
+
+BITMAPFAMILYEX ID 2105
+BEGIN
+  BITMAP "bmp/Bitmap_2105-1.bmp"    BPP 1 DENSITY 72
+  BITMAP "bmp/Bitmap_2105-X2-1.bmp" BPP 1 DENSITY 144
+END
+
+HEX "wind" ID 1
+  0x02 0x88 0x02 0x88
+
+VERSION "4.5"
