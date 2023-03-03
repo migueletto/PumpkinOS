@@ -49,6 +49,7 @@ typedef struct {
 typedef struct {
   int pe;
   Int32 wait;
+  UInt16 blink;
   char cmd[MAXCMD];
   UInt16 cmdIndex;
   FontID font;
@@ -1027,6 +1028,14 @@ static int command_script_exit(int pe) {
 }
 
 static int command_shell_filter_peek(conn_filter_t *filter, uint32_t us) {
+  command_data_t *data = pumpkin_get_data();
+
+  data->blink++;
+  if (data->blink == 50) {
+    pterm_cursor_blink(data->t);
+    data->blink = 0;
+  }
+
   return EvtSysEventAvail(true) ? 1 : EvtPumpEvents(us);
 }
 
@@ -1042,9 +1051,6 @@ static int command_shell_filter_read(conn_filter_t *filter, uint8_t *b) {
     if (MenuHandleEvent(NULL, &event, &err)) continue;
 
     switch (event.eType) {
-      case nilEvent:
-        pterm_cursor_blink(data->t);
-        break;
       case keyDownEvent:
         if (!(event.data.keyDown.modifiers & commandKeyMask)) {
           *b = event.data.keyDown.chr;
@@ -1073,7 +1079,7 @@ static int command_shell_filter_write(conn_filter_t *filter, uint8_t *b, int n) 
     command_putc(data, (char)b[i]);
   }
 
-  return 0;
+  return n;
 }
 
 static int command_script_shell(int pe) {
@@ -1190,6 +1196,7 @@ static Err StartApplication(void *param) {
 
   if ((data->pe = pumpkin_script_create()) > 0) {
     script_loadlib(data->pe, "libshell");
+    script_loadlib(data->pe, "liboshell");
 
     pumpkin_script_global_function(data->pe, "cls",    command_script_cls);
     pumpkin_script_global_function(data->pe, "print",  command_script_print);

@@ -8,8 +8,8 @@
 #include "xalloc.h"
 #include "debug.h"
 
-#define TAG_DB   "cmd_db"
-#define TAG_RSRC "cmd_rsrc"
+#define TAG_DB   "script_db"
+#define TAG_RSRC "script_rsrc"
 
 typedef struct {
   char *tag;
@@ -26,20 +26,33 @@ typedef struct {
 static int app_script_event(int pe) {
   script_int_t wait;
   EventType event;
-  Err err;
-
-  event.eType = nilEvent;
+  int obj, r = -1;
 
   if (script_get_integer(pe, 0, &wait) == 0) {
     EvtGetEvent(&event, wait);
-    if (!SysHandleEvent(&event)) {
-      if (!MenuHandleEvent(NULL, &event, &err)) {
-        FrmDispatchEvent(&event);
-      }
+    SysHandleEvent(&event);
+
+    obj = pumpkin_script_create_obj(pe, NULL);
+    pumpkin_script_obj_iconst(pe, obj, "type", event.eType);
+
+    switch (event.eType) {
+      case keyDownEvent:
+        pumpkin_script_obj_iconst(pe, obj, "key", event.data.keyDown.chr);
+        pumpkin_script_obj_boolean(pe, obj, "cmd", (event.data.keyDown.modifiers & commandKeyMask) ? 1 : 0);
+        break;
+      case penDownEvent:
+      case penMoveEvent:
+        pumpkin_script_obj_iconst(pe, obj, "x", event.screenX);
+        pumpkin_script_obj_iconst(pe, obj, "y", event.screenY);
+        break;
+      default:
+        break;
     }
+
+    r = script_push_object(pe, obj);
   }
 
-  return script_push_integer(pe, event.eType);
+  return r;
 }
 
 static int app_script_screen_rgb(int pe) {
@@ -421,8 +434,11 @@ int pumpkin_script_appenv(int pe) {
   int obj;
 
   pumpkin_script_global_function(pe, "event", app_script_event);
-  pumpkin_script_global_iconst(pe, "keyDown", keyDownEvent);
-  pumpkin_script_global_iconst(pe, "appStop", appStopEvent);
+  pumpkin_script_global_iconst(pe, "nilEvent", nilEvent);
+  pumpkin_script_global_iconst(pe, "keyDown",  keyDownEvent);
+  pumpkin_script_global_iconst(pe, "penDown",  penDownEvent);
+  pumpkin_script_global_iconst(pe, "penMove",  penMoveEvent);
+  pumpkin_script_global_iconst(pe, "appStop",  appStopEvent);
 
   if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
     pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);

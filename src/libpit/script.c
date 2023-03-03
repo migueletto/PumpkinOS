@@ -420,6 +420,17 @@ int script_get_object(int pe, int index, script_ref_t *ref) {
   return r;
 }
 
+int script_add_boolean(int pe, script_ref_t obj, char *name, int b) {
+  script_arg_t key, value;
+
+  key.type = SCRIPT_ARG_STRING;
+  key.value.s = name;
+  value.type = SCRIPT_ARG_BOOLEAN;
+  value.value.i = b;
+
+  return script_object_set(pe, obj, &key, &value);
+}
+
 int script_add_iconst(int pe, script_ref_t obj, char *name, script_int_t i) {
   script_arg_t key, value;
 

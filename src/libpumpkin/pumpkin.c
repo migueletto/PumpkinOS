@@ -2297,6 +2297,16 @@ void *pumpkin_script_global_pointer_value(int pe, char *name) {
   return val;
 }
 
+int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value) {
+  int r = -1;
+
+  if (pe > 0 && obj > 0) {
+    r = script_add_boolean(pe, obj, name, value);
+  }
+
+  return r;
+}
+
 int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value) {
   int r = -1;
 
@@ -2316,10 +2326,13 @@ int pumpkin_script_create_obj(int pe, char *name) {
   int r = -1;
 
   if (pe > 0) {
-    value.type = SCRIPT_ARG_OBJECT;
-    value.value.r = script_create_object(pe);
-    if (script_global_set(pe, name, &value) == 0) {
-      r = value.value.r;
+    r = script_create_object(pe);
+    if (name) {
+      value.type = SCRIPT_ARG_OBJECT;
+      value.value.r = r;
+      if (script_global_set(pe, name, &value) != 0) {
+        r = -1;
+      }
     }
   }
 
