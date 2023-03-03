@@ -1,5 +1,6 @@
 /bin
-/vfs
+/vfs/app_install
+/vfs/app_storage
 /tools
 /registry
 /pumpkin
