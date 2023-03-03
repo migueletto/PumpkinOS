@@ -305,6 +305,9 @@ static int map_key(libsdl_window_t *window, SDL_Event *ev) {
               case 0x34:
                 key = (window->mods & WINDOW_MOD_SHIFT) ? '^' : '~';
                 break;
+              case 0x87:
+                key = (window->mods & WINDOW_MOD_SHIFT) ? '?' : '/';
+                break;
               default:
                 debug(DEBUG_ERROR, "SDL", "unknown scancode 0x%02X", ev->key.keysym.scancode);
                 key = 0;
