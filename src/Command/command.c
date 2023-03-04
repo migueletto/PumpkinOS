@@ -1082,7 +1082,7 @@ static int command_shell_filter_write(conn_filter_t *filter, uint8_t *b, int n) 
   return n;
 }
 
-static int command_script_shell(int pe) {
+static int command_script_pit(int pe) {
   shell_provider_t *p;
   conn_filter_t filter;
   int r = -1;
@@ -1213,7 +1213,7 @@ static Err StartApplication(void *param) {
     pumpkin_script_global_function(data->pe, "edit",   command_script_edit);
     pumpkin_script_global_function(data->pe, "telnet", command_script_telnet);
     pumpkin_script_global_function(data->pe, "exit",   command_script_exit);
-    pumpkin_script_global_function(data->pe, "shell",  command_script_shell);
+    pumpkin_script_global_function(data->pe, "pit",    command_script_pit);
     pumpkin_script_global_function(data->pe, "crash",  command_script_crash);
   }
 

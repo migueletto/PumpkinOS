@@ -10,7 +10,9 @@
 #include "oshell.h"
 #include "debug.h"
 
-// Bases on:
+#define MAX_CMD 128
+
+// Based on:
 // https://learn.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
 int cmd_oshell(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
@@ -25,8 +27,8 @@ int cmd_oshell(shell_t *shell, vfs_session_t *session, int pe, int argc, char *a
   STARTUPINFO siStartInfo;
   DWORD dwWritten, dwRead, available;
   BOOL bSuccess;
-  char buf[256];
-  int i, n, cols, rows;
+  char buf[128], cmd[MAX_CMD], *s;
+  int i, n, icmd, ignore, cols, rows;
 
   debug(DEBUG_INFO, "WSHELL", "oshell start");
 
@@ -98,7 +100,11 @@ int cmd_oshell(shell_t *shell, vfs_session_t *session, int pe, int argc, char *a
   p->window(shell, &cols, &rows);
   debug(DEBUG_INFO, "WSHELL", "window size is %dx%d", cols, rows);
 
-  for (;;) {
+  // clear screen
+  buf[0] = 0x0C;
+  p->write(shell, buf, 1);
+
+  for (icmd = 0, ignore = 0;;) {
     if ((n = p->peek(shell, 100)) == -1) {
       break;
     }
@@ -110,11 +116,33 @@ int cmd_oshell(shell_t *shell, vfs_session_t *session, int pe, int argc, char *a
 
       if (n > 0) {
         for (i = 0; i < n; i++) {
-          if (buf[i] == '\r') buf[i] = '\n';
-        }
-        if (!WriteFile(hChildStd_IN_Wr, buf, n, &dwWritten, NULL)) {
-          debug(DEBUG_ERROR, "WSHELL", "WriteFile failed");
-          break;
+          if (icmd < MAX_CMD-1) {
+            switch (buf[i]) {
+              case '\b':
+                if (icmd) {
+                  p->write(shell, &buf[i], 1);
+                  icmd--;
+                }
+                break;
+              case '\r':
+                cmd[icmd++] = '\n';
+                if (!WriteFile(hChildStd_IN_Wr, cmd, icmd, &dwWritten, NULL)) {
+                  debug(DEBUG_ERROR, "WSHELL", "WriteFile failed");
+                }
+                ignore = icmd;
+                icmd = 0;
+                buf[0] = '\r';
+                buf[1] = '\n';
+                p->write(shell, buf, 2);
+                break;
+              default:
+                if (buf[i] >= 32) {
+                  cmd[icmd++] = buf[i];
+                  p->write(shell, &buf[i], 1);
+                }
+                break;
+            }
+          }
         }
       }
     }
@@ -131,13 +159,20 @@ int cmd_oshell(shell_t *shell, vfs_session_t *session, int pe, int argc, char *a
       }
 
       if (dwRead > 0) {
-        if (p->write(shell, buf, dwRead) != dwRead) {
-          debug(DEBUG_ERROR, "WSHELL", "write failed");
-          break;
+        for (s = buf, i = 0; ignore > 0 && i < dwRead; ignore--, i++) s++;
+        if (dwRead > i) {
+          if (p->write(shell, s, dwRead - i) != dwRead - i) {
+            debug(DEBUG_ERROR, "WSHELL", "write failed");
+            break;
+          }
         }
       }
     }
   }
+
+  // clear screen
+  buf[0] = 0x0C;
+  p->write(shell, buf, 1);
 
   CloseHandle(hChildStd_OUT_Rd);
   CloseHandle(hChildStd_IN_Wr);

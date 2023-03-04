@@ -829,6 +829,7 @@ static void term_sendc(pterm_t *t, uint8_t c) {
       term_incy(t);
       break;
     case 12:
+      pterm_home(t);
       pterm_cls(t);
       break;
     case 13:
