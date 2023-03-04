@@ -2,7 +2,15 @@ include ../common.mak
 
 PROGRAM=$(BIN)/liboshell$(SOEXT)
 
-OBJS=liboshell.o oshell.o
+ifeq ($(OSNAME),GNU/Linux)
+OSHELL=oshell.o
+endif
+
+ifeq ($(OSNAME),Msys)
+OSHELL=wshell.o
+endif
+
+OBJS=liboshell.o $(OSHELL)
 
 $(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit -lutil
