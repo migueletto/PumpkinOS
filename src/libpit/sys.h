@@ -348,6 +348,8 @@ int sys_sprintf(char *str, const char *format, ...);
 
 int sys_snprintf(char *str, sys_size_t size, const char *format, ...);
 
+int sys_vsprintf(char *str, const char *format, sys_va_list ap);
+
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap);
 
 int sys_sscanf(const char *str, const char *format, ...);

@@ -115,6 +115,20 @@ Int32 StrAToI(const Char *str) {
   return str ? sys_atoi(str) : 0;
 }
 
+Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...) {
+  sys_va_list ap;
+  int n = 0;
+
+  if (s == NULL || formatStr == NULL) ErrFatalDisplayEx("StrNPrintF NULL", 0);
+  if (s && formatStr) {
+    sys_va_start(ap, formatStr);
+    n = sys_vsnprintf(s, size, formatStr, ap);
+    sys_va_end(ap);
+  }
+
+  return n;
+}
+
 Int16 StrPrintF(Char *s, const Char *formatStr, ...) {
   sys_va_list ap;
   int n = 0;
@@ -122,7 +136,7 @@ Int16 StrPrintF(Char *s, const Char *formatStr, ...) {
   if (s == NULL || formatStr == NULL) ErrFatalDisplayEx("StrPrintF NULL", 0);
   if (s && formatStr) {
     sys_va_start(ap, formatStr);
-    n = sys_vsnprintf(s, 256, formatStr, ap);
+    n = sys_vsprintf(s, formatStr, ap);
     sys_va_end(ap);
   }
 

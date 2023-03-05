@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 
+#include "pumpkin.h"
 #include "debug.h"
 
 static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
@@ -21,7 +22,7 @@ static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
     if ((h = DmGet1Resource(verRsc, 1)) != NULL) {
       if ((s = MemHandleLock(h)) != NULL) {
         if (StrLen(s) < 16) {
-          StrPrintF(buf, "v. %s", s);
+          StrNPrintF(buf, sizeof(buf)-1, "v. %s", s);
         }
         MemHandleUnlock(h);
       }
@@ -29,7 +30,7 @@ static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
     }
     FrmCopyLabel(frm, 11002, buf);
 
-    StrPrintF(buf, "About %s", name);
+    StrNPrintF(buf, sizeof(buf)-1, "About %s", name);
     FrmSetTitle(frm, buf);
 
     previous = FrmGetActiveForm();

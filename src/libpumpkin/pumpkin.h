@@ -279,6 +279,8 @@ Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
 MemHandle MemLocalIDToHandle(LocalID local);
 
+Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
+
 void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect);

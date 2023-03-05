@@ -94,7 +94,7 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
           year = (((UInt16)item->intValue) >> 9) & 0x0F;
           month = (((UInt16)item->intValue) >> 5) & 0x0F;
           day = ((UInt16)item->intValue) & 0x1F;
-          StrPrintF(buf, "%02d/%02d", month, day);
+          StrNPrintF(buf, sizeof(buf)-1, "%02d/%02d", month, day);
           if (year < dt.year || month < dt.month || day < dt.day) {
             StrCat(buf, "!");
           }
@@ -113,7 +113,7 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         break;
       case numericTableItem:
         FntSetFont(boldFont);
-        StrPrintF(buf, "%d", item->intValue);
+        StrNPrintF(buf, sizeof(buf)-1, "%d", item->intValue);
         WinDrawChars(buf, StrLen(buf), rect.topLeft.x+1, rect.topLeft.y);
         debug(DEBUG_TRACE, "Table", "TblDrawTable numericTableItem (%d,%d) = %d", row, column, item->intValue);
         break;

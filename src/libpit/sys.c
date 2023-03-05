@@ -2936,6 +2936,10 @@ int sys_sprintf(char *str, const char *format, ...) {
   return r;
 }
 
+int sys_vsprintf(char *str, const char *format, sys_va_list ap) {
+  return vsprintf(str, format, ap);
+}
+
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap) {
   return vsnprintf(str, size, format, ap);
 }
