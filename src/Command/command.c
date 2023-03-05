@@ -523,36 +523,25 @@ Int32 read_file(char *name, char *b, Int32 max) {
 
 static int command_script_file(int pe, int run) {
   command_data_t *data = pumpkin_get_data();
-  Int32 max = 65536;
-  Int32 n;
-  char *buf, *val, *name = NULL;
-  int r;
+  Int32 n, len, max = 65536;
+  char *buf, *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
     if ((buf = MemPtrNew(max)) != NULL) {
       MemSet(buf, max, 0);
-      StrCopy(buf, "--\n");
+      StrPrintF(buf, "-- %s\n", name);
+      len = StrLen(buf);
 
-    if ((n = read_file(name, &buf[3], max-4)) == -1) {
+      if ((n = read_file(name, &buf[len], max-len-1)) == -1) {
         command_puts(data, "Error reading file\r\n");
 
       } else if (n > 0) {
         if (run) {
-          val = pumpkin_script_run(pe, buf, &r);
-          if (r == 0) {
-            if (val) {
-              if (val[0]) {
-                command_puts(data, val);
-                command_putc(data, '\r');
-                command_putc(data, '\n');
-              }
-              xfree(val);
-            }
-          } else {
+          if (pumpkin_script_run(pe, buf) != 0) {
             command_puts(data, "Error loading file\r\n");
           }
         } else {
-          command_puts(data, &buf[3]);
+          command_puts(data, &buf[len]);
           command_putc(data, '\r');
           command_putc(data, '\n');
         }
@@ -705,9 +694,8 @@ static UInt32 ScriptPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   command_data_t *data;
   LocalID dbID;
   DmOpenRef dbRef;
-  int pe, max, n;
-  int32_t r;
-  char *name, *buf;
+  int pe, max, len, n, r;
+  char *name, *buf, msg[256];
 
   if ((pe = pumpkin_script_create()) > 0) {
     pumpkin_script_appenv(pe);
@@ -724,9 +712,17 @@ static UInt32 ScriptPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
 
     max = 65536;
     if ((buf = xcalloc(1, max)) != NULL) {
-      StrCopy(buf, "--\n");
-      if ((n = read_file(name, &buf[3], max-4)) > 0) {
-        pumpkin_script_run(pe, buf, &r);
+      StrPrintF(buf, "-- %s\n", name);
+      len = StrLen(buf);
+      if ((n = read_file(name, &buf[len], max-len-1)) > 0) {
+        r = pumpkin_script_run(pe, buf);
+        if (r == -1) {
+          if (pumpkin_script_get_last_error(pe, msg, sizeof(msg)) == 0) {
+            SysFatalAlert(msg);
+          } else {
+            SysFatalAlert("Script error.");
+          }
+        }
       }
       xfree(buf);
     }

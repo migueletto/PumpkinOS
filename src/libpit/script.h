@@ -57,6 +57,7 @@ void script_idle_loop(int pe);
 int script_create_builtins(int pe, script_ref_t obj);
 script_ref_t script_loadlib(int pe, char *libname);
 int script_run(int pe, char *filename, int argc, char *argv[]);
+int script_get_last_error(int pe, char *buf, int max);
 int script_set_cleanup(int pe, script_ref_t ref);
 int script_set_idle(int pe, script_ref_t ref, uint32_t t);
 

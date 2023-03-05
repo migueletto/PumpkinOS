@@ -14,6 +14,8 @@
 #include "lualib.h"
 #include "lauxlib.h"
 
+#define LAST_ERROR "last_error"
+
 struct script_priv_t {
   lua_State *L;
 };
@@ -90,11 +92,85 @@ script_priv_t *ext_script_create(void) {
   return priv;
 }
 
+static void get_ref(lua_State *L, script_ref_t ref) {
+  lua_rawgeti(L, LUA_REGISTRYINDEX, (lua_Integer)ref);
+}
+
+static int push_value(lua_State *L, script_arg_t *arg) {
+  switch(arg->type) {
+    case SCRIPT_ARG_BOOLEAN:
+      lua_pushboolean(L, arg->value.i);
+      break;
+
+    case SCRIPT_ARG_INTEGER:
+      lua_pushinteger(L, arg->value.i);
+      break;
+
+    case SCRIPT_ARG_REAL:
+      lua_pushnumber(L, arg->value.d);
+      break;
+
+    case SCRIPT_ARG_STRING:
+      lua_pushstring(L, arg->value.s);
+      break;
+
+    case SCRIPT_ARG_LSTRING:
+      lua_pushlstring(L, arg->value.l.s, arg->value.l.n);
+      break;
+
+    case SCRIPT_ARG_NULL:
+      lua_pushnil(L);
+      break;
+
+    case SCRIPT_ARG_OBJECT:
+      get_ref(L, arg->value.r);
+      break;
+
+    case SCRIPT_ARG_FUNCTION:
+      get_ref(L, arg->value.r);
+      break;
+
+    case SCRIPT_ARG_POINTER:
+      lua_pushlightuserdata(L, arg->value.p);
+      break;
+
+    default:
+      debug(DEBUG_ERROR, "LUA", "invalid pushed value type '%c'", arg->type);
+      return -1;
+  }
+
+  return 1;
+}
+
+static void set_last_error(lua_State *L, char *msg) {
+  script_arg_t value;
+
+  value.type = SCRIPT_ARG_STRING;
+  value.value.s = msg;
+
+  push_value(L, &value);
+  lua_setglobal(L, LAST_ERROR);
+  lua_settop(L, 0);
+}
+
+int ext_script_get_last_error(script_priv_t *priv, char *buf, int max) {
+  int r = -1;
+
+  lua_getglobal(priv->L, LAST_ERROR);
+  if (lua_isstring(priv->L, 1)) {
+    sys_strncpy(buf, (char *)luaL_checkstring(priv->L, 1), max-1);
+    r = 0;
+  }
+
+  return r;
+}
+
 static int traceback(lua_State *L) {
   const char *msg = lua_tostring(L, 1);
 
   if (msg) {
     debug(DEBUG_ERROR, "LUA", "execution error: %s", msg);
+    set_last_error(L, (char *)msg);
   } else if (!lua_isnoneornil(L, 1)) {  // is there an error object?
     if (!luaL_callmeta(L, 1, "__tostring"))  { // try its 'tostring' metamethod
       lua_pushliteral(L, "(no error message)");
@@ -126,8 +202,10 @@ static void get_table(lua_State *L, char *name) {
 
 int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) {
   int i, str, r = -1;
+  char *s;
 
   if (filename) {
+    set_last_error(priv->L, "");
     lua_settop(priv->L, 0);
     str = filename[0] == '-';
     r = str ?  luaL_loadstring(priv->L, filename) : luaL_loadfile(priv->L, filename);
@@ -152,7 +230,9 @@ int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) 
       lua_settop(priv->L, 0);
 
     } else {
-      debug(DEBUG_ERROR, "LUA", "compilation error: %s ", lua_tostring(priv->L, -1));
+      s = (char *)lua_tostring(priv->L, -1);
+      debug(DEBUG_ERROR, "LUA", "compilation error: %s ", s);
+      set_last_error(priv->L, s);
       r = -1;
     }
   }
@@ -177,10 +257,6 @@ static script_ref_t new_ref(lua_State *L, int index) {
   debug(DEBUG_TRACE, "LUA", "creating ref %d (index %d)", (int)ref, index);
 
   return ref;
-}
-
-static void get_ref(lua_State *L, script_ref_t ref) {
-  lua_rawgeti(L, LUA_REGISTRYINDEX, (lua_Integer)ref);
 }
 
 static script_ref_t dup_ref(lua_State *L, script_ref_t ref) {
@@ -238,52 +314,6 @@ int ext_script_call(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, in
   lua_settop(priv->L, 0);
 
   return err ? -1 : 0;
-}
-
-static int push_value(lua_State *L, script_arg_t *arg) {
-  switch(arg->type) {
-    case SCRIPT_ARG_BOOLEAN:
-      lua_pushboolean(L, arg->value.i);
-      break;
-
-    case SCRIPT_ARG_INTEGER:
-      lua_pushinteger(L, arg->value.i);
-      break;
-
-    case SCRIPT_ARG_REAL:
-      lua_pushnumber(L, arg->value.d);
-      break;
-
-    case SCRIPT_ARG_STRING:
-      lua_pushstring(L, arg->value.s);
-      break;
-
-    case SCRIPT_ARG_LSTRING:
-      lua_pushlstring(L, arg->value.l.s, arg->value.l.n);
-      break;
-
-    case SCRIPT_ARG_NULL:
-      lua_pushnil(L);
-      break;
-
-    case SCRIPT_ARG_OBJECT:
-      get_ref(L, arg->value.r);
-      break;
-
-    case SCRIPT_ARG_FUNCTION:
-      get_ref(L, arg->value.r);
-      break;
-
-    case SCRIPT_ARG_POINTER:
-      lua_pushlightuserdata(L, arg->value.p);
-      break;
-
-    default:
-      debug(DEBUG_ERROR, "LUA", "invalid pushed value type '%c'", arg->type);
-      return -1;
-  }
-
-  return 1;
 }
 
 static void get_context(script_priv_t *priv, int i, int type) {

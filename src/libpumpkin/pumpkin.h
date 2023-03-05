@@ -225,7 +225,8 @@ int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value);
 int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value);
 int pumpkin_script_local_function(int pe, int obj, char *name, int (*f)(int pe));
 char *pumpkin_script_call(int pe, char *function, char *s);
-char *pumpkin_script_run(int pe, char *s, int *r);
+int pumpkin_script_run(int pe, char *s);
+int pumpkin_script_get_last_error(int pe, char *buf, int max);
 
 int pumpkin_add_serial(char *descr, uint32_t creator, char *host, uint32_t port);
 int pumpkin_info_serial(uint32_t id, char *host, int hlen, uint32_t *port);

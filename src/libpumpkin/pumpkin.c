@@ -2867,16 +2867,18 @@ char *pumpkin_script_call(int pe, char *function, char *s) {
   return val;
 }
 
-char *pumpkin_script_run(int pe, char *s, int *r) {
-  char *val = NULL;
-
-  *r = -1;
+int pumpkin_script_run(int pe, char *s) {
+  int r = -1;
 
   if (s && pe > 0) {
-    *r = script_run(pe, s, 0, NULL);
+    r = script_run(pe, s, 0, NULL);
   }
 
-  return val;
+  return r;
+}
+
+int pumpkin_script_get_last_error(int pe, char *buf, int max) {
+  return script_get_last_error(pe, buf, max);
 }
 
 void *pumpkin_get_exception(void) {

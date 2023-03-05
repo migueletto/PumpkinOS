@@ -29,6 +29,7 @@ static int (*lib_unload_f[MAX_LIB_UNLOAD])(void);
 static int (*dl_ext_script_init)(void);
 static script_priv_t *(*dl_ext_script_create)(void);
 static int (*dl_ext_script_run)(script_priv_t *priv, char *filename, int argc, char *argv[]);
+static int (*dl_ext_script_get_last_error)(script_priv_t *priv, char *buf, int max);
 static int (*dl_ext_script_destroy)(script_priv_t *priv);
 static int (*dl_ext_script_call)(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, int n, script_arg_t *args);
 static int (*dl_ext_script_get_value)(script_priv_t *priv, int i, int type, script_arg_t *arg);
@@ -127,6 +128,18 @@ int script_run(int pe, char *filename, int argc, char *argv[]) {
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
     r = dl_ext_script_run(env->priv, filename, argc, argv);
+    ptr_unlock(pe, TAG_ENV);
+  }
+
+  return r;
+}
+
+int script_get_last_error(int pe, char *buf, int max) {
+  script_env_t *env;
+  int r = -1;
+
+  if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
+    r = dl_ext_script_get_last_error(env->priv, buf, max);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -799,6 +812,7 @@ int script_load_engine(char *libname) {
     ENGINE_SYMBOL(ext_script_init);
     ENGINE_SYMBOL(ext_script_create);
     ENGINE_SYMBOL(ext_script_run);
+    ENGINE_SYMBOL(ext_script_get_last_error);
     ENGINE_SYMBOL(ext_script_destroy);
     ENGINE_SYMBOL(ext_script_call);
     ENGINE_SYMBOL(ext_script_get_value);
