@@ -2904,6 +2904,13 @@ void pumpkin_fatal_error(int finish) {
   debug(DEBUG_ERROR, PUMPKINOS, "after ErrLongJump!");
 }
 
+void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height) {
+  AppRegistrySize s;
+  s.width = width;
+  s.height = height;
+  AppRegistrySet(pumpkin_module.registry, creator, appRegistrySize, 0, &s);
+}
+
 void pumpkin_set_compat(uint32_t creator, int compat, int code) {
   AppRegistryCompat c;
   c.compat = compat;

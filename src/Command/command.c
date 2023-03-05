@@ -23,6 +23,8 @@
 #include "deploy.h"
 #include "resource.h"
 
+#define AppID    'CmdP'
+
 #define TAG_DB   "cmd_db"
 #define TAG_RSRC "cmd_rsrc"
 
@@ -32,7 +34,8 @@
 #define SCREEN_PEN_MOVE 2
 #define SCREEN_PEN_UP   3
 
-#define FONT font8x14Id
+#define COLS 80
+#define ROWS 25
 
 typedef struct {
   char *tag;
@@ -45,6 +48,13 @@ typedef struct {
   UInt16 id;
   MemHandle h;
 } command_resource_t;
+
+typedef struct {
+  UInt16 font;
+  RGBColorType foreground;
+  RGBColorType background;
+  RGBColorType highlight;
+} command_prefs_t;
 
 typedef struct {
   int pe;
@@ -63,11 +73,12 @@ typedef struct {
   conn_filter_t *telnet;
   Coord col0, col1, row0, row1;
   Boolean moved, selected, down;
+  command_prefs_t prefs;
 } command_data_t;
 
-static const RGBColorType foreground = { 0, 0xFF, 0xFF, 0xFF };
-static const RGBColorType background = { 0, 0x13, 0x32, 0x65 };
-static const RGBColorType highlight  = { 0, 0xFF, 0xFF, 0x80 };
+static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
+static const RGBColorType defaultBackground = { 0, 0x13, 0x32, 0x65 };
+static const RGBColorType defaultHighlight  = { 0, 0xFF, 0xFF, 0x80 };
 
 static void command_putc(command_data_t *data, char c) {
   uint8_t b = c;
@@ -214,10 +225,22 @@ static void command_key(command_data_t *data, UInt8 c) {
   }
 }
 
+static Boolean ctlSelected(FormType *formP, UInt16 id) {
+  ControlType *ctl;
+  UInt16 index;
+
+  index = FrmGetObjectIndex(formP, id);
+  ctl = (ControlType *)FrmGetObjectPtr(formP, index);
+
+  return CtlGetValue(ctl) != 0;
+}
+
 static Boolean MenuEvent(FormType *frm, UInt16 id) {
   command_data_t *data = pumpkin_get_data();
+  FormType *formP;
+  ControlType *ctl;
   MemHandle h;
-  UInt16 i, length;
+  UInt16 i, sel, index, length, width, height;
   //char buf[256];
   char *s;
   Boolean handled = false;
@@ -249,6 +272,40 @@ static Boolean MenuEvent(FormType *frm, UInt16 id) {
 */
       handled = true;
       break;
+
+    case prefsCmd:
+      if ((formP = FrmInitForm(PrefsForm)) != NULL) {
+        switch (data->prefs.font) {
+          case font6x10Id:  sel = sel6x10;  break;
+          case font8x14Id:  sel = sel8x14;  break;
+          case font8x16Id:  sel = sel8x16;  break;
+          default: id = sel8x14; break;
+        }
+        index = FrmGetObjectIndex(formP, sel);
+        ctl = (ControlType *)FrmGetObjectPtr(formP, index);
+        CtlSetValue(ctl, 1);
+
+        if (FrmDoDialog(formP) == okBtn) {
+          if (ctlSelected(formP, sel6x10)) {
+            data->prefs.font = font6x10Id;
+            width = 6;
+            height = 10;
+          } else if (ctlSelected(formP, sel8x14)) {
+            data->prefs.font = font8x14Id;
+            width = 8;
+            height = 14;
+          } else if (ctlSelected(formP, sel8x16)) {
+            data->prefs.font = font8x16Id;
+            width = 8;
+            height = 16;
+          }
+          PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
+          pumpkin_set_size(AppID, COLS * width, ROWS * height);
+        }
+
+        FrmDeleteForm(formP);
+      }
+      break;
   }
 
   return handled;
@@ -268,7 +325,7 @@ static void command_update_line(command_data_t *data, Int16 row, Int16 col1, Int
   for (col = col1; col <= col2; col++, pos++) {
     pterm_getchar(data->t, pos, &c, &fg, &bg);
     if (selected) {
-      sel = highlight;
+      sel = data->prefs.highlight;
     } else {
       LongToRGB(bg, &sel);
     }
@@ -399,7 +456,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
       wh = FrmGetWindowHandle(frm);
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
-      WinSetBackColorRGB(&background, &old);
+      WinSetBackColorRGB(&data->prefs.background, &old);
       WinEraseRectangle(&rect, 0);
       WinSetBackColorRGB(&old, NULL);
 
@@ -1157,16 +1214,25 @@ static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t
 static Err StartApplication(void *param) {
   command_data_t *data;
   UInt32 swidth, sheight;
+  UInt16 prefsSize;
   FontID old;
   uint32_t color;
 
   data = xcalloc(1, sizeof(command_data_t));
   pumpkin_set_data(data);
 
+  if (PrefGetAppPreferences(AppID, 1, &data->prefs, &prefsSize, true) == noPreferenceFound) {
+    data->prefs.font = font8x14Id;
+    data->prefs.foreground = defaultForeground;
+    data->prefs.background = defaultBackground;
+    data->prefs.highlight  = defaultHighlight;
+    PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
+  }
+
   data->wait = SysTicksPerSecond() / 2;
   StrCopy(data->cwd, "/");
 
-  if ((data->fh = DmGetResource(fontExtRscType, FONT)) != NULL) {
+  if ((data->fh = DmGetResource(fontExtRscType, data->prefs.font)) != NULL) {
     data->f = MemHandleLock(data->fh);
     FntDefineFont(128, data->f);
   }
@@ -1185,9 +1251,9 @@ static Err StartApplication(void *param) {
   data->cb.data = data;
   pterm_callback(data->t, &data->cb);
 
-  color = RGBToLong((RGBColorType *)&foreground);
+  color = RGBToLong(&data->prefs.foreground);
   pterm_setfg(data->t, color);
-  color = RGBToLong((RGBColorType *)&background);
+  color = RGBToLong(&data->prefs.background);
   pterm_setbg(data->t, color);
 
   if ((data->pe = pumpkin_script_create()) > 0) {
@@ -1270,6 +1336,8 @@ static void StopApplication(void) {
     if (data->f) MemHandleUnlock(data->fh);
     DmReleaseResource(data->fh);
   }
+
+  PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
 
   pumpkin_script_destroy(data->pe);
   xfree(data);
