@@ -903,7 +903,7 @@ void PrefSetAppPreferences(UInt32 creator, UInt16 id, Int16 version, const void 
     if ((p = xcalloc(1, 2 + prefsSize)) != NULL) {
       p[0] = version;
       MemMove(&p[1], prefs, prefsSize);
-      pumpkin_set_preference(creator, id, p, prefsSize, saved);
+      pumpkin_set_preference(creator, id, p, 2 + prefsSize, saved);
       xfree(p);
     }
   }
