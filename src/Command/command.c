@@ -916,33 +916,13 @@ static int command_script_ps(int pe) {
 
 static int command_script_cd(int pe) {
   command_data_t *data = pumpkin_get_data();
-  FileInfoType info;
-  FileRef f;
-  UInt32 op;
-  char buf[MAXCMD];
   char *dir = NULL;
 
   if (script_get_string(pe, 0, &dir) == 0) {
-    if (StrCompare(dir, "..") == 0) {
+    if (VFSChangeDir(1, dir) == errNone) {
+      VFSCurrentDir(1, data->cwd, MAXCMD);
     } else {
-      if (VFSFileOpen(1, data->cwd, vfsModeRead, &f) == errNone) {
-        for (op = vfsIteratorStart;;) {
-          MemSet(buf, sizeof(buf), 0);
-          info.nameP = buf;
-          info.nameBufLen = sizeof(buf)-1;   
-          if (VFSDirEntryEnumerate(f, &op, &info) != errNone) break;
-          if (StrCompare(dir, info.nameP) == 0) {
-            if (info.attributes & vfsFileAttrDirectory) {
-              StrNCat(data->cwd, info.nameP, MAXCMD-1-StrLen(data->cwd));
-              StrNCat(data->cwd, "/", MAXCMD-1-StrLen(data->cwd));
-            } else {
-              command_puts(data, "Not a directory\r\n");
-            }
-            break;
-          }
-        }
-        VFSFileClose(f);
-      }
+      command_puts(data, "Invalid directory\r\n");
     }
   }
 
@@ -1230,7 +1210,8 @@ static Err StartApplication(void *param) {
   }
 
   data->wait = SysTicksPerSecond() / 2;
-  StrCopy(data->cwd, "/");
+  VFSChangeDir(1, "/");
+  VFSCurrentDir(1, data->cwd, MAXCMD);
 
   if ((data->fh = DmGetResource(fontExtRscType, data->prefs.font)) != NULL) {
     data->f = MemHandleLock(data->fh);

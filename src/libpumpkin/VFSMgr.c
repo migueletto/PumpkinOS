@@ -623,3 +623,53 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBInfo not implemented");
   return sysErrParamErr;
 }
+
+Err VFSChangeDir(UInt16 volRefNum, char *path) {
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  char *old, *cwd;
+  Err err = sysErrParamErr;
+
+  if (volRefNum != VOLREF) {
+    return vfsErrVolumeBadRef;
+  }
+
+  if (path) {
+    if (path[0] == '/') {
+      buildpath(module, module->path, path);
+    } else {
+      StrNCopy(module->path, path, MAX_PATH - 1);
+    }
+    old = xstrdup(vfs_cwd(module->session));
+    if (vfs_chdir(module->session, module->path) == 0) {
+      cwd = vfs_cwd(module->session);
+      if (StrNCompare(module->card, cwd, StrLen(module->card)) == 0) {
+        err = errNone;
+      } else {
+        debug(DEBUG_ERROR, PALMOS_MODULE, "attempt to escape root old=\"%s\" path=\"%s\" new=\"%s\"", old, path, cwd);
+        vfs_chdir(module->session, old);
+      }
+    }
+    xfree(old);
+  }
+
+  return err;
+}
+
+Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  char *cwd;
+  Err err = sysErrParamErr;
+
+  if (volRefNum != VOLREF) {
+    return vfsErrVolumeBadRef;
+  }
+
+  if (path) {
+    cwd = vfs_cwd(module->session);
+    cwd += StrLen(module->card) - 1;
+    StrNCopy(path, cwd, max-1);;
+    err = errNone;
+  }
+
+  return err;
+}

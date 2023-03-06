@@ -391,6 +391,8 @@ void KbdGrfSetState(UInt16 state);
 Err KbdDrawKeyboard(KeyboardType kbd, Boolean upper, WinHandle wh, RectangleType *bounds);
 
 char *VFSGetMount(void);
+Err VFSChangeDir(UInt16 volRefNum, char *path);
+Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
 
 void AbtShowAboutPumpkin(UInt32 creator);
 
