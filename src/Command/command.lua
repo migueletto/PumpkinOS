@@ -1,10 +1,10 @@
 -- initialization script
 
 function command_eval(cmd)
-  local s,r,flag = nil,"Compilation error.",false
-  local f = load("return " .. cmd)
+  local s,flag = nil,false
+  local f,r = load("return " .. cmd)
   if not f then
-    f = load(cmd)
+    f,r = load(cmd)
     flag = true
   end
   if f then
@@ -13,8 +13,6 @@ function command_eval(cmd)
       if not r and flag then
         r = ""
       end
-    else
-      r = "Execution error."
     end
   end
   return r
