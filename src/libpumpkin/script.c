@@ -484,7 +484,7 @@ uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags) {
       if ((buf = MemHandleLock(h)) != NULL) {
         debug(DEBUG_INFO, PUMPKINOS, "running app script");
         pumpkin_script_appenv(pe);
-        pumpkin_script_run(pe, buf, &r);
+        r = pumpkin_script_run(pe, buf);
         debug(DEBUG_INFO, PUMPKINOS, "app script returned %d", r);
         MemHandleUnlock(h);
       }
