@@ -10,6 +10,9 @@
 
 #define TAG_DB   "script_db"
 #define TAG_RSRC "script_rsrc"
+#define TAG_FORM "script_form"
+
+#define MAX_TITLE 32
 
 typedef struct {
   char *tag;
@@ -23,33 +26,84 @@ typedef struct {
   MemHandle h;
 } app_resource_t;
 
-static int app_script_event(int pe) {
+typedef struct {
+  char *tag;
+  FormType *frm;
+} app_form_t;
+
+typedef struct {
+  UInt16 form;
+  int pe, obj;
+} script_data_t;
+
+static Boolean ScriptFormHandleEvent(EventPtr event) {
+  script_data_t *data = pumpkin_get_data();
+  Boolean handled = false;
+
+  switch (event->eType) {
+    case ctlSelectEvent:
+      data->obj = pumpkin_script_create_obj(data->pe, NULL);
+      pumpkin_script_obj_iconst(data->pe, data->obj, "control", event->data.ctlSelect.controlID);
+      handled = true;
+      break;
+    case menuEvent:
+      data->obj = pumpkin_script_create_obj(data->pe, NULL);
+      pumpkin_script_obj_iconst(data->pe, data->obj, "item", event->data.menu.itemID);
+      handled = true;
+      break;
+    case appStopEvent:
+      data->obj = pumpkin_script_create_obj(data->pe, NULL);
+      break;
+    default:
+      break;
+  }
+
+  return handled;
+}
+
+static int app_script_ui_event(int pe) {
+  script_data_t *data = pumpkin_get_data();
   script_int_t wait;
   EventType event;
+  Err err;
   int obj, r = -1;
 
   if (script_get_integer(pe, 0, &wait) == 0) {
     EvtGetEvent(&event, wait);
-    SysHandleEvent(&event);
 
-    obj = pumpkin_script_create_obj(pe, NULL);
-    pumpkin_script_obj_iconst(pe, obj, "type", event.eType);
+    if (data->form) {
+      if (!SysHandleEvent(&event)) {
+        if (!MenuHandleEvent(NULL, &event, &err)) {
+          data->obj = 0;
+          FrmDispatchEvent(&event);
+          if (data->obj > 0) {
+            pumpkin_script_obj_iconst(pe, data->obj, "type", event.eType);
+            r = script_push_object(pe, data->obj);
+          }
+        }
+      }
+    } else {
+      SysHandleEvent(&event);
 
-    switch (event.eType) {
-      case keyDownEvent:
-        pumpkin_script_obj_iconst(pe, obj, "key", event.data.keyDown.chr);
-        pumpkin_script_obj_boolean(pe, obj, "cmd", (event.data.keyDown.modifiers & commandKeyMask) ? 1 : 0);
-        break;
-      case penDownEvent:
-      case penMoveEvent:
-        pumpkin_script_obj_iconst(pe, obj, "x", event.screenX);
-        pumpkin_script_obj_iconst(pe, obj, "y", event.screenY);
-        break;
-      default:
-        break;
+      obj = pumpkin_script_create_obj(pe, NULL);
+      pumpkin_script_obj_iconst(pe, obj, "type", event.eType);
+
+      switch (event.eType) {
+        case keyDownEvent:
+          pumpkin_script_obj_iconst(pe, obj, "key", event.data.keyDown.chr);
+          pumpkin_script_obj_boolean(pe, obj, "cmd", (event.data.keyDown.modifiers & commandKeyMask) ? 1 : 0);
+          break;
+        case penDownEvent:
+        case penMoveEvent:
+          pumpkin_script_obj_iconst(pe, obj, "x", event.screenX);
+          pumpkin_script_obj_iconst(pe, obj, "y", event.screenY);
+          break;
+        default:
+          break;
+      }
+
+      r = script_push_object(pe, obj);
     }
-
-    r = script_push_object(pe, obj);
   }
 
   return r;
@@ -410,9 +464,9 @@ static int app_script_bitmap_dimensions(int pe, Coord *width, Coord *height) {
 
 static int app_script_bitmap_width(int pe) {
   Coord width, height;
-  int r;
+  int r = 1;
 
-  if ((r = app_script_bitmap_dimensions(pe, &width, &height)) == 0) {
+  if (app_script_bitmap_dimensions(pe, &width, &height) == 0) {
     r = script_push_integer(pe, width);
   }
 
@@ -421,11 +475,158 @@ static int app_script_bitmap_width(int pe) {
 
 static int app_script_bitmap_height(int pe) {
   Coord width, height;
-  int r;
+  int r = -1;
 
-  if ((r = app_script_bitmap_dimensions(pe, &width, &height)) == 0) {
+  if (app_script_bitmap_dimensions(pe, &width, &height) == 0) {
     r = script_push_integer(pe, height);
   }
+
+  return r;
+}
+
+static void form_destructor(void *p) {
+  app_form_t *form;
+
+  if (p) {
+    form = (app_form_t *)p;
+    if (form->frm) FrmDeleteForm(form->frm);
+    xfree(form);
+  }
+}
+
+static int app_script_ui_form(int pe) {
+  script_int_t id, x, y, width, height;
+  FormType *frm;
+  app_form_t *form;
+  char *title = NULL;
+  int ptr, r = -1;
+
+  if (script_get_integer(pe, 0, &id) == 0 &&
+      script_get_string(pe, 1, &title) == 0 &&
+      script_get_integer(pe, 2, &x) == 0 &&
+      script_get_integer(pe, 3, &y) == 0 &&
+      script_get_integer(pe, 4, &width) == 0 &&
+      script_get_integer(pe, 5, &height) == 0) {
+
+    if ((form = xcalloc(1, sizeof(app_form_t))) != NULL) {
+      if ((frm = FrmNewForm(id, title, x, y, width, height, false, 0, 0, 0)) != NULL) {
+        form->tag = TAG_FORM;
+        form->frm = frm;
+        ptr = ptr_new(form, form_destructor);
+        r = script_push_integer(pe, ptr);
+      } else {
+        xfree(form);
+      }
+    }
+  }
+
+  if (title) xfree(title);
+
+  return r;
+}
+
+static int app_script_ui_show(int pe) {
+  script_data_t *data = pumpkin_get_data();
+  app_form_t *form;
+  int ptr, r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      data->form = form->frm->formId;
+      FrmSetActiveForm(form->frm);
+      FrmSetEventHandler(form->frm, ScriptFormHandleEvent);
+      FrmDrawForm(form->frm);
+      ptr_unlock(ptr, TAG_FORM);
+      r = script_push_boolean(pe, 1);
+    }
+  }
+
+  return r;
+}
+
+static int app_script_ui_title(int pe) {
+  char *title = NULL;
+  app_form_t *form;
+  char *s;
+  int ptr, len, r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_string(pe, 1, &title) == 0) {
+
+    if (title[0]) {
+      if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+        len = StrLen(title);
+        if ((s = MemPtrNew(len + 1)) != NULL) {
+          StrNCopy(s, title, len);
+          FrmSetTitle(form->frm, s);
+          r = script_push_boolean(pe, 1);
+        }
+        ptr_unlock(ptr, TAG_FORM);
+      }
+    }
+  }
+
+  if (title) xfree(title);
+
+  return r;
+}
+
+static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord dh) {
+  script_int_t id, x, y;
+  Coord width, height;
+  FontID old, font;
+  app_form_t *form;
+  char *text = NULL;
+  void *f;
+  int ptr, r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_string(pe, 2, &text) == 0 &&
+      script_get_integer(pe, 3, &x) == 0 &&
+      script_get_integer(pe, 4, &y) == 0) {
+
+    if (text[0]) {
+      if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+        font = stdFont;
+        old = FntSetFont(font);
+        width = FntCharsWidth(text, StrLen(text)) + dw;
+        height = FntCharHeight() + dh;
+        FntSetFont(old);
+
+        f = form->frm;
+        if (CtlNewControl(&f, id, style, text, x, y, width, height, font, 0, true) != NULL) {
+          r = script_push_boolean(pe, 1);
+        }
+        ptr_unlock(ptr, TAG_FORM);
+      }
+    }
+  }
+
+  if (text) xfree(text);
+
+  return r;
+}
+
+static int app_script_ui_button(int pe) {
+  return app_script_ui_control(pe, buttonCtl, 4, 2);
+}
+
+static int app_script_ui_alert(int pe) {
+  script_int_t id;
+  char *msg = NULL;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &id) == 0 &&
+      script_get_string(pe, 1, &msg) == 0) {
+
+    if (msg[0]) {
+       FrmCustomAlert(id, msg, NULL, NULL);
+       r = script_push_boolean(pe, 1);
+    }
+  }
+
+  if (msg) xfree(msg);
 
   return r;
 }
@@ -433,12 +634,17 @@ static int app_script_bitmap_height(int pe) {
 int pumpkin_script_appenv(int pe) {
   int obj;
 
-  pumpkin_script_global_function(pe, "event", app_script_event);
-  pumpkin_script_global_iconst(pe, "nilEvent", nilEvent);
-  pumpkin_script_global_iconst(pe, "keyDown",  keyDownEvent);
-  pumpkin_script_global_iconst(pe, "penDown",  penDownEvent);
-  pumpkin_script_global_iconst(pe, "penMove",  penMoveEvent);
-  pumpkin_script_global_iconst(pe, "appStop",  appStopEvent);
+  pumpkin_script_global_iconst(pe, "nilEvent",  nilEvent);
+  pumpkin_script_global_iconst(pe, "keyDown",   keyDownEvent);
+  pumpkin_script_global_iconst(pe, "penDown",   penDownEvent);
+  pumpkin_script_global_iconst(pe, "penMove",   penMoveEvent);
+  pumpkin_script_global_iconst(pe, "menuEvent", menuEvent);
+  pumpkin_script_global_iconst(pe, "ctlSelect", ctlSelectEvent);
+  pumpkin_script_global_iconst(pe, "appStop",   appStopEvent);
+
+  pumpkin_script_global_iconst(pe, "info",   10024);
+  pumpkin_script_global_iconst(pe, "warn",   10031);
+  pumpkin_script_global_iconst(pe, "error",  10021);
 
   if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
     pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);
@@ -470,25 +676,42 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "height",   app_script_bitmap_height);
   }
 
+  if ((obj = pumpkin_script_create_obj(pe, "ui")) != -1) {
+    pumpkin_script_obj_function(pe, obj, "event",    app_script_ui_event);
+    pumpkin_script_obj_function(pe, obj, "form",     app_script_ui_form);
+    pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
+    pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
+    pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
+    pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
+  }
+
   return 0;
 }
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags) {
+  script_data_t data;
   MemHandle h;
-  int32_t r;
+  UInt16 id;
+  char msg[256];
   int pe;
-  char *buf;
 
   if ((pe = pumpkin_script_create()) > 0) {
-    if ((h = DmGet1Resource(sysRsrcTypeScript, 1)) != NULL) {
-      if ((buf = MemHandleLock(h)) != NULL) {
-        debug(DEBUG_INFO, PUMPKINOS, "running app script");
-        pumpkin_script_appenv(pe);
-        r = pumpkin_script_run(pe, buf);
-        debug(DEBUG_INFO, PUMPKINOS, "app script returned %d", r);
-        MemHandleUnlock(h);
-      }
+    pumpkin_script_appenv(pe);
+    MemSet(&data, sizeof(data), 0);
+    data.pe = pe;
+    pumpkin_set_data(&data);
+
+    for (id = 1; id < 32768; id++) {
+      if ((h = DmGet1Resource(sysRsrcTypeScript, id)) == NULL) break;
       DmReleaseResource(h);
+      if (pumpkin_script_init(pe, sysRsrcTypeScript, id) != 0) {
+        if (pumpkin_script_get_last_error(pe, msg, sizeof(msg)) == 0) {
+          SysFatalAlert(msg);
+        } else {
+          SysFatalAlert("Script error.");
+        }
+        break;
+      }
     }
 
     pumpkin_script_destroy(pe);

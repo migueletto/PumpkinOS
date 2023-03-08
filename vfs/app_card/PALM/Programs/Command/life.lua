@@ -155,7 +155,7 @@ title()          -- print title
 -- loop forever
 while true do
   -- wait 10 ticks for events
-  ev = event(10)
+  ev = ui.event(10)
 
   if ev.type == nilEvent then
     -- nilEvent is sent when no other user event occurred

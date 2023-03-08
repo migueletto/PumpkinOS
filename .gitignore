@@ -1,5 +1,7 @@
 /bin
-/vfs
+/vfs/app_install
+/vfs/app_storage
+/vfs/app_card/PALM/Programs/*
 /tools
 /registry
 /pumpkin
@@ -15,4 +17,4 @@
 res
 !/lib/*
 !/lib32/*
-!/vfs/app_card/PALM/Programs/Command
+!/vfs/app_card/PALM/Programs/Command/

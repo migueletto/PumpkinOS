@@ -8,6 +8,7 @@
 #include "file.h"
 #include "deploy.h"
 #include "debug.h"
+#include "resource.h"
 
 #define MAX_SCRIPT 32768
 
@@ -19,13 +20,13 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
   SysNotifyDBCreatedType dbCreated;
   UInt32 type;
   Int32 len, iconLen;
+  void *iconBuf;
   char *buf;
-  void *p;
   Err err = dmErrInvalidParam;
 
   icon = DmGet1Resource('Icon', 1);
   iconLen = MemHandleSize(icon);
-  p = MemHandleLock(icon);
+  iconBuf = MemHandleLock(icon);
 
   if (name) {
     if ((buf = MemPtrNew(MAX_SCRIPT)) != NULL) {
@@ -37,7 +38,7 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
           if ((dbID = DmFindDatabase(0, name)) != 0) {
             if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
               if (DmNewResourceEx(dbRef, sysRsrcTypeScript, 1, len, buf) != NULL) {
-                DmNewResourceEx(dbRef, iconType, 1000, iconLen, p);
+                DmNewResourceEx(dbRef, iconType, 1000, iconLen, iconBuf);
                 err = errNone;
               }
               DmCloseDatabase(dbRef);

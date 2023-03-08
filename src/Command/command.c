@@ -129,52 +129,76 @@ static void command_expand(command_data_t *data) {
   FileRef f;
   UInt32 op;
   char buf[MAXCMD];
-  int i, first, last, len;
+  char absolute[MAXCMD];
+  int i, j, first, last, len;
 
   if (data->cmdIndex > 0 && data->cmd[data->cmdIndex-1] != '/') {
     data->cmd[data->cmdIndex] = 0;
 
+    // find the previoous '"' int he command buffer
     for (i = data->cmdIndex-1; i >= 0; i--) {
       if (data->cmd[i] == '"') break;
     }
 
     if (i >= 0 && data->cmd[i] == '"') {
+      // found '"', advance one position
       i++;
+
       if (data->cmd[i] == '/') {
-        first = last = i;
-        for (i++; data->cmd[i]; i++) {
-          if (data->cmd[i] == '/') last = i;
-        }
-        MemSet(buf, sizeof(buf), 0);
-        if (last == first) {
-          StrCopy(buf, "/");
-        } else {
-          StrNCopy(buf, &data->cmd[first], last - first);
-        }
-        if (VFSFileOpen(1, buf, vfsModeRead, &f) == errNone) {
-          for (op = vfsIteratorStart;;) {
-            MemSet(buf, sizeof(buf), 0);
-            info.nameP = buf;
-            info.nameBufLen = sizeof(buf)-1;
-            if (VFSDirEntryEnumerate(f, &op, &info) != errNone) break;
-            len = StrLen(&data->cmd[last+1]);
-            if (StrNCompare(&data->cmd[last+1], info.nameP, len) == 0) {
-              data->cmdIndex = last + 1 + len;
-              for (i = len; info.nameP[i]; i++) {
-                if (data->cmdIndex < MAXCMD-1) {
-                  command_putc(data, info.nameP[i]);
-                  data->cmd[data->cmdIndex++] = info.nameP[i];
-                }
+        // it is an absolute path, just copy it
+        StrNCopy(absolute, &data->cmd[i], MAXCMD - 1);
+      } else {
+        // it is a relative path, copy the current directoy
+        StrNCopy(absolute, data->cwd, MAXCMD - 1);
+        // and append the command
+        StrNCat(absolute, &data->cmd[i], MAXCMD - StrLen(absolute) - 1);
+      }
+
+      // find the last '/' in the absolute path
+      first = last = 0;
+      for (j = 1; absolute[j]; j++) {
+        if (absolute[j] == '/') last = j;
+      }
+
+      // set the name of the directory in buf
+      MemSet(buf, sizeof(buf), 0);
+      if (last == first) {
+        StrCopy(buf, "/");
+      } else {
+        StrNCopy(buf, &absolute[first], last - first);
+      }
+
+      // open the directory
+      if (VFSFileOpen(1, buf, vfsModeRead, &f) == errNone) {
+        for (op = vfsIteratorStart;;) {
+          // read the next entry in the directory
+          MemSet(buf, sizeof(buf), 0);
+          info.nameP = buf;
+          info.nameBufLen = sizeof(buf)-1;
+          if (VFSDirEntryEnumerate(f, &op, &info) != errNone) break;
+
+          // if the typed prefix matches the begining of the entry name
+          len = StrLen(&absolute[last+1]);
+          if (StrNCompare(&absolute[last+1], info.nameP, len) == 0) {
+            // fills in the rest of the name
+            data->cmdIndex = StrLen(data->cmd);
+            for (i = len; info.nameP[i]; i++) {
+              if (data->cmdIndex < MAXCMD-1) {
+                command_putc(data, info.nameP[i]);
+                data->cmd[data->cmdIndex++] = info.nameP[i];
               }
-              if (data->cmdIndex < MAXCMD-1 && info.attributes & vfsFileAttrDirectory) {
-                command_putc(data, '/');
-                data->cmd[data->cmdIndex++] = '/';
-              }
-              break;
             }
+            // if the entry is a directory, append '/'
+            if (data->cmdIndex < MAXCMD-1 && info.attributes & vfsFileAttrDirectory) {
+              command_putc(data, '/');
+              data->cmd[data->cmdIndex++] = '/';
+            }
+            data->cmd[data->cmdIndex] = 0;
+            // exit
+            break;
           }
-          VFSFileClose(f);
         }
+        VFSFileClose(f);
       }
     }
   }
@@ -747,76 +771,6 @@ static int command_script_print(int pe) {
   return 0;
 }
 
-static UInt32 ScriptPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
-  command_data_t *data;
-  LocalID dbID;
-  DmOpenRef dbRef;
-  int pe, max, len, n, r;
-  char *name, *buf, msg[256];
-
-  if ((pe = pumpkin_script_create()) > 0) {
-    pumpkin_script_appenv(pe);
-
-    data = xcalloc(1, sizeof(command_data_t));
-    StrCopy(data->cwd, "/");
-    pumpkin_set_data(data);
-    name = (char *)cmdPBP;
-
-    dbRef = NULL;
-    if ((dbID = DmFindDatabase(0, "Command")) != 0) {
-      dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly);
-    }
-
-    max = 65536;
-    if ((buf = xcalloc(1, max)) != NULL) {
-      StrPrintF(buf, "-- %s\n", name);
-      len = StrLen(buf);
-      if ((n = read_file(name, &buf[len], max-len-1)) > 0) {
-        r = pumpkin_script_run(pe, buf);
-        if (r == -1) {
-          if (pumpkin_script_get_last_error(pe, msg, sizeof(msg)) == 0) {
-            SysFatalAlert(msg);
-          } else {
-            SysFatalAlert("Script error.");
-          }
-        }
-      }
-      xfree(buf);
-    }
-
-    DmCloseDatabase(dbRef);
-    xfree(name);
-    pumpkin_set_data(NULL);
-    xfree(data);
-    pumpkin_script_destroy(pe);
-  }
-
-  return 0;
-}
-
-static int command_script_launch_script(int pe) {
-  char *path = NULL;
-  char *param, *name;
-  int i;
-
-  if (script_get_string(pe, 0, &path) == 0) {
-    param = xstrdup(path);
-    name = path;
-    for (i = StrLen(path)-1; i > 0; i--) {
-      if (path[i] == '/') {
-        path[i] = 0;
-        name = &path[i+1];
-        break;
-      }
-    }
-    pumpkin_launch_request(name, sysAppLaunchCmdNormalLaunch, (uint8_t *)param, 0, ScriptPilotMain, 0);
-  }
-
-  if (path) xfree(path);
-
-  return 0;
-}
-
 static int command_script_launch(int pe) {
   UInt32 result;
   char *name = NULL;
@@ -1247,7 +1201,6 @@ static Err StartApplication(void *param) {
     pumpkin_script_global_function(data->pe, "ls",     command_script_ls);
     pumpkin_script_global_function(data->pe, "lsdb",   command_script_lsdb);
     pumpkin_script_global_function(data->pe, "launch", command_script_launch);
-    pumpkin_script_global_function(data->pe, "run",    command_script_launch_script);
     pumpkin_script_global_function(data->pe, "ps",     command_script_ps);
     pumpkin_script_global_function(data->pe, "kill",   command_script_kill);
     pumpkin_script_global_function(data->pe, "cat",    command_script_cat);
