@@ -2187,6 +2187,7 @@ Err FrmAddSpaceForObject(FormType **formPP, MemPtr *objectPP, FormObjectKind obj
 FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coord width, Coord height, Boolean modal, UInt16 defaultButton, UInt16 helpRscID, UInt16 menuRscID) {
   FormTitleType *title;
   FormType *formP;
+  int len;
 
   if ((formP = pumpkin_heap_alloc(sizeof(FormType), "Form")) != NULL) {
     formP->formId = formID;
@@ -2210,7 +2211,9 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
 
     if (titleStrP) {
       if ((title = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL) {
-        title->text = (char *)titleStrP;
+        len = StrLen(titleStrP);
+        title->text = MemPtrNew(len + 1);
+        StrNCopy(title->text, titleStrP, len);
         title->objIndex = 0;
         formP->objects = xcalloc(1, sizeof(FormObjListType));
         formP->objects[0].objectType = frmTitleObj;
