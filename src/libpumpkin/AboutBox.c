@@ -12,14 +12,15 @@ void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr) {
   char name[dmDBNameLength], buf[64], *s;
 
   if ((frm = FrmInitForm(formID)) != NULL) {
+    MemSet(name, sizeof(name), 0);
+    if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, &cardNo, &dbID) == errNone) {
+      DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    }
+
     if (descr) {
       StrNCopy(buf, descr, sizeof(buf)-1);
       FrmCopyLabel(frm, 11001, buf);
     } else {
-      MemSet(name, sizeof(name), 0);
-      if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, &cardNo, &dbID) == errNone) {
-        DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-      }
       FrmCopyLabel(frm, 11001, name);
     }
 
