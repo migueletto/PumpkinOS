@@ -14,3 +14,6 @@
 #define sel6x10   1003
 #define sel8x14   1004
 #define sel8x16   1005
+
+#define frmScrpID 1000
+#define frmScrpMenu 2001

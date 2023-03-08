@@ -15,18 +15,30 @@
 Err command_app_deploy(char *name, UInt32 creator, char *script) {
   LocalID dbID;
   DmOpenRef dbRef;
-  MemHandle icon;
+  MemHandle icon, form, menu, about;
   SysNotifyParamType notify;
   SysNotifyDBCreatedType dbCreated;
   UInt32 type;
-  Int32 len, iconLen;
-  void *iconBuf;
+  Int32 len, iconLen, formLen, menuLen, aboutLen;
+  void *iconBuf, *formBuf, *menuBuf, *aboutBuf;
   char *buf;
   Err err = dmErrInvalidParam;
 
   icon = DmGet1Resource('Icon', 1);
   iconLen = MemHandleSize(icon);
   iconBuf = MemHandleLock(icon);
+
+  form = DmGet1Resource(sysRsrcTypeScript, frmScrpID);
+  formLen = MemHandleSize(form);
+  formBuf = MemHandleLock(form);
+
+  menu = DmGet1Resource(MenuRscType, frmScrpMenu);
+  menuLen = MemHandleSize(menu);
+  menuBuf = MemHandleLockEx(menu, false);
+
+  about = DmGet1Resource(formRscType, aboutDialog+2);
+  aboutLen = MemHandleSize(about);
+  aboutBuf = MemHandleLockEx(about, false);
 
   if (name) {
     if ((buf = MemPtrNew(MAX_SCRIPT)) != NULL) {
@@ -37,8 +49,11 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
         if ((err = DmCreateDatabase(0, name, creator, 'temp', true)) == errNone) {
           if ((dbID = DmFindDatabase(0, name)) != 0) {
             if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-              if (DmNewResourceEx(dbRef, sysRsrcTypeScript, 1, len, buf) != NULL) {
+              if (DmNewResourceEx(dbRef, sysRsrcTypeScript, 2, len, buf) != NULL) {
+                DmNewResourceEx(dbRef, sysRsrcTypeScript, 1, formLen, formBuf);
                 DmNewResourceEx(dbRef, iconType, 1000, iconLen, iconBuf);
+                DmNewResourceEx(dbRef, MenuRscType, 1001, menuLen, menuBuf);
+                DmNewResourceEx(dbRef, formRscType, aboutDialog+2, aboutLen, aboutBuf);
                 err = errNone;
               }
               DmCloseDatabase(dbRef);
@@ -69,6 +84,15 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
       MemPtrFree(buf);
     }
   }
+
+  MemHandleUnlock(about);
+  DmReleaseResource(about);
+
+  MemHandleUnlock(menu);
+  DmReleaseResource(menu);
+
+  MemHandleUnlock(form);
+  DmReleaseResource(form);
 
   MemHandleUnlock(icon);
   DmReleaseResource(icon);

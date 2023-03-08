@@ -484,6 +484,26 @@ static int app_script_bitmap_height(int pe) {
   return r;
 }
 
+static int app_script_ui_menu(int pe) {
+  script_int_t pos, id, cmd;
+  char *text = NULL;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &pos) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_integer(pe, 2, &cmd) == 0 &&
+      script_get_string(pe, 3, &text) == 0) {
+
+    if (MenuAddItem(pos, id, cmd, text) == errNone) {
+      r = script_push_boolean(pe, 1);
+    }
+  }
+
+  if (text) xfree(text);
+
+  return r;
+}
+
 static void form_destructor(void *p) {
   app_form_t *form;
 
@@ -509,7 +529,7 @@ static int app_script_ui_form(int pe) {
       script_get_integer(pe, 5, &height) == 0) {
 
     if ((form = xcalloc(1, sizeof(app_form_t))) != NULL) {
-      if ((frm = FrmNewForm(id, title, x, y, width, height, false, 0, 0, 0)) != NULL) {
+      if ((frm = FrmNewForm(id, title, x, y, width, height, false, 0, 0, 1001)) != NULL) {
         form->tag = TAG_FORM;
         form->frm = frm;
         ptr = ptr_new(form, form_destructor);
@@ -527,8 +547,9 @@ static int app_script_ui_form(int pe) {
 
 static int app_script_ui_show(int pe) {
   script_data_t *data = pumpkin_get_data();
+  script_int_t ptr;
   app_form_t *form;
-  int ptr, r = -1;
+  int r = -1;
 
   if (script_get_integer(pe, 0, &ptr) == 0) {
     if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
@@ -545,10 +566,11 @@ static int app_script_ui_show(int pe) {
 }
 
 static int app_script_ui_title(int pe) {
+  script_int_t ptr;
   char *title = NULL;
   app_form_t *form;
   char *s;
-  int ptr, len, r = -1;
+  int len, r = -1;
 
   if (script_get_integer(pe, 0, &ptr) == 0 &&
       script_get_string(pe, 1, &title) == 0) {
@@ -571,31 +593,135 @@ static int app_script_ui_title(int pe) {
   return r;
 }
 
-static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord dh) {
-  script_int_t id, x, y;
-  Coord width, height;
-  FontID old, font;
+static int app_script_ui_getlabel(int pe) {
+  script_int_t ptr, id;
   app_form_t *form;
-  char *text = NULL;
-  void *f;
-  int ptr, r = -1;
+  ControlType *ctl;
+  UInt16 index;
+  char *s;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        if (FrmGetObjectType(form->frm, index) == frmControlObj) {
+          if ((ctl = (ControlType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+            if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
+              r = script_push_string(pe, s);
+            }
+          }
+        }
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
+static int app_script_ui_bounds(int pe) {
+  script_int_t ptr, id;
+  script_ref_t obj;
+  app_form_t *form;
+  RectangleType rect;
+  FontID old;
+  UInt16 index;
+  char *s;
+  int r = -1;
 
   if (script_get_integer(pe, 0, &ptr) == 0 &&
       script_get_integer(pe, 1, &id) == 0 &&
-      script_get_string(pe, 2, &text) == 0 &&
+      script_get_object(pe, 2, &obj) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        rect.extent.x = 0;
+        rect.extent.y = 0;
+        if (FrmGetObjectType(form->frm, index) == frmLabelObj) {
+          // labels only have their size computed when the form is drawn,
+          // so we have to compute it here
+          if ((s = (char *)FrmGetLabel(form->frm, id)) != NULL) {
+            old = FntSetFont(boldFont);
+            rect.extent.x = FntCharsWidth(s, StrLen(s));
+            rect.extent.y = FntCharHeight();
+            FntSetFont(old);
+          }
+        } else {
+          FrmGetObjectBounds(form->frm, index, &rect);
+        }
+        pumpkin_script_obj_iconst(pe, obj, "width", rect.extent.x);
+        pumpkin_script_obj_iconst(pe, obj, "height", rect.extent.y);
+        r = script_push_boolean(pe, 1);
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
+static int app_script_ui_label(int pe) {
+  script_int_t ptr, id, x, y, font;
+  app_form_t *form;
+  char *text = NULL;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_string(pe,  2, &text) == 0 &&
       script_get_integer(pe, 3, &x) == 0 &&
-      script_get_integer(pe, 4, &y) == 0) {
+      script_get_integer(pe, 4, &y) == 0 &&
+      script_get_integer(pe, 5, &font) == 0) {
 
     if (text[0]) {
       if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
-        font = stdFont;
+        if (FrmNewLabel(&form->frm, id, text, x, y, font) != NULL) {
+          r = script_push_boolean(pe, 1);
+        }
+        ptr_unlock(ptr, TAG_FORM);
+      }
+    }
+  }
+
+  if (text) xfree(text);
+
+  return r;
+}
+
+static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord dh) {
+  script_int_t ptr, id, x, y, font, group;
+  Coord width, height;
+  FontID old;
+  ControlType *ctl;
+  app_form_t *form;
+  char *text = NULL;
+  void *f;
+  int selected, r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_string(pe,  2, &text) == 0 &&
+      script_get_integer(pe, 3, &x) == 0 &&
+      script_get_integer(pe, 4, &y) == 0 &&
+      script_get_integer(pe, 5, &font) == 0) {
+
+    script_opt_integer(pe, 6, &group);
+    script_opt_boolean(pe, 7, &selected);
+
+    if (text[0]) {
+      if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
         old = FntSetFont(font);
         width = FntCharsWidth(text, StrLen(text)) + dw;
         height = FntCharHeight() + dh;
         FntSetFont(old);
 
         f = form->frm;
-        if (CtlNewControl(&f, id, style, text, x, y, width, height, font, 0, true) != NULL) {
+        if ((ctl = CtlNewControl(&f, id, style, text, x, y, width, height, font, group, true)) != NULL) {
+          if (style == pushButtonCtl) {
+            CtlSetValue(ctl, selected ? 1 : 0);
+          }
           r = script_push_boolean(pe, 1);
         }
         ptr_unlock(ptr, TAG_FORM);
@@ -609,7 +735,46 @@ static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord
 }
 
 static int app_script_ui_button(int pe) {
-  return app_script_ui_control(pe, buttonCtl, 4, 2);
+  return app_script_ui_control(pe, buttonCtl, 6, 2);
+}
+
+static int app_script_ui_pushbutton(int pe) {
+  return app_script_ui_control(pe, pushButtonCtl, 6, 2);
+}
+
+static int app_script_ui_field(int pe) {
+  script_int_t ptr, id, x, y, cols, rows, max, font;
+  Coord width, height;
+  FontID old;
+  app_form_t *form;
+  void *f;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_integer(pe, 2, &x) == 0 &&
+      script_get_integer(pe, 3, &y) == 0 &&
+      script_get_integer(pe, 4, &cols) == 0 &&
+      script_get_integer(pe, 5, &rows) == 0 &&
+      script_get_integer(pe, 6, &max) == 0 &&
+      script_get_integer(pe, 7, &font) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      old = FntSetFont(font);
+      width = cols * FntCharWidth('A');
+      height = rows * FntCharHeight();
+      FntSetFont(old);
+
+      f = form->frm;
+      if (FldNewField(&f, id, x, y, width, height, font, max, true, true,
+            rows == 1, false, leftAlign, true, true, false) != NULL) {
+        r = script_push_boolean(pe, 1);
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
 }
 
 static int app_script_ui_alert(int pe) {
@@ -631,20 +796,21 @@ static int app_script_ui_alert(int pe) {
   return r;
 }
 
+static int app_script_ui_about(int pe) {
+  char *descr = NULL;
+  int r = -1;
+
+  if (script_get_string(pe, 0, &descr) == 0) {
+    AbtShowAboutEx(pumpkin_get_app_creator(), aboutDialog+2, descr);
+  }
+
+  if (descr) xfree(descr);
+
+  return r;
+}
+
 int pumpkin_script_appenv(int pe) {
   int obj;
-
-  pumpkin_script_global_iconst(pe, "nilEvent",  nilEvent);
-  pumpkin_script_global_iconst(pe, "keyDown",   keyDownEvent);
-  pumpkin_script_global_iconst(pe, "penDown",   penDownEvent);
-  pumpkin_script_global_iconst(pe, "penMove",   penMoveEvent);
-  pumpkin_script_global_iconst(pe, "menuEvent", menuEvent);
-  pumpkin_script_global_iconst(pe, "ctlSelect", ctlSelectEvent);
-  pumpkin_script_global_iconst(pe, "appStop",   appStopEvent);
-
-  pumpkin_script_global_iconst(pe, "info",   10024);
-  pumpkin_script_global_iconst(pe, "warn",   10031);
-  pumpkin_script_global_iconst(pe, "error",  10021);
 
   if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
     pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);
@@ -678,11 +844,46 @@ int pumpkin_script_appenv(int pe) {
 
   if ((obj = pumpkin_script_create_obj(pe, "ui")) != -1) {
     pumpkin_script_obj_function(pe, obj, "event",    app_script_ui_event);
+    pumpkin_script_obj_function(pe, obj, "menu",     app_script_ui_menu);
     pumpkin_script_obj_function(pe, obj, "form",     app_script_ui_form);
     pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
     pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
+    pumpkin_script_obj_function(pe, obj, "getlabel", app_script_ui_getlabel);
+    pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
+    pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
     pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
+    pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
+    pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
     pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
+    pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);
+  }
+
+  if ((obj = pumpkin_script_create_obj(pe, "event")) != -1) {
+    pumpkin_script_obj_iconst(pe, obj, "nilEvent",  nilEvent);
+    pumpkin_script_obj_iconst(pe, obj, "keyDown",   keyDownEvent);
+    pumpkin_script_obj_iconst(pe, obj, "penDown",   penDownEvent);
+    pumpkin_script_obj_iconst(pe, obj, "penMove",   penMoveEvent);
+    pumpkin_script_obj_iconst(pe, obj, "menuEvent", menuEvent);
+    pumpkin_script_obj_iconst(pe, obj, "ctlSelect", ctlSelectEvent);
+    pumpkin_script_obj_iconst(pe, obj, "appStop",   appStopEvent);
+  }
+
+  if ((obj = pumpkin_script_create_obj(pe, "alert")) != -1) {
+    pumpkin_script_obj_iconst(pe, obj, "info",   10024);
+    pumpkin_script_obj_iconst(pe, obj, "warn",   10031);
+    pumpkin_script_obj_iconst(pe, obj, "error",  10021);
+  }
+
+  if ((obj = pumpkin_script_create_obj(pe, "font")) != -1) {
+    pumpkin_script_obj_iconst(pe, obj, "std",       stdFont);
+    pumpkin_script_obj_iconst(pe, obj, "bold",      boldFont);
+    pumpkin_script_obj_iconst(pe, obj, "large",     largeFont);
+    pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
+    pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
+    pumpkin_script_obj_iconst(pe, obj, "symbol11",  symbol11Font);
+    pumpkin_script_obj_iconst(pe, obj, "symbol7",   symbol7Font);
+    pumpkin_script_obj_iconst(pe, obj, "led",       ledFont);
+    pumpkin_script_obj_iconst(pe, obj, "largeBold", largeBoldFont);
   }
 
   return 0;

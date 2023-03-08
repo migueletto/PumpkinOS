@@ -17,3 +17,7 @@ function command_eval(cmd)
   end
   return r
 end
+
+function test()
+  deploy("Test", "Test", "/PALM/Programs/Command/test.lua")
+end

@@ -15,7 +15,7 @@ $(DLIB): $(PROGRAM).dlib
 $(PROGRAM).dlib: $(OBJS)
 	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit -lm
 
-res: resource.rcp command.lua
+res: resource.rcp command.lua form.lua
 	$(PILRC) resource.rcp; touch res
 
 clean:
