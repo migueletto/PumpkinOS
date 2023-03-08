@@ -634,7 +634,7 @@ const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
     buff[0] = '?'; buff[1] = '\0';
   }
   if (!strncmp(buff, "[string", 7)) {
-    return luaO_pushfstring(L, "%s", msg);
+    return luaO_pushfstring(L, "Line %d: %s", line, msg);
   }
   return luaO_pushfstring(L, "%s:%d: %s", buff, line, msg);
 }
