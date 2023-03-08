@@ -627,13 +627,17 @@ void CtlSetGraphics(ControlType *ctlP, DmResID newBitmapID, DmResID newSelectedB
 ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, const Char *textP, Coord x, Coord y, Coord width, Coord height, FontID font, UInt8 group, Boolean leftAnchor) {
   ControlType *controlP = NULL;
   FormType **fpp, *formP;
+  UInt16 len;
 
   if (formPP && textP) {
     fpp = (FormType **)formPP;
     formP = *fpp;
 
     if (formP) {
-      if ((controlP = pumpkin_heap_alloc(sizeof(ControlType), "Control")) != NULL) {
+      len = StrLen(textP);
+      if ((controlP = pumpkin_heap_alloc(sizeof(ControlType) + len + 1, "Control")) != NULL) {
+        // space for the label is alloced after the control structure
+        StrNCopy(controlP->buf, textP, len);
         controlP->id = ID;
         controlP->bounds.topLeft.x = x;
         controlP->bounds.topLeft.y = y;
@@ -646,7 +650,7 @@ ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, con
         controlP->style = style;
         controlP->font = font;
         controlP->group = group;
-        controlP->text = (char *)textP;
+        controlP->text = controlP->buf;
         controlP->formP = formP;
         controlP->objIndex = formP->numObjects;
 
