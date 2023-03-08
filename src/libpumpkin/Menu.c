@@ -484,8 +484,58 @@ Boolean MenuHideItem(UInt16 id) {
 }
 
 Err MenuAddItem(UInt16 positionId, UInt16 id, Char cmd, const Char *textP) {
-  debug(DEBUG_ERROR, "Menu", "MenuAddItem not implemented");
-  return 0;
+  MenuBarType *mbar;
+  UInt16 i, j, k;
+  Boolean stop;
+  Err err = sysErrParamErr;
+
+  if (textP) {
+    if ((mbar = MenuGetActiveMenu()) != NULL) {
+      for (i = 0, stop = false; i < mbar->numMenus && !stop; i++) {
+        for (j = 0; j < mbar->menus[i].numItems && !stop; j++) {
+          if (mbar->menus[i].items[j].id == id) {
+            // there is already an item with the same id
+            err = menuErrSameId;
+            stop = true;
+          }
+        }
+      }
+
+      if (!stop) {
+        for (i = 0, stop = false; i < mbar->numMenus && !stop; i++) {
+          for (j = 0; j < mbar->menus[i].numItems && !stop; j++) {
+            if (mbar->menus[i].items[j].id == positionId) {
+              // found insertion position, shift down remaining items
+              mbar->menus[i].numItems++;
+              mbar->menus[i].items = pumpkin_heap_realloc(mbar->menus[i].items, mbar->menus[i].numItems * sizeof(MenuItemType), "MenuItem");
+              for (k = j+2; k < mbar->menus[i].numItems; k++) {
+                MemMove(&mbar->menus[i].items[k], &mbar->menus[i].items[k-1], sizeof(MenuItemType));
+              }
+
+              // fill in new item
+              mbar->menus[i].items[j+1].id = id;
+              mbar->menus[i].items[j+1].command = cmd;
+              mbar->menus[i].items[j+1].itemStr = xstrdup(textP);
+
+              // adjust window size
+              mbar->menus[i].bounds.extent.y += FntCharHeight();
+              WinDeleteWindow(mbar->menus[i].menuWin, false);
+              mbar->menus[i].menuWin = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
+              mbar->menus[i].menuWin->windowBounds.topLeft.x = mbar->menus[i].bounds.topLeft.x;
+              mbar->menus[i].menuWin->windowBounds.topLeft.y = mbar->menus[i].bounds.topLeft.y;
+              mbar->menus[i].bitsBehind = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
+
+              stop = true;
+            }
+          }
+        }
+      }
+    }
+  } else {
+    err = menuErrNoMenu;
+  }
+
+  return err;
 }
 
 Err MenuCmdBarAddButton(UInt8 where, UInt16 bitmapId, MenuCmdBarResultType resultType, UInt32 result, Char *nameP) {
