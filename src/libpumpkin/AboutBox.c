@@ -3,7 +3,7 @@
 #include "pumpkin.h"
 #include "debug.h"
 
-static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
+void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr) {
   FormType *frm, *previous;
   MemHandle h;
   DmSearchStateType stateInfo;
@@ -12,11 +12,16 @@ static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
   char name[dmDBNameLength], buf[64], *s;
 
   if ((frm = FrmInitForm(formID)) != NULL) {
-    MemSet(name, sizeof(name), 0);
-    if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, &cardNo, &dbID) == errNone) {
-      DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+    if (descr) {
+      StrNCopy(buf, descr, sizeof(buf)-1);
+      FrmCopyLabel(frm, 11001, buf);
+    } else {
+      MemSet(name, sizeof(name), 0);
+      if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, &cardNo, &dbID) == errNone) {
+        DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+      }
+      FrmCopyLabel(frm, 11001, name);
     }
-    FrmCopyLabel(frm, 11001, name);
 
     MemSet(buf, sizeof(buf), 0);
     if ((h = DmGet1Resource(verRsc, 1)) != NULL) {
@@ -43,9 +48,9 @@ static void AbtShowAboutEx(UInt32 creator, UInt16 formID) {
 
 // Marked as system use only
 void AbtShowAbout(UInt32 creator) {
-  AbtShowAboutEx(creator, aboutDialog);
+  AbtShowAboutEx(creator, aboutDialog, NULL);
 }
 
 void AbtShowAboutPumpkin(UInt32 creator) {
-  AbtShowAboutEx(creator, aboutDialog+1);
+  AbtShowAboutEx(creator, aboutDialog+1, NULL);
 }

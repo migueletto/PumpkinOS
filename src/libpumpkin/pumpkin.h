@@ -394,6 +394,7 @@ char *VFSGetMount(void);
 Err VFSChangeDir(UInt16 volRefNum, char *path);
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
 
+void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);
 void AbtShowAboutPumpkin(UInt32 creator);
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow);
