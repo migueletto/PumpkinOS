@@ -15,6 +15,9 @@
 #include "filter.h"
 #include "httpc.h"
 #include "httpd.h"
+#include "template.h"
+#include "iterator.h"
+#include "loadfile.h"
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
 #include "language.h"
@@ -184,10 +187,6 @@ typedef struct {
   AppRegistryType *registry;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
-  int httpd_status;
-  int httpd_handle;
-  int httpd_pe;
-  script_ref_t httpd_ref;
 } pumpkin_module_t;
 
 typedef union {
@@ -2317,6 +2316,16 @@ int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value) {
   return r;
 }
 
+int pumpkin_script_obj_sconst(int pe, int obj, char *name, char *value) {
+  int r = -1;
+
+  if (pe > 0 && obj > 0) {
+    r = script_add_sconst(pe, obj, name, value);
+  }
+
+  return r;
+}
+
 int pumpkin_script_local_function(int pe, int obj, char *name, int (*f)(int pe)) {
   return pumpkin_script_obj_function(pe, obj, name, f);
 }
@@ -3265,6 +3274,189 @@ static int pumpkin_httpd_file(int pe) {
   return script_push_boolean(pe, r == 0);
 }
 
+static int stream_write(int pe) {
+  char *s = NULL;
+  int fd, len;
+
+  if (script_get_lstring(pe, 0, &s, &len) == 0) {
+    fd = pumpkin_script_global_iconst_value(pe, "_fout");
+    if (fd > 0) {
+      sys_write(fd, (uint8_t *)s, len);
+    }
+  }
+
+  if (s) xfree(s);
+
+  return 0;
+}
+
+static int it_pos(int pe) {
+  script_int_t i, index;
+  iterator_t *it;
+  int r = 0;
+
+  if (script_get_integer(pe, 0, &i) == 0 &&
+      script_get_integer(pe, 1, &index) == 0) {
+
+    if ((it = (iterator_t *)ptr_lock(i, TAG_ITERATOR)) != NULL) {
+      if (it->position && it->position(it, index)) {
+        r = script_push_boolean(pe, 1);
+      }
+      ptr_unlock(i, TAG_ITERATOR);
+    }
+  }
+
+  return r;
+}
+
+static int it_next(int pe) {
+  script_int_t i;
+  iterator_t *it;
+  int r = 0;
+
+  if (script_get_integer(pe, 0, &i) == 0) {
+    if ((it = (iterator_t *)ptr_lock(i, TAG_ITERATOR)) != NULL) {
+      if (it->next && it->next(it)) {
+        r = script_push_boolean(pe, 1);
+      }
+      ptr_unlock(i, TAG_ITERATOR);
+    }
+  }
+
+  return r;
+}
+
+static int it_obj(int pe) {
+  script_int_t i;
+  iterator_t *it;
+  char *name, *value;
+  int obj, j, k, n, r = 0;
+
+  if (script_get_integer(pe, 0, &i) == 0) {
+    if ((it = (iterator_t *)ptr_lock(i, TAG_ITERATOR)) != NULL) {
+      obj = pumpkin_script_create_obj(pe, NULL);
+      n = it->num_properties(it);
+      for (j = 1; j <= n; j++) {
+        name = it->property_name(it, j);
+        value = it->get_property_value(it, j);
+        if (value) {
+          for (k = 0; value[k]; k++) {
+            if (value[k] < '0' || value[k] > '9') break;
+          }
+          if (k && !value[k]) {
+            pumpkin_script_obj_iconst(pe, obj, name, sys_atoi(value));
+          } else {
+            pumpkin_script_obj_sconst(pe, obj, name, value);
+          }
+        }
+      }
+      ptr_unlock(i, TAG_ITERATOR);
+    }
+  }
+
+  return r;
+}
+
+static int httpd_template(int pe, http_connection_t *con, template_t *t) {
+  char *script;
+  int fd, r;
+
+  if ((fd = sys_mkstemp()) != -1) {
+    script = template_getscript(t);
+
+    pumpkin_script_global_iconst(pe, "_fout", fd);
+    pumpkin_script_global_function(pe, "_stream_write", stream_write);
+    pumpkin_script_global_function(pe, "_it_pos", it_pos);
+    pumpkin_script_global_function(pe, "_it_next", it_next);
+    pumpkin_script_global_function(pe, "_it_obj", it_obj);
+
+    if (pumpkin_script_run(pe, script) != -1) {
+      sys_seek(fd, 0, SYS_SEEK_SET);
+      r = httpd_file_stream(con, fd, template_gettype(t), 0);
+    }
+    sys_close(fd);
+  } else {
+    r = httpd_reply(con, 500);
+  }
+
+  return r;
+}
+
+static int pumpkin_httpd_template(int pe) {
+  http_connection_t *con;
+  template_t *t;
+  script_int_t ptr1, ptr2;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr1) == 0 &&
+      script_get_integer(pe, 1, &ptr2) == 0) {
+
+    con = (http_connection_t *)ptr_lock(ptr1, TAG_CONN);
+    if (con) {
+      t = (template_t *)ptr_lock(ptr2, TAG_TEMPLATE);
+      if (t) {
+        r = script_push_boolean(pe, httpd_template(pe, con, t) == 0);
+        ptr_unlock(ptr2, TAG_TEMPLATE);
+      }
+      ptr_unlock(ptr1, TAG_CONN);
+    }
+  }
+
+  return r;
+}
+
+static void template_destructor(void *p) {
+  template_t *t;
+
+  t = (template_t *)p;
+  if (t) {
+    template_destroy(t);
+  }
+}
+
+static int pumpkin_template_create(int pe) {
+  char *filename = NULL;
+  char *mimetype = NULL;
+  template_t *t;
+  char *card, prefix[256];
+  int ptr, r = -1;
+
+  if (script_get_string(pe, 0, &filename) == 0 &&
+      script_get_string(pe, 1, &mimetype) == 0) {
+
+    card = VFS_CARD;
+    if (card[0] == '/') card++;
+    sys_snprintf(prefix, sizeof(prefix)-1, "%s%s", VFSGetMount(), card);
+
+    if ((t = template_create(prefix, filename, mimetype)) != NULL) {
+      if (template_compile(t) != -1) {
+        if ((ptr = ptr_new(t, template_destructor)) != -1) {
+          r = script_push_integer(pe, ptr);
+        } else {
+          template_destroy(t);
+        }
+      } else {
+        template_destroy(t);
+      }
+    }
+  }
+
+  if (filename) xfree(filename);
+  if (mimetype) xfree(mimetype);
+
+  return r;
+}
+
+static int pumpkin_template_destroy(int pe) {
+  script_int_t ptr;
+
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    return script_push_boolean(pe, ptr_free(ptr, TAG_TEMPLATE) == 0);
+  }
+
+  return -1;
+}
+
 static int pumpkin_httpd_callback(http_connection_t *con) {
   pumpkin_httpd_t *h;
   script_arg_t value, ret;
@@ -3294,10 +3486,6 @@ static int pumpkin_httpd_callback(http_connection_t *con) {
     value.value.s = con->uri;
     script_global_set(h->pe, "path", &value);
 
-    obj = pumpkin_script_create_obj(h->pe, "http");
-    script_add_function(h->pe, obj, "string", pumpkin_httpd_string);
-    script_add_function(h->pe, obj, "file", pumpkin_httpd_file);
-
     if ((ptr = ptr_new(con, NULL)) != -1) {
       r = script_call(h->pe, h->ref, &ret, "I", ptr);
       ptr_free(ptr, TAG_CONN);
@@ -3314,7 +3502,6 @@ static int pumpkin_httpd_callback(http_connection_t *con) {
     }
 
     value.type = SCRIPT_ARG_NULL;
-    script_global_set(h->pe, "http",   &value);
     script_global_set(h->pe, "header", &value);
     script_global_set(h->pe, "param",  &value);
     script_global_set(h->pe, "method", &value);
@@ -3334,6 +3521,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *work, 
   pumpkin_httpd_t *h = NULL;
   script_arg_t value;
   char *card, buf[256];
+  int obj;
 
   if (root && work && (h = xcalloc(1, sizeof(pumpkin_httpd_t))) != NULL) {
     h->root = root;
@@ -3344,6 +3532,16 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *work, 
     h->handle = httpd_create("0.0.0.0", port, PUMPKIN_SERVER_NAME, buf, NULL, NULL, NULL, NULL, NULL, pumpkin_httpd_callback, h);
     if (h->handle != -1) {
       h->pe = pumpkin_script_create();
+
+      obj = pumpkin_script_create_obj(h->pe, "http");
+      script_add_function(h->pe, obj, "file",     pumpkin_httpd_file);
+      script_add_function(h->pe, obj, "string",   pumpkin_httpd_string);
+      script_add_function(h->pe, obj, "template", pumpkin_httpd_template);
+
+      obj = pumpkin_script_create_obj(h->pe, "template");
+      script_add_function(h->pe, obj, "create",   pumpkin_template_create);
+      script_add_function(h->pe, obj, "destroy",  pumpkin_template_destroy);
+
       if (pumpkin_script_init(h->pe, sysRsrcTypeScript, scriptId) == 0) {
         if (script_global_get(h->pe, work, &value) == 0) {
           if (value.type == SCRIPT_ARG_FUNCTION) {

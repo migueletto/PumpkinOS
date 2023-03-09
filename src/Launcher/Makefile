@@ -15,7 +15,7 @@ $(DLIB): $(PROGRAM).dlib
 $(PROGRAM).dlib: $(OBJS)
 	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit
 
-res: resource.rcp
+res: resource.rcp webserver.lua
 	$(PILRC) resource.rcp; touch res
 
 clean:

@@ -224,6 +224,7 @@ void *pumpkin_script_global_pointer_value(int pe, char *name);
 int pumpkin_script_obj_function(int pe, int obj, char *name, int (*f)(int pe));
 int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value);
 int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value);
+int pumpkin_script_obj_sconst(int pe, int obj, char *name, char *value);
 int pumpkin_script_local_function(int pe, int obj, char *name, int (*f)(int pe));
 char *pumpkin_script_call(int pe, char *function, char *s);
 int pumpkin_script_run(int pe, char *s);
