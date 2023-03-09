@@ -839,55 +839,25 @@ static int unescape_url(char *url) {
 
 static int httpd_action(void *arg) {
   httpd_server_t *server;
-  http_connection_t con;
+  http_connection_t *con;
   sys_timeval_t tv;
-  ext_type_t *type;
   char host[MAX_HOST];
-  node_t *node;
-  int i, r, sock, port;
-  unsigned int n;
+  int sock, port;
 
   server = (httpd_server_t *)arg;
-  sys_memset(&con, 0, sizeof(http_connection_t));
-  con.status = 1;
-  con.data = server->data;
-  server->callback(&con);
+  con = xmalloc(sizeof(http_connection_t));
+  con->status = 1;
+  con->data = server->data;
+  server->callback(con);
 
   for (; !thread_must_end();) {
-    if ((r = thread_server_read((unsigned char **)&type, &n)) == -1) {
-      break;
-    }
-
-    if (type) {
-      if (n == sizeof(ext_type_t)) {
-        list_add(server->types, type);
-      } else {
-        xfree(type);
-      }
-    }
-
     if (server->sock != -1) {
       tv.tv_sec = 0;
       tv.tv_usec = 200000;
       sock = sys_socket_accept(server->sock, host, MAX_HOST, &port, &tv);
 
       if (sock > 0) {
-        type = NULL;
-
-        for (n = 0, node = list_next(server->types); node; node = list_next(node), n++);
-        if (n) {
-          type = xcalloc(n, sizeof(ext_type_t));
-          if (type) {
-            for (i = 0, node = list_next(server->types); node; node = list_next(node), i++) {
-              sys_memcpy(&type[i], list_element(node), sizeof(ext_type_t));
-            }
-          } else {
-            n = 0;
-          }
-        }
-
-        if (httpd_spawn(sock, host, port, server->system, server->home, 10, server->user, server->password, server->secure, server->sc, server->callback, server->data, type, n) == -1) {
-          xfree(type);
+        if (httpd_spawn(sock, host, port, server->system, server->home, 10, server->user, server->password, server->secure, server->sc, server->callback, server->data, NULL, 0) == -1) {
           sys_close(sock);
         }
       }
@@ -901,30 +871,12 @@ static int httpd_action(void *arg) {
   if (server->user) xfree(server->user);
   if (server->password) xfree(server->password);
 
-  for (node = server->types; node;) {
-    type = (ext_type_t *)list_element(node);
-    if (type) xfree(type);
-    node = list_remove(server->types, node);
-  }
-
+  con->status = -1;
+  server->callback(con);
+  xfree(con);
   xfree(server);
-  con.status = -1;
-  server->callback(&con);
 
   return 0;
-}
-
-int httpd_mimetype(int handle, char *ext, char *mimetype) {
-  ext_type_t arg;
-  int r = -1;
-
-  if (ext && ext[0] && mimetype && mimetype[0]) {
-    sys_strncpy(arg.ext, ext, MAX_EXT-1);
-    sys_strncpy(arg.mimetype, mimetype, MAX_MIME-1);
-    r = thread_client_write(handle, (unsigned char *)&arg, sizeof(ext_type_t));
-  }
-
-  return r == -1 ? -1 : 0;
 }
 
 int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data) {
@@ -967,7 +919,6 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
   server->home = xstrdup(home);
   server->user = user && user[0] ? xstrdup(user) : NULL;
   server->password = password && password[0] ? xstrdup(password) : NULL;
-  server->types = list_new();
   server->secure = secure;
   server->callback = callback;
   server->data = data;

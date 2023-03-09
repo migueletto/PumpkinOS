@@ -6,6 +6,7 @@
 #define EditFormForm    1006
 #define EditBinForm     1007
 #define AboutForm       1008
+#define HttpdForm       1009
 
 #define MainMenu        1001
 #define AppListMenu     1101
@@ -73,6 +74,7 @@
 #define aboutCmd    9
 #define runCmd     10
 #define delCmd     11
+#define httpdCmd   12
 
 #define monoFont1 128
 #define monoFont2 129

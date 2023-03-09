@@ -16,6 +16,7 @@ BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
     MENUITEM "Shutdown"     shutdownCmd "S"
+    MENUITEM "Web server"   httpdCmd    "W"
     MENUITEM "About"        aboutCmd    "A"
   END
 
@@ -35,6 +36,7 @@ BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
     MENUITEM "Shutdown"     shutdownCmd "S"
+    MENUITEM "Web server"   httpdCmd    "W"
     MENUITEM "About"        aboutCmd    "A"
   END
 
@@ -124,6 +126,22 @@ BEGIN
   LABEL "PumpkinOS 0.1" 2002 CENTER PREVBOTTOM+10 FONT 1
   LABEL "Use at your own risk" 2003 CENTER PREVBOTTOM+1 FONT 1
   BUTTON "Ok" okBtn CENTER BOTTOM@152 36 AUTO
+END
+
+FORM HttpdForm 2 78 156 64
+USABLE
+MODAL
+SAVEBEHIND
+DEFAULTBTNID cancelBtn
+BEGIN
+  TITLE "Web Server"
+  LABEL "Status:" 3001 4 16 FONT 1
+  FIELD statusFld PREVRIGHT+14 PREVTOP 40 AUTO SINGLELINE MAXCHARS 16 NONEDITABLE
+  LABEL "Port:" 3001 4 PREVBOTTOM+2 FONT 1
+  FIELD portFld PREVRIGHT+10 PREVTOP 40 AUTO SINGLELINE MAXCHARS 5 EDITABLE UNDERLINED
+  BUTTON "Start" startCtl 4 PREVBOTTOM+6 AUTO AUTO
+  BUTTON "Stop" stopCtl PREVRIGHT+6 PREVTOP AUTO AUTO
+  BUTTON "Done" okBtn PREVRIGHT+6 PREVTOP AUTO AUTO
 END
 
 ALERT ErrorAlert
@@ -245,6 +263,8 @@ BEGIN
   FONT "fakeL.txt" DENSITY  72
   FONT "fakeH.txt" DENSITY 144
 END
+
+DATA "Scrp" ID 1 "webserver.lua"
 
 HEX "wind" ID 1 
   0x02 0x80 0x01 0xE0
