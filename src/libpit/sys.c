@@ -2800,9 +2800,13 @@ int sys_tmpname(char *buf, int max) {
 
 int sys_mkstemp(void) {
   char buf[32];
+  int fd;
 
   strcpy(buf, "tmpXXXXXX");
-  return mkstemp(buf);
+  fd = mkstemp(buf);
+  unlink(buf);
+
+  return fd;
 }
 
 void *sys_malloc(sys_size_t size) {
