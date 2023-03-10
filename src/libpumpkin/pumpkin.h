@@ -260,7 +260,7 @@ void pumpkin_set_m68k(int m68k);
 int pumpkin_is_v10(void);
 int pumpkin_is_m68k(void);
 
-pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *work, char *root);
+pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *root);
 int pumpkin_httpd_destroy(pumpkin_httpd_t *h);
 int pumpkin_httpd_status(pumpkin_httpd_t *h);
 

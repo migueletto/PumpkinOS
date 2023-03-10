@@ -27,7 +27,7 @@ template_t *template_create(char *prefix, char *filename, char *mimetype) {
     t->tag = TAG_TEMPLATE;
     if (prefix) sys_strncpy(t->prefix, prefix, sizeof(t->prefix)-1);
     sys_strncpy(t->mimetype, mimetype, sizeof(t->mimetype)-1);
-    sys_snprintf(t->buf, sizeof(t->buf)-1, "%s/%s", prefix, filename);
+    sys_snprintf(t->buf, sizeof(t->buf)-1, "%s%s", prefix, filename);
     t->body = load_file(t->buf, &t->bodylen);
   }
 

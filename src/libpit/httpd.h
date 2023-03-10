@@ -63,7 +63,7 @@ int httpd_file_stream(http_connection_t *con, int fd, char *mime, uint64_t mtime
 int httpd_set_header(http_connection_t *con, char *name, char *value);
 int httpd_reply(http_connection_t *con, int code);
 
-int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data);
+int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data, void *(*worker_data)(void *data));
 int httpd_close(int handle);
 
 #endif

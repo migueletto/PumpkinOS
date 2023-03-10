@@ -2435,7 +2435,7 @@ static Boolean HttpdFormHandleEvent(EventPtr event) {
           if (data->webServer == NULL) {
             frm = FrmGetActiveForm();
             port = getFieldNum(frm, portFld);
-            data->webServer = pumpkin_httpd_create(port, 1, "work", "/www");
+            data->webServer = pumpkin_httpd_create(port, 1, "/www");
           }
           handled = true;
           break;

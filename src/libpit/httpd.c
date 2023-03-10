@@ -35,6 +35,7 @@ typedef struct httpd_server_t {
   secure_t *s;
   int (*callback)(http_connection_t *con);
   void *data;
+  void *(*worker_data)(void *data);
 } httpd_server_t;
 
 static int conn_action(void *arg);
@@ -393,6 +394,7 @@ static int httpd_handle(http_connection_t *con) {
 
   if (sys_stat(path, &statbuf) == -1 || (statbuf.mode & SYS_IFDIR)) {
     debug(DEBUG_TRACE, "WEB", "calling callback");
+    con->status = 0;
     if ((r = con->callback(con)) != 0) {
       debug(DEBUG_ERROR, "WEB", "callback failed (%d)", r);
       xfree(path);
@@ -769,7 +771,10 @@ static int conn_action(void *arg) {
         sys_close(con->body_fd);
         con->body_fd = 0;
         n = 0;
-        if (!con->keepalive || r != 0) break;
+        // can't handle more than one request because the callback
+        // inside httpd_handle may have freed resources
+        //if (!con->keepalive || r != 0) break;
+        break;
 
       } else {
         httpd_reply(con, 500);
@@ -843,6 +848,7 @@ static int httpd_action(void *arg) {
   sys_timeval_t tv;
   char host[MAX_HOST];
   int sock, port;
+  void *data;
 
   server = (httpd_server_t *)arg;
   con = xmalloc(sizeof(http_connection_t));
@@ -857,7 +863,8 @@ static int httpd_action(void *arg) {
       sock = sys_socket_accept(server->sock, host, MAX_HOST, &port, &tv);
 
       if (sock > 0) {
-        if (httpd_spawn(sock, host, port, server->system, server->home, 10, server->user, server->password, server->secure, server->sc, server->callback, server->data, NULL, 0) == -1) {
+        data = server->worker_data(server->data);
+        if (httpd_spawn(sock, host, port, server->system, server->home, 10, server->user, server->password, server->secure, server->sc, server->callback, data, NULL, 0) == -1) {
           sys_close(sock);
         }
       }
@@ -879,7 +886,7 @@ static int httpd_action(void *arg) {
   return 0;
 }
 
-int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data) {
+int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data, void *(*worker_data)(void *data)) {
   httpd_server_t *server;
   int handle;
 
@@ -922,6 +929,7 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
   server->secure = secure;
   server->callback = callback;
   server->data = data;
+  server->worker_data = worker_data;
 
   if ((handle = thread_begin(TAG_HTTPD, httpd_action, server)) == -1) {
     mutex_destroy(server->mutex);
