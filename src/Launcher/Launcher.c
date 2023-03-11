@@ -96,8 +96,6 @@ typedef struct {
   int sort, dir;
   int  prev, prevX, prevY;
   int num, x[16];
-  pumpkin_httpd_t *webServer;
-  int lastStatus;
   MenuBarType *mainMenu, *appListMenu;
 } launcher_data_t;
 
@@ -2390,79 +2388,6 @@ static void deleteApplication(launcher_item_t *item) {
   }
 }
 
-static void HttpdStatus(int status) {
-  FormType *frm;
-  RectangleType rect;
-  UInt16 index;
-  Coord x, y;
-
-  frm = FrmGetActiveForm();
-  index = FrmGetObjectIndex(frm, statusFld);
-  FrmGetObjectBounds(frm, index, &rect);
-  x = rect.topLeft.x - 12;
-  y = rect.topLeft.y;
-
-  if (status) {
-    paintBitmap(okBmp, x, y);
-    setField(frm, statusFld, "Running", false);
-  } else {
-    setField(frm, statusFld, "Stopped", false);
-    paintBitmap(errorBmp, x, y);
-  }
-}
-
-static Boolean HttpdFormHandleEvent(EventPtr event) {
-  launcher_data_t *data;
-  FormType *frm;
-  UInt16 port;
-  int status;
-  Boolean handled = false;
-
-  data = pumpkin_get_data();
-
-  switch (event->eType) {
-    case frmOpenEvent:
-      frm = FrmGetActiveForm();
-      setFieldNum(frm, portFld, 8000, false);
-      FrmDrawForm(frm);
-      data->lastStatus = data->webServer ? pumpkin_httpd_status(data->webServer) : 0;
-      HttpdStatus(data->lastStatus);
-      handled = true;
-      break;
-    case ctlSelectEvent:
-      switch (event->data.ctlSelect.controlID) {
-        case startCtl:
-          if (data->webServer == NULL) {
-            frm = FrmGetActiveForm();
-            port = getFieldNum(frm, portFld);
-            data->webServer = pumpkin_httpd_create(port, 1, "/www");
-          }
-          handled = true;
-          break;
-        case stopCtl:
-          if (data->webServer != NULL) {
-            pumpkin_httpd_destroy(data->webServer);
-            data->webServer = NULL;
-          }
-          handled = true;
-          break;
-      }
-      break;
-    case nilEvent:
-      status = data->webServer ? pumpkin_httpd_status(data->webServer) : 0;
-      if (status != data->lastStatus) {
-        data->lastStatus = status;
-        HttpdStatus(status);
-      }
-      handled = true;
-      break;
-    default:
-      break;
-  }
-
-  return handled;
-}
-
 static void MenuEvent(UInt16 id, launcher_data_t *data) {
   FormPtr frm;
   UInt16 flags;
@@ -2573,13 +2498,6 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
             UpdateStatus(frm, data, true);
           }
         }
-      }
-      break;
-    case httpdCmd:
-      if ((frm = FrmInitForm(HttpdForm)) != NULL) {
-        FrmSetEventHandler(frm, HttpdFormHandleEvent);
-        FrmDoDialogEx(frm, 10);
-        FrmDeleteForm(frm);
       }
       break;
     case aboutCmd:

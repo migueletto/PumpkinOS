@@ -25,6 +25,7 @@
 typedef struct httpd_server_t {
   mutex_t *mutex;
   int sock;
+  int multithreaded;
   char *system;
   char *home;
   char *user;
@@ -35,7 +36,6 @@ typedef struct httpd_server_t {
   secure_t *s;
   int (*callback)(http_connection_t *con);
   void *data;
-  void *(*worker_data)(void *data);
 } httpd_server_t;
 
 static int conn_action(void *arg);
@@ -53,12 +53,12 @@ static int httpd_init(char *host, int port) {
     return -1;
   }
 
-  debug(DEBUG_INFO, "WEB", "HTTP server initialized");
+  debug(DEBUG_INFO, "WEB", "HTTP server initialized on port %d", p);
 
   return sock;
 }
 
-static int httpd_spawn(int sock, char *host, int port, char *system, char *home, int timeout, char *user, char *password, secure_provider_t *secure, secure_config_t *sc, int (*callback)(struct http_connection_t *con), void *data, ext_type_t *types, int num_types) {
+static int httpd_spawn(int sock, char *host, int port, httpd_server_t *server, int timeout, ext_type_t *types, int num_types) {
   http_connection_t *con;
   int handle;
 
@@ -66,21 +66,21 @@ static int httpd_spawn(int sock, char *host, int port, char *system, char *home,
     return -1;
   }
 
-  if (secure && (con->s = secure->connect(sc, host, port, sock)) == NULL) {
+  if (server->secure && (con->s = server->secure->connect(server->sc, host, port, sock)) == NULL) {
     xfree(con);
     return -1;
   }
 
   con->tag = TAG_CONN;
   con->sock = sock;
-  con->secure = secure;
+  con->secure = server->secure;
   con->timeout = timeout;
-  con->system = system;
-  con->home = home;
-  con->callback = callback;
-  con->data = data;
-  con->user = user;
-  con->password = password;
+  con->system = server->system;
+  con->home = server->home;
+  con->callback = server->callback;
+  con->data = server->data;
+  con->user = server->user;
+  con->password = server->password;
   con->types = types;
   con->num_types = num_types;
 
@@ -88,9 +88,14 @@ static int httpd_spawn(int sock, char *host, int port, char *system, char *home,
   sys_strncpy(con->host, host, MAX_HOST-1);
   debug(DEBUG_INFO, "WEB", "connection from client %s:%d", con->host, con->remote_port);
 
-  if ((handle = thread_begin(TAG_WORKER, conn_action, con)) == -1) {
-    if (secure) secure->close(con->s);
-    xfree(con);
+  if (server->multithreaded) {
+    if ((handle = thread_begin(TAG_WORKER, conn_action, con)) == -1) {
+      if (server->secure) server->secure->close(con->s);
+      xfree(con);
+    }
+  } else {
+    conn_action(con);
+    handle = 0;
   }
 
   return handle;
@@ -394,7 +399,7 @@ static int httpd_handle(http_connection_t *con) {
 
   if (sys_stat(path, &statbuf) == -1 || (statbuf.mode & SYS_IFDIR)) {
     debug(DEBUG_TRACE, "WEB", "calling callback");
-    con->status = 0;
+    con->status = HTTPD_ACTION;
     if ((r = con->callback(con)) != 0) {
       debug(DEBUG_ERROR, "WEB", "callback failed (%d)", r);
       xfree(path);
@@ -848,26 +853,25 @@ static int httpd_action(void *arg) {
   sys_timeval_t tv;
   char host[MAX_HOST];
   int sock, port;
-  void *data;
 
   server = (httpd_server_t *)arg;
   con = xmalloc(sizeof(http_connection_t));
-  con->status = 1;
+  con->status = HTTPD_START;
   con->data = server->data;
   server->callback(con);
 
   for (; !thread_must_end();) {
-    if (server->sock != -1) {
-      tv.tv_sec = 0;
-      tv.tv_usec = 200000;
-      sock = sys_socket_accept(server->sock, host, MAX_HOST, &port, &tv);
+    tv.tv_sec = 0;
+    tv.tv_usec = server->multithreaded ? 100000 : 0;
+    if ((sock = sys_socket_accept(server->sock, host, MAX_HOST, &port, &tv)) == -1) break;
 
-      if (sock > 0) {
-        data = server->worker_data(server->data);
-        if (httpd_spawn(sock, host, port, server->system, server->home, 10, server->user, server->password, server->secure, server->sc, server->callback, data, NULL, 0) == -1) {
-          sys_close(sock);
-        }
+    if (sock > 0) {
+      if (httpd_spawn(sock, host, port, server, 10, NULL, 0) == -1) {
+        sys_close(sock);
       }
+    } else {
+      con->status = HTTPD_IDLE;
+      if (server->callback(con) != 0) break;
     }
   }
 
@@ -878,7 +882,7 @@ static int httpd_action(void *arg) {
   if (server->user) xfree(server->user);
   if (server->password) xfree(server->password);
 
-  con->status = -1;
+  con->status = HTTPD_STOP;
   server->callback(con);
   xfree(con);
   xfree(server);
@@ -886,7 +890,7 @@ static int httpd_action(void *arg) {
   return 0;
 }
 
-int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data, void *(*worker_data)(void *data)) {
+int httpd_create(char *host, int port, char *system, char *home, char *user, char *password, secure_provider_t *secure, char *cert, char *key, int (*callback)(http_connection_t *con), void *data, int multithreaded) {
   httpd_server_t *server;
   int handle;
 
@@ -922,6 +926,7 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
     }
   }
 
+  server->multithreaded = multithreaded;
   server->system = xstrdup(system);
   server->home = xstrdup(home);
   server->user = user && user[0] ? xstrdup(user) : NULL;
@@ -929,12 +934,16 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
   server->secure = secure;
   server->callback = callback;
   server->data = data;
-  server->worker_data = worker_data;
 
-  if ((handle = thread_begin(TAG_HTTPD, httpd_action, server)) == -1) {
-    mutex_destroy(server->mutex);
-    httpd_closesock(server->secure, server->s, server->sock);
-    xfree(server);
+  if (multithreaded) {
+    if ((handle = thread_begin(TAG_HTTPD, httpd_action, server)) == -1) {
+      mutex_destroy(server->mutex);
+      httpd_closesock(server->secure, server->s, server->sock);
+      xfree(server);
+    }
+  } else {
+    httpd_action(server);
+    handle = 0;
   }
 
   return handle;

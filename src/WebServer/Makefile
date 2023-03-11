@@ -1,12 +1,12 @@
 include ../common.mak
 include ../commonp.mak
 
-PROGRAM=Launcher
+PROGRAM=WebServer
 PRC=$(VFS)/app_install/$(PROGRAM).prc
-OBJS=Launcher.o editstr.o editbmp.o editform.o editbin.o
+OBJS=WebServer.o
 
 $(PROGRAM).prc: $(DLIB) res
-	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
+	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c WebS -n WebServer *.bin
 	cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(PROGRAM).dlib
@@ -15,8 +15,8 @@ $(DLIB): $(PROGRAM).dlib
 $(PROGRAM).dlib: $(OBJS)
 	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit
 
-res: resource.rcp
+res: resource.rcp webserver.lua
 	$(PILRC) resource.rcp; touch res
 
 clean:
-	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(POBJS) $(OBJS) *.bin res
+	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) *.bin res

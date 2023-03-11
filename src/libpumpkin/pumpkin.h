@@ -134,6 +134,7 @@ void pumpkin_heap_walk(int global);
 
 int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
+void pumpkin_deploy_file(char *path);
 void pumpkin_deploy_files(char *path);
 void pumpkin_local_refresh(void);
 void pumpkin_set_spawner(int handle);
@@ -260,7 +261,7 @@ void pumpkin_set_m68k(int m68k);
 int pumpkin_is_v10(void);
 int pumpkin_is_m68k(void);
 
-pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *root);
+pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker, char *root, void *data, Boolean (*idle)(void *data));
 int pumpkin_httpd_destroy(pumpkin_httpd_t *h);
 int pumpkin_httpd_status(pumpkin_httpd_t *h);
 

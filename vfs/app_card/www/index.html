@@ -1,8 +1,11 @@
 <html>
 <header>
-<title>Test</title>
+  <title>Upload</title>
 </header>
 <body>
-Test
+  <form action="/upload" enctype="multipart/form-data" method="post">
+    <input type="file" id="file" name="filename" accept=".prc">
+    <input type="submit" value="Upload">
+  </form>
 </body>
 </html>
