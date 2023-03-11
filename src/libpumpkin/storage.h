@@ -8,6 +8,7 @@ int StoFinish(void);
 int StoDeleteFile(char *path);
 int StoDeployFile(char *path, AppRegistryType *ar);
 int StoDeployFiles(char *path, AppRegistryType *ar);
+int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar);
 Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence);
 Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size);
 Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size);

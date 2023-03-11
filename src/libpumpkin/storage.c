@@ -3952,6 +3952,59 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
   return r;
 }
 
+int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
+  storage_t *sto = (storage_t *)thread_get(sto_key);
+  LocalID dbID;
+  UInt32 type, creator, newDate, crDate;
+  Boolean install;
+  char name[dmDBNameLength], stype[8], screator[8];
+  uint32_t hsize;
+  int r = -1;
+
+  if (sto) {
+    if (mutex_lock(sto->mutex) == 0) {
+      hsize = 78;
+      if (size > hsize) {
+        xmemset(name, 0, dmDBNameLength);
+        xmemcpy(name, p, dmDBNameLength - 1);
+        if (name[0]) {
+          install = false;
+          if ((dbID = DmFindDatabase(0, name)) == 0) {
+            install = true;
+          } else {
+            if (DmDatabaseInfo(0, dbID, NULL, NULL, NULL, &crDate, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+              get4b(&newDate, p, dmDBNameLength + 4);
+              install = (newDate > crDate);
+            }
+          }
+          if (install) {
+            get4b(&type, p, dmDBNameLength + 28);
+            get4b(&creator, p, dmDBNameLength + 32);
+            pumpkin_id2s(type, stype);
+            pumpkin_id2s(creator, screator);
+            debug(DEBUG_INFO, "STOR", "installing new version of \"%s\" type '%s' creator '%s' from memory", name, stype, screator);
+
+            if (DmCreateDatabaseFromImage(p) == errNone) {
+              debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
+              if (type == sysFileTApplication) {
+                StoRegistryCreate(ar, creator);
+              }
+              r = 0;
+            } else {
+              debug(DEBUG_ERROR, "STOR", "error installing \"%s\"", name);
+            }
+          } else {
+            r = 0;
+          }
+        }
+      }
+      mutex_unlock(sto->mutex);
+    }
+  }
+
+  return r;
+}
+
 int StoDeployFiles(char *path, AppRegistryType *ar) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   vfs_dir_t *dir;

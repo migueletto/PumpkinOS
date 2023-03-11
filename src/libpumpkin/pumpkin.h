@@ -134,7 +134,6 @@ void pumpkin_heap_walk(int global);
 
 int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
-void pumpkin_deploy_file(char *path);
 void pumpkin_deploy_files(char *path);
 void pumpkin_local_refresh(void);
 void pumpkin_set_spawner(int handle);

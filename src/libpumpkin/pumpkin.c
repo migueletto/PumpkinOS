@@ -499,13 +499,6 @@ int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line
   return 0;
 }
 
-void pumpkin_deploy_file(char *path) {
-  if (mutex_lock(mutex) == 0) {
-    StoDeployFile(path, pumpkin_module.registry);
-    mutex_unlock(mutex);
-  }
-}
-
 void pumpkin_deploy_files(char *path) {
   DmOpenRef dbRef;
   LocalID dbID;
@@ -3438,31 +3431,15 @@ static int pumpkin_httpd_template(int pe) {
 }
 
 static int pumpkin_httpd_install(int pe) {
-  char path[256], *install, *s = NULL;
-  int fd, len, r = -1;
+  char *s = NULL;
+  uint8_t *p;
+  int len, r = -1;
 
   if (script_get_lstring(pe, 0, &s, &len) == 0) {
-    install = VFS_INSTALL;
-    if (install[0] == '/') install++;
-    sys_snprintf(path, sizeof(path)-1, "%s%stemp.prc", VFSGetMount(), install);
-
-    debug(DEBUG_INFO, PUMPKINOS, "saving file \"%s\"", path);
-    if ((fd = sys_create(path, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-      if (sys_write(fd, (uint8_t *)s, len) == len) {
-        r = 0;
-      }
-      sys_close(fd);
-    }
-
-    if (r == 0) {
-      sys_snprintf(path, sizeof(path)-1, "%stemp.prc", VFS_INSTALL);
-      debug(DEBUG_INFO, PUMPKINOS, "deploying file \"%s\"", path);
-      pumpkin_deploy_file(path);
-      sys_snprintf(path, sizeof(path)-1, "%s%stemp.prc", VFSGetMount(), install);
-      sys_unlink(path);
-    } else {
-      debug(DEBUG_ERROR, PUMPKINOS, "removing file \"%s\"", path);
-      sys_unlink(path);
+    if ((p = MemPtrNew(len)) != NULL) {
+      MemMove(p, s, len);
+      r = StoDeployFileFromImage(p, len, pumpkin_module.registry);
+      MemPtrFree(p);
     }
   }
 
