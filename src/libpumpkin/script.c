@@ -621,6 +621,31 @@ static int app_script_ui_getlabel(int pe) {
   return r;
 }
 
+static int app_script_ui_getvalue(int pe) {
+  script_int_t ptr, id;
+  app_form_t *form;
+  ControlType *ctl;
+  UInt16 index;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        if (FrmGetObjectType(form->frm, index) == frmControlObj) {
+          if ((ctl = (ControlType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+            r = script_push_integer(pe, CtlGetValue(ctl));
+          }
+        }
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
 static int app_script_ui_bounds(int pe) {
   script_int_t ptr, id;
   script_ref_t obj;
@@ -719,7 +744,7 @@ static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord
 
         f = form->frm;
         if ((ctl = CtlNewControl(&f, id, style, text, x, y, width, height, font, group, true)) != NULL) {
-          if (style == pushButtonCtl) {
+          if (style == pushButtonCtl || style == checkboxCtl) {
             CtlSetValue(ctl, selected ? 1 : 0);
           }
           r = script_push_boolean(pe, 1);
@@ -740,6 +765,10 @@ static int app_script_ui_button(int pe) {
 
 static int app_script_ui_pushbutton(int pe) {
   return app_script_ui_control(pe, pushButtonCtl, 6, 2);
+}
+
+static int app_script_ui_checkbox(int pe) {
+  return app_script_ui_control(pe, checkboxCtl, 10, 0);
 }
 
 static int app_script_ui_field(int pe) {
@@ -849,10 +878,12 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
     pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
     pumpkin_script_obj_function(pe, obj, "getlabel", app_script_ui_getlabel);
+    pumpkin_script_obj_function(pe, obj, "getvalue", app_script_ui_getvalue);
     pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
     pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
     pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
     pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
+    pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
     pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
     pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
     pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);

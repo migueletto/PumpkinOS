@@ -32,6 +32,13 @@ Form.pushButton = function(def)
   return def
 end
 
+Form.checkbox = function(def)
+  def.kind = "checkbox"
+  if not def.text  then def.text = "" end
+  if not def.font  then def.font = font.std end
+  return def
+end
+
 Form.field = function(def)
   def.kind = "field"
   if not def.cols then def.cols = 16 end
@@ -54,6 +61,7 @@ Form.new = function(f)
 
   f.menuHandlers = {}
   f.formHandlers = {}
+  f.objectsById  = {}
 
   if not f.about then
     f.about = "Application created with Command."
@@ -80,7 +88,22 @@ Form.new = function(f)
         if not obj.id then
           obj.id = id
           id = id + 1
+        else
+          id = obj.id + 1
         end
+
+        obj.form = f
+
+        obj.label = function(self)
+          return ui.getlabel(self.form.ptr, self.id)
+        end
+
+        obj.value = function(self)
+          return ui.getvalue(self.form.ptr, self.id)
+        end
+
+        f.objectsById[obj.id] = obj
+
         if obj.kind == "label" then
           ui.label(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
           ui.bounds(f.ptr, obj.id, obj)
@@ -108,6 +131,16 @@ Form.new = function(f)
           if obj.handler then
             f.formHandlers[obj.id] = obj.handler
           end
+        elseif obj.kind == "checkbox" then
+          ui.checkbox(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font, 0, obj.selected)
+          ui.bounds(f.ptr, obj.id, obj)
+          x = x + obj.width + 6
+          if obj.height > h then
+            h = obj.height
+          end
+          if obj.handler then
+            f.formHandlers[obj.id] = obj.handler
+          end
         elseif obj.kind == "field" then
           ui.field(f.ptr, obj.id, obj.x, obj.y, obj.cols, obj.rows, obj.max, obj.font)
           ui.bounds(f.ptr, obj.id, obj)
@@ -118,6 +151,10 @@ Form.new = function(f)
         end
       end
     end
+  end
+
+  f.object = function(self, id)
+    return self.objectsById[id]
   end
 
   f.show = function(self)
@@ -148,12 +185,12 @@ Form.new = function(f)
         if label then
           ev.label = label
         end
-        return h(ev)
+        return h(ev, self, self.objectsById[ev.control])
       end
     elseif ev.type == event.menuEvent then
       local h = self.menuHandlers[ev.item]
       if h and type(h) == "function" then
-        return h()
+        return h(self)
       end
     end
     return false
