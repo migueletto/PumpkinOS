@@ -21,7 +21,7 @@ Form.button = function(def)
   def.kind = "button"
   if not def.text then def.text = "" end
   if not def.font then def.font = font.std end
-  if not def.repeating then def.repeating = false end
+  if not def.repeating then def.repeating = false else def.repeating = true end
   return def
 end
 
@@ -37,6 +37,14 @@ Form.checkbox = function(def)
   def.kind = "checkbox"
   if not def.text  then def.text = "" end
   if not def.font  then def.font = font.std end
+  return def
+end
+
+Form.slider = function(def)
+  def.kind = "slider"
+  if not def.text  then def.text = "" end
+  if not def.font  then def.font = font.std end
+  if not def.feedback then def.feedback = false else def.feedback = true end
   return def
 end
 
@@ -138,6 +146,20 @@ Form.new = function(f)
           end
         elseif obj.kind == "checkbox" then
           ui.checkbox(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font, 0, obj.selected)
+          ui.bounds(f.ptr, obj.id, obj)
+          x = x + obj.width + 6
+          if obj.height > h then
+            h = obj.height
+          end
+          if obj.handler then
+            f.formHandlers[obj.id] = obj.handler
+          end
+        elseif obj.kind == "slider" then
+          if obj.feedback then
+            ui.fslider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          else
+            ui.slider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          end
           ui.bounds(f.ptr, obj.id, obj)
           x = x + obj.width + 6
           if obj.height > h then

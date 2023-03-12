@@ -716,8 +716,9 @@ static int app_script_ui_label(int pe) {
 }
 
 static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord dh) {
-  script_int_t ptr, id, x, y, font, group;
+  script_int_t ptr, id, x, y, font, group, min, max, page;
   Coord width, height;
+  UInt16 minValue, maxValue, pageSize;
   FontID old;
   ControlType *ctl;
   app_form_t *form;
@@ -735,6 +736,12 @@ static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord
     script_opt_integer(pe, 6, &group);
     script_opt_boolean(pe, 7, &selected);
 
+    if (style == sliderCtl || style == feedbackSliderCtl) {
+      script_opt_integer(pe, 8, &min);
+      script_opt_integer(pe, 9, &max);
+      script_opt_integer(pe, 10, &page);
+    }
+
     if (text[0]) {
       if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
         old = FntSetFont(font);
@@ -746,6 +753,11 @@ static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord
         if ((ctl = CtlNewControl(&f, id, style, text, x, y, width, height, font, group, true)) != NULL) {
           if (style == pushButtonCtl || style == checkboxCtl) {
             CtlSetValue(ctl, selected ? 1 : 0);
+          } else if (style == sliderCtl || style == feedbackSliderCtl) {
+            minValue = min;
+            maxValue = max;
+            pageSize = page;
+            CtlSetSliderValues(ctl, &minValue, &maxValue, &pageSize, NULL);
           }
           r = script_push_boolean(pe, 1);
         }
@@ -773,6 +785,14 @@ static int app_script_ui_pushbutton(int pe) {
 
 static int app_script_ui_checkbox(int pe) {
   return app_script_ui_control(pe, checkboxCtl, 10, 0);
+}
+
+static int app_script_ui_slider(int pe) {
+  return app_script_ui_control(pe, sliderCtl, 2, 0);
+}
+
+static int app_script_ui_fslider(int pe) {
+  return app_script_ui_control(pe, feedbackSliderCtl, 2, 0);
 }
 
 static int app_script_ui_field(int pe) {
@@ -889,6 +909,8 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "rbutton",  app_script_ui_rbutton);
     pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
     pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
+    pumpkin_script_obj_function(pe, obj, "slider",   app_script_ui_slider);
+    pumpkin_script_obj_function(pe, obj, "fslider",  app_script_ui_fslider);
     pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
     pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
     pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);
