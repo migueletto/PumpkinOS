@@ -21,6 +21,7 @@ Form.button = function(def)
   def.kind = "button"
   if not def.text then def.text = "" end
   if not def.font then def.font = font.std end
+  if not def.repeating then def.repeating = false end
   return def
 end
 
@@ -112,7 +113,11 @@ Form.new = function(f)
             h = obj.height
           end
         elseif obj.kind == "button" then
-          ui.button(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          if obj.repeating then
+            ui.rbutton(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          else
+            ui.button(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          end
           ui.bounds(f.ptr, obj.id, obj)
           x = x + obj.width + 6
           if obj.height > h then

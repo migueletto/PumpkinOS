@@ -763,6 +763,10 @@ static int app_script_ui_button(int pe) {
   return app_script_ui_control(pe, buttonCtl, 6, 2);
 }
 
+static int app_script_ui_rbutton(int pe) {
+  return app_script_ui_control(pe, repeatingButtonCtl, 6, 2);
+}
+
 static int app_script_ui_pushbutton(int pe) {
   return app_script_ui_control(pe, pushButtonCtl, 6, 2);
 }
@@ -882,6 +886,7 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
     pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
     pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
+    pumpkin_script_obj_function(pe, obj, "rbutton",  app_script_ui_rbutton);
     pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
     pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
     pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
