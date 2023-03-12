@@ -795,6 +795,10 @@ static int app_script_ui_fslider(int pe) {
   return app_script_ui_control(pe, feedbackSliderCtl, 2, 0);
 }
 
+static int app_script_ui_selector(int pe) {
+  return app_script_ui_control(pe, selectorTriggerCtl, 6, 2);
+}
+
 static int app_script_ui_field(int pe) {
   script_int_t ptr, id, x, y, cols, rows, max, font;
   Coord width, height;
@@ -911,6 +915,7 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
     pumpkin_script_obj_function(pe, obj, "slider",   app_script_ui_slider);
     pumpkin_script_obj_function(pe, obj, "fslider",  app_script_ui_fslider);
+    pumpkin_script_obj_function(pe, obj, "selector", app_script_ui_selector);
     pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
     pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
     pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);

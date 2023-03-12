@@ -48,6 +48,13 @@ Form.slider = function(def)
   return def
 end
 
+Form.selector = function(def)
+  def.kind = "selector"
+  if not def.text  then def.text = "" end
+  if not def.font  then def.font = font.std end
+  return def
+end
+
 Form.field = function(def)
   def.kind = "field"
   if not def.cols then def.cols = 16 end
@@ -162,6 +169,16 @@ Form.new = function(f)
           end
           ui.bounds(f.ptr, obj.id, obj)
           x = x + obj.width + 6
+          if obj.height > h then
+            h = obj.height
+          end
+          if obj.handler then
+            f.formHandlers[obj.id] = obj.handler
+          end
+        elseif obj.kind == "selector" then
+          ui.selector(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+          ui.bounds(f.ptr, obj.id, obj)
+          x = x + obj.width + 1
           if obj.height > h then
             h = obj.height
           end
