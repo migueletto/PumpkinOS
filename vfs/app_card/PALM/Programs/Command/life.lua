@@ -157,14 +157,14 @@ while true do
   -- wait 10 ticks for events
   ev = ui.event(10)
 
-  if ev.type == nilEvent then
+  if ev.type == event.nilEvent then
     -- nilEvent is sent when no other user event occurred
     if running then
       -- if running (not paused), animate simulation
       life:advance()
       life:draw()
     end
-  elseif ev.type == penDown then
+  elseif ev.type == event.penDown then
     -- penDown event received
     if not running then
       -- invert selected cell
@@ -175,7 +175,7 @@ while true do
         life:draw()
       end
     end
-  elseif ev.type == keyDown then
+  elseif ev.type == event.keyDown then
     -- keyDown event received
     if string.char(ev.key) == "r" then
       -- 'r' key pressed, toggle running/paused state
@@ -183,7 +183,7 @@ while true do
       -- redraw title to reflect new state
       title()
     end
-  elseif ev.type == appStop then
+  elseif ev.type == event.appStop then
     -- appStop event received, quit
     break
   end
