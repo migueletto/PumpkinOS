@@ -640,3 +640,80 @@ Int16 LstGetVisibleItems(const ListType *listP) {
 Int16 LstGetTopItem(const ListType *listP) {
   return listP ? listP->topItem : 0;
 }
+
+Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId) {
+  // XXX triggerId not used
+  ListType *lstP;
+  FormType **fpp, *formP;
+  Err err = sysErrParamErr;
+
+  if (formPP) {
+    fpp = (FormType **)formPP;
+    formP = *fpp;
+
+    if (formP) {
+      if ((lstP = pumpkin_heap_alloc(sizeof(ListType), "List")) != NULL) {
+        if (width > formP->window.windowBounds.extent.x) {
+          width = formP->window.windowBounds.extent.x;
+        }
+        if (height > formP->window.windowBounds.extent.y) {
+          height = formP->window.windowBounds.extent.y;
+        }
+        if (x + width > formP->window.windowBounds.extent.x) {
+          x = formP->window.windowBounds.extent.x - width;
+        }
+        if (y + height > formP->window.windowBounds.extent.y) {
+          y = formP->window.windowBounds.extent.y - height;
+        }
+
+        lstP->id = id;
+        lstP->bounds.topLeft.x = x; // form relative coordinate
+        lstP->bounds.topLeft.y = y; // form relative coordinate
+        lstP->bounds.extent.x = width;
+        lstP->bounds.extent.y = height;
+        lstP->attr.usable       = 0;
+        lstP->attr.enabled      = 0;
+        lstP->attr.visible      = 0;
+        lstP->attr.poppedUp     = 0;
+        lstP->attr.hasScrollBar = 0;
+        lstP->attr.search       = 0;
+        lstP->attr.reserved     = 0;
+
+        lstP->numItems = 0;
+        lstP->font = font;
+        lstP->visibleItems = visibleItems;
+        lstP->formP = formP;
+
+        lstP->popupWin = WinCreateOffscreenWindow(width, height, nativeFormat, &err);
+        if (err == errNone) {
+          lstP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + lstP->bounds.topLeft.x; // absolute screen coordinate
+          lstP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + lstP->bounds.topLeft.y; // absolute screen coordinate
+
+          if (!lstP->attr.usable) {
+            lstP->bitsBehind = WinCreateOffscreenWindow(width, height, nativeFormat, &err);
+          }
+
+          if (err == errNone) {
+            if (formP->numObjects == 0) {
+              formP->objects = xcalloc(1, sizeof(FormObjListType));
+            } else {
+              formP->objects = xrealloc(formP->objects, (formP->numObjects + 1) * sizeof(FormObjListType));
+            }
+            formP->objects[formP->numObjects].objectType = frmListObj;
+            formP->objects[formP->numObjects].object.list = lstP;
+            formP->objects[formP->numObjects].id = formP->objects[formP->numObjects].object.control->id;
+            formP->numObjects++;
+            err = errNone;
+          } else {
+            WinDeleteWindow(lstP->popupWin, false);
+            pumpkin_heap_free(lstP, "List");
+          }
+        } else {
+          pumpkin_heap_free(lstP, "List");
+        }
+      }
+    }
+  }
+
+  return err;
+}
