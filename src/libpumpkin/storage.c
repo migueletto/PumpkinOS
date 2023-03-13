@@ -3865,13 +3865,6 @@ static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
         MemHandleUnlock(h);
       }
       DmReleaseResource(h);
-    } else if ((h = DmGet1Resource(sysRsrcTypeWinR, 1)) != NULL) {
-      if ((ptr = MemHandleLock(h)) != NULL) {
-        width = (ptr[0] * swidth) / ptr[1];
-        height = (ptr[2] * sheight) / ptr[3];
-        MemHandleUnlock(h);
-      }
-      DmReleaseResource(h);
     }
     DmCloseDatabase(dbRef);
   }

@@ -777,11 +777,6 @@ static void launcherScanResources(launcher_data_t *data) {
           sys_snprintf(buf, sizeof(buf)-1, "Absolute window dimensions %dx%d", width, height);
           data->item[index].info = xstrdup(buf);
           break;
-        case sysRsrcTypeWinR:
-          b = (UInt8 *)p;
-          sys_snprintf(buf, sizeof(buf)-1, "Relative window dimensions %d/%d x %d/%d", b[0], b[1], b[2], b[3]);
-          data->item[index].info = xstrdup(buf);
-          break;
         case sysResTAppCode:
           if (id == 0) {
             sys_snprintf(buf, sizeof(buf)-1, "App information (68K)");
@@ -1387,8 +1382,6 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
           editor = editString;
           break;
         case sysRsrcTypeWinD:
-          break;
-        case sysRsrcTypeWinR:
           break;
       }
 

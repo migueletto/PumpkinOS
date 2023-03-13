@@ -67,7 +67,6 @@ extern "C" {
 
 #define sysRsrcTypeDlib   'dlib'
 #define sysRsrcTypeWinD   'wind'
-#define sysRsrcTypeWinR   'winr'
 #define sysRsrcTypeScript 'Scrp'
 
 #define sysAnyPluginId  0xFFFFFFFF
