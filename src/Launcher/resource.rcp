@@ -15,7 +15,8 @@ MENU MainMenu
 BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
-    MENUITEM "Shutdown"     shutdownCmd "S"
+    MENUITEM "Exit"         shutdownCmd "E"
+    MENUITEM "Fork"         forkCmd     "F"
     MENUITEM "About"        aboutCmd    "A"
   END
 

@@ -55,6 +55,7 @@ BEGIN
   BEGIN
     MENUITEM "About"       aboutCmd "A"
     MENUITEM "Preferences" prefsCmd "P"
+    MENUITEM "Fork"        forkCmd  "F"
   END
   PULLDOWN "Edit"
   BEGIN

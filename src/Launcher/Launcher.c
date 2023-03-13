@@ -2493,6 +2493,9 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
         }
       }
       break;
+    case forkCmd:
+      pumpkin_fork();
+      break;
     case aboutCmd:
       LauncherOpenForm(AboutForm);
       break;
@@ -2915,7 +2918,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   pumpkin_set_data(NULL);
   mutex_destroy(data->mutex);
   xfree(data);
-  pumpkin_set_finish(1);
+  if (!(launchFlags & sysAppLaunchFlagFork)) pumpkin_set_finish(1);
 
   return 0;
 }

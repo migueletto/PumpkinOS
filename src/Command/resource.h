@@ -8,6 +8,7 @@
 #define prefsCmd  1002
 #define pasteCmd  2001
 #define copyCmd   2002
+#define forkCmd   2003
 
 #define okBtn     1001
 #define cancelBtn 1002

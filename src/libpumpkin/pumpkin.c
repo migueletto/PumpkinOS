@@ -1561,6 +1561,12 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   return r;
 }
 
+uint32_t pumpkin_fork(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  return pumpkin_launch_request(task->name, sysAppLaunchCmdNormalLaunch, NULL, sysAppLaunchFlagFork, NULL, 1);
+}
+
 /*
   switch (cmd) {
     case sysAppLaunchCmdNormalLaunch:

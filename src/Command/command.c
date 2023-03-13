@@ -329,7 +329,14 @@ static Boolean MenuEvent(FormType *frm, UInt16 id) {
 
         FrmDeleteForm(formP);
       }
+      handled = true;
       break;
+
+    case forkCmd:
+      pumpkin_fork();
+      handled = true;
+      break;
+
   }
 
   return handled;

@@ -121,6 +121,7 @@ typedef struct pumpkin_httpd_t pumpkin_httpd_t;
 typedef UInt32 PilotMainF(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
 Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, MemPtr cmdPBP, UInt32 *resultP, PilotMainF pilotMain);
 uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb);
+uint32_t pumpkin_fork(void);
 
 void *pumpkin_heap_base(void);
 uint32_t pumpkin_heap_size(void);
