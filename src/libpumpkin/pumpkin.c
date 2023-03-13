@@ -89,7 +89,7 @@ typedef struct {
   int active;
   int paused;
   int reserved;
-  int obj;
+  script_ref_t obj;
   int screen_ptr;
   int dx, dy;
   int width, height;
@@ -2246,7 +2246,7 @@ int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe)) {
   return r;
 }
 
-int pumpkin_script_obj_function(int pe, int obj, char *name, int (*f)(int pe)) {
+int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(int pe)) {
   int r = -1;
 
   if (pe > 0 && obj > 0) {
@@ -2299,7 +2299,7 @@ void *pumpkin_script_global_pointer_value(int pe, char *name) {
   return val;
 }
 
-int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value) {
+int pumpkin_script_obj_boolean(int pe, script_ref_t obj, char *name, int value) {
   int r = -1;
 
   if (pe > 0 && obj > 0) {
@@ -2309,7 +2309,7 @@ int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value) {
   return r;
 }
 
-int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value) {
+int pumpkin_script_obj_iconst(int pe, script_ref_t obj, char *name, int value) {
   int r = -1;
 
   if (pe > 0 && obj > 0) {
@@ -2319,7 +2319,7 @@ int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value) {
   return r;
 }
 
-int pumpkin_script_obj_sconst(int pe, int obj, char *name, char *value) {
+int pumpkin_script_obj_sconst(int pe, script_ref_t obj, char *name, char *value) {
   int r = -1;
 
   if (pe > 0 && obj > 0) {
@@ -2327,10 +2327,6 @@ int pumpkin_script_obj_sconst(int pe, int obj, char *name, char *value) {
   }
 
   return r;
-}
-
-int pumpkin_script_local_function(int pe, int obj, char *name, int (*f)(int pe)) {
-  return pumpkin_script_obj_function(pe, obj, name, f);
 }
 
 int pumpkin_script_create_obj(int pe, char *name) {
@@ -2354,7 +2350,7 @@ int pumpkin_script_create_obj(int pe, char *name) {
 int pumpkin_script_create(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   script_arg_t value;
-  int obj, pe = -1;
+  script_ref_t obj, pe = -1;
 
   debug(DEBUG_TRACE, PUMPKINOS, "creating script environment");
   if ((pe = script_create()) != -1) {
@@ -3360,7 +3356,7 @@ static int it_obj(int pe) {
   script_int_t i;
   iterator_t *it;
   char *name, *value;
-  int obj, j, k, n, r = 0;
+  script_ref_t obj, j, k, n, r = 0;
 
   if (script_get_integer(pe, 0, &i) == 0) {
     if ((it = (iterator_t *)ptr_lock(i, TAG_ITERATOR)) != NULL) {
@@ -3572,7 +3568,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
   MemHandle hscript;
   script_arg_t value;
   char *s, *card, buf[256];
-  int obj, len;
+  script_ref_t obj, len;
 
   if (root && (h = xcalloc(1, sizeof(pumpkin_httpd_t))) != NULL) {
     h->idle = idle;

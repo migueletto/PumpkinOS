@@ -35,8 +35,8 @@ end
 
 Form.checkbox = function(def)
   def.kind = "checkbox"
-  if not def.text  then def.text = "" end
-  if not def.font  then def.font = font.std end
+  if not def.text then def.text = "" end
+  if not def.font then def.font = font.std end
   return def
 end
 
@@ -44,14 +44,17 @@ Form.slider = function(def)
   def.kind = "slider"
   if not def.text  then def.text = "" end
   if not def.font  then def.font = font.std end
+  if not def.min   then def.min  = 1 end
+  if not def.max   then def.max  = 10 end
+  if not def.page  then def.page = 1 end
   if not def.feedback then def.feedback = false else def.feedback = true end
   return def
 end
 
 Form.selector = function(def)
   def.kind = "selector"
-  if not def.text  then def.text = "" end
-  if not def.font  then def.font = font.std end
+  if not def.text then def.text = "" end
+  if not def.font then def.font = font.std end
   return def
 end
 
@@ -60,6 +63,23 @@ Form.field = function(def)
   if not def.cols then def.cols = 16 end
   if not def.rows then def.rows = 1 end
   if not def.max  then def.max = def.rows * def.cols end
+  if not def.font then def.font = font.std end
+  return def
+end
+
+Form.list = function(def)
+  def.kind = "list"
+  if not def.width then def.width = 0 end
+  if not def.height then def.height = 0 end
+  if not def.visibleItems then def.visibleItems = 0 end
+  if not def.items then def.items = { "" }  end
+  if not def.font then def.font = font.std end
+  return def
+end
+
+Form.popup = function(def)
+  def.kind = "popup"
+  if not def.visibleItems then def.visibleItems = 0 end
   if not def.font then def.font = font.std end
   return def
 end
@@ -110,16 +130,6 @@ Form.new = function(f)
 
         obj.form = f
 
-        obj.label = function(self)
-          return ui.getlabel(self.form.ptr, self.id)
-        end
-
-        obj.value = function(self)
-          return ui.getvalue(self.form.ptr, self.id)
-        end
-
-        f.objectsById[obj.id] = obj
-
         if obj.kind == "label" then
           ui.label(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
           ui.bounds(f.ptr, obj.id, obj)
@@ -163,9 +173,9 @@ Form.new = function(f)
           end
         elseif obj.kind == "slider" then
           if obj.feedback then
-            ui.fslider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+            ui.fslider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font, 0, false, obj.min, obj.max, obj.page)
           else
-            ui.slider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font)
+            ui.slider(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.font, 0, false, obj.min, obj.max, obj.page)
           end
           ui.bounds(f.ptr, obj.id, obj)
           x = x + obj.width + 6
@@ -192,7 +202,59 @@ Form.new = function(f)
           if obj.height > h then
             h = obj.height
           end
+        elseif obj.kind == "list" then
+          ui.list(f.ptr, obj.id, obj.x, obj.y, obj.width, obj.height, obj.visibleItems, obj.font, obj.items)
+          ui.bounds(f.ptr, obj.id, obj)
+          x = x + obj.width + 4
+          if obj.height > h then
+            h = obj.height
+          end
+        elseif obj.kind == "popup" then
+          ui.popup(f.ptr, obj.id, obj.text, obj.x, obj.y, obj.visibleItems, obj.font, obj.items)
+          ui.bounds(f.ptr, obj.id, obj)
+          x = x + obj.width + 4
+          if obj.height > h then
+            h = obj.height
+          end
         end
+
+        f.objectsById[obj.id] = obj
+
+        obj.x = nil
+        obj.y = nil
+        obj.width = nil
+        obj.height = nil
+        obj.value = nil
+        obj.text = nil
+
+        setmetatable(obj, {
+          __index = function(t, key)
+            local r = nil
+            if key == "value" then
+              r = ui.getvalue(t.form.ptr, t.id)
+            elseif key == "text" then
+              r = ui.gettext(t.form.ptr, t.id)
+            elseif key == "x" or key == "y" or key == "width" or key == "height" then
+              local bounds = {}
+              ui.bounds(t.form.ptr, t.id, bounds)
+              r = bounds[key]
+            end
+            return r
+          end,
+          __newindex = function(t, key, value)
+            if key == "value" then
+              ui.setvalue(t.form.ptr, t.id, tonumber(value))
+            elseif key == "text" then
+              ui.settext(t.form.ptr, t.id, tostring(value))
+            elseif key == "x" or key == "y" or key == "width" or key == "height" then
+              local bounds = {}
+              ui.bounds(t.form.ptr, t.id, bounds)
+              bounds[key] = tonumber(value)
+              ui.setbounds(t.form.ptr, t.id, bounds.x, bounds.y, bounds.width, bounds.height)
+            end
+          end
+        })
+
       end
     end
   end
@@ -225,16 +287,12 @@ Form.new = function(f)
     if ev.type == event.ctlSelect then
       local h = self.formHandlers[ev.control]
       if h and type(h) == "function" then
-        local label = ui.getlabel(self.ptr, ev.control)
-        if label then
-          ev.label = label
-        end
         return h(ev, self, self.objectsById[ev.control])
       end
     elseif ev.type == event.menuEvent then
       local h = self.menuHandlers[ev.item]
       if h and type(h) == "function" then
-        return h(self)
+        return h(self, ev.item)
       end
     end
     return false

@@ -2,9 +2,9 @@
 
 function option1(form)
   local msg = ""
-  if form:object(2000):value() == 1 then
+  if form:object(2000).value == 1 then
     msg = "A is selected"
-  elseif form:object(2001):value() == 1 then
+  elseif form:object(2001).value == 1 then
     msg = "B is selected"
   else
     msg = "C is selected"
@@ -13,12 +13,11 @@ function option1(form)
 end
 
 function option2(form)
-  local obj = form:object(3000)
-  ui.alert(alert.info, string.format("Mark is %d", obj:value()))
+  ui.alert(alert.info, string.format("Mark is %d", form:object(3000).value))
 end
 
-function buttonClicked(ev)
-  ui.alert(alert.info, "clicked " .. ev.label)
+function buttonClicked(ev, form, obj)
+  ui.alert(alert.info, "clicked " .. obj.text)
   return true
 end
 
@@ -41,7 +40,8 @@ mainForm = Form.new {
     Form.newline,
     Form.checkbox { id = 3000, text = "Mark" },
     Form.newline,
-    Form.field { rows = 2, cols = 10 }
+    Form.field { rows = 2, cols = 10 },
+    Form.list { visibleItems = 3, items = { "First", "Second", "Third", "Fourth", "Fifth" } }
   }
 }
 

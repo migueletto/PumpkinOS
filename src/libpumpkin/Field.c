@@ -1382,3 +1382,27 @@ void FldSetPassword(FieldType *fldP, Boolean password) {
   }
   OUTV;
 }
+
+void FldReplaceText(FieldType *fldP, char *s, Boolean focus) {
+  UInt16 len;
+  FieldAttrType attr;
+  Boolean old;
+
+  IN;
+  if (fldP) {
+    FldGetAttributes(fldP, &attr);
+    old = attr.editable;
+    attr.editable = true;
+    FldSetAttributes(fldP, &attr);
+
+    len = FldGetTextLength(fldP);
+    if (len) FldDelete(fldP, 0, len);
+    FldInsert(fldP, s, StrLen(s));
+
+    attr.editable = old;
+    FldSetAttributes(fldP, &attr);
+
+    if (focus) fldP->attr.hasFocus = true;
+  }
+  OUTV;
+}

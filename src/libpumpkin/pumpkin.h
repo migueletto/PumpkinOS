@@ -221,11 +221,11 @@ int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe));
 int pumpkin_script_global_iconst(int pe, char *name, int value);
 int pumpkin_script_global_iconst_value(int pe, char *name);
 void *pumpkin_script_global_pointer_value(int pe, char *name);
-int pumpkin_script_obj_function(int pe, int obj, char *name, int (*f)(int pe));
-int pumpkin_script_obj_boolean(int pe, int obj, char *name, int value);
-int pumpkin_script_obj_iconst(int pe, int obj, char *name, int value);
-int pumpkin_script_obj_sconst(int pe, int obj, char *name, char *value);
-int pumpkin_script_local_function(int pe, int obj, char *name, int (*f)(int pe));
+int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(int pe));
+int pumpkin_script_obj_boolean(int pe, script_ref_t obj, char *name, int value);
+int pumpkin_script_obj_iconst(int pe, script_ref_t obj, char *name, int value);
+int pumpkin_script_obj_sconst(int pe, script_ref_t obj, char *name, char *value);
+int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(int pe));
 char *pumpkin_script_call(int pe, char *function, char *s);
 int pumpkin_script_run(int pe, char *s);
 int pumpkin_script_get_last_error(int pe, char *buf, int max);
@@ -341,9 +341,11 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
 void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh);
 char *FrmAskPassword(UInt16 maxLength);
 
+void pumpkin_fix_popups(FormType *form);
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize);
 void pumpkin_destroy_form(FormType *formP);
 
+ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId, Boolean usable);
 void LstFreeListChoices(ListType *listP);
 
 void CtlUpdateGroup(ControlType *controlP, Boolean value);
@@ -351,6 +353,7 @@ FieldType *FldGetActiveField(void);
 void FldSetActiveField(FieldType *fldP);
 void FldBlinkCursor(void);
 void FldSetPassword(FieldType *fldP, Boolean password);
+void FldReplaceText(FieldType *fldP, char *s, Boolean focus);
 IndexedColorType WinGetForeColor(void);
 IndexedColorType WinGetBackColor(void);
 void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, Boolean draw, UInt16 *drawnLines, UInt16 *totalLines, UInt16 *maxWidth, LineInfoType *lineInfo);

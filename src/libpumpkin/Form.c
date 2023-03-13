@@ -2925,6 +2925,29 @@ static ScrollBarType *pumpkin_create_scrollbar(uint8_t *p, int *i) {
   return c;
 }
 
+void pumpkin_fix_popups(FormType *form) {
+  int j, k;
+
+  for (j = 0; j < form->numObjects; j++) {
+    if (form->objects[j].objectType == frmPopupObj) {
+      for (k = 0; k < form->numObjects; k++) {
+        if (form->objects[k].objectType == frmControlObj) {
+          if (form->objects[k].object.control->id == form->objects[j].object.popup->controlID) {
+            debug(DEBUG_TRACE, "Form",  "popup control %d -> list %d ", form->objects[j].object.popup->controlID, form->objects[j].object.popup->listID);
+            form->objects[k].object.control->listID = form->objects[j].object.popup->listID;
+          }
+        }
+        if (form->objects[k].objectType == frmListObj) {
+          if (form->objects[k].object.list->id == form->objects[j].object.popup->listID) {
+            debug(DEBUG_TRACE, "Form",  "popup list %d -> control %d ", form->objects[j].object.popup->listID, form->objects[j].object.popup->controlID);
+            form->objects[k].object.list->controlID = form->objects[j].object.popup->controlID;
+          }
+        }
+      }
+    }
+  }
+}
+
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
   FormType *form;
   ControlType *control;
@@ -2937,7 +2960,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
   uint32_t attr;
   WindowFlagsType windowFlags;
   FormAttrType formAttr;
-  int i, j, k;
+  int i, j;
 
   if ((form = pumpkin_heap_alloc(sizeof(FormType), "Form")) != NULL) {
     form->rsrc = p;
@@ -3115,24 +3138,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     }
     xfree(offset);
 
-    for (j = 0; j < form->numObjects; j++) {
-      if (form->objects[j].objectType == frmPopupObj) {
-        for (k = 0; k < form->numObjects; k++) {
-          if (form->objects[k].objectType == frmControlObj) {
-            if (form->objects[k].object.control->id == form->objects[j].object.popup->controlID) {
-              debug(DEBUG_TRACE, "Form",  "popup control %d -> list %d ", form->objects[j].object.popup->controlID, form->objects[j].object.popup->listID);
-              form->objects[k].object.control->listID = form->objects[j].object.popup->listID;
-            }
-          }
-          if (form->objects[k].objectType == frmListObj) {
-            if (form->objects[k].object.list->id == form->objects[j].object.popup->listID) {
-              debug(DEBUG_TRACE, "Form",  "popup list %d -> control %d ", form->objects[j].object.popup->listID, form->objects[j].object.popup->controlID);
-              form->objects[k].object.list->controlID = form->objects[j].object.popup->controlID;
-            }
-          }
-        }
-      }
-    }
+    pumpkin_fix_popups(form);
   }
 
   return form;

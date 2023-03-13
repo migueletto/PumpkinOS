@@ -641,11 +641,11 @@ Int16 LstGetTopItem(const ListType *listP) {
   return listP ? listP->topItem : 0;
 }
 
-Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId) {
+ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId, Boolean usable) {
   // XXX triggerId not used
-  ListType *lstP;
+  ListType *lstP = NULL;
   FormType **fpp, *formP;
-  Err err = sysErrParamErr;
+  Err err;
 
   if (formPP) {
     fpp = (FormType **)formPP;
@@ -671,7 +671,7 @@ Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord he
         lstP->bounds.topLeft.y = y; // form relative coordinate
         lstP->bounds.extent.x = width;
         lstP->bounds.extent.y = height;
-        lstP->attr.usable       = 0;
+        lstP->attr.usable       = usable;
         lstP->attr.enabled      = 0;
         lstP->attr.visible      = 0;
         lstP->attr.poppedUp     = 0;
@@ -703,7 +703,6 @@ Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord he
             formP->objects[formP->numObjects].object.list = lstP;
             formP->objects[formP->numObjects].id = formP->objects[formP->numObjects].object.control->id;
             formP->numObjects++;
-            err = errNone;
           } else {
             WinDeleteWindow(lstP->popupWin, false);
             pumpkin_heap_free(lstP, "List");
@@ -713,6 +712,16 @@ Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord he
         }
       }
     }
+  }
+
+  return lstP;
+}
+
+Err LstNewList(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId) {
+  Err err = sysErrParamErr;
+
+  if (LstNewListEx(formPP, id, x, y, width, height, font, visibleItems, triggerId, true) != NULL) {
+    err = errNone;
   }
 
   return err;

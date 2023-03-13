@@ -13,6 +13,7 @@
 #define TAG_FORM "script_form"
 
 #define MAX_TITLE 32
+#define MAX_ITEMS 256
 
 typedef struct {
   char *tag;
@@ -593,10 +594,11 @@ static int app_script_ui_title(int pe) {
   return r;
 }
 
-static int app_script_ui_getlabel(int pe) {
+static int app_script_ui_gettext(int pe) {
   script_int_t ptr, id;
   app_form_t *form;
   ControlType *ctl;
+  FieldType *fld;
   UInt16 index;
   char *s;
   int r = -1;
@@ -606,17 +608,66 @@ static int app_script_ui_getlabel(int pe) {
 
     if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
       if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
-        if (FrmGetObjectType(form->frm, index) == frmControlObj) {
-          if ((ctl = (ControlType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
-            if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
+        switch (FrmGetObjectType(form->frm, index)) {
+          case frmLabelObj:
+            if ((s = (char *)FrmGetLabel(form->frm, id)) != NULL) {
               r = script_push_string(pe, s);
             }
-          }
+            break;
+          case frmControlObj:
+            if ((ctl = (ControlType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+              if ((s = (char *)CtlGetLabel(ctl)) != NULL) {
+                r = script_push_string(pe, s);
+              }
+            }
+            break;
+          case frmFieldObj:
+            if ((fld = (FieldType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+              if ((s = FldGetTextPtr(fld)) != NULL) {
+                r = script_push_string(pe, s);
+              }
+            }
+            break;
+          default:
+            break;
         }
       }
       ptr_unlock(ptr, TAG_FORM);
     }
   }
+
+  return r;
+}
+
+static int app_script_ui_settext(int pe) {
+  script_int_t ptr, id;
+  app_form_t *form;
+  FieldType *fld;
+  UInt16 index;
+  char *s = NULL;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_string(pe, 2, &s) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        switch (FrmGetObjectType(form->frm, index)) {
+          case frmFieldObj:
+            if ((fld = (FieldType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+              FldReplaceText(fld, s, false);
+              r = script_push_boolean(pe, 1);
+            }
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  }
+
+  if (s) xfree(s);
 
   return r;
 }
@@ -646,6 +697,33 @@ static int app_script_ui_getvalue(int pe) {
   return r;
 }
 
+static int app_script_ui_setvalue(int pe) {
+  script_int_t ptr, id, value;
+  app_form_t *form;
+  ControlType *ctl;
+  UInt16 index;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_integer(pe, 2, &value) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        if (FrmGetObjectType(form->frm, index) == frmControlObj) {
+          if ((ctl = (ControlType *)FrmGetObjectPtr(form->frm, index)) != NULL) {
+            CtlSetValue(ctl, value);
+            r = script_push_integer(pe, 1);
+          }
+        }
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
 static int app_script_ui_bounds(int pe) {
   script_int_t ptr, id;
   script_ref_t obj;
@@ -662,8 +740,8 @@ static int app_script_ui_bounds(int pe) {
 
     if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
       if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
-        rect.extent.x = 0;
-        rect.extent.y = 0;
+        FrmGetObjectBounds(form->frm, index, &rect);
+
         if (FrmGetObjectType(form->frm, index) == frmLabelObj) {
           // labels only have their size computed when the form is drawn,
           // so we have to compute it here
@@ -673,14 +751,41 @@ static int app_script_ui_bounds(int pe) {
             rect.extent.y = FntCharHeight();
             FntSetFont(old);
           }
-        } else {
-          FrmGetObjectBounds(form->frm, index, &rect);
         }
+
+        pumpkin_script_obj_iconst(pe, obj, "x", rect.topLeft.x);
+        pumpkin_script_obj_iconst(pe, obj, "y", rect.topLeft.y);
         pumpkin_script_obj_iconst(pe, obj, "width", rect.extent.x);
         pumpkin_script_obj_iconst(pe, obj, "height", rect.extent.y);
         r = script_push_boolean(pe, 1);
       }
       ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
+static int app_script_ui_setbounds(int pe) {
+  script_int_t ptr, id, x, y, width, height;
+  app_form_t *form;
+  RectangleType rect;
+  UInt16 index;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_integer(pe, 2, &x) == 0 &&
+      script_get_integer(pe, 3, &y) == 0 &&
+      script_get_integer(pe, 4, &width) == 0 &&
+      script_get_integer(pe, 5, &height) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      if ((index = FrmGetObjectIndex(form->frm, id)) != 0xffff) {
+        RctSetRectangle(&rect, x, y, width, height);
+        FrmSetObjectBounds(form->frm, index, &rect);
+        r = script_push_boolean(pe, 1);
+      }
     }
   }
 
@@ -757,7 +862,7 @@ static int app_script_ui_control(int pe, ControlStyleType style, Coord dw, Coord
             minValue = min;
             maxValue = max;
             pageSize = page;
-            CtlSetSliderValues(ctl, &minValue, &maxValue, &pageSize, NULL);
+            CtlSetSliderValues(ctl, &minValue, &maxValue, &pageSize, &minValue);
           }
           r = script_push_boolean(pe, 1);
         }
@@ -834,6 +939,175 @@ static int app_script_ui_field(int pe) {
   return r;
 }
 
+static char **build_list_choices(int pe, script_ref_t obj, int *numItems) {
+  script_arg_t key, value;
+  char **itemsText;
+  int i, num;
+
+  itemsText = MemPtrNew(MAX_ITEMS * sizeof(char *));
+
+  for (i = 0, num = 0; i < MAX_ITEMS; i++) {
+    key.type = SCRIPT_ARG_INTEGER;
+    key.value.i = i + 1;
+    if (script_object_get(pe, obj, &key, &value) != 0) break;
+    if (value.type == SCRIPT_ARG_LSTRING) {
+      itemsText[num++] = value.value.l.s;
+    }
+  }
+
+  if (num == 0) {
+    MemPtrFree(itemsText);
+    itemsText = NULL;
+  }
+
+  *numItems = num;
+  return itemsText;
+}
+
+static void fill_list_choices(ListType *lst, char **itemsText, int numItems) {
+  LstFreeListChoices(lst);
+
+  if (itemsText && numItems > 0) {
+    LstSetListChoices(lst, itemsText, numItems);
+  }
+}
+
+static int calc_list_width(char **itemsText, int numItems) {
+  int i, arrow, width, max = 0;
+  FontID old;
+
+  old = FntSetFont(symbolFont);
+  arrow = FntCharWidth(8);
+  FntSetFont(old);
+
+  for (i = 0; i < numItems; i++) {
+    width = FntCharsWidth(itemsText[i], StrLen(itemsText[i])) + arrow + 1;
+    if (width > max) max = width;
+  }
+
+  return max;
+}
+
+static int app_script_ui_list(int pe) {
+  script_int_t ptr, id, x, y, width, height, visibleItems, font;
+  script_ref_t obj;
+  FontID old;
+  ListType *lst;
+  app_form_t *form;
+  void *f;
+  char **itemsText;
+  int numItems;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_integer(pe, 2, &x) == 0 &&
+      script_get_integer(pe, 3, &y) == 0 &&
+      script_get_integer(pe, 4, &width) == 0 &&
+      script_get_integer(pe, 5, &height) == 0 &&
+      script_get_integer(pe, 6, &visibleItems) == 0 &&
+      script_get_integer(pe, 7, &font) == 0 &&
+      script_get_object(pe,  8, &obj) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      itemsText = build_list_choices(pe, obj, &numItems);
+      if (visibleItems == 0) {
+        visibleItems = numItems;
+      }
+
+      old = FntSetFont(font);
+      if (width == 0) {
+        width = calc_list_width(itemsText, numItems);
+      }
+      if (height == 0) {
+        height = visibleItems * FntCharHeight() + 2;
+      }
+      FntSetFont(old);
+
+      f = form->frm;
+      if ((lst = LstNewListEx(&f, id+1, x, y, width, height, font, visibleItems, 0, true)) != NULL) {
+        fill_list_choices(lst, itemsText, numItems);
+        r = script_push_boolean(pe, 1);
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  return r;
+}
+
+static int app_script_ui_popup(int pe) {
+  script_int_t ptr, id, x, y, visibleItems, font;
+  script_ref_t obj;
+  char *text = NULL;
+  Coord width, height, listWidth, listHeight;
+  FontID old;
+  FormPopupType *popup;
+  ControlType *ctl;
+  ListType *lst;
+  app_form_t *form;
+  void *f;
+  char **itemsText;
+  int numItems;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0 &&
+      script_get_integer(pe, 1, &id) == 0 &&
+      script_get_string(pe,  2, &text) == 0 &&
+      script_get_integer(pe, 3, &x) == 0 &&
+      script_get_integer(pe, 4, &y) == 0 &&
+      script_get_integer(pe, 5, &visibleItems) == 0 &&
+      script_get_integer(pe, 6, &font) == 0 &&
+      script_get_object(pe,  7, &obj) == 0) {
+
+    if ((form = ptr_lock(ptr, TAG_FORM)) != NULL) {
+      itemsText = build_list_choices(pe, obj, &numItems);
+      if (visibleItems == 0) {
+        visibleItems = numItems;
+      }
+
+      old = FntSetFont(font);
+      width = 2*FntCharWidth('w') + FntCharsWidth(text, StrLen(text));
+      height = FntCharHeight();
+      listWidth = calc_list_width(itemsText, numItems);
+      listHeight = visibleItems * FntCharHeight() + 2;
+      FntSetFont(old);
+
+      f = form->frm;
+
+      if ((popup = pumpkin_heap_alloc(sizeof(FormPopupType), "Popup")) != NULL) {
+        popup->controlID = id;
+        popup->listID = id+1;
+
+        if ((ctl = CtlNewControl(&f, popup->controlID, popupTriggerCtl, text, x, y, width, height, font, 0, true)) != NULL) {
+          if ((lst = LstNewListEx(&f, popup->listID, x, y, listWidth, listHeight, font, visibleItems, 0, false)) != NULL) {
+            fill_list_choices(lst, itemsText, numItems);
+            if (form->frm->numObjects == 0) {
+              form->frm->objects = xcalloc(1, sizeof(FormObjListType));
+            } else {
+              form->frm->objects = xrealloc(form->frm->objects, (form->frm->numObjects + 1) * sizeof(FormObjListType));
+            }
+            form->frm->objects[form->frm->numObjects].objectType = frmPopupObj;
+            form->frm->objects[form->frm->numObjects].object.popup = popup;
+            form->frm->numObjects++;
+            pumpkin_fix_popups(form->frm);
+            r = script_push_boolean(pe, 1);
+          } else {
+            pumpkin_heap_free(popup, "Popup");
+          }
+        } else {
+          pumpkin_heap_free(popup, "Popup");
+        }
+      }
+      ptr_unlock(ptr, TAG_FORM);
+    }
+  }
+
+  if (text) xfree(text);
+
+  return r;
+}
+
 static int app_script_ui_alert(int pe) {
   script_int_t id;
   char *msg = NULL;
@@ -905,9 +1179,12 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "form",     app_script_ui_form);
     pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
     pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
-    pumpkin_script_obj_function(pe, obj, "getlabel", app_script_ui_getlabel);
+    pumpkin_script_obj_function(pe, obj, "gettext",  app_script_ui_gettext);
+    pumpkin_script_obj_function(pe, obj, "settext",  app_script_ui_settext);
     pumpkin_script_obj_function(pe, obj, "getvalue", app_script_ui_getvalue);
+    pumpkin_script_obj_function(pe, obj, "setvalue", app_script_ui_setvalue);
     pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
+    pumpkin_script_obj_function(pe, obj, "setbounds", app_script_ui_setbounds);
     pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
     pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
     pumpkin_script_obj_function(pe, obj, "rbutton",  app_script_ui_rbutton);
@@ -917,6 +1194,8 @@ int pumpkin_script_appenv(int pe) {
     pumpkin_script_obj_function(pe, obj, "fslider",  app_script_ui_fslider);
     pumpkin_script_obj_function(pe, obj, "selector", app_script_ui_selector);
     pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
+    pumpkin_script_obj_function(pe, obj, "list",     app_script_ui_list);
+    pumpkin_script_obj_function(pe, obj, "popup",    app_script_ui_popup);
     pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
     pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);
   }
