@@ -114,6 +114,7 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
     script_idle_loop(pe);
     debug(DEBUG_INFO, "MAIN", "idle loop end");
   } else {
+    debug(DEBUG_ERROR, "MAIN", "script_run failed");
     sys_set_finish(STATUS_ERROR);
   }
 

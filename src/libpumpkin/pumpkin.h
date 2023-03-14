@@ -67,7 +67,6 @@ extern "C" {
 
 #define sysRsrcTypeDlib   'dlib'
 #define sysRsrcTypeWinD   'wind'
-#define sysRsrcTypeScript 'Scrp'
 
 #define sysAnyPluginId  0xFFFFFFFF
 
@@ -229,6 +228,7 @@ int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(i
 char *pumpkin_script_call(int pe, char *function, char *s);
 int pumpkin_script_run(int pe, char *s);
 int pumpkin_script_get_last_error(int pe, char *buf, int max);
+uint32_t pumpkin_script_engine_id(void);
 
 int pumpkin_add_serial(char *descr, uint32_t creator, char *host, uint32_t port);
 int pumpkin_info_serial(uint32_t id, char *host, int hlen, uint32_t *port);

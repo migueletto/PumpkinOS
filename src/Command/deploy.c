@@ -28,7 +28,7 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
   iconLen = MemHandleSize(icon);
   iconBuf = MemHandleLock(icon);
 
-  form = DmGet1Resource(sysRsrcTypeScript, frmScrpID);
+  form = DmGet1Resource(pumpkin_script_engine_id(), frmScrpID);
   formLen = MemHandleSize(form);
   formBuf = MemHandleLock(form);
 
@@ -49,8 +49,8 @@ Err command_app_deploy(char *name, UInt32 creator, char *script) {
         if ((err = DmCreateDatabase(0, name, creator, 'temp', true)) == errNone) {
           if ((dbID = DmFindDatabase(0, name)) != 0) {
             if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-              if (DmNewResourceEx(dbRef, sysRsrcTypeScript, 2, len, buf) != NULL) {
-                DmNewResourceEx(dbRef, sysRsrcTypeScript, 1, formLen, formBuf);
+              if (DmNewResourceEx(dbRef, pumpkin_script_engine_id(), 2, len, buf) != NULL) {
+                DmNewResourceEx(dbRef, pumpkin_script_engine_id(), 1, formLen, formBuf);
                 DmNewResourceEx(dbRef, iconType, 1000, iconLen, iconBuf);
                 DmNewResourceEx(dbRef, MenuRscType, 1001, menuLen, menuBuf);
                 DmNewResourceEx(dbRef, formRscType, aboutDialog+2, aboutLen, aboutBuf);

@@ -72,8 +72,10 @@ BEGIN
   END
 END
 
-DATA "Scrp" ID 1 "command.lua"
-DATA "Scrp" ID frmScrpID "form.lua"
+DATA "LuaS" ID 1 "command.lua"
+DATA "LuaS" ID frmScrpID "form.lua"
+
+DATA "JsSc" ID 1 "command.js"
 
 HEX "wind" ID 1
   0x02 0x80 0x01 0x5E

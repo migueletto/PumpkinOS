@@ -491,7 +491,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
       WinEraseRectangle(&rect, 0);
       WinSetBackColorRGB(&old, NULL);
 
-      pumpkin_script_init(data->pe, sysRsrcTypeScript, 1);
+      pumpkin_script_init(data->pe, pumpkin_script_engine_id(), 1);
       pterm_cls(data->t);
       command_puts(data, "PumpkinOS shell\r\n");
       command_prompt(data);

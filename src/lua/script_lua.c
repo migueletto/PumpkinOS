@@ -1,10 +1,3 @@
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <stdint.h>
-//#include <stdarg.h>
-//#include <string.h>
-//#include <unistd.h>
-
 #include "sys.h"
 #include "script.h"
 #include "debug.h"
@@ -198,6 +191,10 @@ static void get_table(lua_State *L, char *name) {
     lua_setglobal(L, name);
     lua_getglobal(L, name);
   }
+}
+
+uint32_t ext_script_engine_id(void) {
+  return scriptEngineLua;
 }
 
 int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) {

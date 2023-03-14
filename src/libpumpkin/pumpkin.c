@@ -863,7 +863,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
               debug(DEBUG_ERROR, PUMPKINOS, "PilotMain not found in dlib");
             }
           } else {
-            if ((h = DmGet1Resource(sysRsrcTypeScript, 1)) != NULL) {
+            if ((h = DmGet1Resource(pumpkin_script_engine_id(), 1)) != NULL) {
               pilot_main = pumpkin_script_main;
               opendb = 1;
               DmReleaseResource(h);
@@ -2378,6 +2378,10 @@ int pumpkin_script_create(void) {
   return pe;
 }
 
+uint32_t pumpkin_script_engine_id(void) {
+  return script_engine_id();
+}
+
 int pumpkin_script_init(int pe, uint32_t type, uint16_t id) {
   MemHandle h;
   UInt32 len;
@@ -2870,14 +2874,23 @@ char *pumpkin_script_call(int pe, char *function, char *s) {
   script_arg_t f, arg, ret;
   char *val = NULL;
 
-  if (script_global_get(pe, function, &f) == 0 && f.type == SCRIPT_ARG_FUNCTION) {
-    arg.type = SCRIPT_ARG_LSTRING;
-    arg.value.l.s = (char *)s;
-    arg.value.l.n = sys_strlen(s);
+  if (script_global_get(pe, function, &f) == 0) {
+    if (f.type == SCRIPT_ARG_FUNCTION) {
+      arg.type = SCRIPT_ARG_LSTRING;
+      arg.value.l.s = (char *)s;
+      arg.value.l.n = sys_strlen(s);
 
-    if (script_call_args(pe, f.value.r, &ret, 1, &arg) == 0) {
-      val = pumpkin_script_ret(pe, &ret);
+      debug(DEBUG_INFO, PUMPKINOS, "calling function \'%s\'", function);
+      if (script_call_args(pe, f.value.r, &ret, 1, &arg) == 0) {
+        val = pumpkin_script_ret(pe, &ret);
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "function call error");
+      }
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "attempt to call non function \'%s\'", function);
     }
+  } else {
+    debug(DEBUG_ERROR, PUMPKINOS, "function \'%s\' not found", function);
   }
 
   return val;
@@ -3580,7 +3593,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
     h->idle = idle;
     h->data = data;
 
-    if ((hscript = DmGet1Resource(sysRsrcTypeScript, scriptId)) != 0) {
+    if ((hscript = DmGet1Resource(pumpkin_script_engine_id(), scriptId)) != 0) {
       if ((s = MemHandleLock(hscript)) != NULL) {
         len = MemHandleSize(hscript);
         if ((h->script = xmalloc(len+1)) != NULL) {

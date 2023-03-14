@@ -1245,9 +1245,9 @@ uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags) {
     pumpkin_set_data(&data);
 
     for (id = 1; id < 32768; id++) {
-      if ((h = DmGet1Resource(sysRsrcTypeScript, id)) == NULL) break;
+      if ((h = DmGet1Resource(pumpkin_script_engine_id(), id)) == NULL) break;
       DmReleaseResource(h);
-      if (pumpkin_script_init(pe, sysRsrcTypeScript, id) != 0) {
+      if (pumpkin_script_init(pe, pumpkin_script_engine_id(), id) != 0) {
         if (pumpkin_script_get_last_error(pe, msg, sizeof(msg)) == 0) {
           SysFatalAlert(msg);
         } else {

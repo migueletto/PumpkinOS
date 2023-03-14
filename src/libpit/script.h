@@ -19,6 +19,9 @@ extern "C" {
 
 #define MAX_ARGC  32
 
+#define scriptEngineLua  'LuaS'
+#define scriptEngineJS   'JsSc'
+
 typedef struct script_priv_t script_priv_t;
 
 typedef int32_t script_int_t;
@@ -44,7 +47,6 @@ typedef struct {
 
 // used by main.c
 
-int script_load_engine_static(void);
 int script_load_engine(char *libname);
 int script_init(void);
 int script_finish(void);
@@ -54,6 +56,7 @@ void script_idle_loop(int pe);
 
 // used by script.c / builtin.c
 
+uint32_t script_engine_id(void);
 int script_create_builtins(int pe, script_ref_t obj);
 script_ref_t script_loadlib(int pe, char *libname);
 int script_run(int pe, char *filename, int argc, char *argv[]);
@@ -111,6 +114,7 @@ int script_returned_value(script_arg_t *ret);
 
 int ext_script_init(void);
 script_priv_t *ext_script_create(void);
+uint32_t ext_script_engine_id(void);
 int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]);
 int ext_script_destroy(script_priv_t *priv);
 int ext_script_call(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, int n, script_arg_t *args);
