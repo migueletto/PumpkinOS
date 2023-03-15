@@ -1,6 +1,7 @@
 include ../common.mak
 
 LIBJS=$(BIN)/libscriptjs$(SOEXT)
+PROGRAM=duk
 
 CUSTOMFLAGS=-I. -I./duk-v1-compat
 
@@ -9,5 +10,8 @@ OBJS=script_js.o duk_alloc_default.o duk_api_buffer.o duk_api_bytecode.o duk_api
 $(LIBJS): $(OBJS)
 	$(CC) -shared -o $(LIBJS) $(OBJS) -L$(BIN) -lpit -lm
 
+$(PROGRAM): duk_cmdline.o $(LIBJS)
+	$(CC) -o $(PROGRAM) duk_cmdline.o -L$(BIN) -lpit -lscriptjs -lm
+
 clean:
-	rm -f $(LIBJS) $(OBJS)
+	rm -f $(LIBJS) $(OBJS) $(PROGRAM)
