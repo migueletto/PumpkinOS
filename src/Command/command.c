@@ -350,8 +350,10 @@ static Boolean MenuEvent(UInt16 id) {
   command_data_t *data = pumpkin_get_data();
   MemHandle h;
   UInt16 i, length;
-  //char buf[256];
-  char *s;
+  Coord pos, col, row;
+  uint32_t fg, bg;
+  uint8_t c;
+  char *s, buf[MAXCMD];
   Boolean handled = false;
 
   switch (id) {
@@ -373,12 +375,50 @@ static Boolean MenuEvent(UInt16 id) {
       break;
 
     case copyCmd:
-/*
-      length = sizeof(buf);
-      if (screen_selection(t, buf, &length) == 0 && length > 0) {
-        ClipboardAddItem(clipboardText, buf, length);
+      if (data->selected) {
+        i = 0;
+        pos = data->row0 * data->ncols + data->col0;
+
+        if (data->row0 == data->row1) {
+          for (col = data->col0; col <= data->col1; col++, pos++) {
+            pterm_getchar(data->t, pos, &c, &fg, &bg);
+            if (i < MAXCMD) buf[i++] = c;
+          }
+          // remove trailing spaces
+          for (; i > 0 && buf[i-1] == ' '; i--);
+
+        } else {
+          for (col = data->col0; col < data->ncols; col++, pos++) {
+            pterm_getchar(data->t, pos, &c, &fg, &bg);
+            if (i < MAXCMD) buf[i++] = c;
+          }
+          // remove trailing spaces
+          for (; i > 0 && buf[i-1] == ' '; i--);
+          // add newline
+          if (i < MAXCMD) buf[i++] = '\n';
+
+          for (row = data->row0+1; row < data->row1; row++) {
+            for (col = 0; col < data->ncols; col++, pos++) {
+              pterm_getchar(data->t, pos, &c, &fg, &bg);
+              if (i < MAXCMD) buf[i++] = c;
+            }
+            // add newline
+            if (i < MAXCMD) buf[i++] = '\n';
+          }
+
+          for (col = 0; col <= data->col1; col++, pos++) {
+            pterm_getchar(data->t, pos, &c, &fg, &bg);
+            if (i < MAXCMD) buf[i++] = c;
+          }
+          // remove trailing spaces
+          for (; i > 0 && buf[i-1] == ' '; i--);
+        }
+
+        if (i > 0) {
+          debug(DEBUG_INFO, "Command", "copying to clipboard \"%.*s\"", i, buf);
+          ClipboardAddItem(clipboardText, buf, i);
+        }
       }
-*/
       handled = true;
       break;
 
