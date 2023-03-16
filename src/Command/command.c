@@ -7,6 +7,8 @@
 #include "graphic.h"
 #include "ptr.h"
 #include "vfs.h"
+#include "util.h"
+#include "findargs.h"
 #include "filter.h"
 #include "shell.h"
 #include "telnet.h"
@@ -36,6 +38,11 @@
 
 #define COLS 80
 #define ROWS 25
+
+typedef struct {
+  char *name;
+  int (*function)(int pe);
+} command_builtin_t;
 
 typedef struct {
   char *tag;
@@ -80,6 +87,43 @@ static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
 static const RGBColorType defaultBackground = { 0, 0x13, 0x32, 0x65 };
 static const RGBColorType defaultHighlight  = { 0, 0xFF, 0xFF, 0x80 };
 
+static int command_script_cls(int pe);
+static int command_script_print(int pe);
+static int command_script_cd(int pe);
+static int command_script_ls(int pe);
+static int command_script_lsdb(int pe);
+static int command_script_launch(int pe);
+static int command_script_ps(int pe);
+static int command_script_kill(int pe);
+static int command_script_cat(int pe);
+static int command_script_run(int pe);
+static int command_script_deploy(int pe);
+static int command_script_edit(int pe);
+static int command_script_telnet(int pe);
+static int command_script_exit(int pe);
+static int command_script_pit(int pe);
+static int command_script_crash(int pe);
+
+static const command_builtin_t builtinCommands[] = {
+  { "cls",    command_script_cls    },
+  { "print",  command_script_print  },
+  { "cd",     command_script_cd     },
+  { "ls",     command_script_ls     },
+  { "lsdb",   command_script_lsdb   },
+  { "launch", command_script_launch },
+  { "ps",     command_script_ps     },
+  { "kill",   command_script_kill   },
+  { "cat",    command_script_cat    },
+  { "run",    command_script_run    },
+  { "deploy", command_script_deploy },
+  { "edit",   command_script_edit   },
+  { "telnet", command_script_telnet },
+  { "exit",   command_script_exit   },
+  { "pit",    command_script_pit    },
+  { "crash",  command_script_crash  },
+  { NULL, NULL }
+};
+
 static void command_putc(command_data_t *data, char c) {
   uint8_t b = c;
 
@@ -102,19 +146,62 @@ static void command_puts(command_data_t *data, char *s) {
   }
 }
 
+static void check_prefix(char *path, char *buf, int n) {
+  command_data_t *data = pumpkin_get_data();
+
+  if (path) {
+    if (path[0] == '/') {
+      StrNCopy(buf, path, n-1);
+    } else {
+      StrNCopy(buf, data->cwd, n-1);
+      StrNCat(buf, path, n-1-StrLen(buf));
+    }
+  } else {
+    StrNCopy(buf, data->cwd, n-1);
+  }
+}
+
 static void command_script(command_data_t *data, char *s) {
-  char *val;
+  char *argv[8], *val;
+  int argc, i, j, index;
 
   if (s && s[0]) {
-    val = pumpkin_script_call(data->pe, "command_eval", s);
+    // split the command line into argv, argv[0] is the first word
+    argc = pit_findargs(s, argv, 8, NULL, NULL);
 
-    if (val) {
-      if (val[0]) {
-        command_puts(data, val);
-        command_putc(data, '\r');
-        command_putc(data, '\n');
+    if (argc > 0) {
+      // check if argv[0] is a builtin command
+      for (i = 0; builtinCommands[i].name; i++) {
+        if (!StrCompare(argv[0], builtinCommands[i].name)) break;
       }
-      xfree(val);
+
+      if (builtinCommands[i].function) {
+        // yes, run the builtin command
+        index = script_get_stack(data->pe);
+        script_set_stack(data->pe, 0);
+        for (j = 1; j < argc; j++) {
+          // arguments are always pushed as strings
+          script_push_string(data->pe, argv[j]);
+        }
+        builtinCommands[i].function(data->pe);
+        script_set_stack(data->pe, index);
+
+      } else {
+        // argv[0] is not a builtin command, evaluate the whole expression
+        val = pumpkin_script_call(data->pe, "command_eval", s);
+  
+        if (val) {
+          if (val[0]) {
+            command_puts(data, val);
+            command_putc(data, '\r');
+            command_putc(data, '\n');
+          }
+          xfree(val);
+        }
+      }
+      for (i = 0; i < argc; i++) {
+        if (argv[i]) xfree(argv[i]);
+      }
     }
   }
 }
@@ -259,12 +346,10 @@ static Boolean ctlSelected(FormType *formP, UInt16 id) {
   return CtlGetValue(ctl) != 0;
 }
 
-static Boolean MenuEvent(FormType *frm, UInt16 id) {
+static Boolean MenuEvent(UInt16 id) {
   command_data_t *data = pumpkin_get_data();
-  FormType *formP;
-  ControlType *ctl;
   MemHandle h;
-  UInt16 i, sel, index, length, width, height;
+  UInt16 i, length;
   //char buf[256];
   char *s;
   Boolean handled = false;
@@ -298,37 +383,7 @@ static Boolean MenuEvent(FormType *frm, UInt16 id) {
       break;
 
     case prefsCmd:
-      if ((formP = FrmInitForm(PrefsForm)) != NULL) {
-        switch (data->prefs.font) {
-          case font6x10Id:  sel = sel6x10;  break;
-          case font8x14Id:  sel = sel8x14;  break;
-          case font8x16Id:  sel = sel8x16;  break;
-          default: id = sel8x14; break;
-        }
-        index = FrmGetObjectIndex(formP, sel);
-        ctl = (ControlType *)FrmGetObjectPtr(formP, index);
-        CtlSetValue(ctl, 1);
-
-        if (FrmDoDialog(formP) == okBtn) {
-          if (ctlSelected(formP, sel6x10)) {
-            data->prefs.font = font6x10Id;
-            width = 6;
-            height = 10;
-          } else if (ctlSelected(formP, sel8x14)) {
-            data->prefs.font = font8x14Id;
-            width = 8;
-            height = 14;
-          } else if (ctlSelected(formP, sel8x16)) {
-            data->prefs.font = font8x16Id;
-            width = 8;
-            height = 16;
-          }
-          PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
-          pumpkin_set_size(AppID, COLS * width, ROWS * height);
-        }
-
-        FrmDeleteForm(formP);
-      }
+      FrmPopupForm(PrefsForm);
       handled = true;
       break;
 
@@ -471,7 +526,7 @@ void command_drag(command_data_t *data, Int16 x, Int16 y, Int16 type) {
 static Boolean MainFormHandleEvent(EventType *event) {
   command_data_t *data = pumpkin_get_data();
   WinHandle wh;
-  FormType *frm;
+  FormType *formP;
   RectangleType rect;
   RGBColorType old;
   UInt32 swidth, sheight;
@@ -483,8 +538,8 @@ static Boolean MainFormHandleEvent(EventType *event) {
       data->cmdIndex = 0;
 
       WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-      frm = FrmGetActiveForm();
-      wh = FrmGetWindowHandle(frm);
+      formP = FrmGetActiveForm();
+      wh = FrmGetWindowHandle(formP);
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
       WinSetBackColorRGB(&data->prefs.background, &old);
@@ -515,8 +570,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
       break;
 
     case menuEvent:
-      frm = FrmGetActiveForm();
-      handled = MenuEvent(frm, event->data.menu.itemID);
+      handled = MenuEvent(event->data.menu.itemID);
       break;
 
     case penDownEvent:
@@ -544,8 +598,168 @@ static Boolean MainFormHandleEvent(EventType *event) {
   return handled;
 }
 
+static void DrawColor(RGBColorType *rgb, RectangleType *rect) {
+  RGBColorType old, aux;
+  UInt16 x, y, dx, dy;
+
+  x = rect->topLeft.x;
+  y = rect->topLeft.y;
+  dx = rect->extent.x;
+  dy = rect->extent.y;
+
+  WinSetBackColorRGB(rgb, &old);
+  WinEraseRectangle(rect, 0);
+  WinSetBackColorRGB(&old, NULL);
+
+  aux.r = 0;
+  aux.g = 0;
+  aux.b = 0;
+  WinSetForeColorRGB(&aux, &old);
+  WinDrawLine(x, y, x+dx-1, y);
+  WinDrawLine(x+dx-1, y, x+dx-1, y+dy-1);
+  WinDrawLine(x+dx-1, y+dy-1, x, y+dy-1);
+  WinDrawLine(x, y+dy-1, x, y);
+  WinSetForeColorRGB(&old, NULL);
+}
+
+static void DrawColorGadget(FormType *formP, UInt16 id, RGBColorType *rgb) {
+  FormGadgetTypeInCallback *gad;
+  UInt16 index;
+
+  index = FrmGetObjectIndex(formP, id);
+  gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(formP, index);
+  DrawColor(rgb, &gad->rect);
+}
+
+static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
+  command_data_t *data = pumpkin_get_data();
+  RGBColorType rgb;
+  EventType *event;
+  Boolean ok;
+
+  if (cmd == formGadgetDeleteCmd) {
+    return true;
+  }
+
+  switch (cmd) {
+    case formGadgetDrawCmd:
+      switch (gad->id) {
+        case fgCtl: DrawColor(&data->prefs.foreground, &gad->rect); break;
+        case bgCtl: DrawColor(&data->prefs.background, &gad->rect); break;
+        case hlCtl: DrawColor(&data->prefs.highlight, &gad->rect); break;
+        default: return true;
+      }
+      break;
+    case formGadgetEraseCmd:
+      WinEraseRectangle(&gad->rect, 0);
+      break;
+    case formGadgetHandleEventCmd:
+      event = (EventType *)param;
+      if (event->eType == frmGadgetEnterEvent) {
+        switch (gad->id) {
+          case fgCtl: rgb = data->prefs.foreground; break;
+          case bgCtl: rgb = data->prefs.background; break;
+          case hlCtl: rgb = data->prefs.highlight; break;
+          default: return true;
+        }
+        ok = false;
+        if (UIPickColor(NULL, &rgb, UIPickColorStartRGB, NULL, NULL)) {
+          DrawColor(&rgb, &gad->rect);
+          ok = true;
+        }
+        if (ok) {
+          switch (gad->id) {
+            case fgCtl: data->prefs.foreground = rgb; break;
+            case bgCtl: data->prefs.background = rgb; break;
+            case hlCtl: data->prefs.highlight = rgb; break;
+          }
+        }
+      }
+      break;
+  }
+
+  return true;
+}
+
+static Boolean PrefsFormHandleEvent(EventType *event) {
+  command_data_t *data = pumpkin_get_data();
+  FormType *formP;
+  ControlType *ctl;
+  UInt32 color;
+  UInt16 index, sel, width, height;
+  Boolean handled = false;
+
+  switch (event->eType) {
+    case frmOpenEvent:
+      formP = FrmGetActiveForm();
+      switch (data->prefs.font) {
+        case font6x10Id:  sel = sel6x10;  break;
+        case font8x14Id:  sel = sel8x14;  break;
+        case font8x16Id:  sel = sel8x16;  break;
+        default: sel = sel8x14; break;
+      }
+      index = FrmGetObjectIndex(formP, sel);
+      ctl = (ControlType *)FrmGetObjectPtr(formP, index);
+      CtlSetValue(ctl, 1);
+      FrmSetGadgetHandler(formP, FrmGetObjectIndex(formP, fgCtl), ColorGadgetCallback);
+      FrmSetGadgetHandler(formP, FrmGetObjectIndex(formP, bgCtl), ColorGadgetCallback);
+      FrmSetGadgetHandler(formP, FrmGetObjectIndex(formP, hlCtl), ColorGadgetCallback);
+      FrmDrawForm(formP);
+      handled = true;
+      break;
+    case ctlSelectEvent:
+      switch (event->data.ctlSelect.controlID) {
+        case dflBtn:
+          data->prefs.font = font8x14Id;
+          data->prefs.foreground = defaultForeground;
+          data->prefs.background = defaultBackground;
+          data->prefs.highlight  = defaultHighlight;
+          formP = FrmGetActiveForm();
+          index = FrmGetObjectIndex(formP, sel8x14);
+          ctl = (ControlType *)FrmGetObjectPtr(formP, index);
+          CtlSetValue(ctl, 1);
+          DrawColorGadget(formP, fgCtl, &data->prefs.foreground);
+          DrawColorGadget(formP, bgCtl, &data->prefs.background);
+          DrawColorGadget(formP, hlCtl, &data->prefs.highlight);
+          break;
+        case okBtn:
+          formP = FrmGetActiveForm();
+          if (ctlSelected(formP, sel6x10)) {
+            data->prefs.font = font6x10Id;
+            width = 6;
+            height = 10;
+          } else if (ctlSelected(formP, sel8x14)) {
+            data->prefs.font = font8x14Id;
+            width = 8;
+            height = 14;
+          } else if (ctlSelected(formP, sel8x16)) {
+            data->prefs.font = font8x16Id;
+            width = 8;
+            height = 16;
+          }
+          PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
+          pumpkin_set_size(AppID, COLS * width, ROWS * height);
+          color = RGBToLong(&data->prefs.foreground);
+          pterm_setfg(data->t, color);
+          color = RGBToLong(&data->prefs.background);
+          pterm_setbg(data->t, color);
+          FrmReturnToForm(MainForm);
+          break;
+        case cancelBtn:
+          FrmReturnToForm(MainForm);
+          break;
+      }
+      handled = true;
+      break;
+    default:
+      break;
+  }
+
+  return handled;
+}
+
 static Boolean ApplicationHandleEvent(EventType *event) {
-  FormType *frm;
+  FormType *formP;
   UInt16 form;
   Boolean handled;
 
@@ -554,12 +768,15 @@ static Boolean ApplicationHandleEvent(EventType *event) {
   switch (event->eType) {
     case frmLoadEvent:
       form = event->data.frmLoad.formID;
-      frm = FrmInitForm(form);
-      FrmSetActiveForm(frm);
+      formP = FrmInitForm(form);
+      FrmSetActiveForm(formP);
 
       switch (form) {
         case MainForm:
-          FrmSetEventHandler(frm, MainFormHandleEvent);
+          FrmSetEventHandler(formP, MainFormHandleEvent);
+          break;
+        case PrefsForm:
+          FrmSetEventHandler(formP, PrefsFormHandleEvent);
           break;
       }
       handled = true;
@@ -570,21 +787,6 @@ static Boolean ApplicationHandleEvent(EventType *event) {
   }
 
   return handled;
-}
-
-static void check_prefix(char *path, char *buf, int n) {
-  command_data_t *data = pumpkin_get_data();
-
-  if (path) {
-    if (path[0] == '/') {
-      StrNCopy(buf, path, n-1);
-    } else {
-      StrNCopy(buf, data->cwd, n-1);
-      StrNCat(buf, path, n-1-StrLen(buf));
-    }
-  } else {
-    StrNCopy(buf, data->cwd, n-1);
-  }
 }
 
 Int32 read_file(char *name, char *b, Int32 max) {
@@ -611,25 +813,23 @@ Int32 read_file(char *name, char *b, Int32 max) {
 
 static int command_script_file(int pe, int run) {
   command_data_t *data = pumpkin_get_data();
-  Int32 n, len, max = 65536;
+  Int32 n, max = 65536;
   char *buf, *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
     if ((buf = MemPtrNew(max)) != NULL) {
       MemSet(buf, max, 0);
-      StrPrintF(buf, "-- %s\n", name);
-      len = StrLen(buf);
 
-      if ((n = read_file(name, &buf[len], max-len-1)) == -1) {
+      if ((n = read_file(name, buf, max-1)) == -1) {
         command_puts(data, "Error reading file\r\n");
 
       } else if (n > 0) {
         if (run) {
-          if (pumpkin_script_run(pe, buf) != 0) {
+          if (pumpkin_script_run_string(pe, buf) != 0) {
             command_puts(data, "Error loading file\r\n");
           }
         } else {
-          command_puts(data, &buf[len]);
+          command_puts(data, buf);
           command_putc(data, '\r');
           command_putc(data, '\n');
         }
@@ -647,7 +847,7 @@ static int command_script_cat(int pe) {
   return command_script_file(pe, 0);
 }
 
-static int command_script_load(int pe) {
+static int command_script_run(int pe) {
   return command_script_file(pe, 1);
 }
 
@@ -732,10 +932,6 @@ static char *value_tostring(int pe, script_arg_t *arg) {
       StrCopy(buf, "<function>");
       val = xstrdup(buf);
       script_remove_ref(pe, arg->value.r);
-      break;
-    case SCRIPT_ARG_FILE:
-      StrCopy(buf, "<file>");
-      val = xstrdup(buf);
       break;
     case SCRIPT_ARG_NULL:
       StrCopy(buf, "nil");
@@ -879,12 +1075,14 @@ static int command_script_cd(int pe) {
   command_data_t *data = pumpkin_get_data();
   char *dir = NULL;
 
-  if (script_get_string(pe, 0, &dir) == 0) {
-    if (VFSChangeDir(1, dir) == errNone) {
-      VFSCurrentDir(1, data->cwd, MAXCMD);
-    } else {
-      command_puts(data, "Invalid directory\r\n");
-    }
+  if (script_get_string(pe, 0, &dir) != 0) {
+    dir = xstrdup("/");
+  }
+
+  if (VFSChangeDir(1, dir) == errNone) {
+    VFSCurrentDir(1, data->cwd, MAXCMD);
+  } else {
+    command_puts(data, "Invalid directory\r\n");
   }
 
   if (dir) xfree(dir);
@@ -1158,10 +1356,12 @@ static Err StartApplication(void *param) {
   UInt16 prefsSize;
   FontID old;
   uint32_t color;
+  int i;
 
   data = xcalloc(1, sizeof(command_data_t));
   pumpkin_set_data(data);
 
+  prefsSize = sizeof(command_prefs_t);
   if (PrefGetAppPreferences(AppID, 1, &data->prefs, &prefsSize, true) == noPreferenceFound) {
     data->prefs.font = font8x14Id;
     data->prefs.foreground = defaultForeground;
@@ -1202,22 +1402,9 @@ static Err StartApplication(void *param) {
     script_loadlib(data->pe, "libshell");
     script_loadlib(data->pe, "liboshell");
 
-    pumpkin_script_global_function(data->pe, "cls",    command_script_cls);
-    pumpkin_script_global_function(data->pe, "print",  command_script_print);
-    pumpkin_script_global_function(data->pe, "cd",     command_script_cd);
-    pumpkin_script_global_function(data->pe, "ls",     command_script_ls);
-    pumpkin_script_global_function(data->pe, "lsdb",   command_script_lsdb);
-    pumpkin_script_global_function(data->pe, "launch", command_script_launch);
-    pumpkin_script_global_function(data->pe, "ps",     command_script_ps);
-    pumpkin_script_global_function(data->pe, "kill",   command_script_kill);
-    pumpkin_script_global_function(data->pe, "cat",    command_script_cat);
-    pumpkin_script_global_function(data->pe, "read",   command_script_load);
-    pumpkin_script_global_function(data->pe, "deploy", command_script_deploy);
-    pumpkin_script_global_function(data->pe, "edit",   command_script_edit);
-    pumpkin_script_global_function(data->pe, "telnet", command_script_telnet);
-    pumpkin_script_global_function(data->pe, "exit",   command_script_exit);
-    pumpkin_script_global_function(data->pe, "pit",    command_script_pit);
-    pumpkin_script_global_function(data->pe, "crash",  command_script_crash);
+    for (i = 0; builtinCommands[i].name; i++) {
+      pumpkin_script_global_function(data->pe, builtinCommands[i].name, builtinCommands[i].function);
+    }
   }
 
   FrmGotoForm(MainForm);

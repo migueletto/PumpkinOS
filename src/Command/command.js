@@ -9,5 +9,5 @@ function command_eval(cmd) {
 }
 
 function test() {
-  deploy("Test", "Test", "/PALM/Programs/Command/test.lua");
+  deploy("Test", "Test", "/PALM/Programs/Command/test.js");
 }

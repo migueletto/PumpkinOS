@@ -230,10 +230,6 @@ static char *libshell_ret(int pe, script_arg_t *ret) {
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
-    case SCRIPT_ARG_FILE:
-      sys_strcpy(buf, "<file>");
-      val = xstrdup(buf);
-      break;
     case SCRIPT_ARG_NULL:
       val = NULL;
       break;

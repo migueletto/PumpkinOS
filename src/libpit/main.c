@@ -109,7 +109,7 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
     callback(pe, data);
   }
 
-  if (script_run(pe, script_argv[0], script_argc-1, &script_argv[1]) == 0) {
+  if (script_run(pe, script_argv[0], script_argc-1, &script_argv[1], 0) == 0) {
     debug(DEBUG_INFO, "MAIN", "idle loop begin");
     script_idle_loop(pe);
     debug(DEBUG_INFO, "MAIN", "idle loop end");

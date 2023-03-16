@@ -197,14 +197,17 @@ uint32_t ext_script_engine_id(void) {
   return scriptEngineLua;
 }
 
-int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) {
-  int i, str, r = -1;
+char *ext_script_engine_ext(void) {
+  return "lua";
+}
+
+int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[], int str) {
+  int i, r = -1;
   char *s;
 
   if (filename) {
     set_last_error(priv->L, "");
     lua_settop(priv->L, 0);
-    str = filename[0] == '-';
     r = str ?  luaL_loadstring(priv->L, filename) : luaL_loadfile(priv->L, filename);
 
     if (r == 0) {
@@ -599,4 +602,13 @@ int ext_script_remove_ref(script_priv_t *priv, script_ref_t ref) {
 
 int ext_script_push_value(script_priv_t *priv, script_arg_t *value) {
   return push_value(priv->L, value);
+}
+
+int ext_script_get_stack(script_priv_t *priv) {
+  return lua_gettop(priv->L);
+}
+
+int ext_script_set_stack(script_priv_t *priv, int index) {
+  lua_settop(priv->L, index);
+  return 0;
 }

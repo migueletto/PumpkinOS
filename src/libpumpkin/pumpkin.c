@@ -2395,7 +2395,7 @@ int pumpkin_script_init(int pe, uint32_t type, uint16_t id) {
         if ((p = MemPtrNew(len+1)) != NULL) {
           MemMove(p, s, len);
           debug(DEBUG_TRACE, PUMPKINOS, "running script resource");
-          r = script_run(pe, p, 0, NULL);
+          r = script_run(pe, p, 0, NULL, 1);
           MemPtrFree(p);
         }
         MemHandleUnlock(h);
@@ -2854,10 +2854,6 @@ static char *pumpkin_script_ret(int pe, script_arg_t *ret) {
       val = xstrdup(buf);
       script_remove_ref(pe, ret->value.r);
       break;
-    case SCRIPT_ARG_FILE:
-      sys_strcpy(buf, "<file>");
-      val = xstrdup(buf);
-      break;
     case SCRIPT_ARG_NULL:
       val = NULL;
       break;
@@ -2896,11 +2892,21 @@ char *pumpkin_script_call(int pe, char *function, char *s) {
   return val;
 }
 
-int pumpkin_script_run(int pe, char *s) {
+int pumpkin_script_run_string(int pe, char *s) {
   int r = -1;
 
   if (s && pe > 0) {
-    r = script_run(pe, s, 0, NULL);
+    r = script_run(pe, s, 0, NULL, 1);
+  }
+
+  return r;
+}
+
+int pumpkin_script_run_file(int pe, char *s) {
+  int r = -1;
+
+  if (s && pe > 0) {
+    r = script_run(pe, s, 0, NULL, 0);
   }
 
   return r;
@@ -3410,7 +3416,7 @@ static int httpd_template(int pe, http_connection_t *con, template_t *t) {
     script = template_getscript(t);
     pumpkin_script_global_iconst(pe, "_fout", fd);
 
-    if (pumpkin_script_run(pe, script) != -1) {
+    if (pumpkin_script_run_string(pe, script) != -1) {
       sys_seek(fd, 0, SYS_SEEK_SET);
       r = httpd_file_stream(con, fd, template_gettype(t), 0);
     }
@@ -3629,7 +3635,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
       value.value.s = h->prefix;
       script_global_set(h->pe, "prefix", &value);
 
-      pumpkin_script_run(h->pe, h->script);
+      pumpkin_script_run_string(h->pe, h->script);
 
       if (script_global_get(h->pe, worker, &value) == 0) {
         if (value.type == SCRIPT_ARG_FUNCTION) {

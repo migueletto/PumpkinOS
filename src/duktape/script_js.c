@@ -294,9 +294,13 @@ uint32_t ext_script_engine_id(void) {
   return scriptEngineJS;
 }
 
-int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) {
+char *ext_script_engine_ext(void) {
+  return "js";
+}
+
+int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[], int str) {
   char buf[32], *msg;
-  int i, str, r = -1;
+  int i, r = -1;
 
   if (priv->ctx && filename) {
     set_last_error(priv, "");
@@ -313,7 +317,6 @@ int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]) 
       duk_set_top(priv->ctx, 0);
     }
 
-    str = filename[0] == '/';
     r = str ? duk_pcompile_string(priv->ctx, 0, filename) : duk_pcompile_file(priv->ctx, 0, filename);
 
     if (r == 0) {
@@ -525,4 +528,13 @@ script_ref_t ext_script_create_function(script_priv_t *priv, int pe, int (*f)(in
 
 int ext_script_push_value(script_priv_t *priv, script_arg_t *value) {
   return push_value(priv, value);
+}
+
+int ext_script_get_stack(script_priv_t *priv) {
+  return duk_get_top(priv->ctx);
+}
+
+int ext_script_set_stack(script_priv_t *priv, int index) {
+  duk_set_top(priv->ctx, index);
+  return 0;
 }

@@ -136,7 +136,7 @@ PIT_LIB_END_O(obj)
 PIT_LIB_FUNCTION(builtin,include)
   PIT_LIB_PARAM_S(filename)
 PIT_LIB_CODE
-  r = script_run(PIT_LIB_PE, filename, -1, NULL);
+  r = script_run(PIT_LIB_PE, filename, -1, NULL, 0);
   PIT_LIB_FREE_S(filename);
 PIT_LIB_END_B
 

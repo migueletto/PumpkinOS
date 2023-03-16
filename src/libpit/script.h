@@ -15,7 +15,6 @@ extern "C" {
 #define SCRIPT_ARG_OBJECT   'O'
 #define SCRIPT_ARG_FUNCTION 'F'
 #define SCRIPT_ARG_POINTER  'P'
-#define SCRIPT_ARG_FILE     'E'
 
 #define MAX_ARGC  32
 
@@ -57,9 +56,10 @@ void script_idle_loop(int pe);
 // used by script.c / builtin.c
 
 uint32_t script_engine_id(void);
+char *script_engine_ext(void);
 int script_create_builtins(int pe, script_ref_t obj);
 script_ref_t script_loadlib(int pe, char *libname);
-int script_run(int pe, char *filename, int argc, char *argv[]);
+int script_run(int pe, char *filename, int argc, char *argv[], int str);
 int script_get_last_error(int pe, char *buf, int max);
 int script_set_cleanup(int pe, script_ref_t ref);
 int script_set_idle(int pe, script_ref_t ref, uint32_t t);
@@ -95,6 +95,8 @@ int script_opt_integer(int pe, int index, script_int_t *i);
 int script_opt_boolean(int pe, int index, int *b);
 int script_opt_string(int pe, int index, char **s);
 
+int script_get_stack(int pe);
+int script_set_stack(int pe, int index);
 int script_push_value(int pe, script_arg_t *value);
 int script_push_boolean(int pe, int b);
 int script_push_integer(int pe, script_int_t i);
@@ -115,7 +117,7 @@ int script_returned_value(script_arg_t *ret);
 int ext_script_init(void);
 script_priv_t *ext_script_create(void);
 uint32_t ext_script_engine_id(void);
-int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[]);
+int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[], int str);
 int ext_script_destroy(script_priv_t *priv);
 int ext_script_call(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, int n, script_arg_t *args);
 int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg);
