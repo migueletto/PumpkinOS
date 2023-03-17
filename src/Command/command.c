@@ -220,13 +220,13 @@ static void command_expand(command_data_t *data) {
   if (data->cmdIndex > 0 && data->cmd[data->cmdIndex-1] != '/') {
     data->cmd[data->cmdIndex] = 0;
 
-    // find the previoous '"' int he command buffer
+    // find the previous '"' or ' ' in the command buffer
     for (i = data->cmdIndex-1; i >= 0; i--) {
-      if (data->cmd[i] == '"') break;
+      if (data->cmd[i] == '"' || data->cmd[i] == ' ') break;
     }
 
-    if (i >= 0 && data->cmd[i] == '"') {
-      // found '"', advance one position
+    if (i >= 0 && (data->cmd[i] == '"' || data->cmd[i] == ' ')) {
+      // found '"' or ' ', advance one position
       i++;
 
       if (data->cmd[i] == '/') {
