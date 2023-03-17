@@ -34,8 +34,12 @@ static void buildpath(vfs_module_t *module, char *dst, char *src) {
   char *s;
 
   MemSet(dst, MAX_PATH, 0);
-  StrCopy(dst, module->card);
-  if (src[0] == '/') src++;
+  if (src[0] == '/') {
+    StrCopy(dst, module->card);
+    src++;
+  } else {
+    StrNCopy(dst, vfs_cwd(module->session), MAX_PATH-1);
+  }
   s = &dst[StrLen(dst)];
   StrNCat(dst, src, MAX_PATH - MAX_CARD - 1);
 
@@ -60,6 +64,7 @@ int VFSInitModule(char *card) {
   }
 
   StrNCopy(module->card, card, MAX_CARD);
+  vfs_chdir(module->session, module->card);
   thread_set(vfs_key, module);
 
   return 0;
