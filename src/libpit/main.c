@@ -10,6 +10,7 @@
 #include "debug.h"
 
 int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void *data) {
+  script_engine_t *engine;
   char *script_engine, *debugfile;
   int pe, background, dlevel, err, i;
   int script_argc, status;
@@ -81,22 +82,24 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
   sys_unblock_signals();
   signal_install_handlers();
 
-  if (script_load_engine(script_engine) == -1) {
+  if ((engine = script_load_engine(script_engine)) == NULL) {
     debug(DEBUG_ERROR, "MAIN", "error exit");
     thread_close();
     debug_close();
     return STATUS_ERROR;
   }
 
-  if (script_init() == -1) {
+  if (script_init(engine) == -1) {
     debug(DEBUG_ERROR, "MAIN", "error exit");
+    script_finish(engine);
     thread_close();
     debug_close();
     return STATUS_ERROR;
   }
 
-  if ((pe = script_create()) == -1) {
+  if ((pe = script_create(engine)) == -1) {
     debug(DEBUG_ERROR, "MAIN", "error exit");
+    script_finish(engine);
     thread_close();
     debug_close();
     return STATUS_ERROR;
@@ -122,7 +125,7 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
   thread_wait_all();
   vfont_finish(pe);
   script_destroy(pe);
-  script_finish();
+  script_finish(engine);
   vfs_finish();
   status = thread_get_status();
   thread_close();

@@ -131,7 +131,7 @@ void *pumpkin_heap_dup(void *p, uint32_t size, char *tag);
 void pumpkin_heap_dump(void);
 void pumpkin_heap_walk(int global);
 
-int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
+int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
 void pumpkin_deploy_files(char *path);
 void pumpkin_local_refresh(void);
@@ -244,6 +244,8 @@ int pumpkin_word_serial(uint32_t id, char *word);
 void pumpkin_load_plugins(void);
 pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id);
 
+FontTypeV2 *pumpkin_get_font(FontID font);
+
 int pumpkin_clipboard_add_text(char *text, int length);
 int pumpkin_clipboard_append_text(char *text, int length);
 int pumpkin_clipboard_get_text(char *text, int *length);
@@ -316,6 +318,7 @@ void EvtPrintEvent(char *op, EventType *event);
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);
 void SysFatalAlertFinish(void);
 
+BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr);
 void BmpPutBit(UInt32 b, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt16 tc, UInt16 bc);
 BitmapType *BmpCreate3(Coord width, Coord height, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error);

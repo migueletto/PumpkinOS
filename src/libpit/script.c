@@ -14,67 +14,85 @@
 #define MAX_LIB_UNLOAD   256
 #define MAX_FILE_NAME    256
 
+struct script_engine_t {
+  mutex_t *unload_mutex;
+  int num_lib_unload;
+  int (*lib_unload_f[MAX_LIB_UNLOAD])(void);
+
+  int (*dl_ext_script_init)(void);
+  script_priv_t *(*dl_ext_script_create)(void);
+  uint32_t (*dl_ext_script_engine_id)(void);
+  char *(*dl_ext_script_engine_ext)(void);
+  int (*dl_ext_script_run)(script_priv_t *priv, char *filename, int argc, char *argv[], int str);
+  int (*dl_ext_script_get_last_error)(script_priv_t *priv, char *buf, int max);
+  int (*dl_ext_script_destroy)(script_priv_t *priv);
+  int (*dl_ext_script_call)(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, int n, script_arg_t *args);
+  int (*dl_ext_script_get_value)(script_priv_t *priv, int i, int type, script_arg_t *arg);
+  script_ref_t (*dl_ext_script_create_object)(script_priv_t *priv);
+  int (*dl_ext_script_global_set)(script_priv_t *priv, char *name, script_arg_t *value);
+  int (*dl_ext_script_global_get)(script_priv_t *priv, char *name, script_arg_t *value);
+  int (*dl_ext_script_object_get)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
+  int (*dl_ext_script_object_set)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
+  script_ref_t (*dl_ext_script_create_function)(script_priv_t *priv, int pe, int (*f)(int pe));
+  script_ref_t (*dl_ext_script_dup_ref)(script_priv_t *priv, script_ref_t ref);
+  int (*dl_ext_script_remove_ref)(script_priv_t *priv, script_ref_t ref);
+  int (*dl_ext_script_push_value)(script_priv_t *priv, script_arg_t *value);
+  int (*dl_ext_script_get_stack)(script_priv_t *priv);
+  int (*dl_ext_script_set_stack)(script_priv_t *priv, int index);
+};
+
 typedef struct {
   char *tag;
+  script_engine_t *engine;
   script_priv_t *priv;
   script_ref_t cleanup;
   script_ref_t idle;
   uint32_t idle_period;
 } script_env_t;
 
-static mutex_t *unload_mutex;
-static int num_lib_unload;
-static int (*lib_unload_f[MAX_LIB_UNLOAD])(void);
-
-static int (*dl_ext_script_init)(void);
-static script_priv_t *(*dl_ext_script_create)(void);
-static uint32_t (*dl_ext_script_engine_id)(void);
-static char *(*dl_ext_script_engine_ext)(void);
-static int (*dl_ext_script_run)(script_priv_t *priv, char *filename, int argc, char *argv[], int str);
-static int (*dl_ext_script_get_last_error)(script_priv_t *priv, char *buf, int max);
-static int (*dl_ext_script_destroy)(script_priv_t *priv);
-static int (*dl_ext_script_call)(script_priv_t *priv, script_ref_t ref, script_arg_t *ret, int n, script_arg_t *args);
-static int (*dl_ext_script_get_value)(script_priv_t *priv, int i, int type, script_arg_t *arg);
-static script_ref_t (*dl_ext_script_create_object)(script_priv_t *priv);
-static int (*dl_ext_script_global_set)(script_priv_t *priv, char *name, script_arg_t *value);
-static int (*dl_ext_script_global_get)(script_priv_t *priv, char *name, script_arg_t *value);
-static int (*dl_ext_script_object_get)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
-static int (*dl_ext_script_object_set)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
-static script_ref_t (*dl_ext_script_create_function)(script_priv_t *priv, int pe, int (*f)(int pe));
-static script_ref_t (*dl_ext_script_dup_ref)(script_priv_t *priv, script_ref_t ref);
-static int (*dl_ext_script_remove_ref)(script_priv_t *priv, script_ref_t ref);
-static int (*dl_ext_script_push_value)(script_priv_t *priv, script_arg_t *value);
-static int (*dl_ext_script_get_stack)(script_priv_t *priv);
-static int (*dl_ext_script_set_stack)(script_priv_t *priv, int index);
-
-int script_init(void) {
-  if (dl_ext_script_init() == -1) {
+int script_init(script_engine_t *engine) {
+  if (engine->dl_ext_script_init() == -1) {
     return -1;
   }
 
-  num_lib_unload = 0;
-  sys_memset(lib_unload_f, 0, sizeof(lib_unload_f));
+  engine->num_lib_unload = 0;
+  sys_memset(engine->lib_unload_f, 0, sizeof(engine->lib_unload_f));
 
-  if ((unload_mutex = mutex_create("unload")) == NULL) {
+  if ((engine->unload_mutex = mutex_create("unload")) == NULL) {
     return -1;
   }
 
   return 0;
 }
 
-int script_finish(void) {
+int script_finish(script_engine_t *engine) {
   int i;
 
-  for (i = 0; i < num_lib_unload; i++) {
-    lib_unload_f[i]();
-  }
+  if (engine) {
+    for (i = 0; i < engine->num_lib_unload; i++) {
+      engine->lib_unload_f[i]();
+    }
 
-  if (unload_mutex) {
-    mutex_destroy(unload_mutex);
-    unload_mutex = NULL;
+    if (engine->unload_mutex) {
+      mutex_destroy(engine->unload_mutex);
+    }
+
+    xfree(engine);
   }
 
   return 0;
+}
+
+script_engine_t *script_get_engine(int pe) {
+  script_engine_t *engine;
+  script_env_t *env;
+
+  if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
+    engine = env->engine;
+    ptr_unlock(pe, TAG_ENV);
+  }
+
+  return engine;
 }
 
 static void script_destructor(void *p) {
@@ -83,12 +101,12 @@ static void script_destructor(void *p) {
   env = (script_env_t *)p;
 
   if (env) {
-    dl_ext_script_destroy(env->priv);
+    env->engine->dl_ext_script_destroy(env->priv);
     xfree(env);
   }
 }
 
-int script_create(void) {
+int script_create(script_engine_t *engine) {
   script_env_t *env;
   script_arg_t value;
   int pe;
@@ -97,7 +115,9 @@ int script_create(void) {
     return -1;
   }
 
-  if ((env->priv = dl_ext_script_create()) == NULL) {
+  env->engine = engine;
+
+  if ((env->priv = env->engine->dl_ext_script_create()) == NULL) {
     xfree(env);
     return -1;
   }
@@ -105,7 +125,7 @@ int script_create(void) {
   env->tag = TAG_ENV;
 
   if ((pe = ptr_new(env, script_destructor)) == -1) {
-    dl_ext_script_destroy(env->priv);
+    env->engine->dl_ext_script_destroy(env->priv);
     xfree(env);
     return -1;
   }
@@ -126,12 +146,12 @@ int script_create(void) {
   return pe;
 }
 
-uint32_t script_engine_id(void) {
-  return dl_ext_script_engine_id();
+uint32_t script_engine_id(script_engine_t *engine) {
+  return engine->dl_ext_script_engine_id();
 }
 
-char *script_engine_ext(void) {
-  return dl_ext_script_engine_ext();
+char *script_engine_ext(script_engine_t *engine) {
+  return engine->dl_ext_script_engine_ext();
 }
 
 int script_run(int pe, char *filename, int argc, char *argv[], int str) {
@@ -139,7 +159,7 @@ int script_run(int pe, char *filename, int argc, char *argv[], int str) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_run(env->priv, filename, argc, argv, str);
+    r = env->engine->dl_ext_script_run(env->priv, filename, argc, argv, str);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -151,7 +171,7 @@ int script_get_last_error(int pe, char *buf, int max) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_get_last_error(env->priv, buf, max);
+    r = env->engine->dl_ext_script_get_last_error(env->priv, buf, max);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -190,7 +210,7 @@ void script_idle_loop(int pe) {
   for (; !thread_must_end();) {
     if (ref) {
       if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-        dl_ext_script_call(env->priv, ref, &ret, 0, NULL);
+        env->engine->dl_ext_script_call(env->priv, ref, &ret, 0, NULL);
         ptr_unlock(pe, TAG_ENV);
       }
     }
@@ -206,7 +226,7 @@ int script_destroy(int pe) {
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
     if (env->cleanup) {
       debug(DEBUG_INFO, "SCRIPT", "calling cleanup function");
-      dl_ext_script_call(env->priv, env->cleanup, &ret, 0, NULL);
+      env->engine->dl_ext_script_call(env->priv, env->cleanup, &ret, 0, NULL);
     }
     ptr_unlock(pe, TAG_ENV);
   }
@@ -256,9 +276,7 @@ int script_call_args(int pe, script_ref_t ref, script_arg_t *ret, int n, script_
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-debug(1, "XXX", "dl_ext_script_call ...");
-    r = dl_ext_script_call(env->priv, ref, ret, n, args);
-debug(1, "XXX", "dl_ext_script_call r=%d ret=%c", r, ret->type);
+    r = env->engine->dl_ext_script_call(env->priv, ref, ret, n, args);
     if (r == 0) {
       r = script_dup_string(ret);
     }
@@ -317,7 +335,7 @@ int script_get_named_value(int pe, int index, int type, char *lib, char *func, c
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_get_value(env->priv, index, type, arg);
+    r = env->engine->dl_ext_script_get_value(env->priv, index, type, arg);
 
     if (r == 0) {
       r = script_dup_string(arg);
@@ -530,7 +548,7 @@ script_ref_t script_create_object(int pe) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_create_object(env->priv);
+    r = env->engine->dl_ext_script_create_object(env->priv);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -542,7 +560,7 @@ int script_global_set(int pe, char *name, script_arg_t *value) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_global_set(env->priv, name, value);
+    r = env->engine->dl_ext_script_global_set(env->priv, name, value);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -554,7 +572,7 @@ int script_global_get(int pe, char *name, script_arg_t *value) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_global_get(env->priv, name, value);
+    r = env->engine->dl_ext_script_global_get(env->priv, name, value);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -566,7 +584,7 @@ int script_object_get(int pe, script_ref_t obj, script_arg_t *key, script_arg_t 
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_object_get(env->priv, obj, key, value);
+    r = env->engine->dl_ext_script_object_get(env->priv, obj, key, value);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -578,7 +596,7 @@ int script_object_set(int pe, script_ref_t obj, script_arg_t *key, script_arg_t 
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_object_set(env->priv, obj, key, value);
+    r = env->engine->dl_ext_script_object_set(env->priv, obj, key, value);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -590,7 +608,7 @@ script_ref_t script_create_function(int pe, int (*f)(int pe)) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r =  dl_ext_script_create_function(env->priv, pe, f);
+    r =  env->engine->dl_ext_script_create_function(env->priv, pe, f);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -602,7 +620,7 @@ script_ref_t script_dup_ref(int pe, script_ref_t ref) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r =  dl_ext_script_dup_ref(env->priv, ref);
+    r =  env->engine->dl_ext_script_dup_ref(env->priv, ref);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -614,7 +632,7 @@ int script_remove_ref(int pe, script_ref_t ref) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r =  dl_ext_script_remove_ref(env->priv, ref);
+    r =  env->engine->dl_ext_script_remove_ref(env->priv, ref);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -626,7 +644,7 @@ int script_get_stack(int pe) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_get_stack(env->priv);
+    r = env->engine->dl_ext_script_get_stack(env->priv);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -638,7 +656,7 @@ int script_set_stack(int pe, int index) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_set_stack(env->priv, index);
+    r = env->engine->dl_ext_script_set_stack(env->priv, index);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -650,7 +668,7 @@ int script_push_value(int pe, script_arg_t *value) {
   int r = -1;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
-    r = dl_ext_script_push_value(env->priv, value);
+    r = env->engine->dl_ext_script_push_value(env->priv, value);
     ptr_unlock(pe, TAG_ENV);
   }
 
@@ -746,6 +764,7 @@ int script_returned_value(script_arg_t *ret) {
 }
 
 script_ref_t script_loadlib(int pe, char *libname) {
+  script_env_t *env;
   script_ref_t obj;
   int (*load_f)(void);
   int (*init_f)(int pe, script_ref_t ref);
@@ -807,18 +826,21 @@ script_ref_t script_loadlib(int pe, char *libname) {
     return -1;
   }
 
+  env = ptr_lock(pe, TAG_ENV);
+
   if (first_load && unload_f) {
-    if (mutex_lock(unload_mutex) == 0) {
-      if (num_lib_unload < MAX_LIB_UNLOAD) {
+    if (mutex_lock(env->engine->unload_mutex) == 0) {
+      if (env->engine->num_lib_unload < MAX_LIB_UNLOAD) {
         debug(DEBUG_INFO, "SCRIPT", "registering finalizer for %s library", libname);
-        lib_unload_f[num_lib_unload++] = unload_f;
+        env->engine->lib_unload_f[env->engine->num_lib_unload++] = unload_f;
       } else {
         debug(DEBUG_ERROR, "SCRIPT", "finalizer for %s library will not be called", libname);
       }
-      mutex_unlock(unload_mutex);
+      mutex_unlock(env->engine->unload_mutex);
     }
   }
 
+  ptr_unlock(pe, TAG_ENV);
   obj = -1;
 
   if (init_f) {
@@ -839,35 +861,43 @@ script_ref_t script_loadlib(int pe, char *libname) {
   return obj;
 }
 
-#define ENGINE_SYMBOL(sym) *(void **)(&dl_##sym) = sys_lib_defsymbol(lib, #sym, 1), err += ((dl_##sym) == NULL) ? 1 : 0
+#define ENGINE_SYMBOL(sym) engine->dl_##sym = sys_lib_defsymbol(lib, #sym, 1); err += ((engine->dl_##sym) == NULL) ? 1 : 0
 
-int script_load_engine(char *libname) {
+script_engine_t *script_load_engine(char *libname) {
+  script_engine_t *engine;
   void *lib;
-  int first_load, err = 1;
+  int first_load, err;
 
-  if ((lib = sys_lib_load(libname, &first_load)) != NULL) {
-    err = 0;
-    ENGINE_SYMBOL(ext_script_init);
-    ENGINE_SYMBOL(ext_script_engine_id);
-    ENGINE_SYMBOL(ext_script_engine_ext);
-    ENGINE_SYMBOL(ext_script_create);
-    ENGINE_SYMBOL(ext_script_run);
-    ENGINE_SYMBOL(ext_script_get_last_error);
-    ENGINE_SYMBOL(ext_script_destroy);
-    ENGINE_SYMBOL(ext_script_call);
-    ENGINE_SYMBOL(ext_script_get_value);
-    ENGINE_SYMBOL(ext_script_create_object);
-    ENGINE_SYMBOL(ext_script_global_get);
-    ENGINE_SYMBOL(ext_script_global_set);
-    ENGINE_SYMBOL(ext_script_object_get);
-    ENGINE_SYMBOL(ext_script_object_set);
-    ENGINE_SYMBOL(ext_script_create_function);
-    ENGINE_SYMBOL(ext_script_dup_ref);
-    ENGINE_SYMBOL(ext_script_remove_ref);
-    ENGINE_SYMBOL(ext_script_push_value);
-    ENGINE_SYMBOL(ext_script_get_stack);
-    ENGINE_SYMBOL(ext_script_set_stack);
+  if ((engine = xcalloc(1, sizeof(script_engine_t))) != NULL) {
+    if ((lib = sys_lib_load(libname, &first_load)) != NULL) {
+      err = 0;
+      ENGINE_SYMBOL(ext_script_init);
+      ENGINE_SYMBOL(ext_script_engine_id);
+      ENGINE_SYMBOL(ext_script_engine_ext);
+      ENGINE_SYMBOL(ext_script_create);
+      ENGINE_SYMBOL(ext_script_run);
+      ENGINE_SYMBOL(ext_script_get_last_error);
+      ENGINE_SYMBOL(ext_script_destroy);
+      ENGINE_SYMBOL(ext_script_call);
+      ENGINE_SYMBOL(ext_script_get_value);
+      ENGINE_SYMBOL(ext_script_create_object);
+      ENGINE_SYMBOL(ext_script_global_get);
+      ENGINE_SYMBOL(ext_script_global_set);
+      ENGINE_SYMBOL(ext_script_object_get);
+      ENGINE_SYMBOL(ext_script_object_set);
+      ENGINE_SYMBOL(ext_script_create_function);
+      ENGINE_SYMBOL(ext_script_dup_ref);
+      ENGINE_SYMBOL(ext_script_remove_ref);
+      ENGINE_SYMBOL(ext_script_push_value);
+      ENGINE_SYMBOL(ext_script_get_stack);
+      ENGINE_SYMBOL(ext_script_set_stack);
+    }
+
+    if (err) {
+      xfree(engine);
+      engine = NULL;
+    }
   }
 
-  return err ? -1 : 0;
+  return engine;
 }

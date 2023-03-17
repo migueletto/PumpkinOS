@@ -58,6 +58,8 @@
 
 #define MAX_PLUGINS 256
 
+#define FONT_BASE   9000
+
 #define CRASH_LOG   "crash.log"
 #define COMPAT_LIST "log/compat.txt"
 
@@ -149,6 +151,7 @@ typedef struct {
 } notif_registration_t;
 
 typedef struct {
+  script_engine_t *engine;
   window_provider_t *wp;
   secure_provider_t *secure;
   bt_provider_t *bt;
@@ -188,6 +191,8 @@ typedef struct {
   AppRegistryType *registry;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
+  FontTypeV2 *fontPtr[128];
+  MemHandle fontHandle[128];
 } pumpkin_module_t;
 
 typedef union {
@@ -203,6 +208,12 @@ struct pumpkin_httpd_t {
   script_ref_t ref;
   Boolean (*idle)(void *data);
   void *data;
+};
+
+static const int systemFonts[] = {
+  stdFont, boldFont, largeFont, symbolFont, symbol11Font, symbol7Font, ledFont, largeBoldFont,
+  mono6x10Font, mono8x14Font, mono16x16Font, mono8x16Font,
+  -1
 };
 
 static mutex_t *mutex;
@@ -427,7 +438,51 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 index, UInt16 id, void 
   pumpkin_module.num_notif++;
 }
 
-int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
+FontTypeV2 *pumpkin_get_font(FontID fontId) {
+  FontTypeV2 *fontv2 = NULL;
+
+  if (fontId >= 0 && fontId < 128 && pumpkin_module.fontHandle[fontId] && pumpkin_module.fontPtr[fontId]) {
+    fontv2 = pumpkin_module.fontPtr[fontId];
+  }
+
+  return fontv2;
+}
+
+static void pumpkin_load_fonts(void) {
+  UInt16 index, fontId, resId;
+
+  for (index = 0; systemFonts[index] >= 0; index++) {
+    fontId = systemFonts[index];
+    resId = FONT_BASE + fontId;
+
+    if ((pumpkin_module.fontHandle[fontId] = DmGetResource(fontExtRscType, resId)) != NULL) {
+      if ((pumpkin_module.fontPtr[fontId] = MemHandleLock(pumpkin_module.fontHandle[fontId])) == NULL) {
+        debug(DEBUG_ERROR, PUMPKINOS, "error locking built-in nfnt %d font resource", resId);
+        DmReleaseResource(pumpkin_module.fontHandle[fontId]);
+        pumpkin_module.fontHandle[fontId] = NULL;
+      }
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "built-in nfnt %d font resource not found", fontId);
+    }
+  }
+}
+
+static void pumpkin_unload_fonts(void) {
+  UInt16 fontId;
+
+  for (fontId = 0; fontId < 128; fontId++) {
+    if (pumpkin_module.fontPtr[fontId]) {
+      MemHandleUnlock(pumpkin_module.fontHandle[fontId]);
+      pumpkin_module.fontPtr[fontId] = NULL;
+    }
+    if (pumpkin_module.fontHandle[fontId]) {
+      DmReleaseResource(pumpkin_module.fontHandle[fontId]);
+      pumpkin_module.fontHandle[fontId] = NULL;
+    }
+  }
+}
+
+int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
   int fd;
 
   xmemset(&pumpkin_module, 0, sizeof(pumpkin_module_t));
@@ -466,6 +521,7 @@ int pumpkin_global_init(window_provider_t *wp, bt_provider_t *bt, gps_parse_line
   seltime_key = thread_key();
   fatal_key = thread_key();
 
+  pumpkin_module.engine = engine;
   pumpkin_module.wp = wp;
   pumpkin_module.bt = bt;
   pumpkin_module.gps_parse_line = gps_parse_line;
@@ -508,6 +564,7 @@ void pumpkin_deploy_files(char *path) {
   dbID = DmFindDatabase(0, BOOT_NAME);
   dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly);
   PrefInitModule();
+  pumpkin_load_fonts();
   DmCloseDatabase(dbRef);
 }
 
@@ -718,6 +775,7 @@ int pumpkin_dia_kbd(void) {
 int pumpkin_global_finish(void) {
   int i;
 
+  pumpkin_unload_fonts();
   PrefFinishModule();
 
   if (pumpkin_module.wm) {
@@ -2359,7 +2417,7 @@ int pumpkin_script_create(void) {
   script_ref_t obj, pe = -1;
 
   debug(DEBUG_TRACE, PUMPKINOS, "creating script environment");
-  if ((pe = script_create()) != -1) {
+  if ((pe = script_create(pumpkin_module.engine)) != -1) {
     value.type = SCRIPT_ARG_OBJECT;
     if ((value.value.r = script_create_object(pe)) != -1 && script_global_set(pe, "app", &value) != -1) {
       obj = value.value.r;
@@ -2379,7 +2437,7 @@ int pumpkin_script_create(void) {
 }
 
 uint32_t pumpkin_script_engine_id(void) {
-  return script_engine_id();
+  return script_engine_id(pumpkin_module.engine);
 }
 
 int pumpkin_script_init(int pe, uint32_t type, uint16_t id) {

@@ -195,7 +195,7 @@ static int libos_app_init(int pe) {
   bt = script_get_pointer(pe, BT_PROVIDER);
   gps_parse_line = script_get_pointer(pe, GPS_PARSE_LINE_PROVIDER);
 
-  return script_push_boolean(pe, pumpkin_global_init(wp, bt, gps_parse_line) == 0);
+  return script_push_boolean(pe, pumpkin_global_init(script_get_engine(pe), wp, bt, gps_parse_line) == 0);
 }
 
 static int libos_app_finish(int pe) {

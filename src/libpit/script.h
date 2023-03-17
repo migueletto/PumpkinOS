@@ -21,6 +21,8 @@ extern "C" {
 #define scriptEngineLua  'LuaS'
 #define scriptEngineJS   'JsSc'
 
+typedef struct script_engine_t script_engine_t;
+
 typedef struct script_priv_t script_priv_t;
 
 typedef int32_t script_int_t;
@@ -46,17 +48,17 @@ typedef struct {
 
 // used by main.c
 
-int script_load_engine(char *libname);
-int script_init(void);
-int script_finish(void);
-int script_create(void);
+script_engine_t *script_load_engine(char *libname);
+int script_init(script_engine_t *engine);
+int script_finish(script_engine_t *engine);
+int script_create(script_engine_t *engine);
 int script_destroy(int ptr);
 void script_idle_loop(int pe);
 
 // used by script.c / builtin.c
 
-uint32_t script_engine_id(void);
-char *script_engine_ext(void);
+uint32_t script_engine_id(script_engine_t *engine);
+char *script_engine_ext(script_engine_t *engine);
 int script_create_builtins(int pe, script_ref_t obj);
 script_ref_t script_loadlib(int pe, char *libname);
 int script_run(int pe, char *filename, int argc, char *argv[], int str);
@@ -66,6 +68,7 @@ int script_set_idle(int pe, script_ref_t ref, uint32_t t);
 
 // used by libraries
 
+script_engine_t *script_get_engine(int pe);
 script_ref_t script_create_object(int pe);
 int script_global_set(int pe, char *name, script_arg_t *value);
 int script_global_get(int pe, char *name, script_arg_t *value);
