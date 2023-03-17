@@ -21,18 +21,14 @@ FontID FontSelect(FontID fontID) {
   frm = FrmInitForm(11900);
 
   switch (fontID) {
-    case stdFont:       // Standard plain text font.
-      controlID = 11903;
-      break;
-    case boldFont:      // Bold version of stdFont.
-      controlID = 11904;
-      break;
-    case largeBoldFont: // Larger version of boldFont.
-      controlID = 11905;
-      break;
-    default:
-      controlID = 11903;
-      break;
+    case stdFont:       controlID = 11903; break;
+    case boldFont:      controlID = 11904; break;
+    case largeBoldFont: controlID = 11905; break;
+    case mono6x10Font:  controlID = 11908; break;
+    case mono8x14Font:  controlID = 11909; break;
+    case mono16x16Font: controlID = 11910; break;
+    case mono8x16Font:  controlID = 11911; break;
+    default:            controlID = 11903; break;
   }
 
   index = FrmGetObjectIndex(frm, controlID);
@@ -47,6 +43,10 @@ FontID FontSelect(FontID fontID) {
     if (checkFont(frm, 11903)) fontID = stdFont;
     else if (checkFont(frm, 11904)) fontID = boldFont;
     else if (checkFont(frm, 11905)) fontID = largeBoldFont;
+    else if (checkFont(frm, 11908)) fontID = mono6x10Font;
+    else if (checkFont(frm, 11909)) fontID = mono8x14Font;
+    else if (checkFont(frm, 11910)) fontID = mono16x16Font;
+    else if (checkFont(frm, 11911)) fontID = mono8x16Font;
   }
 
   FrmDeleteForm(frm);

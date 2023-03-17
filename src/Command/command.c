@@ -75,8 +75,6 @@ typedef struct {
   pterm_t *t;
   pterm_callback_t cb;
   char cwd[MAXCMD];
-  MemHandle fh;
-  FontType *f;
   conn_filter_t *telnet;
   Coord col0, col1, row0, row1;
   Boolean moved, selected, down;
@@ -1399,7 +1397,7 @@ static Err StartApplication(void *param) {
   command_data_t *data;
   UInt32 swidth, sheight;
   UInt16 prefsSize;
-  FontID old;
+  FontID font, old;
   uint32_t color;
   int i;
 
@@ -1419,14 +1417,10 @@ static Err StartApplication(void *param) {
   VFSChangeDir(1, "/");
   VFSCurrentDir(1, data->cwd, MAXCMD);
 
-  if ((data->fh = DmGetResource(fontExtRscType, data->prefs.font)) != NULL) {
-    data->f = MemHandleLock(data->fh);
-    FntDefineFont(128, data->f);
-  }
-
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  old = FntSetFont(128);
-  data->font = 128;
+  font = data->prefs.font - 9000;
+  data->font = font;
+  old = FntSetFont(font);
   data->fwidth = FntCharWidth('A');
   data->fheight = FntCharHeight();
   FntSetFont(old);
@@ -1504,14 +1498,7 @@ static void StopApplication(void) {
 
   FrmCloseAllForms();
   data = pumpkin_get_data();
-
-  if (data->fh) {
-    if (data->f) MemHandleUnlock(data->fh);
-    DmReleaseResource(data->fh);
-  }
-
   PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
-
   pumpkin_script_destroy(data->pe);
   xfree(data);
 }

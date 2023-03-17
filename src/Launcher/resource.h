@@ -72,5 +72,4 @@
 #define delCmd     11
 #define forkCmd    12
 
-#define monoFont1 128
-#define monoFont2 129
+#define fakeMonoFont 128

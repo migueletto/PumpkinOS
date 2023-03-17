@@ -84,10 +84,8 @@ typedef struct {
   Boolean finish, top, deploy, reload;
   Int16 lastMinute;
   RectangleType gadRect, sclRect;
-  MemHandle font1Handle;
-  FontType *font1;
-  MemHandle font2Handle;
-  FontType *font2;
+  MemHandle fontHandle;
+  FontType *font;
   UInt32 filterDbType, filterCreator, filterResType, filterId;
   Boolean filterRsrc;
   LocalID dbID;
@@ -2885,13 +2883,9 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   data->mode = launcher_app;
   data->filterId = 0xffffffff;
 
-  data->font1Handle = DmGetResource(fontExtRscType, font8x16Id);
-  data->font1 = MemHandleLock(data->font1Handle);
-  FntDefineFont(monoFont1, data->font1);
-
-  data->font2Handle = DmGetResource(fontExtRscType, fakeFnt);
-  data->font2 = MemHandleLock(data->font2Handle);
-  FntDefineFont(monoFont2, data->font2);
+  data->fontHandle = DmGetResource(fontExtRscType, fakeFnt);
+  data->font = MemHandleLock(data->fontHandle);
+  FntDefineFont(fakeMonoFont, data->font);
 
   StrCopy(data->path, "/");
 
@@ -2911,11 +2905,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,  sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,  sysNotifyNormalPriority);
 
-  MemHandleUnlock(data->font1Handle);
-  DmReleaseResource(data->font1Handle);
-
-  MemHandleUnlock(data->font2Handle);
-  DmReleaseResource(data->font2Handle);
+  MemHandleUnlock(data->fontHandle);
+  DmReleaseResource(data->fontHandle);
 
   launcherResetItems(data);
   pumpkin_set_data(NULL);

@@ -120,6 +120,12 @@ enum fontID {
 	symbol7Font,						// Smaller various ui images
 	ledFont,								// Calculator specific font
 	largeBoldFont,						// A thicker version of the large font.  More readable.
+
+  mono6x10Font = 10,
+  mono8x14Font,
+  mono16x16Font,
+  mono8x16Font,
+
 	fntAppFontCustomBase = 0x80	// First available application-defined font ID
 };
 

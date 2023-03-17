@@ -16,8 +16,6 @@ typedef struct {
   FontType *fonts[256];
   FontTypeV2 *fontsv2[256];
   FontID currentFont;
-  MemHandle h[256];
-  int nh;
 } fnt_module_t;
 
 extern thread_key_t *fnt_key;
@@ -33,9 +31,6 @@ static void adjust(Int16 *r) {
 
 int FntInitModule(UInt16 density) {
   fnt_module_t *module;
-  MemHandle h;
-  FontTypeV2 *f2;
-  UInt16 id;
   int i;
 
   if ((module = xcalloc(1, sizeof(fnt_module_t))) == NULL) {
@@ -44,19 +39,9 @@ int FntInitModule(UInt16 density) {
 
   thread_set(fnt_key, module);
 
-  // stdFont, boldFont, largeFont, symbolFont, symbol11Font, symbol7Font, ledFont, largeBoldFont
-  for (i = 0; i < 8; i++) {
-    id = 9000 + i;
-    if ((h = DmGetResource(fontExtRscType, id)) != NULL) {
-      if ((f2 = MemHandleLock(h)) != NULL) {
-        FntDefineFont(i, (FontPtr)f2);
-        module->h[module->nh++] = h;
-      } else {
-        DmReleaseResource(h);
-      }
-    } else {
-      debug(DEBUG_ERROR, "Font", "built-in nfnt %d font resource not found", id);
-    }
+  // map all system fonts
+  for (i = 0; i < 128; i++) {
+    module->fontsv2[i] = pumpkin_get_font(i);
   }
 
   return 0;
@@ -64,15 +49,8 @@ int FntInitModule(UInt16 density) {
 
 int FntFinishModule(void) {
   fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
-  int i;
 
   if (module) {
-    for (i = 0; i < module->nh; i++) {
-      if (module->h[i]) {
-        MemHandleUnlock(module->h[i]);
-        DmReleaseResource(module->h[i]);
-      }
-    }
     xfree(module);
   }
 
@@ -257,24 +235,30 @@ UInt16 FntWordWrap(Char const *chars, UInt16 maxWidth) {
 Err FntDefineFont(FontID font, FontPtr fontP) {
   fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
   FontTypeV2 *f2;
+  Err err = sysErrParamErr;
 
-  if (font >= 0 && font < 256) {
+  if (font >= 128 && font < 256) {
     if (fontP->v == 1) {
       module->fonts[font] = fontP;
       module->fontsv2[font] = NULL;
       debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
+      err = errNone;
 
     } else if (fontP->v == 2) {
       f2 = (FontTypeV2 *)fontP;
       module->fonts[font] = NULL;
       module->fontsv2[font] = f2;
       debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
+      err = errNone;
 
     } else {
       debug(DEBUG_ERROR, "Font", "FntDefineFont: invalid font version %d", fontP->v);
     }
+  } else {
+    debug(DEBUG_ERROR, "Font", "FntDefineFont: attempt to define system font %d", font);
   }
-  return 0;
+
+  return err;
 }
 
 // Given a pixel position, gets the offset of the character displayed at that location.

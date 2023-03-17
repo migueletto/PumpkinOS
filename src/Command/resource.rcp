@@ -16,11 +16,6 @@ BEGIN
   TITLE ""
 END
 
-#define font6x10Id  9010
-#define font8x14Id  9011
-#define font16x16Id 9012
-#define font8x16Id  9013
-
 FORM PrefsForm 2 2 156 110
 USABLE
 MODAL

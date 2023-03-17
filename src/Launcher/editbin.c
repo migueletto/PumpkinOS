@@ -41,7 +41,7 @@ static void printAddr(bin_edit_t *data, int row) {
     WinSetTextColorRGB(&addr, NULL);
     x = data->rect.topLeft.x + 1;
     y = data->rect.topLeft.y + row * data->fh;
-    old = FntSetFont(monoFont1);
+    old = FntSetFont(mono8x16Font);
     WinPaintChars(buf, 4, x, y);
     FntSetFont(old);
   }
@@ -52,7 +52,7 @@ static void printByte(bin_edit_t *data, int col, int row, Boolean inverse) {
   char buf[8], c;
   int index, x, y;
 
-  old = FntSetFont(monoFont1);
+  old = FntSetFont(mono8x16Font);
   index = row * data->cols + col;
   WinSetBackColorRGB(inverse ? &red : &white, NULL);
 
@@ -200,7 +200,7 @@ static Boolean eventHandler(EventType *event) {
     case frmOpenEvent:
       FrmGetObjectBounds(frm, index, &data->rect);
 
-      old = FntSetFont(monoFont1);
+      old = FntSetFont(mono8x16Font);
       data->fw = FntCharWidth('0');
       data->fh = FntCharHeight();
       FntSetFont(old);

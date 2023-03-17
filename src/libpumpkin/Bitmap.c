@@ -528,7 +528,7 @@ Err BmpDelete(BitmapType *bitmapP) {
   return errNone;
 }
 
-BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth) {
+BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr) {
   UInt16 best_depth, best_density;
   Boolean exact_depth;
   Boolean exact_density;
@@ -544,7 +544,7 @@ BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth) {
 
   for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
     bmp = (uint8_t *)bitmapP;
-    if (bmp < base || bmp >= end) {
+    if (checkAddr && (bmp < base || bmp >= end)) {
       debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap invalid bitmap %p", bitmapP);
       break;
     }
@@ -629,6 +629,10 @@ BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth) {
   }
 
   return best;
+}
+
+BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth) {
+  return BmpGetBestBitmapEx(bitmapP, density, depth, true);
 }
 
 // Compress or uncompress a bitmap.

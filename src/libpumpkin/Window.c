@@ -1411,7 +1411,7 @@ void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     windowBitmap = WinGetBitmap(wh);
     windowDensity = BmpGetDensity(windowBitmap);
 
-    if ((best = BmpGetBestBitmap(bitmapP, windowDensity, BmpGetBitDepth(windowBitmap))) != NULL) {
+    if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, BmpGetBitDepth(windowBitmap), !text)) != NULL) {
       bitmapDensity = BmpGetDensity(best);
       dbl = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
       hlf = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;

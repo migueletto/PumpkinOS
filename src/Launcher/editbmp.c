@@ -663,7 +663,7 @@ static Boolean eventHandler(EventType *event) {
       FrmGetObjectBounds(frm, index, &rect);
       index = FrmGetObjectIndex(frm, paletteLst);
       lst = (ListType *)FrmGetObjectPtr(frm, index);
-      lst->font = monoFont1;
+      lst->font = mono8x16Font;
       LstSetDrawFunction(lst, paletteListDraw);
       switch (depth) {
         case  1: LstSetListChoices(lst, (char **)gray1,  2); break;
@@ -678,7 +678,7 @@ static Boolean eventHandler(EventType *event) {
       FrmGetObjectBounds(frm, index, &rect);
       index = FrmGetObjectIndex(frm, toolsLst);
       lst = (ListType *)FrmGetObjectPtr(frm, index);
-      lst->font = monoFont2;
+      lst->font = fakeMonoFont;
       LstSetDrawFunction(lst, toolsListDraw);
       LstSetListChoices(lst, NULL, 3);
       old = FntSetFont(lst->font);
