@@ -214,7 +214,7 @@ MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length) {
 
       len = cbdMaxTextLength;
       if (pumpkin_clipboard_get_text(module->text, &len) == 0) {
-        if ((h = MemHandleNew(len)) != NULL) {
+        if ((h = MemHandleNew(len+1)) != NULL) {
           if ((s = MemHandleLock(h)) != NULL) {
             MemMove(s, module->text, len);
             MemHandleUnlock(h);
