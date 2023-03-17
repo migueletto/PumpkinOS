@@ -615,12 +615,12 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
     handleSize = textHandle ? MemHandleSize(textHandle) : 0;
 
     if (fldP->textBuf == NULL) {
-      fldP->maxChars = handleSize;
+      //fldP->maxChars = handleSize;
       fldP->textBuf = pumpkin_heap_alloc(fldP->maxChars, "FieldTextBuf");
       debug(DEBUG_TRACE, "Field", "FldSetText alloc textBuf=%p size=%d", fldP->textBuf, fldP->maxChars);
       fldP->text = fldP->textBuf;
       fldP->textLen = 0;
-    } else if (fldP->maxChars < handleSize) {
+    } /*else if (fldP->maxChars < handleSize) {
       debug(DEBUG_TRACE, "Field", "FldSetText maxChars %d < handleSize %d", fldP->maxChars, handleSize);
       fldP->maxChars = handleSize;
       debug(DEBUG_TRACE, "Field", "FldSetText realloc before textBuf=%p", fldP->textBuf);
@@ -628,7 +628,7 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
       debug(DEBUG_TRACE, "Field", "FldSetText realloc after  textBuf=%p", fldP->textBuf);
       fldP->text = fldP->textBuf;
       fldP->textLen = 0;
-    }
+    }*/
 
     if (textHandle) {
       debug(DEBUG_TRACE, "Field", "FldSetText textHandle not NULL");
