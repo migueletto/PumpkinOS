@@ -402,6 +402,8 @@ static Boolean MenuEvent(UInt16 id) {
               pterm_getchar(data->t, pos, &c, &fg, &bg);
               if (i < MAXCMD) buf[i++] = c;
             }
+            // remove trailing spaces
+            for (; i > 0 && buf[i-1] == ' '; i--);
             // add newline
             if (i < MAXCMD) buf[i++] = '\n';
           }
@@ -439,7 +441,7 @@ static Boolean MenuEvent(UInt16 id) {
 
 static void command_update_line(command_data_t *data, Int16 row, Int16 col1, Int16 col2, Boolean selected) {
   RectangleType rect;
-  RGBColorType rgb, sel;
+  RGBColorType fg_rgb, bg_rgb;
   Int16 pos, col, x, y;
   uint32_t fg, bg;
   uint8_t c;
@@ -451,13 +453,16 @@ static void command_update_line(command_data_t *data, Int16 row, Int16 col1, Int
   for (col = col1; col <= col2; col++, pos++) {
     pterm_getchar(data->t, pos, &c, &fg, &bg);
     if (selected) {
-      sel = data->prefs.highlight;
+      bg_rgb = data->prefs.highlight;
+      fg_rgb.r = 255 - bg_rgb.r;
+      fg_rgb.g = 255 - bg_rgb.g;
+      fg_rgb.b = 255 - bg_rgb.b;
     } else {
-      LongToRGB(bg, &sel);
+      LongToRGB(bg, &bg_rgb);
+      LongToRGB(fg, &fg_rgb);
     }
-    LongToRGB(fg, &rgb);
-    WinSetBackColorRGB(&sel, NULL);
-    WinSetTextColorRGB(&rgb, NULL);
+    WinSetBackColorRGB(&bg_rgb, NULL);
+    WinSetTextColorRGB(&fg_rgb, NULL);
 
     RctSetRectangle(&rect, x, y, data->fwidth, data->fheight);
     WinEraseRectangle(&rect, 0);
