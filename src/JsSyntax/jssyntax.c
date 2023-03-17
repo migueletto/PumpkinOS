@@ -7,7 +7,7 @@
 #include "xalloc.h"
 #include "debug.h"
 
-#define jsSyntaxPluginId '.js'
+#define jsSyntaxPluginId '.js '
 
 #define SYNTAX_RESERVED_WORD  1
 #define SYNTAX_FUNCTION       2
