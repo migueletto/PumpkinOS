@@ -66,6 +66,7 @@ typedef struct {
 typedef struct {
   int pe;
   Int32 wait;
+  UInt16 volume;
   UInt16 blink;
   char cmd[MAXCMD];
   UInt16 cmdIndex;
@@ -94,6 +95,7 @@ static int command_script_launch(int pe);
 static int command_script_ps(int pe);
 static int command_script_kill(int pe);
 static int command_script_cat(int pe);
+static int command_script_rm(int pe);
 static int command_script_run(int pe);
 static int command_script_deploy(int pe);
 static int command_script_edit(int pe);
@@ -112,6 +114,7 @@ static const command_builtin_t builtinCommands[] = {
   { "ps",     command_script_ps     },
   { "kill",   command_script_kill   },
   { "cat",    command_script_cat    },
+  { "rm",     command_script_rm     },
   { "run",    command_script_run    },
   { "deploy", command_script_deploy },
   { "edit",   command_script_edit   },
@@ -833,22 +836,19 @@ static Boolean ApplicationHandleEvent(EventType *event) {
 }
 
 Int32 read_file(char *name, char *b, Int32 max) {
-  UInt32 iterator, nread;
-  UInt16 volume;
+  command_data_t *data = pumpkin_get_data();
+  UInt32 nread;
   FileRef fr;
   char buf[MAXCMD];
   Int32 n = -1;
 
   check_prefix(name, buf, MAXCMD);
 
-  iterator = vfsIteratorStart;
-  if (VFSVolumeEnumerate(&volume, &iterator) == errNone) {
-    if (VFSFileOpen(volume, buf, vfsModeRead, &fr) == errNone) {
-      if (VFSFileRead(fr, max, b, &nread) == errNone) {
-        n = nread;
-      }
-      VFSFileClose(fr);
+  if (VFSFileOpen(data->volume, buf, vfsModeRead, &fr) == errNone) {
+    if (VFSFileRead(fr, max, b, &nread) == errNone) {
+      n = nread;
     }
+    VFSFileClose(fr);
   }
 
   return n;
@@ -892,6 +892,19 @@ static int command_script_cat(int pe) {
 
 static int command_script_run(int pe) {
   return command_script_file(pe, 1);
+}
+
+static int command_script_rm(int pe) {
+  command_data_t *data = pumpkin_get_data();
+  char *name = NULL;
+
+  if (script_get_string(pe, 0, &name) == 0) {
+    VFSFileDelete(data->volume, name);
+  }
+
+  if (name) xfree(name);
+
+  return 0;
 }
 
 static int command_script_deploy(int pe) {
@@ -1395,7 +1408,7 @@ static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t
 
 static Err StartApplication(void *param) {
   command_data_t *data;
-  UInt32 swidth, sheight;
+  UInt32 iterator, swidth, sheight;
   UInt16 prefsSize;
   FontID font, old;
   uint32_t color;
@@ -1412,6 +1425,9 @@ static Err StartApplication(void *param) {
     data->prefs.highlight  = defaultHighlight;
     PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
   }
+
+  iterator = vfsIteratorStart;
+  VFSVolumeEnumerate(&data->volume, &iterator);
 
   data->wait = SysTicksPerSecond() / 2;
   VFSChangeDir(1, "/");
