@@ -27,6 +27,8 @@
 
 #define AppID    'CmdP'
 
+#define TAG_LDB  "cmd_ldb"
+#define TAG_DIR  "cmd_dir"
 #define TAG_DB   "cmd_db"
 #define TAG_RSRC "cmd_rsrc"
 
@@ -64,6 +66,21 @@ typedef struct {
 } command_prefs_t;
 
 typedef struct {
+  char *tag;
+  FileInfoType info;
+  FileRef f;
+  UInt32 op;
+  char buf[MAXCMD];
+} command_dir_t;
+
+typedef struct {
+  char *tag;
+  DmSearchStateType stateInfo;
+  UInt32 type, creator;
+  Boolean first;
+} command_ldb_t;
+
+typedef struct {
   int pe;
   Int32 wait;
   UInt16 volume;
@@ -89,8 +106,12 @@ static const RGBColorType defaultHighlight  = { 0, 0xFF, 0xFF, 0x80 };
 static int command_script_cls(int pe);
 static int command_script_print(int pe);
 static int command_script_cd(int pe);
-static int command_script_ls(int pe);
-static int command_script_lsdb(int pe);
+static int command_script_opendb(int pe);
+static int command_script_readdb(int pe);
+static int command_script_closedb(int pe);
+static int command_script_opendir(int pe);
+static int command_script_readdir(int pe);
+static int command_script_closedir(int pe);
 static int command_script_launch(int pe);
 static int command_script_ps(int pe);
 static int command_script_kill(int pe);
@@ -105,23 +126,27 @@ static int command_script_pit(int pe);
 static int command_script_crash(int pe);
 
 static const command_builtin_t builtinCommands[] = {
-  { "cls",    command_script_cls    },
-  { "print",  command_script_print  },
-  { "cd",     command_script_cd     },
-  { "ls",     command_script_ls     },
-  { "lsdb",   command_script_lsdb   },
-  { "launch", command_script_launch },
-  { "ps",     command_script_ps     },
-  { "kill",   command_script_kill   },
-  { "cat",    command_script_cat    },
-  { "rm",     command_script_rm     },
-  { "run",    command_script_run    },
-  { "deploy", command_script_deploy },
-  { "edit",   command_script_edit   },
-  { "telnet", command_script_telnet },
-  { "exit",   command_script_exit   },
-  { "pit",    command_script_pit    },
-  { "crash",  command_script_crash  },
+  { "cls",      command_script_cls      },
+  { "print",    command_script_print    },
+  { "cd",       command_script_cd       },
+  { "opendb",   command_script_opendb   },
+  { "readdb",   command_script_readdb   },
+  { "closedb",  command_script_closedb  },
+  { "opendir",  command_script_opendir  },
+  { "readdir",  command_script_readdir  },
+  { "closedir", command_script_closedir },
+  { "launch",   command_script_launch   },
+  { "ps",       command_script_ps       },
+  { "kill",     command_script_kill     },
+  { "cat",      command_script_cat      },
+  { "rm",       command_script_rm       },
+  { "run",      command_script_run      },
+  { "deploy",   command_script_deploy   },
+  { "edit",     command_script_edit     },
+  { "telnet",   command_script_telnet   },
+  { "exit",     command_script_exit     },
+  { "pit",      command_script_pit      },
+  { "crash",    command_script_crash    },
   { NULL, NULL }
 };
 
@@ -163,46 +188,45 @@ static void check_prefix(char *path, char *buf, int n) {
 }
 
 static void command_script(command_data_t *data, char *s) {
+  script_arg_t value;
   char *argv[8], *val;
-  int argc, i, j, index;
+  char buf[MAXCMD];
+  int argc, i, j;
 
   if (s && s[0]) {
     // split the command line into argv, argv[0] is the first word
     argc = pit_findargs(s, argv, 8, NULL, NULL);
 
     if (argc > 0) {
-      // check if argv[0] is a builtin command
-      for (i = 0; builtinCommands[i].name; i++) {
-        if (!StrCompare(argv[0], builtinCommands[i].name)) break;
-      }
-
-      if (builtinCommands[i].function) {
-        // yes, run the builtin command
-        index = script_get_stack(data->pe);
-        script_set_stack(data->pe, 0);
+      // check if argv[0] is a function name
+      if (script_global_get(data->pe, argv[0], &value) == 0 && value.type == SCRIPT_ARG_FUNCTION) {
+        // yes, build a proper function call
+        StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
         for (j = 1; j < argc; j++) {
-          // arguments are always pushed as strings
-          script_push_string(data->pe, argv[j]);
+          if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
+          if (j > 1) StrCat(buf, ",");
+          if (argv[j][0] != '\"') StrCat(buf, "\"");
+          StrCat(buf, argv[j]);
+          if (argv[j][0] != '\"') StrCat(buf, "\"");
         }
-        builtinCommands[i].function(data->pe);
-        script_set_stack(data->pe, index);
+        StrCat(buf, ")");
+        s = buf;
+      }
 
-      } else {
-        // argv[0] is not a builtin command, evaluate the whole expression
-        val = pumpkin_script_call(data->pe, "command_eval", s);
+      // evaluate the expression
+      val = pumpkin_script_call(data->pe, "command_eval", s);
   
-        if (val) {
-          if (val[0]) {
-            command_puts(data, val);
-            command_putc(data, '\r');
-            command_putc(data, '\n');
-          }
-          xfree(val);
+      if (val) {
+        if (val[0]) {
+          command_puts(data, val);
+          command_putc(data, '\r');
+          command_putc(data, '\n');
         }
+        xfree(val);
       }
-      for (i = 0; i < argc; i++) {
-        if (argv[i]) xfree(argv[i]);
-      }
+    }
+    for (i = 0; i < argc; i++) {
+      if (argv[i]) xfree(argv[i]);
     }
   }
 }
@@ -1046,83 +1070,31 @@ static int command_script_launch(int pe) {
   return 0;
 }
 
-static Int16 command_print_item(command_data_t *data, UInt16 cardNo, LocalID dbID, char *pname, char *pattern, UInt32 ptype, UInt32 pcreator) {
-  char name[dmDBNameLength], stype[8], screator[8];
+static int ps_callback(int i, char *name, int m68k, void *data) {
+  char stype[8], screator[8];
   UInt32 type, creator;
-  Boolean match;
-  Err err;
-  Int16 n, m, r = -1;
+  LocalID dbID;
+  Int16 r = -1;
 
-  if (!dbID && pname) {
-    StrNCopy(name, pname, dmDBNameLength-1);
-    type = sysFileTApplication;
-    creator = AppID;
-    err = errNone;
-  } else {
-    err = DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator);
-  }
-
-  if (err == errNone) {
-    if (pattern) {
-      n = StrLen(pattern);
-      m = StrLen(name);
-      match = false;
-
-      if (n > 0) {
-        if (n == 1 && pattern[0] == '*') {
-          match = true;
-        } else if (pattern[0] == '*') {
-          if (m >= n-1) {
-            match = StrCompare(&name[m-(n-1)], &pattern[1]) == 0;
-          }
-        } else if (pattern[n-1] == '*') {
-          if (m >= n) {
-            match = StrNCompare(name, pattern, n-1) == 0;
-          }
-        } else {
-          match = StrCompare(name, pattern) == 0;
-        }
-      }
-    } else {
-      match = true;
-    }
-
-    if (match && ptype && type != ptype) {
-      match = false;
-    }
-    if (match && pcreator && creator != pcreator) {
-      match = false;
-    }
-
-    if (match) {
-      pumpkin_id2s(type, stype);
-      command_puts(data, stype);
-      command_putc(data, ' ');
-      pumpkin_id2s(creator, screator);
-      command_puts(data, screator);
-      command_putc(data, ' ');
-      command_puts(data, name);
-      command_putc(data, '\r');
-      command_putc(data, '\n');
-    }
+  dbID = DmFindDatabase(0, name);
+  if (dbID && DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
+    pumpkin_id2s(type, stype);
+    command_puts(data, stype);
+    command_putc(data, ' ');
+    pumpkin_id2s(creator, screator);
+    command_puts(data, screator);
+    command_putc(data, ' ');
+    command_puts(data, name);
+    command_putc(data, '\r');
+    command_putc(data, '\n');
     r = 0;
   }
 
   return r;
 }
 
-static int ps_callback(int i, char *name, int m68k, void *data) {
-  LocalID dbID;
-
-  dbID = DmFindDatabase(0, name);
-
-  return command_print_item((command_data_t *)data, 0, dbID, name, NULL, 0, 0);
-}
-
 static int command_script_ps(int pe) {
-  command_data_t *data = pumpkin_get_data();
-
-  pumpkin_ps(ps_callback, data);
+  pumpkin_ps(ps_callback, NULL);
 
   return 0;
 }
@@ -1146,74 +1118,166 @@ static int command_script_cd(int pe) {
   return 0;
 }
 
-static int command_script_ls(int pe) {
-  command_data_t *data = pumpkin_get_data();
-  FileInfoType info;
-  FileRef f;
-  UInt32 op;
-  char buf[MAXCMD];
-  char *dir = NULL;
+static void ldb_destructor(void *p) {
+  command_ldb_t *d = (command_ldb_t *)p;
 
-  script_opt_string(pe, 0, &dir);
-  check_prefix(dir, buf, MAXCMD);
+  if (d) {
+    xfree(d);
+  }
+}
 
-  if (VFSFileOpen(1, buf, vfsModeRead, &f) == errNone) {
-    for (op = vfsIteratorStart;;) {
-      MemSet(buf, sizeof(buf), 0);
-      info.nameP = buf;
-      info.nameBufLen = sizeof(buf)-1;   
-      if (VFSDirEntryEnumerate(f, &op, &info) != errNone) break;
-      command_putc(data, info.attributes & vfsFileAttrDirectory ? 'd' : ' ');
-      command_putc(data, ' ');
-      command_puts(data, info.nameP);
-      command_putc(data, '\r');
-      command_putc(data, '\n');
+static int command_script_opendb(int pe) {
+  command_ldb_t *d;
+  char *type = NULL;
+  char *creator = NULL;
+  int ptr, r = -1;
+
+  script_opt_string(pe, 0, &type);
+  script_opt_string(pe, 1, &creator);
+
+  if ((d = xcalloc(1, sizeof(command_ldb_t))) != NULL) {
+    d->tag = TAG_LDB;
+    d->first = true;
+    if (type && type[0]) {
+      pumpkin_s2id(&d->type, type);
+    } else {
+      d->type = 0;
     }
-    VFSFileClose(f);
+    if (creator && creator[0]) {
+      pumpkin_s2id(&d->creator, creator);
+    } else {
+      d->creator = 0;
+    }
+    if ((ptr = ptr_new(d, ldb_destructor)) != -1) {
+      r = script_push_integer(pe, ptr);
+    } else {
+      xfree(d);
+    }
+  }
+
+  if (type) xfree(type);
+  if (creator) xfree(creator);
+
+  return r;
+}
+
+static int command_script_readdb(int pe) {
+  script_int_t ptr;
+  script_ref_t obj;
+  command_ldb_t *d;
+  LocalID dbID;
+  UInt16 cardNo;
+  UInt32 type, creator;
+  char name[dmDBNameLength], stype[8], screator[8];
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    if ((d = ptr_lock(ptr, TAG_LDB)) != NULL) {
+      if (DmGetNextDatabaseByTypeCreator(d->first, &d->stateInfo, d->type, d->creator, false, &cardNo, &dbID) == errNone) {
+        if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
+          pumpkin_id2s(type, stype);
+          pumpkin_id2s(creator, screator);
+          obj = pumpkin_script_create_obj(pe, NULL);
+          script_add_sconst(pe, obj, "name", name);
+          script_add_sconst(pe, obj, "type", stype);
+          script_add_sconst(pe, obj, "creator", screator);
+          r = script_push_object(pe, obj);
+        }
+      }
+      d->first = false;
+      ptr_unlock(ptr, TAG_LDB);
+    }
+  }
+
+  return r;
+}
+
+static int command_script_closedb(int pe) {
+  script_int_t ptr;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    if (ptr_free(ptr, TAG_LDB) == 0) {
+      r = script_push_boolean(pe, 1);
+    }
+  }
+
+  return r;
+}
+
+static void dir_destructor(void *p) {
+  command_dir_t *d = (command_dir_t *)p;
+
+  if (d) {
+    if (d->f) VFSFileClose(d->f);
+    xfree(d);
+  }
+}
+
+static int command_script_opendir(int pe) {
+  command_data_t *data = pumpkin_get_data();
+  command_dir_t *d;
+  char *dir = NULL;
+  int ptr, r = -1;
+
+  if (script_get_string(pe, 0, &dir) == 0) {
+    if ((d = xcalloc(1, sizeof(command_dir_t))) != NULL) {
+      check_prefix(dir, d->buf, MAXCMD);
+      if (VFSFileOpen(data->volume, d->buf, vfsModeRead, &d->f) == errNone) {
+        d->tag = TAG_DIR;
+        d->op = vfsIteratorStart;
+        if ((ptr = ptr_new(d, dir_destructor)) != -1) {
+          r = script_push_integer(pe, ptr);
+        } else {
+          VFSFileClose(d->f);
+          xfree(d);
+        }
+      } else {
+        xfree(d);
+      }
+    }
   }
 
   if (dir) xfree(dir);
 
-  return 0;
+  return r;
 }
 
-static int command_script_lsdb(int pe) {
-  command_data_t *data = pumpkin_get_data();
-  DmSearchStateType stateInfo;
-  UInt16 cardNo;
-  LocalID dbID;
-  Boolean first;
-  UInt32 ptype, pcreator;
-  char *pattern = NULL;
-  char *type = NULL;
-  char *creator = NULL;
+static int command_script_readdir(int pe) {
+  script_int_t ptr;
+  script_ref_t obj;
+  command_dir_t *d;
+  int r = -1;
 
-  script_opt_string(pe, 0, &pattern);
-  script_opt_string(pe, 1, &type);
-  script_opt_string(pe, 2, &creator);
-
-  if (type && type[0]) {
-    pumpkin_s2id(&ptype, type);
-  } else {
-    ptype = 0;
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    if ((d = ptr_lock(ptr, TAG_DIR)) != NULL) {
+      d->info.nameP = d->buf;
+      d->info.nameBufLen = MAXCMD-1;
+      if (VFSDirEntryEnumerate(d->f, &d->op, &d->info) == errNone) {
+        obj = pumpkin_script_create_obj(pe, NULL);
+        script_add_sconst(pe, obj, "name", d->info.nameP);
+        script_add_boolean(pe, obj, "directory", d->info.attributes & vfsFileAttrDirectory ? 1 : 0);
+        script_add_boolean(pe, obj, "readOnly", d->info.attributes & vfsFileAttrReadOnly ? 1 : 0);
+        r = script_push_object(pe, obj);
+      }
+      ptr_unlock(ptr, TAG_DIR);
+    }
   }
 
-  if (creator && creator[0]) {
-    pumpkin_s2id(&pcreator, creator);
-  } else {
-    pcreator = 0;
+  return r;
+}
+
+static int command_script_closedir(int pe) {
+  script_int_t ptr;
+  int r = -1;
+
+  if (script_get_integer(pe, 0, &ptr) == 0) {
+    if (ptr_free(ptr, TAG_DIR) == 0) {
+      r = script_push_boolean(pe, 1);
+    }
   }
 
-  for (first = true;; first = false) {
-    if (DmGetNextDatabaseByTypeCreator(first, &stateInfo, 0, 0, false, &cardNo, &dbID) != errNone) break;
-    command_print_item(data, cardNo, dbID, NULL, pattern && pattern[0] ? pattern : NULL, ptype, pcreator);
-  }
-
-  if (pattern) xfree(pattern);
-  if (type) xfree(type);
-  if (creator) xfree(creator);
-
-  return 0;
+  return r;
 }
 
 static int command_script_edit(int pe) {
