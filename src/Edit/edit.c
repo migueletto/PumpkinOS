@@ -103,6 +103,11 @@ static void process_lines(edit_t *data, char *buf, int size) {
     }
   }
 
+  if (line == NULL) {
+    line = xcalloc(1, sizeof(edit_line_t));
+    line->buf = xcalloc(1, 1);
+  }
+
   if (line) {
     if (line->buf) {
       len = sys_strlen(line->buf);
@@ -406,7 +411,7 @@ static void doit(editor_t *e, edit_t *data) {
   char c;
 
   data->current = data->first;
-  data->len = sys_strlen(data->current->buf);
+  data->len = data->current ? sys_strlen(data->current->buf) : 0;
   data->iline = 0;
   data->col = data->row = 0;
   data->page = data->first;
@@ -903,51 +908,47 @@ static int edit_edit(editor_t *e, char *filename) {
   edit_line_t *line, *next;
   void *f;
   char *ext, *buf = NULL;
-  int size, n, r = -1;
+  int n, size = 0, r = -1;
 
-  if (e) {
+  if (e && filename) {
     xmemset(&data, 0, sizeof(data));
-    if (filename) {
-      data.filename = xstrdup(filename);
-      if ((f = e->fopen(e->data, filename, 0)) != NULL) {
-        if ((size = e->fsize(e->data, f)) > 0) {
-          if ((buf = xcalloc(1, size)) != NULL) {
-            n = e->fread(e->data, f, buf, size);
-            debug(DEBUG_TRACE, "EDIT", "read %d bytes of %d", n, size);
-          }
+    data.filename = xstrdup(filename);
+    if ((f = e->fopen(e->data, filename, 0)) != NULL) {
+      if ((size = e->fsize(e->data, f)) > 0) {
+        if ((buf = xcalloc(1, size)) != NULL) {
+          n = e->fread(e->data, f, buf, size);
+          debug(DEBUG_TRACE, "EDIT", "read %d bytes of %d", n, size);
         }
-        e->fclose(e->data, f);
       }
+      e->fclose(e->data, f);
     }
 
-    if (buf) {
-      e->window(e->data, &data.ncols, &data.nrows);
-      process_lines(&data, buf, size);
-      xfree(buf);
-      data.foregroundColor = RGBToLong((RGBColorType *)&foregroundColorRGB);
-      data.backgroundColor = RGBToLong((RGBColorType *)&backgroundColorRGB);
-      data.emptyColor = RGBToLong((RGBColorType *)&emptyColorRGB);
-      data.hiddenColor = RGBToLong((RGBColorType *)&hiddenColorRGB);
-      data.cmd = xcalloc(1, data.ncols);
-      if ((ext = getext(filename)) != NULL) {
-        if ((data.syntax = syntax_get_plugin(ext)) != NULL) {
-          data.shigh = data.syntax->syntax_create(RGBToLong((RGBColorType *)&backgroundColorRGB));
-        }
+    e->window(e->data, &data.ncols, &data.nrows);
+    process_lines(&data, buf, size);
+    if (buf) xfree(buf);
+    data.foregroundColor = RGBToLong((RGBColorType *)&foregroundColorRGB);
+    data.backgroundColor = RGBToLong((RGBColorType *)&backgroundColorRGB);
+    data.emptyColor = RGBToLong((RGBColorType *)&emptyColorRGB);
+    data.hiddenColor = RGBToLong((RGBColorType *)&hiddenColorRGB);
+    data.cmd = xcalloc(1, data.ncols);
+    if ((ext = getext(filename)) != NULL) {
+      if ((data.syntax = syntax_get_plugin(ext)) != NULL) {
+        data.shigh = data.syntax->syntax_create(RGBToLong((RGBColorType *)&backgroundColorRGB));
       }
-      e->color(e->data, data.foregroundColor, data.emptyColor);
-      e->cursor(e->data, 0, data.nrows-1);
-      e->clreol(e->data);
-      doit(e, &data);
-      for (line = data.first; line;) {
-        if (line->buf) xfree(line->buf);
-        next = line->next;
-        xfree(line);
-        line = next;
-      }
-      xfree(data.cmd);
-      if (data.syntax) data.syntax->syntax_destroy(data.shigh);
-      if (data.filename) xfree(data.filename);
     }
+    e->color(e->data, data.foregroundColor, data.emptyColor);
+    e->cursor(e->data, 0, data.nrows-1);
+    e->clreol(e->data);
+    doit(e, &data);
+    for (line = data.first; line;) {
+      if (line->buf) xfree(line->buf);
+      next = line->next;
+      xfree(line);
+      line = next;
+    }
+    xfree(data.cmd);
+    if (data.syntax) data.syntax->syntax_destroy(data.shigh);
+    if (data.filename) xfree(data.filename);
   }
 
   return r;
