@@ -1094,7 +1094,9 @@ static int ps_callback(int i, char *name, int m68k, void *data) {
 }
 
 static int command_script_ps(int pe) {
-  pumpkin_ps(ps_callback, NULL);
+  command_data_t *data = pumpkin_get_data();
+
+  pumpkin_ps(ps_callback, data);
 
   return 0;
 }
