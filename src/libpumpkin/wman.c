@@ -539,7 +539,7 @@ int wman_move(wman_t *wm, int id, int dx, int dy) {
   return res;
 }
 
-int wman_remove(wman_t *wm, int id) {
+int wman_remove(wman_t *wm, int id, int remove) {
   wman_area_t aux;
   rect_t r, rr;
   int i, found, res = -1;
@@ -570,6 +570,7 @@ int wman_remove(wman_t *wm, int id) {
           draw_border(wm, i, i == wm->n-1);
         }
       }
+      if (!remove) wm->n++;
       res = 0;
     }
   }

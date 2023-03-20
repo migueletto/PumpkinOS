@@ -3843,7 +3843,7 @@ int StoDeleteFile(char *name) {
   return StoVfsUnlink(sto->session, name);
 }
 
-static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
+static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator, Boolean exists) {
   AppRegistryCompat c;
   AppRegistrySize s;
   AppRegistryPosition p;
@@ -3853,33 +3853,35 @@ static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
   UInt8 *ptr;
   int swidth, sheight;
 
-  pumpkin_get_window(&swidth, &sheight);
-  width = APP_SCREEN_WIDTH;
-  height = APP_SCREEN_HEIGHT;
-
-  if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
-    if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
-      if ((ptr = MemHandleLock(h)) != NULL) {
-        get2b(&width, ptr, 0);
-        get2b(&height, ptr, 2);
-        MemHandleUnlock(h);
-      }
-      DmReleaseResource(h);
-    }
-    DmCloseDatabase(dbRef);
-  }
-
   c.compat = appCompatUnknown;
   c.code = 0;
   AppRegistrySet(ar, creator, appRegistryCompat, 0, &c);
 
-  s.width = width;
-  s.height = height;
-  AppRegistrySet(ar, creator, appRegistrySize, 0, &s);
+  if (!exists) {
+    pumpkin_get_window(&swidth, &sheight);
+    width = APP_SCREEN_WIDTH;
+    height = APP_SCREEN_HEIGHT;
 
-  p.x = (swidth - width) / 2;
-  p.y = (sheight - height) / 2;
-  AppRegistrySet(ar, creator, appRegistryPosition, 0, &p);
+    if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
+      if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
+        if ((ptr = MemHandleLock(h)) != NULL) {
+          get2b(&width, ptr, 0);
+          get2b(&height, ptr, 2);
+          MemHandleUnlock(h);
+        }
+        DmReleaseResource(h);
+      }
+      DmCloseDatabase(dbRef);
+    }
+
+    s.width = width;
+    s.height = height;
+    AppRegistrySet(ar, creator, appRegistrySize, 0, &s);
+
+    p.x = (swidth - s.width) / 2;
+    p.y = (sheight - s.height) / 2;
+    AppRegistrySet(ar, creator, appRegistryPosition, 0, &p);
+  }
 }
 
 int StoDeployFile(char *path, AppRegistryType *ar) {
@@ -3887,7 +3889,7 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
   vfs_file_t *f;
   LocalID dbID;
   UInt32 type, creator, newDate, crDate;
-  Boolean install;
+  Boolean install, exists;
   char name[dmDBNameLength], stype[8], screator[8], *ext;
   uint32_t size, hsize;
   uint8_t *p;
@@ -3905,9 +3907,11 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
             xmemcpy(name, p, dmDBNameLength - 1);
             if (name[0]) {
               install = false;
+              exists = false;
               if ((dbID = DmFindDatabase(0, name)) == 0) {
                 install = true;
               } else {
+                exists = true;
                 if (DmDatabaseInfo(0, dbID, NULL, NULL, NULL, &crDate, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
                   get4b(&newDate, p, dmDBNameLength + 4);
                   install = (newDate > crDate);
@@ -3923,7 +3927,7 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
                   if (DmCreateDatabaseFromImage(p) == errNone) {
                     debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
                     if (type == sysFileTApplication) {
-                      StoRegistryCreate(ar, creator);
+                      StoRegistryCreate(ar, creator, exists);
                     }
                     r = 0;
                   } else {
@@ -3949,7 +3953,7 @@ int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   LocalID dbID;
   UInt32 type, creator, newDate, crDate;
-  Boolean install;
+  Boolean install, exists;
   char name[dmDBNameLength], stype[8], screator[8];
   uint32_t hsize;
   int r = -1;
@@ -3962,9 +3966,11 @@ int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
         xmemcpy(name, p, dmDBNameLength - 1);
         if (name[0]) {
           install = false;
+          exists = false;
           if ((dbID = DmFindDatabase(0, name)) == 0) {
             install = true;
           } else {
+            exists = true;
             if (DmDatabaseInfo(0, dbID, NULL, NULL, NULL, &crDate, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
               get4b(&newDate, p, dmDBNameLength + 4);
               install = (newDate > crDate);
@@ -3980,7 +3986,7 @@ int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
             if (DmCreateDatabaseFromImage(p) == errNone) {
               debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
               if (type == sysFileTApplication) {
-                StoRegistryCreate(ar, creator);
+                StoRegistryCreate(ar, creator, exists);
               }
               r = 0;
             } else {

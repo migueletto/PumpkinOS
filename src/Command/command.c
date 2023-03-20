@@ -598,8 +598,9 @@ static Boolean MainFormHandleEvent(EventType *event) {
   WinHandle wh;
   FormType *formP;
   RectangleType rect;
-  RGBColorType old;
+  RGBColorType oldb;
   UInt32 swidth, sheight;
+  FontID font, old;
   Coord x, y;
   Boolean handled = false;
 
@@ -612,9 +613,9 @@ static Boolean MainFormHandleEvent(EventType *event) {
       wh = FrmGetWindowHandle(formP);
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
-      WinSetBackColorRGB(&data->prefs.background, &old);
+      WinSetBackColorRGB(&data->prefs.background, &oldb);
       WinEraseRectangle(&rect, 0);
-      WinSetBackColorRGB(&old, NULL);
+      WinSetBackColorRGB(&oldb, NULL);
 
       pumpkin_script_init(data->pe, pumpkin_script_engine_id(), 1);
       pterm_cls(data->t);
@@ -624,6 +625,24 @@ static Boolean MainFormHandleEvent(EventType *event) {
       break;
 
     case frmUpdateEvent:
+      handled = true;
+      break;
+
+    case winDisplayChangedEvent:
+      WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
+      formP = FrmGetActiveForm();
+      wh = FrmGetWindowHandle(formP);
+      RctSetRectangle(&rect, 0, 0, swidth, sheight);
+      WinSetBounds(wh, &rect);
+
+      font = data->prefs.font - 9000;
+      data->font = font;
+      old = FntSetFont(font);
+      data->fwidth = FntCharWidth('A');
+      data->fheight = FntCharHeight();
+      FntSetFont(old);
+      pumpkin_set_size(AppID, event->data.winDisplayChanged.newBounds.extent.x, event->data.winDisplayChanged.newBounds.extent.y);
+      command_draw(data);
       handled = true;
       break;
 
@@ -755,6 +774,7 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
   command_data_t *data = pumpkin_get_data();
   FormType *formP;
   ControlType *ctl;
+  FontID old;
   UInt32 color;
   UInt16 index, sel, width, height;
   Boolean handled = false;
@@ -796,23 +816,24 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
           formP = FrmGetActiveForm();
           if (ctlSelected(formP, sel6x10)) {
             data->prefs.font = font6x10Id;
-            width = 6;
-            height = 10;
           } else if (ctlSelected(formP, sel8x14)) {
             data->prefs.font = font8x14Id;
-            width = 8;
-            height = 14;
           } else if (ctlSelected(formP, sel8x16)) {
             data->prefs.font = font8x16Id;
-            width = 8;
-            height = 16;
           }
+
           PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
-          pumpkin_set_size(AppID, COLS * width, ROWS * height);
           color = RGBToLong(&data->prefs.foreground);
           pterm_setfg(data->t, color);
           color = RGBToLong(&data->prefs.background);
           pterm_setbg(data->t, color);
+
+          old = FntSetFont(data->prefs.font - 9000);
+          width = FntCharWidth('A') * 2;
+          height = FntCharHeight() * 2;
+          FntSetFont(old);
+          pumpkin_change_display(COLS * width, ROWS * height);
+
           FrmReturnToForm(MainForm);
           break;
         case cancelBtn:

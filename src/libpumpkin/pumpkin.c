@@ -95,6 +95,7 @@ typedef struct {
   int screen_ptr;
   int dx, dy;
   int width, height;
+  int new_width, new_height;
   int handle;
   int penX, penY, buttons;
   int v10;
@@ -1023,6 +1024,8 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   pumpkin_module.tasks[i].screen_ptr = ptr;
   pumpkin_module.tasks[i].width = width;
   pumpkin_module.tasks[i].height = height;
+  pumpkin_module.tasks[i].new_width = width;
+  pumpkin_module.tasks[i].new_height = height;
   pumpkin_module.tasks[i].handle = thread_get_handle();
   pumpkin_module.tasks[i].texture = texture;
   pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFF;
@@ -1039,6 +1042,8 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   task->screen_ptr = ptr;
   task->width = width;
   task->height = height;
+  task->new_width = width;
+  task->new_height = height;
   sys_strncpy(task->name, name, dmDBNameLength-1);
 
   thread_set(task_key, task);
@@ -1119,7 +1124,7 @@ static int pumpkin_local_finish(UInt32 creator) {
         AppRegistrySet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p);
       }
     }
-    wman_remove(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId);
+    wman_remove(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId, 1);
     pumpkin_module.render = 1;
   }
 
@@ -1734,10 +1739,54 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   return (r == 0) ? errNone : sysErrParamErr;
 }
 
+int pumpkin_change_display(int width, int height) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int r = -1;
+
+  if (mutex_lock(mutex) == 0) {
+    pumpkin_module.tasks[task->task_index].new_width = width;
+    pumpkin_module.tasks[task->task_index].new_height = height;
+    mutex_unlock(mutex);
+    r = 0;
+  }
+
+  return r;
+}
+
+static int pumpkin_changed_display(pumpkin_task_t *task, task_screen_t *screen, int width, int height) {
+  surface_t *surface;
+  texture_t *texture, *old;
+  int r = -1;
+
+  if ((surface = surface_create(width, height, pumpkin_module.encoding)) != NULL) {
+    surface_draw(surface, 0, 0, screen->surface, 0, 0, task->width, task->height);
+    surface_destroy(screen->surface);
+    screen->surface = surface;
+
+    screen->x0 = 0;
+    screen->y0 = 0;
+    screen->x1 = width - 1;
+    screen->y1 = height - 1;
+    screen->dirty = 1;
+
+    old = task->texture;
+    if ((texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height)) != NULL) {
+      wman_remove(pumpkin_module.wm, task->taskId, 0);
+      wman_texture(pumpkin_module.wm, task->taskId, texture, width, height);
+      task->texture = texture;
+      task->width = width;
+      task->height = height;
+      if (old) pumpkin_module.wp->destroy_texture(pumpkin_module.w, old);
+      wman_raise(pumpkin_module.wm, task->taskId);
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
 static int draw_task(int i, int *x, int *y, int *w, int *h) {
   task_screen_t *screen;
-  texture_t *texture, *old;
-  surface_t *surface;
   uint8_t *raw;
   int width, height, len, updated = 0;
 
@@ -1746,30 +1795,18 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
       if (dia_get_main_dimension(pumpkin_module.dia, &width, &height) == 0) {
         if (width != pumpkin_module.tasks[i].width || height != pumpkin_module.tasks[i].height) {
           debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
-
-          if ((surface = surface_create(width, height, pumpkin_module.encoding)) != NULL) {
-            surface_draw(surface, 0, 0, screen->surface, 0, 0, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height);
-            surface_destroy(screen->surface);
-            screen->surface = surface;
-
-            screen->x0 = 0;
-            screen->y0 = 0;
-            screen->x1 = width - 1;
-            screen->y1 = height - 1;
-            screen->dirty = 1;
-
-            old = pumpkin_module.tasks[i].texture;
-            if ((texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height)) != NULL) {
-              wman_texture(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, texture, width, height);
-              pumpkin_module.tasks[i].texture = texture;
-              pumpkin_module.tasks[i].width = width;
-              pumpkin_module.tasks[i].height = height;
-              if (old) pumpkin_module.wp->destroy_texture(pumpkin_module.w, old);
-            }
-
+          if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
             pumpkin_forward_event(i, MSG_DISPLAY, width, height, 0);
           }
         }
+      }
+    } else if (pumpkin_module.tasks[i].width != pumpkin_module.tasks[i].new_width ||
+               pumpkin_module.tasks[i].height != pumpkin_module.tasks[i].new_height) {
+      width = pumpkin_module.tasks[i].new_width;
+      height = pumpkin_module.tasks[i].new_height;
+      debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
+      if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
+        pumpkin_forward_event(i, MSG_DISPLAY, width, height, 0);
       }
     }
 
