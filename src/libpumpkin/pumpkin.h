@@ -302,6 +302,7 @@ void WinLegacyWriteByte(UInt32 offset, UInt8 value);
 void WinLegacyWriteWord(UInt32 offset, UInt16 value);
 void WinLegacyWriteLong(UInt32 offset, UInt32 value);
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
+surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -332,6 +333,7 @@ BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth);
 void BmpFillData(BitmapType *bitmapP);
 void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *label);
 const UInt8 *BmpGetGray(UInt8 depth);
+surface_t *BmpBitmapCreateSurface(UInt16 id);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);

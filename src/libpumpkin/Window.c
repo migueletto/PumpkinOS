@@ -42,6 +42,12 @@ typedef struct {
   int numPush;
 } win_module_t;
 
+typedef struct {
+  WinHandle wh;
+  RectangleType rect;
+  UInt16 coordSys;
+} win_surface_t;
+
 extern thread_key_t *win_key;
 
 /*
@@ -3031,4 +3037,81 @@ void WinLegacyWriteWord(UInt32 offset, UInt16 value) {
 
 void WinLegacyWriteLong(UInt32 offset, UInt32 value) {
   WinLegacyWrite(offset, value, 4);
+}
+
+static void WinSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
+  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_surface_t *wsurf = (win_surface_t *)data;
+  WinHandle old;
+  UInt16 prev;
+  uint32_t oldc;
+
+  old = WinSetDrawWindow(wsurf->wh);
+  oldc = module->foreColor565;
+  module->foreColor565 = color;
+  prev = WinSetCoordinateSystem(wsurf->coordSys);
+  WinPaintPixel(wsurf->rect.topLeft.x + x, wsurf->rect.topLeft.y + y);
+  WinSetCoordinateSystem(prev);
+  module->foreColor565 = oldc;
+  WinSetDrawWindow(old);
+}
+
+static uint32_t WinSurfaceColorRGB(void *data, int red, int green, int blue, int alpha) {
+  return rgb565(red, green, blue);
+}
+
+static void WinSurfaceDestroy(void *data) {
+  win_surface_t *wsurf = (win_surface_t *)data;
+
+  if (wsurf) {
+    xfree(wsurf);
+  }
+}
+
+surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect) {
+  win_surface_t *wsurf;
+  surface_t *surface;
+  BitmapType *bitmapP;
+  UInt16 prev, density;
+
+  bitmapP = WinGetBitmap(wh);
+
+  if (BmpGetBitDepth(bitmapP) != 16) {
+    debug(DEBUG_ERROR, "Bitmap", "WinCreateSurface supports only 16 bits");
+    return NULL;
+  }
+
+  if ((wsurf = xcalloc(1, sizeof(win_surface_t))) != NULL) {
+    if ((surface = xcalloc(1, sizeof(surface_t))) != NULL) {
+      wsurf->wh = wh;
+      xmemcpy(&wsurf->rect, rect, sizeof(RectangleType));
+      density = BmpGetDensity(bitmapP);
+      wsurf->coordSys = density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard;
+      prev = WinSetCoordinateSystem(wsurf->coordSys);
+      if (prev != wsurf->coordSys) {
+        switch (prev) {
+          case kCoordinatesStandard:
+            WinScaleRectangle(&wsurf->rect);
+            break;
+          case kCoordinatesDouble:
+            WinUnscaleRectangle(&wsurf->rect);
+            break;
+        }
+        WinSetCoordinateSystem(prev);
+      }
+
+      surface->tag = TAG_SURFACE;
+      surface->encoding = SURFACE_ENCODING_RGB565;
+      surface->width = wsurf->rect.extent.x;
+      surface->height = wsurf->rect.extent.y;
+      surface->setpixel = WinSurfaceSetPixel;
+      surface->color_rgb = WinSurfaceColorRGB;
+      surface->destroy = WinSurfaceDestroy;
+      surface->data = wsurf;
+    } else {
+      xfree(wsurf);
+    }
+  }
+
+  return surface;
 }

@@ -18,6 +18,12 @@ typedef struct {
   UInt16 density;
 } bmp_module_t;
 
+typedef struct {
+  UInt16 encoding;
+  MemHandle h;
+  BitmapType *bitmapP;
+} bmp_surface_t;
+
 extern thread_key_t *bmp_key;
 
 static const UInt8 gray1[2]       = {0x00, 0xe6};
@@ -408,6 +414,91 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 density, UInt8 depth, B
   BmpFillData((BitmapType *)bmpV3);
 
   return (BitmapType *)bmpV3;
+}
+
+static uint32_t BmpSurfaceGetPixel(void *data, int x, int y) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+
+  return BmpGetPixelValue(bsurf->bitmapP, x, y);
+}
+
+static int BmpSurfaceGetTransparent(void *data, uint32_t *transp) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+  UInt32 transparentValue;
+  Boolean transparent;
+
+  transparent = BmpGetTransparentValue(bsurf->bitmapP, &transparentValue);
+  *transp = transparentValue;
+
+  return transparent;
+}
+
+static void BmpSurfaceDestroy(void *data) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+
+  if (bsurf) {
+    MemHandleUnlock(bsurf->h);
+    DmReleaseResource(bsurf->h);
+    xfree(bsurf);
+  }
+}
+
+surface_t *BmpBitmapCreateSurface(UInt16 id) {
+  surface_t *surface;
+  bmp_surface_t *bsurf;
+  MemHandle h;
+  BitmapType *bitmapP;
+  Coord width, height;
+  Int16 encoding;
+  UInt8 depth;
+
+  if ((h = DmGetResource(bitmapRsc, id)) != NULL) {
+    if ((bitmapP = MemHandleLock(h)) != NULL) {
+      depth = BmpGetBitDepth(bitmapP);
+      switch (depth) {
+        case  8: encoding = SURFACE_ENCODING_PALETTE; break;
+        case 16: encoding = SURFACE_ENCODING_RGB565;  break;
+        case 32: encoding = SURFACE_ENCODING_ARGB;    break;
+        default:
+          debug(DEBUG_ERROR, "Bitmap", "BmpBitmapCreateSurface unsupported depth %d", depth);
+          encoding = -1;
+          break;
+      }
+
+      if (encoding >= 0) {
+        if ((bsurf = xcalloc(1, sizeof(bmp_surface_t))) != NULL) {
+          if ((surface = xcalloc(1, sizeof(surface_t))) != NULL) {
+            bsurf->h = h;
+            bsurf->bitmapP = bitmapP;
+
+            BmpGetDimensions(bitmapP, &width, &height, NULL);
+            surface->tag = TAG_SURFACE;
+            surface->encoding = encoding;
+            surface->width = width;
+            surface->height = height;
+            surface->getpixel = BmpSurfaceGetPixel;
+            surface->gettransp = BmpSurfaceGetTransparent;
+            surface->destroy = BmpSurfaceDestroy;
+            surface->data = bsurf;
+          } else {
+            xfree(bsurf);
+            MemHandleUnlock(h);
+            DmReleaseResource(h);
+          }
+        } else {
+          MemHandleUnlock(h);
+          DmReleaseResource(h);
+        }
+      } else {
+        MemHandleUnlock(h);
+        DmReleaseResource(h);
+      }
+    } else {
+      DmReleaseResource(h);
+    }
+  }
+
+  return surface;
 }
 
 void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *label) {
