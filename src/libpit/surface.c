@@ -133,16 +133,18 @@ static uint8_t surface_gray_rgb(uint8_t red, uint8_t green, uint8_t blue) {
 }
 
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
-  uint32_t color;
+  uint32_t color, transp;
   int32_t *pixels, oldpixel, newpixel, quant_error;
   int32_t *pixels_r, *pixels_g, *pixels_b, old_r, old_g, old_b, err_r, err_g, err_b;
-  int i, j, k, red, green, blue, alpha;
+  int i, j, k, red, green, blue, alpha, transparent;
+
+  transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
 
   if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
     for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
         color = src->getpixel(src->data, src_x + j, src_y + i);
-        dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+        if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
       }
     }
   } else if (dst->encoding == SURFACE_ENCODING_PALETTE) {
@@ -236,9 +238,11 @@ if (old_b < 0) old_b = 0; else if (old_b > 255) old_b = 255;
     for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
         color = src->getpixel(src->data, src_x + j, src_y + i);
-        src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
-        color = dst->color_rgb(dst->data, red, green, blue, alpha);
-        dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+        if (!transparent || color != transp) {
+          src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
+          color = dst->color_rgb(dst->data, red, green, blue, alpha);
+          dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+        }
       }
     }
   }
@@ -501,6 +505,15 @@ static void *bsurface_getbuffer(void *data, int *len) {
   return b->buffer;
 }
 
+static void bsurface_destroy(void *data) {
+  buffer_surface_t *b = (buffer_surface_t *)data;
+
+  if (b) {
+    if (b->buffer) xfree(b->buffer);
+    xfree(b);
+  }
+}
+
 int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2) {
   return surface && surface->event ? surface->event(surface->data, us, arg1, arg2) : 0;
 }
@@ -565,6 +578,7 @@ surface_t *surface_create(int width, int height, int encoding) {
       surface->color_rgb = bsurface_color_rgb;
       surface->rgb_color = bsurface_rgb_color;
       surface->getbuffer = bsurface_getbuffer;
+      surface->destroy = bsurface_destroy;
       b->surface = surface;
       b->width = width;
       b->height = height;
@@ -847,14 +861,11 @@ int surface_save(surface_t *surface, char *filename, int quality) {
 }
 
 int surface_destroy(surface_t *surface) {
-  buffer_surface_t *b;
   int r = -1;
 
   if (surface) {
-    b = (buffer_surface_t *)surface->data;
+    if (surface->destroy) surface->destroy(surface->data);
     if (surface->palette) xfree(surface->palette);
-    if (b->buffer) xfree(b->buffer);
-    xfree(b);
     xfree(surface);
     r = 0;
   }

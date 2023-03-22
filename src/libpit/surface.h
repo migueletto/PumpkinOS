@@ -29,6 +29,7 @@ typedef struct {
   void (*setpixel)(void *data, int x, int y, uint32_t color);
   void (*setarea)(void *data, int x1, int y1, int x2, int y2, uint32_t color);
   void (*printchar)(void *data, int x, int y, uint8_t c, uint32_t fg, uint32_t bg);
+  int (*gettransp)(void *data, uint32_t *transp);
   uint32_t (*getpixel)(void *data, int x, int y);
   uint32_t (*color_rgb)(void *data, int red, int green, int blue, int alpha);
   void (*rgb_color)(void *data, uint32_t color, int *red, int *green, int *blue, int *alpha);
@@ -36,6 +37,7 @@ typedef struct {
   void (*update)(void *data);
   void (*settitle)(void *data, char *title);
   void (*setoption)(void *data, int op, int value);
+  void (*destroy)(void *data);
 } surface_t;
 
 int surface_font_height(int font);
