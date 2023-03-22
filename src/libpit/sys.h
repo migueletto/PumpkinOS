@@ -336,9 +336,13 @@ double sys_sin(double x);
 
 double sys_cos(double x);
 
+double sys_atan2(double y, double x);
+
 double sys_pi(void);
 
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *));
+
+void *sys_bsearch(const void *key, const void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *));
 
 int sys_toupper(int c);
 

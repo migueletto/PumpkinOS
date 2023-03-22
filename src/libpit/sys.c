@@ -2917,8 +2917,16 @@ double sys_pi(void) {
   return M_PI;
 }
 
+double sys_atan2(double y, double x) {
+  return atan2(y, x);
+}
+
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
   return qsort(base, nmemb, size, compar);
+}
+
+void *sys_bsearch(const void *key, const void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
+  return bsearch(key, base, nmemb, size, compar);
 }
 
 int sys_toupper(int c) {
