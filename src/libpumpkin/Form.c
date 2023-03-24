@@ -65,6 +65,24 @@ int FrmFinishModule(void) {
   return 0;
 }
 
+static void FrmCenterForm(FormType *formP) {
+  UInt32 swidth, sheight;
+  UInt16 index;
+  FormObjectType obj;
+
+  WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
+  formP->window.windowBounds.topLeft.x = (swidth  - formP->window.windowBounds.extent.x) / 2;
+  formP->window.windowBounds.topLeft.y = (sheight - formP->window.windowBounds.extent.y) / 2;
+
+  for (index = 0; index < formP->numObjects; index++) {
+    if (formP->objects[index].objectType == frmListObj) {
+      obj = formP->objects[index].object;
+      obj.list->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + obj.list->bounds.topLeft.x; // absolute screen coordinate
+      obj.list->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + obj.list->bounds.topLeft.y; // absolute screen coordinate
+    }
+  }
+}
+
 void FrmCenterDialogs(Boolean center) {
   frm_module_t *module = (frm_module_t *)thread_get(frm_key);
 
@@ -167,6 +185,7 @@ static Err FrmInitFormInternal(FormType *formP) {
 }
 
 FormType *FrmInitForm(UInt16 rscID) {
+  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
   FormType *formP = NULL;
   MemHandle h;
   UInt16 size;
@@ -189,6 +208,9 @@ FormType *FrmInitForm(UInt16 rscID) {
     formP = pumpkin_create_form(rsrc, size);
     debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, formP->window.windowFlags.modal);
     FrmInitFormInternal(formP);
+    if (formP->window.windowFlags.modal && module->centerDialogs) {
+      FrmCenterForm(formP);
+    }
   }
 
   return formP;
@@ -1356,11 +1378,9 @@ boot forms:
 */
 
 UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
   FormType *previous;
   EventType event;
   FormObjectType obj;
-  UInt32 swidth, sheight;
   UInt16 index, buttonID;
   Boolean stop;
   Err err;
@@ -1368,20 +1388,6 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
   buttonID = 0;
 
   if (formP) {
-    if (module->centerDialogs) {
-      WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-      formP->window.windowBounds.topLeft.x = (swidth  - formP->window.windowBounds.extent.x) / 2;
-      formP->window.windowBounds.topLeft.y = (sheight - formP->window.windowBounds.extent.y) / 2;
-
-      for (index = 0; index < formP->numObjects; index++) {
-        if (formP->objects[index].objectType == frmListObj) {
-          obj = formP->objects[index].object;
-          obj.list->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + obj.list->bounds.topLeft.x; // absolute screen coordinate
-          obj.list->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + obj.list->bounds.topLeft.y; // absolute screen coordinate
-        }
-      }
-    }
-
     FldSetActiveField(NULL);
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
@@ -1458,6 +1464,7 @@ UInt16 FrmDoDialog(FormType *formP) {
   10007: stop
 */
 static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
+  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
   FormType *previous, *formP;
   RectangleType rect;
   UInt16 bitmapID, len, tw, th, x;
@@ -1503,6 +1510,10 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
         if (tw < 36) tw = 36;
         CtlNewControl((void **)&formP, 1000+i, buttonCtl, alert->button[i], x, formH - th - 6, tw, th, stdFont, 0, true);
         x += tw + 6;
+      }
+
+      if (module->centerDialogs) {
+        FrmCenterForm(formP);
       }
 
       previous = FrmGetActiveForm();
