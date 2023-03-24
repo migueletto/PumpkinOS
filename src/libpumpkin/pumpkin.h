@@ -27,6 +27,8 @@ extern "C" {
 #define GPDLibRefNum (MAX_SYSLIBS+2)
 #define GPDLibName   GPD_LIB_NAME
 
+#define GPSLibRefNum (MAX_SYSLIBS+3)
+
 #define MSG_KEY     1
 #define MSG_BUTTON  2
 #define MSG_MOTION  3
@@ -286,6 +288,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
 MemHandle MemLocalIDToHandle(LocalID local);
 
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
+Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
 void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);

@@ -143,7 +143,18 @@ Int16 StrPrintF(Char *s, const Char *formatStr, ...) {
   return n;
 }
 
-Int16 StrVPrintF(Char *s, const Char *formatStr, _Palm_va_list arg) {
+Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg) {
+  int n = 0;
+
+  if (s == NULL || formatStr == NULL) ErrFatalDisplayEx("StrVNPrintF NULL", 0);
+  if (s && formatStr) {
+    n = sys_vsnprintf(s, size, formatStr, arg);
+  }
+
+  return n;
+}
+
+Int16 StrVPrintF(Char *s, const Char *formatStr, sys_va_list arg) {
   int n = 0;
 
   if (s == NULL || formatStr == NULL) ErrFatalDisplayEx("StrVPrintF NULL", 0);
