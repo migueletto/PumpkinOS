@@ -383,7 +383,7 @@ static Boolean MenuEvent(UInt16 id) {
 
   switch (id) {
     case aboutCmd:
-      AbtShowAbout(AppID);
+      AbtShowAboutPumpkin(AppID);
       handled = true;
       break;
 
