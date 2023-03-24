@@ -436,14 +436,37 @@ static Int16 mapLanguage(char *language) {
   return -1;
 }
 
+static int16_t initTimePrefs(SystemPreferencesType *prefs, int *_dst) {
+  sys_tm_t tm;
+  uint64_t dt, tl;
+  int64_t sdt;
+  int dst;
+
+  dt = sys_time();
+  sys_gmtime(&dt, &tm);
+  sdt = (int64_t)dt;
+  tl = (int64_t)sys_timelocal(&tm);
+  sdt -= tl;
+  sdt /= 60;
+  dst = sys_isdst() ? 60 : 0;
+  sdt -= dst;
+
+  debug(DEBUG_INFO, PALMOS_MODULE, "setting prefs timeZone %d (dst %d)", sdt, dst);
+  prefs->timeZone = sdt;
+  prefs->daylightSavingAdjustment = dst;
+  prefs->minutesWestOfGMT = prefs->timeZone; // XXX minutesWestOfGMT is UInt32
+
+  if (_dst) *_dst = dst;
+  return (int16_t)sdt;
+}
+
 static void initPrefs(SystemPreferencesType *prefs) {
   LmLocaleType systemLocale, aux;
   char countryName[kMaxCountryNameLen+1];
   char country[8], language[16];
   UInt16 index;
   Int16 n;
-  sys_tm_t tm;
-  uint64_t dt;
+  int16_t dt;
   int dst;
   Boolean found;
 
@@ -567,17 +590,7 @@ static void initPrefs(SystemPreferencesType *prefs) {
     }
   }
 
-  dt = sys_time();
-  sys_gmtime(&dt, &tm);
-  dt -= sys_timelocal(&tm);
-  dt /= 60;
-  dst = sys_isdst() ? 60 : 0;
-  dt -= dst;
-
-  debug(DEBUG_INFO, PALMOS_MODULE, "setting prefs timeZone %d (dst %d)", dt, dst);
-  prefs->timeZone = dt;
-  prefs->daylightSavingAdjustment = dst;
-  prefs->minutesWestOfGMT = prefs->timeZone; // XXX minutesWestOfGMT is UInt32
+  dt = initTimePrefs(prefs, &dst);
 
   if (!found) {
     if (systemLocale.language == lmAnyLanguage) {
