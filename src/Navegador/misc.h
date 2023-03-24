@@ -1,0 +1,13 @@
+void GetCoord(FormPtr frm, CoordType *coord);
+void DrawBmp(UInt16 id, Int16 x, Int16 y, Boolean centered);
+Int16 SetField(FormPtr frm, UInt16 id, char *buf);
+void FldInsertStr(FormPtr, UInt16, char *);
+void DrawFld(FormPtr, UInt16);
+void FldSetStr(FormPtr frm, UInt16 id, char *s);
+Err DmCheckAndWrite(MemPtr, UInt32, MemPtr, UInt32);
+Boolean GetFloat(FieldPtr fld, double *value, double min, double max);  
+Boolean GetUInt(FormPtr frm, UInt16 id, UInt16 *value, UInt16 min, UInt16 max);
+void ListDrawData(Int16 itemNum, RectangleType *bounds, char **itemsText);
+char *GetString(char *title, char *value);
+Int16 comparename(void *e1, void *e2, Int32 other);
+Int16 comparedistance(void *e1, void *e2, Int32 other);

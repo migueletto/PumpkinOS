@@ -1,0 +1,1 @@
+Err GpsLibEventCallback(SysNotifyParamType *notifyParams);

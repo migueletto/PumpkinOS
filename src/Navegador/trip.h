@@ -1,0 +1,10 @@
+void TripStop(void);
+void TripReset(UInt32 stime, UInt32 mtime, double distance);
+void TripRecord(TimestampType *ts, CoordType *coord, double speed);
+void TripLog(TimestampType *ts, CoordType *coord, double speed, FileHand h);
+UInt32 TripGetStartTime(void);
+UInt32 TripGetStopedTime(void);
+UInt32 TripGetMovingTime(void);
+UInt32 TripGetTotalTime(void);
+double TripGetDistance(void);
+void SetTrip(void);
