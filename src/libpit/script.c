@@ -465,6 +465,17 @@ int script_get_object(int pe, int index, script_ref_t *ref) {
   return r;
 }
 
+int script_add_pointer(int pe, script_ref_t obj, char *name, void *p) {
+  script_arg_t key, value;
+
+  key.type = SCRIPT_ARG_STRING;
+  key.value.s = name;
+  value.type = SCRIPT_ARG_POINTER;
+  value.value.p = p;
+
+  return script_object_set(pe, obj, &key, &value);
+}
+
 int script_add_boolean(int pe, script_ref_t obj, char *name, int b) {
   script_arg_t key, value;
 
@@ -847,6 +858,7 @@ script_ref_t script_loadlib(int pe, char *libname) {
     if ((obj = script_create_object(pe)) == -1) {
       return -1;
     }
+    script_add_pointer(pe, obj, "_lib", lib);
 
     if (init_f(pe, obj) == -1) {
       debug(DEBUG_ERROR, "SCRIPT", "failed to initialize %s library", libname);

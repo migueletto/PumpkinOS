@@ -78,6 +78,7 @@ script_ref_t script_create_function(int pe, int (*f)(int pe));
 int script_set_pointer(int pe, char *name, void *p);
 void *script_get_pointer(int pe, char *name);
 int script_add_function(int pe, script_ref_t obj, char *name, int (*f)(int pe));
+int script_add_pointer(int pe, script_ref_t obj, char *name, void *p);
 int script_add_boolean(int pe, script_ref_t obj, char *name, int b);
 int script_add_iconst(int pe, script_ref_t obj, char *name, script_int_t value);
 int script_add_rconst(int pe, script_ref_t obj, char *name, script_real_t value);
