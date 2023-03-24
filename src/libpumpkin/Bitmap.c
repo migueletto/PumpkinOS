@@ -2710,7 +2710,7 @@ BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t t
       bmpV2->width = width;
       bmpV2->height = height;
       bmpV2->rowBytes = rowBytes;
-      bmpV2->flags.compressed = 0;
+      bmpV2->flags = bmpAttr;
       bmpV2->pixelSize = pixelSize;
       bmpV2->version = version;
       bmpV2->nextDepthOffset = nextDepthOffset;
