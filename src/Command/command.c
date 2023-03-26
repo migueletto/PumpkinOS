@@ -23,6 +23,7 @@
 #include "fill.h"
 #include "file.h"
 #include "deploy.h"
+#include "command.h"
 #include "resource.h"
 
 #define AppID    'CmdP'
@@ -40,11 +41,6 @@
 
 #define COLS 80
 #define ROWS 25
-
-typedef struct {
-  char *name;
-  int (*function)(int pe);
-} command_builtin_t;
 
 typedef struct {
   char *tag;
@@ -80,7 +76,7 @@ typedef struct {
   Boolean first;
 } command_ldb_t;
 
-typedef struct {
+struct command_internal_data_t {
   int pe;
   Int32 wait;
   UInt16 volume;
@@ -97,7 +93,7 @@ typedef struct {
   Coord col0, col1, row0, row1;
   Boolean moved, selected, down;
   command_prefs_t prefs;
-} command_data_t;
+};
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
 static const RGBColorType defaultBackground = { 0, 0x13, 0x32, 0x65 };
@@ -150,14 +146,14 @@ static const command_builtin_t builtinCommands[] = {
   { NULL, NULL }
 };
 
-static void command_putc(command_data_t *data, char c) {
+static void command_putc(command_internal_data_t *idata, char c) {
   uint8_t b = c;
 
-  pterm_cursor(data->t, 0);
-  pterm_send(data->t, &b, 1);
+  pterm_cursor(idata->t, 0);
+  pterm_send(idata->t, &b, 1);
 }
 
-static void command_puts(command_data_t *data, char *s) {
+static void command_puts(command_internal_data_t *idata, char *s) {
   int i, n;
   char prev;
 
@@ -165,29 +161,34 @@ static void command_puts(command_data_t *data, char *s) {
     n = StrLen(s);
     for (i = 0, prev = 0; i < n; prev = s[i], i++) {
       if (s[i] == '\n' && prev != '\r') {
-        command_putc(data, '\r');
+        command_putc(idata, '\r');
       }
-      command_putc(data, s[i]);
+      command_putc(idata, s[i]);
     }
   }
 }
 
-static void check_prefix(char *path, char *buf, int n) {
+static command_internal_data_t *command_get_data(void) {
   command_data_t *data = pumpkin_get_data();
+  return data->idata;
+}
+
+static void check_prefix(char *path, char *buf, int n) {
+  command_internal_data_t *idata = command_get_data();
 
   if (path) {
     if (path[0] == '/') {
       StrNCopy(buf, path, n-1);
     } else {
-      StrNCopy(buf, data->cwd, n-1);
+      StrNCopy(buf, idata->cwd, n-1);
       StrNCat(buf, path, n-1-StrLen(buf));
     }
   } else {
-    StrNCopy(buf, data->cwd, n-1);
+    StrNCopy(buf, idata->cwd, n-1);
   }
 }
 
-static void command_script(command_data_t *data, char *s) {
+static void command_script(command_internal_data_t *idata, char *s) {
   script_arg_t value;
   char *argv[8], *val;
   char buf[MAXCMD];
@@ -199,7 +200,7 @@ static void command_script(command_data_t *data, char *s) {
 
     if (argc > 0) {
       // check if argv[0] is a function name
-      if (script_global_get(data->pe, argv[0], &value) == 0 && value.type == SCRIPT_ARG_FUNCTION) {
+      if (script_global_get(idata->pe, argv[0], &value) == 0 && value.type == SCRIPT_ARG_FUNCTION) {
         // yes, build a proper function call
         StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
         for (j = 1; j < argc; j++) {
@@ -214,13 +215,13 @@ static void command_script(command_data_t *data, char *s) {
       }
 
       // evaluate the expression
-      val = pumpkin_script_call(data->pe, "command_eval", s);
+      val = pumpkin_script_call(idata->pe, "command_eval", s);
   
       if (val) {
         if (val[0]) {
-          command_puts(data, val);
-          command_putc(data, '\r');
-          command_putc(data, '\n');
+          command_puts(idata, val);
+          command_putc(idata, '\r');
+          command_putc(idata, '\n');
         }
         xfree(val);
       }
@@ -231,12 +232,12 @@ static void command_script(command_data_t *data, char *s) {
   }
 }
 
-static void command_prompt(command_data_t *data) {
-  command_puts(data, data->cwd);
-  command_putc(data, '>');
+static void command_prompt(command_internal_data_t *idata) {
+  command_puts(idata, idata->cwd);
+  command_putc(idata, '>');
 }
 
-static void command_expand(command_data_t *data) {
+static void command_expand(command_internal_data_t *idata) {
   FileInfoType info;
   FileRef f;
   UInt32 op;
@@ -244,26 +245,26 @@ static void command_expand(command_data_t *data) {
   char absolute[MAXCMD];
   int i, j, first, last, len;
 
-  if (data->cmdIndex > 0 && data->cmd[data->cmdIndex-1] != '/') {
-    data->cmd[data->cmdIndex] = 0;
+  if (idata->cmdIndex > 0 && idata->cmd[idata->cmdIndex-1] != '/') {
+    idata->cmd[idata->cmdIndex] = 0;
 
     // find the previous '"' or ' ' in the command buffer
-    for (i = data->cmdIndex-1; i >= 0; i--) {
-      if (data->cmd[i] == '"' || data->cmd[i] == ' ') break;
+    for (i = idata->cmdIndex-1; i >= 0; i--) {
+      if (idata->cmd[i] == '"' || idata->cmd[i] == ' ') break;
     }
 
-    if (i >= 0 && (data->cmd[i] == '"' || data->cmd[i] == ' ')) {
+    if (i >= 0 && (idata->cmd[i] == '"' || idata->cmd[i] == ' ')) {
       // found '"' or ' ', advance one position
       i++;
 
-      if (data->cmd[i] == '/') {
+      if (idata->cmd[i] == '/') {
         // it is an absolute path, just copy it
-        StrNCopy(absolute, &data->cmd[i], MAXCMD - 1);
+        StrNCopy(absolute, &idata->cmd[i], MAXCMD - 1);
       } else {
         // it is a relative path, copy the current directoy
-        StrNCopy(absolute, data->cwd, MAXCMD - 1);
+        StrNCopy(absolute, idata->cwd, MAXCMD - 1);
         // and append the command
-        StrNCat(absolute, &data->cmd[i], MAXCMD - StrLen(absolute) - 1);
+        StrNCat(absolute, &idata->cmd[i], MAXCMD - StrLen(absolute) - 1);
       }
 
       // find the last '/' in the absolute path
@@ -293,19 +294,19 @@ static void command_expand(command_data_t *data) {
           len = StrLen(&absolute[last+1]);
           if (StrNCompare(&absolute[last+1], info.nameP, len) == 0) {
             // fills in the rest of the name
-            data->cmdIndex = StrLen(data->cmd);
+            idata->cmdIndex = StrLen(idata->cmd);
             for (i = len; info.nameP[i]; i++) {
-              if (data->cmdIndex < MAXCMD-1) {
-                command_putc(data, info.nameP[i]);
-                data->cmd[data->cmdIndex++] = info.nameP[i];
+              if (idata->cmdIndex < MAXCMD-1) {
+                command_putc(idata, info.nameP[i]);
+                idata->cmd[idata->cmdIndex++] = info.nameP[i];
               }
             }
             // if the entry is a directory, append '/'
-            if (data->cmdIndex < MAXCMD-1 && info.attributes & vfsFileAttrDirectory) {
-              command_putc(data, '/');
-              data->cmd[data->cmdIndex++] = '/';
+            if (idata->cmdIndex < MAXCMD-1 && info.attributes & vfsFileAttrDirectory) {
+              command_putc(idata, '/');
+              idata->cmd[idata->cmdIndex++] = '/';
             }
-            data->cmd[data->cmdIndex] = 0;
+            idata->cmd[idata->cmdIndex] = 0;
             // exit
             break;
           }
@@ -316,45 +317,45 @@ static void command_expand(command_data_t *data) {
   }
 }
 
-static void command_key(command_data_t *data, UInt8 c) {
+static void command_key(command_internal_data_t *idata, UInt8 c) {
   conn_filter_t *conn, *telnet;
 
-  telnet = data->telnet;
+  telnet = idata->telnet;
 
   if (telnet) {
     if (telnet->write(telnet, &c, 1) == -1) {
-      data->telnet = NULL;
+      idata->telnet = NULL;
       conn = telnet->next;
       telnet_close(telnet);
       conn_close(conn);
-      data->wait = SysTicksPerSecond() / 2;
+      idata->wait = SysTicksPerSecond() / 2;
     }
 
   } else {
     switch (c) {
       case '\b':
-        if (data->cmdIndex > 0) {
-          command_putc(data, '\b');
-          data->cmdIndex--;
+        if (idata->cmdIndex > 0) {
+          command_putc(idata, '\b');
+          idata->cmdIndex--;
         }
         break;
       case '\t':
-        command_expand(data);
+        command_expand(idata);
         break;
       case '\n':
-        command_putc(data, '\r');
-        command_putc(data, '\n');
-        data->cmd[data->cmdIndex] = 0;
-        data->cmdIndex = 0;
-        if (data->cmd[0]) {
-          command_script(data, data->cmd);
+        command_putc(idata, '\r');
+        command_putc(idata, '\n');
+        idata->cmd[idata->cmdIndex] = 0;
+        idata->cmdIndex = 0;
+        if (idata->cmd[0]) {
+          command_script(idata, idata->cmd);
         }
-        command_prompt(data);
+        command_prompt(idata);
         break;
       default:
-        if (data->cmdIndex < MAXCMD-1) {
-          command_putc(data, c);
-          data->cmd[data->cmdIndex++] = c;
+        if (idata->cmdIndex < MAXCMD-1) {
+          command_putc(idata, c);
+          idata->cmd[idata->cmdIndex++] = c;
         }
         break;
     }
@@ -372,7 +373,7 @@ static Boolean ctlSelected(FormType *formP, UInt16 id) {
 }
 
 static Boolean MenuEvent(UInt16 id) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   MemHandle h;
   UInt16 i, length;
   Coord pos, col, row;
@@ -391,7 +392,7 @@ static Boolean MenuEvent(UInt16 id) {
       if ((h = ClipboardGetItem(clipboardText, &length)) != NULL) {
         if (length > 0 && (s = MemHandleLock(h)) != NULL) {
           for (i = 0; i < length; i++) {
-            command_key(data, s[i]);
+            command_key(idata, s[i]);
           }
           MemHandleUnlock(h);
         }
@@ -400,21 +401,21 @@ static Boolean MenuEvent(UInt16 id) {
       break;
 
     case copyCmd:
-      if (data->selected) {
+      if (idata->selected) {
         i = 0;
-        pos = data->row0 * data->ncols + data->col0;
+        pos = idata->row0 * idata->ncols + idata->col0;
 
-        if (data->row0 == data->row1) {
-          for (col = data->col0; col <= data->col1; col++, pos++) {
-            pterm_getchar(data->t, pos, &c, &fg, &bg);
+        if (idata->row0 == idata->row1) {
+          for (col = idata->col0; col <= idata->col1; col++, pos++) {
+            pterm_getchar(idata->t, pos, &c, &fg, &bg);
             if (i < MAXCMD) buf[i++] = c;
           }
           // remove trailing spaces
           for (; i > 0 && buf[i-1] == ' '; i--);
 
         } else {
-          for (col = data->col0; col < data->ncols; col++, pos++) {
-            pterm_getchar(data->t, pos, &c, &fg, &bg);
+          for (col = idata->col0; col < idata->ncols; col++, pos++) {
+            pterm_getchar(idata->t, pos, &c, &fg, &bg);
             if (i < MAXCMD) buf[i++] = c;
           }
           // remove trailing spaces
@@ -422,9 +423,9 @@ static Boolean MenuEvent(UInt16 id) {
           // add newline
           if (i < MAXCMD) buf[i++] = '\n';
 
-          for (row = data->row0+1; row < data->row1; row++) {
-            for (col = 0; col < data->ncols; col++, pos++) {
-              pterm_getchar(data->t, pos, &c, &fg, &bg);
+          for (row = idata->row0+1; row < idata->row1; row++) {
+            for (col = 0; col < idata->ncols; col++, pos++) {
+              pterm_getchar(idata->t, pos, &c, &fg, &bg);
               if (i < MAXCMD) buf[i++] = c;
             }
             // remove trailing spaces
@@ -433,8 +434,8 @@ static Boolean MenuEvent(UInt16 id) {
             if (i < MAXCMD) buf[i++] = '\n';
           }
 
-          for (col = 0; col <= data->col1; col++, pos++) {
-            pterm_getchar(data->t, pos, &c, &fg, &bg);
+          for (col = 0; col <= idata->col1; col++, pos++) {
+            pterm_getchar(idata->t, pos, &c, &fg, &bg);
             if (i < MAXCMD) buf[i++] = c;
           }
           // remove trailing spaces
@@ -464,21 +465,21 @@ static Boolean MenuEvent(UInt16 id) {
   return handled;
 }
 
-static void command_update_line(command_data_t *data, Int16 row, Int16 col1, Int16 col2, Boolean selected) {
+static void command_update_line(command_internal_data_t *idata, Int16 row, Int16 col1, Int16 col2, Boolean selected) {
   RectangleType rect;
   RGBColorType fg_rgb, bg_rgb;
   Int16 pos, col, x, y;
   uint32_t fg, bg;
   uint8_t c;
 
-  y = row * data->fheight;
-  x = col1 * data->fwidth;
-  pos = row * data->ncols + col1;
+  y = row * idata->fheight;
+  x = col1 * idata->fwidth;
+  pos = row * idata->ncols + col1;
 
   for (col = col1; col <= col2; col++, pos++) {
-    pterm_getchar(data->t, pos, &c, &fg, &bg);
+    pterm_getchar(idata->t, pos, &c, &fg, &bg);
     if (selected) {
-      bg_rgb = data->prefs.highlight;
+      bg_rgb = idata->prefs.highlight;
       fg_rgb.r = 255 - bg_rgb.r;
       fg_rgb.g = 255 - bg_rgb.g;
       fg_rgb.b = 255 - bg_rgb.b;
@@ -489,24 +490,24 @@ static void command_update_line(command_data_t *data, Int16 row, Int16 col1, Int
     WinSetBackColorRGB(&bg_rgb, NULL);
     WinSetTextColorRGB(&fg_rgb, NULL);
 
-    RctSetRectangle(&rect, x, y, data->fwidth, data->fheight);
+    RctSetRectangle(&rect, x, y, idata->fwidth, idata->fheight);
     WinEraseRectangle(&rect, 0);
     WinPaintChar(c, x, y);
-    x += data->fwidth;
+    x += idata->fwidth;
   }
 }
 
-static void command_draw(command_data_t *data) {
+static void command_draw(command_internal_data_t *idata) {
   RGBColorType oldt, oldb;
   FontID old;
   Int16 row;
 
-  old = FntSetFont(data->font);
+  old = FntSetFont(idata->font);
   WinSetBackColorRGB(NULL, &oldb);
   WinSetTextColorRGB(NULL, &oldt);
 
-  for (row = 0; row < data->nrows; row++) {
-    command_update_line(data, row, 0, data->ncols-1, false);
+  for (row = 0; row < idata->nrows; row++) {
+    command_update_line(idata, row, 0, idata->ncols-1, false);
   }
 
   WinSetBackColorRGB(&oldb, NULL);
@@ -514,23 +515,23 @@ static void command_draw(command_data_t *data) {
   FntSetFont(old);
 }
 
-static void command_update(command_data_t *data, Int16 row1, Int16 col1, Int16 row2, Int16 col2, Boolean selected) {
+static void command_update(command_internal_data_t *idata, Int16 row1, Int16 col1, Int16 row2, Int16 col2, Boolean selected) {
   RGBColorType oldt, oldb;
   FontID old;
   Int16 row;
 
-  old = FntSetFont(data->font);
+  old = FntSetFont(idata->font);
   WinSetBackColorRGB(NULL, &oldb);
   WinSetTextColorRGB(NULL, &oldt);
 
   if (row1 == row2) {
-    command_update_line(data, row1, col1, col2, selected);
+    command_update_line(idata, row1, col1, col2, selected);
   } else if (row1 < row2) {
-    command_update_line(data, row1, col1, data->ncols-1, selected);
+    command_update_line(idata, row1, col1, idata->ncols-1, selected);
     for (row = row1 + 1; row < row2; row++) {
-      command_update_line(data, row, 0, data->ncols-1, selected);
+      command_update_line(idata, row, 0, idata->ncols-1, selected);
     }
-    command_update_line(data, row2, 0, col2, selected);
+    command_update_line(idata, row2, 0, col2, selected);
   }
 
   WinSetBackColorRGB(&oldb, NULL);
@@ -538,63 +539,63 @@ static void command_update(command_data_t *data, Int16 row1, Int16 col1, Int16 r
   FntSetFont(old);
 }
 
-void command_drag(command_data_t *data, Int16 x, Int16 y, Int16 type) {
+void command_drag(command_internal_data_t *idata, Int16 x, Int16 y, Int16 type) {
   UInt32 swidth, sheight;
   Int16 col, row;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
 
   if (x >= 0 && x < swidth && y >= 0 && y < sheight) {
-    pterm_cursor(data->t, 0);
-    col = x / data->fwidth;
-    row = y / data->fheight;
+    pterm_cursor(idata->t, 0);
+    col = x / idata->fwidth;
+    row = y / idata->fheight;
 
     switch (type) {
       case SCREEN_PEN_DOWN:
-        data->moved = false;
-        if (data->selected) {
-          data->selected = false;
-          command_draw(data);
+        idata->moved = false;
+        if (idata->selected) {
+          idata->selected = false;
+          command_draw(idata);
         }
-        data->col0 = col;
-        data->row0 = row;
-        data->col1 = col;
-        data->row1 = row;
-        data->down = true;
+        idata->col0 = col;
+        idata->row0 = row;
+        idata->col1 = col;
+        idata->row1 = row;
+        idata->down = true;
         break;
       case SCREEN_PEN_MOVE:
-        if (data->down) {
-          if (row != data->row1 || col != data->col1) {
-            if (row > data->row1 || (row == data->row1 && col > data->col1)) {
-              if (data->row0 > data->row1 || (data->row0 == data->row1 && data->col0 > data->col1)) {
-                command_update(data, data->row1, data->col1, row, col, false);
+        if (idata->down) {
+          if (row != idata->row1 || col != idata->col1) {
+            if (row > idata->row1 || (row == idata->row1 && col > idata->col1)) {
+              if (idata->row0 > idata->row1 || (idata->row0 == idata->row1 && idata->col0 > idata->col1)) {
+                command_update(idata, idata->row1, idata->col1, row, col, false);
               } else {
-                command_update(data, data->row0, data->col0, row, col, true);
+                command_update(idata, idata->row0, idata->col0, row, col, true);
               }
-            } else if (row < data->row1 || (row == data->row1 && col < data->col1)) {
-              if (data->row0 > data->row1 || (data->row0 == data->row1 && data->col0 > data->col1)) {
-                command_update(data, row, col, data->row0, data->col0, true);
+            } else if (row < idata->row1 || (row == idata->row1 && col < idata->col1)) {
+              if (idata->row0 > idata->row1 || (idata->row0 == idata->row1 && idata->col0 > idata->col1)) {
+                command_update(idata, row, col, idata->row0, idata->col0, true);
               } else {
-                command_update(data, row, col, data->row1, data->col1, false);
+                command_update(idata, row, col, idata->row1, idata->col1, false);
               }
             }
-            data->col1 = col;
-            data->row1 = row;
-            data->moved = true;
+            idata->col1 = col;
+            idata->row1 = row;
+            idata->moved = true;
           }
         }
         break;
       case SCREEN_PEN_UP:
-        data->selected = data->moved;
-        data->moved = false;
-        data->down = false;
+        idata->selected = idata->moved;
+        idata->moved = false;
+        idata->down = false;
         break;
     }
   }
 }
 
 static Boolean MainFormHandleEvent(EventType *event) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   WinHandle wh;
   FormType *formP;
   RectangleType rect;
@@ -606,21 +607,21 @@ static Boolean MainFormHandleEvent(EventType *event) {
 
   switch (event->eType) {
     case frmOpenEvent:
-      data->cmdIndex = 0;
+      idata->cmdIndex = 0;
 
       WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
       formP = FrmGetActiveForm();
       wh = FrmGetWindowHandle(formP);
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
-      WinSetBackColorRGB(&data->prefs.background, &oldb);
+      WinSetBackColorRGB(&idata->prefs.background, &oldb);
       WinEraseRectangle(&rect, 0);
       WinSetBackColorRGB(&oldb, NULL);
 
-      pumpkin_script_init(data->pe, pumpkin_script_engine_id(), 1);
-      pterm_cls(data->t);
-      command_puts(data, "PumpkinOS shell\r\n");
-      command_prompt(data);
+      pumpkin_script_init(idata->pe, pumpkin_script_engine_id(), 1);
+      pterm_cls(idata->t);
+      command_puts(idata, "PumpkinOS shell\r\n");
+      command_prompt(idata);
       handled = true;
       break;
 
@@ -635,25 +636,25 @@ static Boolean MainFormHandleEvent(EventType *event) {
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
 
-      font = data->prefs.font - 9000;
-      data->font = font;
+      font = idata->prefs.font - 9000;
+      idata->font = font;
       old = FntSetFont(font);
-      data->fwidth = FntCharWidth('A');
-      data->fheight = FntCharHeight();
+      idata->fwidth = FntCharWidth('A');
+      idata->fheight = FntCharHeight();
       FntSetFont(old);
       pumpkin_set_size(AppID, event->data.winDisplayChanged.newBounds.extent.x, event->data.winDisplayChanged.newBounds.extent.y);
-      command_draw(data);
+      command_draw(idata);
       handled = true;
       break;
 
     case nilEvent:
-      pterm_cursor_blink(data->t);
+      pterm_cursor_blink(idata->t);
       handled = true;
       break;
 
     case keyDownEvent:
       if (!(event->data.keyDown.modifiers & commandKeyMask)) {
-        command_key(data, event->data.keyDown.chr);
+        command_key(idata, event->data.keyDown.chr);
         handled = true;
       }
       break;
@@ -665,19 +666,19 @@ static Boolean MainFormHandleEvent(EventType *event) {
     case penDownEvent:
       x = event->screenX;
       y = event->screenY;
-      command_drag(data, x, y, SCREEN_PEN_DOWN);
+      command_drag(idata, x, y, SCREEN_PEN_DOWN);
       break;
 
     case penMoveEvent:
       x = event->screenX;
       y = event->screenY;
-      command_drag(data, x, y, SCREEN_PEN_MOVE);
+      command_drag(idata, x, y, SCREEN_PEN_MOVE);
       break;
 
     case penUpEvent:
       x = event->screenX;
       y = event->screenY;
-      command_drag(data, x, y, SCREEN_PEN_UP);
+      command_drag(idata, x, y, SCREEN_PEN_UP);
       break;
 
     default:
@@ -721,7 +722,7 @@ static void DrawColorGadget(FormType *formP, UInt16 id, RGBColorType *rgb) {
 }
 
 static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   RGBColorType rgb;
   EventType *event;
   Boolean ok;
@@ -733,9 +734,9 @@ static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   switch (cmd) {
     case formGadgetDrawCmd:
       switch (gad->id) {
-        case fgCtl: DrawColor(&data->prefs.foreground, &gad->rect); break;
-        case bgCtl: DrawColor(&data->prefs.background, &gad->rect); break;
-        case hlCtl: DrawColor(&data->prefs.highlight, &gad->rect); break;
+        case fgCtl: DrawColor(&idata->prefs.foreground, &gad->rect); break;
+        case bgCtl: DrawColor(&idata->prefs.background, &gad->rect); break;
+        case hlCtl: DrawColor(&idata->prefs.highlight, &gad->rect); break;
         default: return true;
       }
       break;
@@ -746,9 +747,9 @@ static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
       event = (EventType *)param;
       if (event->eType == frmGadgetEnterEvent) {
         switch (gad->id) {
-          case fgCtl: rgb = data->prefs.foreground; break;
-          case bgCtl: rgb = data->prefs.background; break;
-          case hlCtl: rgb = data->prefs.highlight; break;
+          case fgCtl: rgb = idata->prefs.foreground; break;
+          case bgCtl: rgb = idata->prefs.background; break;
+          case hlCtl: rgb = idata->prefs.highlight; break;
           default: return true;
         }
         ok = false;
@@ -758,9 +759,9 @@ static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
         }
         if (ok) {
           switch (gad->id) {
-            case fgCtl: data->prefs.foreground = rgb; break;
-            case bgCtl: data->prefs.background = rgb; break;
-            case hlCtl: data->prefs.highlight = rgb; break;
+            case fgCtl: idata->prefs.foreground = rgb; break;
+            case bgCtl: idata->prefs.background = rgb; break;
+            case hlCtl: idata->prefs.highlight = rgb; break;
           }
         }
       }
@@ -771,7 +772,7 @@ static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
 }
 
 static Boolean PrefsFormHandleEvent(EventType *event) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   FormType *formP;
   ControlType *ctl;
   FontID old;
@@ -782,7 +783,7 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
   switch (event->eType) {
     case frmOpenEvent:
       formP = FrmGetActiveForm();
-      switch (data->prefs.font) {
+      switch (idata->prefs.font) {
         case font6x10Id:  sel = sel6x10;  break;
         case font8x14Id:  sel = sel8x14;  break;
         case font8x16Id:  sel = sel8x16;  break;
@@ -800,35 +801,35 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
     case ctlSelectEvent:
       switch (event->data.ctlSelect.controlID) {
         case dflBtn:
-          data->prefs.font = font8x14Id;
-          data->prefs.foreground = defaultForeground;
-          data->prefs.background = defaultBackground;
-          data->prefs.highlight  = defaultHighlight;
+          idata->prefs.font = font8x14Id;
+          idata->prefs.foreground = defaultForeground;
+          idata->prefs.background = defaultBackground;
+          idata->prefs.highlight  = defaultHighlight;
           formP = FrmGetActiveForm();
           index = FrmGetObjectIndex(formP, sel8x14);
           ctl = (ControlType *)FrmGetObjectPtr(formP, index);
           CtlSetValue(ctl, 1);
-          DrawColorGadget(formP, fgCtl, &data->prefs.foreground);
-          DrawColorGadget(formP, bgCtl, &data->prefs.background);
-          DrawColorGadget(formP, hlCtl, &data->prefs.highlight);
+          DrawColorGadget(formP, fgCtl, &idata->prefs.foreground);
+          DrawColorGadget(formP, bgCtl, &idata->prefs.background);
+          DrawColorGadget(formP, hlCtl, &idata->prefs.highlight);
           break;
         case okBtn:
           formP = FrmGetActiveForm();
           if (ctlSelected(formP, sel6x10)) {
-            data->prefs.font = font6x10Id;
+            idata->prefs.font = font6x10Id;
           } else if (ctlSelected(formP, sel8x14)) {
-            data->prefs.font = font8x14Id;
+            idata->prefs.font = font8x14Id;
           } else if (ctlSelected(formP, sel8x16)) {
-            data->prefs.font = font8x16Id;
+            idata->prefs.font = font8x16Id;
           }
 
-          PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
-          color = RGBToLong(&data->prefs.foreground);
-          pterm_setfg(data->t, color);
-          color = RGBToLong(&data->prefs.background);
-          pterm_setbg(data->t, color);
+          PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
+          color = RGBToLong(&idata->prefs.foreground);
+          pterm_setfg(idata->t, color);
+          color = RGBToLong(&idata->prefs.background);
+          pterm_setbg(idata->t, color);
 
-          old = FntSetFont(data->prefs.font - 9000);
+          old = FntSetFont(idata->prefs.font - 9000);
           width = FntCharWidth('A') * 2;
           height = FntCharHeight() * 2;
           FntSetFont(old);
@@ -881,7 +882,7 @@ static Boolean ApplicationHandleEvent(EventType *event) {
 }
 
 Int32 read_file(char *name, char *b, Int32 max) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   UInt32 nread;
   FileRef fr;
   char buf[MAXCMD];
@@ -889,7 +890,7 @@ Int32 read_file(char *name, char *b, Int32 max) {
 
   check_prefix(name, buf, MAXCMD);
 
-  if (VFSFileOpen(data->volume, buf, vfsModeRead, &fr) == errNone) {
+  if (VFSFileOpen(idata->volume, buf, vfsModeRead, &fr) == errNone) {
     if (VFSFileRead(fr, max, b, &nread) == errNone) {
       n = nread;
     }
@@ -900,7 +901,7 @@ Int32 read_file(char *name, char *b, Int32 max) {
 }
 
 static int command_script_file(int pe, int run) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   Int32 n, max = 65536;
   char *buf, *name = NULL;
 
@@ -909,17 +910,17 @@ static int command_script_file(int pe, int run) {
       MemSet(buf, max, 0);
 
       if ((n = read_file(name, buf, max-1)) == -1) {
-        command_puts(data, "Error reading file\r\n");
+        command_puts(idata, "Error reading file\r\n");
 
       } else if (n > 0) {
         if (run) {
           if (pumpkin_script_run_string(pe, buf) != 0) {
-            command_puts(data, "Error loading file\r\n");
+            command_puts(idata, "Error loading file\r\n");
           }
         } else {
-          command_puts(data, buf);
-          command_putc(data, '\r');
-          command_putc(data, '\n');
+          command_puts(idata, buf);
+          command_putc(idata, '\r');
+          command_putc(idata, '\n');
         }
       }
       MemPtrFree(buf);
@@ -940,11 +941,11 @@ static int command_script_run(int pe) {
 }
 
 static int command_script_rm(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   char *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
-    VFSFileDelete(data->volume, name);
+    VFSFileDelete(idata->volume, name);
   }
 
   if (name) xfree(name);
@@ -953,7 +954,7 @@ static int command_script_rm(int pe) {
 }
 
 static int command_script_deploy(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   UInt32 creator;
   char *name = NULL;
   char *screator = NULL;
@@ -965,9 +966,9 @@ static int command_script_deploy(int pe) {
 
     pumpkin_s2id(&creator, screator);
     if (command_app_deploy(name, creator, script) == errNone) {
-      command_puts(data, "Script deployed\r\n");
+      command_puts(idata, "Script deployed\r\n");
     } else {
-      command_puts(data, "Error deploying script\r\n");
+      command_puts(idata, "Error deploying script\r\n");
     }
   }
 
@@ -991,9 +992,9 @@ static int command_script_kill(int pe) {
 }
 
 static int command_script_cls(int pe) {
-  command_data_t *data = pumpkin_get_data();
-  pterm_cls(data->t);
-  pterm_home(data->t);
+  command_internal_data_t *idata = command_get_data();
+  pterm_cls(idata->t);
+  pterm_home(idata->t);
 
   return 0;
 }
@@ -1048,7 +1049,7 @@ static char *value_tostring(int pe, script_arg_t *arg) {
 }
 
 static int command_script_print(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   script_arg_t arg;
   Int16 i;
   Boolean crlf;
@@ -1060,16 +1061,16 @@ static int command_script_print(int pe) {
     if (script_get_value(pe, i, SCRIPT_ARG_ANY, &arg) != 0) break;
     s = value_tostring(pe, &arg);
     if (s) {
-      command_puts(data, s);
-      command_putc(data, '\t');
+      command_puts(idata, s);
+      command_putc(idata, '\t');
       xfree(s);
       crlf = true;
     }
   }
 
   if (crlf) {
-    command_putc(data, '\r');
-    command_putc(data, '\n');
+    command_putc(idata, '\r');
+    command_putc(idata, '\n');
   }
 
   return 0;
@@ -1091,7 +1092,7 @@ static int command_script_launch(int pe) {
   return 0;
 }
 
-static int ps_callback(int i, char *name, int m68k, void *data) {
+static int ps_callback(int i, char *name, int m68k, void *idata) {
   char stype[8], screator[8];
   UInt32 type, creator;
   LocalID dbID;
@@ -1100,14 +1101,14 @@ static int ps_callback(int i, char *name, int m68k, void *data) {
   dbID = DmFindDatabase(0, name);
   if (dbID && DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
     pumpkin_id2s(type, stype);
-    command_puts(data, stype);
-    command_putc(data, ' ');
+    command_puts(idata, stype);
+    command_putc(idata, ' ');
     pumpkin_id2s(creator, screator);
-    command_puts(data, screator);
-    command_putc(data, ' ');
-    command_puts(data, name);
-    command_putc(data, '\r');
-    command_putc(data, '\n');
+    command_puts(idata, screator);
+    command_putc(idata, ' ');
+    command_puts(idata, name);
+    command_putc(idata, '\r');
+    command_putc(idata, '\n');
     r = 0;
   }
 
@@ -1115,15 +1116,15 @@ static int ps_callback(int i, char *name, int m68k, void *data) {
 }
 
 static int command_script_ps(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
 
-  pumpkin_ps(ps_callback, data);
+  pumpkin_ps(ps_callback, idata);
 
   return 0;
 }
 
 static int command_script_cd(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   char *dir = NULL;
 
   if (script_get_string(pe, 0, &dir) != 0) {
@@ -1131,9 +1132,9 @@ static int command_script_cd(int pe) {
   }
 
   if (VFSChangeDir(1, dir) == errNone) {
-    VFSCurrentDir(1, data->cwd, MAXCMD);
+    VFSCurrentDir(1, idata->cwd, MAXCMD);
   } else {
-    command_puts(data, "Invalid directory\r\n");
+    command_puts(idata, "Invalid directory\r\n");
   }
 
   if (dir) xfree(dir);
@@ -1238,7 +1239,7 @@ static void dir_destructor(void *p) {
 }
 
 static int command_script_opendir(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   command_dir_t *d;
   char *dir = NULL;
   int ptr, r = -1;
@@ -1246,7 +1247,7 @@ static int command_script_opendir(int pe) {
   if (script_get_string(pe, 0, &dir) == 0) {
     if ((d = xcalloc(1, sizeof(command_dir_t))) != NULL) {
       check_prefix(dir, d->buf, MAXCMD);
-      if (VFSFileOpen(data->volume, d->buf, vfsModeRead, &d->f) == errNone) {
+      if (VFSFileOpen(idata->volume, d->buf, vfsModeRead, &d->f) == errNone) {
         d->tag = TAG_DIR;
         d->op = vfsIteratorStart;
         if ((ptr = ptr_new(d, dir_destructor)) != -1) {
@@ -1304,19 +1305,19 @@ static int command_script_closedir(int pe) {
 }
 
 static int command_script_edit(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   editor_t e;
   char *name = NULL;
 
   script_opt_string(pe, 0, &name);
 
   xmemset(&e, 0, sizeof(editor_t));
-  pumpkin_editor_init(&e, data->t);
+  pumpkin_editor_init(&e, idata->t);
 
   if (editor_get_plugin(&e, sysAnyPluginId) == 0 && e.edit) {
     e.edit(&e, name);
-    pterm_cls(data->t);
-    pterm_home(data->t);
+    pterm_cls(idata->t);
+    pterm_home(idata->t);
     if (e.destroy) e.destroy(&e);
   }
 
@@ -1326,7 +1327,7 @@ static int command_script_edit(int pe) {
 }
 
 static int command_script_telnet(int pe) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   char *host = NULL;
   script_int_t port;
   conn_filter_t *conn, *telnet;
@@ -1340,9 +1341,9 @@ static int command_script_telnet(int pe) {
      if ((fd = sys_socket_open_connect(host, port, IP_STREAM)) != -1) {
        if ((conn = conn_filter(fd)) != NULL) {
          if ((telnet = telnet_filter(conn)) != NULL) {
-           data->telnet = telnet;
-           pterm_cls(data->t);
-           data->wait = SysTicksPerSecond() / 10;
+           idata->telnet = telnet;
+           pterm_cls(idata->t);
+           idata->wait = SysTicksPerSecond() / 10;
          }
        }
      }
@@ -1363,25 +1364,25 @@ static int command_script_exit(int pe) {
 }
 
 static int command_shell_filter_peek(conn_filter_t *filter, uint32_t us) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
 
-  data->blink++;
-  if (data->blink == 50) {
-    pterm_cursor_blink(data->t);
-    data->blink = 0;
+  idata->blink++;
+  if (idata->blink == 50) {
+    pterm_cursor_blink(idata->t);
+    idata->blink = 0;
   }
 
   return EvtSysEventAvail(true) ? 1 : EvtPumpEvents(us);
 }
 
 static int command_shell_filter_read(conn_filter_t *filter, uint8_t *b) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   EventType event;
   Err err;
   int stop = 0, r = -1;
 
   do {
-    EvtGetEvent(&event, data->wait);
+    EvtGetEvent(&event, idata->wait);
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
 
@@ -1407,11 +1408,11 @@ static int command_shell_filter_read(conn_filter_t *filter, uint8_t *b) {
 }
 
 static int command_shell_filter_write(conn_filter_t *filter, uint8_t *b, int n) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   int i;
 
   for (i = 0; i < n; i++) {
-    command_putc(data, (char)b[i]);
+    command_putc(idata, (char)b[i]);
   }
 
   return n;
@@ -1444,15 +1445,15 @@ static int command_script_crash(int pe) {
 }
 
 static int command_pterm_draw(uint8_t col, uint8_t row, uint8_t code, uint32_t fg, uint32_t bg, uint8_t attr, void *_data) {
-  command_data_t *data = (command_data_t *)_data;
+  command_internal_data_t *idata = command_get_data();
   RGBColorType text, back, oldt, oldf, oldb;
   uint32_t aux, x, y;
   FontID old;
 
-  if (col < data->ncols && row < data->nrows) {
-    x = col * data->fwidth;
-    y = row * data->fheight;
-    old = FntSetFont(data->font);
+  if (col < idata->ncols && row < idata->nrows) {
+    x = col * idata->fwidth;
+    y = row * idata->fheight;
+    old = FntSetFont(idata->font);
     if (attr & ATTR_INVERSE) {
       aux = fg;
       fg = bg;
@@ -1465,7 +1466,7 @@ static int command_pterm_draw(uint8_t col, uint8_t row, uint8_t code, uint32_t f
     WinPaintChar(code, x, y);
     if (attr & ATTR_UNDERSCORE) {
       WinSetForeColorRGB(&text, &oldf);
-      WinPaintLine(x, y + data->fheight - 1, x + data->fwidth - 1, y + data->fheight - 1);
+      WinPaintLine(x, y + idata->fheight - 1, x + idata->fwidth - 1, y + idata->fheight - 1);
       WinSetForeColorRGB(&oldf, NULL);
     }
     WinSetTextColorRGB(&oldt, NULL);
@@ -1477,15 +1478,15 @@ static int command_pterm_draw(uint8_t col, uint8_t row, uint8_t code, uint32_t f
 }
 
 static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t row2, uint32_t bg, uint8_t attr, void *_data) {
-  command_data_t *data = (command_data_t *)_data;
+  command_internal_data_t *idata = command_get_data();
   RGBColorType back, oldb;
   RectangleType rect;
 
-  if (col1 < data->ncols && col2 <= data->ncols && row1 < data->nrows && row2 <= data->nrows && col2 >= col1 && row2 >= row1) {
+  if (col1 < idata->ncols && col2 <= idata->ncols && row1 < idata->nrows && row2 <= idata->nrows && col2 >= col1 && row2 >= row1) {
     //if (attr & ATTR_BRIGHT) bg += 8;
     LongToRGB(bg, &back);
     WinSetBackColorRGB(&back, &oldb);
-    RctSetRectangle(&rect, col1 * data->fwidth, row1 * data->fheight, (col2 - col1) * data->fwidth, (row2 - row1) * data->fheight);
+    RctSetRectangle(&rect, col1 * idata->fwidth, row1 * idata->fheight, (col2 - col1) * idata->fwidth, (row2 - row1) * idata->fheight);
     WinEraseRectangle(&rect, 0);
     WinSetBackColorRGB(&oldb, NULL);
   }
@@ -1493,8 +1494,22 @@ static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t
   return 0;
 }
 
+static void command_plugin_callback(pumpkin_plugin_t *plugin, void *_data) {
+  command_internal_data_t *idata = command_get_data();
+  command_builtin_t c;
+
+  if (plugin->pluginMain) {
+    plugin->pluginMain(&c);
+    if (c.name && c.function) {
+      pumpkin_script_global_function(idata->pe, c.name, c.function);
+    }
+  }
+}
+
 static Err StartApplication(void *param) {
   command_data_t *data;
+  command_internal_data_t *idata;
+  command_external_data_t *edata;
   UInt32 iterator, swidth, sheight;
   UInt16 prefsSize;
   FontID font, old;
@@ -1502,52 +1517,61 @@ static Err StartApplication(void *param) {
   int i;
 
   data = xcalloc(1, sizeof(command_data_t));
+  edata = xcalloc(1, sizeof(command_external_data_t));
+  idata = xcalloc(1, sizeof(command_internal_data_t));
+  data->edata = edata;
+  data->idata = idata;
   pumpkin_set_data(data);
 
+  edata->putc = command_putc;
+  edata->puts = command_puts;
+
   prefsSize = sizeof(command_prefs_t);
-  if (PrefGetAppPreferences(AppID, 1, &data->prefs, &prefsSize, true) == noPreferenceFound) {
-    data->prefs.font = font8x14Id;
-    data->prefs.foreground = defaultForeground;
-    data->prefs.background = defaultBackground;
-    data->prefs.highlight  = defaultHighlight;
-    PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
+  if (PrefGetAppPreferences(AppID, 1, &idata->prefs, &prefsSize, true) == noPreferenceFound) {
+    idata->prefs.font = font8x14Id;
+    idata->prefs.foreground = defaultForeground;
+    idata->prefs.background = defaultBackground;
+    idata->prefs.highlight  = defaultHighlight;
+    PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
   }
 
   iterator = vfsIteratorStart;
-  VFSVolumeEnumerate(&data->volume, &iterator);
+  VFSVolumeEnumerate(&idata->volume, &iterator);
 
-  data->wait = SysTicksPerSecond() / 2;
+  idata->wait = SysTicksPerSecond() / 2;
   VFSChangeDir(1, "/");
-  VFSCurrentDir(1, data->cwd, MAXCMD);
+  VFSCurrentDir(1, idata->cwd, MAXCMD);
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  font = data->prefs.font - 9000;
-  data->font = font;
+  font = idata->prefs.font - 9000;
+  idata->font = font;
   old = FntSetFont(font);
-  data->fwidth = FntCharWidth('A');
-  data->fheight = FntCharHeight();
+  idata->fwidth = FntCharWidth('A');
+  idata->fheight = FntCharHeight();
   FntSetFont(old);
-  data->ncols = swidth  / data->fwidth;
-  data->nrows = sheight / data->fheight;
-  data->t = pterm_init(data->ncols, data->nrows, 1);
-  data->cb.draw = command_pterm_draw;
-  data->cb.erase = command_pterm_erase;
-  data->cb.data = data;
-  pterm_callback(data->t, &data->cb);
+  idata->ncols = swidth  / idata->fwidth;
+  idata->nrows = sheight / idata->fheight;
+  idata->t = pterm_init(idata->ncols, idata->nrows, 1);
+  idata->cb.draw = command_pterm_draw;
+  idata->cb.erase = command_pterm_erase;
+  idata->cb.data = data;
+  pterm_callback(idata->t, &idata->cb);
 
-  color = RGBToLong(&data->prefs.foreground);
-  pterm_setfg(data->t, color);
-  color = RGBToLong(&data->prefs.background);
-  pterm_setbg(data->t, color);
+  color = RGBToLong(&idata->prefs.foreground);
+  pterm_setfg(idata->t, color);
+  color = RGBToLong(&idata->prefs.background);
+  pterm_setbg(idata->t, color);
 
-  if ((data->pe = pumpkin_script_create()) > 0) {
-    script_loadlib(data->pe, "libshell");
-    script_loadlib(data->pe, "liboshell");
+  if ((idata->pe = pumpkin_script_create()) > 0) {
+    script_loadlib(idata->pe, "libshell");
+    script_loadlib(idata->pe, "liboshell");
 
     for (i = 0; builtinCommands[i].name; i++) {
-      pumpkin_script_global_function(data->pe, builtinCommands[i].name, builtinCommands[i].function);
+      pumpkin_script_global_function(idata->pe, builtinCommands[i].name, builtinCommands[i].function);
     }
   }
+
+  pumpkin_enum_plugins(commandPluginType, command_plugin_callback, data);
 
   FrmGotoForm(MainForm);
 
@@ -1555,39 +1579,37 @@ static Err StartApplication(void *param) {
 }
 
 static void check_telnet(void) {
-  command_data_t *data = pumpkin_get_data();
+  command_internal_data_t *idata = command_get_data();
   conn_filter_t *conn, *telnet;
   uint8_t b;
   int r;
 
-  if (data->telnet != NULL) {
-    telnet = data->telnet;
+  if (idata->telnet != NULL) {
+    telnet = idata->telnet;
     for (;;) {
       r = telnet->peek(telnet, 0);
       if (r == 0) break;
       if (r == -1 || telnet->read(telnet, &b) == -1) {
-        data->telnet = NULL;
+        idata->telnet = NULL;
         conn = telnet->next;
         telnet_close(telnet);
         conn_close(conn);
-        data->wait = SysTicksPerSecond() / 2;
+        idata->wait = SysTicksPerSecond() / 2;
         break;
       }
-      command_putc(data, b);
+      command_putc(idata, b);
     }
   }
 }
 
 static void EventLoop() {
-  command_data_t *data;
+  command_internal_data_t *idata = command_get_data();
   EventType event;
   Err err;
- 
-  data = pumpkin_get_data();
 
   do {
     check_telnet();
-    EvtGetEvent(&event, data->wait);
+    EvtGetEvent(&event, idata->wait);
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (ApplicationHandleEvent(&event)) continue;
@@ -1597,12 +1619,15 @@ static void EventLoop() {
 }
 
 static void StopApplication(void) {
-  command_data_t *data;
+  command_data_t *data = pumpkin_get_data();
+  command_external_data_t *edata = data->edata;
+  command_internal_data_t *idata = data->idata;
 
   FrmCloseAllForms();
-  data = pumpkin_get_data();
-  PrefSetAppPreferences(AppID, 1, 1, &data->prefs, sizeof(command_prefs_t), true);
-  pumpkin_script_destroy(data->pe);
+  PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
+  pumpkin_script_destroy(idata->pe);
+  xfree(idata);
+  xfree(edata);
   xfree(data);
 }
 
