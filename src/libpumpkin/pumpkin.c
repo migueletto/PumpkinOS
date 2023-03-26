@@ -1250,9 +1250,6 @@ int pumpkin_launcher(char *name, int width, int height) {
       MemSet(&request, sizeof(launch_request_t), 0);
       StrNCopy(request.name, name, dmDBNameLength);
       request.code = sysAppLaunchCmdNormalLaunch;
-      if (pumpkin_is_single()) {
-        pumpkin_save_icon(name);
-      }
       pumpkin_launch_sub(&request, 1);
     }
 
@@ -3320,6 +3317,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
   surface_t *surface;
   RectangleType rect;
   WinHandle wh, old;
+  char *card, buf[256];
 
   if (width == 0 || height == 0) {
     BmpGetDimensions(bmp, &width, &height, NULL);
@@ -3337,7 +3335,12 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     WinPaintBitmap(bmp, (wWidth - width)/2, 0);
     WinSetDrawWindow(old);
     BmpDrawSurface(wh->bitmapP, 0, 0, wWidth*2, wHeight*2, surface, 0, 0, false);
-    surface_save(surface, filename, 0);
+
+    card = VFS_CARD;
+    if (card[0] == '/') card++;
+    sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, filename);
+    surface_save(surface, buf, 0);
+
     WinDeleteWindow(wh, false);
     surface_destroy(surface);
   }
