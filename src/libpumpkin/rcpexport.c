@@ -28,28 +28,30 @@ static void emitstr(FileRef fileRef, char *buf) {
   int i;
 
   emitn(fileRef, "\"", 1);
-  for (i = 0; buf[i]; i++) {
-    c = buf[i];
-    switch (c) {
-      case '\t':
-        emit(fileRef, "\\t");
-        break;
-      case '\n':
-        emit(fileRef, "\\n");
-        break;
-      case '\r':
-        break;
-      case '"':
-        emit(fileRef, "\\\"");
-        break;
-      default:
-        if (c < 32 || c > 127) {
-          StrPrintF(aux, "\\x%02x", c);
-          emit(fileRef, aux);
-        } else {
-          emitn(fileRef, &buf[i], 1);
-        }
-        break;
+  if (buf) {
+    for (i = 0; buf[i]; i++) {
+      c = buf[i];
+      switch (c) {
+        case '\t':
+          emit(fileRef, "\\t");
+          break;
+        case '\n':
+          emit(fileRef, "\\n");
+          break;
+        case '\r':
+          break;
+        case '"':
+          emit(fileRef, "\\\"");
+          break;
+        default:
+          if (c < 32 || c > 127) {
+            StrPrintF(aux, "\\x%02x", c);
+            emit(fileRef, aux);
+          } else {
+            emitn(fileRef, &buf[i], 1);
+          }
+          break;
+      }
     }
   }
   emitn(fileRef, "\"", 1);
