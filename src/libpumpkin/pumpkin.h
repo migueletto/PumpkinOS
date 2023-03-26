@@ -246,6 +246,7 @@ int pumpkin_word_serial(uint32_t id, char *word);
 
 void pumpkin_load_plugins(void);
 pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id);
+void pumpkin_enum_plugins(UInt32 type, void (*callback)(pumpkin_plugin_t *plugin, void *data), void *data);
 
 FontTypeV2 *pumpkin_get_font(FontID font);
 

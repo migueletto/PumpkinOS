@@ -392,6 +392,16 @@ pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id) {
   return plugin;
 }
 
+void pumpkin_enum_plugins(UInt32 type, void (*callback)(pumpkin_plugin_t *plugin, void *data), void *data) {
+  int i;
+
+  for (i = 0; i < pumpkin_module.num_plugins; i++) {
+    if (pumpkin_module.plugin[i]->type == type) {
+      callback(pumpkin_module.plugin[i], data);
+    }
+  }
+}
+
 void pumpkin_load_plugins(void) {
   DmSearchStateType stateInfo;
   UInt32 type, id;
