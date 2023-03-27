@@ -3,6 +3,7 @@
 typedef struct {
   char *name;
   int (*function)(int pe);
+  int (*main)(int argc, char *argv[]);
 } command_builtin_t;
 
 typedef struct command_internal_data_t command_internal_data_t;

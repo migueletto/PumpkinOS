@@ -220,6 +220,7 @@ int pumpkin_script_init(int pe, uint32_t type, uint16_t id);
 int pumpkin_script_destroy(int pe);
 int pumpkin_script_create_obj(int pe, char *name);
 int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe));
+int pumpkin_script_global_function_data(int pe, char *name, int (*f)(int pe, void *data), void *data);
 int pumpkin_script_global_iconst(int pe, char *name, int value);
 int pumpkin_script_global_iconst_value(int pe, char *name);
 void *pumpkin_script_global_pointer_value(int pe, char *name);

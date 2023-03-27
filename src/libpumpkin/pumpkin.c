@@ -2354,6 +2354,19 @@ int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe)) {
   return r;
 }
 
+int pumpkin_script_global_function_data(int pe, char *name, int (*f)(int pe, void *data), void *data) {
+  script_arg_t value;
+  int r = -1;
+
+  if (pe > 0) {
+    value.type = SCRIPT_ARG_FUNCTION;
+    value.value.r = script_create_function_data(pe, f, data);
+    r = script_global_set(pe, name, &value);
+  }
+
+  return r;
+}
+
 int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(int pe)) {
   int r = -1;
 

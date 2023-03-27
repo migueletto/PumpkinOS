@@ -190,7 +190,7 @@ static void check_prefix(char *path, char *buf, int n) {
 
 static void command_script(command_internal_data_t *idata, char *s) {
   script_arg_t value;
-  char *argv[8], *val;
+  char *argv[8], *val = NULL;
   char buf[MAXCMD];
   int argc, i, j;
 
@@ -199,23 +199,32 @@ static void command_script(command_internal_data_t *idata, char *s) {
     argc = pit_findargs(s, argv, 8, NULL, NULL);
 
     if (argc > 0) {
-      // check if argv[0] is a function name
-      if (script_global_get(idata->pe, argv[0], &value) == 0 && value.type == SCRIPT_ARG_FUNCTION) {
-        // yes, build a proper function call
-        StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
-        for (j = 1; j < argc; j++) {
-          if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
-          if (j > 1) StrCat(buf, ",");
-          if (argv[j][0] != '\"') StrCat(buf, "\"");
-          StrCat(buf, argv[j]);
-          if (argv[j][0] != '\"') StrCat(buf, "\"");
-        }
-        StrCat(buf, ")");
-        s = buf;
-      }
+      if (script_global_get(idata->pe, argv[0], &value) == 0) {
+        // check if argv[0] is a function name
+        if (value.type == SCRIPT_ARG_FUNCTION) {
+          // yes, build a proper function call
+          StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
+          for (j = 1; j < argc; j++) {
+            if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
+            if (j > 1) StrCat(buf, ",");
+            if (argv[j][0] != '\"') StrCat(buf, "\"");
+            StrCat(buf, argv[j]);
+            if (argv[j][0] != '\"') StrCat(buf, "\"");
+          }
+          StrCat(buf, ")");
+          s = buf;
 
-      // evaluate the expression
-      val = pumpkin_script_call(idata->pe, "command_eval", s);
+          // evaluate the expression
+          val = pumpkin_script_call(idata->pe, "command_eval", s);
+
+        } else if (value.type == SCRIPT_ARG_NULL) {
+          // not found, evaluate the expression
+          val = pumpkin_script_call(idata->pe, "command_eval", s);
+        }
+      } else {
+        // evaluate the expression
+        val = pumpkin_script_call(idata->pe, "command_eval", s);
+      }
   
       if (val) {
         if (val[0]) {
@@ -1494,14 +1503,40 @@ static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t
   return 0;
 }
 
-static void command_plugin_callback(pumpkin_plugin_t *plugin, void *_data) {
-  command_internal_data_t *idata = command_get_data();
+static int command_function_cmain(int pe, void *data) {
+  int (*cmain)(int argc, char *argv[]) = data;
+  char *argv[MAX_ARGC], *arg;
+  int argc, i;
+
+  for (argc = 0; argc < MAX_ARGC; argc++) {
+    if (script_opt_string(pe, argc, &arg) != 0) break;
+    argv[argc] = arg;
+  }
+
+  cmain(argc, argv);
+
+  for (i = 0; i < argc; i++) {
+    if (argv[i]) xfree(argv[i]);
+  }
+
+  return 0;
+}
+
+static void command_plugin_callback(pumpkin_plugin_t *plugin, void *data) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
   command_builtin_t c;
 
   if (plugin->pluginMain) {
+    xmemset(&c, 0, sizeof(command_builtin_t));
     plugin->pluginMain(&c);
-    if (c.name && c.function) {
-      pumpkin_script_global_function(idata->pe, c.name, c.function);
+    if (c.name) {
+      if (c.main) {
+        // plugin defines a C main function
+        pumpkin_script_global_function_data(idata->pe, c.name, command_function_cmain, c.main);
+      } else if (c.function) {
+        // plugin defines a script function
+        pumpkin_script_global_function(idata->pe, c.name, c.function);
+      }
     }
   }
 }
@@ -1569,9 +1604,9 @@ static Err StartApplication(void *param) {
     for (i = 0; builtinCommands[i].name; i++) {
       pumpkin_script_global_function(idata->pe, builtinCommands[i].name, builtinCommands[i].function);
     }
-  }
 
-  pumpkin_enum_plugins(commandPluginType, command_plugin_callback, data);
+    pumpkin_enum_plugins(commandPluginType, command_plugin_callback, idata);
+  }
 
   FrmGotoForm(MainForm);
 
