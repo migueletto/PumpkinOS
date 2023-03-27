@@ -8,19 +8,12 @@
 #include "xalloc.h"
 #include "debug.h"
 
-static int rcpexport(int pe) {
-  char *prc = NULL;
-  char *rcp = NULL;
+static int cmain(int argc, char *argv[]) {
   int r = -1;
 
-  if (script_get_string(pe, 0, &prc) == 0 &&
-      script_get_string(pe, 1, &rcp) == 0) {
-
-    r = rcp_export(prc, rcp);
+  if (argc == 2) {
+    r = rcp_export(argv[0], argv[1]);
   }
-
-  if (prc) xfree(prc);
-  if (rcp) xfree(rcp);
 
   return r;
 }
@@ -30,7 +23,7 @@ static void *PluginMain(void *p) {
 
   if (c) {
     c->name = "rcpexport";
-    c->function = rcpexport;
+    c->main = cmain;
   }
 
   return c;
