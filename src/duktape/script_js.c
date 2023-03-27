@@ -526,6 +526,47 @@ script_ref_t ext_script_create_function(script_priv_t *priv, int pe, int (*f)(in
   return obj;
 }
 
+static int call_function_data(duk_context *ctx) {
+  int (*f)(int pe, void *data);
+  void *data;
+  int pe, r;
+
+  duk_push_current_function(ctx);
+
+  duk_get_prop_string(ctx, -1, "f");
+  f = duk_get_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  duk_get_prop_string(ctx, -1, "pe");
+  pe = duk_to_int(ctx, -1);
+  duk_pop(ctx);
+
+  duk_get_prop_string(ctx, -1, "data");
+  data = duk_get_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  duk_pop(ctx);
+
+  r = f ? f(pe, data) : -1;
+
+  return r >= 0 ? r : 0;
+}
+
+script_ref_t ext_script_create_function_data(script_priv_t *priv, int pe, int (*f)(int pe, void *data), void *data) {
+  script_ref_t obj;
+
+  duk_push_c_function(priv->ctx, call_function_data, DUK_VARARGS);
+  duk_push_pointer(priv->ctx, f);
+  duk_put_prop_string(priv->ctx, -2, "f");
+  duk_push_int(priv->ctx, pe);
+  duk_put_prop_string(priv->ctx, -2, "pe");
+  duk_push_pointer(priv->ctx, data);
+  duk_put_prop_string(priv->ctx, -2, "data");
+  obj = new_ref(priv, -1);
+
+  return obj;
+}
+
 int ext_script_push_value(script_priv_t *priv, script_arg_t *value) {
   return push_value(priv, value);
 }

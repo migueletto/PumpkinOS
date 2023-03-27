@@ -592,6 +592,33 @@ script_ref_t ext_script_create_function(script_priv_t *priv, int pe, int (*f)(in
   return obj;
 }
 
+static int call_function_data(lua_State *L) {
+  int pe;
+  int (*f)(int pe, void *data);
+  void *data;
+  int r;
+
+  f = lua_touserdata(L, lua_upvalueindex(1));
+  pe = lua_tointeger(L, lua_upvalueindex(2));
+  data = lua_touserdata(L, lua_upvalueindex(3));
+  r = f(pe, data);
+
+  return r >= 0 ? r : 0;
+}
+
+script_ref_t ext_script_create_function_data(script_priv_t *priv, int pe, int (*f)(int pe, void *data), void *data) {
+  script_ref_t obj;
+
+  lua_pushlightuserdata(priv->L, f);
+  lua_pushinteger(priv->L, pe);
+  lua_pushlightuserdata(priv->L, data);
+  lua_pushcclosure(priv->L, call_function_data, 3);
+  obj = new_ref(priv->L, lua_gettop(priv->L));
+  lua_settop(priv->L, 0);
+
+  return obj;
+}
+
 script_ref_t ext_script_dup_ref(script_priv_t *priv, script_ref_t ref) {
   return dup_ref(priv->L, ref);
 }
