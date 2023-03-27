@@ -34,6 +34,7 @@ struct script_engine_t {
   int (*dl_ext_script_object_get)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
   int (*dl_ext_script_object_set)(script_priv_t *priv, script_ref_t obj, script_arg_t *key, script_arg_t *value);
   script_ref_t (*dl_ext_script_create_function)(script_priv_t *priv, int pe, int (*f)(int pe));
+  script_ref_t (*dl_ext_script_create_function_data)(script_priv_t *priv, int pe, int (*f)(int pe, void *data), void *data);
   script_ref_t (*dl_ext_script_dup_ref)(script_priv_t *priv, script_ref_t ref);
   int (*dl_ext_script_remove_ref)(script_priv_t *priv, script_ref_t ref);
   int (*dl_ext_script_push_value)(script_priv_t *priv, script_arg_t *value);
@@ -626,6 +627,18 @@ script_ref_t script_create_function(int pe, int (*f)(int pe)) {
   return r;
 }
 
+script_ref_t script_create_function_data(int pe, int (*f)(int pe, void *data), void *data) {
+  script_env_t *env;
+  int r = -1;
+
+  if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
+    r =  env->engine->dl_ext_script_create_function_data(env->priv, pe, f, data);
+    ptr_unlock(pe, TAG_ENV);
+  }
+
+  return r;
+}
+
 script_ref_t script_dup_ref(int pe, script_ref_t ref) {
   script_env_t *env;
   int r = -1;
@@ -898,6 +911,7 @@ script_engine_t *script_load_engine(char *libname) {
       ENGINE_SYMBOL(ext_script_object_get);
       ENGINE_SYMBOL(ext_script_object_set);
       ENGINE_SYMBOL(ext_script_create_function);
+      ENGINE_SYMBOL(ext_script_create_function_data);
       ENGINE_SYMBOL(ext_script_dup_ref);
       ENGINE_SYMBOL(ext_script_remove_ref);
       ENGINE_SYMBOL(ext_script_push_value);
