@@ -15,6 +15,7 @@
 *.prc
 *.log
 res
+zig-cache
 !/lib/*
 !/lib32/*
 !/vfs/app_card/PALM/Programs/Command/
