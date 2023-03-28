@@ -3,6 +3,9 @@
 
 #include "sys.h"
 #include "script.h"
+#include "thread.h"
+#include "mutex.h"
+#include "AppRegistry.h"
 #include "pfont.h"
 #include "graphic.h"
 #include "ptr.h"
@@ -17,6 +20,7 @@
 #include "peditor.h"
 #include "edit.h"
 #include "pumpkin.h"
+#include "storage.h"
 #include "debug.h"
 #include "xalloc.h"
 #include "color.h"
@@ -166,6 +170,32 @@ static void command_puts(command_internal_data_t *idata, char *s) {
       command_putc(idata, s[i]);
     }
   }
+}
+
+static void command_putchar(void *data, char c) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+
+  command_putc(idata, c);
+}
+
+static char command_getchar(void *data) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+  EventType event;
+  Err err;
+  char c = 0;
+
+  for (; !thread_must_end();) {
+    EvtGetEvent(&event, idata->wait);
+    if (SysHandleEvent(&event)) continue;
+    if (MenuHandleEvent(NULL, &event, &err)) continue;
+    if (event.eType == appStopEvent) break;
+    if (event.eType == keyDownEvent && !(event.data.keyDown.modifiers & commandKeyMask)) {
+      c = event.data.keyDown.chr;
+      break;
+    }
+  }
+
+  return c;
 }
 
 static command_internal_data_t *command_get_data(void) {
@@ -326,7 +356,7 @@ static void command_expand(command_internal_data_t *idata) {
   }
 }
 
-static void command_key(command_internal_data_t *idata, UInt8 c) {
+static void command_key(command_internal_data_t *idata, UInt8 c, Boolean expand) {
   conn_filter_t *conn, *telnet;
 
   telnet = idata->telnet;
@@ -341,6 +371,10 @@ static void command_key(command_internal_data_t *idata, UInt8 c) {
     }
 
   } else {
+    if (c == '\t' && !expand) {
+      c = ' ';
+    }
+
     switch (c) {
       case '\b':
         if (idata->cmdIndex > 0) {
@@ -401,7 +435,7 @@ static Boolean MenuEvent(UInt16 id) {
       if ((h = ClipboardGetItem(clipboardText, &length)) != NULL) {
         if (length > 0 && (s = MemHandleLock(h)) != NULL) {
           for (i = 0; i < length; i++) {
-            command_key(idata, s[i]);
+            command_key(idata, s[i], false);
           }
           MemHandleUnlock(h);
         }
@@ -663,7 +697,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
 
     case keyDownEvent:
       if (!(event->data.keyDown.modifiers & commandKeyMask)) {
-        command_key(idata, event->data.keyDown.chr);
+        command_key(idata, event->data.keyDown.chr, true);
         handled = true;
       }
       break;
@@ -1522,20 +1556,32 @@ static int command_function_cmain(int pe, void *data) {
   return 0;
 }
 
-static void command_plugin_callback(pumpkin_plugin_t *plugin, void *data) {
-  command_internal_data_t *idata = (command_internal_data_t *)data;
-  command_builtin_t c;
+static void command_load_external_commands(command_internal_data_t *idata) {
+  DmSearchStateType stateInfo;
+  UInt16 cardNo;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  Boolean newSearch, firstLoad;
+  char name[dmDBNameLength];
+  int (*commandMain)(int argc, char *argv[]);
+  void *lib;
 
-  if (plugin->pluginMain) {
-    xmemset(&c, 0, sizeof(command_builtin_t));
-    plugin->pluginMain(&c);
-    if (c.name) {
-      if (c.main) {
-        // plugin defines a C main function
-        pumpkin_script_global_function_data(idata->pe, c.name, command_function_cmain, c.main);
-      } else if (c.function) {
-        // plugin defines a script function
-        pumpkin_script_global_function(idata->pe, c.name, c.function);
+  for (newSearch = true;; newSearch = false) {
+    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, commandExternalType, 0, false, &cardNo, &dbID) != errNone) break;
+
+    if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+      if ((dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadOnly)) != NULL) {
+        if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
+          debug(DEBUG_INFO, "Command", "external command '%s' loaded (first %d)", name, firstLoad ? 1 : 0);
+          commandMain = sys_lib_defsymbol(lib, "CommandMain", 1);
+          if (commandMain) {
+            pumpkin_script_global_function_data(idata->pe, name, command_function_cmain, commandMain);
+          } else {
+            debug(DEBUG_ERROR, "Command", "CommandMain not found in dlib");
+          }
+          // sys_lib_close is not being called
+        }
+        DmCloseDatabase(dbRef);
       }
     }
   }
@@ -1544,7 +1590,6 @@ static void command_plugin_callback(pumpkin_plugin_t *plugin, void *data) {
 static Err StartApplication(void *param) {
   command_data_t *data;
   command_internal_data_t *idata;
-  command_external_data_t *edata;
   UInt32 iterator, swidth, sheight;
   UInt16 prefsSize;
   FontID font, old;
@@ -1552,14 +1597,9 @@ static Err StartApplication(void *param) {
   int i;
 
   data = xcalloc(1, sizeof(command_data_t));
-  edata = xcalloc(1, sizeof(command_external_data_t));
   idata = xcalloc(1, sizeof(command_internal_data_t));
-  data->edata = edata;
   data->idata = idata;
   pumpkin_set_data(data);
-
-  edata->putc = command_putc;
-  edata->puts = command_puts;
 
   prefsSize = sizeof(command_prefs_t);
   if (PrefGetAppPreferences(AppID, 1, &idata->prefs, &prefsSize, true) == noPreferenceFound) {
@@ -1605,8 +1645,10 @@ static Err StartApplication(void *param) {
       pumpkin_script_global_function(idata->pe, builtinCommands[i].name, builtinCommands[i].function);
     }
 
-    pumpkin_enum_plugins(commandPluginType, command_plugin_callback, idata);
+    command_load_external_commands(idata);
   }
+
+  pumpkin_setio(command_getchar, command_putchar, idata);
 
   FrmGotoForm(MainForm);
 
@@ -1655,14 +1697,12 @@ static void EventLoop() {
 
 static void StopApplication(void) {
   command_data_t *data = pumpkin_get_data();
-  command_external_data_t *edata = data->edata;
   command_internal_data_t *idata = data->idata;
 
   FrmCloseAllForms();
   PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
   pumpkin_script_destroy(idata->pe);
   xfree(idata);
-  xfree(edata);
   xfree(data);
 }
 

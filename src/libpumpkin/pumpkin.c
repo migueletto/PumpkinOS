@@ -119,6 +119,9 @@ typedef struct {
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
   void *data;
+  char (*getchar)(void *iodata);
+  void (*putchar)(void *iodata, char c);
+  void *iodata;
 } pumpkin_task_t;
 
 typedef struct {
@@ -4111,5 +4114,35 @@ void SysNotifyBroadcastQueued(void) {
     MemSet(task->notify, sizeof(SysNotifyParamType) * MAX_NOTIF_QUEUE, 0);
     task->num_notifs = 0;
     debug(DEBUG_INFO, PUMPKINOS, "flush notification queue end");
+  }
+}
+
+void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void *iodata) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  task->getchar = getchar;
+  task->putchar = putchar;
+  task->iodata = iodata;
+}
+
+char pumpkin_getchar(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  return task->getchar ? task->getchar(task->iodata) : 0;
+}
+
+void pumpkin_putchar(char c) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task->putchar) {
+    task->putchar(task->iodata, c);
+  }
+}
+
+void pumpkin_puts(char *s) {
+  int i;
+
+  for (i = 0; s[i]; i++) {
+    pumpkin_putchar(s[i]);
   }
 }

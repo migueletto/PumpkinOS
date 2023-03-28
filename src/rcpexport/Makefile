@@ -1,14 +1,14 @@
 include ../common.mak
 include ../commonp.mak
 
-PROGRAM=RcpExport
+PROGRAM=rcpexport
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 OBJS=rcpexp.o
 
 CUSTOMPFLAGS=-I$(SRC)/Command
 
 $(PROGRAM).prc: $(DLIB)
-	$(PRCDUILD) -f $(PROGRAM).prc -t plgi -c RcpE -n $(PROGRAM) *.bin
+	$(PRCDUILD) -f $(PROGRAM).prc -t CmdE -c RcpE -n $(PROGRAM) *.bin
 	cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(PROGRAM).dlib
