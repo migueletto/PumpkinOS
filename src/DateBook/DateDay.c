@@ -357,7 +357,7 @@ debug(1, "XXX", "GetTime not today first hour %d", firstDisplayHour);
 
 	// If the event is untimed, pass the default start time
 	// and duration.
-	if (TimeToInt (*startP) == apptNoTime)
+	if (TimeToInt (*startP) == (UInt16)apptNoTime)
 		{
 debug(1, "XXX", "GetTime untimed event");
 		untimed = true;
@@ -2960,7 +2960,7 @@ static void DetailsSetTimeTrigger (TimeType start, TimeType end)
 	ctl = GetObjectPtr (DetailsTimeSelector);
 	label = (Char *)CtlGetLabel (ctl);	// OK to cast; we call CtlSetLabel
 	
-	if (TimeToInt (start) == apptNoTime)
+	if (TimeToInt (start) == (UInt16)apptNoTime)
 		{
 		rscP = MemHandleLock (DmGetResource (strRsc, noTimeStrID));
 		StrCopy (label, rscP);
@@ -3007,7 +3007,7 @@ static void DetailsSelectTime (TimePtr startP, TimePtr endP)
 	if (GetTime (startP, endP, setTimeTitleStrID))
 		{
 		DetailsSetTimeTrigger (*startP, *endP);
-		if (TimeToInt (*startP) == apptNoTime)
+		if (TimeToInt (*startP) == (UInt16)apptNoTime)
 			DetailsAlarmOnOff (false);
 		}
 }
@@ -5321,7 +5321,7 @@ static UInt16 DayViewCheckForConflicts (void)
 		if (appts[apptIndex].recordNum == emptySlot)
 			continue;
 
-		else if (TimeToInt (appts[apptIndex].startTime) == apptNoTime)
+		else if (TimeToInt (appts[apptIndex].startTime) == (UInt16)apptNoTime)
 			continue;
 		
 		for (i = 0; i < maxTimeBarColumns; i++)
@@ -5434,7 +5434,7 @@ static void DayViewDrawTimeBars (void)
 		{
 		if (appts[apptIndex].recordNum == emptySlot)
 			continue;
-		else if (TimeToInt (appts[apptIndex].startTime) == apptNoTime)
+		else if (TimeToInt (appts[apptIndex].startTime) == (UInt16)apptNoTime)
 			continue;
 		
 		for (i = 0; i < maxTimeBarColumns; i++)
@@ -6603,7 +6603,7 @@ debug(1, "XXX", "ZZZ DayViewLayoutDay apptIndex=%d recordNum=%d", i, emptySlot);
 
 		// If the event is a timed event add an empty time slot to display the end-time.
 		// If the event has no duration, skip it to avoid displaying the same time twice.
-		if ( (TimeToInt (apptsOnly[i].startTime) != apptNoTime)
+		if ( (TimeToInt (apptsOnly[i].startTime) != (UInt16)apptNoTime)
 				&& (TimeToInt (apptsOnly[i].startTime) != TimeToInt (apptsOnly[i].endTime)) )
 			{
 			// Find the correct position at which to insert the end-time time slot.

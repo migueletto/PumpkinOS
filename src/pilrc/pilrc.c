@@ -2003,8 +2003,10 @@ CbEmitStruct(void *pv,
             CondEmitB(0);
           else
           {
-            CondEmitB((unsigned char)*pi);
-            pi++;
+            if (pi) {
+              CondEmitB((unsigned char)*pi);
+              pi++;
+            }
           }
           cb += 1;
         }
@@ -2016,8 +2018,10 @@ CbEmitStruct(void *pv,
             CondEmitW(0);
           else
           {
-            CondEmitW((unsigned short)*pi);
-            pi++;
+            if (pi) {
+              CondEmitW((unsigned short)*pi);
+              pi++;
+            }
           }
           cb += 2;
         }
@@ -2037,8 +2041,10 @@ CbEmitStruct(void *pv,
             CondEmitL(0);
           else
           {
-            CondEmitL(*pi);
-            pi++;
+            if (pi) {
+              CondEmitL(*pi);
+              pi++;
+            }
           }
           cb += 4;
         }

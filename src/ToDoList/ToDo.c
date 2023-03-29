@@ -1192,7 +1192,7 @@ static Boolean ClearEditState (void)
 static void DetermineDueDate (UInt16 itemSelected, DateType * dueDateP)
 {
 	Int16 month, day, year;
-	Int32 adjustment;
+	Int32 adjustment = 0;
 	UInt32 timeInSeconds;
 	Char* titleP;
 	MemHandle titleH;
@@ -4991,7 +4991,7 @@ static UInt16 ListViewGetColumnWidth (Int16 column)
 {
 	Char		chr;
 	Char		dateBuffer [dateStringLength];
-	UInt16	width;
+	UInt16	width = 0;
 	FontID	curFont;
 	Char*		dateStr;
 

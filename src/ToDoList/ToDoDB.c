@@ -356,7 +356,7 @@ static Int16 ToDoCompareRecords(ToDoDBRecordPtr r1,
 	SortRecordInfoPtr info1, SortRecordInfoPtr info2,
 	MemHandle appInfoH)
 {
-	Int16 result;
+	Int16 result = 0;
 
 	// Sort by priority, due date, and category.
 	if (sortOrder == soPriorityDueDate)

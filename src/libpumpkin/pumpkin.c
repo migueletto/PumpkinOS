@@ -910,7 +910,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
 static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
-  uint32_t r;
+  uint32_t r = 0;
   LocalID dbID;
   DmOpenRef dbRef;
   MemHandle h;

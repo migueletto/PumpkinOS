@@ -94,7 +94,7 @@ int mmuTranslate(struct ArmMmu *mmu, uint32_t adr, int priviledged, int write, u
 	}
 
 	//check the TLB
-	if (MMU_TLB_BUCKET_SIZE && MMU_TLB_BUCKET_NUM) {
+	//if (MMU_TLB_BUCKET_SIZE && MMU_TLB_BUCKET_NUM) {
 		
 		bucket = mmuPrvHashAddr(adr);
 				
@@ -118,7 +118,7 @@ int mmuTranslate(struct ArmMmu *mmu, uint32_t adr, int priviledged, int write, u
 				goto check;
 			}
 		}
-	}
+	//}
 	
 	//read first level table
 	if (mmu->transTablPA & 3) {
@@ -248,7 +248,7 @@ page_size_4k:
 translated:
 
 	//insert tlb entry
-	if (MMU_TLB_BUCKET_NUM && MMU_TLB_BUCKET_SIZE) {
+	//if (MMU_TLB_BUCKET_NUM && MMU_TLB_BUCKET_SIZE) {
 		
 		mmu->tlb[bucket][mmu->replPos[bucket]].pa = pa;
 		mmu->tlb[bucket][mmu->replPos[bucket]].sz = sz;
@@ -260,7 +260,7 @@ translated:
 		mmu->readPos[bucket] = mmu->replPos[bucket];
 		if (++mmu->replPos[bucket] == MMU_TLB_BUCKET_SIZE)
 			mmu->replPos[bucket] = 0;
-	}
+	//}
 
 check:
 				

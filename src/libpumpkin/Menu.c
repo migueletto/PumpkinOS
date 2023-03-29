@@ -551,7 +551,7 @@ Boolean MenuCmdBarGetButtonData(Int16 buttonIndex, UInt16 *bitmapIdP, MenuCmdBar
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
   MenuBarType *mbar;
   UInt32 dummy32;
-  UInt16 totalItems, numStrs, curMenu, curItem, numMenus, numItems, itemId;
+  UInt16 curMenu, curItem, numMenus, numItems, itemId;
   UInt16 pullDownX, pullDownY, pullDownW, pullDownH, titleX, titleY, titleW, titleH;
   UInt8 itemCmd, itemFlags;
   char *menuText;
@@ -559,9 +559,6 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
   int i, j, k, l;
 
   if ((mbar = StoNewDecodedResource(h, sizeof(MenuBarType), 0, 0)) != NULL) {
-    totalItems = 0;
-    numStrs = 0;
-
     // szRCMenuBarBA16 "zl,zl,zl,zl,uzu3zu12,zw,w,zl,w,zl"
     i = 0;
     i = get4b(&dummy32, p, i);
@@ -602,8 +599,6 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
       i += get4b(&dummy32, p, i);
       i += get2b(&numItems, p, i);
       i += get4b(&dummy32, p, i);
-      totalItems += numItems;
-      numStrs++;
       debug(DEBUG_TRACE, "Form", "pulldown %d bounds (%d,%d,%d,%d), title (%d,%d,%d,%d), items %d",
         j, pullDownX, pullDownY, pullDownW, pullDownH,  titleX, titleY, titleW, titleH, numItems);
 
@@ -626,7 +621,6 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
         i += get1(&itemCmd, p, i);
         i += get1(&itemFlags, p, i);
         i += get4b(&dummy32, p, i);
-        numStrs++;
         debug(DEBUG_TRACE, "Form", "item %d.%d, id %d, cmd %d, flags 0x%04x", j, k, itemId, itemCmd, itemFlags);
         mbar->menus[j].items[k].id = itemId;
         mbar->menus[j].items[k].command = itemCmd;

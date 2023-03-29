@@ -38,9 +38,9 @@
 /*
  * RMa add : Debug mode define 
  */
-#ifdef _DEBUG
-#define		HEXOUT		1
-#endif
+//#ifdef _DEBUG
+//#define		HEXOUT		1
+//#endif
 
 #ifdef __GNUC__
 #define PRINTF_FORMATTING  __attribute__ ((format(printf, 1, 2)))

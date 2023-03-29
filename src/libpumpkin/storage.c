@@ -3693,7 +3693,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   char name[dmDBNameLength], st[8];
   UInt16 j, attr, version, numRecs, index, appInfoSize, sortInfoSize;
   UInt32 i, creationDate, modificationDate, lastBackupDate, modificationNumber, appInfo, sortInfo, type, creator, uniqueIDSeed, size, dummy32;
-  UInt32 *offsets, *resTypes, uniqueID, firstOffset;
+  UInt32 *offsets, *resTypes, firstOffset;
   UInt16 *resIDs;
   UInt8 *database, recAttr, dummy8;
   MemHandle appInfoH, sortInfoH;
@@ -3766,11 +3766,11 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
                 i += get4b(&offsets[j], database, i);
                 i += get1(&recAttr, database, i);
                 i += get1(&dummy8, database, i);
-                uniqueID = ((UInt32)dummy8) << 16;
+                //uniqueID = ((UInt32)dummy8) << 16;
                 i += get1(&dummy8, database, i);
-                uniqueID |= ((UInt32)dummy8) << 8;
+                //uniqueID |= ((UInt32)dummy8) << 8;
                 i += get1(&dummy8, database, i);
-                uniqueID |= ((UInt32)dummy8);
+                //uniqueID |= ((UInt32)dummy8);
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {

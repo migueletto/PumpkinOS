@@ -599,7 +599,7 @@ FGetLex(LEX * plex,
 VOID
 PrintLex(LEX * plex)
 {
-  plex = plex;
+  //plex = plex;
 #ifdef FOO
   switch (plex->lt)
   {

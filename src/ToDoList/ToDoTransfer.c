@@ -228,7 +228,7 @@ static void SetDescriptionAndFilename(Char * textP, Char **descriptionPP,
                                       MemHandle *descriptionHP, Char **filenamePP, MemHandle *filenameHP,
                                       const Char * const prefix)
 {
-    Char * descriptionP;
+    Char * descriptionP = NULL;
     Int16 descriptionSize;
     Int16 descriptionWidth;
     Boolean descriptionFit;
@@ -808,8 +808,8 @@ extern Err ToDoReceiveData(DmOpenRef dbP, ExgSocketPtr exgSocketP)
 {
     volatile Err err = 0;
     UInt16 pdiRefNum = sysInvalidRefNum;
-    PdiReaderType* reader;
-    UDAReaderType* stream;
+    PdiReaderType* reader = NULL;
+    UDAReaderType* stream = NULL;
     Boolean loaded;
 
     // accept will open a progress dialog and wait for your receive commands

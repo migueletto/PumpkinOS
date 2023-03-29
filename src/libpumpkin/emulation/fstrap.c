@@ -78,7 +78,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       void *s_bufBaseP = emupalmos_trap_sel_in(bufBaseP, sysTrapFileSystemDispatch, sel, 0);
       uint32_t offset = ARG32;
       uint32_t numBytesReadP = ARG32;
-      UInt32 l_numBytesReadP;
+      UInt32 l_numBytesReadP = 0;
       Err res = VFSFileReadData(fileRef ? l_fileRef : 0, numBytes, bufBaseP ? s_bufBaseP : NULL, offset, numBytesReadP ? &l_numBytesReadP : NULL);
       if (numBytesReadP) m68k_write_memory_32(numBytesReadP, l_numBytesReadP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -94,7 +94,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t bufP = ARG32;
       void *s_bufP = emupalmos_trap_sel_in(bufP, sysTrapFileSystemDispatch, sel, 2);
       uint32_t numBytesReadP = ARG32;
-      UInt32 l_numBytesReadP;
+      UInt32 l_numBytesReadP = 0;
       Err res = VFSFileRead(fileRef ? l_fileRef : 0, numBytes, bufP ? s_bufP : NULL, numBytesReadP ? &l_numBytesReadP : NULL);
       if (numBytesReadP) m68k_write_memory_32(numBytesReadP, l_numBytesReadP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -110,7 +110,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t dataP = ARG32;
       void *s_dataP = emupalmos_trap_sel_in(dataP, sysTrapFileSystemDispatch, sel, 2);
       uint32_t numBytesWrittenP = ARG32;
-      UInt32 l_numBytesWrittenP;
+      UInt32 l_numBytesWrittenP = 0;
       Err res = VFSFileWrite(fileRef ? l_fileRef : 0, numBytes, dataP ? s_dataP : NULL, numBytesWrittenP ? &l_numBytesWrittenP : NULL);
       if (numBytesWrittenP) m68k_write_memory_32(numBytesWrittenP, l_numBytesWrittenP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -167,7 +167,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       FileRefProxy *ll_fileRef = (FileRefProxy *)emupalmos_trap_sel_in(fileRef, sysTrapFileSystemDispatch, sel, 0);
       FileRef l_fileRef = ll_fileRef ? ll_fileRef->ref : NULL;
       uint32_t filePosP = ARG32;
-      UInt32 l_filePosP;
+      UInt32 l_filePosP = 0;
       Err res = VFSFileTell(fileRef ? l_fileRef : 0, filePosP ? &l_filePosP : NULL);
       if (filePosP) m68k_write_memory_32(filePosP, l_filePosP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -180,7 +180,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       FileRefProxy *ll_fileRef = (FileRefProxy *)emupalmos_trap_sel_in(fileRef, sysTrapFileSystemDispatch, sel, 0);
       FileRef l_fileRef = ll_fileRef ? ll_fileRef->ref : NULL;
       uint32_t fileSizeP = ARG32;
-      UInt32 l_fileSizeP;
+      UInt32 l_fileSizeP = 0;
       Err res = VFSFileSize(fileRef ? l_fileRef : 0, fileSizeP ? &l_fileSizeP : NULL);
       if (fileSizeP) m68k_write_memory_32(fileSizeP, l_fileSizeP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -204,7 +204,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       FileRefProxy *ll_fileRef = (FileRefProxy *)emupalmos_trap_sel_in(fileRef, sysTrapFileSystemDispatch, sel, 0);
       FileRef l_fileRef = ll_fileRef ? ll_fileRef->ref : NULL;
       uint32_t attributesP = ARG32;
-      UInt32 l_attributesP;
+      UInt32 l_attributesP = 0;
       Err res = VFSFileGetAttributes(fileRef ? l_fileRef : 0, attributesP ? &l_attributesP : NULL);
       if (attributesP) m68k_write_memory_32(attributesP, l_attributesP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -229,7 +229,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       FileRef l_fileRef = ll_fileRef ? ll_fileRef->ref : NULL;
       uint16_t whichDate = ARG16;
       uint32_t dateP = ARG32;
-      UInt32 l_dateP;
+      UInt32 l_dateP = 0;
       Err res = VFSFileGetDate(fileRef ? l_fileRef : 0, whichDate, dateP ? &l_dateP : NULL);
       if (dateP) m68k_write_memory_32(dateP, l_dateP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -325,9 +325,9 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     case vfsTrapVolumeEnumerate: {
       // Err VFSVolumeEnumerate(out UInt16 *volRefNumP, inout UInt32 *volIteratorP);
       uint32_t volRefNumP = ARG32;
-      UInt16 l_volRefNumP;
+      UInt16 l_volRefNumP = 0;
       uint32_t volIteratorP = ARG32;
-      UInt32 l_volIteratorP;
+      UInt32 l_volIteratorP = 0;
       if (volIteratorP) l_volIteratorP = m68k_read_memory_32(volIteratorP);
       Err res = VFSVolumeEnumerate(volRefNumP ? &l_volRefNumP : NULL, volIteratorP ? &l_volIteratorP : NULL);
       if (volRefNumP) m68k_write_memory_16(volRefNumP, l_volRefNumP);
@@ -372,9 +372,9 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       // Err VFSVolumeSize(UInt16 volRefNum, out UInt32 *volumeUsedP, out UInt32 *volumeTotalP);
       uint16_t volRefNum = ARG16;
       uint32_t volumeUsedP = ARG32;
-      UInt32 l_volumeUsedP;
+      UInt32 l_volumeUsedP = 0;
       uint32_t volumeTotalP = ARG32;
-      UInt32 l_volumeTotalP;
+      UInt32 l_volumeTotalP = 0;
       Err res = VFSVolumeSize(volRefNum, volumeUsedP ? &l_volumeUsedP : NULL, volumeTotalP ? &l_volumeTotalP : NULL);
       if (volumeUsedP) m68k_write_memory_32(volumeUsedP, l_volumeUsedP);
       if (volumeTotalP) m68k_write_memory_32(volumeTotalP, l_volumeTotalP);
@@ -386,7 +386,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       // Err VFSInstallFSLib(UInt32 creator, out UInt16 *fsLibRefNumP);
       uint32_t creator = ARG32;
       uint32_t fsLibRefNumP = ARG32;
-      UInt16 l_fsLibRefNumP;
+      UInt16 l_fsLibRefNumP = 0;
       Err res = VFSInstallFSLib(creator, fsLibRefNumP ? &l_fsLibRefNumP : NULL);
       if (fsLibRefNumP) m68k_write_memory_16(fsLibRefNumP, l_fsLibRefNumP);
       m68k_set_reg(M68K_REG_D0, res);

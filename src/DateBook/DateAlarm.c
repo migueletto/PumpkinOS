@@ -693,7 +693,7 @@ static void DrawAlarm (UInt32 inUniqueID, AttnCommandArgsType *paramsPtr, Boolea
 	eventTime = eventTime + adjust;
 
 	// Calculate the duration of the event.
-	untimed = (TimeToInt (apptRec.when->startTime) == apptNoTime);
+	untimed = (TimeToInt (apptRec.when->startTime) == (UInt16)apptNoTime);
 	if (!untimed)
 		duration = (apptRec.when->endTime.hours * hoursInMinutes + apptRec.when->endTime.minutes) -
 					  (apptRec.when->startTime.hours * hoursInMinutes + apptRec.when->startTime.minutes);

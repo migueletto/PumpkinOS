@@ -602,7 +602,7 @@ Boolean TransferImportVCard(DmOpenRef dbP, UInt16 pdiRefNum, PdiReaderType* read
 			case kPdiPRN_ADR:
 				{
 					UInt8 n = 0;
-					UInt16 totalSize;
+					UInt16 totalSize = 0;
 					Char* addressPostOfficeP = NULL;
 					Char* addressExtendedP = NULL;
 					Char* strings[3];

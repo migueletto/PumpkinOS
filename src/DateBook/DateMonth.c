@@ -266,7 +266,7 @@ static void DrawAppointment (RectanglePtr dayR, TimeType start, TimeType end)
 	RectangleType r;
 	
 	// Draw the indicator for an untimed appointment.
-	if (TimeToInt(start) == apptNoTime)
+	if (TimeToInt(start) == (UInt16)apptNoTime)
 		{
 		x = dayR->topLeft.x + untimeIndicatorRightMargin;
 		y = dayR->topLeft.y + untimeIndicatorTopMargin;
@@ -361,7 +361,7 @@ static void DrawTimedAppointments (MonthPtr monthP)
 		sameMonth = (apptRec.when->date.month == monthP->month) && 
 						(apptRec.when->date.year == monthP->year - firstYear);
 
-		untimed = TimeToInt(apptRec.when->startTime) == apptNoTime;
+		untimed = TimeToInt(apptRec.when->startTime) == (UInt16)apptNoTime;
 
 		if (sameMonth && 
 			 ((ShowUntimedAppts && untimed) || (ShowTimedAppts && (! untimed))))
@@ -388,7 +388,7 @@ static void DrawTimedAppointments (MonthPtr monthP)
 		
 		ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
 		
-		untimed = TimeToInt(apptRec.when->startTime) == apptNoTime;
+		untimed = TimeToInt(apptRec.when->startTime) == (UInt16)apptNoTime;
 
 		if (apptRec.repeat && 
 			 ((ShowUntimedAppts && untimed) || (ShowTimedAppts && (! untimed))))

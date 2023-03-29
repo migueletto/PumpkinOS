@@ -726,7 +726,7 @@ void PrefSetPreferences(SystemPreferencesPtr p) {
 }
 
 UInt32 PrefGetPreference(SystemPreferencesChoice choice) {
-  UInt32 value;
+  UInt32 value = 0;
 
   if (mutex_lock(mutex) == 0) {
   switch (choice) {

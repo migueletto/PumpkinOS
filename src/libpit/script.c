@@ -85,7 +85,7 @@ int script_finish(script_engine_t *engine) {
 }
 
 script_engine_t *script_get_engine(int pe) {
-  script_engine_t *engine;
+  script_engine_t *engine = NULL;
   script_env_t *env;
 
   if ((env = ptr_lock(pe, TAG_ENV)) != NULL) {
@@ -891,7 +891,7 @@ script_ref_t script_loadlib(int pe, char *libname) {
 script_engine_t *script_load_engine(char *libname) {
   script_engine_t *engine;
   void *lib;
-  int first_load, err;
+  int first_load, err = -1;
 
   if ((engine = xcalloc(1, sizeof(script_engine_t))) != NULL) {
     if ((lib = sys_lib_load(libname, &first_load)) != NULL) {

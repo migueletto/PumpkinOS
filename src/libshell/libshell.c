@@ -307,7 +307,7 @@ static int cmd_ps(shell_t *shell, vfs_session_t *session, int pe, int argc, char
 }
 
 static int cmd_kill(shell_t *shell, vfs_session_t *session, int pe, int argc, char *argv[], void *data) {
-  int handle, r;
+  int handle, r = -1;
 
   handle = sys_atoi(argv[1]);
 
@@ -1245,6 +1245,7 @@ static int libshell_loop(int fd, int ptr) {
 
   if (newshell.login[0] == 0 || login_loop(newshell.filter, newshell.login, newshell.password) == 0) {
     xmemset(buf, 0, sizeof(buf));
+    cols = rows = 0;
     if (telnet) telnet_term(telnet, (char *)buf, sizeof(buf)-1, &cols, &rows);
     if (cols && rows) {
       newshell.cols = cols;

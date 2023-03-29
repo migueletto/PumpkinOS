@@ -444,7 +444,7 @@ static void BmpSurfaceDestroy(void *data) {
 }
 
 surface_t *BmpBitmapCreateSurface(UInt16 id) {
-  surface_t *surface;
+  surface_t *surface = NULL;
   bmp_surface_t *bsurf;
   MemHandle h;
   BitmapType *bitmapP;

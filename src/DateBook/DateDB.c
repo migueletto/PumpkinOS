@@ -129,10 +129,10 @@ void ECApptDBValidate (DmOpenRef dbP)
 		ApptGetRecord (dbP, i, &rec, &recH);
 		
 		// Is the event an untimed event?
-		if (TimeToInt(rec.when->startTime) == apptNoTime)
+		if (TimeToInt(rec.when->startTime) == (UInt16)apptNoTime)
 			{
 			// There should not be and end time if there is no start time.
-			if (TimeToInt(rec.when->endTime) != apptNoTime)
+			if (TimeToInt(rec.when->endTime) != (UInt16)apptNoTime)
 				ErrDisplay ("DB integrity error");				
 			}
 
@@ -2281,7 +2281,7 @@ UInt32 ApptGetAlarmTime (ApptDBRecordPtr apptRec, UInt32 currentTime, Boolean se
 	if (! apptRec->repeat)
 		{
 		// An alarm on an untimed event triggers at midnight.
-		if (TimeToInt (apptRec->when->startTime) == apptNoTime)
+		if (TimeToInt (apptRec->when->startTime) == (UInt16)apptNoTime)
 			{
 			apptDateTime.minute = 0;
 			apptDateTime.hour = 0;
@@ -2363,7 +2363,7 @@ UInt32 ApptGetAlarmTime (ApptDBRecordPtr apptRec, UInt32 currentTime, Boolean se
 	while (ApptNextRepeat (apptRec, &repeatDate, searchForward))
 		{
 		// An alarm on an untimed event triggers at midnight.
-		if (TimeToInt (apptRec->when->startTime) == apptNoTime)
+		if (TimeToInt (apptRec->when->startTime) == (UInt16)apptNoTime)
 			{
 			apptDateTime.minute = 0;
 			apptDateTime.hour = 0;
@@ -2463,7 +2463,7 @@ debug(1, "XXX", "ApptAlarmMunge ApptUnpack %p", inPackedRecordP);
 				AttnForgetIt(inPostingAlarmData->cardNo, inPostingAlarmData->dbID, uniqueID);
 			
 				// determine if it is an untimed event. untimed events will be subtle 
-				if (TimeToInt (apptRec.when->startTime) == apptNoTime)
+				if (TimeToInt (apptRec.when->startTime) == (UInt16)apptNoTime)
 					{
 					attnLevel = kAttnLevelSubtle;
 					attnFlags = kAttnFlagsNothing;

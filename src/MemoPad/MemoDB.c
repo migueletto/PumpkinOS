@@ -88,7 +88,7 @@ Err	MemoAppInfoInit(DmOpenRef dbP)
 	MemHandle			h;
 	LocalID 				dbID;
 	LocalID 				appInfoID;
-	MemoAppInfoPtr 	nilP = 0;
+	//MemoAppInfoPtr 	nilP = 0;
 	MemoAppInfoPtr		appInfoP;
 	
 	if (DmOpenDatabaseInfo(dbP, &dbID, NULL, NULL, &cardNo, NULL))
@@ -116,8 +116,8 @@ Err	MemoAppInfoInit(DmOpenRef dbP)
 	CategoryInitialize ((AppInfoPtr) appInfoP, LocalizedAppInfoStr);
 
 	// Initialize the sort order.
-	DmSet (appInfoP, (UIntPtr)&nilP->sortOrder, sizeof(appInfoP->sortOrder), 
-		soAlphabetic);
+	//DmSet (appInfoP, (UIntPtr)&nilP->sortOrder, sizeof(appInfoP->sortOrder), soAlphabetic);
+	DmSet (appInfoP, OffsetOf(MemoAppInfoType, sortOrder), sizeof(appInfoP->sortOrder), soAlphabetic);
 
 	MemPtrUnlock(appInfoP);
 
@@ -266,14 +266,15 @@ UInt8 MemoGetSortOrder (DmOpenRef dbP)
 Err MemoChangeSortOrder(DmOpenRef dbP, Boolean sortOrder)
 {
 	MemoAppInfoPtr appInfoP;
-	MemoAppInfoPtr	nilP = 0;
+	//MemoAppInfoPtr	nilP = 0;
 
 
 	appInfoP = MemHandleLock (MemoGetAppInfo (dbP));
 
 	if (appInfoP->sortOrder != sortOrder)
 		{
-		DmWrite (appInfoP, (UIntPtr)&nilP->sortOrder, &sortOrder, sizeof(appInfoP->sortOrder));
+		//DmWrite (appInfoP, (UIntPtr)&nilP->sortOrder, &sortOrder, sizeof(appInfoP->sortOrder));
+		DmWrite (appInfoP, OffsetOf(MemoAppInfoType, sortOrder), &sortOrder, sizeof(appInfoP->sortOrder));
 		
 		if (sortOrder == soAlphabetic)
 			DmInsertionSort (dbP, (DmComparF *) &MemoCompareRecords, (Int16) sortOrder);
@@ -340,7 +341,7 @@ Err MemoNewRecord (DmOpenRef dbP, MemoItemPtr item, UInt16 *index)
 	int					size = 0;
 	UInt32				offset;
 	MemHandle			recordH;	
-	MemoDBRecordPtr	recordP, nilP=0;
+	MemoDBRecordPtr	recordP;
 
 	// Compute the size of the new memo record.
 	size = StrLen (item->note);
@@ -352,7 +353,8 @@ Err MemoNewRecord (DmOpenRef dbP, MemoItemPtr item, UInt16 *index)
 
 	// Pack the the data into the new record.
 	recordP = MemHandleLock (recordH);
-	offset = (UIntPtr)&nilP->note;
+	//offset = (UIntPtr)&nilP->note;
+  offset = OffsetOf(MemoDBRecordType, note);
 	DmStrCopy(recordP, offset, item->note);
 	
 	MemPtrUnlock (recordP);

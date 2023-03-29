@@ -1737,8 +1737,8 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
             x += MISSING_SYMBOL_WIDTH;
           }
         }
+        WinSetCoordinateSystem(prev);
       }
-      WinSetCoordinateSystem(prev);
     }
 
     if (module->drawWindow == module->activeWindow) {
@@ -3069,8 +3069,8 @@ static void WinSurfaceDestroy(void *data) {
 }
 
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect) {
+  surface_t *surface = NULL;
   win_surface_t *wsurf;
-  surface_t *surface;
   BitmapType *bitmapP;
   UInt16 prev, density;
 

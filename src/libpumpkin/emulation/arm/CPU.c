@@ -769,7 +769,7 @@ static int cpuPrvSignedSubtractionOverflows(int32_t a, int32_t b, int32_t diff)	
 
 static int32_t cpuPrvMedia_signedSaturate32(int32_t sign)
 {
-	return (sign < 0) ? -0x80000000UL : 0x7ffffffful;
+	return (sign < 0) ? -0x80000000U : 0x7fffffffu;
 }
 
 static int cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t size, int write, int priviledged, uint8_t* fsrP, uint8_t memAccessFlags)

@@ -3950,7 +3950,7 @@ static void ListViewDrawDueDate (void* table, Int16 row, Int16 column,
 
 
 	// If there is no date draw a dash to indicate such.
-	if (DateToInt (date) == -1)
+	if (DateToInt (date) == 0xffff)
 		{
 		//curFont = FntSetFont (FossilStdFont);
 		curFont = FntSetFont (stdFont);

@@ -1112,7 +1112,7 @@ static void PrvTransferCleanFileName(Char* ioFileName)
 static void PrvSetDescriptionAndFilename(Char * textP, Char **descriptionPP,
 									  MemHandle *descriptionHP, Char **filenamePP, MemHandle *filenameHP, const Char * const prefix)
 {
-	Char * descriptionP;
+	Char * descriptionP = NULL;
 	Int16 descriptionSize;
 	Coord descriptionWidth;
 	Boolean descriptionFit;

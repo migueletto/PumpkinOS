@@ -1260,7 +1260,7 @@ Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, B
   uint32_t a, argsSize, handleOffset, dOffset, d;
   uint16_t w;
   uint8_t *p;
-  Err err;
+  Err err = errNone;
 
   debug(DEBUG_TRACE, "EmuPalmOS", "CallTableLoadData(0x%08X, %p, %d, %d)", addr, tableP, row, column);
   argsSize = sizeof(uint32_t) + 3*sizeof(int16_t) + 4*sizeof(uint32_t);
