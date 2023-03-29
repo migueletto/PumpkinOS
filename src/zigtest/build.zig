@@ -15,5 +15,6 @@ pub fn build(b: *std.Build) void {
     lib.addIncludePath(".");
     lib.addLibraryPath("../../bin");
     lib.linkSystemLibraryName("pit");
+    lib.linkSystemLibraryName("pumpkin");
     lib.install();
 }
