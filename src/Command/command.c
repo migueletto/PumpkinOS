@@ -1596,6 +1596,8 @@ static Err StartApplication(void *param) {
   uint32_t color;
   int i;
 
+  FrmCenterDialogs(true);
+
   data = xcalloc(1, sizeof(command_data_t));
   idata = xcalloc(1, sizeof(command_internal_data_t));
   data->idata = idata;
