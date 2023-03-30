@@ -277,7 +277,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
   Boolean handled = false;
   int i, j;
 
-  *error = 0;
+  if (error) *error = errNone;
 
   if (menuP == NULL) {
     menuP = MenuGetActiveMenu();

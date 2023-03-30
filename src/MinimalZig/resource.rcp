@@ -1,0 +1,17 @@
+MENU 1000
+BEGIN
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "About" 1 "A"
+  END
+END
+
+FORM ID 1000 AT (0 0 160 160)
+  NOFRAME
+  USABLE
+  MENUID 1000
+BEGIN
+  TITLE "MinimalZig"
+END
+
+ICONFAMILY "zig.bmp" "" "" "zig.bmp"

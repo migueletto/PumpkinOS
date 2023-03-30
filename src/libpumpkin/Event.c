@@ -552,6 +552,12 @@ void EvtGetEvent(EventType *event, Int32 timeout) {
   //char *s = event->eType <= lastRegularEvent ? eventName[event->eType] : "unknown";
   //debug(DEBUG_INFO, PALMOS_MODULE, "EvtGetEvent(%d): %s (%d) in %d us", timeout, s, event->eType, (int32_t)t);
 
+//debug(1, "XXX", "EvtGetEvent offset eType    = %d", OffsetOf(EventType, eType));
+//debug(1, "XXX", "EvtGetEvent offset penDown  = %d", OffsetOf(EventType, penDown));
+//debug(1, "XXX", "EvtGetEvent offset tapCount = %d", OffsetOf(EventType, tapCount));
+//debug(1, "XXX", "EvtGetEvent offset screenX  = %d", OffsetOf(EventType, screenX));
+//debug(1, "XXX", "EvtGetEvent offset screenY  = %d", OffsetOf(EventType, screenY));
+//debug(1, "XXX", "EvtGetEvent offset data     = %d", OffsetOf(EventType, data));
   SysNotifyBroadcastQueued();
 }
 
