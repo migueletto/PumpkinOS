@@ -7,7 +7,7 @@ pub fn build(b: *std.Build) void {
 
     const lib = b.addSharedLibrary(.{
         .name = "MinimalZig",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .path = "main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
 
     lib.addModule("pumpkin", pumpkin);
 
-    lib.addIncludePath(".");
+    lib.addIncludePath("../libpumpkin");
     lib.addLibraryPath("../../bin");
     lib.linkSystemLibraryName("pit");
     lib.linkSystemLibraryName("pumpkin");

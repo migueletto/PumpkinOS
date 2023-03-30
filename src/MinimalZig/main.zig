@@ -1,4 +1,4 @@
-const std = @import("std");
+// module "pumpkin" is the bridge between Zig and PumpkinOS
 const pumpkin = @import("pumpkin");
 
 const mainForm: u16 = 1000;
@@ -6,53 +6,47 @@ const aboutCmd: u16 = 1;
 const appID: u32 = 0x4d696e5a;
 
 fn MainFormHandleEvent(event: *pumpkin.EventType) bool {
-  var handled = false;
-
-  switch (event.eType) {
-    pumpkin.eventsEnum.frmOpenEvent => {
+  return switch (event.eType) {
+    pumpkin.eventsEnum.frmOpenEvent => blk: {
       var formP = pumpkin.FrmGetActiveForm();
       pumpkin.FrmDrawForm(formP);
-      handled = true;
+      break :blk true;
     },
-    pumpkin.eventsEnum.menuEvent => {
+    pumpkin.eventsEnum.menuEvent => blk: {
       if (event.data.menu.itemID == aboutCmd) {
         pumpkin.AbtShowAboutPumpkin(appID);
       }
+      break :blk true;
     },
-    else => {}
-  }
-
-  return handled;
+    else => false
+  };
 }
 
 fn ApplicationHandleEvent(event: *pumpkin.EventType) bool {
-  var handled = false;
-
-  switch (event.eType) {
-    pumpkin.eventsEnum.frmLoadEvent => {
+  return switch (event.eType) {
+    pumpkin.eventsEnum.frmLoadEvent => blk: {
       if (event.data.frmLoad.formID == mainForm) {
         var formP = pumpkin.FrmInitForm(event.data.frmLoad.formID);
         pumpkin.FrmSetActiveForm(formP);
         pumpkin.FrmSetEventHandler(formP, MainFormHandleEvent);
-        handled = true;
       }
+      break :blk true;
     },
-    else => {}
-  }
-
-  return handled;
+    else => false
+  };
 }
 
 fn EventLoop() void {
   // declare a default event (initialized to nilEvent)
   var event = pumpkin.EventType {};
 
-  while (event.eType != pumpkin.eventsEnum.appStopEvent) {
+  while (true) {
     pumpkin.EvtGetEvent(&event, pumpkin.evtWaitForever);
     if (pumpkin.SysHandleEvent(&event)) continue;
     if (pumpkin.MenuHandleEvent(&event)) continue;
     if (ApplicationHandleEvent(&event)) continue;
-    _ = pumpkin.FrmDispatchEvent(&event);
+    _ = pumpkin.FrmDispatchEvent(&event); // ignore return value
+    if (event.eType == pumpkin.eventsEnum.appStopEvent) break;
   }
 }
 

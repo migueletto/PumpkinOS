@@ -7,12 +7,19 @@ pub fn build(b: *std.Build) void {
 
     const lib = b.addSharedLibrary(.{
         .name = "zigtest",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .path = "main.zig" },
         .target = target,
         .optimize = optimize,
     });
 
-    lib.addIncludePath(".");
+    const pumpkin = b.createModule(.{
+        .source_file = .{ .path = "../libpumpkin/pumpkin.zig"},
+        .dependencies = &.{},
+    });
+
+    lib.addModule("pumpkin", pumpkin);
+
+    lib.addIncludePath("../libpumpkin");
     lib.addLibraryPath("../../bin");
     lib.linkSystemLibraryName("pit");
     lib.linkSystemLibraryName("pumpkin");
