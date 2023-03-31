@@ -1,107 +1,107 @@
+const std = @import("std");
+
 const c = @cImport({
   @cInclude("zigpumpkin.h");
 });
 
-pub const lauchCodesEnum = enum(u16) {
-  sysAppLaunchCmdNormalLaunch,
-  sysAppLaunchCmdFind,
-  sysAppLaunchCmdGoTo,
-  sysAppLaunchCmdSyncNotify,
-  sysAppLaunchCmdTimeChange,
-  sysAppLaunchCmdSystemReset,
-  sysAppLaunchCmdAlarmTriggered,
-  sysAppLaunchCmdDisplayAlarm,
-  sysAppLaunchCmdCountryChange,
-  sysAppLaunchCmdSyncRequestLocal,
-  sysAppLaunchCmdSaveData,
-  sysAppLaunchCmdInitDatabase,
-  sysAppLaunchCmdSyncCallApplicationV10,
-  sysAppLaunchCmdPanelCalledFromApp,
-  sysAppLaunchCmdReturnFromPanel,
-  sysAppLaunchCmdLookup,
-  sysAppLaunchCmdSystemLock,
-  sysAppLaunchCmdSyncRequestRemote,
-  sysAppLaunchCmdHandleSyncCallApp,
-  sysAppLaunchCmdAddRecord,
-  sysSvcLaunchCmdSetServiceID,
-  sysSvcLaunchCmdGetServiceID,
-  sysSvcLaunchCmdGetServiceList,
-  sysSvcLaunchCmdGetServiceInfo,
-  sysAppLaunchCmdFailedAppNotify,
-  sysAppLaunchCmdEventHook,
-  sysAppLaunchCmdExgReceiveData,
-  sysAppLaunchCmdExgAskUser,
+pub const lauchCodes = enum(u16) {
+  normalLaunch,
+  find,
+  goTo,
+  syncNotify,
+  timeChange,
+  systemReset,
+  alarmTriggered,
+  displayAlarm,
+  countryChange,
+  syncRequestLocal,
+  saveData,
+  initDatabase,
+  syncCallApplicationV10,
+  panelCalledFromApp,
+  returnFromPanel,
+  lookup,
+  systemLock,
+  syncRequestRemote,
+  handleSyncCallApp,
+  addRecord,
+  setServiceID,
+  getServiceID,
+  getServiceList,
+  getServiceInfo,
+  failedAppNotify,
+  eventHook,
+  exgReceiveData,
+  exgAskUser,
 };
 
-pub const evtWaitForever: i32 = -1;
-
-pub const eventsEnum = enum(u16) {
-  nilEvent = 0,
-  penDownEvent,
-  penUpEvent,
-  penMoveEvent,
-  keyDownEvent,
-  winEnterEvent,
-  winExitEvent,
-  ctlEnterEvent,
-  ctlExitEvent,
-  ctlSelectEvent,
-  ctlRepeatEvent,
-  lstEnterEvent,
-  lstSelectEvent,
-  lstExitEvent,
-  popSelectEvent,
-  fldEnterEvent,
-  fldHeightChangedEvent,
-  fldChangedEvent,
-  tblEnterEvent,
-  tblSelectEvent,
-  daySelectEvent,
-  menuEvent,
-  appStopEvent = 22,
-  frmLoadEvent,
-  frmOpenEvent,
-  frmGotoEvent,
-  frmUpdateEvent,
-  frmSaveEvent,
-  frmCloseEvent,
-  frmTitleEnterEvent,
-  frmTitleSelectEvent,
-  tblExitEvent,
-  sclEnterEvent,
-  sclExitEvent,
-  sclRepeatEvent,
-  tsmConfirmEvent = 35,
-  tsmFepButtonEvent,
-  tsmFepModeEvent,
-  attnIndicatorEnterEvent,
-  attnIndicatorSelectEvent,
+pub const eventTypes = enum(u16) {
+  nil = 0,
+  penDown,
+  penUp,
+  penMove,
+  keyDown,
+  winEnter,
+  winExit,
+  ctlEnter,
+  ctlExit,
+  ctlSelect,
+  ctlRepeat,
+  lstEnter,
+  lstSelect,
+  lstExit,
+  popSelect,
+  fldEnter,
+  fldHeightChanged,
+  fldChanged,
+  tblEnter,
+  tblSelect,
+  daySelect,
+  menu,
+  appStop = 22,
+  frmLoad,
+  frmOpen,
+  frmGoto,
+  frmUpdate,
+  frmSave,
+  frmClose,
+  frmTitleEnter,
+  frmTitleSelect,
+  tblExit,
+  sclEnter,
+  sclExit,
+  sclRepeat,
+  tsmConfirm = 35,
+  tsmFepButton,
+  tsmFepMode,
+  attnIndicatorEnter,
+  attnIndicatorSelect,
   
-  menuCmdBarOpenEvent = 0x0800,
-  menuOpenEvent,
-  menuCloseEvent,
-  frmGadgetEnterEvent,
-  frmGadgetMiscEvent,
+  menuCmdBarOpen = 0x0800,
+  menuOpen,
+  menuClose,
+  frmGadgetEnter,
+  frmGadgetMisc,
 
-  firstINetLibEvent = 0x1000,
-  firstWebLibEvent = 0x1100,
+  firstINetLib = 0x1000,
+  firstWebLib = 0x1100,
   
-  telAsyncReplyEvent = 0x1200, 
+  telAsyncReply = 0x1200, 
 
-  keyUpEvent = 0x4000,
-  keyHoldEvent = 0x4001,
-  frmObjectFocusTakeEvent = 0x4002,
-  frmObjectFocusLostEvent = 0x4003,
+  keyUp = 0x4000,
+  keyHold = 0x4001,
+  frmObjectFocusTake = 0x4002,
+  frmObjectFocusLost = 0x4003,
 
-  winDisplayChangedEvent = 0x4101,
-  appRaiseEvent = 0x4102,
+  winDisplayChanged = 0x4101,
+  appRaise = 0x4102,
 
-  firstLicenseeEvent = 0x5000,
-  lastLicenseeEvent = 0x5FFF,
+  firstLicensee = 0x5000,
+  lastLicensee = 0x5FFF,
 
-  firstUserEvent = 0x6000,
+  firstUser = 0x6000,
   
-  lastUserEvent  = 0x7FFF,
+  lastUser = 0x7FFF,
 };
 
 pub const PointType = extern struct {
@@ -122,8 +122,6 @@ pub const TableType = opaque {};
 pub const ScrollBarType = opaque {};
 pub const FormGadgetType = opaque {};
 pub const FormType = opaque {};
-
-const FormEventHandlerType = *const fn(eventP: *EventType) bool;
 
 pub const GenericEventType = extern struct {
   datum: [8]u16,
@@ -370,7 +368,7 @@ pub const EventData = extern union {
 };
 
 pub const EventType = extern struct {
-  eType: eventsEnum = eventsEnum.nilEvent,
+  eType: eventTypes = eventTypes.nil,
   dummy1: u16 = 0,
   penDown: u8 = 0,
   tapCount: u8 = 0,
@@ -379,56 +377,20 @@ pub const EventType = extern struct {
   data: EventData = EventData { .dummy = 0 },
 };
 
-pub fn EvtGetEvent(event: *EventType, timeout: i32) void {
-  c.EvtGetEvent(event, timeout);
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset eType    %d", @intCast(i32, @offsetOf(EventType, "eType")));
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset penDown  %d", @intCast(i32, @offsetOf(EventType, "penDown")));
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset tapCount %d", @intCast(i32, @offsetOf(EventType, "tapCount")));
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset screenX  %d", @intCast(i32, @offsetOf(EventType, "screenX")));
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset screenY  %d", @intCast(i32, @offsetOf(EventType, "screenY")));
-  //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset data     %d", @intCast(i32, @offsetOf(EventType, "data")));
-}
+pub const Sys  = @import("Sys.zig");
+pub const Evt  = @import("Evt.zig");
+pub const Frm  = @import("Frm.zig");
+pub const Abt  = @import("Abt.zig");
+pub const Menu = @import("Menu.zig");
 
-pub fn SysHandleEvent(event: *EventType) bool {
-  return c.SysHandleEvent(event) != 0;
-}
+pub const DEBUG_ERROR: i32 = 0;
+pub const DEBUG_INFO:  i32 = 1;
+pub const DEBUG_TRACE: i32 = 2;
 
-pub fn MenuHandleEvent(event: *EventType) bool {
-  return c.MenuHandleEvent(null, event, null) != 0;
-}
-
-pub fn FrmDispatchEvent(event: *EventType) bool {
-  return c.FrmDispatchEvent(event) != 0;
-}
-
-pub fn FrmGotoForm(formId: u16) void {
-  c.FrmGotoForm(formId);
-}
-
-pub fn FrmInitForm(formId: u16) *FormType {
-  return @ptrCast(*FormType, c.FrmInitForm(formId));
-}
-
-pub fn FrmSetActiveForm(formP: *FormType) void {
-  c.FrmSetActiveForm(formP);
-}
-
-pub fn FrmCloseAllForms() void {
-  c.FrmCloseAllForms();
-}
-
-pub fn FrmSetEventHandler(formP: *FormType, handler: FormEventHandlerType) void {
-  c.FrmSetEventHandler(formP, @ptrCast(*void, @constCast(handler)));
-}
-
-pub fn FrmGetActiveForm() *FormType {
-  return @ptrCast(*FormType, c.FrmGetActiveForm());
-}
-
-pub fn FrmDrawForm(formP: *FormType) void {
-  c.FrmDrawForm(formP);
-}
-
-pub fn AbtShowAboutPumpkin(creator: u32) void {
-  c.AbtShowAboutPumpkin(creator);
+pub fn debug(level: i32, sys: [*]const u8, comptime format: []const u8, args: anytype) void {
+  var buf: [1024]u8 = undefined;
+  // formats the message into a zero terminated C-string
+  const slice = std.fmt.bufPrintZ(&buf, format, args) catch unreachable;
+  // and call debug C function on PumpkinOS
+  c.debug_full("", "", 0, level, sys, "%s", slice.ptr);
 }

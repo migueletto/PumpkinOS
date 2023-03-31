@@ -15,7 +15,7 @@ $(PROGRAM).prc: $(DLIB) res
 $(DLIB): $(ZIGLIB)
 	cp $(ZIGLIB) $(DLIB)
 
-$(ZIGLIB): main.zig
+$(ZIGLIB): main.zig ../libpumpkin/pumpkin.zig
 	$(ZIG) build
 	touch $(ZIGLIB)
 
