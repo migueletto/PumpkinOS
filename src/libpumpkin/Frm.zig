@@ -27,7 +27,7 @@ const c = @cImport({
 
 pub const eventHandlerFn = *const fn(eventP: *EventType) bool;
 
-pub const formMapperFn = *const fn(formId: u16) eventHandlerFn;
+pub const formMapperFn = *const fn(formId: u16) ?eventHandlerFn;
 
 pub fn centerDialogs(center: bool) void {
   c.FrmCenterDialogs(if (center) 1 else 0);
@@ -45,11 +45,11 @@ pub fn gotoForm(formId: u16) void {
   c.FrmGotoForm(formId);
 }
 
-pub fn initForm(formId: u16) *FormType {
+pub fn initForm(formId: u16) ?*FormType {
   return @ptrCast(*FormType, c.FrmInitForm(formId));
 }
 
-pub fn setActiveForm(formP: *FormType) void {
+pub fn setActiveForm(formP: ?*FormType) void {
   c.FrmSetActiveForm(formP);
 }
 
@@ -57,7 +57,7 @@ pub fn closeAllForms() void {
   c.FrmCloseAllForms();
 }
 
-pub fn setEventHandler(formP: *FormType, handler: eventHandlerFn) void {
+pub fn setEventHandler(formP: ?*FormType, handler: ?eventHandlerFn) void {
   c.FrmSetEventHandler(formP, @ptrCast(*void, @constCast(handler)));
 }
 
@@ -130,11 +130,6 @@ pub fn getControl(formP: *FormType, controlId: u16) ?*ControlType {
   return @ptrCast(*ControlType, c.FrmGetObjectPtr(formP, objIndex));
 }
 
-pub fn nullEventHandler(event: *pumpkin.EventType) bool {
-  _ = event;
-  return false;
-}
-
 pub fn eventLoop(appFormMapper: formMapperFn) void {
   var event = pumpkin.EventType {};
 
@@ -144,10 +139,12 @@ pub fn eventLoop(appFormMapper: formMapperFn) void {
     if (pumpkin.Menu.handleEvent(&event)) continue;
     if (event.eType == pumpkin.eventTypes.frmLoad) {
       var eventHandler = appFormMapper(event.data.frmLoad.formID);
-      if (eventHandler != nullEventHandler) {
+      if (eventHandler != null) {
         var formP = initForm(event.data.frmLoad.formID);
-        setActiveForm(formP);
-        setEventHandler(formP, eventHandler);
+        if (formP != null) {
+          setActiveForm(formP);
+          setEventHandler(formP, eventHandler);
+        }
         continue;
       }
     }
