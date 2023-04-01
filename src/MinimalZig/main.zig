@@ -26,10 +26,10 @@ fn mainFormEventHandler(event: *pumpkin.EventType) bool {
   };
 }
 
-fn formMapper(formId: u16) pumpkin.Frm.eventHandlerFn {
+fn formMapper(formId: u16) ?pumpkin.Frm.eventHandlerFn {
   return switch (formId) {
     mainForm => mainFormEventHandler,
-    else => pumpkin.Frm.nullEventHandler,
+    else => null,
   };
 }
 
