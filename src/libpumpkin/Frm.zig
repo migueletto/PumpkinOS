@@ -1,6 +1,25 @@
 const pumpkin = @import("pumpkin.zig");
+
 const EventType = pumpkin.EventType;
 const FormType = pumpkin.FormType;
+const ControlType = pumpkin.ControlType;
+
+const formObjects = enum(u8) {
+  fieldObj,
+  controlObj,
+  listObj,
+  tableObj,
+  bitmapObj,
+  lineObj,
+  FrameObj,
+  rectangleObj,
+  labelObj,
+  titleObj,
+  popupObj,
+  graffitiStateObj,
+  gadgetObj,
+  scrollBarObj,
+};
 
 const c = @cImport({
   @cInclude("zigpumpkin.h");
@@ -96,6 +115,19 @@ pub fn setControlValue(formP: *FormType, objIndex: u16, newValue: i16) void {
 
 pub fn setControlGroupSelection(formP: *FormType, groupNum: u8, controlID: u16) void {
   c.FrmSetControlGroupSelection(formP, groupNum, controlID);
+}
+
+pub fn getControlGroupSelection(formP: *FormType, groupNum: u8) u16 {
+  return c.FrmGetControlGroupSelection(formP, groupNum);
+}
+
+pub fn getControl(formP: *FormType, controlId: u16) ?*ControlType {
+  var objIndex: u16 = c.FrmGetObjectIndex(formP, controlId);
+  if (objIndex == 0xffff) return null;
+  var objTypeU8: u8 = c.FrmGetObjectType(formP, objIndex);
+  var objType: formObjects = @intToEnum(formObjects, objTypeU8);
+  if (objType != formObjects.controlObj) return null;
+  return @ptrCast(*ControlType, c.FrmGetObjectPtr(formP, objIndex));
 }
 
 pub fn nullEventHandler(event: *pumpkin.EventType) bool {

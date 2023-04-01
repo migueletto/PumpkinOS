@@ -40,8 +40,19 @@ const Char *FrmGetLabel(void *formP, UInt16 labelID);
 void FrmCopyLabel(void *formP, UInt16 labelID, const Char *newLabel);
 void FrmSetControlValue(void *formP, UInt16 objIndex, Int16 newValue);
 void FrmSetControlGroupSelection(void *formP, UInt8 groupNum, UInt16 controlID);
+UInt16 FrmGetControlGroupSelection(void *formP, UInt8 groupNum);
+UInt16 FrmGetObjectIndex(void *formP, UInt16 objID);
+void *FrmGetObjectPtr(void *formP, UInt16 objIndex);
+UInt8 FrmGetObjectType(void *formP, UInt16 objIndex);
+
+void CtlShowControl(void *controlP);
+void CtlHideControl(void *controlP);
 
 void EvtGetEvent(void *event, Int32 timeout);
+void EvtAddEventToQueue(void *event);
+Boolean EvtEventAvail(void);
+void EvtCopyEvent(void *source, void *dest);
+
 Boolean SysHandleEvent(void *event);
 Boolean MenuHandleEvent(void *menuP, void *event, UInt16 *error);
 void AbtShowAboutPumpkin(UInt32 creator);

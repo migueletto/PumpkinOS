@@ -4,7 +4,7 @@ const c = @cImport({
   @cInclude("zigpumpkin.h");
 });
 
-pub const lauchCodes = enum(u16) {
+pub const launchCodes = enum(u16) {
   normalLaunch,
   find,
   goTo,
@@ -380,6 +380,7 @@ pub const EventType = extern struct {
 pub const Sys  = @import("Sys.zig");
 pub const Evt  = @import("Evt.zig");
 pub const Frm  = @import("Frm.zig");
+pub const Ctl  = @import("Ctl.zig");
 pub const Abt  = @import("Abt.zig");
 pub const Menu = @import("Menu.zig");
 
