@@ -16,3 +16,15 @@ pub fn getEvent(event: *EventType, timeout: i32) void {
   //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset screenY  %d", @intCast(i32, @offsetOf(EventType, "screenY")));
   //c.debug_full("", "", 0, 1, "zig", "EvtGetEvent offset data     %d", @intCast(i32, @offsetOf(EventType, "data")));
 }
+
+pub fn addEventToQueue(event: *EventType) void {
+  c.EvtAddEventToQueue(event);
+}
+
+pub fn copyEvent(source: *EventType, dest: *EventType) void {
+  c.EvtCopyEvent(source, dest);
+}
+
+pub fn eventAvailable() bool {
+  return c.EvtEventAvail() != 0;
+}
