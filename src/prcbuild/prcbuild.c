@@ -79,7 +79,9 @@ int main(int argc, char *argv[]) {
           break;
       }
     } else {
-      rsrc[num++] = argv[i];
+      if (num < MAX_RSRC) {
+        rsrc[num++] = argv[i];
+      }
     }
   }
 
