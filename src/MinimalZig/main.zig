@@ -35,11 +35,11 @@ fn formMapper(formId: u16) pumpkin.Frm.eventHandlerFn {
 
 export fn PilotMain(cmd: c_ushort, cmdPBP: *void, launchFlags: c_ushort) c_uint {
   // convert cmd argument to enum launchCodes
-  var launchCode = @intToEnum(pumpkin.lauchCodes, cmd);
+  var launchCode = @intToEnum(pumpkin.launchCodes, cmd);
   _ = cmdPBP; // not used
   _ = launchFlags; // not used
 
-  if (launchCode == pumpkin.lauchCodes.normalLaunch) {
+  if (launchCode == pumpkin.launchCodes.normalLaunch) {
     pumpkin.Frm.normalLaunchMain(mainForm, formMapper);
   }
 
