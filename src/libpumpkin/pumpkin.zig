@@ -1,4 +1,6 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const assert = std.debug.assert;
 
 const c = @cImport({
   @cInclude("zigpumpkin.h");
@@ -114,13 +116,14 @@ pub const RectangleType = extern struct {
   extent: PointType,
 };
 
+pub const MemHandle = *opaque {};
 pub const WindowType = opaque {};
 pub const ControlType = opaque {};
 pub const FieldType = opaque {};
 pub const ListType = opaque {};
 pub const TableType = opaque {};
 pub const ScrollBarType = opaque {};
-pub const FormGadgetType = opaque {};
+pub const GadgetType = opaque {};
 pub const FormType = opaque {};
 
 pub const GenericEventType = extern struct {
@@ -313,12 +316,12 @@ pub const MenuOpenEventType = extern struct {
 
 pub const GadgetEnterEventType = extern struct {
   gadgetID: u16,
-  gadgetP: *FormGadgetType,
+  gadgetP: *GadgetType,
 };
 
 pub const GadgetMiscEventType = extern struct {
   gadgetID: u16,
-  gadgetP: *FormGadgetType,
+  gadgetP: *GadgetType,
   selector: u16,
   dataP: *void,
 };
@@ -381,6 +384,7 @@ pub const Sys  = @import("Sys.zig");
 pub const Evt  = @import("Evt.zig");
 pub const Frm  = @import("Frm.zig");
 pub const Ctl  = @import("Ctl.zig");
+pub const Fld  = @import("Fld.zig");
 pub const Abt  = @import("Abt.zig");
 pub const Menu = @import("Menu.zig");
 
@@ -395,3 +399,38 @@ pub fn debug(level: i32, sys: [*]const u8, comptime format: []const u8, args: an
   // and call debug C function on PumpkinOS
   c.debug_full("", "", 0, level, sys, "%s", slice.ptr);
 }
+
+pub const PumpkinAllocator = Allocator {
+  .ptr = undefined,
+  .vtable = &pumpkin_allocator_vtable,
+};
+
+const pumpkin_allocator_vtable = Allocator.VTable {
+  .alloc  = PumpkinAllocatorVTable.alloc,
+  .resize = PumpkinAllocatorVTable.resize,
+  .free   = PumpkinAllocatorVTable.free,
+};
+
+const PumpkinAllocatorVTable = struct {
+  fn alloc(_: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+    _ = ptr_align;
+    _ = ret_addr;
+    debug(DEBUG_INFO, "ZigAlloc", "alloc {d}", .{ len });
+    assert(len > 0);
+    return c.pumpkin_heap_alloc(@intCast(u32, len), "zig");
+  }
+
+  fn resize(_: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+    _ = buf_align;
+    _ = ret_addr;
+    debug(DEBUG_INFO, "ZigAlloc", "resize {d} -> {d}", .{ buf.len, new_len });
+    return if (new_len <= buf.len) true else false;
+  }
+
+  fn free(_: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+    _ = buf_align;
+    _ = ret_addr;
+    debug(DEBUG_INFO, "ZigAlloc", "free", .{});
+    c.pumpkin_heap_free(buf.ptr, "zig");
+  }
+};

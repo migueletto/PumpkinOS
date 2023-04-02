@@ -12,8 +12,12 @@ typedef char Char;
 typedef UInt16 WChar;
 typedef UInt16 Err;
 typedef Int16 Coord;
+typedef UInt16 DmResID;
 
 UInt32 pumpkin_get_app_creator(void);
+
+uint8_t *pumpkin_heap_alloc(uint32_t size, const char *tag);
+void pumpkin_heap_free(void *p, const char *tag);
 
 void debug_full(const char *file, const char *func, int line, int level, const char *sys, const char *fmt, ...);
 void pumpkin_puts(const char *s);
@@ -47,6 +51,17 @@ UInt8 FrmGetObjectType(void *formP, UInt16 objIndex);
 
 void CtlShowControl(void *controlP);
 void CtlHideControl(void *controlP);
+Int16 CtlGetValue(void *controlP);
+void CtlSetValue(void *controlP, Int16 newValue);
+void CtlSetSliderValues(void *controlP, const UInt16 *minValueP, const UInt16 *maxValueP, const UInt16 *pageSizeP, const UInt16 *valueP);
+const Char *CtlGetLabel(void *controlP);
+void CtlSetLabel(void *controlP, const Char *newLabel);
+void CtlUpdateGroup(void *controlP, Boolean value);
+void CtlSetGraphics(void *ctlP, DmResID newBitmapID, DmResID newSelectedBitmapID);
+
+void FldSetText(void *fldP, void *textHandle, UInt16 offset, UInt16 size);
+Boolean FldInsert(void *fldP, const Char *insertChars, UInt16 insertLen);
+void FldDelete(void *fldP, UInt16 start, UInt16 end);
 
 void EvtGetEvent(void *event, Int32 timeout);
 void EvtAddEventToQueue(void *event);
