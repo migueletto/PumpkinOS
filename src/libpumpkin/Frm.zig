@@ -48,6 +48,8 @@ pub const invalidObjectId: u16 = 0xffff;
 
 pub const eventHandlerFn = *const fn(eventP: *EventType) bool;
 
+pub const FormMap = std.AutoHashMap(u16, eventHandlerFn);
+
 pub fn centerDialogs(center: bool) void {
   c.FrmCenterDialogs(if (center) 1 else 0);
 }
@@ -184,7 +186,7 @@ pub fn simpleFrmOpenHandler() bool {
   return true;
 }
 
-pub fn eventLoop(formMap: *std.AutoHashMap(u16, eventHandlerFn), timeout: i32) void {
+pub fn eventLoop(formMap: *FormMap, timeout: i32) void {
   var event = pumpkin.EventType {};
 
   while (true) {
@@ -207,7 +209,7 @@ pub fn eventLoop(formMap: *std.AutoHashMap(u16, eventHandlerFn), timeout: i32) v
   }
 }
 
-pub fn normalLaunchMain(firstForm: u16, formMap: *std.AutoHashMap(u16, eventHandlerFn), timeout: i32) void {
+pub fn normalLaunchMain(firstForm: u16, formMap: *FormMap, timeout: i32) void {
   gotoForm(firstForm);
   eventLoop(formMap, timeout);
   closeAllForms();

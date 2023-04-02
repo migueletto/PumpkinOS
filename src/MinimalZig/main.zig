@@ -41,7 +41,7 @@ export fn PilotMain(cmd: c_ushort, cmdPBP: *void, launchFlags: c_ushort) c_uint 
   _ = launchFlags; // not used
 
   if (launchCode == pumpkin.launchCodes.normalLaunch) {
-    var map = std.AutoHashMap(u16, Frm.eventHandlerFn).init(pumpkin.PumpkinAllocator);
+    var map = Frm.FormMap.init(pumpkin.PumpkinAllocator);
     defer map.deinit();
     map.put(mainForm, mainFormEventHandler) catch { return 0; };
     Frm.normalLaunchMain(mainForm, &map, pumpkin.Evt.waitForever);
