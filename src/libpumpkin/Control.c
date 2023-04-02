@@ -327,7 +327,7 @@ void CtlSetSliderValues(ControlType *ctlP, const UInt16 *minValueP, const UInt16
   }
 }
 
-void CtlGetSliderValues(const ControlType *ctlP, UInt16 *minValueP, UInt16 *maxValueP, UInt16 *pageSizeP, UInt16 *valueP) SYS_TRAP(sysTrapCtlGetSliderValues) {
+void CtlGetSliderValues(const ControlType *ctlP, UInt16 *minValueP, UInt16 *maxValueP, UInt16 *pageSizeP, UInt16 *valueP) {
   SliderControlType *sc;
 
   if (ctlP && (ctlP->style == sliderCtl || ctlP->style == feedbackSliderCtl)) {
