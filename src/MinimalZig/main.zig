@@ -1,13 +1,20 @@
 // module "pumpkin" is the bridge between Zig and PumpkinOS
 const pumpkin = @import("pumpkin");
+const Frm = pumpkin.Frm;
+
+const std = @import("std");
 
 const mainForm: u16 = 1000;
 const aboutCmd: u16 = 1;
+const clickButton: u16 = 2000;
 
-fn simpleFrmOpenHandler() bool {
-  var formP = pumpkin.Frm.getActiveForm();
-  pumpkin.Frm.drawForm(formP);
-  return true;
+fn controlHandler(event: *pumpkin.EventType) bool {
+  if (event.data.ctlSelect.controlID == clickButton) {
+    _ = Frm.customAlert(Frm.informationOkAlert,
+          "For information on the Zig language, check https://ziglang.org/", "", "");
+    return true;
+  }
+  return false;
 }
 
 fn menuHandler(event: *pumpkin.EventType) bool {
@@ -20,16 +27,10 @@ fn menuHandler(event: *pumpkin.EventType) bool {
 
 fn mainFormEventHandler(event: *pumpkin.EventType) bool {
   return switch (event.eType) {
-    pumpkin.eventTypes.frmOpen => simpleFrmOpenHandler(),
-    pumpkin.eventTypes.menu    => menuHandler(event),
-    else => false
-  };
-}
-
-fn formMapper(formId: u16) ?pumpkin.Frm.eventHandlerFn {
-  return switch (formId) {
-    mainForm => mainFormEventHandler,
-    else => null,
+    pumpkin.eventTypes.frmOpen   => Frm.simpleFrmOpenHandler(),
+    pumpkin.eventTypes.ctlSelect => controlHandler(event),
+    pumpkin.eventTypes.menu      => menuHandler(event),
+    else => false,
   };
 }
 
@@ -40,7 +41,10 @@ export fn PilotMain(cmd: c_ushort, cmdPBP: *void, launchFlags: c_ushort) c_uint 
   _ = launchFlags; // not used
 
   if (launchCode == pumpkin.launchCodes.normalLaunch) {
-    pumpkin.Frm.normalLaunchMain(mainForm, formMapper);
+    var map = std.AutoHashMap(u16, Frm.eventHandlerFn).init(pumpkin.PumpkinAllocator);
+    defer map.deinit();
+    map.put(mainForm, mainFormEventHandler) catch { return 0; };
+    Frm.normalLaunchMain(mainForm, &map, pumpkin.Evt.waitForever);
   }
 
   return 0;
