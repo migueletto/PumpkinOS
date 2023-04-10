@@ -1264,99 +1264,90 @@ static int parse_color_component(const char** ptr, const char* end, double* valu
     return 1;
 }
 
-static int parse_paint(element_t * e, int id, paint_t* paint)
-{
-    const string_t* value = findvalue(e, id);
-    if(value == NULL)
+static int parse_paint(element_t *e, int id, paint_t *paint) {
+  const string_t *value = findvalue(e, id);
+  if (value == NULL)
+    return 0;
+
+  const char *ptr = value->start;
+  const char *end = value->end;
+
+  if (skip_string(&ptr, end, "#")) {
+    const char *start = ptr;
+    while (ptr < end && isxdigit(*ptr))
+      ptr++;
+
+    int n = (int)(ptr - start);
+    if (n != 3 && n != 6)
+      return 0;
+
+    char *end_ptr;
+    unsigned long value = strtoul(start, &end_ptr, 16);
+    assert(ptr == end_ptr);
+    if (n == 3) {
+      value = ((value & 0xf00) << 8) | ((value & 0x0f0) << 4) | (value & 0x00f);
+      value |= value << 4;
+    }
+
+    uint32_t r = (value & 0xff0000) >> 16;
+    uint32_t g = (value & 0x00ff00) >> 8;
+    uint32_t b = (value & 0x0000ff) >> 0;
+    paint->type = paint_type_color;
+    plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
+    return 1;
+
+  } else if (skip_string(&ptr, end, "url(")) {
+    const char *start = ptr;
+    while (ptr < end && *ptr != ')')
+      ptr++;
+
+    if (ptr >= end || *ptr != ')')
+      return 0;
+
+    paint->type = paint_type_url;
+    string_init(paint->url, start, ptr);
+    return 1;
+
+  } else if(skip_string(&ptr, end, "none")) {
+    paint->type = paint_type_none;
+    return 1;
+
+  } else if(skip_string(&ptr, end, "currentColor")) {
+    paint->type = paint_type_current_color;
+    return 1;
+
+  } else if(skip_string(&ptr, end, "rgb(")) {
+    double r, g, b;
+    if (!skip_ws(&ptr, end)
+        || !parse_color_component(&ptr, end, &r)
+        || !skip_ws_comma(&ptr, end)
+        || !parse_color_component(&ptr, end, &g)
+        || !skip_ws_comma(&ptr, end)
+        || !parse_color_component(&ptr, end, &b)
+        || !skip_ws(&ptr, end)
+        || !skip_string(&ptr, end, ")"))
         return 0;
 
-    const char* ptr = value->start;
-    const char* end = value->end;
+    paint->type = paint_type_color;
+    plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
+    return 1;
 
-    if(skip_string(&ptr, end, "#"))
-    {
-        const char* start = ptr;
-        while(ptr < end && isxdigit(*ptr))
-            ++ptr;
+  } else {
+    for (size_t i = 0;i < sizeof(colormap) / sizeof(colormap[0]);i++) {
+      if (!string_eq(ptr, end, colormap[i].name))
+        continue;
 
-        int n = (int)(ptr - start);
-        if(n != 3 && n != 6)
-            return 0;
-
-        char* end_ptr;
-        unsigned long value = strtoul(start, &end_ptr, 16);
-        assert(ptr == end_ptr);
-        if(n == 3)
-        {
-            value = ((value&0xf00) << 8) | ((value&0x0f0) << 4) | (value&0x00f);
-            value |= value << 4;
-        }
-
-        uint32_t r = (value&0xff0000)>>16;
-        uint32_t g = (value&0x00ff00)>>8;
-        uint32_t b = (value&0x0000ff)>>0;
-        paint->type = paint_type_color;
-        plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
-        return 1;
+      uint64_t value = colormap[i].value;
+      uint8_t r = (value&0xff0000)>>16;
+      uint8_t g = (value&0x00ff00)>>8;
+      uint8_t b = (value&0x0000ff)>>0;
+      paint->type = paint_type_color;
+      plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
+      return 1;
     }
-    else if(skip_string(&ptr, end, "url("))
-    {
-        const char* start = ptr;
-        while(ptr < end && *ptr != ')')
-            ++ptr;
+  }
 
-        if(ptr >= end || *ptr != ')')
-            return 0;
-
-        paint->type = paint_type_url;
-        string_init(paint->url, start, ptr);
-        return 1;
-    }
-    else if(skip_string(&ptr, end, "none"))
-    {
-        paint->type = paint_type_none;
-        return 1;
-    }
-    else if(skip_string(&ptr, end, "currentColor"))
-    {
-        paint->type = paint_type_current_color;
-        return 1;
-    }
-    else if(skip_string(&ptr, end, "rgb("))
-    {
-        double r, g, b;
-        if(!skip_ws(&ptr, end)
-            || !parse_color_component(&ptr, end, &r)
-            || !skip_ws_comma(&ptr, end)
-            || !parse_color_component(&ptr, end, &g)
-            || !skip_ws_comma(&ptr, end)
-            || !parse_color_component(&ptr, end, &b)
-            || !skip_ws(&ptr, end)
-            || !skip_string(&ptr, end, ")"))
-            return 0;
-
-        paint->type = paint_type_color;
-        plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
-        return 1;
-    }
-    else
-    {
-        for(size_t i = 0;i < sizeof(colormap) / sizeof(colormap[0]);i++)
-        {
-            if(!string_eq(ptr, end, colormap[i].name))
-                continue;
-
-            uint64_t value = colormap[i].value;
-            uint8_t r = (value&0xff0000)>>16;
-            uint8_t g = (value&0x00ff00)>>8;
-            uint8_t b = (value&0x0000ff)>>0;
-            paint->type = paint_type_color;
-            plutovg_color_init_rgb(&paint->color, r / 255.0, g / 255.0, b / 255.0);
-            return 1;
-        }
-    }
-
-    return 0;
+  return 0;
 }
 
 static int parse_view_box(element_t * e, int id, plutovg_rect_t* viewbox)
