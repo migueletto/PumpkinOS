@@ -292,6 +292,7 @@ MemHandle MemLocalIDToHandle(LocalID local);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
 Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
+void WinCopyWindow(WinHandle src, WinHandle dst);
 void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect);
@@ -326,19 +327,20 @@ void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const fun
 void SysFatalAlertFinish(void);
 
 BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr);
-void BmpPutBit(UInt32 b, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
+void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt16 tc, UInt16 bc);
 BitmapType *BmpCreate3(Coord width, Coord height, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error);
 void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp);
 IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y);
 UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y);
 Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP);
-void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt16 value);
+void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value);
 BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth);
 void BmpFillData(BitmapType *bitmapP);
 void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *label);
 const UInt8 *BmpGetGray(UInt8 depth);
 surface_t *BmpBitmapCreateSurface(UInt16 id);
+UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);
@@ -372,6 +374,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
 void WinInvertRect(RectangleType *rect, UInt16 corner);
 void RctRectToAbs(const RectangleType *rP, AbsRectType *arP);
 void RctAbsToRect(const AbsRectType *arP, RectangleType *rP);
+UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r);
 
 void FntSaveFonts(void);
 

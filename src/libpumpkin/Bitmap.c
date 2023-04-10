@@ -1542,7 +1542,7 @@ static UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstCol
   return b;
 }
 
-static UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable) {
+UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable) {
   switch (depth) {
     case  1: b = rgbToGray1(r24(b), g24(b), b24(b)); break;
     case  2: b = rgbToGray2(r24(b), g24(b), b24(b)); break;
@@ -2094,7 +2094,7 @@ static void BmpCopyBit32(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
   }
 }
 
-void BmpPutBit(UInt32 b, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
+void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   ColorTableType *dstColorTable, *colorTable;
   UInt8 dstDepth;
 
@@ -2109,33 +2109,33 @@ void BmpPutBit(UInt32 b, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation m
 
     switch (dstDepth) {
         case 1:
-          BmpCopyBit1(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit1(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 2:
-          BmpCopyBit2(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit2(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 4:
-          BmpCopyBit4(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit4(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 8:
-          BmpCopyBit8(b, false, dst, dstColorTable, dx, dy, mode, dbl);
+          BmpCopyBit8(b, transp, dst, dstColorTable, dx, dy, mode, dbl);
           break;
         case 16:
-          BmpCopyBit16(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit16(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 24:
-          BmpCopyBit24(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit24(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 32:
-          BmpCopyBit32(b, false, dst, dx, dy, mode, dbl);
+          BmpCopyBit32(b, transp, dst, dx, dy, mode, dbl);
           break;
     }
     dbg_update(dst);
   }
 }
 
-void BmpSetPixel(BitmapType *bmp, Coord x, Coord y, UInt16 value) {
-  BmpPutBit(value, bmp, x, y, winPaint, false);
+void BmpSetPixel(BitmapType *bmp, Coord x, Coord y, UInt32 value) {
+  BmpPutBit(value, false, bmp, x, y, winPaint, false);
 }
 
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt16 tc, UInt16 bc) {

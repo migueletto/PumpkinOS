@@ -106,6 +106,17 @@ pub fn doDialog(formP: *FormType) u16 {
   return c.FrmDoDialog(formP);
 }
 
+pub fn deleteForm(formP: *FormType) void {
+  c.FrmDeleteForm(formP);
+}
+
+pub fn doDialogId(formId: u16) u16 {
+  var formP = c.FrmInitForm(formId);
+  var r = c.FrmDoDialog(formP);
+  c.FrmDeleteForm(formP);
+  return r;
+}
+
 pub fn popupForm(formId: u16) void {
   c.FrmPopupForm(formId);
 }
@@ -128,6 +139,31 @@ pub fn getLabel(formP: *FormType, labelID: u16) [*]const u8 {
 
 pub fn copyLabel(formP: *FormType, labelID: u16, newLabel: [*]const u8) void {
   c.FrmCopyLabel(formP, labelID, newLabel);
+}
+
+pub fn setFieldNum(formP: *FormType, fieldId: u16, value: f64) void {
+  var objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
+  if (objIndex != invalidObjectId) {
+    var fld = @ptrCast(*FieldType, c.FrmGetObjectPtr(formP, objIndex));
+    var buf: [32]u8 = undefined;
+    const slice = std.fmt.bufPrint(&buf, "{d:.2}", .{ value }) catch { return; };
+    _ = c.FldInsert(fld, slice.ptr, @intCast(u16, slice.len));
+  }
+}
+
+pub fn getFieldNum(formP: *FormType, fieldId: u16) f64 {
+  var value: f64 = 0;
+  var objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
+  if (objIndex != invalidObjectId) {
+    var fld = @ptrCast(*FieldType, c.FrmGetObjectPtr(formP, objIndex));
+    var str = c.FldGetTextPtr(fld);
+    var len = c.StrLen(str);
+    if (len > 0) {
+      value = std.fmt.parseFloat(f64, str[0..len]) catch 0.0;
+    }
+  }
+
+  return value;
 }
 
 pub fn setControlValue(formP: *FormType, objIndex: u16, newValue: i16) void {

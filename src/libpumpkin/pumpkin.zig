@@ -106,9 +106,25 @@ pub const eventTypes = enum(u16) {
   lastUser = 0x7FFF,
 };
 
+pub const windowFormats = enum(u16) {
+  screen,
+  generic,
+  native,
+};
+
+pub const winDrawOperation = enum(u16) {
+  paint,
+  erase,
+  mask,
+  invert,
+  overlay,
+  paintInverse,
+  swap,
+};
+
 pub const PointType = extern struct {
-  x: u16,
-  y: u16,
+  x: i16,
+  y: i16,
 };
 
 pub const RectangleType = extern struct {
@@ -116,7 +132,9 @@ pub const RectangleType = extern struct {
   extent: PointType,
 };
 
-pub const MemHandle = *opaque {};
+pub const bitmapRsc: u32 = 0x54626d70; // Tbmp
+
+pub const MemHandle = ?*opaque {};
 pub const WindowType = opaque {};
 pub const ControlType = opaque {};
 pub const FieldType = opaque {};
@@ -125,6 +143,8 @@ pub const TableType = opaque {};
 pub const ScrollBarType = opaque {};
 pub const GadgetType = opaque {};
 pub const FormType = opaque {};
+pub const BitmapType = opaque {};
+pub const RGBColorType = opaque {};
 
 pub const GenericEventType = extern struct {
   datum: [8]u16,
@@ -381,7 +401,11 @@ pub const EventType = extern struct {
 };
 
 pub const Sys  = @import("Sys.zig");
+pub const Mem  = @import("Mem.zig");
+pub const Dm   = @import("Dm.zig");
+pub const Bmp  = @import("Bmp.zig");
 pub const Evt  = @import("Evt.zig");
+pub const Win  = @import("Win.zig");
 pub const Frm  = @import("Frm.zig");
 pub const Ctl  = @import("Ctl.zig");
 pub const Fld  = @import("Fld.zig");

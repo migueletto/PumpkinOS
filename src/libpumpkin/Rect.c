@@ -120,3 +120,79 @@ void RctAbsToRect(const AbsRectType *arP, RectangleType *rP) {
     rP->extent.x = arP->bottom - arP->top + 1;
   }
 }
+
+static int contains(const RectangleType *a, const RectangleType *b) {
+  return (b->topLeft.x >= a->topLeft.x) &&
+         (b->topLeft.y >= a->topLeft.y) &&
+         (b->topLeft.x + b->extent.x <= a->topLeft.x + a->extent.x) &&
+         (b->topLeft.y + b->extent.y <= a->topLeft.y + a->extent.y);
+}
+
+static int intersects(const RectangleType *a, const RectangleType *b) {
+  return !((b->topLeft.x + b->extent.x <= a->topLeft.x)  ||
+           (b->topLeft.y + b->extent.y <= a->topLeft.y) ||
+           (b->topLeft.x >= a->topLeft.x + a->extent.x)  ||
+           (b->topLeft.y >= a->topLeft.y + a->extent.y));
+}
+
+UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r) {
+  UInt16 rectCount = 0;
+
+  if (contains(b, a)) {
+    return 0;
+  }
+
+  if (!intersects(a, b)) {
+    MemMove(r, a, sizeof(RectangleType));
+    return 1;
+  }
+
+  // compute the top rectangle
+  int raHeight = b->topLeft.y - a->topLeft.y;
+  if (raHeight > 0) {
+    r[rectCount].topLeft.x = a->topLeft.x;
+    r[rectCount].topLeft.y = a->topLeft.y;
+    r[rectCount].extent.x = a->extent.x;
+    r[rectCount].extent.y = raHeight;
+    rectCount++;
+  }
+
+  // compute the bottom rectangle
+  int rbY = b->topLeft.y + b->extent.y;
+  int rbHeight = a->extent.y - (rbY - a->topLeft.y);
+  if (rbHeight > 0 && rbY < a->topLeft.y + a->extent.y) {
+    r[rectCount].topLeft.x = a->topLeft.x;
+    r[rectCount].topLeft.y = rbY;
+    r[rectCount].extent.x = a->extent.x;
+    r[rectCount].extent.y = rbHeight;
+    rectCount++;
+  }
+
+  int rectAYH = a->topLeft.y+a->extent.y;
+  int y1 = b->topLeft.y > a->topLeft.y ? b->topLeft.y : a->topLeft.y;
+  int y2 = rbY < rectAYH ? rbY : rectAYH;
+  int rcHeight = y2 - y1;
+
+  // compute the left rectangle
+  int rcWidth = b->topLeft.x - a->topLeft.x;
+  if (rcWidth > 0 && rcHeight > 0) {
+    r[rectCount].topLeft.x = a->topLeft.x;
+    r[rectCount].topLeft.y = y1;
+    r[rectCount].extent.x = rcWidth;
+    r[rectCount].extent.y = rcHeight;
+    rectCount++;
+  }
+
+  // compute the right rectangle
+  int rbX = b->topLeft.x + b->extent.x;
+  int rdWidth = a->extent.x - (rbX - a->topLeft.x);
+  if (rdWidth > 0) {
+    r[rectCount].topLeft.x = rbX;
+    r[rectCount].topLeft.y = y1;
+    r[rectCount].extent.x = rdWidth;
+    r[rectCount].extent.y = rcHeight;
+    rectCount++;
+  }
+
+  return rectCount;
+}
