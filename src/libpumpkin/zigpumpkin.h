@@ -47,14 +47,16 @@ void *WinCreateOffscreenWindow(Coord width, Coord height, UInt16 format, UInt16 
 void WinDeleteWindow(void *winHandle, Boolean eraseIt);
 void WinCopyRectangle(void *srcWin, void *dstWin, void *srcRect, Coord dstX, Coord dstY, UInt16 mode);
 void WinCopyBitmap(void *bitmapP, void *wh, void *rect, Coord x, Coord y, UInt16 mode, Boolean text);
-void WinCopyWindow(void *src, void *dst);
+void WinCopyWindow(void *src, void *dst, void *rect);
 void *WinGetBitmap(void *winHandle);
 void *WinSetDrawWindow(void *winHandle);
 void *WinGetActiveWindow(void);
+void WinSetClipingBounds(void *wh, void *rP);
 IndexedColorType WinSetForeColor(IndexedColorType foreColor);
 UInt16 WinSetCoordinateSystem(UInt16 coordSys);
 
 UInt16 RctGetDifference(void *a, void *b, void *r);
+void RctGetUnion(void *a, void *b, void *r);
 
 void FrmCenterDialogs(Boolean center);
 void FrmSetUsable(void *formP, UInt16 objIndex, Boolean usable);

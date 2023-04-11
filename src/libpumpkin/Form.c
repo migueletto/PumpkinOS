@@ -159,6 +159,7 @@ static Err FrmInitFormInternal(FormType *formP) {
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
   formP->window.bitmapP = BmpCreate3(w, h, density, depth, false, 0, NULL, &err);
+  formP->window.density = density;
   dbg_add(0, formP->window.bitmapP);
 
   //RctSetRectangle(&rect, 0, 0, width, height);
