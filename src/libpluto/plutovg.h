@@ -13,6 +13,7 @@ typedef struct plutovg_surface plutovg_surface_t;
 plutovg_surface_t* plutovg_surface_create(int width, int height);
 plutovg_surface_t* plutovg_surface_create_for_data(unsigned char* data, int width, int height, int stride);
 plutovg_surface_t* plutovg_surface_reference(plutovg_surface_t* surface);
+void plutovg_surface_clear(plutovg_surface_t* surface);
 void plutovg_surface_destroy(plutovg_surface_t* surface);
 int plutovg_surface_get_reference_count(const plutovg_surface_t* surface);
 unsigned char* plutovg_surface_get_data(const plutovg_surface_t* surface);

@@ -2379,6 +2379,7 @@ static void render_context_push(render_context_t *context, element_t *e, heap_t 
     style->opacity = 1.0;
     e->style = heap_alloc(heap, sizeof(style_t));
     memcpy(e->style, style, sizeof(style_t));
+    if (e->parent) parse_style(e->parent, e->style);
     parse_style(e, e->style);
   } else {
     memcpy(style, e->style, sizeof(style_t));
@@ -3301,11 +3302,11 @@ void plutosvg_document_freeze(plutovg_document_t *document) {
   plutosvg_document_transform(document, NULL, 1);
 }
 
-void plutosvg_document_rotate(plutovg_document_t *document, double radians) {
+void plutosvg_document_rotate(plutovg_document_t *document, double radians, double cx, double cy) {
   plutovg_matrix_t matrix;
 
   plutovg_matrix_init_identity(&matrix);
-  plutovg_matrix_translate(&matrix, -document->w/2, -document->h/2);
+  plutovg_matrix_translate(&matrix, -cx, -cy);
   plutosvg_document_transform(document, &matrix, 0);
 
   plutovg_matrix_init_identity(&matrix);
@@ -3313,7 +3314,7 @@ void plutosvg_document_rotate(plutovg_document_t *document, double radians) {
   plutosvg_document_transform(document, &matrix, 0);
 
   plutovg_matrix_init_identity(&matrix);
-  plutovg_matrix_translate(&matrix, document->w/2, document->h/2);
+  plutovg_matrix_translate(&matrix, cx, cy);
   plutosvg_document_transform(document, &matrix, 0);
 }
 

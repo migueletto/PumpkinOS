@@ -37,6 +37,13 @@ VectorGraphicsType *VgCreate(char *s, UInt32 size) {
   return vg;
 }
 
+void VgSize(VectorGraphicsType *vg, double *width, double *height) {
+  if (vg) {
+    *width = vg->width;
+    *height = vg->height;
+  }
+}
+
 static void setBit(int x, int y, int red, int green, int blue, int alpha, void *data) {
   PointType *point = (PointType *)data;
   RGBColorType rgb, old;
@@ -51,13 +58,6 @@ static void setBit(int x, int y, int red, int green, int blue, int alpha, void *
   }
 }
 
-void VgSize(VectorGraphicsType *vg, double *width, double *height) {
-  if (vg) {
-    *width = vg->width;
-    *height = vg->height;
-  }
-}
-
 void VgRender(VectorGraphicsType *vg, Coord x, Coord y) {
   PointType point;
 
@@ -67,6 +67,7 @@ void VgRender(VectorGraphicsType *vg, Coord x, Coord y) {
     }
     point.x = x;
     point.y = y;
+    plutovg_surface_clear(vg->surface);
     plutosvg_document_render(vg->document, vg->surface, NULL, vg->dpi);
     plutovg_surface_write_to_memory(vg->surface, setBit, &point);
   }
@@ -80,10 +81,10 @@ void VgScale(VectorGraphicsType *vg, double factor) {
   }
 }
 
-void VgRotate(VectorGraphicsType *vg, double angle) {
+void VgRotate(VectorGraphicsType *vg, double angle, double cx, double cy) {
   if (vg) {
     plutosvg_document_reset(vg->document);
-    plutosvg_document_rotate(vg->document, angle);
+    plutosvg_document_rotate(vg->document, angle, cx ,cy);
   }
 }
 

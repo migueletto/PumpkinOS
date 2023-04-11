@@ -16,6 +16,10 @@ plutovg_surface_t* plutovg_surface_create(int width, int height)
     return surface;
 }
 
+void plutovg_surface_clear(plutovg_surface_t* surface) {
+  memset(surface->data, 0, (size_t)(surface->stride * surface->height));
+}
+
 plutovg_surface_t* plutovg_surface_create_for_data(unsigned char* data, int width, int height, int stride)
 {
     plutovg_surface_t* surface = malloc(sizeof(plutovg_surface_t));

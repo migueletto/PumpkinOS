@@ -14,7 +14,7 @@ void plutosvg_document_size(plutovg_document_t *document, double *width, double 
 int plutosvg_document_prepare(plutovg_document_t *document, double dpi);
 void plutosvg_document_freeze(plutovg_document_t *document);
 void plutosvg_document_reset(plutovg_document_t *document);
-void plutosvg_document_rotate(plutovg_document_t *document, double radians);
+void plutosvg_document_rotate(plutovg_document_t *document, double radians, double cx, double cy);
 void plutosvg_document_scale(plutovg_document_t *document, double factor);
 int plutosvg_document_render(plutovg_document_t *document, plutovg_surface_t *surface, plutovg_font_t *font, double dpi);
 void plutosvg_document_destroy(plutovg_document_t *document);
