@@ -292,7 +292,7 @@ MemHandle MemLocalIDToHandle(LocalID local);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
 Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
-void WinCopyWindow(WinHandle src, WinHandle dst);
+void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect);
 void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect);
@@ -375,6 +375,7 @@ void WinInvertRect(RectangleType *rect, UInt16 corner);
 void RctRectToAbs(const RectangleType *rP, AbsRectType *arP);
 void RctAbsToRect(const AbsRectType *arP, RectangleType *rP);
 UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r);
+void RctGetUnion(const RectangleType *a, const RectangleType *b, RectangleType *r);
 
 void FntSaveFonts(void);
 

@@ -116,6 +116,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->windowBounds.extent.y = height/2;
     module->displayWindow->windowFlags.freeBitmap = true;
     module->displayWindow->bitmapP = BmpCreate3(width, height, module->density, module->depth, false, 0, NULL, &err);
+    module->displayWindow->density = module->density;
     directAccessHack(module->displayWindow, 0, 0, width/2, height/2);
     dbg_add(0, module->displayWindow->bitmapP);
   }
@@ -264,6 +265,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
       //WinSetClipingBounds(wh, &wh->windowBounds);
 
       directAccessHack(wh, 0, 0, width, height);
+      wh->density = BmpGetDensity(bitmapP);
       err = errNone;
     }
 //debug(1, "XXX", "WinCreateBitmapWindow %dx%d bitmap %p: %p", width, height, bitmapP, wh);
@@ -771,12 +773,17 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 //debug(1, "XXX", "dirty_region done");
 }
 
+//#define CLIP_OK(left,right,top,bottom,x,y) 1
+#define CLIP_OK(left,right,top,bottom,x,y) (left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom)
+
+#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
+
 static void WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode) {
   pointTo(&x, &y);
-  //if (CLIP_OK(wh, x, y)) {
+  if (CLIPW_OK(wh, x, y)) {
     Boolean dbl = BmpGetDensity(wh->bitmapP) == kDensityDouble && WinGetCoordinateSystem() == kCoordinatesStandard;
     BmpPutBit(b, false, wh->bitmapP, x, y, mode, dbl);
-  //}
+  }
 }
 
 static void WinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
@@ -1401,30 +1408,90 @@ void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
   }
 }
 
-void WinCopyWindow(WinHandle src, WinHandle dst) {
+void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *srcBmp, *dstBmp;
-  UInt32 srcSize, dstSize, size;
-  Coord w, h;
-  void *srcBits, *dstBits;
+  UInt32 srcSize, dstSize, pixelSize, lineSize, len, offset;
+  RectangleType aux, clip, intersection;
+  UInt16 depth;
+  Coord y, width, height;
+  UInt8 *srcBits, *dstBits;
 
   srcBmp = WinGetBitmap(src);
   dstBmp = WinGetBitmap(dst);
-  srcBits = BmpGetBits(srcBmp);
-  dstBits = BmpGetBits(dstBmp);
-  BmpGetSizes(srcBmp, &srcSize, NULL);
-  BmpGetSizes(dstBmp, &dstSize, NULL);
-  size = srcSize < dstSize ? srcSize : dstSize;
-  MemMove(dstBits, srcBits, size);
+  depth = BmpGetBitDepth(srcBmp);
 
-  if (dst == module->activeWindow || dst == module->displayWindow) {
-    BmpGetDimensions(dstBmp, &w, &h, NULL);
-    pumpkin_screen_dirty(dst, 0, 0, w, h);
+  switch (depth) {
+    case  8:
+    case 16:
+    case 24:
+    case 32:
+      pixelSize = depth >> 3;
+      break;
+    default:
+      // not supported
+      debug(DEBUG_ERROR, "Window", "WinCopyWindow invalid depth %u", depth);
+      return;
+  }
+
+  // fast copy is possible only if densities, depths and sizes match
+
+  if (BmpGetDensity(srcBmp) == BmpGetDensity(dstBmp) && depth == BmpGetBitDepth(dstBmp)) {
+    BmpGetSizes(srcBmp, &srcSize, NULL);
+    BmpGetSizes(dstBmp, &dstSize, NULL);
+
+    if (srcSize == dstSize) {
+      srcBits = BmpGetBits(srcBmp);
+      dstBits = BmpGetBits(dstBmp);
+      BmpGetDimensions(dstBmp, &width, &height, NULL);
+
+      if (rect == NULL) {
+        // rect NULL means copy the whole window
+        RctSetRectangle(&aux, 0, 0, width, height);
+        rect = &aux;
+      }
+
+      if ((dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top)) {
+        // destination window has an active clipping region
+        RctAbsToRect(&dst->clippingBounds, &clip);
+        RctGetIntersection(rect, &clip, &intersection);
+        rect = &intersection;
+      }
+
+      if (rect->extent.x > 0 && rect->extent.y > 0) {
+        if (rect->topLeft.x == 0 && rect->extent.x == width) {
+          // copy a full width rectangle
+          lineSize = width * pixelSize;
+          offset = rect->topLeft.y * lineSize;
+          dstBits += offset;
+          srcBits += offset;
+          len = rect->extent.y * lineSize;
+          MemMove(dstBits, srcBits, len);
+        } else {
+          // copy an arbitraty rectangle
+          lineSize = width * pixelSize;
+          offset = rect->topLeft.y * lineSize + rect->topLeft.x * pixelSize;
+          dstBits += offset;
+          srcBits += offset;
+          len = rect->extent.x * pixelSize;
+          for (y = 0; y < rect->extent.y; y++) {
+            MemMove(dstBits, srcBits, len);
+            dstBits += lineSize;
+            srcBits += lineSize;
+          }
+        }
+
+        if (dst == module->activeWindow || dst == module->displayWindow) {
+          pumpkin_screen_dirty(dst, rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
+        }
+      }
+    } else {
+      debug(DEBUG_ERROR, "Window", "WinCopyWindow sizes do not match");
+    }
+  } else {
+    debug(DEBUG_ERROR, "Window", "WinCopyWindow density or depth does not match");
   }
 }
-
-//#define CLIP_OK(left,right,top,bottom,x,y) 1
-#define CLIP_OK(left,right,top,bottom,x,y) (left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom)
 
 void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
@@ -2553,6 +2620,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
       WinSetForeColor(old);
 
       directAccessHack(wh, 0, 0, w0, h0);
+      wh->density = density;
     } else {
       pumpkin_heap_free(wh, "Window");
       wh = NULL;

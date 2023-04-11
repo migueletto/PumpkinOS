@@ -284,6 +284,10 @@ typedef struct WindowType
 
   Coord minH, prefH, maxH;
   Coord minW, prefW, maxW;
+
+  // density is stored inside BitmapV3,
+  // it is replicated here for performance reasons
+  UInt16 density;
 }
 #endif
 WindowType;
