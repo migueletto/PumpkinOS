@@ -47,6 +47,9 @@ const Simulation = struct {
   buffer: *WindowType = undefined,
   background: *WindowType = undefined,
 
+  oldRect: RectangleType = undefined,
+  newRect: RectangleType = undefined,
+
   groundElasticity: f64 = 0.5,
   groundFriction: f64 = 0.4,
   ballElasticity: f64 = 0.8,
@@ -69,7 +72,7 @@ fn controlHandler(event: *pumpkin.EventType) bool {
       sim.i = 0;
     } else {
       var prev: u16 = c.WinSetCoordinateSystem(144);
-      c.WinCopyWindow(sim.background, c.WinGetActiveWindow());
+      c.WinCopyWindow(sim.background, c.WinGetActiveWindow(), null);
       _ = c.WinSetCoordinateSystem(prev);
       sim.running = false;
       sim.ball.setPosition(sim.ballRadius, sim.spaceHeight - (sim.ballRadius + 32));
@@ -184,11 +187,19 @@ fn initSimulation() void {
     .spaceHeight = spaceHeight,
     .ballRadius = ballRadius,
     .i = 0,
+    .oldRect = RectangleType {
+      .topLeft = PointType { .x = 0, .y = 0 },
+      .extent  = PointType { .x = @floatToInt(i16, vgWidth), .y = @floatToInt(i16, vgHeight) },
+    },
+    .newRect = RectangleType {
+      .topLeft = PointType { .x = 0, .y = 0 },
+      .extent  = PointType { .x = @floatToInt(i16, vgWidth), .y = @floatToInt(i16, vgHeight) },
+    },
     .buffer = @ptrCast(*WindowType, c.WinCreateOffscreenWindow(width, height, @enumToInt(pumpkin.windowFormats.native), &err)),
     .background = @ptrCast(*WindowType, c.WinCreateOffscreenWindow(width, height, @enumToInt(pumpkin.windowFormats.native), &err)),
   };
 
-  c.WinCopyWindow(c.WinGetActiveWindow(), sim.background);
+  c.WinCopyWindow(c.WinGetActiveWindow(), sim.background, null);
   _ = c.WinSetCoordinateSystem(prev);
 
   sim.ball.setPosition(sim.ballRadius, sim.spaceHeight - (sim.ballRadius + 32));
@@ -204,18 +215,27 @@ fn iterateSimulation(dt: f64) void {
   var angle = sim.ball.getAngle();
   while (angle < 0) { angle += pi2; }
   while (angle >= pi2) { angle -= pi2; }
-  c.VgRotate(sim.vg, pi2 - angle);
+  c.VgRotate(sim.vg, pi2 - angle, 200, 200);
   pumpkin.debug(pumpkin.DEBUG_INFO, "test", "{d:.2}: x = {d:.2}, y = {d:.2}, angle = {d:.2}", .{ sim.i, x, y, angle });
 
-  var prev: u16 = c.WinSetCoordinateSystem(144);
-  c.WinCopyWindow(sim.background, sim.buffer);
   var ballX: i16 = @floatToInt(i16, x - sim.ballRadius);
   var ballY: i16 = @floatToInt(i16, y - sim.ballRadius);
+
+  sim.newRect.topLeft.x = ballX;
+  sim.newRect.topLeft.y = ballY;
+  var rect: RectangleType = undefined;
+  c.RctGetUnion(&sim.oldRect, &sim.newRect, &rect);
+
+  var prev: u16 = c.WinSetCoordinateSystem(144);
+  c.WinCopyWindow(sim.background, sim.buffer, &rect);
   var old = @ptrCast(*WindowType, c.WinSetDrawWindow(sim.buffer));
   c.VgRender(sim.vg, ballX, ballY);
   _ = c.WinSetDrawWindow(old);
-  c.WinCopyWindow(sim.buffer, c.WinGetActiveWindow());
+  c.WinCopyWindow(sim.buffer, c.WinGetActiveWindow(), &rect);
   _ = c.WinSetCoordinateSystem(prev);
+
+  sim.oldRect.topLeft.x = ballX;
+  sim.oldRect.topLeft.y = ballY;
 }
 
 fn deinitSimulation() void {
