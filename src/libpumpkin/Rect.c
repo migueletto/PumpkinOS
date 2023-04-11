@@ -117,7 +117,7 @@ void RctAbsToRect(const AbsRectType *arP, RectangleType *rP) {
     rP->topLeft.x = arP->left;
     rP->extent.x = arP->right - arP->left + 1;
     rP->topLeft.y = arP->top;
-    rP->extent.x = arP->bottom - arP->top + 1;
+    rP->extent.y = arP->bottom - arP->top + 1;
   }
 }
 
@@ -130,7 +130,7 @@ static int contains(const RectangleType *a, const RectangleType *b) {
 
 static int intersects(const RectangleType *a, const RectangleType *b) {
   return !((b->topLeft.x + b->extent.x <= a->topLeft.x)  ||
-           (b->topLeft.y + b->extent.y <= a->topLeft.y) ||
+           (b->topLeft.y + b->extent.y <= a->topLeft.y)  ||
            (b->topLeft.x >= a->topLeft.x + a->extent.x)  ||
            (b->topLeft.y >= a->topLeft.y + a->extent.y));
 }
@@ -195,4 +195,19 @@ UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, Rectangl
   }
 
   return rectCount;
+}
+
+void RctGetUnion(const RectangleType *a, const RectangleType *b, RectangleType *r) {
+  Coord x1a, y1a, x1b, y1b, x1, y1;
+
+  r->topLeft.x = min(a->topLeft.x, b->topLeft.x);
+  r->topLeft.y = min(a->topLeft.y, b->topLeft.y);
+  x1a = a->topLeft.x + a->extent.x;
+  y1a = a->topLeft.y + a->extent.y;
+  x1b = b->topLeft.x + b->extent.x;
+  y1b = b->topLeft.y + b->extent.y;
+  x1 = max(x1a, x1b);
+  y1 = max(y1a, y1b);
+  r->extent.x = x1 - r->topLeft.x;
+  r->extent.y = y1 - r->topLeft.y;
 }
