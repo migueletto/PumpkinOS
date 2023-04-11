@@ -178,10 +178,10 @@ int WinFinishModule(Boolean deleteDisplay) {
   return 0;
 }
 
-static void pointTo(Coord *x, Coord *y) {
+static void pointTo(UInt16 density, Coord *x, Coord *y) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
 
-  switch (module->density) {
+  switch (density) {
     case kDensityLow:
       switch (module->coordSys) {
         case kCoordinatesDouble:
@@ -201,10 +201,10 @@ static void pointTo(Coord *x, Coord *y) {
   }
 }
 
-static void pointFrom(Coord *x, Coord *y) {
+static void pointFrom(UInt16 density, Coord *x, Coord *y) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
 
-  switch (module->density) {
+  switch (density) {
     case kDensityLow:
       switch (module->coordSys) {
         case kCoordinatesDouble:
@@ -426,7 +426,7 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   Err err;
 
-  pointFrom(&extentX, &extentY);
+  pointFrom(module->density, &extentX, &extentY);
   module->width = extentX;
   module->height = extentY;
 
@@ -445,7 +445,7 @@ void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
 
   if (extentX) *extentX = module->width;
   if (extentY) *extentY = module->height;
-  pointFrom(extentX, extentY);
+  pointFrom(module->density, extentX, extentY);
 }
 
 void WinGetDrawWindowBounds(RectangleType *rP) {
@@ -720,11 +720,13 @@ Err WinGetPixelRGB(Coord x, Coord y, RGBColorType *rgbP) {
 }
 
 void WinAdjustCoords(Coord *x, Coord *y) {
-  pointTo(x, y);
+  win_module_t *module = (win_module_t *)thread_get(win_key);
+  pointTo(module->density, x, y);
 }
 
 void WinAdjustCoordsInv(Coord *x, Coord *y) {
-  pointFrom(x, y);
+  win_module_t *module = (win_module_t *)thread_get(win_key);
+  pointFrom(module->density, x, y);
 }
 
 static void WinAdjustCoordEnd(Coord *c, UInt16 cs) {
@@ -762,7 +764,7 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 
   xx1 = x1;
   yy1 = y1;
-  pointTo(&xx1, &yy1);
+  pointTo(module->density, &xx1, &yy1);
   xx2 = x2;
   yy2 = y2;
   WinAdjustCoordEnd(&xx2, module->coordSys);
@@ -779,9 +781,11 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 
 static void WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode) {
-  pointTo(&x, &y);
+  //pointTo(&x, &y);
+  pointTo(wh->density, &x, &y);
   if (CLIPW_OK(wh, x, y)) {
-    Boolean dbl = BmpGetDensity(wh->bitmapP) == kDensityDouble && WinGetCoordinateSystem() == kCoordinatesStandard;
+    //Boolean dbl = BmpGetDensity(wh->bitmapP) == kDensityDouble && WinGetCoordinateSystem() == kCoordinatesStandard;
+    Boolean dbl = wh->density == kDensityDouble && WinGetCoordinateSystem() == kCoordinatesStandard;
     BmpPutBit(b, false, wh->bitmapP, x, y, mode, dbl);
   }
 }
@@ -2458,11 +2462,11 @@ void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect) {
     WinScreenMode(winScreenModeGet, &width, &height, NULL, NULL);
     debug(DEBUG_TRACE, "Window", "WinSaveRectangle %d,%d,%d,%d", srcX, srcY, srcW, srcH);
 
-    pointTo(&srcX, &srcY);
-    pointTo(&srcW, &srcH);
+    pointTo(module->density, &srcX, &srcY);
+    pointTo(module->density, &srcW, &srcH);
     w = width;
     h = height;
-    pointTo(&w, &h);
+    pointTo(module->density, &w, &h);
     width = w;
     height = h;
 
@@ -2501,11 +2505,11 @@ void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect) {
     WinScreenMode(winScreenModeGet, &width, &height, NULL, NULL);
     debug(DEBUG_TRACE, "Window", "WinRestoreRectangle %d,%d,%d,%d", dstX, dstY, dstW, dstH);
 
-    pointTo(&dstX, &dstY);
-    pointTo(&dstW, &dstH);
+    pointTo(module->density, &dstX, &dstY);
+    pointTo(module->density, &dstW, &dstH);
     w = width;
     h = height;
-    pointTo(&w, &h);
+    pointTo(module->density, &w, &h);
     width = w;
     height = h;
 
@@ -2586,12 +2590,14 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         // offscreen window is always low density, and the window always uses a coordinate system that directly maps offscreen pixels to coordinates.
         density = kDensityLow;
         depth = module->depth;
+        debug(DEBUG_INFO, "Window", "WinCreateOffscreenWindow creating low density window (screenFormat)");
         break;
       case genericFormat:
         // Like screenFormat, except that genericFormat offscreen windows do not accept pen input.
         wh->windowFlags.format = true;
         density = kDensityLow;
         depth = module->depth;
+        debug(DEBUG_INFO, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
         break;
       case nativeFormat:
         // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
@@ -2795,7 +2801,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
        // a single-density width or height is returned, even if the handheld has a double-density display.
       width = module->width;
       height = module->height;
-      pointFrom(&width, &height);
+      pointFrom(module->density, &width, &height);
       if (depthP) *depthP = operation == winScreenModeGet ? module->depth : module->depth0;
       if (widthP) *widthP = width;
       if (heightP) *heightP = height;
