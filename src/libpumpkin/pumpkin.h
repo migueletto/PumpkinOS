@@ -93,6 +93,9 @@ extern "C" {
 
 #define PUMPKINOS "PumpkinOS"
 
+#define minValue(a,b) (a) < (b) ? (a) : (b)
+#define maxValue(a,b) (a) > (b) ? (a) : (b)
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
@@ -292,8 +295,8 @@ MemHandle MemLocalIDToHandle(LocalID local);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
 Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
-void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect);
-void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
+void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect, Coord dstX, Coord dstY);
+void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect);
 void WinSetClipingBounds(WinHandle win, const RectangleType *rP);

@@ -46,7 +46,8 @@ END
 
 BITMAP ID 1
 BEGIN
-  BITMAP "floor.bmp" BPP 16 DENSITY 144
+  BITMAP "floorL.bmp" BPP 16 DENSITY  72
+  BITMAP "floorH.bmp" BPP 16 DENSITY 144
 END
 
 DATA "tSVG" ID 1000 "ball.svg"

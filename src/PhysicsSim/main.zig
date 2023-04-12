@@ -72,7 +72,7 @@ fn controlHandler(event: *pumpkin.EventType) bool {
       sim.i = 0;
     } else {
       var prev: u16 = c.WinSetCoordinateSystem(144);
-      c.WinCopyWindow(sim.background, c.WinGetActiveWindow(), null);
+      c.WinCopyWindow(sim.background, c.WinGetActiveWindow(), null, 0, 0);
       _ = c.WinSetCoordinateSystem(prev);
       sim.running = false;
       sim.ball.setPosition(sim.ballRadius, sim.spaceHeight - (sim.ballRadius + 32));
@@ -199,7 +199,7 @@ fn initSimulation() void {
     .background = @ptrCast(*WindowType, c.WinCreateOffscreenWindow(width, height, @enumToInt(pumpkin.windowFormats.native), &err)),
   };
 
-  c.WinCopyWindow(c.WinGetActiveWindow(), sim.background, null);
+  c.WinCopyWindow(c.WinGetActiveWindow(), sim.background, null, 0, 0);
   _ = c.WinSetCoordinateSystem(prev);
 
   sim.ball.setPosition(sim.ballRadius, sim.spaceHeight - (sim.ballRadius + 32));
@@ -227,11 +227,11 @@ fn iterateSimulation(dt: f64) void {
   c.RctGetUnion(&sim.oldRect, &sim.newRect, &rect);
 
   var prev: u16 = c.WinSetCoordinateSystem(144);
-  c.WinCopyWindow(sim.background, sim.buffer, &rect);
+  c.WinCopyWindow(sim.background, sim.buffer, &rect, rect.topLeft.x, rect.topLeft.y);
   var old = @ptrCast(*WindowType, c.WinSetDrawWindow(sim.buffer));
   c.VgRender(sim.vg, ballX, ballY);
   _ = c.WinSetDrawWindow(old);
-  c.WinCopyWindow(sim.buffer, c.WinGetActiveWindow(), &rect);
+  c.WinCopyWindow(sim.buffer, c.WinGetActiveWindow(), &rect, rect.topLeft.x, rect.topLeft.y);
   _ = c.WinSetCoordinateSystem(prev);
 
   sim.oldRect.topLeft.x = ballX;

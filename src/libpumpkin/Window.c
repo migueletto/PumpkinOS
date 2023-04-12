@@ -1412,18 +1412,19 @@ void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
   }
 }
 
-void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect) {
+void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Coord dstX, Coord dstY) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
-  BitmapType *srcBmp, *dstBmp;
-  UInt32 srcSize, dstSize, pixelSize, lineSize, len, offset;
-  RectangleType aux, clip, intersection;
+  BitmapType *dstBmp;
+  UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
+  RectangleType dstRect, aux, clip, intersection, *dirtyRect;
   UInt16 depth;
-  Coord y, width, height;
+  Boolean clipping;
+  Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
   UInt8 *srcBits, *dstBits;
 
-  srcBmp = WinGetBitmap(src);
   dstBmp = WinGetBitmap(dst);
   depth = BmpGetBitDepth(srcBmp);
+  dirtyRect = NULL;
 
   switch (depth) {
     case  8:
@@ -1434,77 +1435,129 @@ void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect) {
       break;
     default:
       // not supported
-      debug(DEBUG_ERROR, "Window", "WinCopyWindow invalid depth %u", depth);
+      debug(DEBUG_ERROR, "Window", "WinCopyBitmap invalid depth %u", depth);
       return;
   }
-
-  // fast copy is possible only if densities, depths and sizes match
 
   if (BmpGetDensity(srcBmp) == BmpGetDensity(dstBmp) && depth == BmpGetBitDepth(dstBmp)) {
     BmpGetSizes(srcBmp, &srcSize, NULL);
     BmpGetSizes(dstBmp, &dstSize, NULL);
+    srcBits = BmpGetBits(srcBmp);
+    dstBits = BmpGetBits(dstBmp);
+    BmpGetDimensions(srcBmp, &srcWidth, &srcHeight, NULL);
+    BmpGetDimensions(dstBmp, &dstWidth, &dstHeight, NULL);
+    clipping = (dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top);
 
-    if (srcSize == dstSize) {
-      srcBits = BmpGetBits(srcBmp);
-      dstBits = BmpGetBits(dstBmp);
-      BmpGetDimensions(dstBmp, &width, &height, NULL);
+    if (srcRect == NULL && dstX == 0 && dstY == 0 && srcSize == dstSize && !clipping) {
+      // copy the whole window (best case)
+      MemMove(dstBits, srcBits, dstSize);
+      RctSetRectangle(&dstRect, 0, 0, dstWidth, dstHeight);
+      dirtyRect = &dstRect;
 
-      if (rect == NULL) {
-        // rect NULL means copy the whole window
-        RctSetRectangle(&aux, 0, 0, width, height);
-        rect = &aux;
+    } else {
+      if (srcRect == NULL) {
+        // if srcRect is null, use the whole src window
+        RctSetRectangle(&aux, 0, 0, srcWidth, srcHeight);
+        srcRect = &aux;
       }
 
-      if ((dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top)) {
-        // destination window has an active clipping region
+      // check limits on srcRect
+      if (srcRect->topLeft.x + srcRect->extent.x > srcWidth) {
+        srcRect->extent.x = srcWidth - srcRect->extent.x;
+      }
+      if (srcRect->topLeft.y + srcRect->extent.y > srcHeight) {
+        srcRect->extent.y = srcHeight - srcRect->extent.y;
+      }
+
+      // set dstRect with same width and height from srcRect
+      RctSetRectangle(&dstRect, dstX, dstY, srcRect->extent.x, srcRect->extent.y);
+
+      // check limits on dstRect
+      if (dstRect.topLeft.x + dstRect.extent.x > dstWidth) {
+        dstRect.extent.x = dstWidth - dstRect.extent.x;
+      }
+      if (dstRect.topLeft.y + dstRect.extent.y > dstHeight) {
+        dstRect.extent.y = dstHeight - dstRect.extent.y;
+      }
+
+      // srcRect and dstRect must have same width and height
+      dstRect.extent.x = minValue(dstRect.extent.x, srcRect->extent.x);
+      dstRect.extent.y = minValue(dstRect.extent.y, srcRect->extent.y);
+      srcRect->extent.x = dstRect.extent.x;
+      srcRect->extent.y = dstRect.extent.y;
+
+      if (clipping) {
+        // destination window has an active clipping region, compute intersection
         RctAbsToRect(&dst->clippingBounds, &clip);
-        RctGetIntersection(rect, &clip, &intersection);
-        rect = &intersection;
+        RctGetIntersection(&dstRect, &clip, &intersection);
+        // adjust srcRect
+        dx = intersection.topLeft.x - dstRect.topLeft.x;
+        dy = intersection.topLeft.y - dstRect.topLeft.y;
+        srcRect->topLeft.x += dx;
+        srcRect->topLeft.y += dy;
+        RctCopyRectangle(&intersection, &dstRect);
+        srcRect->extent.x = dstRect.extent.x;
+        srcRect->extent.y = dstRect.extent.y;
       }
 
-      if (rect->extent.x > 0 && rect->extent.y > 0) {
-        if (rect->topLeft.x == 0 && rect->extent.x == width) {
-          // copy a full width rectangle
-          lineSize = width * pixelSize;
-          offset = rect->topLeft.y * lineSize;
-          dstBits += offset;
-          srcBits += offset;
-          len = rect->extent.y * lineSize;
+      if (dstRect.extent.x > 0 && dstRect.extent.y > 0) {
+        dirtyRect = &dstRect;
+
+        if (srcWidth == dstWidth &&
+            srcRect->topLeft.x == 0 && srcRect->extent.x == srcWidth &&
+            dstRect.topLeft.x == 0 && dstRect.extent.x == dstWidth) {
+
+          // copy a full width rectangle (2nd best case)
+          srcLineSize = srcWidth * pixelSize;
+          srcOffset = srcRect->topLeft.y * srcLineSize;
+          dstOffset = dstRect.topLeft.y * srcLineSize;
+          srcBits += srcOffset;
+          dstBits += dstOffset;
+          len = srcRect->extent.y * srcLineSize;
           MemMove(dstBits, srcBits, len);
+
         } else {
-          // copy an arbitraty rectangle
-          lineSize = width * pixelSize;
-          offset = rect->topLeft.y * lineSize + rect->topLeft.x * pixelSize;
-          dstBits += offset;
-          srcBits += offset;
-          len = rect->extent.x * pixelSize;
-          for (y = 0; y < rect->extent.y; y++) {
+          // copy an arbitraty rectangle (generic case)
+          srcLineSize = srcWidth * pixelSize;
+          dstLineSize = dstWidth * pixelSize;
+          srcOffset = srcRect->topLeft.y * srcLineSize + srcRect->topLeft.x * pixelSize;
+          dstOffset = dstRect.topLeft.y * dstLineSize + dstRect.topLeft.x * pixelSize;
+          srcBits += srcOffset;
+          dstBits += dstOffset;
+          len = srcRect->extent.x * pixelSize;
+          for (y = 0; y < srcRect->extent.y; y++) {
             MemMove(dstBits, srcBits, len);
-            dstBits += lineSize;
-            srcBits += lineSize;
+            srcBits += srcLineSize;
+            dstBits += dstLineSize;
           }
         }
-
-        if (dst == module->activeWindow || dst == module->displayWindow) {
-          pumpkin_screen_dirty(dst, rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
-        }
       }
-    } else {
-      debug(DEBUG_ERROR, "Window", "WinCopyWindow sizes do not match");
     }
   } else {
-    debug(DEBUG_ERROR, "Window", "WinCopyWindow density or depth does not match");
+    debug(DEBUG_ERROR, "Window", "WinCopyBitmap density or depth does not match");
+  }
+
+  if (dirtyRect && (dst == module->activeWindow || dst == module->displayWindow)) {
+    pumpkin_screen_dirty(dst, dirtyRect->topLeft.x, dirtyRect->topLeft.y, dirtyRect->extent.x, dirtyRect->extent.y);
   }
 }
 
-void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text) {
+void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *srcRect, Coord dstX, Coord dstY) {
+  if (src && dst) {
+    WinCopyBitmap(WinGetBitmap(src), dst, srcRect, dstX, dstY);
+  }
+}
+
+void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *windowBitmap, *displayBitmap, *best;
-  UInt16 windowDensity, bitmapDensity, coordSys, displayDepth, windowDepth, tc, bc, tcd, bcd;
+  RectangleType srcRect;
+  UInt16 windowDensity, bitmapDensity, bitmapDepth, coordSys, displayDepth, windowDepth, tc, bc, tcd, bcd;
+  UInt32 transparentValue;
   Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
   Coord x1, y1, x2, y2, x3, y3, x4, y4;
-  Boolean dbl, hlf;
+  Boolean bitmapTransp, dbl, hlf;
 
   if (bitmapP && wh && rect) {
     windowBitmap = WinGetBitmap(wh);
@@ -1513,6 +1566,28 @@ void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, windowDepth, !text)) != NULL) {
       bitmapDensity = BmpGetDensity(best);
+      bitmapDepth = BmpGetBitDepth(best);
+      bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
+
+      if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
+        // it is possible to use fast copy
+        RctCopyRectangle(rect, &srcRect);
+        coordSys = WinGetCoordinateSystem();
+        if (bitmapDensity == kDensityDouble && coordSys == kCoordinatesStandard) {
+          WinSetCoordinateSystem(kCoordinatesDouble);
+          x = WinScaleCoord(x, false);
+          y = WinScaleCoord(y, false);
+          WinScaleRectangle(&srcRect);
+        } else if (bitmapDensity == kDensityLow && coordSys == kCoordinatesDouble) {
+          WinSetCoordinateSystem(kCoordinatesStandard);
+          x = WinUnscaleCoord(x, false);
+          y = WinUnscaleCoord(y, false);
+          WinUnscaleRectangle(&srcRect);
+        }
+        WinCopyBitmap(best, wh, &srcRect, x, y);
+        WinSetCoordinateSystem(coordSys);
+        return;
+      }
 
       dbl = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
       hlf = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
@@ -1581,7 +1656,7 @@ void WinCopyBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
 
       displayBitmap = WinGetBitmap(module->displayWindow);
-      debug(DEBUG_TRACE, "Window", "WinCopyBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d",
+      debug(DEBUG_TRACE, "Window", "WinBlitBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d",
         srcX, srcY, w, h, bitmapDensity, dstX, dstY, windowDensity, coordSys, dbl, hlf);
 
       x1 = wh->clippingBounds.left;
@@ -1652,7 +1727,7 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
   }
 
   debug(DEBUG_TRACE, "Window", "WinCopyRectangle srcWin=%p srcBmp=%p %d,%d,%d,%d -> dstWin=%p dstBmp=%p %d,%d (mode %d)", srcWin, srcWin->bitmapP, srcRect->topLeft.x, srcRect->topLeft.y, srcRect->extent.x, srcRect->extent.y, dstWin, dstWin->bitmapP, dstX, dstY, mode);
-  WinCopyBitmap(srcWin->bitmapP, dstWin, srcRect, dstX, dstY, mode, false);
+  WinBlitBitmap(srcWin->bitmapP, dstWin, srcRect, dstX, dstY, mode, false);
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
@@ -1713,7 +1788,7 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
       WinScaleRectangle(&rect);
-      WinCopyBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
+      WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
     }
 
     if (destroy) {
@@ -1780,7 +1855,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         if (ch >= f->firstChar && ch <= f->lastChar) {
           col = f->column[ch - f->firstChar];
           RctSetRectangle(&rect, col, 0, f->width[ch - f->firstChar], f->fRectHeight);
-          WinCopyBitmap(f->bmp, module->drawWindow, &rect, x, y, module->transferMode, true);
+          WinBlitBitmap(f->bmp, module->drawWindow, &rect, x, y, module->transferMode, true);
           x += f->width[ch - f->firstChar];
         } else {
           debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
@@ -1824,7 +1899,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           if (ch >= f2->firstChar && ch <= f2->lastChar) {
             col = f2->column[ch - f2->firstChar]*mult;
             RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
-            WinCopyBitmap(f2->bmp[index], module->drawWindow, &rect, x, y, module->transferMode, true);
+            WinBlitBitmap(f2->bmp[index], module->drawWindow, &rect, x, y, module->transferMode, true);
             x += f2->width[ch - f2->firstChar]*mult;
           } else {
             debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);

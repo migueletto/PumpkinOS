@@ -1,9 +1,7 @@
 #include <PalmOS.h>
 
+#include "pumpkin.h"
 #include "debug.h"
-
-#define max(a,b) (a) > (b) ? (a) : (b)
-#define min(a,b) (a) < (b) ? (a) : (b)
 
 void RctSetRectangle(RectangleType *rP, Coord left, Coord top, Coord width, Coord height) {
   if (rP) {
@@ -85,10 +83,10 @@ void RctGetIntersection(const RectangleType *r1P, const RectangleType *r2P, Rect
     by2 = aux;
   }
 
-  cx1 = max(ax1, bx1);
-  cy1 = max(ay1, by1);
-  cx2 = min(ax2, bx2);
-  cy2 = min(ay2, by2);
+  cx1 = maxValue(ax1, bx1);
+  cy1 = maxValue(ay1, by1);
+  cx2 = minValue(ax2, bx2);
+  cy2 = minValue(ay2, by2);
 
   if (cx1 <= cx2 && cy1 <= cy2) {
     r3P->topLeft.x = cx1;
@@ -200,14 +198,14 @@ UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, Rectangl
 void RctGetUnion(const RectangleType *a, const RectangleType *b, RectangleType *r) {
   Coord x1a, y1a, x1b, y1b, x1, y1;
 
-  r->topLeft.x = min(a->topLeft.x, b->topLeft.x);
-  r->topLeft.y = min(a->topLeft.y, b->topLeft.y);
+  r->topLeft.x = minValue(a->topLeft.x, b->topLeft.x);
+  r->topLeft.y = minValue(a->topLeft.y, b->topLeft.y);
   x1a = a->topLeft.x + a->extent.x;
   y1a = a->topLeft.y + a->extent.y;
   x1b = b->topLeft.x + b->extent.x;
   y1b = b->topLeft.y + b->extent.y;
-  x1 = max(x1a, x1b);
-  y1 = max(y1a, y1b);
+  x1 = maxValue(x1a, x1b);
+  y1 = maxValue(y1a, y1b);
   r->extent.x = x1 - r->topLeft.x;
   r->extent.y = y1 - r->topLeft.y;
 }
