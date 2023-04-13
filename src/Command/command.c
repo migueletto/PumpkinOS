@@ -1561,8 +1561,9 @@ static void command_load_external_commands(command_internal_data_t *idata) {
   UInt16 cardNo;
   LocalID dbID;
   DmOpenRef dbRef;
+  MemHandle h;
   Boolean newSearch, firstLoad;
-  char name[dmDBNameLength];
+  char name[dmDBNameLength], *s, *commandName;
   int (*commandMain)(int argc, char *argv[]);
   void *lib;
 
@@ -1575,7 +1576,17 @@ static void command_load_external_commands(command_internal_data_t *idata) {
           debug(DEBUG_INFO, "Command", "external command '%s' loaded (first %d)", name, firstLoad ? 1 : 0);
           commandMain = sys_lib_defsymbol(lib, "CommandMain", 1);
           if (commandMain) {
-            pumpkin_script_global_function_data(idata->pe, name, command_function_cmain, commandMain);
+            commandName = name;
+            if ((h = DmGet1Resource(commandNameType, 1000)) != NULL) {
+              if ((s = MemHandleLock(h)) != NULL) {
+                commandName = s;
+              }
+            }
+            pumpkin_script_global_function_data(idata->pe, commandName, command_function_cmain, commandMain);
+            if (h) {
+              MemHandleUnlock(h);
+              DmReleaseResource(h);
+            }
           } else {
             debug(DEBUG_ERROR, "Command", "CommandMain not found in dlib");
           }
