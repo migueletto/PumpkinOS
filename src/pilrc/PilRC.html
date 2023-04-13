@@ -1,0 +1,3104 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+<title>PilRC</title>
+<style type="text/css">
+BODY { font-family: arial, helvetica, sans-serif }
+PRE.syntax { margin-left: 3em }
+.syntax VAR { font-style: normal; color: #00ff00 }
+.syntax STRONG { font-weight: normal; color: #0000ff }
+.usage TT { white-space: nowrap }
+.palmInternal { display: none }
+</style>
+</head>
+<body vlink="#7f3fff" text="#ffffff" link="#7f3fff" bgcolor="#00000">
+
+<center>
+<tt>
+  <a href="http://manual.freeshell.org/html/pilrc/index.html">About</a>
+- <a href="http://manual.freeshell.org/html/pilrc/download.html">Download</a>
+- <a href="http://manual.freeshell.org/html/pilrc/history.html">History</a>
+- <a href="http://manual.freeshell.org/html/pilrc/archive.html">Archive</a>
+- <font color="#ffff00">  Manual </font>
+- <a href="http://manual.freeshell.org/html/pilrc/contrib.html">Contributors</a>
+</tt>
+</center> <p>
+
+<table width="100%" cellspacing="0" cellpadding="0" border="0">
+<tbody><tr valign="top">
+<td><h2>
+PilRC <!--version-->v3.2
+<span class="palmInternal">(Palm internal version)</span><br>
+User Manual
+</h2></td>
+<td align="right">
+  <a href="mailto:aaron@ardiri.com">Aaron Ardiri</a> (aaron@ardiri.com)<br>
+  <a href="mailto:combee@techwood.org">Ben Combee</a> (combee@techwood.org)<br>
+  <a href="mailto:jmarshall@users.sourceforge.net">John Marshall</a> (jmarshall@users.sf.net)<br>
+  <!--date-->17 July 2004
+</td>
+</tr>
+</tbody></table>
+
+Check the
+<a href="http://www.ardiri.com/index.php?redir=palm&amp;cat=pilrc">PilRC
+home page</a> for the latest version.
+
+</p><p>
+<b><u>Description</u></b>
+</p><ul>
+  <table border="0">
+  <tbody><tr><td>
+  PilRC -- A resource compiler for the Palm Computing Platform
+  </td></tr>
+  </tbody></table>
+</ul>
+
+<p>
+<b><u>Table of Contents</u></b>
+</p><ul>
+  <table border="0">
+  <tbody><tr><td><a href="#usage">Usage</a></td></tr>
+  <tr><td><a href="#understanding">Understanding the Manual</a></td></tr>
+  <tr><td><a href="#language">Resource Language Reference</a></td></tr>
+  <tr><td><a href="#international">International Support</a></td></tr>
+  <tr><td><a href="#knownbugs">Known Bugs</a></td></tr>
+  <tr><td><a href="#reading">Further Reading</a></td></tr>
+  </tbody></table>
+</ul>
+
+<p>
+<a name="usage"></a>
+<b><u>Usage</u></b>
+</p><ul>
+<table cellspacing="0" cellpadding="0" border="0">
+<tbody><tr>
+<td valign="top"><tt>pilrc</tt></td>
+<td></td><td><tt class="usage">
+<tt>[-L LANGUAGE]</tt> <tt>[-I INCLUDE PATH]</tt> <tt>[-D MACRO(=VAL)]</tt>
+<tt>[-R RESFILE]</tt> <tt>[-H INCLUDE PATH]</tt> <tt>[-ro]</tt> <tt>[-ts]</tt>
+<tt>[-q]</tt> <tt>[-V]</tt> <tt>[-Loc CODE]</tt> <tt>[-StripLoc]</tt>
+<tt>[-Fh]</tt> <tt>[-Fj]</tt> <tt>[-F5]</tt> <tt>[-Fg]</tt> <tt>[-Fkm]</tt>
+<tt>[-Fkt]</tt> <tt>[-Fc]</tt> 
+<tt>[-allowEditID]</tt> <tt>[-allowBadSize]</tt> <tt>[-allowLargeRes]</tt> 
+<tt>[-LE32]</tt> <tt>[-noIFIH]</tt>
+<span class="palmInternal"><tt>[-AppIcon68K]</tt> <tt>[-amdc NAME]</tt></span>
+<tt>[-noEllipsis]</tt> <tt>[-o OUTPUTPATH]</tt> <tt>[-M]</tt> <tt>[-MD]</tt>
+<tt>file.rcp</tt> <tt>[output path]</tt>
+</tt></td>
+</tr>
+<tr><td></td><td>&nbsp;</td><td></td></tr>
+<tr>
+<td valign="top"><tt>pilrcui</tt></td>
+<td></td><td><tt class="usage">
+<tt>[-L LANGUAGE]</tt> <tt>file.rcp</tt>
+</tt></td>
+</tr>
+</tbody></table>
+<p>
+
+<a name="switch_L"></a><a name="switch_H"></a><table border="0">
+<tbody><tr>
+  
+  <td width="150" valign="top">
+  -L LANGUAGE
+  </td>
+  <td valign="top">
+  Generate resource files translated to the target language LANGUAGE -- see
+  the <a href="#international">International Support</a> section for details.
+  This option may be given more than once if so desired.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -I INCLUDE PATH
+  </td>
+  <td valign="top">
+  Search INCLUDE PATH when looking for include or bitmap files. <br>
+  <b>NOTE</b>: multiple paths be repeating the -I option.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -D MACRO[=VAL]
+  </td>
+  <td valign="top">
+  Define a pre-processor symbol with an optional value. <br>
+  The macros defined with the -D option can be referenced in #ifdef
+  statements in the resource file for conditional compilation. <br>
+  <b>NOTE</b>: if no value is specified, the symbol will given the value of 1.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -R RESFILE
+  </td>
+  <td valign="top">
+  Output a <tt>.res</tt> file specifying all the resources emitted by 
+  <tt>PilRC</tt>.
+  </td>
+</tr>
+<tr>
+  
+  <td valign="top">
+  -H INCFILE
+  </td>
+  <td valign="top">
+  Output a <tt>.h</tt> file containing auto-generated resource item IDs for
+  resource items that were defined without an ID previously. <br>
+  <b>NOTE</b>: If -H is not specified then undefined IDs are considered 
+  errors.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -ro
+  </td>
+  <td valign="top">
+  Output a single .ro file in PRC format containing all the generated
+  resources, instead of a collection of .bin files.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -ts
+  </td>
+  <td valign="top">
+  Put POSIX timestamp on .ro file generated.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -q
+  </td>
+  <td valign="top">
+  Less noisy output, for you minimalists.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -V
+  </td>
+  <td valign="top">
+  Generate M$ (VS-style) warning/error output (default is GNU-style).
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fh
+  </td>
+  <td valign="top">
+  Use Hebrew font widths for AUTO width calculations.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fj
+  </td>
+  <td valign="top">
+  Use Japanese font widths for AUTO width calculations.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -F5
+  </td>
+  <td valign="top">
+  Use Chinese (Big5) font widths for AUTO width calculations.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fg
+  </td>
+  <td valign="top">
+  Use Chinese (GB) font widths for AUTO width calculations.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fkm
+  </td>
+  <td valign="top">
+  Use Korean font widths for AUTO width calculations (Hanme font)
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fkt
+  </td>
+  <td valign="top">
+  Use Korean font widths for AUTO width calculations (Hantip font)
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Fc
+  </td>
+  <td valign="top">
+  Use Cyrillic font widths for AUTO width calculations.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -allowEditID
+  </td>
+  <td valign="top">
+  Allow the use of "edit menu" ID values (10000-10007 inclusive) which are usually reserved to Palm.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -allowBadSize
+  </td>
+  <td valign="top">
+  Turn off warnings about bitmaps used for icons not matching the suggested sizes from the Palm OS UI guidelines.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -allowLargeRes
+  </td>
+  <td valign="top">
+  Turn off warnings about resources being emitted that exceed the safe size
+  allowed for HotSync and Exchange Manager on most Palm OS devices.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -noEllipsis
+  </td>
+  <td valign="top">
+  Disable special handling of "..." and ellipsis character.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -palmRez
+  </td>
+  <td valign="top">
+  Uses the same default values than palmRez uses.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -noIFIH
+  </td>
+  <td valign="top">
+  Ignore includes files in header files.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -LE32
+  </td>
+  <td valign="top">
+  Generate Little Endian 32 bits compatible resources (ARM, NT)
+  </td>
+</tr>
+<tr class="palmInternal">
+  <td valign="top">
+  -AppIcon68K
+  </td>
+  <td valign="top">
+  Force AppIcon resources generation in 68K format.
+  </td>
+</tr>
+<tr class="palmInternal">
+  <td valign="top">
+  -amdc NAME
+  </td>
+  <td valign="top">
+  Generate resource 'amdc' id=1 with NAME.dll as content.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  file.rcp
+  </td>
+  <td valign="top">
+  Input file describing the resources to be emitted. 
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -Loc CODE
+  </td>
+  <td valign="top">
+  Compile only the resources with the attribute LOCALE "code" set.<br>
+  Supported LOCALEs: deDE, esES, enUS, frFR, itIT, jpJP.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -StripLoc
+  </td>
+  <td valign="top">
+  Don't compile "non localized resources".<br>
+  <b>NOTE</b>:
+  <ul>
+  <li>"-Loc frFR -StripLoc" only includes the resources whose attribute "LOCALE" is set to "frFR".<br>
+  </li><li>"-Loc frFR" only includes the resources whose attribute "LOCALE" is set to "frFR" and those without the attribute at all.<br>
+  </li><li>When not specifying any of these options (-Loc -StripLoc) pilrc only includes the resources without any "LOCALE" attribute.<br>
+  </li><li>Your rcp file should have all the localized resources tagged 
+with the LOCALE and all non localized resources not having a "LOCALE" 
+attribute.<br>
+  There are 2 different ways to distribute localized applications.
+  <ul>
+  <li> Complete (standalone) French version: You need to use "-Loc frFR"
+ when compiling. The generated prc will contain all non localized and 
+all French localized resources.
+  </li><li> "Overlaid" version of your application: You would compile 
+the "base" prc with no option at all. This base prc will contain only 
+the non localized resources. 
+  You need to name it "XXX.prc". Then you would compile the "overlays", 
+one for each language with "-Loc frFR -StripLoc". In this example, this 
+would create a second PRC containing French resources only. 
+  This is different from the standalone version which includes French 
+resources AND non localized resources. You have to name this prc 
+"XXX_frFR.prc". 
+  However, this is not sufficient. You need an external tool to create 
+the 'ovly' resources in both the base prc and the overlays. 
+  It is planned to have such a small tool available soon.
+  </li></ul>
+  This is a different approach than the one provided by the <a href="#switch_L">-L</a> flag.
+  </li></ul>
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -type type
+  </td>
+  <td valign="top">
+  Specify the type to use when generating a prc directly (-ro). The type
+ parameter MUST NOT be single quoted. Use abcd, not 'abcd'.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -creator crea
+  </td>
+  <td valign="top">
+  Specify the creator to use when generating a prc directly (-ro). The 
+creator parameter MUST NOT be single quoted. Use abcd, not 'abcd'.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -name Name
+  </td>
+  <td valign="top">
+  Specify the database name to use when generating a prc directly (-ro).
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -o OUTPUTPATH
+  </td>
+  <td valign="top">
+  Alternative way of specifying an output path (below).
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -M
+  </td>
+  <td valign="top">
+  Generate dependency list only; suppress all other output.  The list will be 
+  named the same as the input file, but with a .d extension appended.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  -MD
+  </td>
+  <td valign="top">
+  Generate dependency list.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  output path
+  </td>
+  <td valign="top">
+  Directory where .bin files should be generated, or name of the file
+  to generate containing all the generated resources.
+  </td>
+</tr>
+</tbody></table>
+</p><p>
+The resources generated are output as a collection of .bin files or as
+resources within a PRC file, depending on whether <code>-ro</code> is given:
+  </p><ul>
+  <li>
+  Without <code>-ro</code>, each resource is written as a separate file in
+  the output path directory.  Each output filename is constructed by appending
+  the hexcode resource ID and ".bin" to the four character resource type.
+  </li><li>
+  With <code>-ro</code>, the resources are written to a single file, with the
+  name given by the <code>output path</code>.  The extension ".ro" is added
+  if the name has no extension.  If no <code>output path</code> has been
+  given, a filename is constructed from the input filename by replacing ".rcp"
+  with ".ro" (or appending ".ro" if the input filename does not end in ".rcp").
+  It is possible to specify the type and creator directly using -type and -creator.
+  </li></ul>
+<p></p>
+</ul>
+
+<b><u>Example:</u></b>
+<ul>
+<pre>pilrc myprogram.rcp
+pilrc -I c:\resources -L FRENCH myprogram.rcp
+pilrc -I c:\resources -L BIG5 -F5 -R myprogram.res myprogram.rcp c:\output
+pilrc -ro -o myresoures.ro myprogram.rcp
+pilrc -ro myprogram.rcp</pre>
+</ul>
+
+<a name="understanding"></a>
+<b><u>Understanding the Manual</u></b> <p>
+
+<b>Syntax</b>
+</p><ul>
+Items in all CAPS appear as literals in the file. <br>
+Items enclosed in "&lt;" and "&gt;" are required fields. <br>
+Items enclosed in "[" and "]" are optional fields. <p>
+
+Each field's required type is indicated by a suffix after the field name 
+(see below for types).
+</p></ul>
+
+<b>Types</b>
+<ul>
+  <table border="0">
+  <tbody><tr>
+    <td width="50" valign="top">
+    <tt>.i</tt>
+    </td>
+    <td valign="top">
+    identifier <br>
+    example: <tt>kFoo</tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>.c</tt>
+    </td>
+    <td valign="top">
+    character <br>
+    (may contain normal C style character escapes) <br>
+    example: <tt>"O"</tt> 
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>.s</tt>
+    </td>
+    <td valign="top">
+    string <br>
+    (may contain normal C style character escapes) <br>
+    example: <tt>"Click Me"</tt> 
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>.ss</tt>
+    </td>
+    <td valign="top">
+    multi line string <br>
+    <tt>PilRC</tt> will concatenate strings on separate lines <br>
+    example: <tt>"Now is the time for all good " \</tt> <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <tt>"men to come and aid of their country"</tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>.n</tt>
+    </td>
+    <td valign="top">
+    number <br>
+    defined constant or simple arithmetic expression. Valid operators are
+    "+", "-", "*" and "/". Precedence is left to right, unless changed with
+    the use of parenthesis. <br>
+    <b>NOTE</b>: Math calculations are integer based. <br>
+    example: <tt>23</tt> <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <tt>12+3+1</tt> <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <tt>12*(2+3)</tt> <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <tt>'PALM'</tt> <br>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>.p</tt>
+    </td>
+    <td valign="top">
+    position co-ordinate <br>
+    may be a number, expression or one of the following keywords. <br>
+    <ul>
+      <table border="0">
+      <tbody><tr>
+    <td width="150" valign="top">
+	<tt>AUTO</tt>
+	</td>
+	<td valign="top">
+        Automatic width or height. <br>
+        Value is computed based on the text in the item.
+        </td>
+      </tr>
+      <tr>
+    <td valign="top">
+	<tt>AUTO&gt; &lt;size.n&gt;</tt>
+	</td>
+	<td valign="top">
+        Constrained automatic width or height. <br>
+        Value is computed based on the text in the item,
+        but if less than the number specified, is replaced
+        by that number.  For example, if you wanted a button
+        that was at least 32 pixels wide, you could use this
+        knowing that it would expand if the text got bigger.
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>CENTER</tt>
+	</td>
+	<td valign="top">
+        Centers the item either horizontally or vertically. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>CENTER@&lt;coord.n&gt;</tt>
+	</td>
+	<td valign="top">
+        Centers the item at the co-ordinate following.
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>RIGHT@&lt;coord.n&gt;</tt>
+	</td>
+	<td valign="top">
+        Aligns the item at the right co-ordinate following.
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>BOTTOM@&lt;coord.n&gt;</tt>
+	</td>
+	<td valign="top">
+        Aligns the item at the bottom co-ordinate following.
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVLEFT</tt>
+	</td>
+	<td valign="top">
+        Previous items left co-ordinate. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVRIGHT</tt>
+	</td>
+	<td valign="top">
+        Previous items right co-ordinate. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVTOP</tt>
+	</td>
+	<td valign="top">
+        Previous items top co-ordinate. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVBOTTOM</tt>
+	</td>
+	<td valign="top">
+        Previous items bottom co-ordinate. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVWIDTH</tt>
+	</td>
+	<td valign="top">
+        Previous items width. 
+        </td>
+      </tr>
+      <tr>
+	<td valign="top">
+	<tt>PREVHEIGHT</tt>
+	</td>
+	<td valign="top">
+        Previous items height. 
+        </td>
+      </tr>
+      </tbody></table>
+    </ul>
+    example: <tt>PREVRIGHT+2</tt> <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <tt>CENTER@80/2</tt> <p>
+
+    <b>NOTE</b>: <tt>AUTO</tt> and <tt>CENTER</tt> are not valid in 
+    arithmetic expressions. 
+    </p></td>
+  </tr>
+  </tbody></table>
+</ul>
+
+<b>Comments</b><p>
+</p><ul>
+  Single line comments begin with "<tt>//</tt>". <br>
+  Block comments exist between the "<tt>/*</tt>" and "<tt>*/</tt>" tokens. <p>
+</p></ul>
+
+<b>Include Files</b><p>
+
+</p><ul>
+The <tt>.rcp</tt> file may contain <tt>#include</tt> directives. <br>
+This allows a programmer to have one header file for their project 
+containing pre-defined resource IDs. Source code can reference the 
+symbols as can <tt>PilRC</tt>. <p>
+
+<tt>PilRC</tt> understands four include file formats:</p><p> 
+
+</p><ul>
+  <table border="0">
+  <tbody><tr>
+    <td width="100" valign="top">
+    <tt>.h</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    #define <var>&lt;Symbol.i&gt;&lt;Value.n&gt;</var></tt>
+    </td>
+  </tr>
+  <tr>
+    <td width="100" valign="top">
+    <tt>.inc</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Symbol.i&gt;</var> equ <var>&lt;Value.n&gt;</var></tt>
+    </td>
+  </tr>
+  <tr>
+    <td width="100" valign="top">
+    <tt>.java, .jav</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    package &lt;PackageName&gt; </tt><p><tt class="syntax">
+    public class &lt;ClassName&gt; { <br>
+      &nbsp;&nbsp;&nbsp;&nbsp;
+      public static final short <var>&lt;Symbol.i&gt;</var> = <var>&lt;Value.n&gt;</var>; <br>
+    } </tt>
+    </p></td>
+  </tr>
+  <tr>
+    <td width="100" valign="top">
+    <tt>.rcp</tt>, <tt>.r*</tt>
+    </td>
+    <td valign="top">
+    General PilRC source code
+    </td>
+  </tr>
+</tbody></table> <p>
+</p></ul>
+
+Files with any extension starting with <tt>.r</tt> will be included entirely
+as PilRC source code;
+files with the extension <tt>.java</tt> or <tt>.jav</tt> will be scanned for
+constants defined in Java syntax;
+and files with any other extension will be scanned for constants defined
+with either <tt>#define</tt> or <tt>equ</tt>.
+(All these filename extension comparisons are case-insensitive.)
+
+<p>
+Once defined, a symbol can be used in place of any number.
+</p></ul>
+<b>Preprocessor Macros and Conditionals</b>
+<ul>
+PilRC includes a rudimentary C-style preprocessor that can handle object-like
+macros and simple conditionals.  The following are accepted:
+<p></p><ul><table>
+ <tbody><tr><td><tt class="syntax">#define <var>&lt;Symbol.i&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#define <var>&lt;Symbol.i&gt;</var> <var>&lt;Value.n&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#define <var>&lt;Symbol.i&gt;</var> <var>&lt;StringValue.ss&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#undef&nbsp; <var>&lt;Symbol.i&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#ifdef&nbsp; <var>&lt;Symbol.i&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#ifndef <var>&lt;Symbol.i&gt;</var></tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#else</tt></td></tr><tr>
+ </tr><tr><td><tt class="syntax">#endif</tt></td></tr><tr>
+</tr></tbody></table></ul>
+<p>
+<b>NOTE</b>: neither function-like macros with parameters nor <tt>#if</tt>
+expressions are understood.
+</p></ul>
+
+<a name="language"></a>
+<b><u>Resource Language Reference</u></b>
+
+<ul>
+The <tt>.rcp</tt> file may contain the following object definitions: <p>
+
+</p><ul>
+  <table border="0">
+  <tbody><tr>
+    <td width="300" valign="top">
+    <a href="#lang_form">FORM</a>
+    </td>
+    <td valign="center">
+    Form Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_menu">MENU</a>
+    </td>
+    <td valign="center">
+    Form Menu Bar
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_alert">ALERT</a>
+    </td>
+    <td valign="center">
+    Alert Dialog Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_version">VERSION</a>
+    </td>
+    <td valign="center">
+    Version String
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_string">STRING</a>
+    </td>
+    <td valign="center">
+    String Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_stringtable">STRINGTABLE</a>
+    </td>
+    <td valign="center">
+    String List Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_categories">CATEGORIES</a>
+    </td>
+    <td valign="center">
+    Default Category Names 
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_appiconname">APPLICATIONICONNAME</a>
+    </td>
+    <td valign="center">
+    Application Icon Name
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_appid">APPLICATION</a>
+    </td>
+    <td valign="center">
+    Application Creator Identification
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_launchcat">LAUNCHERCATEGORY</a>
+    </td>
+    <td valign="center">
+    Default launcher Category Name
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_bitmap">BITMAP, ICON, SMALLICON, etc</a>
+    </td>
+    <td valign="center">
+    Bitmap or Icon Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_trap">TRAP</a>
+    </td>
+    <td valign="center">
+    HackMaster Trap Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_font">FONT</a>
+    </td>
+    <td valign="center">
+    User Defined Font Resource
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_fontfamily">FONTFAMILY</a>
+    </td>
+    <td valign="center">
+    User Defined Font Family Resource
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_fontindex">FONTINDEX</a>
+    </td>
+    <td valign="center">
+    Font Index table for Font Resource
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_fontmap">FONTMAP</a>
+    </td>
+    <td valign="center">
+    Font Map extension for Font Resource (i.e. japan)
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_hex">HEX</a>
+    </td>
+    <td valign="center">
+    Binary Resource (Hex/String based)
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_data">DATA</a>
+    </td>
+    <td valign="center">
+    Binary Resource (Data File based)
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_integer">INTEGER</a>
+    </td>
+    <td valign="center">
+    2-byte Integer Value
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_bytelist">BYTELIST</a>
+    </td>
+    <td valign="center">
+    1-byte Integer Value List
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_wordlist">WORDLIST</a>
+    </td>
+    <td valign="center">
+    2-byte Integer Value List
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_longwordlist">LONGWORDLIST</a>
+    </td>
+    <td valign="center">
+    4-byte Integer Value List
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_navigation">NAVIGATION</a>
+    </td>
+    <td valign="center">
+    Form Navigation Order Specification
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_palettetable">PALETTETABLE</a>
+    </td>
+    <td valign="center">
+    Color List Resource
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_feature">FEATURE</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_graffitiinputarea">GRAFFITIINPUTAREA</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_countrylocalisation">COUNTRYLOCALISATION</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_locales">LOCALES</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_keyboard">KEYBOARD</a>
+    </td>
+    <td valign="center">
+    System reserved 
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_midi">MIDI</a>
+    </td>
+    <td valign="center">
+    Copy .aif or .mid to a Palm midi Resource
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_Hardsoftbutton">HARDSOFTBUTTONDEFAULT</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_SysAppPrefs">SYSAPPLICATIONPREFERENCES</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_SearchTable">SEARCHTABLE</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_TextTable">TEXTTABLE</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_TableList">TABLELIST</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  <tr class="palmInternal">
+    <td valign="top">
+    <a href="#lang_CharSetList">CHARSETLIST</a>
+    </td>
+    <td valign="center">
+    System reserved
+    </td>
+  </tr>
+  </tbody></table>
+</ul>
+</ul>
+
+
+<ul>
+The <tt>.rcp</tt> file may also contain the following directives: <p>
+
+</p><ul>
+  <table border="0">
+  <tbody><tr>
+    <td valign="top">
+    <a href="#lang_translation">TRANSLATION</a>
+    </td>
+    <td valign="center">
+    Language Translation Strings
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_generateheader">GENERATEHEADER</a>
+    </td>
+    <td valign="center">
+    Generate a header file from IDs defined in the file
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <a href="#lang_resetautoid">RESETAUTOID</a>
+    </td>
+    <td valign="center">
+    Reset AutoID sequence number
+    </td>
+  </tr>
+  </tbody></table>
+</ul>
+</ul>
+
+
+<a name="lang_form"></a>
+<b>FORM (tFRM)</b> <p>
+
+</p><pre class="syntax">FORM ID <var>&lt;FormResourceId.n&gt;</var> AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>)
+  [<strong>FRAME</strong>] [NOFRAME]
+  [MODAL]
+  [<strong>SAVEBEHIND</strong>] [NOSAVEBEHIND]
+  [<strong>USABLE</strong>]
+  [HELPID <var>&lt;HelpId.n&gt;</var>]
+  [DEFAULTBTNID <var>&lt;BtnId.n&gt;</var>]
+  [MENUID <var>&lt;MenuId.n&gt;</var>]
+  [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+  <var>&lt;OBJECTS&gt;</var>
+END </pre>
+
+Where <tt class="syntax"><var>&lt;OBJECTS&gt;</var></tt> is one or more of:
+
+<p>
+</p><ul>
+<table>
+  <tbody><tr>
+    <td width="180" valign="top">
+    <tt>TITLE</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Title.ss&gt;</var>
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>BUTTON</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var> 
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR] 
+    [RIGHTANCHOR] <br>
+    [<strong>FRAME</strong>] [NOFRAME] [BOLDFRAME] [RECTFRAME] 
+    [FONT <var>&lt;FontId.n&gt;</var>] <br> 
+    [GRAPHICAL]
+    [BITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    [SELECTEDBITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>PUSHBUTTON</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var> 
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>)<br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR] 
+    [RIGHTANCHOR] <br>
+    [FONT <var>&lt;FontId&gt;</var>] 
+    [GROUP <var>&lt;GroupId.n&gt;</var>] <br>
+    [GRAPHICAL]
+    [BITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    [SELECTEDBITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>CHECKBOX</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR]
+    [RIGHTANCHOR] <br>
+    [FONT <var>&lt;FontId.n&gt;</var>] 
+    [GROUP <var>&lt;GroupId.n&gt;</var>] [CHECKED]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>POPUPTRIGGER</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR]
+    [RIGHTANCHOR] <br>
+    [FONT <var>&lt;FontId.n&gt;</var>] <br>
+    [GRAPHICAL]
+    [BITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    [SELECTEDBITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>SELECTORTRIGGER</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR]
+    [RIGHTANCHOR] <br>
+    [FONT <var>&lt;FontId.n&gt;</var>] <br>
+    [GRAPHICAL]
+    [BITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    [SELECTEDBITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>REPEATBUTTON</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [LEFTANCHOR]
+    [RIGHTANCHOR] <br>
+    [<strong>FRAME</strong>] [NOFRAME] [BOLDFRAME] [RECTFRAME]
+    [FONT <var>&lt;FontId.n&gt;</var>] <br>
+    [GRAPHICAL]
+    [BITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    [SELECTEDBITMAPID <var>&lt;BitmapId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>LABEL</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Label.ss&gt;</var>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] 
+    [FONT <var>&lt;FontId.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>FIELD</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] 
+    [<strong>LEFTALIGN</strong>] [RIGHTALIGN] <br>
+    [FONT <var>&lt;FontId.n&gt;</var>]
+    [<strong>EDITABLE</strong>] [NONEDITABLE] [UNDERLINED]  <br>
+    [<strong>SINGLELINE</strong>] [MULTIPLELINES] [DYNAMICSIZE] 
+    [MAXCHARS <var>&lt;MaxChars.n&gt;</var>] <br>
+    [AUTOSHIFT] [NUMERIC] [HASSCROLLBAR] 
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>POPUPLIST</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID 
+    <var>&lt;ControlId.n&gt; &lt;ListId.n&gt;</var>
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>LIST</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    <var>&lt;Item.s&gt;</var> ...
+    <var>&lt;Item.s&gt;</var> <br>
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] 
+    [VISIBLEITEMS <var>&lt;NumVisItems.n&gt;</var>] <br>
+    [FONT <var>&lt;FontId.n&gt;</var>] [SEARCH]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>FORMBITMAP</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt;</var>) <br>
+    [BITMAP <var>&lt;BitmapId.n&gt;</var>] 
+    [<strong>USABLE</strong>] [NONUSABLE]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>GADGET</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE]
+    [<strong>NONEXTENDED</strong>] [EXTENDED]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>TABLE</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [ROWS <var>&lt;NumRows.n&gt;</var>] 
+    [COLUMNS <var>&lt;NumCols.n&gt;</var>] <br>
+    [COLUMNWIDTHS <var>&lt;Col1Width.n&gt;</var> ...
+                  <var>&lt;ColNWidth.n&gt;</var>] 
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>SCROLLBAR</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE]
+    [VALUE <var>&lt;Value.n&gt;</var>] 
+    [MIN <var>&lt;MinValue.n&gt;</var>]  <br>
+    [MAX <var>&lt;MaxValue.n&gt;</var>] 
+    [PAGESIZE <var>&lt;PageSize.n&gt;</var>] 
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>GRAFFITISTATEINDICATOR</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt;</var>)
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>NOGRAFFITISTATEINDICATOR</tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>SLIDER</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    ID <var>&lt;Id.n&gt;</var> 
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [<strong>USABLE</strong>] [NONUSABLE] [DISABLED] [VERTICAL] [FEEDBACK] <br>
+    [THUMBID <var>&lt;BitmapId.n&gt;</var>] 
+    [BACKGROUNDID <var>&lt;BitmapId.n&gt;</var>]  <br>
+    [VALUE <var>&lt;Value.n&gt;</var>] 
+    [MIN <var>&lt;MinValue.n&gt;</var>]  
+    [MAX <var>&lt;MaxValue.n&gt;</var>] 
+    [PAGESIZE <var>&lt;PageSize.n&gt;</var>] 
+    </tt>
+    </td>
+  </tr>
+</tbody></table>
+</ul>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>
+<tt class="syntax">ID <var>&lt;Id.n&gt;</var></tt> can be replaced with
+<tt>AUTOID</tt>. <tt>PilRC</tt> will assign an identifier for each control 
+which specifies <tt>AUTOID</tt>. This is useful for controls which you won't 
+refer to within the application (ie: LABEL's). Auto ID numbers normally
+start at 9999 and count down, but that can be changed using the 
+<tt>RESETAUTOID</tt> command.
+</li><li>
+The bitmap referenced by the <tt>FORMBITMAP</tt> tag must appear as a 
+separate resource in the rcp file via the 
+<tt><a href="#lang_bitmap">BITMAP</a></tt> tag. 
+</li><li>
+<tt>MAXCHARS</tt> is required for <tt>FIELD</tt> tag to work properly.
+</li><li>
+<p>Any user defined fonts defined by <tt>FONT</tt> &gt;= 128 and <tt>FONT</tt>
+&lt;= 255 must be before above the FORM definition using the 
+<tt><a href="#lang_font">FONT</a></tt> tag.
+</p></li><li>
+Any translations defined in the must be declared before the FORM definition 
+using the 
+<tt><a href="#lang_translation">TRANSLATION</a></tt> tag.
+</li><li>
+<tt>SEARCH</tt> is option for <tt>LIST</tt> and works only with <tt>POPUPTRIGGER</tt>.
+</li><li>
+<tt>NOGRAFFITISTATEINDICATOR</tt> is used to tell PilRC that your form 
+intentionally has no Graffiti State Inficator, so it should not emit a
+warning it.
+</li></ul>
+
+<u>Example:</u><p>
+</p><pre>FORM ID 1 AT (2 2 156 156)
+  USABLE MODAL 
+  HELPID 1 
+  MENUID 1
+  LOCALE "enUS"
+BEGIN
+  TITLE "AlarmHack"
+  LABEL "Repeat Datebook alarm sound" AUTOID AT (CENTER 16)
+  PUSHBUTTON "1" ID 2001 AT (20 PrevBottom+2 12) AUTO GROUP 1
+  PUSHBUTTON "2" ID 2002 AT (PrevRight+1 PrevTop PrevWidth PrevHeight) GROUP 1
+  PUSHBUTTON "3" ID 2003 AT (PrevRight+1 PrevTop PrevWidth PrevHeight) GROUP 1
+
+  LABEL "times. Ring again every" AUTOID AT (CENTER PrevBottom+2) FONT 0
+
+  PUSHBUTTON "never" ID 3000 AT (13 PrevBottom+2 32 12) GROUP 2
+  PUSHBUTTON "10 sec" ID 3001 AT (PrevRight+1 PrevTop PrevWidth PrevHeight) GROUP 2
+  PUSHBUTTON "30 sec" ID 3002 AT (PrevRight+1 PrevTop PrevWidth PrevHeight) GROUP 2
+  PUSHBUTTON "1 min" ID 3003 AT (PrevRight+1 PrevTop PrevWidth PrevHeight) GROUP 2
+
+  LABEL "Alarm sound:" AUTOID AT (24 PrevBottom+4)
+  POPUPTRIGGER "" ID 5000 AT (PrevRight+4 PrevTop 62 AUTO) LEFTANCHOR
+  LIST "Standard" "Bleep" ID 6000 AT (PrevLeft PrevTop 52 1) VISIBLEITEMS 2 NONUSABLE
+  POPUPLIST ID 5000 6000
+
+  BUTTON "Test" ID 1202 AT (CENTER 138 AUTO AUTO)
+  GRAFFITISTATEINDICATOR AT (100 100)
+END</pre>
+
+
+<a name="lang_menu"></a>
+<b>MENU (MBAR)</b> <p>
+
+</p><pre class="syntax">MENU ID <var>&lt;MenuResourceId.n&gt;</var>
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+  <var>&lt;PULLDOWNS&gt;</var>
+END</pre>
+
+Where <tt class="syntax"><var>&lt;PULLDOWNS&gt;</var></tt> is one or more of:
+
+<p>
+</p><pre class="syntax">PULLDOWN <var>&lt;PullDownTitle.s&gt;</var>
+BEGIN
+  <var>&lt;MENUITEMS&gt;</var>
+END</pre>
+
+Where <tt class="syntax"><var>&lt;MENUITEMS&gt;</var></tt> is one or more of:
+
+<p>
+</p><pre class="syntax">MENUITEM <var>&lt;MenuItem.s&gt;</var> ID <var>&lt;MenuItemId.n&gt;</var> [AccelChar.c]
+MENUITEM SEPARATOR [ID <var>&lt;MenuItemId.n&gt;</var>]</pre>
+
+<u>Example:</u>
+
+<ul>
+<pre>MENU ID 100
+LOCALE "enUS"
+BEGIN
+  PULLDOWN "File"
+  BEGIN
+    MENUITEM "Open..." ID 100 "O"
+    MENUITEM SEPARATOR
+    MENUITEM "Close..." ID 101 "C"
+  END
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "Get Info..." ID 200 "I"
+  END
+END</pre>
+</ul>
+
+<a name="lang_alert"></a>
+<b>ALERT (Talt)</b><p>
+
+</p><pre class="syntax">ALERT ID <var>&lt;AlertResrouceId.n&gt;</var>
+  [HELPID <var>&lt;HelpId.n&gt;</var>]
+  [DEFAULTBUTTON <var>&lt;ButtonIdx.n&gt;</var>]
+  [INFORMATION] [CONFIRMATION] [WARNING] [ERROR]
+  [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+  TITLE <var>&lt;Title.s&gt;</var>
+  MESSAGE <var>&lt;Message.ss&gt;</var>
+  BUTTONS <var>&lt;Button.s&gt;</var> ... <var>&lt;Button.s&gt;</var>
+END</pre>
+
+<u>Notes:</u> <p>
+</p><ul>
+<li>
+The <tt>DEFAULTBUTTON</tt> tag can be used to specify the button number 
+to select if the user switches to another application without pressing any 
+button in the alert. The argument is the index of the button, where
+the left-most button is at index '0'. <p>
+</p></li></ul> 
+
+<u>Example:</u> <p>
+</p><pre>ALERT ID 1000
+  HELPID 100
+  DEFAULTBUTTON 1
+  CONFIRMATION
+  LOCALE "enUS"
+BEGIN
+  TITLE "AlarmHack"
+  MESSAGE "Continuing will cause you 7 years of bad luck\n" \
+          "Are you sure?"
+  BUTTONS "Ok" "Cancel"
+END</pre>
+
+<a name="lang_version"></a>
+<b>VERSION (tver)</b><p>
+
+</p><pre class="syntax">VERSION ID <var>&lt;VersionResourceId.n&gt; &lt;Version.s&gt;</var>
+VERSION <var>&lt;Version.s&gt;</var></pre>
+
+<u>Notes:</u>
+<ul>
+<li>
+The ID can be 1 or 1000 - either will be accepted by the default launcher.
+</li></ul>
+
+<u>Example:</u>
+<ul>
+<pre>VERSION ID 1 "1.0 beta"
+VERSION "1.0 beta"</pre>
+</ul>
+
+<a name="lang_string"></a>
+<b>STRING (tSTR)</b><p>
+
+</p><pre class="syntax">STRING ID <var>&lt;StringResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;String.ss&gt;</var>
+STRING ID <var>&lt;StringResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;FILE <var>&lt;StringFile.s&gt;</var></pre>
+
+<u>Notes:</u> <p>
+</p><ul>
+<li> 
+If string terminated by 3 '.' PilRC replace it by the char '...'.
+</li><li> 
+Character '\r' = 0x0D is replaced by '\n' = 0x0A.
+</li></ul>
+<u>Example:</u>
+<ul>
+<pre>STRING ID 100 "This is a very long string that shows escape characters \n" \
+              "as well as continued .ss syntax strings"
+STRING ID 101 FILE "string.txt"</pre>
+</ul>
+
+<a name="lang_stringtable"></a>
+<b>STRINGTABLE (tSTL)</b><p>
+
+</p><pre class="syntax">STRINGTABLE ID <var>&lt;StringTableResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;PrefixString.ss&gt; </var> ... <var>&lt;String.ss&gt;</var></pre>
+
+<u>Notes:</u>
+<ul>
+<li>
+Using the <tt>tSTL</tt> resource: <p>
+
+<b>.. in a LIST</b> <br>
+</p><ul>
+<pre>[source.rcp]
+STRINGTABLE stringTableMetric
+  "" "Litres" "Meters" "Celsius"    "Newtons"     "Kilograms"
+
+[source.c]
+MemHandle memHandle, memStringList;
+MemPtr    ptrTable;
+UInt16    count;
+
+memHandle = DmGetResource('tSTL', stringTableMetric);
+ptrTable  = (MemPtr)MemHandleLock(memHandle);
+
+// get the string count &lt;-- "messy"
+count     = 
+  (*((UInt8 *)(ptrTable + StrLen((Char *)ptrTable) + 1)) &lt;&lt; 8) |
+   *((UInt8 *)(ptrTable + StrLen((Char *)ptrTable) + 2));
+
+// get the handle to an array of strings
+memStringList = 
+  SysFormPointerArrayToStrings(ptrTable + StrLen((Char *)ptrTable) + 3, count);
+
+// <b>NOTE:</b> the "prefix" is ignored here
+...
+
+MemHandleUnlock(memHandle);
+DmReleaseResource(memHandle); </pre>
+
+</ul>
+<b>.. to get a single STRING</b> <br>
+<ul>
+
+<pre>[source.rcp]
+STRINGTABLE stringTableTypes
+  "Units are:" "Metric" "Imperial"
+
+[source.c]
+Char string[32];
+SysStringByIndex(stringTableTypes, 0, string, 32);</pre>
+</ul>
+</li></ul>
+<li>
+a limitation of 384 strings apply<p>
+
+
+<u>Example:</u>
+</p><ul>
+<pre>STRINGTABLE ID 100 "" "One" "Two" "Three" "Four" 
+STRINGTABLE ID 100 "-" "One" "Two" "Three" "Four"</pre>
+</ul>
+
+<a name="lang_categories"></a>
+<b>CATEGORIES (tAIS)</b><p>
+
+</p><pre class="syntax">CATEGORIES ID <var>&lt;CategoryResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;Category1.s&gt; ... &lt;Category2.s&gt;</var></pre>
+
+<u>Notes:</u>
+<ul>
+<li>The CATEGORIES tag can be used to specify the default category names 
+for the application. <br>
+This resource can then be passed to the "<b>CategoryInitialize()</b>" API 
+function function to create the category strings in the application info 
+block. <p> 
+</p></li></ul>
+
+<u>Example:</u>
+
+<ul>
+<pre>CATEGORIES ID 100 "Unfiled" "Business" "Personal"</pre>
+</ul>
+
+<a name="lang_appiconname"></a>
+<b>APPLICATIONICONNAME (tAIN)</b><p>
+
+</p><pre class="syntax">APPLICATIONICONNAME ID <var>&lt;AINResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;ApplicationName.s&gt;</var> </pre>
+
+<u>Example:</u>
+
+<ul>
+<pre>APPLICATIONICONNAME ID 100 "AlarmHack"</pre>
+</ul>
+
+<a name="lang_appid"></a>
+<b>APPLICATION (APPL)</b><p>
+
+</p><pre class="syntax">APPLICATION ID <var>&lt;ApplResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;APPL.s&gt;</var></pre>
+
+<u>Notes:</u>
+<ul>
+<li>
+<tt>&lt;APPL.s&gt;</tt> must be 4 characters long.
+</li><li>
+<tt>&lt;APPL.s&gt;</tt> represents the creator id for the application, 
+which can be registered at 
+<a href="http://www.palm.com/" target="_">http://www.palm.com/</a>
+</li></ul><p>
+
+<u>Example:</u>
+</p><ul>
+<pre>APPLICATION ID 1 "PALM"</pre>
+</ul>
+
+<a name="lang_launchcat"></a>
+<b>LAUNCHERCATEGORY (taic)</b><p>
+
+</p><pre class="syntax">LAUNCHERCATEGORY [ID <var>&lt;LaunchCatResourceId.n&gt;</var>]&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;<var>&lt;APPL.s&gt;</var></pre>
+
+<u>Example:</u>
+<ul>
+<pre>LAUNCHERCATEGORY "Games"
+LAUNCHERCATEGORY ID 1000 "Games"</pre>
+</ul>
+
+<a name="lang_bitmap"></a>
+<b>BITMAP, ICON, and SMALLICON (Tbmp, Sbmp, tAIB, Tbsb)</b><p>
+
+There are several different ways of specifying bitmaps and icons: PilRC's
+original simple syntax for individual bitmaps; two extensions of that syntax
+allowing several individual bitmaps of different bit depths to be collected
+into one resource (a <em>bitmap family</em>); and a newer more flexible
+syntax for specifying bitmap families.
+</p><p>
+Common to all of these syntaxes is a set of
+<tt class="syntax"><var>&lt;BitmapAttributes&gt;</var></tt> that may be used
+to specify various aspects of bitmap processing:
+</p><pre class="syntax">[<strong>NOCOMPRESS</strong>] [COMPRESS] [FORCECOMPRESS]
+[COMPRESSSCANLINE] [COMPRESSRLE] [COMPRESSPACKBITS] [COMPRESSBEST]
+[<strong>NOCOLORTABLE</strong>] [COLORTABLE] [BITMAPPALETTE <var>&lt;Filename.s&gt;</var>]
+[TRANSPARENT <var>&lt;R.n&gt; &lt;G.n&gt; &lt;B.n&gt;</var>] [TRANSPARENTINDEX <var>&lt;Index.n&gt;</var>]
+</pre>
+These control compression of the bitmap pixel data, whether a color table
+should be output, what palette to use if not the default Palm&nbsp;OS palette,
+and which color, if any, is really transparent.
+<tt>BITMAPPALETTE</tt> takes a file containing one color per line, each
+consisting of decimal red, green, and blue components (0..255) separated
+by whitespace.
+
+<p>
+The flexible bitmap family syntax is the only way to specify high-density
+bitmaps.  Individual bitmaps are added to the family as specified by their
+<tt>BPP</tt> and <tt>DENSITY</tt> values, and attributes can be specified
+for each individual bitmap separately:
+</p><pre class="syntax">BITMAP [<var>&lt;ResType.s&gt;</var>] ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;Locale.s&gt;</var>]
+  [<var>&lt;BitmapCompression&gt;</var>...]
+BEGIN
+  BITMAP <var>&lt;Filename.s&gt;</var> BPP <var>&lt;Depth.n&gt;</var> [<var>&lt;BitmapAttribute&gt;</var>...] [DENSITY <var>&lt;Density.n&gt;</var>]
+  ...
+END
+
+[SMALL]ICON [ID <var>&lt;ResId.n&gt;</var>] [LOCALE <var>&lt;Locale.s&gt;</var>]
+  [<var>&lt;BitmapCompression&gt;</var>...]
+BEGIN
+  BITMAP <var>&lt;Filename.s&gt;</var> BPP <var>&lt;Depth.n&gt;</var> [<var>&lt;BitmapAttribute&gt;</var>...] [DENSITY <var>&lt;Density.n&gt;</var>]
+  ...
+END
+</pre>
+<ul>
+<li>
+<tt>BPP</tt> must be one of 1, 2, 4, 5, 8, or 16 (5 means 4bpp/16 colors;
+compare to <tt>BITMAPFAMILYSPECIAL</tt> below).
+</li><li>
+<tt>DENSITY</tt> must be 1 or 72 (single density, which is the default),
+108 (one and a half), or 2 or 144 (double density).  (The values 1 and 2 are
+supported for legacy reasons.) Generally a bitmap family must contain at least
+one single-density member.
+</li><li>
+<tt>DENSITY</tt> may appear anywhere amongst the list of
+<tt class="syntax"><var>&lt;BitmapAttributes&gt;</var></tt>; it need not be last.
+</li><li>
+For compatibility with previous versions of PilRC, the keywords
+<tt>BITMAPFAMILYEX</tt>, <tt>ICONFAMILYEX</tt>, and <tt>SMALLICONFAMILYEX</tt>
+may also be used to introduce this style of bitmap or icon family definition;
+each is equivalent to the corresponding keyword without "<tt>FAMILYEX</tt>".
+</li><li>
+You may include <tt class="syntax"><var>&lt;BitmapCompression&gt;</var></tt>
+options in the prelude to provide a default for all the bitmaps in the family
+(which may be overridden by an individual bitmap's attributes); it may contain
+any <tt class="syntax"><var>&lt;BitmapAttribute&gt;</var></tt> related to
+compression, namely those in the first two lines of the list above.
+</li></ul>
+
+<p>
+The original syntax allows the creation of bitmap and icon resources
+containing exactly one member bitmap.  That member bitmap's depth depends on
+which of <tt>BITMAP</tt>/<tt>BITMAPGREY</tt>/etc is used, as described below.
+</p><pre class="syntax">BITMAP|BITMAPGREY|etc [<var>&lt;ResType.s&gt;</var>] ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;Locale.s&gt;</var>]
+  <var>&lt;Filename.s&gt;</var> [<var>&lt;BitmapAttribute&gt;</var>...]
+
+[SMALL]ICON [ID <var>&lt;ResId.n&gt;</var>] [LOCALE <var>&lt;Locale.s&gt;</var>]
+  <var>&lt;Filename.s&gt;</var> [<var>&lt;BitmapAttribute&gt;</var>...]
+</pre>
+<ul>
+<li><tt>BITMAP</tt> creates a black &amp; white bitmap resource.
+</li><li><tt>BITMAPGREY</tt> creates a 2bpp (4 level grayscale) bitmap resource.
+</li><li><tt>BITMAPGREY16</tt> creates a 4bpp (16 level grayscale) bitmap resource.
+</li><li><tt>BITMAPCOLOR16</tt> creates a 4bpp (16 color) bitmap resource.
+</li><li><tt>BITMAPCOLOR</tt> creates a 256 color bitmap resource.
+</li><li><tt>BITMAPCOLOR16K</tt> creates a 16bpp direct color bitmap resource.
+</li><li><tt>BITMAPCOLOR24K</tt> creates a 24bpp direct color bitmap resource.
+</li><li><tt>BITMAPCOLOR32K</tt> creates a 32bpp direct color bitmap resource.
+</li><li><tt>ICON</tt> and <tt>SMALLICON</tt> create black &amp; white icon
+resources.
+</li></ul>
+
+<p>
+An extension to this original syntax allows several bitmaps to be given:
+</p><pre class="syntax">BITMAP|BITMAPFAMILYSPECIAL [<var>&lt;ResType.s&gt;</var>] ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;Locale.s&gt;</var>]
+  <var>&lt;Filename.s&gt;</var>... [<var>&lt;BitmapAttribute&gt;</var>...]
+
+[SMALL]ICON [ID <var>&lt;ResId.n&gt;</var>] [LOCALE <var>&lt;Locale.s&gt;</var>]
+  <var>&lt;Filename.s&gt;</var>... [<var>&lt;BitmapAttribute&gt;</var>...]
+</pre>
+<ul>
+<li>
+You may specify up to seven filenames, which add black &amp; white,
+4 level grayscale, 16 level grayscale, 256 color, 16bpp direct color,
+24bpp direct color, and 32bpp direct color bitmaps respectively.
+(The exception is <tt>BITMAPFAMILYSPECIAL</tt>, in which the third filename
+adds a <b>16 color</b> bitmap instead.)
+</li><li>
+Bit-depths can be skipped by writing <tt>""</tt> (an empty string) for the
+filename.
+</li><li>
+For compatibility with previous versions of PilRC, the keywords
+<tt>BITMAPFAMILY</tt>, <tt>ICONFAMILY</tt>, and <tt>SMALLICONFAMILY</tt>
+may also be used to introduce this style of bitmap or icon family definition;
+each is equivalent to the corresponding keyword without "<tt>FAMILY</tt>".
+</li><li>
+<tt>BOOTSCREENFAMILY</tt> is another alternative here; it creates a
+'<tt>Tbsb</tt>' bootscreen family, which has extra size and checksum headers.
+It is system reserved.
+</li></ul>
+
+<p>
+For compatibility with Handspring's tools, PilRC also supports the following
+syntax:
+</p><pre class="syntax">BITMAP ID <var>&lt;ResId.n&gt;</var> [RSCTYPE <var>&lt;ResType.s&gt;</var>] [INCLUDECLUT] [LOCALE <var>&lt;Locale.s&gt;</var>]
+  [<var>&lt;Filename.s&gt;</var>] [DEPTH2 <var>&lt;Filename.s&gt;</var>] [DEPTH4 <var>&lt;Filename.s&gt;</var>]
+  [DEPTH8 <var>&lt;Filename.s&gt;</var>] [DEPTH16 <var>&lt;Filename.s&gt;</var>]
+  [<var>&lt;BitmapAttribute&gt;</var>... | NOCOMPRESS|COMPRESS|FORCECOMPRESS [<var>&lt;Depth.n&gt;</var>...]...]
+</pre>
+<ul>
+<li>
+In addition to the normal compression attributes (which, as usual, set whether
+compression is done for <b>all</b> member bitmaps), the three compression
+attributes listed above can also be specified together with a list of depths
+(1, 2, 4, 8, 16) to which they should be applied.  Multiple compression
+attributes with explicit depths can be present and will be evaluated from
+left to right.
+</li><li>
+<tt>INCLUDECLUT</tt> is equivalent to the <tt>COLORTABLE</tt> attribute.
+</li></ul>
+
+<p>
+<u>General notes applicable to all bitmap/icon definitions:</u>
+</p><ul>
+<li>
+The word "<tt>ID</tt>" may in fact be omitted from
+"<tt class="syntax">ID <var>&lt;ResId.n&gt;</var></tt>"
+in each case, but this is deprecated.
+</li><li>
+In all of these keywords <tt>GREY</tt> may also be spelt as <tt>GRAY</tt>,
+and <tt>COLOR</tt> may also be spelt as <tt>COLOUR</tt>.
+</li><li>
+Definitions starting with any of the <tt>BITMAP</tt> keywords must
+specify a <tt class="syntax"><var>&lt;ResId.n&gt;</var></tt>, but the
+<tt class="syntax"><var>&lt;ResType.s&gt;</var></tt> is optional and
+will default to '<tt>Tbmp</tt>'.
+</li><li>
+Definitions starting with any of the <tt>ICON</tt> or <tt>SMALLICON</tt>
+keywords are always given type '<tt>tAIB</tt>', and may include an optional
+<tt class="syntax"><var>&lt;ResId.n&gt;</var></tt>.  All <tt>ICON</tt>s have
+a default resource ID of 1000, while <tt>SMALLICON</tt>s default to 1001.
+</li><li>
+By default, the sizes of icons are checked: in single density, standard icons
+should be either 22x22, 32x22, or 32x32 and small icons should be 15x9.
+(And 33x48 et al or 22x13 in one and a half density; 64x44 et al or 30x18 in
+double density.)
+</li><li>
+Historically, compression has not been available for icons.
+</li><li>
+The inclusion of the bitmap color table is <b>not</b> recommended as it slows
+down system performance. PilRC implements a simple color table matching 
+algorithm to match the bitmap's color table to the system palette. 
+</li><li>
+<tt>TRANSPARENTINDEX</tt> is not compatible with direct color bit-depths
+(namely those greater than 8bpp).
+</li><li>
+Bitmaps with resource type '<tt>Sbmp</tt>' should only contain single density
+member bitmaps.
+</li><li>
+The 16 color bitmaps produced by <tt>BPP 5</tt>, <tt>BITMAPCOLOR16</tt>,
+and <tt>BITMAPFAMILYSPECIAL</tt> use by default the standard 16 color palette
+given in the code below (running at 4bpp means half as much memory to copy
+compared to 8bpp).  They can be used with the following code:
+<pre>RGBColorType palette[] =
+  {
+    {  0, 0xff, 0xff, 0xff },
+    {  1, 0x80, 0x80, 0x80 },
+    {  2, 0x80, 0x00, 0x00 },
+    {  3, 0x80, 0x80, 0x00 },
+    {  4, 0x00, 0x80, 0x00 },
+    {  5, 0x00, 0x80, 0x80 },
+    {  6, 0x00, 0x00, 0x80 },
+    {  7, 0x80, 0x00, 0x80 },
+    {  8, 0xff, 0x00, 0xff },
+    {  9, 0xc0, 0xc0, 0xc0 },
+    { 10, 0xff, 0x00, 0x00 },
+    { 11, 0xff, 0xff, 0x00 },
+    { 12, 0x00, 0xff, 0x00 },
+    { 13, 0x00, 0xff, 0xff },
+    { 14, 0x00, 0x00, 0xff },
+    { 15, 0x00, 0x00, 0x00 }
+  };
+
+// change to 4bpp grayscale
+UInt32 depth = 4;
+WinScreenMode (winScreenModeSet, NULL, NULL, &amp;depth, NULL);
+
+// and tweak to the 16 color palette
+WinPalette (winPaletteSet, 0, 16, palette);</pre>
+</li></ul>
+
+<p>
+<u>Examples:</u>
+</p><ul><pre>ICON "myicon.bmp"
+SMALLICONFAMILY "smic1bpp.bmp" "smic2bpp.bmp"
+ICON ID 1 "icon1bpp.bmp" "" "" "icon8bpp.bmp" TRANSPARENTINDEX 255
+
+BITMAP        ID 1000 LOCALE "enUS" "bitmap.bmp" COMPRESS
+BITMAPCOLOR16 ID 1001 "bmp4bpc.bmp" COMPRESS
+BITMAPCOLOR   ID 1002 "bmp8bpp.bmp" COMPRESS COLORTABLE
+
+BITMAP ID 1003
+COMPRESS
+BEGIN
+    BITMAP "bmp-1.bmp" BPP 1 
+    BITMAP "bmp-4.bmp" BPP 2 DENSITY 72
+    BITMAP "bmp-4.bmp" BPP 4 DENSITY 72
+    BITMAP "bmp-8.bmp" BPP 8 DENSITY 72
+    BITMAP "bmp-16.bmp" BPP 16 DENSITY 72
+    BITMAP "bmp-8x.bmp" BPP 8 NOCOMPRESS DENSITY 108
+    BITMAP "bmp-8d.bmp" BPP 8 NOCOMPRESS DENSITY 144
+END
+
+BITMAP ID 1004 INCLUDECLUT
+  "monochrome.pbitm" DEPTH2 "grey4.pgm" DEPTH8 "color256.ppm" DEPTH16 "direct.ppm"
+  TRANSPARENT 0 255 0 COMPRESS FORCECOMPRESS 8 16 NOCOMPRESS 1</pre></ul>
+
+<a name="lang_trap"></a>
+<b>TRAP (TRAP)</b><p>
+
+</p><pre class="syntax">TRAP ID <var>&lt;TrapId.n&gt;</var> [VALUE] <var>&lt;TrapNumber.n&gt;</var></pre>
+
+<u>Notes:</u>
+<ul>
+<li>
+<a href="http://www.daggerware.com/hackmstr.htm" target="_">DaggerWare's HackMaster</a> required.
+</li><li>
+<tt>&lt;TrapId.n&gt;</tt> must be greater than 1000.
+</li><li>
+If you are using prc-tools, you may find that toolchain's stand-alone code
+resource facility more convenient than specifying the 'TRAP' resource
+separately with PilRC.
+</li></ul>
+
+<u>Example:</u>
+<ul>
+<pre>TRAP ID 1000 VALUE 367</pre>
+</ul>
+
+<a name="lang_font"></a>
+<b>FONT (NFNT)</b><p>
+
+</p><pre class="syntax">FONT ID <var>&lt;FontResourceId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;FONTID <var>&lt;FontId.n&gt; &lt;FontFileName.s&gt;</var></pre>
+
+<u>FONT file format</u><p>
+
+The file containing the font information is plain ASCII. To understand
+how it works it is first necessary to understand how a font is arranged
+in memory. A font consists of four main parts, a header, a bitmap image,
+a bitmap location table, and an offset/width table. The bitmap image and
+location table are generated for you 100% automatically. </p><p>
+
+The ASCII file consists of two parts, the header and the font data
+(glyph objects). A full font file is provided with the PilRC distribution. </p><p>
+
+The FONT header has the following fields: </p><p>
+
+</p><ul>
+<table border="0">
+<tbody><tr>
+  <td width="100" valign="top">
+  <tt>fontType</tt>
+  </td>
+  <td>
+  The purpose of this field is unknown. <br>
+  The ROM fonts define this value to be 36864.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>maxWidth</tt>
+  </td>
+  <td>
+  Defined as "maximum character width". <br>
+  If not set it is automatically set to the width of the widest character.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>kernMax</tt>
+  </td>
+  <td>
+  Defined as "negative of maximum kern value". <br>
+  The purpose of this field is unknown. <br>
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>nDescent</tt>
+  </td>
+  <td>
+  Defined as "negative of descent". <br>
+  The purpose of this field is unknown, and is not used in the ROM fonts.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>fRectWidth</tt>
+  </td>
+  <td>
+  Defined as "width of font rectangle". <br>
+  If not set it is automatically set to the width of the widest character.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>fRectHeight</tt>
+  </td>
+  <td>
+  Defined as "height of font rectangle". <br>
+  If not set it is automatically set when the first glyph is defined. <br>
+  All characters must be exactly this height.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>ascent</tt>
+  </td>
+  <td>
+  The number of rows that make up the ascending part of the glyphs. <br>
+  Ascent plus descent equals fRectHeight. This value should be set.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>descent</tt>
+  </td>
+  <td>
+  The number of rows that make up the descending part of the glyphs. <br>
+  Descent plus ascent equals fRectHeight. This value should be set.
+  </td>
+</tr>
+<tr>
+  <td valign="top">
+  <tt>leading</tt>
+  </td>
+  <td>
+  The purpose of this field is unknown.
+  </td>
+</tr>
+</tbody></table>
+</ul> <p>
+
+Each glyph has a bitmap, offset, and a width associated with it. The width 
+can be overridden, however it is not recommended as it is set automatically. 
+
+
+<u>Notes:</u>
+</p><ul>
+<li>
+<tt>FONT</tt> declarations must be defined before the font is used. 
+</li><li>ALL font declarations must include a 'missing char' glyph as their last glyph. 
+This is used by the OS when trying to display a char not present in the font. 
+If this is not provided PilRC will generate a default empty one.
+For example: <ul><pre>GLYPH -1
+-----
+-----
+-----
+-----
+#####
+#---#
+#---#
+#---#
+#---#
+#---#
+#---#
+#####
+-----
+-----
+-----</pre></ul>
+</li><li>
+<tt>&lt;FontId.n&gt;</tt> must be between 128 and 255.
+</li><li>
+Custom <tt>FONT</tt> declarations can only be used on Palm Operating System 3.0 and later.
+</li><li>
+Palm Operating System 2.0 and before<br>
+<ul>
+<pre>[source.rcp]
+FONT ID 1000 FONTID 128 "font.txt"
+
+[source.c]
+void *font128;
+font128=MemHandleLock(DmGetResource('NFNT', 1000));
+UICurrentFontPtr = font128;</pre>
+</ul>
+</li><li>
+Palm Operating System 3.0+<br>
+<ul>
+<pre>[source.rcp]
+FONT ID 1000 FONTID 128 "font.txt"
+
+[source.c]
+FontPtr font128;
+font128=MemHandleLock(DmGetResource('NFNT', 1000));
+FntDefineFont(128, font128);</pre>
+</ul>
+</li><li>
+FONT support in PilRC is not complete, and has been reverse engineered.
+</li></ul>
+
+<a name="lang_fontfamily"></a>
+<b>FONTFAMILY (nfnt)</b><p>
+
+</p><pre class="syntax">FONTFAMILY ID <var>&lt;ResId.n&gt;</var> FONTID <var>&lt;FontId.n&gt;</var> [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+    FONT <var>&lt;FontFileName.s&gt;</var> DENSITY <var>&lt;Density.n&gt;</var>
+    ...
+END
+</pre>
+
+<p>
+<u>Notes:</u>
+</p><ul>
+<li>Use in PalmOS version 4.0 and after.
+</li><li>The densities supported are 72 and 144.
+</li><li>
+For compatibility with an earlier version of PilRC, the syntax
+"<tt class="syntax">DENSITY <var>&lt;Density.n&gt;</var>
+<var>&lt;FontFileName.s&gt;</var></tt>" is also accepted within the
+<tt>BEGIN</tt>/<tt>END</tt>, but this is deprecated.
+</li></ul>
+
+<u>Example:</u>
+<ul><pre>FONTFAMILY ID 1000 FONTID 128 LOCALE "enUS"
+BEGIN
+    FONT "font_100.txt" DENSITY 72
+    FONT "font_101.txt" DENSITY 144
+END
+</pre></ul>
+
+<div class="palmInternal">
+<a name="lang_fontindex"></a>
+<b>FONTINDEX (fnti)</b><p>
+
+</p><pre class="syntax">FONTINDEX ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	<var>&lt;FontType.s&gt; &lt;ResId.n&gt;</var>
+	...
+	[BEGIN
+		<var>&lt;FontId.n&gt;</var>
+		...
+	END]
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<ul><pre>FONTINDEX ID 1000 LOCALE "enUS"
+BEGIN
+	"NFNT" 9001
+	"NFNT" 9002
+	"NFNT" 9003
+	"fntm" 9004
+	BEGIN
+		10000
+		10001
+		10002
+	END
+END
+</pre></ul>
+
+<a name="lang_fontmap"></a>
+<b>FONTMAP (fntm)</b><p>
+
+</p><pre class="syntax">FONTMAP ID <var>&lt;ResId.n&gt;</var>&nbsp;[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	<var>&lt;Flag.n&gt;&lt;State.n&gt;&lt;Value.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<ul><pre>FONTMAP ID 1000 LOCALE "enUS"
+BEGIN
+	FLAG 0 STATE 1 VALUE 0
+	FLAG 0 STATE 1 VALUE 0
+	FLAG 0 STATE 1 VALUE 0
+	FLAG 0 STATE 1 VALUE 0
+END
+</pre></ul>
+</div>
+<a name="lang_hex"></a>
+<b>HEX</b><p>
+
+</p><pre class="syntax">HEX <var>&lt;ResType.s&gt;</var> ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+    <var>&lt;Byte.n&gt; | &lt;String.s&gt;</var></pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>
+String values within the data DO NOT have implicit null termination. You must 
+add a 0x00 hex value after the string if needed.
+</li></ul>
+
+<u>Example:</u>
+<ul>
+<pre>HEX "junk" ID 1000 
+  0x00 0x00 0x00 0x23 "String" 0x00 "String2" 
+  0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00</pre>
+</ul>
+
+<a name="lang_data"></a>
+<b>DATA</b><p>
+
+</p><pre class="syntax">DATA <var>&lt;ResType.s&gt;</var> ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>] <var>&lt;FileName.s&gt;</var></pre>
+
+<u>Example:</u>
+<ul>
+<pre>DATA "junk" ID 1000 "binary.bin"</pre>
+</ul>
+
+
+<a name="lang_integer"></a>
+<b>INTEGER (tint)</b><p>
+
+</p><pre class="syntax">INTEGER ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;[VALUE] <var>&lt;Value.n&gt;</var></pre>
+<u>Notes:</u><p>
+</p><ul>
+<li>
+<tt>ResLoadConstant(..)</tt> API can be used to load the 'tint' resource.
+</li></ul>
+
+<u>Example:</u>
+<ul>
+<pre>INTEGER ID 1000 VALUE 1966 </pre>
+</ul>
+
+
+<a name="lang_bytelist"></a>
+<b>BYTELIST (BLST)</b><p>
+
+</p><pre class="syntax">BYTELIST ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	<var>&lt;Byte.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Example:</u>
+<pre>BYTELIST ID 1000
+BEGIN
+	23
+	3
+	205
+	55
+	12 - 8
+END
+</pre>
+
+
+<a name="lang_wordlist"></a>
+<b>WORDLIST (wrdl)</b><p>
+
+</p><pre class="syntax">WORDLIST ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	<var>&lt;Word.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Example:</u>
+<pre>WORDLIST ID 1000
+BEGIN
+	23
+	1303
+	2505
+	2055
+	42 * 68
+END
+</pre>
+
+<a name="lang_longwordlist"></a>
+<b>LONGWORDLIST (DLST)</b><p>
+
+</p><pre class="syntax">LONGWORDLIST ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	<var>&lt;LongWord.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Example:</u>
+<pre>LONGWORDLIST ID 1000
+BEGIN
+	123456789
+	130300
+	78005
+	200055
+	12345 * 20000
+END
+</pre>
+
+
+<a name="lang_navigation"></a>
+<b>NAVIGATION (fnav)</b><p>
+
+</p><pre class="syntax">NAVIGATION ID <var>&lt;ResId.n&gt;</var>&nbsp;
+    [VERSION <var>&lt;version.n&gt;</var>]
+    INITIALSTATE <var>&lt;state.n&gt;</var>
+    [INITIALOBJECTID <var>&lt;id.n&gt;</var>]
+    [JUMPOBJECTID <var>&lt;id.n&gt;</var>]
+    [BOTTOMLEFTOBJECTID <var>&lt;id.n&gt;</var>]
+    BEGIN
+        ID <var>&lt;ID.n&gt;</var> ABOVE <var>&lt;ID.n&gt;</var> BELOW <var>&lt;ID.n&gt;</var>
+            [SKIP] [FORCEINTERACTION] [BIGBUTTON]
+        ...
+    END
+
+    or
+
+    NAVIGATIONMAP
+        ROW { <var>&lt;ID.n&gt;</var> [SKIP] [FORCEINTERACTION] [BIGBUTTON] } *
+        ...
+    END
+</pre>
+
+<p>This resource is associated with a form with the same ID and defines
+the tab order of controls on the form, along with the up/down navigation
+order and where object focus should initially be placed.  For a full
+description of this, see the PalmOne Treo 600 developer documentation.
+This format will likely be used for future PalmOne devices.</p>
+
+<p>For either syntax, the tab order is determined by the order that IDs
+are listed in the BEGIN/END or NAVIGATIONMAP section.  These IDs should 
+be the same as those used for form objects in the corresponding form resource.
+For a navigation map, the ABOVE and BELOW values for a row are the value of
+the ID that starts the previous and next rows, respectively.
+</p>
+
+<p>PilRC doesn't provide keywords for the values of INITIALSTATE.  You should
+#define your own constant definitions, based on those in the Treo 600 headers.
+See the example for the most commonly used values.</p>
+
+<u>Example:</u>
+<pre>#define	kFrmNavHeaderFlagsObjectFocusStartState  0x00000001
+#define	kFrmNavHeaderFlagsAppFocusStartState     0x00000002
+
+NAVIGATION ID 1000
+    INITIALSTATE kFrmNavHeaderFlagsObjectFocusStartState
+    INITIALOBJECTID 1001
+    JUMPOBJECTID 1001
+    BOTTOMLEFTOBJECTID 1005
+    BEGIN
+      ID 1001 BELOW 1003
+      ID 1002 BELOW 1003 SKIP
+      ID 1003 ABOVE 1001 BELOW 1004 FORCEINTERACTION
+      ID 1004 ABOVE 1003 BIGBUTTON
+      ID 1005 ABOVE 1003 SKIP FORCEINTERACTION BIGBUTTON
+    END
+
+NAVIGATION ID 2000
+    INITIALSTATE kFrmNavHeaderFlagsObjectFocusStartState
+    INITIALOBJECTID 2001
+    NAVIGATIONMAP
+      ROW 2001 
+          2002 SKIP
+      ROW 2003 FORCEINTERACTION
+      ROW 2004 BIGBUTTON
+          2005 SKIP FORCEINTERACTION BIGBUTTON
+    END
+</pre>
+
+<a name="lang_palettetable"></a>
+<b>PALETTETABLE (tclt)</b><p>
+
+</p><pre class="syntax">PALETTETABLE ID <var>&lt;ResId.n&gt;</var>
+BEGIN
+	<var>&lt;index.n&gt; &lt;red.n&gt; &lt;green.n&gt; &lt;blue.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Example:</u>
+<pre>PALETTETABLE ID 1000
+BEGIN
+	0x00 0xFF 0xFF 0xFF
+	0x01 0x00 0x00 0x00
+END </pre>
+
+<div class="palmInternal">
+<a name="lang_feature"></a>
+<b>FEATURE (feat)</b><p>
+
+</p><pre class="syntax">FEATURE ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;
+BEGIN
+	[CREATOR <var>&lt;creator.s&gt;</var>]
+	BEGIN
+		[ENTRY] [NUMBER <var>&lt;number.n&gt;</var>] [VALUE <var>&lt;value.n&gt;</var>]
+		...
+	END
+END
+</pre>
+
+<u>Example:</u>
+<pre>FEATURE ID 1000
+BEGIN
+	CREATOR "psys"
+	BEGIN
+		ENTRY NUMBER 5 VALUE 0
+		ENTRY NUMBER 6 VALUE 0
+	END
+END</pre>
+
+
+<a name="lang_graffitiinputarea"></a>
+<b>GRAFFITIINPUTAREA (silk)</b><p>
+
+</p><pre class="syntax">GRAFFITIINPUTAREA ID <var>&lt;GraffitiInputAreaId.n&gt;</var>
+  [VERSION <var>&lt;version.n&gt;</var>]
+  [CREATOR <var>&lt;creator.s&gt;</var>]
+  [LANGUAGE <var>&lt;language.s&gt;</var>]
+  [COUNTRY <var>&lt;country.s&gt;</var>]
+  [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+  <var>&lt;OBJECTS&gt;</var>
+END </pre>
+
+Where <tt class="syntax"><var>&lt;OBJECTS&gt;</var></tt> is one or more of:
+
+<p>
+</p><ul>
+<table>
+  <tbody><tr>
+    <td valign="top">
+	<tt>AREA</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [SCREEN] [GRAFFITI] [INDEX <var>&lt;index.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <tt>BUTTON		</tt>
+    </td>
+    <td valign="top">
+    <tt class="syntax">
+    AT (<var>&lt;Left.p&gt; &lt;Top.p&gt; &lt;Width.p&gt; &lt;Height.p&gt;</var>) <br>
+    [KEYDOWNCHR <var>&lt;keydownchr.n&gt;</var>] <br> 
+    [KEYDOWNKEYCODE <var>&lt;keydownkeycode.n&gt;</var>] <br> 
+    [KEYDOWNMODIFIERS <var>&lt;keydownmodifiers.n&gt;</var>]
+    </tt>
+    </td>
+  </tr>
+</tbody></table>
+</ul>
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li><li>
+<tt>LANGUAGE</tt> is one of this strings :<br>
+	"English", "French", "German", "Italian", "Spanish", "Japanese".
+</li><li>
+<tt>COUNTRY</tt> is one of this strings :<br>
+	"Australia", "Austria", "Belgium", "Brazil", "Canada", "Denmark",
+	"Finland", "France", "Germany", "HongKong", "Iceland", "Ireland",
+	"Italy", "Japan", "Luxembourg", "Mexico", "Netherlands", "NewZealand",
+	"Norway", "Spain", "Sweden", "Switzerland", "UnitedKingdom", "UnitedStates",
+	"India", "Indonesia", "Korea", "Malaysia", "RepChina", "Philippines",
+	"Singapore", "Thailand", "Taiwan".
+</li></ul>
+
+<u>Example:</u><p>
+</p><pre>GRAFFITIINPUTAREA ID 10000
+  VERSION 1
+  CREATOR "psys"
+  LANGUAGE "English"
+  COUNTRY "UnitedStates"
+BEGIN
+	AREA AT (0 0 160 160) SCREEN INDEX 0
+	AREA AT (27 164 62 56) GRAFFITI INDEX 0
+	AREA AT (89 164 44 56) GRAFFITI INDEX 1
+	BUTTON AT (27 206 18 14) KEYDOWNCHR 272 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+	BUTTON AT (115 206 18 14) KEYDOWNCHR 273 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+	BUTTON AT (0 164 27 28) KEYDOWNCHR 264 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+	BUTTON AT (0 192 27 28) KEYDOWNCHR 261 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+	BUTTON AT (133 164 27 28) KEYDOWNCHR 267 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+	BUTTON AT (133 192 27 28) KEYDOWNCHR 266 KEYDOWNKEYCODE 0 KEYDOWNMODIFIERS 8
+END
+</pre>
+
+
+
+<a name="lang_countrylocalisation"></a>
+<b>COUNTRYLOCALISATION (cnty)</b><p>
+
+</p><pre class="syntax">COUNTRYLOCALISATION ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;
+BEGIN
+  BEGIN
+    [NUMBER <var>&lt;number.n&gt;</var>]
+    [NAME <var>&lt;name.s&gt;</var>]
+    [DATEFORMAT <var>&lt;dateformat.n&gt;</var>]
+    [LONGDATEFORMAT <var>&lt;longdateformat.n&gt;</var>]
+    [WEEKSTARTDAY <var>&lt;weekstartday.n&gt;</var>]
+    [TIMEFORMAT <var>&lt;timeformat.n&gt;</var>]
+    [NUMBERFORMAT <var>&lt;numberformat.n&gt;</var>]
+    [CURRENCYNAME <var>&lt;currencyname.s&gt;</var>]
+    [CURRENCYSYMBOL <var>&lt;currencysymbol.s&gt;</var>]
+    [CURRENCYUNIQUESYMBOL <var>&lt;currencyuniquesymbol.s&gt;</var>]
+    [CURRENCYDECIMALPLACES <var>&lt;currencydecimalplaces.n&gt;</var>]
+    [DAYLIGHTSAVINGS <var>&lt;daylightsavings.n&gt;</var>]
+    [MINUTESWESTOFGMT <var>&lt;minuteswestofgmt.n&gt;</var>]
+    [MEASUREMENTSYSTEM <var>&lt;measuresystem.n&gt;</var>]
+  END
+  BEGIN
+    ...
+  END
+  ...
+END</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>COUNTRYLOCALISATION ID 10000
+BEGIN
+	BEGIN
+		NUMBER 7
+		NAME "France"
+		DATEFORMAT 1
+		LONGDATEFORMAT 8
+		WEEKSTARTDAY 1
+		TIMEFORMAT 2
+		NUMBERFORMAT 2
+		CURRENCYNAME "Franc"
+		CURRENCYSYMBOL "F"
+		CURRENCYUNIQUESYMBOL "FRF"
+		CURRENCYDECIMALPLACES 2
+		DAYLIGHTSAVINGS 3
+		MINUTESWESTOFGMT 60
+		MEASUREMENTSYSTEM 1
+	END
+	BEGIN
+		NUMBER 23
+		NAME "United States"
+		DATEFORMAT 0
+		LONGDATEFORMAT 7
+		WEEKSTARTDAY 0
+		TIMEFORMAT 1
+		NUMBERFORMAT 0
+		CURRENCYNAME "US Dollar"
+		CURRENCYSYMBOL "$"
+		CURRENCYUNIQUESYMBOL "$US"
+		CURRENCYDECIMALPLACES 2
+		DAYLIGHTSAVINGS 1
+		MINUTESWESTOFGMT 1140
+		MEASUREMENTSYSTEM 0
+	END
+END</pre>
+
+
+<a name="lang_locales"></a>
+<b>LOCALES (locs)</b><p>
+
+</p><pre class="syntax">LOCALES ID <var>&lt;ResId.n&gt;</var>&nbsp;
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]&nbsp;
+BEGIN
+  [VERSION <var>&lt;number.n&gt;</var>]
+  BEGIN
+    [LANGUAGES <var>&lt;languages.n&gt;</var>]
+    [COUNTRYS <var>&lt;countrys.n&gt;</var>]
+    [COUNTRYNAME <var>&lt;countryname.s&gt;</var>]
+    [DATEFORMAT <var>&lt;dateformat.n&gt;</var>]
+    [LONGDATEFORMAT <var>&lt;longdateformat.n&gt;</var>]
+    [TIMEFORMAT <var>&lt;timeformat.n&gt;</var>]
+    [WEEKSTARTDAY <var>&lt;weekstartday.n&gt;</var>]
+    [TIMEZONE <var>&lt;timezone.n&gt;</var>]
+    [NUMBERFORMAT <var>&lt;numberformat.n&gt;</var>]
+    [CURRENCYNAME <var>&lt;currencyname.s&gt;</var>]
+    [CURRENCYSYMBOL <var>&lt;currencysymbol.s&gt;</var>]
+    [CURRENCYUNIQUESYMBOL <var>&lt;currencyuniquesymbol.s&gt;</var>]
+    [CURRENCYDECIMALPLACES <var>&lt;currencydecimalplaces.n&gt;</var>]
+    [MEASUREMENTSYSTEM <var>&lt;measuresystem.n&gt;</var>]
+  END
+  BEGIN
+    ...
+  END
+  ...
+END</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved (only after version 4.0).
+</li></ul>
+
+<u>Example:</u>
+<pre>LOCALES ID 10000
+BEGIN
+	VERSION 1
+	BEGIN
+		LANGUAGES 1
+		COUNTRYS 7
+		COUNTRYNAME "France"
+		DATEFORMAT 1
+		LONGDATEFORMAT 8
+		TIMEFORMAT 2
+		WEEKSTARTDAY 1
+		TIMEZONE 60
+		NUMBERFORMAT 2
+		CURRENCYNAME "Franc"
+		CURRENCYSYMBOL "F"
+		CURRENCYUNIQUESYMBOL "FRF"
+		CURRENCYDECIMALPLACES 2
+		MEASUREMENTSYSTEM 1
+	END
+	BEGIN
+		LANGUAGES 0
+		COUNTRYS 23
+		COUNTRYNAME "United States"
+		DATEFORMAT 0
+		LONGDATEFORMAT 7
+		TIMEFORMAT 1
+		WEEKSTARTDAY 0
+		TIMEZONE -480
+		NUMBERFORMAT 0
+		CURRENCYNAME "US Dollar"
+		CURRENCYSYMBOL "$"
+		CURRENCYUNIQUESYMBOL "$US"
+		CURRENCYDECIMALPLACES 2
+		MEASUREMENTSYSTEM 0
+	END
+END</pre>
+
+
+<a name="lang_keyboard"></a>
+<b>KEYBOARD (tkbd)</b><p>
+
+</p><pre class="syntax">KEYBOARD ID <var>&lt;ResId.n&gt;</var>
+[LOCALE <var>&lt;LocaleName.s&gt;</var>] VALUE <var>&lt;Value.n&gt;</var></pre>
+<u>Notes:</u><p>
+</p><ul><li>
+Supported Value are:<br>
+	if keyboard is for United State then value = 0<br>
+	if keyboard is for French then value = 1<br>
+	if keyboard is for Germany then value = 2<br>
+	if keyboard is for Spain then value = 3<br>
+	if keyboard is for Italy then value = 4<br>
+	if keyboard is for Japanese then value = 5
+
+</li><li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<ul><pre>KEYBOARD ID 1000 VALUE 0
+</pre></ul>
+</div>
+<a name="lang_midi"></a>
+<b>MIDI (MIDI)</b><p>
+
+</p><pre class="syntax">MIDI ID <var>&lt;ResId.n&gt; &lt;string.s&gt;</var></pre>
+<u>Notes:</u><p>
+</p><ul><li>
+This does not convert the file to midi resource. The .aif or .mid file must be 
+Palm Midi compliant (see palm documentation for more information).
+</li></ul>
+
+<u>Example:</u>
+<ul><pre>MIDI ID 1000 "trompette.mid"
+</pre></ul>
+
+<div class="palmInternal">
+<a name="lang_Hardsoftbutton"></a>
+<b>HARDSOFTBUTTONDEFAULT (hsbd)</b><p>
+
+</p><pre class="syntax">HARDSOFTBUTTONDEFAULT ID <var>&lt;ResId.n&gt;</var>
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	BEGIN
+		[NUMBER <var>&lt;number.n&gt;</var>]
+		[CREATOR <var>&lt;creator.s&gt;</var>]
+	END
+	...
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>The number parameter is keyCode.
+</li><li>This resource is system reserved (only after version 4.0).
+</li></ul>
+
+<u>Example:</u>
+<pre>HARDSOFTBUTTONDEFAULT ID 10000
+BEGIN
+	BEGIN
+		NUMBER 516
+		CREATOR "date"
+	END
+	BEGIN
+		NUMBER 517
+		CREATOR "addr"
+	END
+	BEGIN
+		NUMBER 518
+		CREATOR "todo"
+	END
+	BEGIN
+		NUMBER 519
+		CREATOR "memo"
+	END
+	BEGIN
+		NUMBER 521
+		CREATOR "sync"
+	END
+	BEGIN
+		NUMBER 264
+		CREATOR "lnch"
+	END
+	BEGIN
+		NUMBER 267
+		CREATOR "calc"
+	END
+
+END</pre>
+</div>
+<div class="palmInternal">
+<a name="lang_SysAppPrefs"></a>
+<b>SYSAPPLICATIONPREFERENCES (pref)</b><p>
+
+</p><pre class="syntax">SYSAPPLICATIONPREFERENCES ID <var>&lt;ResId.n&gt;</var>
+[LOCALE <var>&lt;LocaleName.s&gt;</var>]
+		PRIORITY <var>&lt;Priority.n&gt;</var>
+		STACKSIZE <var>&lt;StackSize.n&gt;</var>
+		MINHEAPSPACE <var>&lt;MinHeapSpace.n&gt;</var>
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>SYSAPPLICATIONPREFERENCES ID 1000 PRIORITY 30 STACKSIZE 0x1000 MINHEAPSPACE 0x1000
+</pre>
+</div>
+<div class="palmInternal">
+<a name="lang_SearchTable"></a>
+<b>SEARCHTABLE (tSCH)</b><p>
+
+</p><pre class="syntax">SEARCHTABLE ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	OFFSET_s0 <var>&lt;Offset_s0.n&gt;</var>
+	OFFSET_sD <var>&lt;Offset_sD.n&gt;</var>
+	OFFSET_sK <var>&lt;Offset_sK.n&gt;</var>
+	OFFSET_sM <var>&lt;Offset_sM.n&gt;</var>
+	OFFSET_sU <var>&lt;Offset_sU.n&gt;</var>
+	OFFSET_sP <var>&lt;Offset_sP.n&gt;</var>
+	OFFSET_sA <var>&lt;Offset_sA.n&gt;</var>
+	OFFSET_sG <var>&lt;Offset_sG.n&gt;</var>
+	OFFSET_sR <var>&lt;Offset_sR.n&gt;</var>
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+	BEGIN
+		ACTION <var>&lt;Action.n&gt;</var> NEXTSTATE <var>&lt;NextState.n&gt;</var> DATA <var>&lt;data.n&gt;</var>
+		...
+	END
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>SEARCHTABLE ID 32001 LOCALE "jpJP" 
+BEGIN
+	OFFSET_s0 18
+	OFFSET_sD 1042
+	OFFSET_sK 2066
+	OFFSET_sM 3090
+	OFFSET_sU 4114
+	OFFSET_sP 5138
+	OFFSET_sA 6162
+	OFFSET_sG 7186
+	OFFSET_sR 8210
+	BEGIN
+		ACTION 17 NEXTSTATE 0 DATA 256
+		ACTION 17 NEXTSTATE 0 DATA 257
+		ACTION 17 NEXTSTATE 0 DATA 258
+		...
+	END
+	...
+END
+</pre>
+
+<a name="lang_TextTable"></a>
+<b>TEXTTABLE (ttbl)</b><p>
+
+</p><pre class="syntax">TEXTTABLE ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;LocaleName.s&gt;</var>] [COMPRESS]
+VERSION <var>&lt;Version.n&gt;</var>	9 or 10
+TABLETYPE <var>&lt;TableType.n&gt;</var> 1 .. 17
+FLAG <var>&lt;Flag.n&gt;</var>
+MIN <var>&lt;Min.n&gt;</var>
+MAX <var>&lt;Max.n&gt;</var>
+DEFAULTOUTPUT <var>&lt;DefaultOutput.n&gt;</var>
+NUMELEMENTBITS <var>&lt;NumElementBits.n&gt;</var>
+NUMINDEXEDDATALENBITS <var>&lt;NumIndexedDataLenBits.n&gt;</var>
+NUMRESULTBITS <var>&lt;NumResultBits.n&gt;</var>
+INDEXDATAOFFSET <var>&lt;IndexDataOffset.n&gt;</var>
+BEGIN
+	...
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>TEXTTABLE ID 1000 LOCALE "jpJP" COMPRESS
+VERSION 9
+TABLETYPE 2
+FLAG 3758096384
+MIN 64
+MAX 252
+DEFAULTOUTPUT 1
+NUMELEMENTBITS 8
+NUMINDEXEDDATALENBITS 0
+NUMRESULTBITS 8
+INDEXDATAOFFSET 215
+BEGIN
+	...
+END
+</pre>
+
+<a name="lang_TableList"></a>
+<b>TABLELIST (ttli)</b><p>
+
+</p><pre class="syntax">TABLELIST ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	TYPE <var>&lt;ResType.s&gt;</var> ID <var>&lt;ID.n&gt;</var> INDEX <var>&lt;Index.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>TABLELIST ID 1000
+BEGIN
+	TYPE "ttbl" ID 32034 INDEX 40
+	TYPE "ttbl" ID 32030 INDEX 46
+	TYPE "ttbl" ID 32008 INDEX 47
+	TYPE "ttbl" ID 32027 INDEX 10
+	TYPE "ttbl" ID 32028 INDEX 11
+	TYPE "ttbl" ID 32027 INDEX 12
+	TYPE "ttbl" ID 32029 INDEX 13
+	TYPE "ttbl" ID 32031 INDEX 45
+	TYPE "ttbl" ID 32032 INDEX 43
+	TYPE "ttbl" ID 32033 INDEX 44
+	TYPE "ttbl" ID 32035 INDEX 50
+	TYPE "tSTL" ID 32001 INDEX 16
+	TYPE "csli" ID 32001 INDEX 49
+END
+</pre>
+
+<a name="lang_CharSetList"></a>
+<b>CHARSETLIST (csli)</b><p>
+
+</p><pre class="syntax">CHARSETLIST ID <var>&lt;ResId.n&gt;</var> [LOCALE <var>&lt;LocaleName.s&gt;</var>]
+BEGIN
+	NAME <var>&lt;Name.s&gt;</var> ID <var>&lt;ID.n&gt;</var>
+	...
+END
+</pre>
+
+<u>Notes:</u><p>
+</p><ul>
+<li>This resource is system reserved.
+</li></ul>
+
+<u>Example:</u>
+<pre>CHARSETLIST ID 1000
+BEGIN
+	NAME "us-ascii" ID 1
+	NAME "ASCII" ID 1
+	NAME "ISO646-US" ID 1
+	NAME "us" ID 1
+	NAME "IBM367" ID 1
+	NAME "cp367" ID 1
+	NAME "csASCII" ID 1
+	NAME "shift_jis" ID 4
+	NAME "shift-jis" ID 4
+	NAME "sjis" ID 4
+END
+</pre>
+</div>
+<br>
+<a name="international"></a>
+<b><u>ID Generation Support</u></b><p>
+
+</p><ul>
+<p>PilRC supports automatically generating a C header file with
+ID symbols used in the text.  You can either specify this using the
+<a href="#switch_H">-H</a> command line option, or by using
+a GENERATEHEADER command in your RCP file.  To control the
+numbering used by this process, to allow multiple RCP files being
+build without conflicting ID numbers, you use the
+<a href="#lang_resetautoid">RESETAUTOID</a> command to give each file its own ID number
+range. You can also use it to do different ranges for different items in one
+file.  To emulate Constructor's numbering behavior, you could reset the auto ID
+number before each form to the next multiple of 100.</p>
+<p>As of version 3.2, PilRC will not update the header file if it would generate the same
+file that already exists on disk.  This helps with systems that use file modification times
+to trigger rebuilds, as a change to your RCP file that doesn't affect ID numbering
+won't cause your other source files to be rebuilt.</p>
+</ul>
+
+<a name="lang_generateheader"></a>
+<b>GENERATEHEADER</b><p>
+
+</p><pre class="syntax">GENERATEHEADER <var>&lt;HeaderFile.s&gt;</var></pre>
+<u>Example:</u>
+
+<ul>
+<pre>GENERATEHEADER "ApplicationRsc.h"</pre>
+</ul>
+
+<a name="lang_resetautoid"></a>
+<b>RESETAUTOID</b><p>
+
+</p><pre class="syntax">RESETAUTOID <var>&lt;IDBase.n&gt;</var></pre>
+<u>Example:</u>
+
+<ul>
+<pre>RESETAUTOID 1000</pre>
+</ul>
+
+<a name="international"></a>
+<b><u>International Support</u></b><p>
+
+</p><ul>
+PilRC supports a limited form of international tokenization. It works by 
+substituting strings in the resource definitions with replacements
+specified in a <a href="#lang_translation">TRANSLATION</a> section. 
+Multiple translation blocks may be specified in a resource script.
+<p>
+The active language is specified with the <a href="#switch_L">-L</a> option.
+If you use more than one <tt>-L</tt> option, several translation sections
+will be active; if several of these active translations contain substitutions
+for the same original string, the one that appears <b>first</b> in the source
+file will be used.
+</p><p> 
+
+Positioning of controls is a <b>large</b> problem if absolute values are
+used. It is recommended you use AUTO, CENTER and PREVRIGHT et al when 
+defining the contents of your forms. </p><p>
+</p></ul>
+
+<u>Example:</u>
+<ul>
+<pre>pilrc -L FRENCH myscript.rcp res</pre>
+</ul>
+
+<a name="lang_translation"></a>
+<b>TRANSLATION</b><p>
+
+</p><pre class="syntax">TRANSLATION <var>&lt;Language.s&gt;</var>
+BEGIN
+  <var>&lt;STRINGTRANSLATIONS&gt;</var>
+END</pre>
+
+Where <tt class="syntax"><var>&lt;STRINGTRANSLATIONS&gt;</var></tt> is one or
+more of:
+
+<p>
+</p><pre class="syntax"><var>&lt;Original.s&gt;</var> = <var>&lt;Translated.ss&gt;</var></pre>
+
+<u>Notes:</u> <p>
+</p><ul>
+<li>
+Declare a short keyword for long strings, and define native and foreign 
+translations for it.
+</li></ul> <p>
+
+<u>Example:</u>
+
+</p><ul>
+<pre>TRANSLATION "FRENCH"
+BEGIN
+  "Repeat Datebook alarm sound" = "Répétitions Alarme Agenda"
+  "Ring again every" = "Rappel tous les"
+END</pre>
+</ul>
+
+<a name="knownbugs"></a>
+<b><u>Known Bugs</u></b><p>
+
+</p><ul>
+<li>
+LIST<br>
+<ul>
+  <li>DISABLED does not work. 
+  </li><li>VISIBLEITEMS may be required for list objects to show properly.
+</li></ul>
+</li><li>
+FIELD<br>
+<ul>
+  <li>MAXCHARS required for field control to accept characters to work.</li>
+  <li>NUMERIC doesn't work in Palm Operating System prior to 3.0</li>
+</ul>
+</li><li>
+FORM<br>
+<ul>
+  <li>Using NOSAVEBEHIND on Palm Operating System prior to 3.0 may cause errors.
+</li></ul>
+</li><li>
+FONT<br>
+<ul>
+  <li>Developed based on reverse-engineering. <br>
+  The complete operation of how Palm OS handles FONT manipulation has recently been
+  documented in the Palm OS SDK 5 Reference Manual.
+</li></ul>
+</li></ul> <p>
+
+<a name="reading"></a>
+<b><u>Further Reading</u></b></p><p>
+
+</p><ul>
+For Palm Computing Platform reference information, be sure to also visit the
+following websites: <p>
+
+</p><ul>
+<li> <a href="http://www.palmsource.com/developers" target="_">http://www.palmsource.com/developers</a> <br>
+     Provided by PalmSource. <p>
+</p></li><li> <a href="http://prc-tools.sourceforge.net/" target="_">http://prc-tools.sourceforge.net/</a> <br>
+     Home page for prc-tools, a development kit supporting C and C++ programming 
+     on Palm OS using GCC. <p>
+</p></li><li> <a href="http://www.falch.net/" target="_">http://www.falch.net/</a> <br>
+     Developers of Falch.net Developer Studio for Palm OS and 
+     PilRC Designer for Palm OS. <p>
+</p></li><li> <a href="http://www.metrowerks.com/palm/" target="_">http://www.metrowerks.com/palm/</a> <br>
+     Developers of CodeWarrior Developer Studio for Palm OS. <p>
+</p></li><li> <a href="http://www.palmoswerks.com/" target="_">http://www.palmoswerks.com/</a> <br>
+     Development resources for Palm OS developers with a CodeWarrior focus. <p>
+</p></li><li> <a href="http://www.massena.com/darrin/pilot/" target="_">http://www.massena.com/darrin/pilot/</a> <br>
+     A great source of low level Palm Computing Platform information. <br>
+     Provided by Darrin Massena. <p>
+</p></li></ul>
+
+
+
+</ul></li></body></html>
