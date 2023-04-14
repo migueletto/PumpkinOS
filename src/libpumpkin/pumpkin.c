@@ -121,6 +121,7 @@ typedef struct {
   void *data;
   char (*getchar)(void *iodata);
   void (*putchar)(void *iodata, char c);
+  void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
 } pumpkin_task_t;
 
@@ -4117,11 +4118,12 @@ void SysNotifyBroadcastQueued(void) {
   }
 }
 
-void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void *iodata) {
+void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   task->getchar = getchar;
   task->putchar = putchar;
+  task->setcolor = setcolor;
   task->iodata = iodata;
 }
 
@@ -4143,6 +4145,17 @@ void pumpkin_puts(char *s) {
   int i;
 
   for (i = 0; s[i]; i++) {
+    if (s[i] == '\n' && (i == 0 || s[i-1] != '\r')) {
+      pumpkin_putchar('\r');
+    }
     pumpkin_putchar(s[i]);
+  }
+}
+
+void pumpkin_setcolor(uint32_t fg, uint32_t bg) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task->setcolor) {
+    task->setcolor(task->iodata, fg, bg);
   }
 }

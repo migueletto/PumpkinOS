@@ -178,6 +178,21 @@ static void command_putchar(void *data, char c) {
   command_putc(idata, c);
 }
 
+static void command_setcolor(void *data, uint32_t fg, uint32_t bg) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+
+  if (fg & 0x80000000) {
+    fg = RGBToLong(&idata->prefs.foreground);
+  }
+
+  if (bg & 0x80000000) {
+    bg = RGBToLong(&idata->prefs.background);
+  }
+
+  pterm_setfg(idata->t, fg);
+  pterm_setbg(idata->t, bg);
+}
+
 static char command_getchar(void *data) {
   command_internal_data_t *idata = (command_internal_data_t *)data;
   EventType event;
@@ -1661,7 +1676,7 @@ static Err StartApplication(void *param) {
     command_load_external_commands(idata);
   }
 
-  pumpkin_setio(command_getchar, command_putchar, idata);
+  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
 
   FrmGotoForm(MainForm);
 

@@ -475,10 +475,12 @@ void pumpkin_debug_check(void);
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
 int pumpkin_script_appenv(int pe);
 
-void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void *iodata);
+void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
+       void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 char pumpkin_getchar(void);
 void pumpkin_putchar(char c);
 void pumpkin_puts(char *s);
+void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 
 #ifdef __cplusplus
 }
