@@ -2394,7 +2394,7 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
 
   debug(DEBUG_TRACE, "SYS", "fd %d bound to host %s port %d (ipv%d)", sock, s, *pport, ipv6 ? 6 : 4);
 
-  return sock;
+  return 0;
 }
 
 int sys_socket_binds(int sock, char *host, int *port) {
