@@ -147,9 +147,9 @@ NetHostInfoPtr NetLibGetHostByName(UInt16 libRefNum, const Char *nameP, NetHostI
   UInt32 ip, i;
 
   if (nameP) {
-    debug(DEBUG_INFO, "NetMgr", "NetLibGetHostByName \"%s\"", nameP);
+    debug(DEBUG_TRACE, "NetMgr", "NetLibGetHostByName \"%s\"", nameP);
     if ((ip = sys_socket_ipv4((char *)nameP)) != -1) {
-      debug(DEBUG_INFO, "NetMgr", "NetLibGetHostByName \"%s\" ip ok", nameP);
+      debug(DEBUG_TRACE, "NetMgr", "NetLibGetHostByName \"%s\" ip ok", nameP);
       if (bufP) {
         MemSet(bufP, sizeof(NetHostInfoBufType), 0);
         r = &bufP->hostInfo;
@@ -296,7 +296,7 @@ Int16 NetLibReceive(UInt16 libRefNum, NetSocketRef socket, void *bufP, UInt16 bu
 
   switch (r) {
     case -1:
-      debug(DEBUG_INFO, "NetMgr", "NetLibReceive error");
+      debug(DEBUG_ERROR, "NetMgr", "NetLibReceive error");
       *errP = netErrParamErr;
       break;
     case  0:
@@ -310,7 +310,7 @@ Int16 NetLibReceive(UInt16 libRefNum, NetSocketRef socket, void *bufP, UInt16 bu
         *errP = netErrParamErr;
         r = -1;
       } else {
-        debug(DEBUG_INFO, "NetMgr", "NetLibReceive read ok");
+        debug(DEBUG_TRACE, "NetMgr", "NetLibReceive read ok");
         *errP = 0;
         r = nread;
       }
@@ -514,9 +514,9 @@ Int16 NetLibSelect(UInt16 libRefNum, UInt16 width, NetFDSetType *readFDs, NetFDS
     tv.tv_usec = timeout * (1000000 / SysTicksPerSecond());
   }
 
-  debug(DEBUG_INFO, "NetMgr", "NetLibSelect timeout=%d ...", timeout);
-  r = sys_select_fds(width, readFDs, writeFDs, exceptFDs, timeout < 0 ? NULL : &tv);
-  debug(DEBUG_INFO, "NetMgr", "NetLibSelect r=%d", r);
+  debug(DEBUG_TRACE, "NetMgr", "NetLibSelect timeout=%d ...", timeout);
+  r = sys_select_fds(width, (sys_fdset_t *)readFDs, (sys_fdset_t *)writeFDs, (sys_fdset_t *)exceptFDs, timeout < 0 ? NULL : &tv);
+  debug(DEBUG_TRACE, "NetMgr", "NetLibSelect r=%d", r);
 
   if (hasUserEvent && r >= 0) {
     netFDSet(sysFileDescStdIn, readFDs);
@@ -790,4 +790,20 @@ Int16 NetLibSocketShutdown(UInt16 libRefnum, NetSocketRef socket, Int16 directio
   if (errP) *errP = err;
 
   return r;
+}
+
+void netFDSet(NetSocketRef socket, NetFDSetType *fds) {
+  sys_fdset(socket, (sys_fdset_t *)fds);
+}
+
+void netFDClr(NetSocketRef socket, NetFDSetType *fds) {
+  sys_fdclr(socket, (sys_fdset_t *)fds);
+}
+
+Boolean netFDIsSet(NetSocketRef socket, NetFDSetType *fds) {
+  return sys_fdisset(socket, (sys_fdset_t *)fds);
+}
+
+void netFDZero(NetFDSetType *fds) {
+  sys_fdzero((sys_fdset_t *)fds);
 }

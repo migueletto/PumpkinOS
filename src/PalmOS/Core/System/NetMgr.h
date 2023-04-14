@@ -982,6 +982,7 @@ typedef enum	{
 
 
 // File Descriptor macros used for the NetLibSelect() call
+/*
 typedef UInt32					NetFDSetType;
 #define	netFDSetSize		32
 
@@ -989,8 +990,18 @@ typedef UInt32					NetFDSetType;
 #define	netFDClr(n,p)		((*p) &= ~(1L << n))
 #define	netFDIsSet(n,p)	((*p) & (1L << n))
 #define	netFDZero(p)		((*p) = 0)
+*/
 
+#define	netFDSetSize		1024
 
+typedef struct {
+  UInt32 mask[32];
+} NetFDSetType;
+
+void netFDSet(NetSocketRef socket, NetFDSetType *fds);
+void netFDClr(NetSocketRef socket, NetFDSetType *fds);
+Boolean netFDIsSet(NetSocketRef socket, NetFDSetType *fds);
+void netFDZero(NetFDSetType *fds);
 
 //-----------------------------------------------------------------------------
 // Net error codes

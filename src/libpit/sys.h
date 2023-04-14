@@ -103,7 +103,9 @@ typedef uint64_t sys_size_t;
 
 typedef struct sys_dir_t sys_dir_t;
 
-typedef uint32_t sys_fdset_t;
+typedef struct {
+  uint32_t mask[32];
+} sys_fdset_t;
 
 typedef __builtin_va_list sys_va_list;
 #define sys_va_start(v,l) __builtin_va_start(v,l)

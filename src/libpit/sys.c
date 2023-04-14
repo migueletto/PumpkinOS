@@ -857,19 +857,28 @@ int sys_select(int fd, uint32_t us) {
 }
 
 void sys_fdclr(int n, sys_fdset_t *fds) {
-  ((*fds) &= ~(1L << n));
+  int slot = n / 32;
+  int idx = n % 32;
+  fds->mask[slot] &= ~(1 << idx);
 }
 
 void sys_fdset(int n, sys_fdset_t *fds) {
-  ((*fds) |= (1L << n));
+  int slot = n / 32;
+  int idx = n % 32;
+  fds->mask[slot] |= (1 << idx);
 }
 
 void sys_fdzero(sys_fdset_t *fds) {
-  ((*fds) = 0);
+  int slot;
+  for (slot = 0; slot < 32; slot++) {
+    fds->mask[slot] = 0;
+  }
 }
 
 int sys_fdisset(int n, sys_fdset_t *fds) {
-  return ((*fds) & (1L << n));
+  int slot = n / 32;
+  int idx = n % 32;
+  return fds->mask[slot] & (1 << idx);
 }
 
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
@@ -882,7 +891,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   int setsize = FD_SETSIZE;
 #else
   struct timeval tv;
-  int setsize = 32;
+  int setsize = 1024;
 #endif
 
   if (timeout) {
@@ -899,7 +908,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
 
   if (readfds) {
     FD_ZERO(&rfds);
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < setsize; i++) {
       if (sys_fdisset(i, readfds)) {
 #ifdef WINDOWS
         if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
@@ -918,14 +927,14 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
 
   if (writefds) {
     FD_ZERO(&wfds);
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < setsize; i++) {
       if (sys_fdisset(i, writefds)) FD_SET(i, &wfds);
     }
   }
 
   if (exceptfds) {
     FD_ZERO(&efds);
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < setsize; i++) {
       if (sys_fdisset(i, exceptfds)) FD_SET(i, &efds);
     }
   }
@@ -949,7 +958,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   }
 
   if (writefds) {
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < setsize; i++) {
       if (FD_ISSET(i, &wfds)) {
         sys_fdset(i, writefds);
       } else {
@@ -959,7 +968,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   }
 
   if (exceptfds) {
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < setsize; i++) {
       if (FD_ISSET(i, &efds)) {
         sys_fdset(i, exceptfds);
       } else {
