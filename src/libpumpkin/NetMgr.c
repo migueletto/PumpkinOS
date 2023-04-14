@@ -436,6 +436,7 @@ Int16 NetLibSocketAccept(UInt16 libRefnum, NetSocketRef socket, NetSocketAddrTyp
 
   MemSet(host, sizeof(host), 0);
   r = sys_socket_accept(socket, host, sizeof(host)-1, &port, timeout < 0 ? NULL : &tv);
+  *errP = netErrParamErr;
 
   if (r == 0) {
     if (sockAddrP && addrLenP && *addrLenP >= sizeof(NetSocketAddrINType)) {
@@ -445,8 +446,6 @@ Int16 NetLibSocketAccept(UInt16 libRefnum, NetSocketRef socket, NetSocketAddrTyp
       inAddr->addr = NetLibAddrAToIN(libRefnum, host);
       *errP = 0;
     }
-  } else {
-    *errP = netErrParamErr;
   }
 
   return r;
