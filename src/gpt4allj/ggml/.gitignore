@@ -1,0 +1,12 @@
+build/
+build-debug/
+build-*/
+
+compile_commands.json
+
+.exrc
+.cache
+.DS_Store
+
+src/arm_neon.h
+tests/arm_neon.h
