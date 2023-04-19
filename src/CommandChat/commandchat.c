@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
 
 #include "thread.h"
 #include "pumpkin.h"
@@ -16,17 +17,23 @@ a single query/reponse interaction is carried on.
 Since the server keeps the conversation state, multiple
 invocations of this command will continue the conversation.
 
-This command can be invoked like this:
+This command can be invoked in two ways
 chat "word1 word2 .. wordN"
+char -f filename
 
+In the first case, the arguments are the query;
 Example: chat "what is an alpaca?"
+
+In the second case, the query is stored in a file named 'filename'.
+Example: char -f query.txt
 
 CommandMain is the command entry point. In the example above,
 argc would be 1, and argv would be { "what is an alpaca?" }
 */
 
-#define MAX_LINE 512
-#define MAX_LANG  16
+#define MAX_BUF   65536
+#define MAX_LINE    512
+#define MAX_LANG     16
 
 typedef struct {
   syntax_plugin_t *syntax;
@@ -51,18 +58,37 @@ static void chat_fg(uint8_t r, uint8_t g, uint8_t b) {
 
 int CommandMain(int argc, char *argv[]) {
   chat_state_t state;
-  char buf[256];
+  FileRef fileRef;
+  UInt32 nread;
+  char *buf;
   int i, r = -1;
 
   // if there is any argument at all
   if (argc > 0) {
-    // concatenate the arguments into a single buffer, in case there is more than one
-    MemSet(buf, sizeof(buf), 0);
-    for (i = 0; i < argc; i++) {
-      if (StrLen(buf) + 1 + StrLen(argv[i]) + 1 < sizeof(buf)) {
-        // separate each argument with a space
-        if (i > 0) StrCat(buf, " ");
-        StrCat(buf, argv[i]);
+    buf = MemPtrNew(MAX_BUF);
+
+    if (argc == 2 && !StrCompare(argv[0], "-f")) {
+      // read text from a file into the buffer (at most MAX_BUF-1 chars are read)
+      if (VFSFileOpen(1, argv[1], vfsModeRead, &fileRef) == errNone) {
+        if (VFSFileRead(fileRef, MAX_BUF-1, buf, &nread) == errNone) {
+          buf[nread] = 0;
+        } else {
+          debug(DEBUG_ERROR, "chat", "VFSFileRead failed");
+          buf[0] = 0;
+        }
+        VFSFileClose(fileRef);
+      } else {
+        debug(DEBUG_ERROR, "chat", "VFSFileOpen \"%s\" failed", argv[1]);
+      }
+
+    } else {
+      // concatenate the arguments into the buffer
+      for (i = 0; i < argc; i++) {
+        if (StrLen(buf) + 1 + StrLen(argv[i]) + 1 < MAX_BUF) {
+          // separate each argument with a space
+          if (i > 0) StrCat(buf, " ");
+          StrCat(buf, argv[i]);
+        }
       }
     }
 
@@ -88,6 +114,8 @@ int CommandMain(int argc, char *argv[]) {
     } else {
       debug(DEBUG_ERROR, "chat", "nothing to send");
     }
+
+    MemPtrFree(buf);
   } else {
     debug(DEBUG_ERROR, "chat", "no arguments");
   }

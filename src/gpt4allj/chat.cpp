@@ -1,10 +1,11 @@
 #include "ggml/ggml.h"
 #include "gptj.h"
-#include "llmodel.h"
 #include "utils.h"
 #include "user.h"
 
 #include <fstream>
+
+#define MAX_BUF 65536
 
 static bool response(const std::string &r) {
   user_output(r.c_str());
@@ -12,9 +13,9 @@ static bool response(const std::string &r) {
 }
 
 int main(int argc, char *argv[]) {
-  LLModel::PromptContext ctx;
+  GPTJ::PromptContext ctx;
   GPTJ gptj;
-  char buf[256];
+  char *buf;
   int n;
 
   if (argc != 3) {
@@ -30,10 +31,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  buf = (char *)calloc(1, MAX_BUF);
+
   if (user_init(atoi(argv[2])) == 0) {
     for (;;) {
       for (;;) {
-        if ((n = user_input(buf, sizeof(buf)-2)) > 0) break;
+        if ((n = user_input(buf, MAX_BUF-2)) > 0) break;
       }
       if (n == 1 && buf[0] == 0) break;
       buf[n++] = '\n';
@@ -45,6 +48,8 @@ int main(int argc, char *argv[]) {
 
     user_finish();
   }
+
+  free(buf);
 
   return 0;
 }
