@@ -5,20 +5,20 @@
 #include "user.h"
 
 #include <fstream>
+#include <string.h>
 
 #define MAX_BUF 65536
 
 static bool response(const std::string &r) {
   if (r.find("### Prompt:") != std::string::npos || r.find("### Response:") != std::string::npos)
     return false;
-  user_output(r.c_str());
+  if (!user_output(r.c_str())) return false;
   return true;
 }
 
 int main(int argc, char *argv[]) {
   GPTJ::PromptContext ctx;
   LLModel *llmodel;
-  //GPTJ gptj;
   char *buf;
   int n;
 
@@ -51,9 +51,11 @@ int main(int argc, char *argv[]) {
   if (user_init(atoi(argv[2])) == 0) {
     for (;;) {
       for (;;) {
-        if ((n = user_input(buf, MAX_BUF-2)) > 0) break;
+        if ((n = user_input(buf, MAX_BUF-2)) != 0) break;
       }
+      if (n == -1) break;
       if (n == 1 && buf[0] == 0) break;
+      if (n == 3 && !strcmp(buf, "EOF")) continue;
       buf[n++] = '\n';
       buf[n] = 0;
 

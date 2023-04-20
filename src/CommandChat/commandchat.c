@@ -228,5 +228,6 @@ static Boolean ChatResponse(char *buf, void *data) {
   chat_state_t *state = (chat_state_t *)data;
 
   add_reply(state, buf[0] ? buf : "\n");
-  return true;
+
+  return !EvtSysEventAvail(true);
 }

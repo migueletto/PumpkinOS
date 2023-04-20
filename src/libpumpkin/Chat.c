@@ -88,7 +88,13 @@ int ChatQuery(char *host, uint16_t port, char *query, Boolean (*response)(char *
 
                 // print this part of the reply and wait for more parts
                 debug(DEBUG_INFO, "chat", "received reply \"%s\"", buf);
-                if (buf[0] && !response(buf, data)) break;
+                if (buf[0]) {
+                  if (!response(buf, data)) {
+                    // if the caller wants to stop, send "EOF"
+                    NetLibSend(refNum, sock, "EOF", 3, 0, &addr, len, 0, &err);
+                    break;
+                  }
+                }
               }
               // there are no more parts, or an error occurred
               response("", data);

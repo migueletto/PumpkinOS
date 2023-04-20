@@ -88,17 +88,27 @@ int user_input(char *buf, uint16_t max) {
   return r;
 }
 
-void user_output(const char *buf) {
+int user_output(const char *buf) {
   struct sockaddr_in *inaddr;
+  struct timeval timeout = { 0, 0 };
+  fd_set fds;
   char *s;
 
-  fprintf(stderr, "user_output \"%s\"\n", buf);
   if (sock > 0 && peer_set) {
+    FD_ZERO(&fds);
+    FD_SET(sock, &fds);
+    if (select(sock+1, &fds, NULL, NULL, &timeout)) return 0;
+
+    if (buf[0]) {
+      fprintf(stderr, "user_output \"%s\"\n", buf);
+    }
     inaddr = (struct sockaddr_in *)&peer_addr;
     s = (char *)inet_ntoa(inaddr->sin_addr);
-    fprintf(stderr, "sending \"%s\" to %s:%d\n", buf, s, ntohs(inaddr->sin_port));
     if (sendto(sock, buf, strlen(buf)+1, 0, (struct sockaddr *)&peer_addr, peer_addrlen) == -1) {
       fprintf(stderr, "sendto() failed\n");
     }
+    return 1;
   }
+
+  return 0;
 }
