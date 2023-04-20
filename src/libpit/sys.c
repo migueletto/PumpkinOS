@@ -2407,7 +2407,22 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
 }
 
 int sys_socket_binds(int sock, char *host, int *port) {
+#ifdef WINDOWS
+  fd_t *f;
+  int r = -1;
+
+  if ((f = ptr_lock(sock, TAG_FD)) == NULL) {
+    return -1;
+  }
+
+  r = sys_tcpip_bind(f->socket, host, port);
+
+  ptr_unlock(sock, TAG_FD);
+
+  return r;
+#else
   return sys_tcpip_bind(sock, host, port);
+#endif
 }
 
 int sys_socket_listen(int sock, int n) {
