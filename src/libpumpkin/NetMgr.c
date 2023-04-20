@@ -523,8 +523,9 @@ Int16 NetLibSelect(UInt16 libRefNum, UInt16 width, NetFDSetType *readFDs, NetFDS
     r++;
   }
 
-  if (errP && r == -1) {
-    *errP = netErrSocketNotOpen; // XXX which error should be set here ? It can not be netErrTimeout, because timeout is signaled by returning 0
+  if (errP) {
+    // XXX which error should be set here ? It can not be netErrTimeout, because timeout is signaled by returning 0
+    *errP = (r == -1) ? netErrSocketNotOpen : errNone;
   }
 
   return r;
