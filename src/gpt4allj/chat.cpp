@@ -1,4 +1,4 @@
-#include "ggml/ggml.h"
+#include "llama.cpp/ggml.h"
 #include "gptj.h"
 #include "llamamodel.h"
 #include "utils.h"

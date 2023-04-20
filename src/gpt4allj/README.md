@@ -30,7 +30,7 @@ GPT-J model by following build instructions below.
 * Upload prompt/respones manually/automatically to nomic.ai to aid future training runs
 * Syntax highlighting support for programming languages, etc.
 * REST API with a built-in webserver in the chat gui itself with a headless operation mode as well
-* Advanced settings for changing temperature, topk, etc.
+* Advanced settings for changing temperature, topk, etc. (DONE)
 * YOUR IDEA HERE
 
 ## Building and running
@@ -40,7 +40,7 @@ GPT-J model by following build instructions below.
 * Download https://huggingface.co/EleutherAI/gpt-j-6b
 * Clone this repo and build
 ```
-git clone --recurse-submodules https://github.com/manyoso/gpt4all-chat.git
+git clone --recurse-submodules https://github.com/nomic-ai/gpt4all-chat
 cd gpt4all-chat
 mkdir build
 cd build
@@ -51,10 +51,39 @@ python3 ../ggml/examples/gpt-j/convert-h5-to-ggml.py /path/to/your/local/copy/of
 ./chat
 ```
 
+## Building and running CLI tools only (no Qt required)
+
+* Install cmake for your platform https://cmake.org/install/
+* Clone this repo and build the `ggml` subfolder
+```
+git clone --recurse-submodules https://github.com/nomic-ai/gpt4all-chat
+cd gpt4all-chat/ggml
+mkdir build
+cd build
+cmake ..
+cmake --build . --parallel
+wget https://gpt4all.io/models/ggml-gpt4all-j-v1.2-jazzy.bin # Download GGML model if you don't already have it.
+./bin/gpt-j -m ggml-gpt4all-j.bin -n 200 --top_k 40 --top_p 0.9 -b 9 --temp 0.9 -p "Below is an instruction that describes a task. Write a response that appropriately completes the request.
+### Instruction:
+Tell me about artifical intelligence
+### Response:"
+```
+
+## To get Qt installed for your system
+
+* Highly advise using the official Qt online open source installer.
+* You can obtain this by creating an account on qt.io and downloading the installer. 
+* You should get latest Qt {Qt 6.5.x} for your system and the developer tools including QtCreator, cmake, ninja.
+* WINDOWS NOTE: you need to use the mingw64 toolchain and not msvc
+* ALL PLATFORMS NOTE: the installer has options for lots of different targets which will add a lot
+of download overhead. You can deselect webassembly target, android, sources, etc to save space on your disk.
+
 ## Contributing
 
 * Pull requests welcome. See the feature wish list for ideas :)
 
 
 ## License
-The source code of this chat interface is currently under a GPL license. The underlying GPT4All-j model is released under non-restrictive open-source Apache 2 License.
+The source code of this chat interface is currently under a MIT license. The underlying GPT4All-j model is released under non-restrictive open-source Apache 2 License.
+
+The GPT4All-J license allows for users to use generated outputs as they see fit. Users take responsibility for ensuring their content meets applicable requirements for publication in a given context or region.
