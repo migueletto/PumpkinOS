@@ -9,6 +9,8 @@
 #define MAX_BUF 65536
 
 static bool response(const std::string &r) {
+  if (r.find("### Prompt:") != std::string::npos || r.find("### Response:") != std::string::npos)
+    return false;
   user_output(r.c_str());
   return true;
 }
@@ -57,6 +59,7 @@ int main(int argc, char *argv[]) {
 
       std::string prompt = "The prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.\n### Prompt:\n" + std::string(buf) + "### Response:\n";
       llmodel->prompt(prompt, response, ctx, 2048, 40, 0.95, 0.28, 9);
+      prompt.clear();
       user_output("EOF");
     }
 
