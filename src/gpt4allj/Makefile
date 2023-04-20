@@ -4,7 +4,7 @@ CFLAGS=-O3 -I./ggml/include -I./ggml/include/ggml -I./ggml/examples -mavx -mavx2
 CXXFLAGS=-O3 -I./ggml/include -I./ggml/include/ggml -I./ggml/examples -pthread
 
 chat: $(OBJS)
-	g++ -o chat $(OBJS)
+	g++ -o chat -pthread $(OBJS)
 
 ggml.o: ggml/src/ggml.c
 	gcc $(CFLAGS) -c ggml/src/ggml.c
