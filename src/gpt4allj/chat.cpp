@@ -1,5 +1,6 @@
 #include "ggml/ggml.h"
 #include "gptj.h"
+#include "llamamodel.h"
 #include "utils.h"
 #include "user.h"
 
@@ -14,7 +15,8 @@ static bool response(const std::string &r) {
 
 int main(int argc, char *argv[]) {
   GPTJ::PromptContext ctx;
-  GPTJ gptj;
+  LLModel *llmodel;
+  //GPTJ gptj;
   char *buf;
   int n;
 
@@ -26,7 +28,18 @@ int main(int argc, char *argv[]) {
   ggml_time_init();
   auto fin = std::ifstream(argv[1], std::ios::binary);
 
-  if (!gptj.loadModel(argv[1], fin)) {
+  uint32_t magic;
+  fin.read((char *) &magic, sizeof(magic));
+  fin.seekg(0);
+  bool isGPTJ = (magic == 0x67676d6c);
+
+  if (isGPTJ) {
+    llmodel = new GPTJ;
+  } else {
+    llmodel = new LLamaModel;
+  }
+
+  if (!llmodel->loadModel(argv[1], fin)) {
     fprintf(stderr, "failed to load model '%s'\n", argv[1]);
     return 1;
   }
@@ -42,7 +55,8 @@ int main(int argc, char *argv[]) {
       buf[n++] = '\n';
       buf[n] = 0;
 
-      gptj.prompt(buf, response, ctx, 200, 40, 0.9f, 0.9f, 9);
+      std::string prompt = "The prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.\n### Prompt:\n" + std::string(buf) + "### Response:\n";
+      llmodel->prompt(prompt, response, ctx, 2048, 40, 0.95, 0.28, 9);
       user_output("EOF");
     }
 
