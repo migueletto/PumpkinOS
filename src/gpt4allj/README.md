@@ -16,13 +16,18 @@ GPT-J model by following build instructions below.
 * The UI is made to look and feel like you've come to expect from a chatty gpt
 * Check for updates so you can alway stay fresh with latest models
 * Easy to install with precompiled binaries available for all three major desktop platforms
+* Multi-modal - Ability to load more than one model and switch between them
+* Supports both llama.cpp and gptj.cpp style models
+* Model downloader in GUI featuring many popular open source models
+* Settings dialog to change temp, top_p, top_k, threads, etc
+* Copy your conversation to clipboard
+* Check for updates to get the very latest GUI
 
 ## Feature wishlist
 
 * Multi-chat - a list of current and past chats and the ability to save/delete/export and switch between
 * Text to speech - have the AI response with voice
 * Speech to text - give the prompt with your voice
-* Multi-modal - Ability to load more than one model and switch between them
 * Python bindings
 * Typescript bindings
 * Plugin support for langchain other developer tools
@@ -40,14 +45,24 @@ GPT-J model by following build instructions below.
 * Download https://huggingface.co/EleutherAI/gpt-j-6b
 * Clone this repo and build
 ```
-git clone --recurse-submodules https://github.com/nomic-ai/gpt4all-chat
-cd gpt4all-chat
+git clone https://github.com/ggerganov/ggml.git
+cd ggml
 mkdir build
 cd build
 cmake ..
 cmake --build . --parallel
 python3 ../ggml/examples/gpt-j/convert-h5-to-ggml.py /path/to/your/local/copy/of/EleutherAI/gpt-j-6B 0
 ./bin/gpt-j-quantize /path/to/your/local/copy/of/EleutherAI/gpt-j-6B/ggml-model-f32.bin ./ggml-model-q4_0.bin 2
+```
+and then
+```
+git clone --recurse-submodules https://github.com/nomic-ai/gpt4all-chat
+cd gpt4all-chat
+mkdir build
+cd build
+cmake ..
+cmake --build . --parallel
+mv /path/to/ggml-model-q4_0.bin .
 ./chat
 ```
 

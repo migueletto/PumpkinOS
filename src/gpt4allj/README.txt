@@ -24,6 +24,9 @@ A new query packet will be processed only after the current query is processed
 and all the replies are sent.
 
 Just like in the original gpt4all-chat, this code runs on the CPU, not GPU.
+You need a fairly recent and fast CPU to run it, and at least 8GB of RAM
+(although more is recommended).
+
 Models are not included in this distribution because of
 1) tricky licensing
 2) they are huge! (usually 4GB in size).
@@ -32,5 +35,12 @@ PLease check the gpt4all site for intructions on how/where to get a model.
 In PumpkinOS, the Command application provides an external command "chat",
 which is an example of an UDP client that talks to this server.
 Check the CommandChat application for more information on how to use it.
+
+I have observed severe performance degradation after a long, continuous exchange of queries
+and responses. The same thing happens in the GUI gpt4all application, so the problem lies
+within gpt4all implementation, not in the chat command. Sometimes, the responses
+become repetitive and appear to enter a never ending loop. In this case, just kill
+the chat server and start it again. It will start a fresh, empty conversation context.
+The client does not need to be restarted, since it is stateless.
 
 The original readme for gpt4all-chat is README.md.
