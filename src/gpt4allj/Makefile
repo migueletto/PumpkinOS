@@ -1,4 +1,4 @@
-OBJS=chat.o gptj.o llamamodel.o llama.o llama_common.o ggml.o utils.o user.o
+OBJS=chat.o gptj.o llamamodel.o llama.o llama_common.o ggml.o utils.o user.o test_hw.o
 
 CFLAGS=-O3 -I./llama.cpp -Wno-multichar -mavx -mavx2 -mfma -mf16c -msse3 -pthread
 CXXFLAGS=-O3 -I./llama.cpp -Wno-multichar -pthread

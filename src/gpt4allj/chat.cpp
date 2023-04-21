@@ -3,6 +3,7 @@
 #include "llamamodel.h"
 #include "utils.h"
 #include "user.h"
+#include "test_hw.h"
 
 #include <fstream>
 #include <string.h>
@@ -17,7 +18,7 @@ static bool response(const std::string &r) {
 }
 
 int main(int argc, char *argv[]) {
-  GPTJ::PromptContext ctx;
+  LLModel::PromptContext ctx;
   LLModel *llmodel;
   char *buf;
   int n;
@@ -27,6 +28,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  test_hw();
   ggml_time_init();
   auto fin = std::ifstream(argv[1], std::ios::binary);
 
