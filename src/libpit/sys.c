@@ -878,20 +878,18 @@ void sys_fdzero(sys_fdset_t *fds) {
 int sys_fdisset(int n, sys_fdset_t *fds) {
   int slot = n / 32;
   int idx = n % 32;
-  return fds->mask[slot] & (1 << idx);
+  return (fds->mask[slot] & (1 << idx)) ? 1 : 0;
 }
 
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
   fd_set rfds, wfds, efds;
-  int r, i, s;
+  int r, i, s, isset;
 #ifdef WINDOWS
   TIMEVAL tv;
   fd_t *f;
-  int map[FD_SETSIZE];
-  int setsize = FD_SETSIZE;
+  int map[FDSET_SIZE];
 #else
   struct timeval tv;
-  int setsize = 1024;
 #endif
 
   if (timeout) {
@@ -900,7 +898,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   }
 
 #ifdef WINDOWS
-  for (i = 0; i < setsize; i++) {
+  for (i = 0; i < FDSET_SIZE; i++) {
     map[i] = 0;
   }
   nfds = 0;
@@ -908,13 +906,13 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
 
   if (readfds) {
     FD_ZERO(&rfds);
-    for (i = 0; i < setsize; i++) {
+    for (i = 0; i < FDSET_SIZE; i++) {
       if (sys_fdisset(i, readfds)) {
 #ifdef WINDOWS
         if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
-          if (f->type == FD_SOCKET && f->socket < setsize) {
+          if (f->type == FD_SOCKET) {
             FD_SET(f->socket, &rfds);
-            map[f->socket] = i;
+            map[i] = f->socket;
           }
           ptr_unlock(i, TAG_FD);
         }
@@ -927,15 +925,39 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
 
   if (writefds) {
     FD_ZERO(&wfds);
-    for (i = 0; i < setsize; i++) {
-      if (sys_fdisset(i, writefds)) FD_SET(i, &wfds);
+    for (i = 0; i < FDSET_SIZE; i++) {
+      if (sys_fdisset(i, writefds)) {
+#ifdef WINDOWS
+        if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
+          if (f->type == FD_SOCKET) {
+            FD_SET(f->socket, &wfds);
+            map[i] = f->socket;
+          }
+          ptr_unlock(i, TAG_FD);
+        }
+#else
+        FD_SET(i, &rfds);
+#endif
+      }
     }
   }
 
   if (exceptfds) {
     FD_ZERO(&efds);
-    for (i = 0; i < setsize; i++) {
-      if (sys_fdisset(i, exceptfds)) FD_SET(i, &efds);
+    for (i = 0; i < FDSET_SIZE; i++) {
+      if (sys_fdisset(i, exceptfds)) {
+#ifdef WINDOWS
+        if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
+          if (f->type == FD_SOCKET) {
+            FD_SET(f->socket, &efds);
+            map[i] = f->socket;
+          }
+          ptr_unlock(i, TAG_FD);
+        }
+#else
+        FD_SET(i, &rfds);
+#endif
+      }
     }
   }
 
@@ -943,23 +965,31 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
 
   if (readfds) {
     sys_fdzero(readfds);
-    for (i = 0; i < setsize; i++) {
+    for (i = 0; i < FDSET_SIZE; i++) {
 #ifdef WINDOWS
       s = map[i];
+      isset = s > 0 && FD_ISSET(s, &rfds);
 #else
-      s = i;
+      isset = FD_ISSET(i, &rfds);
 #endif
-      if (FD_ISSET(i, &rfds)) {
-        sys_fdset(s, readfds);
+      if (isset) {
+        sys_fdset(i, readfds);
       } else {
-        sys_fdclr(s, readfds);
+        sys_fdclr(i, readfds);
       }
     }
   }
 
   if (writefds) {
-    for (i = 0; i < setsize; i++) {
-      if (FD_ISSET(i, &wfds)) {
+    sys_fdzero(writefds);
+    for (i = 0; i < FDSET_SIZE; i++) {
+#ifdef WINDOWS
+      s = map[i];
+      isset = s > 0 && FD_ISSET(s, &wfds);
+#else
+      isset = FD_ISSET(i, &wfds);
+#endif
+      if (isset) {
         sys_fdset(i, writefds);
       } else {
         sys_fdclr(i, writefds);
@@ -968,8 +998,15 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   }
 
   if (exceptfds) {
-    for (i = 0; i < setsize; i++) {
-      if (FD_ISSET(i, &efds)) {
+    sys_fdzero(exceptfds);
+    for (i = 0; i < FDSET_SIZE; i++) {
+#ifdef WINDOWS
+      s = map[i];
+      isset = s > 0 && FD_ISSET(s, &efds);
+#else
+      isset = FD_ISSET(i, &efds);
+#endif
+      if (isset) {
         sys_fdset(i, exceptfds);
       } else {
         sys_fdclr(i, exceptfds);

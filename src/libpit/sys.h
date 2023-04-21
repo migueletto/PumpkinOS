@@ -103,6 +103,8 @@ typedef uint64_t sys_size_t;
 
 typedef struct sys_dir_t sys_dir_t;
 
+#define FDSET_SIZE 1024
+
 typedef struct {
   uint32_t mask[32];
 } sys_fdset_t;
