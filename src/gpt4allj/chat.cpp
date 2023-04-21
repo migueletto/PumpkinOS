@@ -59,6 +59,12 @@ int main(int argc, char *argv[]) {
       buf[n++] = '\n';
       buf[n] = 0;
 
+      // n_predict: maximum length of response in tokens
+      // top_k: only the top K most likely tokens will be chosen from
+      // top_p: only the most likely tokens up to a total probability of top_p can be chosen, prevents choosing highly unlikely tokens, aka Nucleus Sampling
+      // temp: increases the chances of choosing less likely tokens - higher temperature gives more creative but less predictable outputs
+      // n_batch: amount of prompt tokens to process at once, higher values can speed up reading prompts but will use more RAM
+
       std::string prompt = "The prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.\n### Prompt:\n" + std::string(buf) + "### Response:\n";
       llmodel->prompt(prompt, response, ctx, 2048, 40, 0.95, 0.28, 9);
       prompt.clear();
