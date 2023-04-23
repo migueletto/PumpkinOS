@@ -54,7 +54,6 @@ int user_input(char *buf, uint16_t max) {
   int r = -1;
 
   if (sock > 0) {
-    fprintf(stderr, "waiting for input ...\n");
     peer_addrlen = sizeof(struct sockaddr);
     r = recvfrom(sock, buf, max, 0, (struct sockaddr *)&peer_addr, &peer_addrlen);
     if (r > 0) {
@@ -65,7 +64,6 @@ int user_input(char *buf, uint16_t max) {
           inaddr = (struct sockaddr_in *)&peer_addr;
           h = inet_ntoa(inaddr->sin_addr);
           port = ntohs(inaddr->sin_port);
-          fprintf(stderr, "received \"%.*s\" from inet %s:%d\n", r, buf, h, port);
           peer_set = 1;
           break;
         case AF_INET6:
@@ -99,9 +97,6 @@ int user_output(const char *buf) {
     FD_SET(sock, &fds);
     if (select(sock+1, &fds, NULL, NULL, &timeout)) return 0;
 
-    if (buf[0]) {
-      fprintf(stderr, "user_output \"%s\"\n", buf);
-    }
     inaddr = (struct sockaddr_in *)&peer_addr;
     s = (char *)inet_ntoa(inaddr->sin_addr);
     if (sendto(sock, buf, strlen(buf)+1, 0, (struct sockaddr *)&peer_addr, peer_addrlen) == -1) {

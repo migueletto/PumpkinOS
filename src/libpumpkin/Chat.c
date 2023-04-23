@@ -45,7 +45,7 @@ int ChatQuery(char *host, uint16_t port, char *query, Boolean (*response)(char *
 
             if (err == errNone) {
               // the server may send the reply in multiple parts,
-              // process each part until an "EOF" string is received
+              // process each part until an "#eof" string is received
 
               debug(DEBUG_INFO, "chat", "waiting for reply ...");
               for (i = 0; i < 50 && !thread_must_end(); i++) {
@@ -79,10 +79,10 @@ int ChatQuery(char *host, uint16_t port, char *query, Boolean (*response)(char *
                 // if at least one packet is received, the command succeeds
                 r = 0;
 
-                if (n == 4 && !StrCompare(buf, "EOF")) {
-                  // a packet with "EOF" means the server is done with the query,
+                if (n == 5 && !StrCaselessCompare(buf, "#eof")) {
+                  // a packet with "#eof" means the server is done with the query,
                   // that is, all the parts of the reply have been sent
-                  debug(DEBUG_INFO, "chat", "EOF reply");
+                  debug(DEBUG_INFO, "chat", "#eof reply");
                   break;
                 }
 
@@ -90,8 +90,8 @@ int ChatQuery(char *host, uint16_t port, char *query, Boolean (*response)(char *
                 debug(DEBUG_INFO, "chat", "received reply \"%s\"", buf);
                 if (buf[0]) {
                   if (!response(buf, data)) {
-                    // if the caller wants to stop, send "EOF"
-                    NetLibSend(refNum, sock, "EOF", 3, 0, &addr, len, 0, &err);
+                    // if the caller wants to stop, send "#stop"
+                    NetLibSend(refNum, sock, "#stop", 5, 0, &addr, len, 0, &err);
                     break;
                   }
                 }

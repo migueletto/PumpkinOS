@@ -726,7 +726,7 @@ void GPTJ::prompt(const std::string &prompt, std::function<bool(const std::strin
         if (promptCtx.n_past + batch.size() > n_ctx) {
             // FIXME: will produce gibberish after this
             promptCtx.n_past = std::min(promptCtx.n_past, int(n_ctx - batch.size()));
-            std::cerr << "GPT-J WARNING: reached the end of the context window! (prompt)\n";
+            std::cerr << "GPT-J WARNING: reached the end of the context window!\n";
         }
 
         if (!gptj_eval(d_ptr->model, d_ptr->n_threads, promptCtx.n_past, batch, promptCtx.logits, mem_per_token)) {
@@ -764,7 +764,7 @@ void GPTJ::prompt(const std::string &prompt, std::function<bool(const std::strin
         if (promptCtx.n_past + 1 > n_ctx) {
             // FIXME: will produce gibberish after this
             promptCtx.n_past = std::min(promptCtx.n_past, n_ctx - 1);
-            std::cerr << "GPT-J WARNING: reached the end of the context window! (predict)\n";
+            std::cerr << "GPT-J WARNING: reached the end of the context window!\n";
         }
 
         const int64_t t_start_predict_us = ggml_time_us();
