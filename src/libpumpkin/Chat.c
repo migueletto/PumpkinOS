@@ -139,7 +139,7 @@ int ChatQuery(ChatType *chat, char *query, Boolean (*response)(char *buf, void *
         if (buf[0]) {
           if (!response(buf, data)) {
             // if the caller wants to stop, send "#stop"
-            NetLibSend(chat->refNum, chat->sock, "#stop", 5, 0, &addr, addrLen, 0, &err);
+            NetLibSend(chat->refNum, chat->sock, "#stop", 6, 0, &addr, addrLen, 0, &err);
             break;
           }
         }
