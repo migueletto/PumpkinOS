@@ -4166,8 +4166,10 @@ uint32_t pumpkin_gets(char *buf, uint32_t max) {
         break;
       }
       if (c == '\b') {
-        if (i > 0) i--;
-        pumpkin_putchar('\b');
+        if (i > 0) {
+          pumpkin_putchar('\b');
+          i--;
+        }
         continue;
       }
       pumpkin_putchar(c);
