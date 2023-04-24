@@ -4142,7 +4142,7 @@ void pumpkin_putchar(char c) {
 }
 
 void pumpkin_puts(char *s) {
-  int i;
+  uint32_t i;
 
   for (i = 0; s[i]; i++) {
     if (s[i] == '\n' && (i == 0 || s[i-1] != '\r')) {
@@ -4150,6 +4150,33 @@ void pumpkin_puts(char *s) {
     }
     pumpkin_putchar(s[i]);
   }
+}
+
+uint32_t pumpkin_gets(char *buf, uint32_t max) {
+  uint32_t i = 0;
+  char c;
+
+  if (buf && max > 0) {
+    for (; i < max-1;) {
+      c = pumpkin_getchar();
+      if (c == 0) break;
+      if (c == '\n') {
+        pumpkin_putchar('\r');
+        pumpkin_putchar('\n');
+        break;
+      }
+      if (c == '\b') {
+        if (i > 0) i--;
+        pumpkin_putchar('\b');
+        continue;
+      }
+      pumpkin_putchar(c);
+      buf[i++] = c;
+    }
+    buf[i] = 0;
+  }
+
+  return i;
 }
 
 void pumpkin_setcolor(uint32_t fg, uint32_t bg) {

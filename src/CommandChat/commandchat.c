@@ -9,31 +9,32 @@
 #include "debug.h"
 
 /*
-A simple command that sends its arguments to an UDP server
+An interactive command that sends queries to an UDP server
 and reads back the server response, printing it on the terminal.
 It can be used to interact with the modified gtp4allj server
-shipped with PumpkinOS. Each time this command is invoked,
-a single query/reponse interaction is carried on.
+shipped with PumpkinOS.
 Since the server keeps the conversation state, multiple
 invocations of this command will continue the conversation.
 
-This command can be invoked in two ways
-chat "word1 word2 .. wordN"
-char -f filename
+This command accepts two optional parameters, the server
+host and the server port number:
+chat <host> <port>
 
-In the first case, the arguments are the query;
-Example: chat "what is an alpaca?"
+If no argument is provided, is uses "127.0.0.1" as the host
+and 5555 and the port number.
 
-In the second case, the query is stored in a file named 'filename'.
-Example: char -f query.txt
-
-CommandMain is the command entry point. In the example above,
-argc would be 1, and argv would be { "what is an alpaca?" }
+The prompt will change to "chat>", and everything you type
+is sent to the server. Responses will appear on the terminal
+when they are sent by the server. To exit the chat command,
+just type ENTER on an empty line.
 */
 
-#define MAX_BUF   65536
+#define MAX_BUF     256
 #define MAX_LINE    512
 #define MAX_LANG     16
+
+#define DEFAULT_HOST "127.0.0.1"
+#define DEFAULT_PORT "5555"
 
 typedef struct {
   syntax_plugin_t *syntax;
@@ -58,67 +59,39 @@ static void chat_fg(uint8_t r, uint8_t g, uint8_t b) {
 
 int CommandMain(int argc, char *argv[]) {
   chat_state_t state;
-  FileRef fileRef;
-  UInt32 nread;
-  char *buf;
-  int i, r = -1;
+  ChatType *chat;
+  char *host, *buf, *port;
+  int r = -1;
 
-  // if there is any argument at all
-  if (argc > 0) {
-    buf = MemPtrNew(MAX_BUF);
+  host = (argc >= 1) ? argv[0] : DEFAULT_HOST;
+  port = (argc >= 2) ? argv[1] : DEFAULT_PORT;
 
-    if (argc == 2 && !StrCompare(argv[0], "-f")) {
-      // read text from a file into the buffer (at most MAX_BUF-1 chars are read)
-      if (VFSFileOpen(1, argv[1], vfsModeRead, &fileRef) == errNone) {
-        if (VFSFileRead(fileRef, MAX_BUF-1, buf, &nread) == errNone) {
-          buf[nread] = 0;
-        } else {
-          debug(DEBUG_ERROR, "chat", "VFSFileRead failed");
-          buf[0] = 0;
-        }
-        VFSFileClose(fileRef);
-      } else {
-        debug(DEBUG_ERROR, "chat", "VFSFileOpen \"%s\" failed", argv[1]);
-      }
+  MemSet(&state, sizeof(chat_state_t), 0);
+  buf = MemPtrNew(MAX_BUF);
 
-    } else {
-      // concatenate the arguments into the buffer
-      for (i = 0; i < argc; i++) {
-        if (StrLen(buf) + 1 + StrLen(argv[i]) + 1 < MAX_BUF) {
-          // separate each argument with a space
-          if (i > 0) StrCat(buf, " ");
-          StrCat(buf, argv[i]);
-        }
-      }
-    }
+  // initializes Lua syntax highlighting
+  if ((state.syntax = syntax_get_plugin("lua")) != NULL) {
+    state.shigh = state.syntax->syntax_create(0);
+  }
 
-    // if the buffer is not empty
-    if (buf[0]) {
-      MemSet(&state, sizeof(chat_state_t), 0);
-
+  // connect to server
+  if ((chat = ChatOpen(host, StrAToI(port))) != NULL) {
+    for (;;) {
+      // set terminal foreground color to the default
+      pumpkin_setcolor(0x80000000, 0x80000000);
+      pumpkin_puts("chat>");
+      if (pumpkin_gets(buf, MAX_BUF) == 0) break;
       // change terminal foreground color so that server replies appear in green
       chat_fg(0, 255, 0);
-
-      // initializes Lua syntax highlighting
-      if ((state.syntax = syntax_get_plugin("lua")) != NULL) {
-        state.shigh = state.syntax->syntax_create(0);
-      }
-
-      // call server on localhost port 5555
-      ChatQuery("127.0.0.1", 5555, buf, ChatResponse, &state);
-
-      // revert terminal foreground color to the default
-      pumpkin_setcolor(0x80000000, 0x80000000);
-
-      if (state.syntax) state.syntax->syntax_destroy(state.shigh);
-    } else {
-      debug(DEBUG_ERROR, "chat", "nothing to send");
+      // send que query and print the response
+      ChatQuery(chat, buf, ChatResponse, &state);
     }
-
-    MemPtrFree(buf);
-  } else {
-    debug(DEBUG_ERROR, "chat", "no arguments");
+    ChatClose(chat);
   }
+
+  if (state.syntax) state.syntax->syntax_destroy(state.shigh);
+
+  MemPtrFree(buf);
 
   return r;
 }

@@ -480,6 +480,7 @@ void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, 
 char pumpkin_getchar(void);
 void pumpkin_putchar(char c);
 void pumpkin_puts(char *s);
+uint32_t pumpkin_gets(char *buf, uint32_t max);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 
 #ifdef __cplusplus

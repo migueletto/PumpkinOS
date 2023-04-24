@@ -204,6 +204,10 @@ static char command_getchar(void *data) {
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (event.eType == appStopEvent) break;
+    if (event.eType == nilEvent) {
+      pterm_cursor_blink(idata->t);
+      continue;
+    }
     if (event.eType == keyDownEvent && !(event.data.keyDown.modifiers & commandKeyMask)) {
       c = event.data.keyDown.chr;
       break;
