@@ -11,20 +11,34 @@
 
 #define MAX_BUF 65536
 
+static LLModel::PromptContext ctx;
+
 typedef struct {
-  LLModel::PromptContext ctx;
   int32_t predict = 1024;
   int32_t top_k = 40;
   float top_p = 0.95f;
   float temp = 0.28f;
   int32_t batch = 9;
+  int32_t threads = 4;
+  int llama = 0;
 } chat_param_t;
 
-static bool response(const std::string &r) {
+static bool response(int32_t token, const std::string &r) {
+  if (ctx.tokens.size() == ctx.n_ctx) {
+    ctx.tokens.erase(ctx.tokens.begin());
+  }
+  ctx.tokens.push_back(token);
+
   if (r.find("### Prompt:") != std::string::npos || r.find("### Response:") != std::string::npos)
     return false;
+
   fprintf(stderr, "%s", r.c_str());
   if (!user_output(r.c_str())) return false;
+
+  return true;
+}
+
+static bool recalculate(bool recalculating) {
   return true;
 }
 
@@ -33,7 +47,7 @@ static bool command(char *buf, chat_param_t *param, param_info_t pinfo[]) {
     fprintf(stderr, "stop generating\n");
   } else if (!strcasecmp(buf, "reset")) {
     fprintf(stderr, "reset context\n");
-    param->ctx = LLModel::PromptContext();
+    ctx = LLModel::PromptContext();
   } else {
     char *value = strchr(buf, ' ');
     if (value) param_check(pinfo, &buf[1], value+1);
@@ -52,6 +66,8 @@ int main(int argc, char *argv[]) {
     { "top_p",   'F', &param.top_p,    0,    0, 0, 1, "only the most likely tokens up to a total probability of top_p can be chosen" },
     { "temp",    'F', &param.temp,     0,    0, 0, 1, "increases the chances of choosing less likely tokens" },
     { "batch",   'I', &param.batch,    1,   20, 0, 0, "amount of prompt tokens to process at once" },
+    { "threads", 'I', &param.threads,  0,   16, 0, 0, "number of threads to use" },
+    { "llama",   'B', &param.llama,    0,    0, 0, 0, "model is compatible with llama.cpp" },
     { 0 }
   };
   LLModel *llmodel;
@@ -61,7 +77,10 @@ int main(int argc, char *argv[]) {
   for (i = 1; i < argc; i += 2) {
     if (argv[i][0] != '-') break;
     if (i == argc-1) break;
-    param_check(pinfo, &argv[i][1], argv[i+1]);
+    if (!param_check(pinfo, &argv[i][1], argv[i+1])) {
+      i = argc;
+      break;
+    }
   }
 
   if ((argc - i) != 2) {
@@ -78,20 +97,22 @@ int main(int argc, char *argv[]) {
   ggml_time_init();
   auto fin = std::ifstream(argv[i], std::ios::binary);
 
-  uint32_t magic;
-  fin.read((char *) &magic, sizeof(magic));
-  fin.seekg(0);
-  bool isGPTJ = (magic == 0x67676d6c);
-
-  if (isGPTJ) {
-    llmodel = new GPTJ;
-  } else {
+  bool loaded;
+  if (param.llama) {
     llmodel = new LLamaModel;
+    loaded = llmodel->loadModel(argv[i]);
+  } else {
+    llmodel = new GPTJ;
+    loaded = llmodel->loadModel(argv[i], fin);
   }
 
-  if (!llmodel->loadModel(argv[i], fin)) {
+  if (!loaded) {
     fprintf(stderr, "failed to load model '%s'\n", argv[i]);
     return 1;
+  }
+
+  if (param.threads > 0) {
+    llmodel->setThreadCount(param.threads);
   }
 
   buf = (char *)calloc(1, MAX_BUF);
@@ -110,9 +131,14 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "predict=%d, top_k=%d, top_p=%.2f, temp=%.2f, batch=%d\n",
         param.predict, param.top_k, param.top_p, param.temp, param.batch);
 
-      std::string prompt = "The prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.\n### Prompt:\n" + std::string(buf) + "\n### Response:\n";
+      std::string prompt = "### Instruction:\nThe prompt below is a question to answer, a task to complete, or a conversation to respond to; decide which and write an appropriate response.\n### Prompt:\n" + std::string(buf) + "\n### Response:\n";
       fprintf(stderr, "output: ");
-      llmodel->prompt(prompt, response, param.ctx, param.predict, param.top_k, param.top_p, param.temp, param.batch);
+      ctx.n_predict = param.predict;
+      ctx.top_k = param.top_k;
+      ctx.top_p = param.top_p;
+      ctx.temp = param.temp;
+      ctx.n_batch = param.batch;
+      llmodel->prompt(prompt, response, recalculate, ctx);
       fprintf(stderr, "\n");
       prompt.clear();
       user_output("#eof");
