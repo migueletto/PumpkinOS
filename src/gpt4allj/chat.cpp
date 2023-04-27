@@ -23,7 +23,15 @@ typedef struct {
   int llama = 0;
 } chat_param_t;
 
-static bool response(int32_t token, const std::string &r) {
+static bool prompt_callback(int32_t token) {
+  return true;
+}
+
+static bool response_callback(int32_t token, const std::string &r) {
+  if (token < 0) {
+    return false;
+  }
+
   if (ctx.tokens.size() == ctx.n_ctx) {
     ctx.tokens.erase(ctx.tokens.begin());
   }
@@ -38,7 +46,7 @@ static bool response(int32_t token, const std::string &r) {
   return true;
 }
 
-static bool recalculate(bool recalculating) {
+static bool recalculate_callback(bool recalculating) {
   return true;
 }
 
@@ -138,7 +146,7 @@ int main(int argc, char *argv[]) {
       ctx.top_p = param.top_p;
       ctx.temp = param.temp;
       ctx.n_batch = param.batch;
-      llmodel->prompt(prompt, response, recalculate, ctx);
+      llmodel->prompt(prompt, prompt_callback, response_callback, recalculate_callback, ctx);
       fprintf(stderr, "\n");
       prompt.clear();
       user_output("#eof");
