@@ -329,11 +329,7 @@ extern Err 		SndInterruptSmfIrregardless(void)
 									//  the Sound streams APIs are available
 #define sndMgrVersionNum	(100)   // The current version (1.00) 
 
-#ifdef PALMOS
 typedef UInt32 SndStreamRef;
-#else
-typedef void *SndStreamRef;
-#endif
 
 enum SndStreamModeTag {
 	sndInput,

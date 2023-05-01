@@ -2,21 +2,41 @@
   
 #include "sys.h"
 #include "thread.h"
+#include "script.h"
 #include "pwindow.h"
+#include "media.h"
 #include "vfs.h"
 #include "bytes.h"
+#include "ptr.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
 
+#define TAG_STREAM "stream"
+#define TAG_SOUND  "sound"
+
 typedef struct {
   window_provider_t *wp;
+  audio_provider_t *ap;
 } snd_module_t;
 
 extern thread_key_t *snd_key;
 
-int SndInitModule(window_provider_t *wp) {
+typedef struct {
+  char *tag;
+  SndStreamBufferCallback func;
+  void *userdata;
+  UInt32 samplesize;
+  int pcm, channels, rate, started;
+  audio_t *audio;
+} SndStreamType;
+
+typedef struct {
+  int ptr;
+} SndStreamArg;
+
+int SndInitModule(window_provider_t *wp, audio_provider_t *ap) {
   snd_module_t *module;
 
   if ((module = xcalloc(1, sizeof(snd_module_t))) == NULL) {
@@ -24,6 +44,7 @@ int SndInitModule(window_provider_t *wp) {
   }
 
   module->wp = wp;
+  module->ap = ap;
   thread_set(snd_key, module);
 
   return 0;
@@ -318,53 +339,120 @@ Err SndInterruptSmfIrregardless(void) {
 }
 
 Err SndStreamDelete(SndStreamRef channel) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamDelete not implemented");
-  return sysErrParamErr;
+  Err err = sndErrBadParam;
+
+  if (channel > 0) {
+    ptr_free(channel, TAG_STREAM);
+    err = errNone;
+  }
+
+  return err;
+}
+
+static int SndGetAudio(void *buffer, int len, void *data) {
+  SndStreamArg *arg = (SndStreamArg *)data;
+  SndStreamType *snd;
+  UInt32 nsamples;
+  Err err;
+  int r = -1;
+
+  if (buffer && len > 0) {
+    if ((snd = ptr_lock(arg->ptr, TAG_STREAM)) != NULL) {
+      nsamples = len / snd->samplesize;
+      err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
+      if (err == errNone) {
+        r = len;
+      }
+      ptr_unlock(arg->ptr, TAG_STREAM);
+    }
+  }
+
+  return r;
 }
 
 Err SndStreamStart(SndStreamRef channel) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamStart not implemented");
-  return sysErrParamErr;
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  SndStreamType *snd;
+  SndStreamArg *arg;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_STREAM)) != NULL) {
+    if (!snd->started) {
+      if ((arg = MemPtrNew(sizeof(SndStreamArg))) != NULL) {
+        arg->ptr = channel;
+        if (module->ap->start(snd->audio, SndGetAudio, arg) == 0) {
+          snd->started = 1;
+          err = errNone;
+        } else {
+          MemPtrFree(arg);
+        }
+      }
+    } else {
+      err = errNone;
+    }
+    ptr_unlock(channel, TAG_STREAM);
+  }
+
+  return err;
 }
 
 Err SndStreamPause(SndStreamRef channel, Boolean pause) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamPause not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndStreamStop(SndStreamRef channel) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamStop not implemented");
-  return sysErrParamErr;
+  SndStreamType *snd;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_STREAM)) != NULL) {
+    ptr_unlock(channel, TAG_STREAM);
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err SndStreamSetVolume(SndStreamRef channel, Int32 volume) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamSetVolume not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndStreamGetVolume(SndStreamRef channel, Int32 *volume) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamGetVolume not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   debug(DEBUG_ERROR, "PALMOS", "SndPlayResource not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndStreamSetPan(SndStreamRef channel, Int32 panposition) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamSetPan not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndStreamGetPan(SndStreamRef channel, Int32 *panposition) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamGetPan not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }
 
 Err SndStreamDeviceControl(SndStreamRef channel, Int32 cmd, void* param, Int32 size) {
   debug(DEBUG_ERROR, "PALMOS", "SndStreamDeviceControl not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
+}
+
+void SndStreamRefDestructor(void *p) {
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  SndStreamType *snd = (SndStreamType *)p;
+
+  if (snd) {
+    if (snd->audio) {
+      module->ap->destroy(snd->audio);
+    }
+    MemPtrFree(snd);
+  }
 }
 
 Err SndStreamCreate(
@@ -378,8 +466,64 @@ Err SndStreamCreate(
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative)            /* true if callback is arm native */ {
 
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate not implemented");
-  return sysErrParamErr;
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  SndStreamType *snd;
+  int ptr, pcm, samplesize;
+  Err err = sndErrBadParam;
+
+  if (module->ap && channel && func && mode == sndOutput) {
+    switch (type) {
+      case sndInt8:
+        pcm = PCM_U8;
+        samplesize = 1;
+        break;
+      case sndUInt8:
+        pcm = PCM_S8;
+        samplesize = 1;
+        break;
+      case sndInt16:
+        pcm = PCM_S16;
+        samplesize = 2;
+        break;
+      default:
+        debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate unsupported SndSampleType %d", type);
+        pcm = -1;
+        break;
+    }
+
+    if (pcm != -1) {
+      if ((snd = MemPtrNew(sizeof(SndStreamType))) != NULL) {
+        snd->tag = TAG_STREAM;
+        snd->func = func;
+        snd->userdata = userdata;
+        snd->pcm = pcm;
+        snd->rate = samplerate;
+        if (width == sndMono) {
+          snd->channels = 1;
+        } else {
+          snd->channels = 2;
+          samplesize *= 2;
+        }
+        snd->samplesize = samplesize;
+
+        if ((snd->audio = module->ap->create(snd->pcm, snd->channels, snd->rate, module->ap->data)) != NULL) {
+          if ((ptr = ptr_new(snd, SndStreamRefDestructor)) != -1) {
+            *channel = ptr;
+            err = errNone;
+          } else {
+            module->ap->destroy(snd->audio);
+            MemPtrFree(snd);
+          }
+        } else {
+          MemPtrFree(snd);
+        }
+      }
+    }
+  } else {
+    debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate invalid arguments");
+  }
+
+  return err;
 }
 
 Err SndStreamCreateExtended(
@@ -395,5 +539,5 @@ Err SndStreamCreateExtended(
   Boolean armNative) {
 
   debug(DEBUG_ERROR, "PALMOS", "SndStreamCreateExtended not implemented");
-  return sysErrParamErr;
+  return sndErrBadParam;
 }

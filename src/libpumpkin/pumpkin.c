@@ -6,6 +6,7 @@
 #include "thread.h"
 #include "mutex.h"
 #include "pwindow.h"
+#include "audio.h"
 #include "bytes.h"
 #include "vfs.h"
 #include "ptr.h"
@@ -158,6 +159,7 @@ typedef struct {
 typedef struct {
   script_engine_t *engine;
   window_provider_t *wp;
+  audio_provider_t *ap;
   secure_provider_t *secure;
   bt_provider_t *bt;
   gps_parse_line_f gps_parse_line;
@@ -497,7 +499,7 @@ static void pumpkin_unload_fonts(void) {
   }
 }
 
-int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
+int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
   int fd;
 
   xmemset(&pumpkin_module, 0, sizeof(pumpkin_module_t));
@@ -538,6 +540,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, bt_provi
 
   pumpkin_module.engine = engine;
   pumpkin_module.wp = wp;
+  pumpkin_module.ap = ap;
   pumpkin_module.bt = bt;
   pumpkin_module.gps_parse_line = gps_parse_line;
   pumpkin_module.current_task = -1;
@@ -1099,7 +1102,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   SrmInitModule();
   FtrInitModule();
   KeyInitModule();
-  SndInitModule(pumpkin_module.wp);
+  SndInitModule(pumpkin_module.wp, pumpkin_module.ap);
   SelTimeInitModule();
   SysFatalAlertInit();
 

@@ -347,7 +347,7 @@ int media_loop(int ptr, media_frame_t *frame, void *_wp, void *_ap) {
         if (node->show) {
           node->ap = ap;
           if (!node->a && node->ap) {
-            node->a = node->ap->create(NULL, frame->meta.av.a.pcm, frame->meta.av.a.channels, frame->meta.av.a.rate);
+            node->a = node->ap->create(frame->meta.av.a.pcm, frame->meta.av.a.channels, frame->meta.av.a.rate, node->ap->data);
           }
           if (node->a) {
             node->ap->play(node->a, frame->frame, frame->len);

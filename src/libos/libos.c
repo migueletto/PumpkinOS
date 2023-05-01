@@ -15,6 +15,7 @@ typedef struct {
   int width, height, depth, fullscreen, dia, single;
   char launcher[256];
   window_provider_t *wp;
+  audio_provider_t *ap;
   window_t *w;
   texture_t *t;
   secure_provider_t *secure;
@@ -188,14 +189,16 @@ static int libos_start(int pe) {
 
 static int libos_app_init(int pe) {
   window_provider_t *wp;
+  audio_provider_t *ap;
   bt_provider_t *bt;
   gps_parse_line_f gps_parse_line;
 
   wp = script_get_pointer(pe, WINDOW_PROVIDER);
+  ap = script_get_pointer(pe, AUDIO_PROVIDER);
   bt = script_get_pointer(pe, BT_PROVIDER);
   gps_parse_line = script_get_pointer(pe, GPS_PARSE_LINE_PROVIDER);
 
-  return script_push_boolean(pe, pumpkin_global_init(script_get_engine(pe), wp, bt, gps_parse_line) == 0);
+  return script_push_boolean(pe, pumpkin_global_init(script_get_engine(pe), wp, ap, bt, gps_parse_line) == 0);
 }
 
 static int libos_app_finish(int pe) {

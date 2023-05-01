@@ -16,12 +16,16 @@
 #include "script.h"
 #include "sys.h"
 #include "pwindow.h"
+#include "audio.h"
+#include "media.h"
 #include "pumpkin.h"
 #include "xalloc.h"
 #include "debug.h"
 
 #define MAX_ARGS   16
 #define MAX_EVENTS 16
+
+#define MAX_BUFFER 8192
 
 typedef struct {
   int ev, arg1, arg2;
@@ -50,10 +54,20 @@ struct texture_t {
   uint16_t *buffer;
 };
 
+typedef struct {
+  HWAVEOUT hwo;
+  WAVEHDR hdr;
+  int (*getaudio)(void *buffer, int len, void *data);
+  void *data;
+  uint8_t buffer[MAX_BUFFER];
+  int first;
+} win_audio_t;
+
 static const wchar_t CLASS_NAME[]  = L"PumpkinOS";
 static const wchar_t WINDOW_PROP[] = L"window";
 
 static window_provider_t wp;
+static audio_provider_t ap;
 
 static void putEvent(win_window_t *window, win_event_t *ev) {
   if (window->num_ev < MAX_EVENTS) {
@@ -560,8 +574,140 @@ static int window_mixer_stop(void) {
   return 0;
 }
 
+static void CALLBACK waveOutCallback(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
+  win_audio_t *audio;
+  WAVEHDR *hdr;
+  MMRESULT res;
+  int len;
+
+  if (uMsg == WOM_DONE) {
+    hdr = (WAVEHDR *)dwParam1;
+    if (hdr) {
+      audio = (win_audio_t *)hdr->dwUser;
+      if (audio->first) {
+        thread_set_name("Audio");
+        audio->first = 0;
+      }
+
+      debug(DEBUG_INFO, "WIN32", "waveOutCallback getaudio ...");
+      if ((len = audio->getaudio(audio->buffer, MAX_BUFFER, audio->data)) > 0) {
+        debug(DEBUG_INFO, "WIN32", "waveOutCallback getaudio %d bytes", len);
+        audio->hdr.lpData = (LPSTR)audio->buffer;
+        audio->hdr.dwBufferLength = len;
+        audio->hdr.dwUser = (DWORD_PTR)audio;
+        audio->hdr.dwFlags =  WHDR_BEGINLOOP | WHDR_ENDLOOP;
+        audio->hdr.dwLoops = 1;
+
+        if ((res = waveOutPrepareHeader(audio->hwo, &audio->hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+          debug(DEBUG_ERROR, "WIN32", "waveOutCallback sending %d bytes", len);
+          if ((res = waveOutWrite(audio->hwo, &audio->hdr, sizeof(WAVEHDR))) != MMSYSERR_NOERROR) {
+            debug(DEBUG_ERROR, "WIN32", "waveOutCallback waveOutWrite failed (%d)", res);
+          }
+        } else {
+          debug(DEBUG_ERROR, "WIN32", "waveOutPrepareHeader failed (%d)", res);
+        }
+      } else {
+        debug(DEBUG_INFO, "WIN32", "waveOutCallback getaudio returned %d", len);
+      }
+    } else {
+      debug(DEBUG_INFO, "WIN32", "waveOutCallback hdr NULL");
+    }
+  }
+}
+
+static audio_t *audio_create(int pcm, int channels, int rate, void *data) {
+  win_audio_t *audio;
+  //HINSTANCE hInstance;
+  WAVEFORMATEX fmt;
+  MMRESULT res;
+
+  debug(DEBUG_INFO, "WIN32", "audio_create(%d,%d,%d)", pcm, channels, rate);
+
+  if ((audio = xcalloc(1, sizeof(win_audio_t))) != NULL) {
+    //hInstance = (HINSTANCE)data;
+
+    sys_memset(&fmt, 0, sizeof(WAVEFORMATEX));
+    fmt.wFormatTag = WAVE_FORMAT_PCM;
+    fmt.nChannels = channels;
+    fmt.nSamplesPerSec = rate;
+    switch (pcm) {
+      case PCM_S8:
+      case PCM_U8:
+        fmt.wBitsPerSample = 8;
+        break;
+      default:
+        fmt.wBitsPerSample = 16;
+        break;
+    }
+    fmt.nBlockAlign = (fmt.nChannels * fmt.wBitsPerSample) / 8;
+    fmt.nAvgBytesPerSec = fmt.nSamplesPerSec * fmt.nBlockAlign;
+    fmt.cbSize = 0;
+
+    audio->hdr.dwFlags = WHDR_DONE;
+    audio->first = 1;
+
+    if ((res = waveOutOpen(&audio->hwo, WAVE_MAPPER, &fmt, (DWORD_PTR)waveOutCallback, 0, CALLBACK_FUNCTION)) != MMSYSERR_NOERROR) {
+      debug(DEBUG_ERROR, "WIN32", "waveOutOpen failed (%d)", res);
+      xfree(audio);
+      audio = NULL;
+    } else {
+      debug(DEBUG_INFO, "WIN32", "waveOutOpen ok");
+    }
+  }
+
+  return (audio_t *)audio;
+}
+
+static int audio_start(audio_t *_audio, int (*getaudio)(void *buffer, int len, void *data), void *data) {
+  win_audio_t *audio = (win_audio_t *)_audio;
+  MMRESULT res;
+  int len, r = -1;
+
+  if (audio && audio->hwo && audio->hdr.dwFlags & WHDR_DONE) {
+    if ((len = getaudio(audio->buffer, MAX_BUFFER, data)) > 0) {
+      audio->getaudio = getaudio;
+      audio->data = data;
+
+      audio->hdr.lpData = (LPSTR)audio->buffer;
+      audio->hdr.dwBufferLength = len;
+      audio->hdr.dwUser = (DWORD_PTR)audio;
+      audio->hdr.dwFlags =  WHDR_BEGINLOOP | WHDR_ENDLOOP;
+      audio->hdr.dwLoops = 1;
+
+      if ((res = waveOutPrepareHeader(audio->hwo, &audio->hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+        debug(DEBUG_ERROR, "WIN32", "sending %d bytes", len);
+        if ((res = waveOutWrite(audio->hwo, &audio->hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+          r = 0;
+        } else {
+          debug(DEBUG_ERROR, "WIN32", "waveOutWrite failed (%d)", res);
+          waveOutUnprepareHeader(audio->hwo, &audio->hdr, sizeof(WAVEHDR));
+        }
+      } else {
+        debug(DEBUG_ERROR, "WIN32", "waveOutPrepareHeader failed (%d)", res);
+      }
+    } else {
+      debug(DEBUG_INFO, "WIN32", "getaudio returned %d", len);
+    }
+  } else {
+    debug(DEBUG_ERROR, "WIN32", "audio_start invalid params");
+  }
+
+  return r;
+}
+
+static int audio_destroy(audio_t *_audio) {
+  win_audio_t *audio = (win_audio_t *)_audio;
+
+  if (audio->hwo) {
+    waveOutClose(audio->hwo);
+  }
+
+  return 0;
+}
+
 static void pit_callback(int pe, void *data) {
   script_set_pointer(pe, WINDOW_PROVIDER, &wp);
+  script_set_pointer(pe, AUDIO_PROVIDER, &ap);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
@@ -596,6 +742,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.mixer_play = window_mixer_play;
   wp.mixer_stop = window_mixer_stop;
   wp.data = hInstance;
+
+  ap.create = audio_create;
+  ap.start = audio_start;
+  ap.destroy = audio_destroy;
+  ap.data = hInstance;
 
   cmdline = xstrdup(lpCmdLine);
   argc = 0;
