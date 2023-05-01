@@ -51,13 +51,13 @@ void param_usage(param_info_t pinfo[]) {
   for (int i = 0; pinfo[i].name; i++) {
     switch (pinfo[i].type) {
       case 'I':
-        fprintf(stderr, "  -%-8s <integer>  (%s; default: %d)\n", pinfo[i].name, pinfo[i].help, *(int32_t *)pinfo[i].p);
+        fprintf(stderr, "  -%-10s <integer>  (%s; default: %d)\n", pinfo[i].name, pinfo[i].help, *(int32_t *)pinfo[i].p);
         break;
       case 'F':
-        fprintf(stderr, "  -%-8s <float>    (%s; default: %.02f)\n", pinfo[i].name, pinfo[i].help, *(float *)pinfo[i].p);
+        fprintf(stderr, "  -%-10s <float>    (%s; default: %.02f)\n", pinfo[i].name, pinfo[i].help, *(float *)pinfo[i].p);
         break;
       case 'B':
-        fprintf(stderr, "  -%-8s <boolean>  (%s; default: %s)\n", pinfo[i].name, pinfo[i].help, (*(int *)pinfo[i].p) ? "true" : "false");
+        fprintf(stderr, "  -%-10s <boolean>  (%s; default: %s)\n", pinfo[i].name, pinfo[i].help, (*(int *)pinfo[i].p) ? "true" : "false");
         break;
     }
   }

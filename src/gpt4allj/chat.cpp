@@ -18,6 +18,8 @@ typedef struct {
   int32_t top_k = 40;
   float top_p = 0.95f;
   float temp = 0.28f;
+  float penalty = 1.10f;
+  int32_t penalty_n = 64;
   int32_t batch = 9;
   int32_t threads = 4;
   int llama = 0;
@@ -31,14 +33,6 @@ static bool response_callback(int32_t token, const std::string &r) {
   if (token < 0) {
     return false;
   }
-
-  if (ctx.tokens.size() == ctx.n_ctx) {
-    ctx.tokens.erase(ctx.tokens.begin());
-  }
-  ctx.tokens.push_back(token);
-
-  if (r.find("### Prompt:") != std::string::npos || r.find("### Response:") != std::string::npos)
-    return false;
 
   fprintf(stderr, "%s", r.c_str());
   if (!user_output(r.c_str())) return false;
@@ -69,13 +63,15 @@ static bool command(char *buf, chat_param_t *param, param_info_t pinfo[]) {
 int main(int argc, char *argv[]) {
   chat_param_t param;
   param_info_t pinfo[] = {
-    { "predict", 'I', &param.predict, 32, 2048, 0, 0, "maximum length of response in tokens" },
-    { "top_k",   'I', &param.top_k,    1,  100, 0, 0, "only the top K most likely tokens will be chosen from" },
-    { "top_p",   'F', &param.top_p,    0,    0, 0, 1, "only the most likely tokens up to a total probability of top_p can be chosen" },
-    { "temp",    'F', &param.temp,     0,    0, 0, 1, "increases the chances of choosing less likely tokens" },
-    { "batch",   'I', &param.batch,    1,   20, 0, 0, "amount of prompt tokens to process at once" },
-    { "threads", 'I', &param.threads,  0,   16, 0, 0, "number of threads to use" },
-    { "llama",   'B', &param.llama,    0,    0, 0, 0, "model is compatible with llama.cpp" },
+    { "predict",   'I', &param.predict,  32, 2048, 0,  0, "maximum length of response in tokens" },
+    { "top_k",     'I', &param.top_k,     1,  100, 0,  0, "only the top K most likely tokens will be chosen from" },
+    { "top_p",     'F', &param.top_p,     0,    0, 0,  1, "only the most likely tokens up to a total probability of top_p can be chosen" },
+    { "temp",      'F', &param.temp,      0,    0, 0,  1, "increases the chances of choosing less likely tokens" },
+    { "penalty",   'F', &param.penalty,   0,    0, 0, 10, "amount to penalize repetitiveness of the output" },
+    { "penalty_n", 'I', &param.penalty_n, 0,  128, 0,  0, "how far back in output to apply repeat penalty" },
+    { "batch",     'I', &param.batch,     1,   20, 0,  0, "amount of prompt tokens to process at once" },
+    { "threads",   'I', &param.threads,   0,   16, 0,  0, "number of threads to use" },
+    { "llama",     'B', &param.llama,     0,    0, 0,  0, "model is compatible with llama.cpp" },
     { 0 }
   };
   LLModel *llmodel;
@@ -105,16 +101,13 @@ int main(int argc, char *argv[]) {
   ggml_time_init();
   auto fin = std::ifstream(argv[i], std::ios::binary);
 
-  bool loaded;
   if (param.llama) {
     llmodel = new LLamaModel;
-    loaded = llmodel->loadModel(argv[i]);
   } else {
     llmodel = new GPTJ;
-    loaded = llmodel->loadModel(argv[i], fin);
   }
 
-  if (!loaded) {
+  if (!llmodel->loadModel(argv[i])) {
     fprintf(stderr, "failed to load model '%s'\n", argv[i]);
     return 1;
   }
@@ -145,6 +138,8 @@ int main(int argc, char *argv[]) {
       ctx.top_k = param.top_k;
       ctx.top_p = param.top_p;
       ctx.temp = param.temp;
+      ctx.repeat_penalty = param.penalty;
+      ctx.repeat_last_n = param.penalty_n;
       ctx.n_batch = param.batch;
       llmodel->prompt(prompt, prompt_callback, response_callback, recalculate_callback, ctx);
       fprintf(stderr, "\n");
