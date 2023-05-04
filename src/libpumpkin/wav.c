@@ -62,13 +62,9 @@ Boolean WavFileHeader(FileRef fileRef, UInt32 *rate, SndSampleType *type, SndStr
   UInt32 numBytesRead;
   Boolean r = false;
 
-debug(1, "XXX", "WavFileHeader begin");
   if (VFSFileRead(fileRef, WAV_HEADER_SIZE, header, &numBytesRead) == errNone && numBytesRead == WAV_HEADER_SIZE) {
-debug(1, "XXX", "WavFileHeader read ok");
     r = WavBufferHeader(header, rate, type, width);
-debug(1, "XXX", "WavFileHeader header r=%d", r);
   }
-debug(1, "XXX", "WavFileHeader end r=%d", r);
 
   return r;
 }

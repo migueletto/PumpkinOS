@@ -14,6 +14,11 @@ typedef struct {
   int (*start)(audio_t audio, int (*getaudio)(void *buffer, int len, void *data), void *data);
   int (*play)(audio_t audio, uint8_t *raw, int len);
   int (*destroy)(audio_t audio);
+
+  int (*mixer_init)(void);
+  int (*mixer_play)(uint8_t *buf, uint32_t len, int volume);
+  int (*mixer_stop)(void);
+
   void *data;
 } audio_provider_t;
 

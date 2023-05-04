@@ -550,11 +550,11 @@ static void window_status(window_t *_window, int *x, int *y, int *buttons) {
   *buttons = window->buttons;
 }
 
-static int window_mixer_init(void) {
+static int audio_mixer_init(void) {
   return 0;
 }
 
-static int window_mixer_play(uint8_t *buf, uint32_t len, int volume) {
+static int audio_mixer_play(uint8_t *buf, uint32_t len, int volume) {
   char name[256 + L_tmpnam + 1];
   int fd, r = -1;
 
@@ -572,7 +572,7 @@ static int window_mixer_play(uint8_t *buf, uint32_t len, int volume) {
   return r;
 }
 
-static int window_mixer_stop(void) {
+static int audio_mixer_stop(void) {
   return 0;
 }
 
@@ -766,14 +766,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.draw_texture_rect = window_draw_texture_rect;
   wp.event2 = window_event2;
   wp.status = window_status;
-  wp.mixer_init = window_mixer_init;
-  wp.mixer_play = window_mixer_play;
-  wp.mixer_stop = window_mixer_stop;
   wp.data = hInstance;
 
   ap.create = audio_create;
   ap.start = audio_start;
   ap.destroy = audio_destroy;
+  ap.mixer_init = audio_mixer_init;
+  ap.mixer_play = audio_mixer_play;
+  ap.mixer_stop = audio_mixer_stop;
   ap.data = hInstance;
 
   cmdline = xstrdup(lpCmdLine);

@@ -461,7 +461,7 @@ int FtrInitModule(void);
 int FtrFinishModule(void);
 int KeyInitModule(void);
 int KeyFinishModule(void);
-int SndInitModule(window_provider_t *wp, audio_provider_t *ap);
+int SndInitModule(audio_provider_t *ap);
 int SndFinishModule(void);
 int SelTimeInitModule(void);
 int SelTimeFinishModule(void);

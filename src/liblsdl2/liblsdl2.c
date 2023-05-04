@@ -8,6 +8,7 @@
 #include "thread.h"
 #include "media.h"
 #include "pwindow.h"
+#include "audio.h"
 #include "ptr.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -122,7 +123,8 @@ static libsdl_keymap_t keymap[] = {
   { 0, 0, 0 }
 };
 
-static window_provider_t provider;
+static window_provider_t window_provider;
+static audio_provider_t audio_provider;
 
 static int libsdl_init_audio(void) {
   int r = -1;
@@ -1054,35 +1056,40 @@ int liblsdl2_load(void) {
     return -1;
   }
 
-  xmemset(&provider, 0, sizeof(provider));
-  provider.create = libsdl_window_create;
-  provider.event = libsdl_window_event;
-  provider.destroy = libsdl_window_destroy;
-  provider.erase = libsdl_window_erase;
-  provider.render = libsdl_window_render;
-  provider.background = libsdl_window_background;
-  provider.create_texture = libsdl_window_create_texture;
-  provider.destroy_texture = libsdl_window_destroy_texture;
-  provider.update_texture = libsdl_window_update_texture;
-  provider.draw_texture = libsdl_window_draw_texture;
-  provider.status = libsdl_window_status;
-  provider.title = libsdl_window_title;
-  provider.clipboard = libsdl_window_clipboard;
-  provider.event2 = libsdl_window_event2;
-  provider.mixer_init = libsdl_mixer_init;
-  provider.mixer_play = libsdl_mixer_play;
-  provider.mixer_stop = libsdl_mixer_stop;
-  provider.update = libsdl_window_update;
-  provider.draw_texture_rect = libsdl_window_draw_texture_rect;
-  provider.update_texture_rect = libsdl_window_update_texture_rect;
-  provider.move = NULL;
+  xmemset(&window_provider, 0, sizeof(window_provider));
+  window_provider.create = libsdl_window_create;
+  window_provider.event = libsdl_window_event;
+  window_provider.destroy = libsdl_window_destroy;
+  window_provider.erase = libsdl_window_erase;
+  window_provider.render = libsdl_window_render;
+  window_provider.background = libsdl_window_background;
+  window_provider.create_texture = libsdl_window_create_texture;
+  window_provider.destroy_texture = libsdl_window_destroy_texture;
+  window_provider.update_texture = libsdl_window_update_texture;
+  window_provider.draw_texture = libsdl_window_draw_texture;
+  window_provider.status = libsdl_window_status;
+  window_provider.title = libsdl_window_title;
+  window_provider.clipboard = libsdl_window_clipboard;
+  window_provider.event2 = libsdl_window_event2;
+  window_provider.update = libsdl_window_update;
+  window_provider.draw_texture_rect = libsdl_window_draw_texture_rect;
+  window_provider.update_texture_rect = libsdl_window_update_texture_rect;
+  window_provider.move = NULL;
+
+  xmemset(&audio_provider, 0, sizeof(audio_provider));
+  audio_provider.mixer_init = libsdl_mixer_init;
+  audio_provider.mixer_play = libsdl_mixer_play;
+  audio_provider.mixer_stop = libsdl_mixer_stop;
 
   return 0;
 }
 
 int liblsdl2_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "SDL", "registering provider %s", WINDOW_PROVIDER);
-  script_set_pointer(pe, WINDOW_PROVIDER, &provider);
+  script_set_pointer(pe, WINDOW_PROVIDER, &window_provider);
+
+  debug(DEBUG_INFO, "SDL", "registering provider %s", AUDIO_PROVIDER);
+  script_set_pointer(pe, AUDIO_PROVIDER, &audio_provider);
 
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);

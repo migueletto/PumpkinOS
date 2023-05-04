@@ -561,7 +561,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
 
   emupalmos_init();
-  if (wp && wp->mixer_init) wp->mixer_init();
+  if (ap && ap->mixer_init) ap->mixer_init();
 
   if ((fd = sys_open(CRASH_LOG, SYS_WRITE)) == -1) {
     fd = sys_create(CRASH_LOG, SYS_WRITE, 0644);
@@ -1102,7 +1102,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   SrmInitModule();
   FtrInitModule();
   KeyInitModule();
-  SndInitModule(pumpkin_module.wp, pumpkin_module.ap);
+  SndInitModule(pumpkin_module.ap);
   SelTimeInitModule();
   SysFatalAlertInit();
 
@@ -4200,7 +4200,7 @@ void pumpkin_sound_init(void) {
     task->heap = heap_init(256*1024, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
     VFSInitModule(VFS_CARD);
-    SndInitModule(pumpkin_module.wp, pumpkin_module.ap);
+    SndInitModule(pumpkin_module.ap);
   }
 }
 

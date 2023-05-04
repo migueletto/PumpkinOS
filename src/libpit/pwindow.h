@@ -72,9 +72,6 @@ typedef struct {
   void (*title)(window_t *window, char *title);
   char *(*clipboard)(window_t *window, char *clipboard, int len);
   int (*event2)(window_t *window, int wait, int *arg1, int *arg2);
-  int (*mixer_init)(void);
-  int (*mixer_play)(uint8_t *buf, uint32_t len, int volume);
-  int (*mixer_stop)(void);
   int (*update)(window_t *window, int x, int y, int width, int height);
   int (*draw_texture_rect)(window_t *window, texture_t *texture, int tx, int ty, int w, int h, int x, int y);
   int (*update_texture_rect)(window_t *_window, texture_t *texture, uint8_t *src, int tx, int ty, int w, int h);

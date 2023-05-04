@@ -18,8 +18,9 @@
 
 #define TAG_SOUND  "sound"
 
+#define sndUnityGain 1024
+
 typedef struct {
-  window_provider_t *wp;
   audio_provider_t *ap;
   UInt16 alarmAmp;
   UInt16 sysAmp;
@@ -47,14 +48,13 @@ typedef struct {
   int ptr;
 } SndStreamArg;
 
-int SndInitModule(window_provider_t *wp, audio_provider_t *ap) {
+int SndInitModule(audio_provider_t *ap) {
   snd_module_t *module;
 
   if ((module = xcalloc(1, sizeof(snd_module_t))) == NULL) {
     return -1;
   }
 
-  module->wp = wp;
   module->ap = ap;
   thread_set(snd_key, module);
 
@@ -91,21 +91,49 @@ void SndGetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *masterAmpP)
   if (masterAmpP) *masterAmpP = module->defAmp; // XXX is this correct ?
 }
 
-/*
-The Sound Manager only supports one channel
-of sound synthesis: You must pass NULL as the value of channelP.
-*/
+// The Sound Manager only supports one channel
+// of sound synthesis: You must pass NULL as the value of channelP.
+//   typedef struct SndCommandType {
+//    SndCmdIDType cmd;
+//    UInt8 reserved;
+//    Int32 param1;
+//    UInt16 param2;
+//    UInt16 param3;
+//  } SndCommandType;
+
 Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait) {
   Err err = sndErrBadParam;
 
   if (channelP == NULL && cmdP != NULL) {
-    debug(DEBUG_INFO, "PALMOS", "SndDoCmd %d", cmdP->cmd);
+    debug(DEBUG_INFO, "Sound", "SndDoCmd %d", cmdP->cmd);
 
     switch (cmdP->cmd) {
       case sndCmdFreqDurationAmp:
+        // Play a tone. SndDoCmd blocks until the tone has finished.
+        // param1 is the tone’s frequency in Hertz.
+        // param2 is its duration in milliseconds
+        // param3 is its amplitude in the range [0, sndMaxAmp].
+        // If the amplitude is 0, the sound isn’t played and the function returns immediately.
+        break;
       case sndCmdFrqOn:
+        // Initiate a tone. SndDoCmd returns immediately while the tone plays
+        // in the background. Subsequent sound playback requests interrupt the tone.
+        // param1 is the tone’s frequency in Hertz.
+        // param2 is its duration in milliseconds
+        // param3 is its amplitude in the range [0, sndMaxAmp].
+        // If the amplitude is 0, the sound isn’t played and the function returns immediately.
+        break;
       case sndCmdNoteOn:
+        // Initiate a MIDI-defined tone. SndDoCmd returns immediately
+        // while the tone plays in the background. Subsequent sound
+        // playback requests interrupt the tone.
+        // param1 is the tone’s pitch given as a MIDI key number in the range [0, 127].
+        // param2 is the tone’s duration in milliseconds
+        // param3 is its amplitude given as MIDI velocity [0, 127].
+        break;
       case sndCmdQuiet:
+        // Stop the playback of the currently generated tone.
+        // All parameter values are ignored.
         break;
     }
   }
@@ -118,11 +146,11 @@ If you’re playing an alarm (sndAlarm), the user’s alarm volume
 preference setting is used. For all other system sounds, the system
 volume preference is used.
 Alarm sounds (sndAlarm) are played synchronously:
-SndPlaySystemSound blocks until the sound has been played. All
-other sounds are played asynchronously.
+SndPlaySystemSound blocks until the sound has been played.
+All other sounds are played asynchronously.
 */
 void SndPlaySystemSound(SndSysBeepType beepID) {
-  debug(DEBUG_INFO, "PALMOS", "SndPlaySystemSound %d", beepID);
+  debug(DEBUG_INFO, "Sound", "SndPlaySystemSound %d", beepID);
 
   switch (beepID) {
     case sndInfo:
@@ -300,14 +328,14 @@ Err SndPlaySmf(void *chanP, SndSmfCmdEnum cmd, UInt8 *smfP, SndSmfOptionsType *s
         i += len;
       }
 
-      if (module->wp) {
+      if (module->ap && module->ap->mixer_play) {
         debug(DEBUG_INFO, "Sound", "SndPlaySmf playing %d bytes", i);
         if (volume >= sndMaxAmp) {
           volume = 128;
         } else if (volume > 0) {
           volume <<= 1; // PalmOS: 0-64, SDL: 0-128
         }
-        module->wp->mixer_play(smfP, i, volume);
+        module->ap->mixer_play(smfP, i, volume);
       }
 
     } else {
@@ -384,8 +412,8 @@ Err SndPlaySmfResourceIrregardless(UInt32 resType, Int16 resID, SystemPreference
 Err SndInterruptSmfIrregardless(void) {
   snd_module_t *module = (snd_module_t *)thread_get(snd_key);
 
-  if (module->wp) {
-    module->wp->mixer_stop();
+  if (module->ap && module->ap->mixer_stop) {
+    module->ap->mixer_stop();
   }
 
   return errNone;
@@ -402,12 +430,88 @@ Err SndStreamDelete(SndStreamRef channel) {
   return err;
 }
 
+static float getSample(int pcm, void *buffer, UInt32 i) {
+  Int8 *s8;
+  UInt8 *u8;
+  Int16 *s16;
+  Int32 *s32;
+  float *flt;
+  float sample = 0;
+
+  switch (pcm) {
+    case PCM_S8:
+      s8 = (Int8 *)buffer;
+      sample = s8[i];
+      break;
+    case PCM_U8:
+      u8 = (UInt8 *)buffer;
+      sample = u8[i];
+      break;
+    case PCM_S16:
+      s16 = (Int16 *)buffer;
+      sample = s16[i];
+      break;
+    case PCM_S32:
+      s32 = (Int32 *)buffer;
+      sample = s32[i];
+      break;
+    case PCM_FLT:
+      flt = (float *)buffer;
+      sample = flt[i];
+      break;
+  }
+
+  return sample;
+}
+
+void putSample(int pcm, void *buffer, UInt32 i, float sample) {
+  Int8 *s8;
+  UInt8 *u8;
+  Int16 *s16;
+  Int32 *s32;
+  float *flt;
+
+  switch (pcm) {
+    case PCM_S8:
+      s8 = (Int8 *)buffer;
+      if (sample < -128) sample = -128;
+      else if (sample > 127) sample = 127;
+      s8[i] = (Int8)sample;
+      break;
+    case PCM_U8:
+      u8 = (UInt8 *)buffer;
+      if (sample < 0) sample = 0;
+      else if (sample > 255) sample = 255;
+      u8[i] = (UInt8)sample;
+      break;
+    case PCM_S16:
+      s16 = (Int16 *)buffer;
+      if (sample < -32768) sample = -32768;
+      else if (sample > 32767) sample = 32767;
+      s16[i] = (Int16)sample;
+      break;
+    case PCM_S32:
+      s32 = (Int32 *)buffer;
+      if (sample < INT32_MIN) sample = INT32_MIN;
+      else if (sample > INT32_MAX) sample = INT32_MAX;
+      s32[i] = (Int32)sample;
+      break;
+    case PCM_FLT:
+      flt = (float *)buffer;
+      flt[i] = sample;
+      break;
+  }
+}
+
 static int SndGetAudio(void *buffer, int len, void *data) {
   SndStreamArg *arg = (SndStreamArg *)data;
   SndStreamType *snd;
-  UInt32 nsamples;
+  UInt32 nsamples, i, j;
+  Int32 volume, pan;
   Err err;
   Boolean freeArg = false;
+  int pcm, channels;
+  float sample, gain, leftGain, rightGain;
   char tname[16];
   int r = -1;
 
@@ -416,10 +520,15 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       thread_get_name(tname, sizeof(tname)-1);
       if (tname[0] == '?') {
         thread_set_name("Audio");
-        debug(DEBUG_INFO, "PALMOS", "pumpkin_sound_init");
+        debug(DEBUG_INFO, "Sound", "pumpkin_sound_init");
         pumpkin_sound_init();
         snd->first = false;
       }
+
+      nsamples = 0;
+      volume = sndUnityGain;
+      pan = sndPanCenter;
+      pcm = channels = 0;
 
       if (snd->started && !snd->stopped) {
         nsamples = len / snd->samplesize;
@@ -430,8 +539,13 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           len = nsamples * snd->samplesize;
         }
         if (err == errNone) {
+          channels = snd->channels;
+          pcm = snd->pcm;
+          pan = snd->pan;
+          volume = snd->volume;
           r = len;
         } else {
+          nsamples = 0;
           snd->started = false;
           snd->userdata = NULL;
           freeArg = true;
@@ -442,8 +556,45 @@ static int SndGetAudio(void *buffer, int len, void *data) {
 
       ptr_unlock(arg->ptr, TAG_SOUND);
 
+      if (nsamples > 0) {
+        if ((volume != sndUnityGain || (pan != sndPanCenter && channels == 2))) {
+          if (volume == 0) {
+            debug(DEBUG_INFO, "Sound", "%d samples (zero volume)", nsamples);
+            sys_memset(buffer, 0, len);
+          } else {
+            if (channels == 1) {
+              gain = (float)volume / (float)sndUnityGain;
+              debug(DEBUG_INFO, "Sound", "%d samples (mono gain %.3f)", nsamples, gain);
+              for (i = 0, j = 0; i < nsamples; i++) {
+                sample = getSample(pcm, buffer, i);
+                putSample(pcm, buffer, i, sample * gain);
+              }
+            } else {
+              leftGain = (float)volume / (float)sndUnityGain;
+              if (pan > sndPanCenter) {
+                leftGain *= (float)(1024 - pan) / 1024.0f;
+              }
+              rightGain = (float)volume / (float)sndUnityGain;
+              if (pan < sndPanCenter) {
+                pan = -pan;
+                rightGain *= (float)(1024 - pan) / 1024.0f;
+              }
+              debug(DEBUG_INFO, "Sound", "%d samples (left gain %.3f, right gain %.3f)", nsamples, leftGain, rightGain);
+              for (i = 0, j = 0; i < nsamples; i++, j += 2) {
+                sample = getSample(pcm, buffer, j);
+                putSample(pcm, buffer, j, sample * leftGain);
+                sample = getSample(pcm, buffer, j);
+                putSample(pcm, buffer, j+1, sample * rightGain);
+              }
+            }
+          }
+        } else {
+          debug(DEBUG_INFO, "Sound", "%d samples", nsamples);
+        }
+      }
+
       if (freeArg) {
-        debug(DEBUG_INFO, "PALMOS", "pumpkin_sound_finish");
+        debug(DEBUG_INFO, "Sound", "pumpkin_sound_finish");
         pumpkin_sound_finish();
         xfree(arg);
       }
@@ -484,9 +635,21 @@ Err SndStreamStart(SndStreamRef channel) {
   return err;
 }
 
+// Currently, SndStreamPause simply calls SndStreamStop() (if pause is true) or
+// SndStreamStart() (if pause is false).
+// You can’t nest pauses; a single resume request is effective,
+// regardless of the number of times the stream has been told to pause.
+
 Err SndStreamPause(SndStreamRef channel, Boolean pause) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamPause not implemented");
-  return sndErrBadParam;
+  Err err;
+
+  if (pause) {
+    err = SndStreamStop(channel);
+  } else {
+    err = SndStreamStart(channel);
+  }
+
+  return err;
 }
 
 Err SndStreamStop(SndStreamRef channel) {
@@ -502,11 +665,40 @@ Err SndStreamStop(SndStreamRef channel) {
   return err;
 }
 
+// volume: amplitude scalar in the range [0, 32k].
+// Values less than 0 are converted to 1024 (unity gain).
+// The volume value is applied as an amplitude scalar on the samples
+// that this stream’s callback function produces. The scalar is in the
+// range [0, 32k], where 1024 is unity gain (i.e. the samples are
+// multiplied by 1.0). The mapping of volume to a scalar is linear; thus
+// a volume of 512 scales the samples by ~.5, 2048 scales by ~2.0, and
+// so on.
+// To specify a user preference volume setting, supply one of the
+// constants documented under “Volume Constants” on page 957.
+// These values are guaranteed to be less than unity gain.
+// If the stream is stereo, both channels are scaled by the same
+// amplitude scalar.
+
 Err SndStreamSetVolume(SndStreamRef channel, Int32 volume) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
 
   if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    switch (volume) {
+      case sndSystemVolume:
+        volume = PrefGetPreference(prefSysSoundVolume);
+        break;
+      case sndGameVolume:
+        volume = PrefGetPreference(prefGameSoundVolume);
+        break;
+      case sndAlarmVolume:
+        volume = PrefGetPreference(prefAlarmSoundVolume);
+        break;
+    }
+
+    if (volume < 0) volume = sndUnityGain;
+    else if (volume > 32768) volume = 32768;
+
     snd->volume = volume;
     ptr_unlock(channel, TAG_SOUND);
     err = errNone;
@@ -599,11 +791,20 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   return err;
 }
 
+// Pan value in the range [-1024 (full left), 1024 (full right)].
+// Center balance is 0.
+// The pan value is used as a scalar on a channel’s volume such that a
+// channel increases from 0 (inaudible) to full volume as the pan value
+// moves from an extreme to 0.
+
 Err SndStreamSetPan(SndStreamRef channel, Int32 panposition) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
 
   if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    if (panposition < sndPanFullLeft) panposition = sndPanFullLeft;
+    else if (panposition > sndPanFullRight) panposition = sndPanFullRight;
+
     snd->pan = panposition;
     ptr_unlock(channel, TAG_SOUND);
     err = errNone;
@@ -683,7 +884,7 @@ static Err SndStreamCreateInternal(
         samplesize = 4;
         break;
       default:
-        debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate unsupported SndSampleType %d", type);
+        debug(DEBUG_ERROR, "Sound", "SndStreamCreate unsupported SndSampleType %d", type);
         pcm = -1;
         break;
     }
@@ -703,8 +904,11 @@ static Err SndStreamCreateInternal(
           samplesize *= 2;
         }
         snd->samplesize = samplesize;
-        debug(DEBUG_INFO, "PALMOS", "SndStreamCreate sample rate %d", snd->rate);
-        debug(DEBUG_INFO, "PALMOS", "SndStreamCreate sample size %d", snd->samplesize);
+        debug(DEBUG_INFO, "Sound", "SndStreamCreate sample rate %d", snd->rate);
+        debug(DEBUG_INFO, "Sound", "SndStreamCreate sample size %d", snd->samplesize);
+
+        snd->volume = sndUnityGain;
+        snd->pan = sndPanCenter;
 
         if ((snd->audio = module->ap->create(snd->pcm, snd->channels, snd->rate, module->ap->data)) != -1) {
           if ((ptr = ptr_new(snd, SndStreamRefDestructor)) != -1) {
@@ -720,7 +924,7 @@ static Err SndStreamCreateInternal(
       }
     }
   } else {
-    debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate invalid arguments");
+    debug(DEBUG_ERROR, "Sound", "SndStreamCreate invalid arguments");
   }
 
   return err;
