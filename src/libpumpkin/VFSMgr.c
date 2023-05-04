@@ -52,20 +52,22 @@ static void buildpath(vfs_module_t *module, char *dst, char *src) {
 }
 
 int VFSInitModule(char *card) {
-  vfs_module_t *module;
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
 
-  if ((module = xcalloc(1, sizeof(vfs_module_t))) == NULL) {
-    return -1;
+  if (module == NULL) {
+    if ((module = xcalloc(1, sizeof(vfs_module_t))) == NULL) {
+      return -1;
+    }
+
+    if ((module->session = vfs_open_session()) == NULL) {
+      xfree(module);
+      return -1;
+    }
+
+    StrNCopy(module->card, card, MAX_CARD);
+    vfs_chdir(module->session, module->card);
+    thread_set(vfs_key, module);
   }
-
-  if ((module->session = vfs_open_session()) == NULL) {
-    xfree(module);
-    return -1;
-  }
-
-  StrNCopy(module->card, card, MAX_CARD);
-  vfs_chdir(module->session, module->card);
-  thread_set(vfs_key, module);
 
   return 0;
 }

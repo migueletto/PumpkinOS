@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
   
 #include "sys.h"
 #include "thread.h"
@@ -6,19 +7,23 @@
 #include "pwindow.h"
 #include "media.h"
 #include "vfs.h"
+#include "wav.h"
 #include "bytes.h"
 #include "ptr.h"
+#include "heap.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
 
-#define TAG_STREAM "stream"
 #define TAG_SOUND  "sound"
 
 typedef struct {
   window_provider_t *wp;
   audio_provider_t *ap;
+  UInt16 alarmAmp;
+  UInt16 sysAmp;
+  UInt16 defAmp;
 } snd_module_t;
 
 extern thread_key_t *snd_key;
@@ -26,10 +31,16 @@ extern thread_key_t *snd_key;
 typedef struct {
   char *tag;
   SndStreamBufferCallback func;
+  SndStreamVariableBufferCallback vfunc;
   void *userdata;
   UInt32 samplesize;
-  int pcm, channels, rate, started;
-  audio_t *audio;
+  Int32 volume;
+  Int32 pan;
+  int pcm, channels, rate;
+  Boolean started, stopped;
+  audio_t audio;
+  Boolean first;
+  heap_t *heap;
 } SndStreamType;
 
 typedef struct {
@@ -65,20 +76,64 @@ Err SndInit(void) {
 }
 
 void SndSetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *defAmpP) {
-  debug(DEBUG_ERROR, "PALMOS", "SndSetDefaultVolume not implemented");
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+
+  if (alarmAmpP) module->alarmAmp = *alarmAmpP;
+  if (sysAmpP) module->sysAmp = *sysAmpP;
+  if (defAmpP) module->defAmp = *defAmpP;
 }
 
 void SndGetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *masterAmpP) {
-  debug(DEBUG_ERROR, "PALMOS", "SndGetDefaultVolume not implemented");
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+
+  if (alarmAmpP) *alarmAmpP = module->alarmAmp;
+  if (sysAmpP) *sysAmpP = module->sysAmp;
+  if (masterAmpP) *masterAmpP = module->defAmp; // XXX is this correct ?
 }
 
+/*
+The Sound Manager only supports one channel
+of sound synthesis: You must pass NULL as the value of channelP.
+*/
 Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait) {
-  debug(DEBUG_ERROR, "PALMOS", "SndDoCmd not implemented");
-  return sysErrParamErr;
+  Err err = sndErrBadParam;
+
+  if (channelP == NULL && cmdP != NULL) {
+    debug(DEBUG_INFO, "PALMOS", "SndDoCmd %d", cmdP->cmd);
+
+    switch (cmdP->cmd) {
+      case sndCmdFreqDurationAmp:
+      case sndCmdFrqOn:
+      case sndCmdNoteOn:
+      case sndCmdQuiet:
+        break;
+    }
+  }
+
+  return err;
 }
 
+/*
+If you’re playing an alarm (sndAlarm), the user’s alarm volume
+preference setting is used. For all other system sounds, the system
+volume preference is used.
+Alarm sounds (sndAlarm) are played synchronously:
+SndPlaySystemSound blocks until the sound has been played. All
+other sounds are played asynchronously.
+*/
 void SndPlaySystemSound(SndSysBeepType beepID) {
-  debug(DEBUG_ERROR, "PALMOS", "SndPlaySystemSound not implemented");
+  debug(DEBUG_INFO, "PALMOS", "SndPlaySystemSound %d", beepID);
+
+  switch (beepID) {
+    case sndInfo:
+    case sndWarning:
+    case sndError:
+    case sndStartUp:
+    case sndAlarm:
+    case sndConfirmation:
+    case sndClick:
+      break;
+  }
 }
 
 /*
@@ -209,7 +264,7 @@ Err SndPlaySmf(void *chanP, SndSmfCmdEnum cmd, UInt8 *smfP, SndSmfOptionsType *s
   snd_module_t *module = (snd_module_t *)thread_get(snd_key);
   UInt32 i, j, id, len;
   UInt16 volume, mthd[3];
-  Err err = sysErrParamErr;
+  Err err = sndErrBadParam;
 
   if (smfP != NULL) {
     debug(DEBUG_INFO, "Sound", "SndPlaySmf cmd %d, noWait %d", cmd, bNoWait);
@@ -269,7 +324,7 @@ Err SndPlaySmfResource(UInt32 resType, Int16 resID, SystemPreferencesChoice volu
   SndSmfOptionsType options;
   MemHandle h;
   UInt8 *smf;
-  Err err = sysErrParamErr;
+  Err err = sndErrBadParam;
 
   if ((h = DmGetResource(resType, resID)) != NULL) {
     if ((smf = MemHandleLock(h)) != NULL) {
@@ -299,7 +354,7 @@ Err SndPlaySmfResourceIrregardless(UInt32 resType, Int16 resID, SystemPreference
   SndSmfOptionsType options;
   MemHandle h;
   UInt8 *smf;
-  Err err = sysErrParamErr;
+  Err err = sndErrBadParam;
 
   if ((h = DmGetResource(resType, resID)) != NULL) {
     if ((smf = MemHandleLock(h)) != NULL) {
@@ -328,21 +383,19 @@ Err SndPlaySmfResourceIrregardless(UInt32 resType, Int16 resID, SystemPreference
 
 Err SndInterruptSmfIrregardless(void) {
   snd_module_t *module = (snd_module_t *)thread_get(snd_key);
-  Err err = sysErrParamErr;
 
   if (module->wp) {
     module->wp->mixer_stop();
-    err = errNone;
   }
 
-  return err;
+  return errNone;
 }
 
 Err SndStreamDelete(SndStreamRef channel) {
   Err err = sndErrBadParam;
 
   if (channel > 0) {
-    ptr_free(channel, TAG_STREAM);
+    ptr_free(channel, TAG_SOUND);
     err = errNone;
   }
 
@@ -354,16 +407,46 @@ static int SndGetAudio(void *buffer, int len, void *data) {
   SndStreamType *snd;
   UInt32 nsamples;
   Err err;
+  Boolean freeArg = false;
+  char tname[16];
   int r = -1;
 
   if (buffer && len > 0) {
-    if ((snd = ptr_lock(arg->ptr, TAG_STREAM)) != NULL) {
-      nsamples = len / snd->samplesize;
-      err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
-      if (err == errNone) {
-        r = len;
+    if ((snd = ptr_lock(arg->ptr, TAG_SOUND)) != NULL) {
+      thread_get_name(tname, sizeof(tname)-1);
+      if (tname[0] == '?') {
+        thread_set_name("Audio");
+        debug(DEBUG_INFO, "PALMOS", "pumpkin_sound_init");
+        pumpkin_sound_init();
+        snd->first = false;
       }
-      ptr_unlock(arg->ptr, TAG_STREAM);
+
+      if (snd->started && !snd->stopped) {
+        nsamples = len / snd->samplesize;
+        if (snd->func) {
+          err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
+        } else {
+          err = snd->vfunc(snd->userdata, arg->ptr, buffer, &nsamples);
+          len = nsamples * snd->samplesize;
+        }
+        if (err == errNone) {
+          r = len;
+        } else {
+          snd->started = false;
+          snd->userdata = NULL;
+          freeArg = true;
+        }
+      } else {
+        r = 0;
+      }
+
+      ptr_unlock(arg->ptr, TAG_SOUND);
+
+      if (freeArg) {
+        debug(DEBUG_INFO, "PALMOS", "pumpkin_sound_finish");
+        pumpkin_sound_finish();
+        xfree(arg);
+      }
     }
   }
 
@@ -376,21 +459,26 @@ Err SndStreamStart(SndStreamRef channel) {
   SndStreamArg *arg;
   Err err = sndErrBadParam;
 
-  if (channel > 0 && (snd = ptr_lock(channel, TAG_STREAM)) != NULL) {
-    if (!snd->started) {
-      if ((arg = MemPtrNew(sizeof(SndStreamArg))) != NULL) {
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    if (snd->started) {
+      snd->stopped = false;
+      err = errNone;
+    } else {
+      if ((arg = xcalloc(1, sizeof(SndStreamArg))) != NULL) {
+        snd->first = true;
+        snd->heap = heap_get();
         arg->ptr = channel;
+        snd->started = true;
+        snd->stopped = false;
         if (module->ap->start(snd->audio, SndGetAudio, arg) == 0) {
-          snd->started = 1;
           err = errNone;
         } else {
-          MemPtrFree(arg);
+          snd->started = false;
+          xfree(arg);
         }
       }
-    } else {
-      err = errNone;
     }
-    ptr_unlock(channel, TAG_STREAM);
+    ptr_unlock(channel, TAG_SOUND);
   }
 
   return err;
@@ -405,8 +493,9 @@ Err SndStreamStop(SndStreamRef channel) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
 
-  if (channel > 0 && (snd = ptr_lock(channel, TAG_STREAM)) != NULL) {
-    ptr_unlock(channel, TAG_STREAM);
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    snd->stopped = true;
+    ptr_unlock(channel, TAG_SOUND);
     err = errNone;
   }
 
@@ -414,32 +503,130 @@ Err SndStreamStop(SndStreamRef channel) {
 }
 
 Err SndStreamSetVolume(SndStreamRef channel, Int32 volume) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamSetVolume not implemented");
-  return sndErrBadParam;
+  SndStreamType *snd;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    snd->volume = volume;
+    ptr_unlock(channel, TAG_SOUND);
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err SndStreamGetVolume(SndStreamRef channel, Int32 *volume) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamGetVolume not implemented");
-  return sndErrBadParam;
+  SndStreamType *snd;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && volume && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    *volume = snd->volume;
+    ptr_unlock(channel, TAG_SOUND);
+    err = errNone;
+  }
+
+  return err;
+}
+
+typedef struct {
+  UInt8 *buffer;
+  UInt32 size;
+  UInt32 pos;
+  UInt32 sampleSize;
+  Boolean finished;
+} snd_res_t;
+
+static Err SndPlayResourceCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
+  snd_res_t *param = (snd_res_t *)userdata;
+  UInt32 n;
+  Err err = sndErrBadParam;
+
+  if (param && buffer) {
+    n = numberofframes;
+    if (n > (param->size - param->pos)) n = param->size - param->pos;
+    if (n > 0) {
+      sys_memcpy(buffer, &param->buffer[param->pos], n * param->sampleSize);
+      param->pos += n;
+      err = errNone;
+    }
+  }
+
+  if (err != errNone) {
+    param->finished = true;
+  }
+
+  return err;
 }
 
 Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
-  debug(DEBUG_ERROR, "PALMOS", "SndPlayResource not implemented");
-  return sndErrBadParam;
+  SndStreamRef sound;
+  SndStreamWidth width;
+  SndSampleType type;
+  UInt32 rate;
+  snd_res_t param;
+  Err err = sndErrBadParam;
+
+  if (sndP && flags == sndFlagSync) {
+    if (WavBufferHeader((UInt8 *)sndP, &rate, &type, &width)) {
+      param.size = MemPtrSize(sndP);
+
+      if (param.size > 0) {
+        param.finished = false;
+        param.buffer = sndP;
+        param.pos = 0;
+        param.sampleSize = 1;
+        if (width == sndStereo) param.sampleSize <<= 1;
+        if (type == sndInt16) param.sampleSize <<= 1;
+        else if (type == sndInt32 || type == sndFloat) param.sampleSize <<= 2;
+        param.size /= param.sampleSize;
+
+        if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayResourceCallback, &param, 0, false) == errNone) {
+          SndStreamSetVolume(sound, volume);
+          if (SndStreamStart(sound) == errNone) {
+            for (; !param.finished && !thread_must_end();) {
+              SysTaskDelay(5);
+            }
+          } else {
+            SndStreamDelete(sound);
+          }
+        }
+      }
+    } else {
+      err = sndErrFormat;
+    }
+  }
+
+  return err;
 }
 
 Err SndStreamSetPan(SndStreamRef channel, Int32 panposition) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamSetPan not implemented");
-  return sndErrBadParam;
+  SndStreamType *snd;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    snd->pan = panposition;
+    ptr_unlock(channel, TAG_SOUND);
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err SndStreamGetPan(SndStreamRef channel, Int32 *panposition) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamGetPan not implemented");
-  return sndErrBadParam;
+  SndStreamType *snd;
+  Err err = sndErrBadParam;
+
+  if (channel > 0 && panposition && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+    *panposition = snd->pan;
+    ptr_unlock(channel, TAG_SOUND);
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err SndStreamDeviceControl(SndStreamRef channel, Int32 cmd, void* param, Int32 size) {
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamDeviceControl not implemented");
+  // marked as system use only
   return sndErrBadParam;
 }
 
@@ -451,8 +638,92 @@ void SndStreamRefDestructor(void *p) {
     if (snd->audio) {
       module->ap->destroy(snd->audio);
     }
-    MemPtrFree(snd);
+    xfree(snd);
   }
+}
+
+static Err SndStreamCreateInternal(
+  SndStreamRef *channel,        /* channel-ID is stored here */
+  SndStreamMode mode,           /* input/output, enum */
+  SndFormatType format,         /* enum, e.g., sndFormatMP3 */
+  UInt32 samplerate,            /* in frames/second, e.g. 44100, 48000 */
+  SndSampleType type,           /* enum, e.g. sndInt16 */
+  SndStreamWidth width,         /* enum, e.g. sndMono */
+  SndStreamBufferCallback func, /* function that gets called to fill a buffer */
+  SndStreamVariableBufferCallback vfunc, /* function that gets called to fill a buffer */
+  void *userdata,               /* gets passed in to the above function */
+  UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
+  Boolean armNative)            /* true if callback is arm native */ {
+
+  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  SndStreamType *snd;
+  int ptr, pcm, samplesize;
+  Err err = sndErrBadParam;
+
+  if (module->ap && channel && format == sndFormatPCM && (func || vfunc) && mode == sndOutput) {
+    switch (type) {
+      case sndInt8:
+        pcm = PCM_S8;
+        samplesize = 1;
+        break;
+      case sndUInt8:
+        pcm = PCM_U8;
+        samplesize = 1;
+        break;
+      case sndInt16:
+        pcm = PCM_S16;
+        samplesize = 2;
+        break;
+      case sndInt32:
+        pcm = PCM_S32;
+        samplesize = 4;
+        break;
+      case sndFloat:
+        pcm = PCM_FLT;
+        samplesize = 4;
+        break;
+      default:
+        debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate unsupported SndSampleType %d", type);
+        pcm = -1;
+        break;
+    }
+
+    if (pcm != -1) {
+      if ((snd = xcalloc(1, sizeof(SndStreamType))) != NULL) {
+        snd->tag = TAG_SOUND;
+        snd->func = func;
+        snd->vfunc = vfunc;
+        snd->userdata = userdata;
+        snd->pcm = pcm;
+        snd->rate = samplerate;
+        if (width == sndMono) {
+          snd->channels = 1;
+        } else {
+          snd->channels = 2;
+          samplesize *= 2;
+        }
+        snd->samplesize = samplesize;
+        debug(DEBUG_INFO, "PALMOS", "SndStreamCreate sample rate %d", snd->rate);
+        debug(DEBUG_INFO, "PALMOS", "SndStreamCreate sample size %d", snd->samplesize);
+
+        if ((snd->audio = module->ap->create(snd->pcm, snd->channels, snd->rate, module->ap->data)) != -1) {
+          if ((ptr = ptr_new(snd, SndStreamRefDestructor)) != -1) {
+            *channel = ptr;
+            err = errNone;
+          } else {
+            module->ap->destroy(snd->audio);
+            xfree(snd);
+          }
+        } else {
+          xfree(snd);
+        }
+      }
+    }
+  } else {
+    debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate invalid arguments");
+  }
+
+  return err;
 }
 
 Err SndStreamCreate(
@@ -466,78 +737,20 @@ Err SndStreamCreate(
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative)            /* true if callback is arm native */ {
 
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
-  SndStreamType *snd;
-  int ptr, pcm, samplesize;
-  Err err = sndErrBadParam;
-
-  if (module->ap && channel && func && mode == sndOutput) {
-    switch (type) {
-      case sndInt8:
-        pcm = PCM_U8;
-        samplesize = 1;
-        break;
-      case sndUInt8:
-        pcm = PCM_S8;
-        samplesize = 1;
-        break;
-      case sndInt16:
-        pcm = PCM_S16;
-        samplesize = 2;
-        break;
-      default:
-        debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate unsupported SndSampleType %d", type);
-        pcm = -1;
-        break;
-    }
-
-    if (pcm != -1) {
-      if ((snd = MemPtrNew(sizeof(SndStreamType))) != NULL) {
-        snd->tag = TAG_STREAM;
-        snd->func = func;
-        snd->userdata = userdata;
-        snd->pcm = pcm;
-        snd->rate = samplerate;
-        if (width == sndMono) {
-          snd->channels = 1;
-        } else {
-          snd->channels = 2;
-          samplesize *= 2;
-        }
-        snd->samplesize = samplesize;
-
-        if ((snd->audio = module->ap->create(snd->pcm, snd->channels, snd->rate, module->ap->data)) != NULL) {
-          if ((ptr = ptr_new(snd, SndStreamRefDestructor)) != -1) {
-            *channel = ptr;
-            err = errNone;
-          } else {
-            module->ap->destroy(snd->audio);
-            MemPtrFree(snd);
-          }
-        } else {
-          MemPtrFree(snd);
-        }
-      }
-    }
-  } else {
-    debug(DEBUG_ERROR, "PALMOS", "SndStreamCreate invalid arguments");
-  }
-
-  return err;
+  return SndStreamCreateInternal(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative);
 }
 
 Err SndStreamCreateExtended(
-  SndStreamRef *channel,  /* channel-ID is stored here */
-  SndStreamMode mode,   /* input/output, enum */
-  SndFormatType format, /* enum, e.g., sndFormatMP3 */
-  UInt32 samplerate,    /* in frames/second, e.g. 44100, 48000 */
-  SndSampleType type,   /* enum, e.g. sndInt16, if applicable, or 0 otherwise */
-  SndStreamWidth width, /* enum, e.g. sndMono */
+  SndStreamRef *channel,        /* channel-ID is stored here */
+  SndStreamMode mode,           /* input/output, enum */
+  SndFormatType format,         /* enum, e.g., sndFormatMP3 */
+  UInt32 samplerate,            /* in frames/second, e.g. 44100, 48000 */
+  SndSampleType type,           /* enum, e.g. sndInt16, if applicable, or 0 otherwise */
+  SndStreamWidth width,         /* enum, e.g. sndMono */
   SndStreamVariableBufferCallback func, /* function that gets called to fill a buffer */
-  void *userdata,     /* gets passed in to the above function */
-  UInt32 buffsize,      /* preferred buffersize, use 0 for default */
+  void *userdata,               /* gets passed in to the above function */
+  UInt32 buffsize,              /* preferred buffersize, use 0 for default */
   Boolean armNative) {
 
-  debug(DEBUG_ERROR, "PALMOS", "SndStreamCreateExtended not implemented");
-  return sndErrBadParam;
+  return SndStreamCreateInternal(channel, mode, format, samplerate, type, width, NULL, func, userdata, buffsize, armNative);
 }

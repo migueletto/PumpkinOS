@@ -27,7 +27,7 @@ typedef struct {
   window_t *w;
   texture_t *t;
   audio_provider_t *ap;
-  audio_t *a;
+  audio_t a;
   int show;
 } media_node_t;
 
@@ -355,7 +355,7 @@ int media_loop(int ptr, media_frame_t *frame, void *_wp, void *_ap) {
         } else {
           if (node->a) {
             node->ap->destroy(node->a);
-            node->a = NULL;
+            node->a = 0;
           }
         }
       }

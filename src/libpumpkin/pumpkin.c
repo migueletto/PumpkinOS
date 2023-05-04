@@ -4191,3 +4191,27 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg) {
     task->setcolor(task->iodata, fg, bg);
   }
 }
+
+void pumpkin_sound_init(void) {
+  pumpkin_task_t *task;
+
+  if ((task = xcalloc(1, sizeof(pumpkin_task_t))) != NULL) {
+    thread_set(task_key, task);
+    task->heap = heap_init(256*1024, NULL);
+    StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
+    VFSInitModule(VFS_CARD);
+    SndInitModule(pumpkin_module.wp, pumpkin_module.ap);
+  }
+}
+
+void pumpkin_sound_finish(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task) {
+    VFSFinishModule();
+    SndFinishModule();
+    StoFinish();
+    heap_finish(task->heap);
+    xfree(task);
+  }
+}

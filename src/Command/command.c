@@ -27,6 +27,7 @@
 #include "fill.h"
 #include "file.h"
 #include "deploy.h"
+#include "wav.h"
 #include "command.h"
 #include "resource.h"
 
@@ -80,6 +81,11 @@ typedef struct {
   Boolean first;
 } command_ldb_t;
 
+typedef struct {
+  FileRef fileRef;
+  UInt32 sampleSize;
+} command_play_t;
+
 struct command_internal_data_t {
   int pe;
   Int32 wait;
@@ -96,6 +102,7 @@ struct command_internal_data_t {
   conn_filter_t *telnet;
   Coord col0, col1, row0, row1;
   Boolean moved, selected, down;
+  SndStreamRef sound;
   command_prefs_t prefs;
 };
 
@@ -123,6 +130,7 @@ static int command_script_edit(int pe);
 static int command_script_telnet(int pe);
 static int command_script_exit(int pe);
 static int command_script_pit(int pe);
+static int command_script_play(int pe);
 static int command_script_crash(int pe);
 
 static const command_builtin_t builtinCommands[] = {
@@ -146,6 +154,7 @@ static const command_builtin_t builtinCommands[] = {
   { "telnet",   command_script_telnet   },
   { "exit",     command_script_exit     },
   { "pit",      command_script_pit      },
+  { "play",     command_script_play     },
   { "crash",    command_script_crash    },
   { NULL, NULL }
 };
@@ -1492,6 +1501,82 @@ static int command_script_pit(int pe) {
     filter.write = command_shell_filter_write;
     r = p->run(&filter, pe, 0);
   }
+
+  return r;
+}
+
+static Err sndCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
+  command_play_t *play = (command_play_t *)userdata;
+  UInt32 n, nread;
+  Err err = sndErrBadParam;
+
+  if (play && play->fileRef && buffer) {
+    n = numberofframes * play->sampleSize;
+    sys_memset(buffer, 0, n);
+    if (VFSFileRead(play->fileRef, n, buffer, &nread) == errNone && nread > 0) {
+      err = errNone;
+    } else {
+      VFSFileClose(play->fileRef);
+      xfree(play);
+    }
+  }
+
+  return err;
+}
+
+static int command_script_play(int pe) {
+  command_internal_data_t *idata = command_get_data();
+  char *name = NULL;
+  FileRef fileRef;
+  command_play_t *play;
+  SndStreamWidth width;
+  SndSampleType type;
+  UInt32 rate;
+  int r = -1;
+
+  if (script_get_string(pe, 0, &name) == 0) {
+    if (VFSFileOpen(1, name, vfsModeRead, &fileRef) == errNone) {
+      if (idata->sound) {
+        SndStreamDelete(idata->sound);
+        idata->sound = 0;
+      }
+      if (WavFileHeader(fileRef, &rate, &type, &width)) {
+        debug(DEBUG_INFO, "Command", "wav rate %d", rate);
+        debug(DEBUG_INFO, "Command", "wav type %d", type);
+        debug(DEBUG_INFO, "Command", "wav %s", width == sndMono ? "mono" : "stereo");
+
+        play = xcalloc(1, sizeof(command_play_t));
+        play->fileRef = fileRef;
+        play->sampleSize = 1;
+        if (width == sndStereo) play->sampleSize <<= 1;
+        if (type == sndInt16) play->sampleSize <<= 1;
+        else if (type == sndInt32 || type == sndFloat) play->sampleSize <<= 2;
+
+        if (SndStreamCreate(&idata->sound, sndOutput, rate, type, width, sndCallback, play, 0, false) == errNone) {
+          if (SndStreamStart(idata->sound) == errNone) {
+            r = 0;
+          } else {
+            SndStreamDelete(idata->sound);
+            idata->sound = 0;
+            VFSFileClose(fileRef);
+            xfree(play);
+          }
+        } else {
+          VFSFileClose(fileRef);
+          xfree(play);
+        }
+      } else {
+        VFSFileClose(fileRef);
+      }
+    }
+  } else {
+    if (idata->sound) {
+      SndStreamDelete(idata->sound);
+      idata->sound = 0;
+    }
+  }
+
+  if (name) xfree(name);
 
   return r;
 }

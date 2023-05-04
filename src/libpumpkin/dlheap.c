@@ -2,6 +2,7 @@
 
 #include "sys.h"
 #include "heap.h"
+#include "mutex.h"
 #ifdef VISUAL_HEAP
 #include "pwindow.h"
 #include "script.h"
@@ -25,6 +26,7 @@ struct heap_t {
   uint8_t *start;
   uint8_t *end;
   void *state;
+  mutex_t *mutex;
 #ifdef VISUAL_HEAP
   window_provider_t *wp;
   window_t *w;
@@ -286,4 +288,15 @@ void heap_assert(const char *file, int line, const char *func, const char *cond)
   debug(DEBUG_ERROR, "Heap", buf);
 
   heap_assertion_error(buf);
+}
+
+void heap_share(heap_t *heap, int share) {
+  if (heap) {
+    if (share) {
+      heap->mutex = mutex_create("heap");
+    } else {
+      mutex_destroy(heap->mutex);
+      heap->mutex = NULL;
+    }
+  }
 }

@@ -484,6 +484,9 @@ void pumpkin_puts(char *s);
 uint32_t pumpkin_gets(char *buf, uint32_t max);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 
+void pumpkin_sound_init(void);
+void pumpkin_sound_finish(void);
+
 #ifdef __cplusplus
 }
 #endif

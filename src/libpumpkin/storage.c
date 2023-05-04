@@ -650,7 +650,7 @@ static vfs_ent_t *StoReadEnt(vfs_dir_t *dir) {
   for (;;) {
     ent = StoVfsReaddir(dir);
     if (ent == NULL) break;
-    debug(DEBUG_INFO, "STOR", "entry \"%s\" type %d", ent->name, ent->type);
+    debug(DEBUG_TRACE, "STOR", "entry \"%s\" type %d", ent->name, ent->type);
     if (ent->type != VFS_DIR) continue;
     if (ent->name[0] == '.') continue;
     break;
@@ -692,7 +692,7 @@ int StoInit(char *path, mutex_t *mutex) {
             continue;
           }
           dbID = (uint8_t *)db - sto->base;
-          debug(DEBUG_INFO, "STOR", "StoInit 0x%08X database \"%s\"", dbID, db->name);
+          debug(DEBUG_TRACE, "STOR", "StoInit 0x%08X database \"%s\"", dbID, db->name);
           sto->list = db;
           sto->num_storage++;
         }
@@ -4444,7 +4444,7 @@ Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
   xmemcpy(dstP, sP, numBytes);
-  sto->lastErr = errNone;
+  if (sto) sto->lastErr = errNone;
   return errNone;
 }
 
@@ -4452,7 +4452,7 @@ Err MemSet(void *dstP, Int32 numBytes, UInt8 value) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   if (dstP == NULL) ErrFatalDisplayEx("MemSet NULL", 1);
   xmemset(dstP, value, numBytes);
-  sto->lastErr = errNone;
+  if (sto) sto->lastErr = errNone;
   return errNone;
 }
 
