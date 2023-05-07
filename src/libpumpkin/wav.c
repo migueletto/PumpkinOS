@@ -5,8 +5,6 @@
 #include "bytes.h"
 #include "debug.h"
 
-#define WAV_HEADER_SIZE 44
-
 #define RIFF_id 0x52494646
 #define WAVE_id 0x57415645
 #define fmt_id  0x666d7420

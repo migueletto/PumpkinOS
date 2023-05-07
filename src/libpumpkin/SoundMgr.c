@@ -48,6 +48,15 @@ typedef struct {
   int ptr;
 } SndStreamArg;
 
+typedef struct {
+  FileRef f;
+  UInt8 *buffer;
+  UInt32 size;
+  UInt32 pos;
+  UInt32 sampleSize;
+  Boolean finished;
+} snd_param_t;
+
 int SndInitModule(audio_provider_t *ap) {
   snd_module_t *module;
 
@@ -720,16 +729,8 @@ Err SndStreamGetVolume(SndStreamRef channel, Int32 *volume) {
   return err;
 }
 
-typedef struct {
-  UInt8 *buffer;
-  UInt32 size;
-  UInt32 pos;
-  UInt32 sampleSize;
-  Boolean finished;
-} snd_res_t;
-
 static Err SndPlayResourceCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
-  snd_res_t *param = (snd_res_t *)userdata;
+  snd_param_t *param = (snd_param_t *)userdata;
   UInt32 n;
   Err err = sndErrBadParam;
 
@@ -755,21 +756,22 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   SndStreamWidth width;
   SndSampleType type;
   UInt32 rate;
-  snd_res_t param;
+  snd_param_t param;
   Err err = sndErrBadParam;
 
   if (sndP && flags == sndFlagSync) {
-    if (WavBufferHeader((UInt8 *)sndP, &rate, &type, &width)) {
-      param.size = MemPtrSize(sndP);
+    param.size = MemPtrSize(sndP);
 
-      if (param.size > 0) {
+    if (param.size >= WAV_HEADER_SIZE) {
+      if (WavBufferHeader((UInt8 *)sndP, &rate, &type, &width)) {
         param.finished = false;
-        param.buffer = sndP;
+        param.buffer = ((UInt8 *)sndP) + WAV_HEADER_SIZE;
         param.pos = 0;
         param.sampleSize = 1;
         if (width == sndStereo) param.sampleSize <<= 1;
         if (type == sndInt16) param.sampleSize <<= 1;
         else if (type == sndInt32 || type == sndFloat) param.sampleSize <<= 2;
+        param.size -= WAV_HEADER_SIZE;
         param.size /= param.sampleSize;
 
         if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayResourceCallback, &param, 0, false) == errNone) {
@@ -781,6 +783,66 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
           } else {
             SndStreamDelete(sound);
           }
+        }
+      }
+    } else {
+      err = sndErrFormat;
+    }
+  }
+
+  return err;
+}
+
+static Err SndPlayFileCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
+  snd_param_t *param = (snd_param_t *)userdata;
+  UInt32 n, nread;
+  Err err = sndErrBadParam;
+
+  if (param && buffer) {
+    n = numberofframes;
+    if (n > (param->size - param->pos)) n = param->size - param->pos;
+    if (n > 0) {
+      if ((err = VFSFileRead(param->f, n * param->sampleSize, buffer, &nread)) == errNone) {
+        param->pos += nread / param->sampleSize;;
+      }
+    }
+  }
+
+  if (err != errNone) {
+    param->finished = true;
+  }
+
+  return err;
+}
+
+Err SndPlayFile(FileRef f, Int32 volume, UInt32 flags) {
+  SndStreamRef sound;
+  SndStreamWidth width;
+  SndSampleType type;
+  UInt32 rate, size;
+  snd_param_t param;
+  Err err = sndErrBadParam;
+
+  if (f && flags == sndFlagSync && VFSFileTell(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
+    if (WavFileHeader(f, &rate, &type, &width)) {
+      param.finished = false;
+      param.f = f;
+      param.pos = 0;
+      param.sampleSize = 1;
+      if (width == sndStereo) param.sampleSize <<= 1;
+      if (type == sndInt16) param.sampleSize <<= 1;
+      else if (type == sndInt32 || type == sndFloat) param.sampleSize <<= 2;
+      param.size -= WAV_HEADER_SIZE;
+      param.size /= param.sampleSize;
+
+      if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayFileCallback, &param, 0, false) == errNone) {
+        SndStreamSetVolume(sound, volume);
+        if (SndStreamStart(sound) == errNone) {
+          for (; !param.finished && !thread_must_end();) {
+            SysTaskDelay(5);
+          }
+        } else {
+          SndStreamDelete(sound);
         }
       }
     } else {
