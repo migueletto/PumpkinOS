@@ -758,6 +758,8 @@ typedef struct SysExtPrefsType {
 #define sysFtrNumProcessorARM710A	0x00170000		// ARM710A
 #define sysFtrNumProcessorARM925T	0x00180000		// ARM925T
 #define	sysFtrNumProcessorx86		0x01000000		// Intel CPU		(Palm Simulator)
+#define sysFtrNumProcessorPPC64LE	0x02000000		// PowerPC64 in little-endian mode
+#define sysFtrNumProcessorPPC64		0x02100000		// PowerPC64 in big-endian mode (NYI)
 
 // The following sysFtrNumProcessorIs68K(x) and sysFtrNumProcessorIsARM(x)
 // macros are intended to be used to test the value returned from a call to
