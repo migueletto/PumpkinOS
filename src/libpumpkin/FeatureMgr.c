@@ -75,6 +75,9 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
 #elif SYS_CPU == 2
           *valueP = sysFtrNumProcessorx86;
           err = errNone;
+#elif SYS_CPU == 3
+          *valueP = sysFtrNumProcessorPPC64LE;
+          err = errNone;
 #endif
           break;
         case sysFtrNumLanguage:

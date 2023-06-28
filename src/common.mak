@@ -36,6 +36,10 @@ SYS_CPU=2
 else ifeq ($(MACHINE),i386)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
+else ifeq ($(MACHINE),ppc64le)
+SYS_ENDIAN=LITTLE_ENDIAN
+SYS_CPU=3
+# ppc64 would be BIG_ENDIAN 4?
 else
 $(error Unknown CPU $(MACHINE))
 endif
