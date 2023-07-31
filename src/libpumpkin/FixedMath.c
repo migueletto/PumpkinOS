@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <FixedMath.h>
 
 #include "debug.h"
 

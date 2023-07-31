@@ -129,13 +129,16 @@ static int libos_action(void *arg) {
   return 0;
 }
 
-static int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int width, int height, int depth, int fullscreen, int dia, int single, char *launcher) {
+#ifndef ANDROID
+static
+#endif
+int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int width, int height, int depth, int fullscreen, int dia, int single, char *launcher) {
   libos_t *data;
   int r = -1;
 
   if (dia) {
     width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-    height = (width * 3 ) / 2;
+    height = (width * 3 ) / 2 + 64;
   } else if (single) {
     width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
     height = width;

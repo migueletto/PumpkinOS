@@ -176,7 +176,7 @@ static void fd_destructor(void *p) {
         closesocket(f->socket);
         break;
     }
-    xfree(f);
+    sys_free(f);
   }
 }
 
@@ -184,7 +184,7 @@ static int fd_open(int type, HANDLE handle, HANDLE eventr, HANDLE eventw, int so
   fd_t *f;
   int fd;
 
-  if ((f = xcalloc(1, sizeof(fd_t))) == NULL) {
+  if ((f = sys_calloc(1, sizeof(fd_t))) == NULL) {
     return -1;
   }
 
@@ -200,7 +200,7 @@ static int fd_open(int type, HANDLE handle, HANDLE eventr, HANDLE eventw, int so
     if (f->ovlw.hEvent) CloseHandle(f->ovlw.hEvent);
     if (f->handle) CloseHandle(f->handle);
     if (f->socket != -1) closesocket(f->socket);
-    xfree(f);
+    sys_free(f);
     return -1;
   }
   debug(DEBUG_TRACE, "SYS", "fd_open type=%d ptr=%d f=%p", type, fd, f);
@@ -236,7 +236,7 @@ static int fd_read_timeout(fd_t *f, unsigned char *buf, int n, int *nread, uint3
     // XXX if ReadFile uses ovrl, file pointer does not advance
     if (ReadFile(f->handle, f->buf, n, &nbread, f->type == FD_FILE ? NULL : &f->ovlr)) {
       // data was read, return immediatelly
-      xmemcpy(buf, f->buf, nbread);
+      sys_memcpy(buf, f->buf, nbread);
       *nread = nbread;
       return nbread ? 1 : 0;
     }
@@ -262,7 +262,7 @@ static int fd_read_timeout(fd_t *f, unsigned char *buf, int n, int *nread, uint3
           ResetEvent(f->ovlr.hEvent);
           // success
           if (nbread) {
-            xmemcpy(buf, f->buf, nbread);
+            sys_memcpy(buf, f->buf, nbread);
             *nread = nbread;
             return 1;
           } else {
@@ -300,7 +300,7 @@ static int fd_write(fd_t *f, uint8_t *buf, int n) {
       break;
     case FD_SERIAL:
       if (n > MAXBUF) n = MAXBUF;
-      xmemcpy(f->buf, buf, n);
+      sys_memcpy(f->buf, buf, n);
       if (WriteFile(f->handle, f->buf, n, &written, &f->ovlw)) {
         r = written;
       } else {
@@ -498,23 +498,23 @@ int sys_country(char *country, int len) {
   char buf[32];
   GEOID myGEO = GetUserGeoID(GEOCLASS_NATION);
   if (GetGeoInfoA(myGEO, GEO_ISO2, buf, sizeof(buf), 0)) {
-    strncpy(country, buf, len-1);
+    sys_strncpy(country, buf, len-1);
     r = 0;
   }
 #else
   char *s, *p, buf[32];
   if ((s = getenv("LANG")) != NULL) {
-    strncpy(buf, s, sizeof(buf)-1);
-    if ((p = strchr(buf, '.')) != NULL) {
+    sys_strncpy(buf, s, sizeof(buf)-1);
+    if ((p = sys_strchr(buf, '.')) != NULL) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
     }
     if (!strcmp(buf, "C")) {
-      strncpy(buf, EN_US, sizeof(buf)-1);
+      sys_strncpy(buf, EN_US, sizeof(buf)-1);
     }
-    if ((p = strchr(buf, '_')) != NULL) {
+    if ((p = sys_strchr(buf, '_')) != NULL) {
       // "pt_BR" -> "BR"
-      strncpy(country, p+1, len-1);
+      sys_strncpy(country, p+1, len-1);
       r = 0;
     }
   }
@@ -531,29 +531,29 @@ int sys_language(char *language, int len) {
   LCID lcid = GetUserDefaultLCID();
   if (GetLocaleInfoA(lcid, LOCALE_SISO639LANGNAME, buf, sizeof(buf))) {
     // 2 letter country code
-    strncpy(language, buf, len-1);
+    sys_strncpy(language, buf, len-1);
     r = 0;
   } else if (GetLocaleInfoA(lcid, LOCALE_SISO639LANGNAME2, buf, sizeof(buf))) {
     // 3 letter country code
-    strncpy(language, buf, len-1);
+    sys_strncpy(language, buf, len-1);
     r = 0;
   }
 #else
   char *s, *p, buf[32];
   if ((s = getenv("LANG")) != NULL) {
-    strncpy(buf, s, sizeof(buf)-1);
-    if ((p = strchr(buf, '.')) != NULL) {
+    sys_strncpy(buf, s, sizeof(buf)-1);
+    if ((p = sys_strchr(buf, '.')) != NULL) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
     }
     if (!strcmp(buf, "C")) {
-      strncpy(buf, EN_US, sizeof(buf)-1);
+      sys_strncpy(buf, EN_US, sizeof(buf)-1);
     }
-    if ((p = strchr(buf, '_')) != NULL) {
+    if ((p = sys_strchr(buf, '_')) != NULL) {
       // "pt_BR" -> "pt"
       *p = 0;
     }
-    strncpy(language, buf, len-1);
+    sys_strncpy(language, buf, len-1);
     r = 0;
   }
 #endif
@@ -625,14 +625,14 @@ static void normalize_path(const char *src, char *dst, int len) {
 sys_dir_t *sys_opendir(const char *pathname) {
   sys_dir_t *dir;
 
-  if ((dir = xcalloc(1, sizeof(sys_dir_t))) == NULL) {
+  if ((dir = sys_calloc(1, sizeof(sys_dir_t))) == NULL) {
     return NULL;
   }
 
 #ifdef WINDOWS
   normalize_path(pathname, dir->buf, FILE_PATH);
 
-  int len = strlen(dir->buf);
+  int len = sys_strlen(dir->buf);
   if (len && dir->buf[len-1] == FILE_SEP) {
     dir->buf[len] = '*';
     dir->buf[len+1] = 0;
@@ -641,14 +641,14 @@ sys_dir_t *sys_opendir(const char *pathname) {
   dir->handle = FindFirstFile(dir->buf, &dir->ffd);
   if (dir->handle == INVALID_HANDLE_VALUE) {
     debug_errno("SYS", "FindFirstFile(\"%s\")", dir->buf);
-    xfree(dir);
+    sys_free(dir);
     dir = NULL;
   }
 #else
   dir->dir = opendir(pathname);
   if (dir->dir == NULL) {
     debug_errno("SYS", "opendir(\"%s\")", pathname);
-    xfree(dir);
+    sys_free(dir);
     dir = NULL;
   }
 #endif
@@ -663,7 +663,7 @@ int sys_readdir(sys_dir_t *dir, char *name, int len) {
   } else {
     if (!FindNextFile(dir->handle, &dir->ffd)) return -1;
   }
-  strncpy(name, dir->ffd.cFileName, len);
+  sys_strncpy(name, dir->ffd.cFileName, len);
 #else
   struct dirent *ent;
   errno =0;
@@ -673,7 +673,7 @@ int sys_readdir(sys_dir_t *dir, char *name, int len) {
     }
     return -1;
   }
-  strncpy(name, ent->d_name, len);
+  sys_strncpy(name, ent->d_name, len);
 #endif
 
   return 0;
@@ -689,7 +689,7 @@ int sys_closedir(sys_dir_t *dir) {
 #else
     r = closedir(dir->dir);
 #endif
-    xfree(dir);
+    sys_free(dir);
   }
 
   return r;
@@ -704,7 +704,7 @@ int sys_chdir(char *path) {
     normalize_path(path, buf, FILE_PATH);
     r = chdir(buf);
 #else
-    strncpy(buf, path, FILE_PATH);
+    sys_strncpy(buf, path, FILE_PATH);
     r = chdir(buf);
 #endif
   }
@@ -883,11 +883,12 @@ int sys_fdisset(int n, sys_fdset_t *fds) {
 
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
   fd_set rfds, wfds, efds;
-  int r, i, s, isset;
+  int r, i, isset;
 #ifdef WINDOWS
   TIMEVAL tv;
   fd_t *f;
   int map[FDSET_SIZE];
+  int s;
 #else
   struct timeval tv;
 #endif
@@ -1296,7 +1297,7 @@ int sys_stat(const char *pathname, sys_stat_t *st) {
 #ifdef WINDOWS
     normalize_path(pathname, buf, FILE_PATH);
 #else
-    strncpy(buf, pathname, FILE_PATH);
+    sys_strncpy(buf, pathname, FILE_PATH);
 #endif
 
     if ((r = stat(buf, &sb)) == 0) {
@@ -1378,8 +1379,8 @@ int sys_rename(const char *pathname1, const char *pathname2) {
   normalize_path(pathname2, buf2, FILE_PATH);
   r = rename(buf1, buf2);
 #else
-  strncpy(buf1, pathname1, FILE_PATH);
-  strncpy(buf2, pathname2, FILE_PATH);
+  sys_strncpy(buf1, pathname1, FILE_PATH);
+  sys_strncpy(buf2, pathname2, FILE_PATH);
   r = rename(buf1, buf2);
 #endif
 
@@ -1398,7 +1399,7 @@ int sys_unlink(const char *pathname) {
   normalize_path(pathname, buf, FILE_PATH);
   r = unlink(buf);
 #else
-  strncpy(buf, pathname, FILE_PATH);
+  sys_strncpy(buf, pathname, FILE_PATH);
   r = unlink(buf);
 #endif
 
@@ -1417,7 +1418,7 @@ int sys_rmdir(const char *pathname) {
   normalize_path(pathname, buf, FILE_PATH);
   r = rmdir(buf);
 #else
-  strncpy(buf, pathname, FILE_PATH);
+  sys_strncpy(buf, pathname, FILE_PATH);
   r = rmdir(buf);
 #endif
 
@@ -1440,7 +1441,7 @@ int sys_mkdir(const char *pathname) {
   r = mkdir(buf, 0755);
 #endif
 #else
-  strncpy(buf, pathname, FILE_PATH);
+  sys_strncpy(buf, pathname, FILE_PATH);
   r = mkdir(buf, 0755);
 #endif
   if (r == -1) {
@@ -1660,7 +1661,7 @@ int sys_serial_word(int serial, char *word) {
   struct termios termios;
   int parity = 0, wordsize = 0, stopbits = 0;
 
-  if (!word || strlen(word) != 3) {
+  if (!word || sys_strlen(word) != 3) {
     debug(DEBUG_ERROR, "SYS", "invalid word specification");
     return 1;
   }
@@ -1723,7 +1724,7 @@ void *sys_tty_raw(int fd) {
   struct termios term;
   struct termios *orig;
 
-  if ((orig = xcalloc(1, sizeof(struct termios))) == NULL) {
+  if ((orig = sys_calloc(1, sizeof(struct termios))) == NULL) {
     return NULL;
   }
 
@@ -1745,7 +1746,7 @@ int sys_tty_restore(int fd, void *p) {
 
   if (p) {
     r = tcsetattr(fd, TCIOFLUSH | TCSANOW, (struct termios *)p);
-    xfree(p);
+    sys_free(p);
   }
 
   return r;
@@ -2008,9 +2009,9 @@ void *sys_lib_load(char *libname, int *first_load) {
 
 #ifdef WINDOWS
   normalize_path(libname, buf, FILE_PATH-1);
-  len = strlen(buf);
-  if (strstr(buf, ".dll") == NULL && strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
-    strcat(buf, ".dll");
+  len = sys_strlen(buf);
+  if (strstr(buf, ".dll") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
+    sys_strcat(buf, ".dll");
   }
 
   // check if library is already loaded
@@ -2031,10 +2032,10 @@ void *sys_lib_load(char *libname, int *first_load) {
     debug(DEBUG_INFO, "SYS", "library %s already loaded", buf);
   }
 #else
-  strncpy(buf, libname, FILE_PATH-1);
-  len = strlen(buf);
-  if (strstr(buf, ".so") == NULL && strchr(buf, '.') == NULL && FILE_PATH-len > 4) {
-    strcat(buf, ".so");
+  sys_strncpy(buf, libname, FILE_PATH-1);
+  len = sys_strlen(buf);
+  if (strstr(buf, ".so") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 4) {
+    sys_strcat(buf, ".so");
   }
 
   // check if library is already loaded
@@ -2145,7 +2146,7 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
     // ipv4 numeric address
     addr = (struct sockaddr_in *)a;
     xmemset((char *)addr, 0, sizeof(struct sockaddr_in));
-    if ((ip = inet_addr(host)) == INADDR_NONE && strcmp(host, "255.255.255.255")) {
+    if ((ip = inet_addr(host)) == INADDR_NONE && sys_strcmp(host, "255.255.255.255")) {
       debug(DEBUG_ERROR, "SYS", "invalid ipv4 address %s", host);
     }
     addr->sin_family = AF_INET;
@@ -2170,7 +2171,7 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
         switch (pr->ai_family) {
           case AF_INET:
             addr = (struct sockaddr_in *)a;
-            xmemcpy(addr, pr->ai_addr, pr->ai_addrlen);
+            sys_memcpy(addr, pr->ai_addr, pr->ai_addrlen);
             s = (char *)inet_ntoa(addr->sin_addr);
             if (s) {
               addr->sin_family = AF_INET;
@@ -2183,7 +2184,7 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
           case AF_INET6:
             if (!ipv4_only) {
               addr6 = (struct sockaddr_in6 *)a;
-              xmemcpy(addr6, pr->ai_addr, pr->ai_addrlen);
+              sys_memcpy(addr6, pr->ai_addr, pr->ai_addrlen);
               xmemset(name, 0, sizeof(name));
               if (inet_ntop(AF_INET6, &(addr6->sin6_addr), name, sizeof(name)-1)) {
                 addr6->sin6_family = AF_INET6;
@@ -2577,7 +2578,7 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timev
     case AF_INET:
       addr4 = (struct sockaddr_in *)&addr;
       s = (char *)inet_ntoa(addr4->sin_addr);
-      if (s) strncpy(host, s, hlen-1);
+      if (s) sys_strncpy(host, s, hlen-1);
       *port = ntohs(addr4->sin_port);
       ipv6 = 0;
       break;
@@ -2689,7 +2690,7 @@ static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigne
       case AF_INET:
         addr4 = (struct sockaddr_in *)&addr;
         s = (char *)inet_ntoa(addr4->sin_addr);
-        if (s) strncpy(host, s, hlen-1);
+        if (s) sys_strncpy(host, s, hlen-1);
         *port = ntohs(addr4->sin_port);
         break;
       case AF_INET6:
@@ -2848,8 +2849,8 @@ int sys_tmpname(char *buf, int max) {
   if (max >= 256 + L_tmpnam + 1) {
     t = getenv("TEMP");
     xmemset(buf, 0, max);
-    strncpy(buf, t ? t : "\\", 255);
-    n = strlen(buf);
+    sys_strncpy(buf, t ? t : "\\", 255);
+    n = sys_strlen(buf);
     if (tmpnam(&buf[n])) {
       r = 0;
     }
@@ -2863,7 +2864,7 @@ int sys_mkstemp(void) {
   char buf[32];
   int fd;
 
-  strcpy(buf, "tmpXXXXXX");
+  sys_strcpy(buf, "tmpXXXXXX");
   fd = mkstemp(buf);
   unlink(buf);
 

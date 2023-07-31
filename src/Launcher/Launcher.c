@@ -2818,7 +2818,12 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
   return errNone;
 }
 
-UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
+#ifdef ANDROID
+UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+#else
+UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+#endif
+{
   launcher_data_t *data;
   UInt32 value;
 

@@ -169,16 +169,19 @@ int thread_must_end(void) {
     return 1;
   }
 
+  if (local == NULL) return 0;
   targ = (thread_arg_t *)thread_get(local);
 
   if (targ == NULL || targ->sock <= 0 || sys_peek(targ->sock) != -1) {
-    t = sys_time();
-    if ((t - targ->last_usage) >= 15) {
-      p = thread_usage();
-      targ->last_usage = t;
-      if (mutex_lock(mutex) == 0) {
-        ps[targ->psi].p = p;
-        mutex_unlock(mutex);
+    if (targ) {
+      t = sys_time();
+      if ((t - targ->last_usage) >= 15) {
+        p = thread_usage();
+        targ->last_usage = t;
+        if (mutex_lock(mutex) == 0) {
+          ps[targ->psi].p = p;
+          mutex_unlock(mutex);
+        }
       }
     }
 

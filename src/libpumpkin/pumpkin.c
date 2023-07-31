@@ -48,7 +48,11 @@
 #define TAG_APP     "App"
 #define TAG_NOTIF   "notif"
 
+#ifdef ANDROID
+#define REGISTRY_DB   "/data/data/com.pit.pit/app_registry/"
+#else
 #define REGISTRY_DB   "registry/"
+#endif
 
 #define VFS_CARD      "/app_card/"
 #define VFS_INSTALL   "/app_install/"
@@ -1255,6 +1259,10 @@ int pumpkin_launcher(char *name, int width, int height) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
       MemSet(&request, sizeof(launch_request_t), 0);
+#ifdef ANDROID
+      extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
+      request.pilot_main = LauncherPilotMain;
+#endif
       StrNCopy(request.name, name, dmDBNameLength);
       request.code = sysAppLaunchCmdNormalLaunch;
       pumpkin_launch_sub(&request, 1);

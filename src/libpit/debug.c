@@ -1,5 +1,9 @@
 #include <stdio.h>
 
+#ifdef ANDROID
+#include <android/log.h>
+#endif
+
 #include "sys.h"
 #include "thread.h"
 #include "mutex.h"
@@ -220,10 +224,20 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     s += ch('\n', s, tmp + MAX_BUF - s);
     *s = 0;
 
+#ifdef ANDROID
+    switch (_level) {
+      case DEBUG_TRACE: _level = ANDROID_LOG_INFO; break;
+      case DEBUG_INFO:  _level = ANDROID_LOG_INFO; break;
+      case DEBUG_ERROR: _level = ANDROID_LOG_ERROR; break;
+      default: _level = ANDROID_LOG_INFO;
+    }
+    __android_log_buf_write(LOG_ID_MAIN, _level, "pit", tmp);
+#else
     mutex_lock_only(mutex);
     fwrite((uint8_t *)tmp, 1, s - tmp, fd);
     fflush(fd);
     mutex_unlock_only(mutex);
+#endif
   }
 }
 

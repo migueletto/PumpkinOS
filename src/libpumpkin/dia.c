@@ -14,10 +14,11 @@
 #include "xalloc.h"
 
 #define DIA_WIDTH     160
-#define DIA_HEIGHT    240
-#define DIA_GHEIGHT   80
+#define DIA_HEIGHT    272
+#define DIA_GHEIGHT   112
 #define ALPHA_WIDTH   97
 #define ALPHA_HEIGHT  65
+#define BUTTON_HEIGHT 32
 
 #define CODE_CAPS   157
 #define CODE_SHIFT  158
@@ -28,6 +29,13 @@
 #define ICON_KBD      3
 #define ICON_SHIFT    4
 #define ICON_UP_DOWN 10
+
+#define ICON_HARD1    0
+#define ICON_HARD2    1
+#define ICON_HARD3    2
+#define ICON_HARD4    3
+#define ICON_UP       4
+#define ICON_DOWN     5
 
 #define TRIGGER_UP   27
 #define TRIGGER_DOWN 28
@@ -41,6 +49,7 @@ struct dia_t {
   int alpha_width;
   int alpha_height;
   int taskbar_height;
+  int button_height;
   int icon_width;
   int graffiti_alpha;
   uint64_t graffiti_t0;
@@ -74,7 +83,7 @@ static void dia_invert_button(dia_t *dia, int i) {
 
   prev = WinSetCoordinateSystem(dia->dbl ? kCoordinatesDouble : kCoordinatesStandard);
   WinHandle old = WinSetDrawWindow(dia->wh);
-  RctSetRectangle(&rect, i * dia->icon_width, dia->alpha_height, dia->icon_width, dia->taskbar_height);
+  RctSetRectangle(&rect, i * dia->icon_width, dia->alpha_height, dia->icon_width, dia->taskbar_height - dia->button_height);
   WinInvertRectangle(&rect, 0);
   WinSetDrawWindow(old);
   WinSetCoordinateSystem(prev);
@@ -109,12 +118,14 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
     dia->graffiti_height = DIA_GHEIGHT;
     dia->alpha_width = ALPHA_WIDTH;
     dia->alpha_height = ALPHA_HEIGHT;
+    dia->button_height = BUTTON_HEIGHT;
     if (dbl) {
       dia->width *= 2;
       dia->height *= 2;
       dia->graffiti_height *= 2;
       dia->alpha_width *= 2;
       dia->alpha_height *= 2;
+      dia->button_height *= 2;
       dia->icon_width = 29;  // 11*29 + 1 = 320
     } else {
       dia->icon_width = 14;  // 11*14 + 1 = 155
@@ -231,7 +242,7 @@ static void draw_symbol(dia_t *dia, int cond, int s, int i) {
   fw = FntCharWidth(GRAFFITI_CAPS);
   fh = FntCharHeight();
   x = i * dia->icon_width + (dia->icon_width - fw) / 2;
-  y = dia->alpha_height + (dia->taskbar_height - fh) / 2;
+  y = dia->alpha_height + (dia->taskbar_height - dia->button_height - fh) / 2;
   RctSetRectangle(&rect, x, y, fw, fh);
   WinEraseRectangle(&rect, 0);
   if (cond) {
@@ -316,6 +327,7 @@ int dia_update(dia_t *dia) {
         bmp = NULL;
         break;
     }
+
     if (bmp) {
       prev = WinSetCoordinateSystem(dia->dbl ? kCoordinatesDouble : kCoordinatesStandard);
       old = WinSetDrawWindow(dia->wh);
@@ -389,7 +401,40 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
   uint32_t aux;
   int i, c, glyph, r = -1;
 
-  if (y >= (dia->height - dia->taskbar_height) && y < dia->height && x >= 0 && x < dia->width) {
+  if (y >= (dia->height - dia->button_height) && y < dia->height && x >= 0 && x < dia->width) {
+    // button area
+    if (!down) {
+      if (dia->sel != -1) {
+        dia_invert_key(dia, dia->sel);
+        dia->sel = -1;
+      }
+
+      i = x / dia->icon_width;
+
+      switch (i) {
+        case ICON_HARD1:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F1, 0, 0);
+          break;
+        case ICON_HARD2:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F2, 0, 0);
+          break;
+        case ICON_HARD3:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F3, 0, 0);
+          break;
+        case ICON_HARD4:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F4, 0, 0);
+          break;
+        case ICON_UP:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
+          break;
+        case ICON_DOWN:
+          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
+          break;
+      }
+    }
+    r = 0;
+
+  } else if (y >= (dia->height - dia->taskbar_height) && y < dia->height && x >= 0 && x < dia->width) {
     // taskbar area
     i = x / dia->icon_width;
 

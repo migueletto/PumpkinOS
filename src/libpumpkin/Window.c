@@ -1463,10 +1463,10 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
 
       // check limits on srcRect
       if (srcRect->topLeft.x + srcRect->extent.x > srcWidth) {
-        srcRect->extent.x = srcWidth - srcRect->extent.x;
+        srcRect->extent.x = srcWidth - srcRect->topLeft.x;
       }
       if (srcRect->topLeft.y + srcRect->extent.y > srcHeight) {
-        srcRect->extent.y = srcHeight - srcRect->extent.y;
+        srcRect->extent.y = srcHeight - srcRect->topLeft.y;
       }
 
       // set dstRect with same width and height from srcRect
@@ -1738,6 +1738,7 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
   DmResType resType;
   DmResID resID;
   UInt32 size;
+  UInt16 bitmapDensity;
   uint32_t magic;
   uint8_t *bmp, *base, *end;
   char stype[8];
@@ -1785,9 +1786,10 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
 
     if ((best = BmpGetBestBitmap(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap))) != NULL) {
       BmpGetDimensions(best, &w, &h, NULL);
+      bitmapDensity = BmpGetDensity(best);
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
-      WinScaleRectangle(&rect);
+      if (bitmapDensity == kDensityLow) WinScaleRectangle(&rect);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
     }
 

@@ -43,42 +43,48 @@ AppRegistryType *AppRegistryInit(char *regname) {
       sys_mkdir(regname);
       dir = sys_opendir(regname);
     }
+    i = 0;
 
-    for (i = 0;;) {
-      if (i == ar->size) {
-        ar->size += 1024;
-        ar->registry = xrealloc(ar->registry, ar->size * sizeof(AppRegistryEntry));
-      }
-      if (sys_readdir(dir, name, sizeof(name)-1) == -1) break;
-      screator[4] = 0;
-      if (sys_sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator+1, screator+2, screator+3, &aux, &id, &seq) != 7) continue;
-      if (id < appRegistryCompat || id >= appRegistryLast) continue;
+    if (dir) {
+      for (;;) {
+        if (i == ar->size) {
+          ar->size += 1024;
+          ar->registry = xrealloc(ar->registry, ar->size * sizeof(AppRegistryEntry));
+        }
+        if (sys_readdir(dir, name, sizeof(name) - 1) == -1) break;
+        screator[4] = 0;
+        if (sys_sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator + 1, screator + 2,
+                       screator + 3, &aux, &id, &seq) != 7)
+          continue;
+        if (id < appRegistryCompat || id >= appRegistryLast) continue;
 
-      sys_snprintf(path, sizeof(path)-1, "%s%s", regname, name);
-      if ((fd = sys_open(path, SYS_READ)) == -1) continue;
+        sys_snprintf(path, sizeof(path) - 1, "%s%s", regname, name);
+        if ((fd = sys_open(path, SYS_READ)) == -1) continue;
 
-      if ((size = sys_seek(fd, 0, SYS_SEEK_END)) != -1) {
-        if (sys_seek(fd, 0, SYS_SEEK_SET) != -1) {
-          if ((buf = xcalloc(1, size)) != NULL) {
-            if (sys_read(fd, buf, size) == size) {
-              debug(DEBUG_INFO, "AppReg", "reading registry creator '%s' id %d seq %d", screator, id, seq);
-              pumpkin_s2id(&creator, screator);
-              ar->registry[i].creator = creator;
-              ar->registry[i].id = id;
-              ar->registry[i].seq = seq;
-              ar->registry[i].size = size;
-              ar->registry[i].data = buf;
-              i++;
-            } else {
-              xfree(buf);
+        if ((size = sys_seek(fd, 0, SYS_SEEK_END)) != -1) {
+          if (sys_seek(fd, 0, SYS_SEEK_SET) != -1) {
+            if ((buf = xcalloc(1, size)) != NULL) {
+              if (sys_read(fd, buf, size) == size) {
+                debug(DEBUG_INFO, "AppReg", "reading registry creator '%s' id %d seq %d", screator,
+                      id, seq);
+                pumpkin_s2id(&creator, screator);
+                ar->registry[i].creator = creator;
+                ar->registry[i].id = id;
+                ar->registry[i].seq = seq;
+                ar->registry[i].size = size;
+                ar->registry[i].data = buf;
+                i++;
+              } else {
+                xfree(buf);
+              }
             }
           }
         }
+        sys_close(fd);
       }
-      sys_close(fd);
-    }
 
-    sys_closedir(dir);
+      sys_closedir(dir);
+    }
     ar->num = i;
   }
 
