@@ -37,12 +37,6 @@
 #define APP_CELL_HEIGHT  35
 
 #define BLACK   0x00,0x00,0x00
-#define RED     0xFF,0x00,0x00
-#define GREEN   0x00,0xC0,0x00
-#define BLUE    0x00,0x00,0xFF
-#define CYAN    0x00,0xFF,0xFF
-#define MAGENTA 0xFF,0x00,0xFF
-#define YELLOW  0xFF,0xFF,0x00
 #define WHITE   0xFF,0xFF,0xFF
 
 // When DIA is closed: Title (15) + 6*35 + Taskbar (15) = 240 = 160 + 80
@@ -2069,6 +2063,33 @@ static void LauncherOpenForm(UInt16 formId) {
   }
 }
 
+static void DrawBattery(void) {
+  RectangleType rect;
+  RGBColorType rgb, old;
+  UInt16 battery;
+
+  battery = pumpkin_get_battery();
+
+  rgb.r = 0x00;
+  rgb.g = 0x40;
+  rgb.b = 0xff;
+  WinSetBackColorRGB(&rgb, &old);
+  RctSetRectangle(&rect, 60, 4, (battery * 40) / 100, 5);
+  WinEraseRectangle(&rect, 0);
+
+  if (rect.extent.x < 40) {
+    rgb.r = 0x80;
+    rgb.g = 0x80;
+    rgb.b = 0x80;
+    WinSetBackColorRGB(&rgb, NULL);
+    rect.topLeft.x += rect.extent.x;
+    rect.extent.x = 40 - rect.extent.x;
+    WinEraseRectangle(&rect, 0);
+  }
+
+  WinSetBackColorRGB(&old, NULL);
+}
+
 static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
   RectangleType rect;
   DateTimeType dt;
@@ -2124,6 +2145,8 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
       FrmHideObject(frm, objIndex);
       break;
   }
+
+  DrawBattery();
 }
 
 void setField(FormType *frm, UInt16 fieldId, char *s, Boolean focus) {
