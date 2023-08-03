@@ -1,11 +1,14 @@
 include ../common.mak
 
-PROGRAM=$(TOOLS)/prcbuild
-OBJS=prcbuild.o pdb.o
 CC=$(HOSTCC)
 
-$(PROGRAM): $(OBJS)
-	$(CC) -o $(PROGRAM) $(OBJS)
+all: $(TOOLS)/prcbuild $(TOOLS)/prclist
+
+$(TOOLS)/prcbuild: prcbuild.o pdb.o
+	$(CC) -o $(TOOLS)/prcbuild prcbuild.o pdb.o
+
+$(TOOLS)/prclist: prclist.o pdb.o
+	$(CC) -o $(TOOLS)/prclist prclist.o pdb.o
 
 clean:
-	rm -f $(PROGRAM) $(OBJS)
+	rm -f $(TOOLS)/prcbuild $(TOOLS)/prclist *.o

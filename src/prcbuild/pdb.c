@@ -110,6 +110,18 @@ static int put4b(uint32_t w, uint8_t *buf, int i) {
   return 4;
 }
 
+static int get2b(uint16_t *w, uint8_t *buf, int i) {
+  *w = ((uint16_t)buf[i] << 8) | buf[i+1];
+  return 2;
+}
+
+static int get4b(uint32_t *w, uint8_t *buf, int i) {
+  *w = ((uint32_t)buf[i] << 24)   |
+       ((uint32_t)buf[i+1] << 16) |
+       ((uint32_t)buf[i+2] << 8)  | buf[i+3];
+  return 4;
+}
+
 pdb_t *pdb_new(char *name, char *type, char *creator) {
   pdb_t *pdb = NULL;
 
@@ -225,6 +237,88 @@ int pdb_save(pdb_t *pdb, int f) {
       if (write(f, res->data, res->size) != res->size) {
         return -1;
       }
+    }
+
+    r = 0;
+  }
+
+  return r;
+}
+
+int pdb_list(int f) {
+  pdb_t pdb;
+  pdb_res_t res;
+  time_t t;
+  struct tm *tm;
+  char type[8];
+  uint32_t offset0, offset;
+  uint16_t id, attr, version;
+  uint8_t buf[PDB_RESHDR];
+  int i, j, r = -1;
+
+  if (f) {
+    memset(&pdb, 0, sizeof(pdb_t));
+    if (read(f, &pdb.header, PDB_HEADER) != PDB_HEADER) {
+      fprintf(stderr, "invalid PRC 1\n");
+      return -1;
+    }
+
+    i = 0;
+    strncpy(pdb.name, (char *)&pdb.header[i], dmDBNameLength);
+    for (j = 0; j < dmDBNameLength; j++) {
+      if (pdb.name[j] < 32 && pdb.name[j] != 0) {
+        fprintf(stderr, "invalid PRC 2 (0x%02X)\n", pdb.name[j]);
+        return -1;
+      }
+    }
+    i += dmDBNameLength;
+    i += get2b(&attr, pdb.header, i);
+    if (!(attr & dmHdrAttrResDB)) {
+      fprintf(stderr, "invalid PRC 3\n");
+      return -1;
+    }
+    i += get2b(&version, pdb.header, i);
+    i += get4b(&pdb.creationDate, pdb.header, i);
+    i += get4b(&pdb.modificationDate, pdb.header, i);
+    i += 4; // lastBackupDate
+    i += 4; // modificationNumber
+    i += 4; // appInfoArea
+    i += 4; // sortInfoArea
+    strncpy(pdb.type, (char *)&pdb.header[i], 4);
+    i += 4;
+    strncpy(pdb.creator, (char *)&pdb.header[i], 4);
+    i += 4;
+    i += 4; // uniqueIDSeed
+    i += 4; // nextRecordListID
+    i += get2b(&pdb.numrecs, pdb.header, i);
+    if (pdb.numrecs == 0 || pdb.numrecs > 32767) {
+      fprintf(stderr, "invalid PRC 4\n");
+      return -1;
+    }
+
+    t = pdb.creationDate - T0;
+    tm = localtime(&t);
+    printf("%s, version %u, created %s\n", pdb.name, version, asctime(tm));
+    offset0 = 0;
+
+    for (j = 0; j < pdb.numrecs; j++) {
+      if (read(f, buf, PDB_RESHDR) != PDB_RESHDR) {
+        fprintf(stderr, "invalid PRC 5\n");
+        return -1;
+      }
+      i = 0;
+      strncpy(type, (char *)&buf[i], 4);
+      i += 4;
+      i += get2b(&id, buf, i);
+      i += get4b(&offset, buf, i);
+      if (j > 0) printf("%s %5d (%d bytes)\n", res.type, res.id, offset - offset0);
+      res.id = id;
+      strncpy(res.type, type, 4);
+      offset0 = offset;
+    }
+    if (pdb.numrecs) {
+      offset = lseek(f, 0, SEEK_END);
+      printf("%s %5d (%d bytes)\n", res.type, res.id, offset - offset0);
     }
 
     r = 0;
