@@ -2610,6 +2610,8 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
     }
   }
 
+  /*
+  // this code is not necessary for DIA
   if ((pumpkin_module.dia || pumpkin_module.single) && mutex_lock(mutex) == 0) {
     uint64_t now = sys_get_clock();
     if ((now - pumpkin_module.lastUpdate) > 50000) {
@@ -2625,6 +2627,7 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
     mutex_unlock(mutex);
     dbg_poll();
   }
+  */
 
 //debug(1, "XXX", "pumpkin_screen_dirty done");
 }

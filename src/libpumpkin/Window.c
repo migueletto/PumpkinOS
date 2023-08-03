@@ -1474,10 +1474,10 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
 
       // check limits on dstRect
       if (dstRect.topLeft.x + dstRect.extent.x > dstWidth) {
-        dstRect.extent.x = dstWidth - dstRect.extent.x;
+        dstRect.extent.x = dstWidth - dstRect.topLeft.x;
       }
       if (dstRect.topLeft.y + dstRect.extent.y > dstHeight) {
-        dstRect.extent.y = dstHeight - dstRect.extent.y;
+        dstRect.extent.y = dstHeight - dstRect.topLeft.y;
       }
 
       // srcRect and dstRect must have same width and height
@@ -1569,6 +1569,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDepth = BmpGetBitDepth(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
 
+#ifndef ANDROID
       if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
         // it is possible to use fast copy
         RctCopyRectangle(rect, &srcRect);
@@ -1588,6 +1589,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         WinSetCoordinateSystem(coordSys);
         return;
       }
+#endif
 
       dbl = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
       hlf = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
