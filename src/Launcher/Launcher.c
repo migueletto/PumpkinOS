@@ -2877,6 +2877,9 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
     case 3:
       debug(DEBUG_INFO, PUMPKINOS, "Host OS is SerenityOS");
       break;
+    case 4:
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is Android");
+      break;
     default:
       debug(DEBUG_ERROR, PUMPKINOS, "Host OS is unknown");
       break;
