@@ -13,7 +13,7 @@ $(DLIB): $(PROGRAM).dlib
 	cp $(PROGRAM).dlib $(DLIB)
 
 $(PROGRAM).dlib: $(OBJS)
-	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit -lm
+	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(OSLDEFS) -L$(BIN) -lpumpkin -lpit -lm
 
 clean:
 	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(POBJS) $(OBJS) $(DLIB)

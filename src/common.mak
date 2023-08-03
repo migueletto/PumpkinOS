@@ -77,6 +77,23 @@ LUAPLAT=linux
 OS=Serenity
 OSDEFS=-m$(BITS) -DSERENITY -DSOEXT=\"$(SOEXT)\" -I$(SERENITY)/Build/x86_64/Root/usr/include -D_GNU_SOURCE
 CC=$(SERENITY)/Toolchain/Local/x86_64/bin/x86_64-pc-serenity-gcc
+else ifeq ($(OSNAME),Android)
+ifeq ($(NDK),)
+$(error You must define the NDK environment variable)
+endif
+SYS_OS=4
+ifeq ($(BITS),32)
+ARM_ARCH=--target=armv7-none-linux-androideabi26 -march=armv7-a -mthumb
+else
+ARM_ARCH=--target=aarch64-none-linux-android26
+endif
+OSLDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fPIC -Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libgcc_real.a -Wl,--exclude-libs,libatomic.a -static-libstdc++ -Wl,--build-id -Wl,--fatal-warnings -Wl,--exclude-libs,libunwind.a -Wl,--no-undefined -Qunused-arguments
+EXTLIBS=-llog -latomic
+SOEXT=.so
+LUAPLAT=linux
+OS=Android
+OSDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -DANDROID -DSOEXT=\"$(SOEXT)\"
+CC=$(NDK)/bin/clang
 else
 $(error Unknown OS $(OSNAME))
 endif

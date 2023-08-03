@@ -3455,6 +3455,7 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
         db = (storage_db_t *)(sto->base + dbRef->dbID);
         if (db->ftype == STO_TYPE_RES) {
           id = SYS_OS * 64 + SYS_CPU * 8 + SYS_SIZE;
+          debug(DEBUG_INFO, "STOR", "searching for dlib id %d (os=%d cpu=%d size=%d)", id, SYS_OS, SYS_CPU, SYS_SIZE);
           for (i = 0; i < db->numRecs; i++) {
             h = db->elements[i];
             if (h->d.res.type == resType && h->d.res.id == id) {

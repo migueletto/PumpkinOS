@@ -943,6 +943,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
               debug(DEBUG_ERROR, PUMPKINOS, "PilotMain not found in dlib");
             }
           } else {
+            debug(DEBUG_INFO, PUMPKINOS, "dlib resource not loaded");
             if ((h = DmGet1Resource(pumpkin_script_engine_id(), 1)) != NULL) {
               pilot_main = pumpkin_script_main;
               opendb = 1;
@@ -950,7 +951,11 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
             }
           }
           DmCloseDatabase(dbRef);
+        } else {
+          debug(DEBUG_ERROR, PUMPKINOS, "error opening database '%s'", request->name);
         }
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "database '%s' not found", request->name);
       }
     }
 
