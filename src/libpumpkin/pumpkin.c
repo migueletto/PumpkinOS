@@ -1969,6 +1969,54 @@ int pumpkin_must_finish(void) {
   return r;
 }
 
+static void pumpkin_set_key(int key) {
+  switch (key) {
+    case WINDOW_KEY_DOWN:  pumpkin_module.keyMask |= keyBitPageDown;   break;
+    case WINDOW_KEY_UP:    pumpkin_module.keyMask |= keyBitPageUp;     break;
+    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask |= keyBitLeft;       break;
+    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask |= keyBitRight;      break;
+    case WINDOW_KEY_F1:    pumpkin_module.keyMask |= keyBitHard1;      break;
+    case WINDOW_KEY_F2:    pumpkin_module.keyMask |= keyBitHard2;      break;
+    case WINDOW_KEY_F3:    pumpkin_module.keyMask |= keyBitHard3;      break;
+    case WINDOW_KEY_F4:    pumpkin_module.keyMask |= keyBitHard4;      break;
+    case WINDOW_KEY_SHIFT: pumpkin_module.modMask |= WINDOW_MOD_SHIFT; break;
+    case WINDOW_KEY_CTRL:  pumpkin_module.modMask |= WINDOW_MOD_CTRL;  break;
+    case WINDOW_KEY_RCTRL: pumpkin_module.modMask |= WINDOW_MOD_RCTRL; break;
+    case WINDOW_KEY_LALT:  pumpkin_module.modMask |= WINDOW_MOD_LALT;  break;
+    case WINDOW_KEY_RALT:  pumpkin_module.modMask |= WINDOW_MOD_RALT;  break;
+    default:
+      if (key >= 0 && key < 128) {
+        pumpkin_module.extKeyMask[key >> 6] |= ((uint64_t)1) << (key & 63);
+      }
+      break;
+  }
+}
+
+static int pumpkin_reset_key(int key) {
+  switch (key) {
+    case WINDOW_KEY_DOWN:  pumpkin_module.keyMask &= ~keyBitPageDown; break;
+    case WINDOW_KEY_UP:    pumpkin_module.keyMask &= ~keyBitPageUp;   break;
+    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask &= ~keyBitLeft;     break;
+    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask &= ~keyBitRight;    break;
+    case WINDOW_KEY_F1:    pumpkin_module.keyMask &= ~keyBitHard1;    break;
+    case WINDOW_KEY_F2:    pumpkin_module.keyMask &= ~keyBitHard2;    break;
+    case WINDOW_KEY_F3:    pumpkin_module.keyMask &= ~keyBitHard3;    break;
+    case WINDOW_KEY_F4:    pumpkin_module.keyMask &= ~keyBitHard4;    break;
+    case WINDOW_KEY_SHIFT: pumpkin_module.modMask &= ~WINDOW_MOD_SHIFT; key = 0; break;
+    case WINDOW_KEY_CTRL:  pumpkin_module.modMask &= ~WINDOW_MOD_CTRL;  key = 0; break;
+    case WINDOW_KEY_RCTRL: pumpkin_module.modMask &= ~WINDOW_MOD_RCTRL; key = 0; break;
+    case WINDOW_KEY_LALT:  pumpkin_module.modMask &= ~WINDOW_MOD_LALT;  key = 0; break;
+    case WINDOW_KEY_RALT:  pumpkin_module.modMask &= ~WINDOW_MOD_RALT;  key = 0; break;
+    default:
+      if (key >= 0 && key < 128) {
+        pumpkin_module.extKeyMask[key >> 6] &= ~(((uint64_t)1) << (key & 63));
+      }
+      break;
+  }
+
+  return key;
+}
+
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
@@ -2035,51 +2083,13 @@ int pumpkin_sys_event(void) {
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
           task_forward_event(i, MSG_KEYDOWN, arg1, 0, 0);
         }
-        switch (arg1) {
-          case WINDOW_KEY_DOWN:  pumpkin_module.keyMask |= keyBitPageDown;   break;
-          case WINDOW_KEY_UP:    pumpkin_module.keyMask |= keyBitPageUp;     break;
-          case WINDOW_KEY_LEFT:  pumpkin_module.keyMask |= keyBitLeft;       break;
-          case WINDOW_KEY_RIGHT: pumpkin_module.keyMask |= keyBitRight;      break;
-          case WINDOW_KEY_F1:    pumpkin_module.keyMask |= keyBitHard1;      break;
-          case WINDOW_KEY_F2:    pumpkin_module.keyMask |= keyBitHard2;      break;
-          case WINDOW_KEY_F3:    pumpkin_module.keyMask |= keyBitHard3;      break;
-          case WINDOW_KEY_F4:    pumpkin_module.keyMask |= keyBitHard4;      break;
-          case WINDOW_KEY_SHIFT: pumpkin_module.modMask |= WINDOW_MOD_SHIFT; break;
-          case WINDOW_KEY_CTRL:  pumpkin_module.modMask |= WINDOW_MOD_CTRL;  break;
-          case WINDOW_KEY_RCTRL: pumpkin_module.modMask |= WINDOW_MOD_RCTRL; break;
-          case WINDOW_KEY_LALT:  pumpkin_module.modMask |= WINDOW_MOD_LALT;  break;
-          case WINDOW_KEY_RALT:  pumpkin_module.modMask |= WINDOW_MOD_RALT;  break;
-          default:
-            if (arg1 >= 0 && arg1 < 128) {
-              pumpkin_module.extKeyMask[arg1 >> 6] |= ((uint64_t)1) << (arg1 & 63);
-            }
-            break;
-        }
+        pumpkin_set_key(arg1);
         break;
       case WINDOW_KEYUP:
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
           task_forward_event(i, MSG_KEYUP, arg1, 0, 0);
         }
-        switch (arg1) {
-          case WINDOW_KEY_DOWN:  pumpkin_module.keyMask &= ~keyBitPageDown; break;
-          case WINDOW_KEY_UP:    pumpkin_module.keyMask &= ~keyBitPageUp;   break;
-          case WINDOW_KEY_LEFT:  pumpkin_module.keyMask &= ~keyBitLeft;     break;
-          case WINDOW_KEY_RIGHT: pumpkin_module.keyMask &= ~keyBitRight;    break;
-          case WINDOW_KEY_F1:    pumpkin_module.keyMask &= ~keyBitHard1;    break;
-          case WINDOW_KEY_F2:    pumpkin_module.keyMask &= ~keyBitHard2;    break;
-          case WINDOW_KEY_F3:    pumpkin_module.keyMask &= ~keyBitHard3;    break;
-          case WINDOW_KEY_F4:    pumpkin_module.keyMask &= ~keyBitHard4;    break;
-          case WINDOW_KEY_SHIFT: pumpkin_module.modMask &= ~WINDOW_MOD_SHIFT; arg1 = 0; break;
-          case WINDOW_KEY_CTRL:  pumpkin_module.modMask &= ~WINDOW_MOD_CTRL;  arg1 = 0; break;
-          case WINDOW_KEY_RCTRL: pumpkin_module.modMask &= ~WINDOW_MOD_RCTRL; arg1 = 0; break;
-          case WINDOW_KEY_LALT:  pumpkin_module.modMask &= ~WINDOW_MOD_LALT;  arg1 = 0; break;
-          case WINDOW_KEY_RALT:  pumpkin_module.modMask &= ~WINDOW_MOD_RALT;  arg1 = 0; break;
-          default:
-            if (arg1 >= 0 && arg1 < 128) {
-              pumpkin_module.extKeyMask[arg1 >> 6] &= ~(((uint64_t)1) << (arg1 & 63));
-            }
-            break;
-        }
+        arg1 = pumpkin_reset_key(arg1);
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
           uint32_t ok = 1;
           switch (arg1) {
@@ -2201,6 +2211,16 @@ void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32
       pumpkin_set_finish(1);
       sys_set_finish(1);
     }
+  }
+
+  if (x) *x = 0;
+  if (y) *y = 0;
+  if (keyMask) *keyMask = 0;
+  if (modMask) *modMask = 0;
+  if (buttonMask) *buttonMask = 0;
+  if (extKeyMask) {
+    extKeyMask[0] = 0;
+    extKeyMask[1] = 0;
   }
 
   if (mutex_lock(mutex) == 0) {

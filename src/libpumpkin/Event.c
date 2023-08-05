@@ -282,6 +282,10 @@ int EvtPumpEvents(Int32 timeoutUs) {
       }
     }
 
+    if (ev == MSG_KEYDOWN || ev == MSG_KEYUP) {
+      continue;
+    }
+
     if (ev == MSG_MOTION) {
       module->screenX = key;
       module->screenY = mods;
