@@ -2096,21 +2096,26 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
   UInt32 t, tf;
   FontID old;
   UInt16 objIndex;
+  Boolean update;
   int width;
+
+  update = false;
+  t = TimGetSeconds();
+  TimSecondsToDateTime(t, &dt);
+  if (dt.minute != data->lastMinute) {
+    update = true;
+    data->lastMinute = dt.minute;
+  }
 
   objIndex = FrmGetObjectIndex(frm, filterCtl);
 
   switch (data->mode) {
     case launcher_app:
     case launcher_app_small:
-      t = TimGetSeconds();
-      TimSecondsToDateTime(t, &dt);
-
-      if (dt.minute != data->lastMinute) {
+      if (update) {
         tf = PrefGetPreference(prefTimeFormat);
         TimeToAscii(dt.hour, dt.minute, tf, data->title);
         FrmSetTitle(frm, data->title);
-        data->lastMinute = dt.minute;
       }
       FrmHideObject(frm, objIndex);
       break;
@@ -2146,7 +2151,7 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
       break;
   }
 
-  DrawBattery();
+  if (update) DrawBattery();
 }
 
 void setField(FormType *frm, UInt16 fieldId, char *s, Boolean focus) {
