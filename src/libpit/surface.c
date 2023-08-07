@@ -446,9 +446,9 @@ void surface_rgb_color(int encoding, surface_palette_t *palette, int npalette, u
       break;
     case SURFACE_ENCODING_RGB565:
       if (alpha) *alpha =  0xff;
-      if (red)   *red   = (color >> 11) & 0x1f; 
-      if (green) *green = (color >>  5) & 0x3f; 
-      if (blue)  *blue  =  color        & 0x1f; 
+      if (red)   *red   = ((color >> 11) & 0x1f) << 3; 
+      if (green) *green = ((color >>  5) & 0x3f) << 2; 
+      if (blue)  *blue  = ( color        & 0x1f) << 3; 
       break;
     case SURFACE_ENCODING_ARGB:
       if (alpha) *alpha =  color >> 24;
