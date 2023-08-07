@@ -44,9 +44,9 @@ uint32_t sys_htobe32(uint32_t host_32bits) {
 }
 
 uint16_t sys_be16toh(uint16_t big_endian_16bits) {
-  return le[0] ? big_endian_16bits : swap16(big_endian_16bits);
+  return le[0] ? swap16(big_endian_16bits) : big_endian_16bits;
 }
 
 uint32_t sys_be32toh(uint32_t big_endian_32bits) {
-  return le[0] ? big_endian_32bits : swap32(big_endian_32bits);
+  return le[0] ? swap32(big_endian_32bits) : big_endian_32bits;
 }
