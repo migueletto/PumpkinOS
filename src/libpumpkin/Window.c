@@ -108,6 +108,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->backColorRGB = module->colorTable->entry[module->backColor];
   module->textColorRGB = module->colorTable->entry[module->textColor];
 
+  module->transferMode = winPaint;
+
   if (displayWindow) {
     module->displayWindow = displayWindow;
   } else {
