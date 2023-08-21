@@ -554,7 +554,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   StoRemoveLocks(APP_STORAGE);
 
-  pumpkin_module.heap = heap_init(HEAP_SIZE, wp);
+  pumpkin_module.heap = heap_init(HEAP_SIZE*2, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
 
   SysUInitModule(); // sto calls SysQSortP
