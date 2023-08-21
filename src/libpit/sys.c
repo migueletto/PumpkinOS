@@ -2041,12 +2041,17 @@ void *sys_lib_load(char *libname, int *first_load) {
   // check if library is already loaded
   dlerror();
 
-#ifndef RTLD_NODELETE
-#define RTLD_NODELETE 0
+/* XXX RTLD_NODELETE can cause problems since global variables are not reinitialized
+#ifdef RTLD_NODELETE
+#define NODELETE RTLD_NODELETE
+#else
+#define NODELETE 0
 #endif
+*/
+#define NODELETE 0
 
 #ifdef RTLD_NOLOAD
-  lib = dlopen(buf, RTLD_NOW | RTLD_NODELETE | RTLD_NOLOAD);
+  lib = dlopen(buf, RTLD_NOW | RTLD_NOLOAD);
 #else
   lib = NULL;
 #endif
@@ -2054,7 +2059,7 @@ void *sys_lib_load(char *libname, int *first_load) {
   if (lib == NULL) {
     // not loaded yet: load it
     dlerror();
-    lib = dlopen(buf, RTLD_NOW | RTLD_NODELETE);
+    lib = dlopen(buf, RTLD_NOW | NODELETE);
 
     if (lib != NULL) {
       debug(DEBUG_INFO, "SYS", "library %s loaded", buf);
