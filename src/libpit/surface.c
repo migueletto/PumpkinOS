@@ -811,7 +811,7 @@ int surface_save(surface_t *surface, char *filename, int quality) {
 
   if (surface) {
     switch (surface->encoding) {
-      case SURFACE_ENCODING_ARGB:   ocomp = 3; break;
+      case SURFACE_ENCODING_ARGB:   ocomp = 4; break;
       case SURFACE_ENCODING_RGB565: ocomp = 3; break;
       case SURFACE_ENCODING_GRAY:   ocomp = 1; break;
       case SURFACE_ENCODING_MONO:   ocomp = 1; break;
