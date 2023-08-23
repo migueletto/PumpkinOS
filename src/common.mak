@@ -1,5 +1,5 @@
 ifeq ($(ROOT),)
-$(error Missing ROOT parameter)
+ROOT=../..
 endif
 
 BIN=$(ROOT)/bin
@@ -11,14 +11,6 @@ LIBPIT=$(SRC)/libpit
 SYSNAME=pit
 VERSION=1.0
 
-ifeq ($(BITS),32)
-SYS_SIZE=1
-else ifeq ($(BITS),64)
-SYS_SIZE=2
-else
-$(error Missing BITS parameter (must be either 32 or 64))
-endif
-
 MACHINE := $(shell uname -m)
 
 ifeq ($(findstring arm,$(MACHINE)),arm)
@@ -27,21 +19,41 @@ SYS_ENDIAN=LITTLE_ENDIAN
 else ifeq ($(MACHINE),x86_64)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
+ifeq ($(BITS),)
+BITS=64
+endif
 else ifeq ($(MACHINE),x86_32)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
+ifeq ($(BITS),)
+BITS=32
+endif
 else ifeq ($(MACHINE),i686)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
+ifeq ($(BITS),)
+BITS=32
+endif
 else ifeq ($(MACHINE),i386)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
+ifeq ($(BITS),)
+BITS=32
+endif
 else ifeq ($(MACHINE),ppc64le)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=3
 # ppc64 would be BIG_ENDIAN 4?
 else
 $(error Unknown CPU $(MACHINE))
+endif
+
+ifeq ($(BITS),32)
+SYS_SIZE=1
+else ifeq ($(BITS),64)
+SYS_SIZE=2
+else
+$(error Missing BITS parameter (must be either 32 or 64))
 endif
 
 HOSTCC=gcc
