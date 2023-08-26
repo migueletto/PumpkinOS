@@ -2964,6 +2964,14 @@ void *sys_memset(void *s, int c, sys_size_t n) {
   return memset(s, c, n);
 }
 
+double sys_floor(double x) {
+  return floor(x);
+}
+
+double sys_ceil(double x) {
+  return ceil(x);
+}
+
 double sys_fabs(double x) {
   return fabs(x);
 }

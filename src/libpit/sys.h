@@ -332,6 +332,10 @@ void *sys_memcpy(void *dest, const void *src, sys_size_t n);
 
 void *sys_memset(void *s, int c, sys_size_t n);
 
+double sys_floor(double x);
+
+double sys_ceil(double x);
+
 double sys_fabs(double x);
 
 double sys_sqrt(double x);
