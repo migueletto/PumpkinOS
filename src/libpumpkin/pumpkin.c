@@ -2579,6 +2579,27 @@ int pumpkin_getstr(char **s, uint8_t *p, int i) {
   return sys_strlen(*s) + 1;
 }
 
+void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  task_screen_t *screen;
+  uint32_t offset, size;
+  uint16_t *dst;
+  int len;
+
+  if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
+    dst = surface_buffer(screen->surface, &len);
+    offset = y0 * task->width;
+    size = (y1 - y0) * task->width * sizeof(uint16_t);
+    sys_memcpy(dst + offset, src, size);
+    screen->x0 = 0;
+    screen->x1 = task->width-1;
+    screen->y0 = y0;
+    screen->y1 = y1-1;
+    screen->dirty = 1;
+    ptr_unlock(task->screen_ptr, TAG_SCREEN);
+  }
+}
+
 void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen;
