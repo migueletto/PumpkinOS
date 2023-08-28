@@ -184,8 +184,9 @@ Err VFSFileRead(FileRef fileRef, UInt32 numBytes, void *bufP, UInt32 *numBytesRe
 
   if (fileRef && vfs_type(fileRef) == VFS_FILE) {
     f = (vfs_file_t *)fileRef;
-    if (numBytes && bufP) {
-      if ((nread = vfs_read(f, (uint8_t *)bufP, numBytes)) >= 0) {
+    if (bufP) {
+      nread = numBytes ? vfs_read(f, (uint8_t *)bufP, numBytes) : 0;
+      if (nread >= 0) {
         if (numBytesReadP) *numBytesReadP = nread;
         err = errNone;
       }
