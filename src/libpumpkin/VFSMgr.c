@@ -361,6 +361,7 @@ Err VFSFileGetAttributes(FileRef fileRef, UInt32 *attributesP) {
       if (attributesP) {
         *attributesP = vfsFileAttrDirectory;
       }
+      err = errNone;
     }
   }
 
