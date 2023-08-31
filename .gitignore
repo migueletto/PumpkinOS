@@ -5,6 +5,7 @@
 /tools
 /registry
 /pumpkin
+*.a
 *.o
 *.res
 *.so
