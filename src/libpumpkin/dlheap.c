@@ -96,6 +96,10 @@ void *heap_base(heap_t *heap) {
   return heap->start;
 }
 
+uint32_t heap_size(heap_t *heap) {
+  return heap->size;
+}
+
 #ifdef VISUAL_HEAP
 static void heap_draw(heap_t *heap, uint8_t *from, uint8_t *to, int incr) {
   uint64_t t;
