@@ -87,8 +87,8 @@ pterm_t *pterm_init(int cols, int rows, int rgb) {
       t->rgb_fg_buffer = xcalloc(t->size, sizeof(uint32_t));
       t->rgb_bg_buffer = xcalloc(t->size, sizeof(uint32_t));
     } else {
-      pterm_setfg(t, BLACK);
-      pterm_setbg(t, WHITE);
+      pterm_setfg(t, WHITE);
+      pterm_setbg(t, BLACK);
       t->saved_color = t->color;
       t->color_buffer = xcalloc(t->size, 1);
     }
