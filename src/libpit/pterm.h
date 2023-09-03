@@ -23,6 +23,8 @@ void pterm_cls(pterm_t *t);
 void pterm_clreol(pterm_t *t);
 void pterm_setx(pterm_t *t, int col);
 void pterm_sety(pterm_t *t, int row);
+int pterm_getx(pterm_t *t);
+int pterm_gety(pterm_t *t);
 void pterm_setfg(pterm_t *t, uint32_t c);
 void pterm_setbg(pterm_t *t, uint32_t c);
 uint32_t pterm_getfg(pterm_t *t);

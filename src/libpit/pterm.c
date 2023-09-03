@@ -901,6 +901,10 @@ void pterm_setx(pterm_t *t, int col) {
   pterm_cursor_enable(t, e);
 }
 
+int pterm_getx(pterm_t *t) {
+  return t->col;
+}
+
 void pterm_sety(pterm_t *t, int row) {
   int e = t->cursor_enabled;
   pterm_cursor_enable(t, 0);
@@ -909,6 +913,10 @@ void pterm_sety(pterm_t *t, int row) {
   }
   t->row = row;
   pterm_cursor_enable(t, e);
+}
+
+int pterm_gety(pterm_t *t) {
+  return t->row;
 }
 
 static void term_decx(pterm_t *t) {
