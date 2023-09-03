@@ -1,3 +1,6 @@
+#ifndef PIT_SURFACE_H
+#define PIT_SURFACE_H
+
 #define TAG_SURFACE "surface"
 
 #define SURFACE_ENCODING_ARGB    1  // A R G B
@@ -38,6 +41,7 @@ typedef struct {
   void (*settitle)(void *data, char *title);
   void (*setoption)(void *data, int op, int value);
   void (*destroy)(void *data);
+  void *udata;
 } surface_t;
 
 int surface_font_height(int font);
@@ -64,3 +68,5 @@ int surface_save(surface_t *surface, char *filename, int quality);
 int surface_scale(surface_t *src, surface_t *dst);
 int surface_destroy(surface_t *surface);
 void surface_palette(surface_t *surface, int i, int red, int green, int blue);
+
+#endif

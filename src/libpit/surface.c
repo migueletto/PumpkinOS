@@ -26,6 +26,7 @@ typedef struct {
   uint32_t rowBytes;
   uint8_t *buffer;
   surface_t *surface;
+  void *udata;
 } buffer_surface_t;
 
 static font_t *getfont(int font) {
@@ -515,7 +516,7 @@ static void bsurface_destroy(void *data) {
 }
 
 int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2) {
-  return surface && surface->event ? surface->event(surface->data, us, arg1, arg2) : 0;
+  return surface && surface->event ? surface->event(surface->udata ? surface->udata : surface->data, us, arg1, arg2) : 0;
 }
 
 void surface_update(surface_t *surface) {
