@@ -368,6 +368,7 @@ uint64_t sys_timegm(sys_tm_t *tm) {
   stm.tm_min = tm->tm_min;
   stm.tm_sec = tm->tm_sec;
   stm.tm_isdst = tm->tm_isdst;
+  stm.tm_yday = tm->tm_yday;
 #ifdef WINDOWS32
   t = _mkgmtime(&stm);
 #else
@@ -390,6 +391,7 @@ uint64_t sys_timelocal(sys_tm_t *tm) {
   stm.tm_min = tm->tm_min;
   stm.tm_sec = tm->tm_sec;
   stm.tm_isdst = tm->tm_isdst;
+  stm.tm_yday = tm->tm_yday;
 
 #ifdef WINDOWS
   t = mktime(&stm);
@@ -419,6 +421,7 @@ int sys_gmtime(const uint64_t *t, sys_tm_t *tm) {
   tm->tm_min = stm->tm_min;
   tm->tm_sec = stm->tm_sec;
   tm->tm_isdst = stm->tm_isdst;
+  tm->tm_yday = stm->tm_yday;
 #else
   struct tm st;
   tt = *t;
@@ -431,6 +434,7 @@ int sys_gmtime(const uint64_t *t, sys_tm_t *tm) {
   tm->tm_min = st.tm_min;
   tm->tm_sec = st.tm_sec;
   tm->tm_isdst = st.tm_isdst;
+  tm->tm_yday = st.tm_yday;
 #endif
 
   return 0;
@@ -451,6 +455,7 @@ int sys_localtime(const uint64_t *t, sys_tm_t *tm) {
   tm->tm_min = stm->tm_min;
   tm->tm_sec = stm->tm_sec;
   tm->tm_isdst = stm->tm_isdst;
+  tm->tm_yday = stm->tm_yday;
 #else
   struct tm st;
   tt = *t;
@@ -463,6 +468,7 @@ int sys_localtime(const uint64_t *t, sys_tm_t *tm) {
   tm->tm_min = st.tm_min;
   tm->tm_sec = st.tm_sec;
   tm->tm_isdst = st.tm_isdst;
+  tm->tm_yday = st.tm_yday;
 #endif
 
   return 0;

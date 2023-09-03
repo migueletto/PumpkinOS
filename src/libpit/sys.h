@@ -81,6 +81,7 @@ typedef struct {
   int tm_min;
   int tm_sec;
   int tm_isdst;
+  int tm_yday;
 } sys_tm_t;
 
 typedef struct {
