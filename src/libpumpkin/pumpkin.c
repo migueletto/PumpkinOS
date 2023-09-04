@@ -2593,8 +2593,8 @@ void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1) {
     sys_memcpy(dst + offset, src, size);
     screen->x0 = 0;
     screen->x1 = task->width-1;
-    screen->y0 = y0;
-    screen->y1 = y1-1;
+    if (y0 < screen->y0) screen->y0 = y0;
+    if (y1 - 1 > screen->y1) screen->y1 = y1 - 1;
     screen->dirty = 1;
     ptr_unlock(task->screen_ptr, TAG_SCREEN);
   }
