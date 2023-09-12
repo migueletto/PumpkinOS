@@ -8,6 +8,7 @@
 #include "font12x16coco.h"
 #include "font16x16.h"
 #include "font16x16cp437.h"
+#include "font8x16.h"
 #include "graphic.h"
 #include "surface.h"
 #include "util.h"
@@ -41,6 +42,7 @@ static font_t *getfont(int font) {
     case 5: f = &font12x16coco; break;
     case 6: f = &font16x16; break;
     case 7: f = &font16x16_cp437; break;
+    case 8: f = &font8x16; break;
     default: f = &font8x8; break;
   }
 
