@@ -965,6 +965,27 @@ void pterm_getchar(pterm_t *t, uint32_t index, uint8_t *code, uint32_t *fg, uint
   }
 }
 
+void pterm_putchar(pterm_t *t, uint32_t index, uint8_t code, uint32_t fg, uint32_t bg) {
+  if (index < t->size) {
+    t->char_buffer[index] = code;
+    if (t->rgb) {
+      if (t->attr_buffer[index] & ATTR_INVERSE) {
+        t->rgb_bg_buffer[index] = fg;
+        t->rgb_fg_buffer[index] = bg;
+      } else {
+        t->rgb_fg_buffer[index] = fg;
+        t->rgb_fg_buffer[index] = bg;
+      }
+    } else {
+      if (t->attr_buffer[index] & ATTR_INVERSE) {
+        t->color_buffer[index] = (fg & 0x07) | ((bg & 0x07) << 4);
+      } else {
+        t->color_buffer[index] = (bg & 0x07) | ((fg & 0x07) << 4);
+      }
+    }
+  }
+}
+
 int pterm_getcursor(pterm_t *t, uint8_t *col, uint8_t *row) {
   *col = t->col;
   *row = t->row;

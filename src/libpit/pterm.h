@@ -36,4 +36,5 @@ void pterm_cursor_enable(pterm_t *t, int enabled);
 void pterm_getsize(pterm_t *pterm, uint8_t *cols, uint8_t *rows);
 int pterm_getcursor(pterm_t *pterm, uint8_t *col, uint8_t *row);
 void pterm_getchar(pterm_t *pterm, uint32_t index, uint8_t *code, uint32_t *fg, uint32_t *bg);
+void pterm_putchar(pterm_t *pterm, uint32_t index, uint8_t code, uint32_t fg, uint32_t bg);
 char pterm_getstate(pterm_t *t);
