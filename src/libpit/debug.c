@@ -150,7 +150,7 @@ int str(char *buf, int d, char *s, int max) {
 
 void debugva_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, sys_va_list ap) {
   char tmp[MAX_BUF], buf[MAX_BUF], *s;
-  int i, j, k, ms;
+  int i, j, k, us;
   char thread_name[32];
   sys_timeval_t tv;
   sys_tm_t tm;
@@ -179,7 +179,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
 
     sys_timeofday(&tv);
     ts = tv.tv_sec;
-    ms = tv.tv_usec / 1000;
+    us = tv.tv_usec;
     utctime(&ts, &tm);
 
     s = tmp;
@@ -195,7 +195,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     s += ch(':', s, tmp + MAX_BUF - s);
     s += dec(tm.tm_sec, 2, s, tmp + MAX_BUF - s);
     s += ch('.', s, tmp + MAX_BUF - s);
-    s += dec(ms, 3, s, tmp + MAX_BUF - s);
+    s += dec(us, 6, s, tmp + MAX_BUF - s);
     s += ch(' ', s, tmp + MAX_BUF - s);
     s += ch(level_name[_level], s, tmp + MAX_BUF - s);
     s += ch(' ', s, tmp + MAX_BUF - s);
