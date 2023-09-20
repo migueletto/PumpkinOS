@@ -522,7 +522,7 @@ int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2) {
 }
 
 void surface_update(surface_t *surface) {
-  if (surface && surface->update) surface->update(surface->data);
+  if (surface && surface->update) surface->update(surface->udata ? surface->udata : surface->data);
 }
 
 void *surface_buffer(surface_t *surface, int *len) {
