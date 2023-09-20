@@ -12,7 +12,7 @@
 #include "xalloc.h"
 
 typedef struct {
-  int width, height, depth, fullscreen, dia, single;
+  int width, height, depth, mono, fullscreen, dia, single;
   char launcher[256];
   window_provider_t *wp;
   audio_provider_t *ap;
@@ -96,14 +96,20 @@ static int libos_action(void *arg) {
   }
 
   pumpkin_set_secure(data->secure);
+  pumpkin_set_mono(data->mono);
 
   if (data->dia) {
     pumpkin_set_dia(data->depth);
   } else if (data->single) {
     pumpkin_set_single(data->depth);
   } else {
-    pumpkin_set_background(data->depth, 0x58, 0x8C, 0xB4);
-    pumpkin_set_border(data->depth, 4, 0xA0, 0xC0, 0xFF, 0xA0, 0xA0, 0xA0);
+    if (data->mono) {
+      pumpkin_set_background(data->depth, 0xFF, 0xFF, 0xFF);
+      pumpkin_set_border(data->depth, 4, 0x90, 0x90, 0x90, 0xD0, 0xD0, 0xD0);
+    } else {
+      pumpkin_set_background(data->depth, 0x58, 0x8C, 0xB4);
+      pumpkin_set_border(data->depth, 4, 0xA0, 0xC0, 0xFF, 0xA0, 0xA0, 0xA0);
+    }
   }
 
   pumpkin_set_spawner(thread_get_handle());
@@ -134,7 +140,7 @@ static
 #endif
 int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int width, int height, int depth, int fullscreen, int dia, int single, char *launcher) {
   libos_t *data;
-  int r = -1;
+  int mono, r = -1;
 
   if (dia) {
     width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
@@ -144,6 +150,13 @@ int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int wid
     height = width;
   }
 
+  if (depth == 1) {
+    depth = 16;
+    mono = 1;
+  } else {
+    mono = 0;
+  }
+
   if (width > 0 && height > 0 && (depth == 16 || depth == 32)) {
     if ((data = xcalloc(1, sizeof(libos_t))) != NULL) {
       data->wp = wp;
@@ -151,6 +164,7 @@ int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int wid
       data->width = width;
       data->height = height;
       data->depth = depth;
+      data->mono = mono;
       data->fullscreen = fullscreen;
       data->dia = dia;
       data->single = single;

@@ -54,3 +54,7 @@ uint32_t g32(uint32_t rgb) {
 uint32_t b32(uint32_t rgb) {
   return rgb & 0xff;
 }
+
+uint8_t rgb2gray(uint8_t red, uint8_t green, uint8_t blue) {
+  return ((uint32_t)(red * 0.299 + green * 0.587 + blue * 0.114)) & 0xff;
+}

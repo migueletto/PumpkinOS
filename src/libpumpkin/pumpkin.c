@@ -31,6 +31,7 @@
 #include "dia.h"
 #include "wman.h"
 #include "color.h"
+#include "rgb.h"
 #include "dbg.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -133,6 +134,7 @@ typedef struct {
 typedef struct {
   char *tag;
   surface_t *surface;
+  surface_t *msurface;
   int dirty; // app screen changed
   int x0, y0, x1, y1;
 } task_screen_t;
@@ -176,7 +178,7 @@ typedef struct {
   int launched;
   int spawner;
   int encoding;
-  int width, height, depth, border;
+  int width, height, depth, mono, border;
   int dragging;
   int lastX, lastY;
   int current_task;
@@ -675,6 +677,10 @@ void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t
   wman_set_border(pumpkin_module.wm, depth, size, rsel, gsel, bsel, r, g, b);
 }
 
+void pumpkin_set_mono(int mono) {
+  pumpkin_module.mono = mono;
+}
+
 int pumpkin_dia_enabled(void) {
   return pumpkin_module.dia ? 1 : 0;
 }
@@ -843,9 +849,8 @@ static void task_destructor(void *p) {
 
   if (p) {
     screen = (task_screen_t *)p;
-    if (screen->surface) {
-      surface_destroy(screen->surface);
-    }
+    if (screen->surface) surface_destroy(screen->surface);
+    if (screen->msurface) surface_destroy(screen->msurface);
     xfree(screen);
   }
 }
@@ -1025,6 +1030,10 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
     return -1;
   }
 
+  if (pumpkin_module.mono) {
+    screen->msurface = surface_create(width, height, pumpkin_module.encoding);
+  }
+
   screen->x0 = pumpkin_module.width;
   screen->y0 = pumpkin_module.height;
   screen->x1 = -1;
@@ -1034,6 +1043,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   if ((ptr = ptr_new(screen, task_destructor)) == -1) {
     pumpkin_module.tasks[i].reserved = 0;
     surface_destroy(screen->surface);
+    if (screen->msurface) surface_destroy(screen->msurface);
     xfree(task);
     xfree(screen);
     mutex_unlock(mutex);
@@ -1838,7 +1848,12 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
     }
 
     if (screen->dirty) {
-      raw = (uint8_t *)screen->surface->getbuffer(screen->surface->data, &len);
+      if (pumpkin_module.mono) {
+        surface_dither(screen->msurface, 0, 0, screen->surface, 0, 0, screen->surface->width, screen->surface->height, 1);
+        raw = (uint8_t *)screen->surface->getbuffer(screen->msurface->data, &len);
+      } else {
+        raw = (uint8_t *)screen->surface->getbuffer(screen->surface->data, &len);
+      }
       *x = screen->x0;
       *y = screen->y0;
       *w = screen->x1 - screen->x0 + 1;

@@ -61,6 +61,7 @@ void *surface_buffer(surface_t *surface, int *len);
 void surface_copy(surface_t *surface, uint8_t *src);
 void surface_rgb_color(int encoding, surface_palette_t *palette, int npalette, uint32_t color, int *red, int *green, int *blue, int *alpha);
 uint32_t surface_color_rgb(int encoding, surface_palette_t *palette, int npalette, int red, int green, int blue, int alpha);
+void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h, int mono);
 
 surface_t *surface_create(int width, int height, int encoding);
 surface_t *surface_load(char *filename, int encoding);

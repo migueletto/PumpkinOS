@@ -11,6 +11,7 @@
 #include "font8x16cp437.h"
 #include "graphic.h"
 #include "surface.h"
+#include "rgb.h"
 #include "util.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -131,26 +132,48 @@ static uint8_t surface_best_color(surface_palette_t *palette, int npalette, int 
   return imin;
 }
 
-static uint8_t surface_gray_rgb(uint8_t red, uint8_t green, uint8_t blue) {
-  return ((uint32_t)(red * 0.299 + green * 0.587 + blue * 0.114)) & 0xff;
-}
-
-void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
-  uint32_t color, transp;
+void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h, int mono) {
+  uint32_t color, white, black;
   int32_t *pixels, oldpixel, newpixel, quant_error;
   int32_t *pixels_r, *pixels_g, *pixels_b, old_r, old_g, old_b, err_r, err_g, err_b;
-  int i, j, k, red, green, blue, alpha, transparent;
+  int i, j, k, red, green, blue, alpha;
 
-  transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
+  if (mono) {
+    if ((pixels = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
+      white = dst->color_rgb(dst->data, 255, 255, 255, 255);
+      black = dst->color_rgb(dst->data, 0, 0, 0, 255);
 
-  if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
-    for (i = 0; i < h; i++) {
-      for (j = 0; j < w; j++) {
-        color = src->getpixel(src->data, src_x + j, src_y + i);
-        if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+      if (src->encoding == SURFACE_ENCODING_GRAY) {
+        for (i = 0, k = 0; i < h; i++) {
+          for (j = 0; j < w; j++, k++) {
+            pixels[k] = src->getpixel(src->data, src_x + j, src_y + i);
+          }
+        }
+      } else {
+        for (i = 0, k = 0; i < h; i++) {
+          for (j = 0; j < w; j++, k++) {
+            color = src->getpixel(src->data, src_x + j, src_y + i);
+            src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
+            pixels[k] = alpha ? rgb2gray(red, green, blue) : 0;
+          }
+        }
       }
+      for (i = 0, k = 0; i < h; i++) {
+        for (j = 0; j < w; j++, k++) {
+          oldpixel = pixels[k];
+          newpixel = oldpixel < 128 ? 0 : 255;
+          dst->setpixel(dst->data, dst_x + j, dst_y + i, newpixel ? white : black);
+          quant_error = oldpixel - newpixel;
+          pixels[k + 1]     += quant_error * 7 / 16;
+          pixels[k + w - 1] += quant_error * 3 / 16;
+          pixels[k + w]     += quant_error * 5 / 16;
+          pixels[k + w + 1] += quant_error * 1 / 16;
+        }
+      }
+      xfree(pixels);
     }
-  } else if (dst->encoding == SURFACE_ENCODING_PALETTE) {
+
+  } else {
     // Floyd–Steinberg dithering
 
     if ((pixels_r = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
@@ -169,21 +192,18 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
         }
       }
 
-//int min_r = 1000, max_r = -1000;
       for (i = 0, k = 0; i < h; i++) {
         for (j = 0; j < w; j++, k++) {
           old_r = pixels_r[k];
           old_g = pixels_g[k];
           old_b = pixels_b[k];
-if (old_r < 0) old_r = 0; else if (old_r > 255) old_r = 255;
-if (old_g < 0) old_g = 0; else if (old_g > 255) old_g = 255;
-if (old_b < 0) old_b = 0; else if (old_b > 255) old_b = 255;
+          if (old_r < 0) old_r = 0; else if (old_r > 255) old_r = 255;
+          if (old_g < 0) old_g = 0; else if (old_g > 255) old_g = 255;
+          if (old_b < 0) old_b = 0; else if (old_b > 255) old_b = 255;
           newpixel = surface_best_color(dst->palette, dst->npalette, old_r, old_g, old_b);
           dst->setpixel(dst->data, dst_x + j, dst_y + i, newpixel);
           dst->rgb_color(dst->data, newpixel, &red, &green, &blue, &alpha);
           err_r = old_r - red;
-//if (err_g < min_r) min_r = err_g;
-//if (err_g > max_r) max_r = err_g;
           err_g = old_g - green;
           err_b = old_b - blue;
           pixels_r[k + 1]     += err_r * 7 / 16;
@@ -200,43 +220,31 @@ if (old_b < 0) old_b = 0; else if (old_b > 255) old_b = 255;
           pixels_b[k + w + 1] += err_b * 1 / 16;
         }
       }
-//debug(1, "XXX", "err %d %d", min_r, max_r);
 
       xfree(pixels_b);
       xfree(pixels_g);
       xfree(pixels_r);
     }
-  } else if (dst->encoding == SURFACE_ENCODING_MONO) {
-    if ((pixels = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
-      if (src->encoding == SURFACE_ENCODING_GRAY) {
-        for (i = 0, k = 0; i < h; i++) {
-          for (j = 0; j < w; j++, k++) {
-            pixels[k] = src->getpixel(src->data, src_x + j, src_y + i);
-          }
-        }
-      } else {
-        for (i = 0, k = 0; i < h; i++) {
-          for (j = 0; j < w; j++, k++) {
-            color = src->getpixel(src->data, src_x + j, src_y + i);
-            src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
-            pixels[k] = alpha ? surface_gray_rgb(red, green, blue) : 0;
-          }
-        }
+  }
+}
+
+void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
+  uint32_t color, transp;
+  int i, j, red, green, blue, alpha, transparent;
+
+  transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
+
+  if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
+    for (i = 0; i < h; i++) {
+      for (j = 0; j < w; j++) {
+        color = src->getpixel(src->data, src_x + j, src_y + i);
+        if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
       }
-      for (i = 0, k = 0; i < h; i++) {
-        for (j = 0; j < w; j++, k++) {
-          oldpixel = pixels[k];
-          newpixel = oldpixel < 128 ? 0 : 255;
-          dst->setpixel(dst->data, dst_x + j, dst_y + i, newpixel ? 1 : 0);
-          quant_error = oldpixel - newpixel;
-          pixels[k + 1]     += quant_error * 7 / 16;
-          pixels[k + w - 1] += quant_error * 3 / 16;
-          pixels[k + w]     += quant_error * 5 / 16;
-          pixels[k + w + 1] += quant_error * 1 / 16;
-        }
-      }
-      xfree(pixels);
     }
+
+  } else if (dst->encoding == SURFACE_ENCODING_PALETTE || dst->encoding == SURFACE_ENCODING_MONO) {
+    surface_dither(dst, dst_x, dst_y, src, src_x, src_y, w, h, dst->encoding == SURFACE_ENCODING_MONO);
+
   } else {
     for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
@@ -417,6 +425,8 @@ static uint32_t bsurface_getpixel(void *data, int x, int y) {
 }
 
 void surface_rgb_color(int encoding, surface_palette_t *palette, int npalette, uint32_t color, int *red, int *green, int *blue, int *alpha) {
+  int r, g, b;
+
   if (alpha) *alpha = 0;
   if (red)   *red   = 0;
   if (green) *green = 0;
@@ -449,9 +459,15 @@ void surface_rgb_color(int encoding, surface_palette_t *palette, int npalette, u
       break;
     case SURFACE_ENCODING_RGB565:
       if (alpha) *alpha =  0xff;
-      if (red)   *red   = ((color >> 11) & 0x1f) << 3; 
-      if (green) *green = ((color >>  5) & 0x3f) << 2; 
-      if (blue)  *blue  = ( color        & 0x1f) << 3; 
+      r = ((color >> 11) & 0x1f) << 3; 
+      g = ((color >>  5) & 0x3f) << 2; 
+      b = ( color        & 0x1f) << 3; 
+      if (r) r |= 0x7;
+      if (g) g |= 0x3;
+      if (b) b |= 0x7;
+      if (red)   *red   = r;
+      if (green) *green = g;
+      if (blue)  *blue  = b;
       break;
     case SURFACE_ENCODING_ARGB:
       if (alpha) *alpha =  color >> 24;
@@ -475,7 +491,7 @@ uint32_t surface_color_rgb(int encoding, surface_palette_t *palette, int npalett
       color = (red | green | blue) ? 1 : 0;
       break;
     case SURFACE_ENCODING_GRAY:
-      color = surface_gray_rgb(red, green, blue);
+      color = rgb2gray(red, green, blue);
       break;
     case SURFACE_ENCODING_PALETTE:
       if (palette) {
@@ -621,7 +637,7 @@ void surface_settitle(surface_t *surface, char *title) {
   if (surface && surface->settitle) surface->settitle(surface->data, title);
 }
 
-static void dither(uint8_t *buf, surface_t *surface) {
+static void buffer_dither(uint8_t *buf, surface_t *surface) {
   int16_t *pixels, oldpixel, newpixel, quant_error;
   int i, j, k;
 
@@ -775,7 +791,7 @@ surface_t *surface_load(char *filename, int encoding) {
             }
           }
         } else {
-          dither(buf, surface);
+          buffer_dither(buf, surface);
         }
       } else {
         for (i = 0, k = 0; i < height; i++) {
