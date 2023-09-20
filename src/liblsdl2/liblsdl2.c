@@ -814,6 +814,7 @@ static texture_t *libsdl_window_create_texture(window_t *_window, int width, int
         SDL_SetTextureBlendMode(texture->blur, SDL_BLENDMODE_BLEND);
         texture->buf = xcalloc(1, width * height * 4);
       } else {
+        debug(DEBUG_ERROR, "SDL", "SDL_CreateTexture format 0x%08X failed: %s", window->format, SDL_GetError());
         xfree(texture);
         texture = NULL;
       }
