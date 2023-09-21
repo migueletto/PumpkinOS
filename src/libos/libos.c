@@ -150,9 +150,9 @@ int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int wid
     height = width;
   }
 
-  if (depth == 1) {
+  if (depth < 16) {
+    mono = depth;
     depth = 16;
-    mono = 1;
   } else {
     mono = 0;
   }

@@ -50,17 +50,6 @@ typedef struct {
 
 extern thread_key_t *win_key;
 
-/*
-static void setTableEntry(UIColorTableEntries i, UInt8 r, UInt8 g, UInt8 b) {
-  RGBColorType rgb;
-
-  rgb.r = r;
-  rgb.g = g;
-  rgb.b = b;
-  UIColorSetTableEntry(i, &rgb);
-}
-*/
-
 static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   uint8_t *bits = wh->bitmapP ? BmpGetBits(wh->bitmapP) : NULL;
   uint32_t addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
@@ -96,9 +85,15 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->backColor565 = 0xffff; // white
   module->textColor565 = 0x0000; // black
 
-  module->foreColor = 0xff; // black
-  module->backColor = 0x00; // white
-  module->textColor = 0xff; // black
+  if (depth == 1) {
+    module->foreColor = 1; // black
+    module->backColor = 0; // white
+    module->textColor = 1; // black
+  } else {
+    module->foreColor = 0xff; // black
+    module->backColor = 0x00; // white
+    module->textColor = 0xff; // black
+  }
 
   module->colorTable = (ColorTableType *)&module->fcolorTable;
   MemMove(module->colorTable->entry, defaultPalette, MAX_PAL * sizeof(RGBColorType));
@@ -126,24 +121,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->activeWindow = module->displayWindow;
   module->drawWindow = module->displayWindow;
   WinEraseWindow();
-//debug(1, "XXX", "WinInitModule displayWindow=%p", module->displayWindow);
-
-/*
-  setTableEntry(UIFormFill,           0x30, 0x30, 0x30);
-  setTableEntry(UIFormFrame,          0x20, 0x10, 0x10);
-  setTableEntry(UIFieldBackground,    0x30, 0x30, 0x30);
-  setTableEntry(UIFieldTextLines,     0x60, 0x60, 0x60);
-  setTableEntry(UIFieldText,          0xFF, 0xFF, 0xFF);
-  setTableEntry(UIFieldTextHighlightBackground, 0xFF, 0x80, 0x00);
-  setTableEntry(UIFormTitle,          0xFF, 0xFF, 0xFF);
-  setTableEntry(UIMenuFill,           0x30, 0x30, 0x30);
-  setTableEntry(UIMenuForeground,     0xFF, 0xFF, 0xFF);
-  setTableEntry(UIObjectFrame,        0xB0, 0x70, 0x00);
-  setTableEntry(UIObjectForeground,   0xFF, 0xFF, 0xFF
-  setTableEntry(UIObjectFill,         0x80, 0x40, 0x00);
-  setTableEntry(UIObjectSelectedForeground, 0xFF, 0x60, 0x00);
-  setTableEntry(UIObjectSelectedFill, 0x20, 0x00, 0x00);
-*/
 
   module->foreAlpha = 0xFF;
   module->backAlpha = 0xFF;
@@ -1554,8 +1531,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *windowBitmap, *displayBitmap, *best;
   RectangleType srcRect;
-  UInt16 windowDensity, bitmapDensity, bitmapDepth, coordSys, displayDepth, windowDepth, tc, bc, tcd, bcd;
-  UInt32 transparentValue;
+  UInt16 windowDensity, bitmapDensity, bitmapDepth, coordSys, displayDepth, windowDepth;
+  UInt32 tc, bc, tcd, bcd, transparentValue;
   Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
   Coord x1, y1, x2, y2, x3, y3, x4, y4;
@@ -2048,10 +2025,13 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   IndexedColorType prev = module->foreColor;
 
   if (foreColor >= 0 && foreColor < colorTable->numEntries) {
-    module->foreColor = foreColor;
     module->foreColorRGB = colorTable->entry[foreColor];
     module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
-    debug(DEBUG_TRACE, "Window", "WinSetForeColor index=%d r=0x%02X g=0x%02X b=0x%02X rgb565=0x%04X", foreColor, module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b, module->foreColor565);
+    if (module->depth == 1) {
+      module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->foreColor = foreColor;
+    }
   }
 
   return prev;
@@ -2072,10 +2052,13 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
   IndexedColorType prev = module->backColor;
 
   if (backColor >= 0 && backColor < colorTable->numEntries) {
-    module->backColor = backColor;
     module->backColorRGB = colorTable->entry[backColor];
     module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
-    debug(DEBUG_TRACE, "Window", "WinSetBackColor index=%d r=0x%02X g=0x%02X b=0x%02X rgb565=0x%04X", backColor, module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b, module->backColor565);
+    if (module->depth == 1) {
+      module->backColor = (module->backColorRGB.r > 127 && module->backColorRGB.g > 127 && module->backColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->backColor = WinRGBToIndex(&module->backColorRGB);
+    }
   }
 
   return prev;
@@ -2091,9 +2074,13 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
   IndexedColorType prev = module->textColor;
 
   if (textColor >= 0 && textColor < colorTable->numEntries) {
-    module->textColor = textColor;
     module->textColorRGB = colorTable->entry[textColor];
     module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
+    if (module->depth == 1) {
+      module->textColor = (module->textColorRGB.r > 127 && module->textColorRGB.g > 127 && module->textColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->textColor = textColor;
+    }
   }
 
   return prev;
@@ -2114,8 +2101,12 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->foreColorRGB.r = newRgbP->r;
     module->foreColorRGB.g = newRgbP->g;
     module->foreColorRGB.b = newRgbP->b;
-    module->foreColor = WinRGBToIndex(&module->foreColorRGB);
     module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
+    if (module->depth == 1) {
+      module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->foreColor = WinRGBToIndex(&module->foreColorRGB);
+    }
   }
 }
 
@@ -2134,8 +2125,12 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->backColorRGB.r = newRgbP->r;
     module->backColorRGB.g = newRgbP->g;
     module->backColorRGB.b = newRgbP->b;
-    module->backColor = WinRGBToIndex(&module->backColorRGB);
     module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
+    if (module->depth == 1) {
+      module->backColor = (module->backColorRGB.r > 127 && module->backColorRGB.g > 127 && module->backColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->backColor = WinRGBToIndex(&module->backColorRGB);
+    }
   }
 }
 
@@ -2154,8 +2149,12 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->textColorRGB.r = newRgbP->r;
     module->textColorRGB.g = newRgbP->g;
     module->textColorRGB.b = newRgbP->b;
-    module->textColor = WinRGBToIndex(&module->textColorRGB);
     module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
+    if (module->depth == 1) {
+      module->textColor = (module->textColorRGB.r > 127 && module->textColorRGB.g > 127 && module->textColorRGB.b > 127) ? 0 : 1;
+    } else {
+      module->textColor = WinRGBToIndex(&module->textColorRGB);
+    }
   }
 }
 
@@ -3105,15 +3104,12 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
 }
 
 void WinInvertRect(RectangleType *rect, UInt16 corner) {
+  win_module_t *module = (win_module_t *)thread_get(win_key);
   IndexedColorType objFore, objFill, objSelFill, objSelFore, oldb, oldf;
   RectangleType aux;
   WinDrawOperation prev;
   UInt16 coordSys;
 
-  objFill = UIColorGetTableEntryIndex(UIObjectFill);
-  objFore = UIColorGetTableEntryIndex(UIObjectForeground);
-  objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
-  objSelFore = UIColorGetTableEntryIndex(UIFormTitle);
   prev = WinSetDrawMode(winSwap);
 
   // using double coordinates to preserve font shape
@@ -3122,13 +3118,25 @@ void WinInvertRect(RectangleType *rect, UInt16 corner) {
   if (coordSys == kCoordinatesStandard) WinScaleRectangle(&aux);
   corner = WinScaleCoord(corner, false);
 
-  oldb = WinSetBackColor(objFill);
-  oldf = WinSetForeColor(objSelFill);
-  WinPaintRectangle(&aux, corner);
+  if (module->depth == 1) {
+    oldb = WinSetBackColor(0x00);
+    oldf = WinSetForeColor(0xff);
+    WinPaintRectangle(&aux, corner);
 
-  WinSetBackColor(objFore);
-  WinSetForeColor(objSelFore);
-  WinPaintRectangle(&aux, corner);
+  } else {
+    objFill = UIColorGetTableEntryIndex(UIObjectFill);
+    objFore = UIColorGetTableEntryIndex(UIObjectForeground);
+    objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+    objSelFore = UIColorGetTableEntryIndex(UIFormTitle);
+
+    oldb = WinSetBackColor(objFill);
+    oldf = WinSetForeColor(objSelFill);
+    WinPaintRectangle(&aux, corner);
+
+    WinSetBackColor(objFore);
+    WinSetForeColor(objSelFore);
+    WinPaintRectangle(&aux, corner);
+  }
 
   WinSetCoordinateSystem(coordSys);
   WinSetBackColor(oldb);

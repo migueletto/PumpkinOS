@@ -132,16 +132,19 @@ static uint8_t surface_best_color(surface_palette_t *palette, int npalette, int 
   return imin;
 }
 
+// Floyd–Steinberg dithering
+
 void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h, int mono) {
-  uint32_t color, white, black;
-  int32_t *pixels, oldpixel, newpixel, quant_error;
+  uint32_t color, gray[16];
+  int32_t *pixels, oldpixel, newpixel, err;
   int32_t *pixels_r, *pixels_g, *pixels_b, old_r, old_g, old_b, err_r, err_g, err_b;
   int i, j, k, red, green, blue, alpha;
 
   if (mono) {
     if ((pixels = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
-      white = dst->color_rgb(dst->data, 255, 255, 255, 255);
-      black = dst->color_rgb(dst->data, 0, 0, 0, 255);
+      for (i = 0, j = 1 << mono, color = 0; i < j; i++, color += 255 / (j - 1)) {
+        gray[i] = dst->color_rgb(dst->data, color, color, color, 255);
+      }
 
       if (src->encoding == SURFACE_ENCODING_GRAY) {
         for (i = 0, k = 0; i < h; i++) {
@@ -161,21 +164,20 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
       for (i = 0, k = 0; i < h; i++) {
         for (j = 0; j < w; j++, k++) {
           oldpixel = pixels[k];
-          newpixel = oldpixel < 128 ? 0 : 255;
-          dst->setpixel(dst->data, dst_x + j, dst_y + i, newpixel ? white : black);
-          quant_error = oldpixel - newpixel;
-          pixels[k + 1]     += quant_error * 7 / 16;
-          pixels[k + w - 1] += quant_error * 3 / 16;
-          pixels[k + w]     += quant_error * 5 / 16;
-          pixels[k + w + 1] += quant_error * 1 / 16;
+          newpixel = oldpixel;
+          if (newpixel < 0) newpixel = 0; else if (newpixel > 255) newpixel = 255;
+          dst->setpixel(dst->data, dst_x + j, dst_y + i, gray[newpixel >> (8 - mono)]);
+          err = oldpixel - newpixel;
+          pixels[k + 1]     += err * 7 / 16;
+          pixels[k + w - 1] += err * 3 / 16;
+          pixels[k + w]     += err * 5 / 16;
+          pixels[k + w + 1] += err * 1 / 16;
         }
       }
       xfree(pixels);
     }
 
   } else {
-    // Floyd–Steinberg dithering
-
     if ((pixels_r = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
         (pixels_g = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
         (pixels_b = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
@@ -638,7 +640,7 @@ void surface_settitle(surface_t *surface, char *title) {
 }
 
 static void buffer_dither(uint8_t *buf, surface_t *surface) {
-  int16_t *pixels, oldpixel, newpixel, quant_error;
+  int16_t *pixels, oldpixel, newpixel, err;
   int i, j, k;
 
   if ((pixels = xcalloc(1, (surface->width+1) * (surface->height+1) * sizeof(int16_t))) != NULL) {
@@ -653,11 +655,11 @@ static void buffer_dither(uint8_t *buf, surface_t *surface) {
         oldpixel = pixels[k];
         newpixel = oldpixel < 128 ? 0 : 255;
         bsurface_setpixel(surface->data, j, i, newpixel ? 1 : 0);
-        quant_error = oldpixel - newpixel;
-        pixels[k + 1]                  += quant_error * 7 / 16;
-        pixels[k + surface->width - 1] += quant_error * 3 / 16;
-        pixels[k + surface->width]     += quant_error * 5 / 16;
-        pixels[k + surface->width + 1] += quant_error * 1 / 16;
+        err = oldpixel - newpixel;
+        pixels[k + 1]                  += err * 7 / 16;
+        pixels[k + surface->width - 1] += err * 3 / 16;
+        pixels[k + surface->width]     += err * 5 / 16;
+        pixels[k + surface->width + 1] += err * 1 / 16;
       }
     }
 

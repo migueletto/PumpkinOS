@@ -1106,7 +1106,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
 
   UicInitModule();
   BmpInitModule(DEFAULT_DENSITY);
-  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, 16, NULL);
+  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, 1, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
   InsPtInitModule();
@@ -1849,7 +1849,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
 
     if (screen->dirty) {
       if (pumpkin_module.mono) {
-        surface_dither(screen->msurface, 0, 0, screen->surface, 0, 0, screen->surface->width, screen->surface->height, 1);
+        surface_dither(screen->msurface, 0, 0, screen->surface, 0, 0, screen->surface->width, screen->surface->height, pumpkin_module.mono);
         raw = (uint8_t *)screen->surface->getbuffer(screen->msurface->data, &len);
       } else {
         raw = (uint8_t *)screen->surface->getbuffer(screen->surface->data, &len);

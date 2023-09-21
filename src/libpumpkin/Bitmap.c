@@ -1159,12 +1159,14 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
       case  2:
         offset = y * bitmapP->rowBytes + (x >> 2);
         b = bits[offset];
-        value = (b >> (3 - (x & 0x03))) & 0x03;
+        //value = (b >> (3 - (x & 0x03))) & 0x03;
+        value = (b >> ((x & 0x03) << 1)) & 0x03;
         break;
       case  4:
         offset = y * bitmapP->rowBytes + (x >> 1);
         b = bits[offset];
-        value = (x & 0x01) ? b & 0x0F : b >> 4;
+        //value = (x & 0x01) ? b & 0x0F : b >> 4;
+        value = (x & 0x01) ? b >> 4 : b & 0x0F;
         break;
       case  8:
         offset = y * bitmapP->rowBytes + x;
@@ -1247,7 +1249,8 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
 
 void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp) {
   ColorTableType *colorTable;
-  UInt32 offset, offsetb, transparentValue, c;
+  UInt32 offset, transparentValue, c;
+  Int32 offsetb;
   UInt8 *bits, b, red, green, blue, gray;
   UInt16 rgb;
   Coord i, j, k;
@@ -1286,16 +1289,16 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
           case 1:
             offset = sy * bitmapP->rowBytes + sx / 8;
             for (i = 0; i < h; i++, offset += bitmapP->rowBytes) {
-              offsetb = sx % 8;
+              offsetb = 7 - (sx % 8);
               k = 0;
               for (j = 0; j < w; j++) {
                 b = bits[offset + k] & (1 << offsetb);
                 gray = gray1values[b ? 1 : 0];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
                 surface->setpixel(surface->data, x+j, y+i, c);
-                offsetb++;
-                if (offsetb == 8) {
-                  offsetb = 0;
+                offsetb--;
+                if (offsetb == -1) {
+                  offsetb = 7;
                   k++;
                 }
               }
@@ -1412,7 +1415,7 @@ static UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTab
       if (isDefault) {
         b = b ? 0xE6 : 0x00;
       } else {
-       b = b ? BmpRGBToIndex(0x00, 0x00, 0x00, colorTable) : BmpRGBToIndex(0xFF, 0xFF, 0xFF, colorTable);
+        b = b ? BmpRGBToIndex(0x00, 0x00, 0x00, colorTable) : BmpRGBToIndex(0xFF, 0xFF, 0xFF, colorTable);
       }
       break;
     case 16:
@@ -1501,8 +1504,7 @@ static UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTa
 }
 
 static UInt8 rgbToGray1(UInt16 r, UInt16 g, UInt16 b) {
-  UInt16 c = (r + g + b) / 3;
-  return c ? 0 : 1;
+  return (r > 127 && g > 127 && b > 127) ? 0 : 1;
 }
 
 static UInt8 rgbToGray2(UInt16 r, UInt16 g, UInt16 b) {
@@ -1577,20 +1579,20 @@ static UInt32 BmpConvertFrom32Bits(UInt32 b, UInt8 depth, ColorTableType *dstCol
 #define BmpSetBit1(offset, mask, dataSize, b, dbl) \
   BmpSetBit1p(offset, mask, dataSize, b); \
   if (dbl) { \
-    BmpSetBit1p(offset, mask<<1, dataSize, b<<1); \
+    BmpSetBit1p(offset, mask>>1, dataSize, b>>1); \
     BmpSetBit1p(offset+dst->rowBytes, mask, dataSize, b); \
-    BmpSetBit1p(offset+dst->rowBytes, mask<<1, dataSize, b<<1); \
+    BmpSetBit1p(offset+dst->rowBytes, mask>>1, dataSize, b>>1); \
   }
 
 static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
-  UInt8 *bits, mask, old;
+  UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
   RGBColorType rgb;
 
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
   offset = dy * dst->rowBytes + (dx >> 3);
-  shift = dx & 0x07;
+  shift = 7 - (dx & 0x07);
   b = b << shift;
   mask = (1 << shift);
 
@@ -1626,13 +1628,18 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       }
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
-      BmpSetBit1(offset, mask, dataSize, b ^ 1, dbl);
+      BmpSetBit1(offset, mask, dataSize, b ^ mask, dbl);
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = bits[offset] & mask;
-      b ^= 0xff;
-      BmpSetBit1(offset, mask, dataSize, b, dbl);
+      b = bits[offset] & mask ? 1 : 0;
+      bg = WinGetBackColor() ? 1 : 0;
+      fg = WinGetForeColor()? 1 : 0;
+      if (b == bg) {
+        BmpSetBit1(offset, mask, dataSize, fg << shift, dbl);
+      } else if (b == fg) {
+        BmpSetBit1(offset, mask, dataSize, bg << shift, dbl);
+      }
       break;
   }
 }
@@ -2138,13 +2145,12 @@ void BmpSetPixel(BitmapType *bmp, Coord x, Coord y, UInt32 value) {
   BmpPutBit(value, false, bmp, x, y, winPaint, false);
 }
 
-void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt16 tc, UInt16 bc) {
+void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
   ColorTableType *srcColorTable, *dstColorTable, *colorTable;
-  UInt8 srcDepth, dstDepth;
-  UInt8 *bits;
-  UInt16 aux;
+  UInt8 srcDepth, dstDepth, *bits;
   UInt32 srcPixel, dstPixel, offset;
   UInt32 srcTransparentValue;
+  UInt16 aux;
   Boolean srcTransp, isSrcDefault, isDstDefault;
 
   if (src && dst && sx >= 0 && sx < src->width && sy >= 0 && sy < src->height && dx >= 0 && dx < dst->width && dy >= 0 && dy < dst->height) {
@@ -2175,12 +2181,12 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
       case 2:
         srcPixel = bits[sy * src->rowBytes + (sx >> 2)];
-        srcPixel = (srcPixel >> ((3 - (sx & 0x03)) << 1)) & 0x03;
+        srcPixel = (srcPixel >> ((sx & 0x03) << 1)) & 0x03;
         dstPixel = (dstDepth == 2) ? srcPixel : BmpConvertFrom2Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
         break;
       case 4:
         srcPixel = bits[sy * src->rowBytes + (sx >> 1)];
-        srcPixel = (sx & 0x01) ? srcPixel & 0x0F : srcPixel >> 4;
+        srcPixel = (sx & 0x01) ? srcPixel >> 4 : srcPixel & 0x0F;
         dstPixel = (dstDepth == 4) ? srcPixel : BmpConvertFrom4Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
         break;
       case 8:
@@ -2640,6 +2646,7 @@ BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t t
       debug(DEBUG_TRACE, "Bitmap", "bitmap V1 size %dx%d, bpp %d, compressed %d, rowBytes %d, nextDepthOffset %d", width, height, pixelSize, bmpV1->flags.compressed, rowBytes, nextDepthOffset*4);
 
       if (bmpAttr.compressed) {
+debug(DEBUG_TRACE, "Bitmap", "compressed depth %d", bmpV1->pixelSize);
         i += 2; // skip compressedSize ?
         if ((dp = pumpkin_heap_alloc(rowBytes * height, "Bits")) != NULL) {
           if (decompress_bitmap_scanline(&p[i], dp, rowBytes, width, height) == 0) {
@@ -2648,9 +2655,26 @@ BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t t
           }
         }
       } else {
+debug(DEBUG_TRACE, "Bitmap", "uncompressed depth %d", bmpV1->pixelSize);
         bmpV1->bits = pumpkin_heap_dup(&p[i], rowBytes * height, "Bits");
         i += rowBytes * height;
       }
+
+uint8_t *bits = bmpV1->bits;
+debug_bytes(DEBUG_TRACE, "Bitmap", bits, rowBytes * height);
+/*
+for (int ii = 0; ii < rowBytes * height; ii++) {
+uint8_t a = bits[ii];
+bits[ii]  = (a & 0x80) ? 0x01 : 0x00;
+bits[ii] |= (a & 0x40) ? 0x02 : 0x00;
+bits[ii] |= (a & 0x20) ? 0x04 : 0x00;
+bits[ii] |= (a & 0x10) ? 0x08 : 0x00;
+bits[ii] |= (a & 0x08) ? 0x10 : 0x00;
+bits[ii] |= (a & 0x04) ? 0x20 : 0x00;
+bits[ii] |= (a & 0x02) ? 0x40 : 0x00;
+bits[ii] |= (a & 0x01) ? 0x80 : 0x00;
+}
+*/
 
       if (chain && nextDepthOffset) {
         i = nextDepthOffset*4;
