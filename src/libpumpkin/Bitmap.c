@@ -2660,22 +2660,6 @@ debug(DEBUG_TRACE, "Bitmap", "uncompressed depth %d", bmpV1->pixelSize);
         i += rowBytes * height;
       }
 
-uint8_t *bits = bmpV1->bits;
-debug_bytes(DEBUG_TRACE, "Bitmap", bits, rowBytes * height);
-/*
-for (int ii = 0; ii < rowBytes * height; ii++) {
-uint8_t a = bits[ii];
-bits[ii]  = (a & 0x80) ? 0x01 : 0x00;
-bits[ii] |= (a & 0x40) ? 0x02 : 0x00;
-bits[ii] |= (a & 0x20) ? 0x04 : 0x00;
-bits[ii] |= (a & 0x10) ? 0x08 : 0x00;
-bits[ii] |= (a & 0x08) ? 0x10 : 0x00;
-bits[ii] |= (a & 0x04) ? 0x20 : 0x00;
-bits[ii] |= (a & 0x02) ? 0x40 : 0x00;
-bits[ii] |= (a & 0x01) ? 0x80 : 0x00;
-}
-*/
-
       if (chain && nextDepthOffset) {
         i = nextDepthOffset*4;
         if (i < size-10) {
