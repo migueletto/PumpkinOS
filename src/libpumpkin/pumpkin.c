@@ -1106,7 +1106,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
 
   UicInitModule();
   BmpInitModule(DEFAULT_DENSITY);
-  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, 1, NULL);
+  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, 16, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
   InsPtInitModule();

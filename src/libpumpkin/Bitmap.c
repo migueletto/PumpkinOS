@@ -1159,8 +1159,8 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
       case  2:
         offset = y * bitmapP->rowBytes + (x >> 2);
         b = bits[offset];
-        //value = (b >> (3 - (x & 0x03))) & 0x03;
-        value = (b >> ((x & 0x03) << 1)) & 0x03;
+        value = (b >> (3 - (x & 0x03))) & 0x03;
+        //value = (b >> ((x & 0x03) << 1)) & 0x03;
         break;
       case  4:
         offset = y * bitmapP->rowBytes + (x >> 1);
@@ -1307,16 +1307,16 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
           case 2:
             offset = sy * bitmapP->rowBytes + sx / 4;
             for (i = 0; i < h; i++, offset += bitmapP->rowBytes) {
-              offsetb = (sx % 4) << 1;
+              offsetb = (3 - (sx % 4)) << 1;
               k = 0;
               for (j = 0; j < w; j++) {
                 b = (bits[offset + k] & (3 << offsetb)) >> offsetb;
                 gray = gray2values[b];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
                 surface->setpixel(surface->data, x+j, y+i, c);
-                offsetb += 2;
-                if (offsetb == 8) {
-                  offsetb = 0;
+                offsetb -= 2;
+                if (offsetb == -2) {
+                  offsetb = 6;
                   k++;
                 }
               }
@@ -1653,9 +1653,9 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 #define BmpSetBit2(offset, mask, dataSize, b, dbl) \
   BmpSetBit2p(offset, mask, dataSize, b); \
   if (dbl) { \
-    BmpSetBit2p(offset, mask<<2, dataSize, b<<2); \
+    BmpSetBit2p(offset, mask>>2, dataSize, b>>2); \
     BmpSetBit2p(offset+dst->rowBytes, mask, dataSize, b); \
-    BmpSetBit2p(offset+dst->rowBytes, mask<<2, dataSize, b<<2); \
+    BmpSetBit2p(offset+dst->rowBytes, mask>>2, dataSize, b>>2); \
   }
 
 static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
@@ -1665,7 +1665,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
   offset = dy * dst->rowBytes + (dx >> 2);
-  shift = (dx & 0x03) << 1;
+  shift = (3 - (dx & 0x03)) << 1;
   b = b << shift;
   mask = (0x03 << shift);
 
@@ -2181,7 +2181,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
       case 2:
         srcPixel = bits[sy * src->rowBytes + (sx >> 2)];
-        srcPixel = (srcPixel >> ((sx & 0x03) << 1)) & 0x03;
+        srcPixel = (srcPixel >> ((3 - (sx & 0x03)) << 1)) & 0x03;
         dstPixel = (dstDepth == 2) ? srcPixel : BmpConvertFrom2Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
         break;
       case 4:
@@ -2646,7 +2646,6 @@ BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t t
       debug(DEBUG_TRACE, "Bitmap", "bitmap V1 size %dx%d, bpp %d, compressed %d, rowBytes %d, nextDepthOffset %d", width, height, pixelSize, bmpV1->flags.compressed, rowBytes, nextDepthOffset*4);
 
       if (bmpAttr.compressed) {
-debug(DEBUG_TRACE, "Bitmap", "compressed depth %d", bmpV1->pixelSize);
         i += 2; // skip compressedSize ?
         if ((dp = pumpkin_heap_alloc(rowBytes * height, "Bits")) != NULL) {
           if (decompress_bitmap_scanline(&p[i], dp, rowBytes, width, height) == 0) {
@@ -2655,7 +2654,6 @@ debug(DEBUG_TRACE, "Bitmap", "compressed depth %d", bmpV1->pixelSize);
           }
         }
       } else {
-debug(DEBUG_TRACE, "Bitmap", "uncompressed depth %d", bmpV1->pixelSize);
         bmpV1->bits = pumpkin_heap_dup(&p[i], rowBytes * height, "Bits");
         i += rowBytes * height;
       }

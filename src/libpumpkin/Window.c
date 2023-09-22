@@ -85,14 +85,22 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->backColor565 = 0xffff; // white
   module->textColor565 = 0x0000; // black
 
-  if (depth == 1) {
-    module->foreColor = 1; // black
-    module->backColor = 0; // white
-    module->textColor = 1; // black
-  } else {
-    module->foreColor = 0xff; // black
-    module->backColor = 0x00; // white
-    module->textColor = 0xff; // black
+  switch (depth) {
+    case 1:
+      module->foreColor = 1; // black
+      module->backColor = 0; // white
+      module->textColor = 1; // black
+      break;
+    case 2:
+      module->foreColor = 3; // black
+      module->backColor = 0; // white
+      module->textColor = 3; // black
+      break;
+   default:
+      module->foreColor = 0xff; // black
+      module->backColor = 0x00; // white
+      module->textColor = 0xff; // black
+      break;
   }
 
   module->colorTable = (ColorTableType *)&module->fcolorTable;
@@ -833,18 +841,14 @@ static UInt32 getPattern(WinHandle wh, Coord x, Coord y, PatternType pattern) {
 
     switch (pattern) {
       case blackPattern:
-        //c = depth == 16 ? module->foreColor565 : module->foreColor;
         c = getColor(module, depth, false);
         break;
       case whitePattern:
-        //c = depth == 16 ? module->backColor565 : module->backColor;
         c = getColor(module, depth, true);
         break;
       case grayPattern:
       case lightGrayPattern:
       case darkGrayPattern:
-        //c1 = depth == 16 ? module->foreColor565 : module->foreColor;
-        //c2 = depth == 16 ? module->backColor565 : module->backColor;
         c1 = getColor(module, depth, false);
         c2 = getColor(module, depth, true);
         rx = x % 2;
@@ -852,8 +856,6 @@ static UInt32 getPattern(WinHandle wh, Coord x, Coord y, PatternType pattern) {
         c = (rx == ry) ? c1 : c2;
         break;
       case customPattern:
-        //c1 = depth == 16 ? module->foreColor565 : module->foreColor;
-        //c2 = depth == 16 ? module->backColor565 : module->backColor;
         c1 = getColor(module, depth, false);
         c2 = getColor(module, depth, true);
         rx = x % 8;
@@ -2015,6 +2017,24 @@ IndexedColorType WinGetForeColor(void) {
   return module->foreColor;
 }
 
+#define setColors(prefix, module, color) { \
+  uint16_t c; \
+  module->prefix##Color565 = rgb565(module->prefix##ColorRGB.r, module->prefix##ColorRGB.g, module->prefix##ColorRGB.b); \
+  switch (module->depth) { \
+    case 1: \
+      module->prefix##Color = (module->prefix##ColorRGB.r > 127 && module->prefix##ColorRGB.g > 127 && module->prefix##ColorRGB.b > 127) ? 0 : 1; \
+      break; \
+    case 2: \
+      c = (module->prefix##ColorRGB.r + module->prefix##ColorRGB.g + module->prefix##ColorRGB.b) / 3; \
+      c /= 85; \
+      module->prefix##Color = 3 - c; \
+      break; \
+    default: \
+      module->prefix##Color = color; \
+      break; \
+  } \
+}
+
 IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
@@ -2026,13 +2046,17 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
 
   if (foreColor >= 0 && foreColor < colorTable->numEntries) {
     module->foreColorRGB = colorTable->entry[foreColor];
+/*
     module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
     if (module->depth == 1) {
       module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
     } else {
       module->foreColor = foreColor;
     }
+*/
+    setColors(fore, module, foreColor);
   }
+
 
   return prev;
 }
@@ -2053,13 +2077,17 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
 
   if (backColor >= 0 && backColor < colorTable->numEntries) {
     module->backColorRGB = colorTable->entry[backColor];
+/*
     module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
     if (module->depth == 1) {
       module->backColor = (module->backColorRGB.r > 127 && module->backColorRGB.g > 127 && module->backColorRGB.b > 127) ? 0 : 1;
     } else {
       module->backColor = WinRGBToIndex(&module->backColorRGB);
     }
+*/
+    setColors(back, module, backColor);
   }
+
 
   return prev;
 }
@@ -2075,12 +2103,15 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
 
   if (textColor >= 0 && textColor < colorTable->numEntries) {
     module->textColorRGB = colorTable->entry[textColor];
+/*
     module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
     if (module->depth == 1) {
       module->textColor = (module->textColorRGB.r > 127 && module->textColorRGB.g > 127 && module->textColorRGB.b > 127) ? 0 : 1;
     } else {
       module->textColor = textColor;
     }
+*/
+    setColors(text, module, textColor);
   }
 
   return prev;
@@ -2101,12 +2132,16 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->foreColorRGB.r = newRgbP->r;
     module->foreColorRGB.g = newRgbP->g;
     module->foreColorRGB.b = newRgbP->b;
+
+/*
     module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
     if (module->depth == 1) {
       module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
     } else {
       module->foreColor = WinRGBToIndex(&module->foreColorRGB);
     }
+*/
+    setColors(fore, module, WinRGBToIndex(&module->foreColorRGB));
   }
 }
 
@@ -2125,12 +2160,16 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->backColorRGB.r = newRgbP->r;
     module->backColorRGB.g = newRgbP->g;
     module->backColorRGB.b = newRgbP->b;
+
+/*
     module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
     if (module->depth == 1) {
       module->backColor = (module->backColorRGB.r > 127 && module->backColorRGB.g > 127 && module->backColorRGB.b > 127) ? 0 : 1;
     } else {
       module->backColor = WinRGBToIndex(&module->backColorRGB);
     }
+*/
+    setColors(back, module, WinRGBToIndex(&module->backColorRGB));
   }
 }
 
@@ -2149,12 +2188,16 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->textColorRGB.r = newRgbP->r;
     module->textColorRGB.g = newRgbP->g;
     module->textColorRGB.b = newRgbP->b;
+
+/*
     module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
     if (module->depth == 1) {
       module->textColor = (module->textColorRGB.r > 127 && module->textColorRGB.g > 127 && module->textColorRGB.b > 127) ? 0 : 1;
     } else {
       module->textColor = WinRGBToIndex(&module->textColorRGB);
     }
+*/
+    setColors(text, module, WinRGBToIndex(&module->textColorRGB));
   }
 }
 
