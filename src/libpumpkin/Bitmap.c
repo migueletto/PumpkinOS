@@ -1659,7 +1659,7 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   }
 
 static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
-  UInt8 *bits, mask, old;
+  UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
 
   BmpGetSizes(dst, &dataSize, NULL);
@@ -1700,9 +1700,12 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = bits[offset] & mask;
-      b ^= 0xff;
-      BmpSetBit2(offset, mask, dataSize, b, dbl);
+      b = (bits[offset] & mask) >> shift;
+      bg = WinGetBackColor();
+      fg = WinGetForeColor();
+      if (b == bg) b = fg;
+      else if (b == fg) b = bg;
+      BmpSetBit2(offset, mask, dataSize, b << shift, dbl);
       break;
   }
 }
@@ -1722,7 +1725,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   }
 
 static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
-  UInt8 *bits, mask, old;
+  UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
 
   BmpGetSizes(dst, &dataSize, NULL);
@@ -1763,9 +1766,12 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = bits[offset] & mask;
-      b ^= 0xff;
-      BmpSetBit4(offset, mask, dataSize, b, dbl);
+      b = (bits[offset] & mask) >> shift;
+      bg = WinGetBackColor();
+      fg = WinGetForeColor();
+      if (b == bg) b = fg;
+      else if (b == fg) b = bg;
+      BmpSetBit4(offset, mask, dataSize, b << shift, dbl);
       break;
   }
 }

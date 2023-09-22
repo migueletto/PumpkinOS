@@ -2029,6 +2029,11 @@ IndexedColorType WinGetForeColor(void) {
       c /= 85; \
       module->prefix##Color = 3 - c; \
       break; \
+    case 4: \
+      c = (module->prefix##ColorRGB.r + module->prefix##ColorRGB.g + module->prefix##ColorRGB.b) / 3; \
+      c /= 17; \
+      module->prefix##Color = 15 - c; \
+      break; \
     default: \
       module->prefix##Color = color; \
       break; \
