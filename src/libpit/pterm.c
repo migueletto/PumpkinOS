@@ -1000,6 +1000,7 @@ char pterm_getstate(pterm_t *t) {
     case 1: c = '['; break;
     case 2: c = 'C'; break;
     case 3: c = '#'; break;
+    default: c = 0;
   }
 
   return c;

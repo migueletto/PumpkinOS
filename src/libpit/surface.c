@@ -683,8 +683,8 @@ static int surface_scale_down(surface_t *src, surface_t *dst) {
 
   for (i = 0; i < src->height; i++) {
     for (j = 0; j < src->width; j++) {
-      x = (int)(j * fx + 0.5);
-      y = (int)(i * fy + 0.5);
+      x = (int)(j * fx + 0.5f);
+      y = (int)(i * fy + 0.5f);
       k = y * dst->width + x;
       if (k < len) {
         color = src->getpixel(src->data, j, i);
@@ -723,8 +723,8 @@ static int surface_scale_up(surface_t *src, surface_t *dst) {
 
   for (i = 0; i < dst->height; i++) {
     for (j = 0; j < dst->width; j++) {
-      x = (int)(j * fx + 0.5);
-      y = (int)(i * fy + 0.5);
+      x = (int)(j * fx + 0.5f);
+      y = (int)(i * fy + 0.5f);
       if (x < src->width && y < src->height) {
         color = src->getpixel(src->data, x, y);
         src->rgb_color(src->data, color, &red, &green, &blue, &alpha);

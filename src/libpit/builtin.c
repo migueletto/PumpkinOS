@@ -127,7 +127,7 @@ PIT_LIB_END_B
 
 PIT_LIB_FUNCTION(builtin,loadlib)
   PIT_LIB_PARAM_S(libname)
-  script_ref_t obj;
+  script_ref_t obj = 0;
 PIT_LIB_CODE
   obj = script_loadlib(PIT_LIB_PE, libname);
   r = 0;
@@ -186,7 +186,7 @@ PIT_LIB_END_S(name)
 
 PIT_LIB_FUNCTION(builtin,getenv)
   PIT_LIB_PARAM_S(name)
-  char *value;
+  char *value = NULL;
 PIT_LIB_CODE
   value = sys_getenv(name);
   r = 0;
