@@ -3875,6 +3875,11 @@ static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator, Boolean exist
       DmCloseDatabase(dbRef);
     }
 
+    if (pumpkin_default_density() == kDensityLow) {
+      width /= 2;
+      height /= 2;
+    }
+
     s.width = width;
     s.height = height;
     AppRegistrySet(ar, creator, appRegistrySize, 0, &s);

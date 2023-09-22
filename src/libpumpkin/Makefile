@@ -11,7 +11,7 @@ GPDLIB=GPDLib.o
 
 PALMOS=$(SRC)/PalmOS
 
-CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -Wno-multichar -I./dlmalloc -DARMEMU
+CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -Wno-multichar -I./dlmalloc -DARMEMU -DDEFAULT_DENSITY=144 -DDEFAULT_DEPTH=16
 
 ARMOBJS=emulation/arm/armem.o emulation/arm/armemu.o emulation/arm/CPU.o emulation/arm/icache.o emulation/arm/MMU.o emulation/arm/RAM.o \
         emulation/arm/pxa_IC.o emulation/arm/cp15.o

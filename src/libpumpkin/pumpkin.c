@@ -36,7 +36,13 @@
 #include "debug.h"
 #include "xalloc.h"
 
+#ifndef DEFAULT_DENSITY
 #define DEFAULT_DENSITY kDensityDouble
+#endif
+
+#ifndef DEFAULT_DEPTH
+#define DEFAULT_DEPTH 16
+#endif
 
 #define MAX_SEARCH_ORDER   16
 #define MAX_NOTIF_QUEUE    8
@@ -1106,7 +1112,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
 
   UicInitModule();
   BmpInitModule(DEFAULT_DENSITY);
-  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, 16, NULL);
+  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, DEFAULT_DEPTH, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
   InsPtInitModule();
@@ -1456,6 +1462,10 @@ int pumpkin_launch(launch_request_t *request) {
       data->creator = creator;
       data->width = APP_SCREEN_WIDTH;
       data->height = APP_SCREEN_HEIGHT;
+      if (pumpkin_default_density() == kDensityLow) {
+        data->width /= 2;
+        data->height /= 2;
+      }
 
       if (!pumpkin_module.dia && !pumpkin_module.single) {
         data->x = (pumpkin_module.width - data->width) / 2;
