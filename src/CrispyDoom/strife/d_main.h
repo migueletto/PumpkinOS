@@ -1,0 +1,67 @@
+//
+// Copyright(C) 1993-1996 Id Software, Inc.
+// Copyright(C) 2005-2014 Simon Howard
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// DESCRIPTION:
+//	System specific interface stuff.
+//
+
+
+#ifndef __D_MAIN__
+#define __D_MAIN__
+
+#include "doomdef.h"
+
+#include "v_patch.h"
+
+
+// Read events from all input devices
+
+void D_ProcessEvents (void); 
+	
+
+//
+// BASE LEVEL
+//
+void D_PageTicker (void);
+void D_PageDrawer (void);
+void D_AdvanceDemo (void);
+void D_DoAdvanceDemo (void);
+void D_StartTitle (void);
+void D_QuitGame (void); // [STRIFE]
+
+void D_IntroTick(void); // [STRIFE]
+
+boolean D_PatchClipCallback(patch_t *patch, int x, int y); // [STRIFE]
+
+
+//
+// GLOBAL VARIABLES
+//
+
+extern  gameaction_t    gameaction;
+extern  boolean         isregistered;   // villsa [STRIFE]
+extern  boolean        isdemoversion;  // haleyjd [STRIFE]
+extern  boolean         stonecold;      // villsa [STRIFE]
+extern  boolean         workparm;       // villsa [STRIFE]
+extern boolean advancedemo;
+
+// haleyjd 20130915 [STRIFE]: need nickname
+extern char *nickname;
+
+// [crispy] track screen wipe
+extern boolean screenwipe;
+
+
+#endif
+
