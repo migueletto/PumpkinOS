@@ -3,7 +3,7 @@ include ../commonp.mak
 
 PROGRAM=Voxels
 PRC=$(VFS)/app_install/$(PROGRAM).prc
-OBJS=main.o player.o display.o input.o
+OBJS=main.o player.o display.o input.o noise.o
 
 $(PROGRAM).prc: $(DLIB) res
 	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c VoxS -n Voxels *.bin

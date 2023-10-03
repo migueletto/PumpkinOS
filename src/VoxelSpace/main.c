@@ -7,34 +7,52 @@
 #include "pwindow.h"
 #include "pumpkin.h"
 #include "sys.h"
+#include "endianness.h"
 #include "debug.h"
 #include "resource.h"
 
 #include "display.h"
 #include "input.h"
 #include "player.h"
-#include "gifload.h"
 #include "resource.h"
+#include "noise.h"
+#include "world.h"
 
-#define MAP_N 1024
-#define Z_FAR 1000.0
+#define Z_FAR 400.0
 #define VERTICAL_SCALE_FACTOR 35.0
 
 #define Y0 30
 
-#define GifResource 'Gifm'
+#define MARGIN 32
 
 static uint16_t *framebuffer = NULL;
-static uint8_t *heightmap = NULL;
-static uint8_t *colormap = NULL;
-static uint16_t palette[256*3];
+static uint16_t palette[256];
 static uint64_t extKeyMask[2];
 static bool is_running = false;
 
+static world_t world = {
+  .height_freq = 0.02,
+  .height_depth = 4,
+  .height_seed = 7,
+  .color_freq = 0.02,
+  .color_depth = 4,
+  .color_seed = 17,
+  .sea_level = 100,
+
+  .palette = {
+     // water
+     0x00, 0x40, 0xff,
+     0x00, 0x48, 0xff,
+     // sand
+     0x80, 0x80, 0x00,
+     0x78, 0x78, 0x00,
+  }
+};
+
 static player_t player = {
-  .x           = 512.0,
-  .y           = 512.0,
-  .height      = 130.0,
+  .x           =   0.0,
+  .y           =   0.0,
+  .height      = 200.0,
   .angle       =   0.0,
   .pitch       =   0.0,
   .forward_vel =   0.0,   .forward_acc = 0.06,   .forward_brk = 0.06,   .forward_max = 3.0,
@@ -45,37 +63,50 @@ static player_t player = {
   .roll_vel    =   0.0,   .roll_acc    = 0.04,   .roll_brk    = 0.09,   .roll_max    = 2.0
 };
 
-static uint8_t *load_gifmap(UInt32 type, UInt16 id, int *pal_count, uint8_t *gif_palette) {
-  MemHandle h;
-  uint8_t *data, *map = NULL;
+static void init_palette(void) {
+  int pal_count = 0;
 
-  if ((h = DmGetResource(type, id)) != NULL) {
-    if ((data = MemHandleLock(h)) != NULL) {
-      map = load_gifm(data, MemHandleSize(h), pal_count, gif_palette);
-      MemHandleUnlock(h);
-      DmReleaseResource(h);
-    }
+  // water
+  palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0x40, 0xff, 0xff));
+  palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0x48, 0xff, 0xff));
+
+  // sand
+  palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x80, 0x80, 0x00, 0xff));
+  palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x78, 0x78, 0x00, 0xff));
+
+  // terrain 1
+  for (int i = 0; i < 64; i++) {
+    palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x10, 0x80-i, 0x00, 0xff));
   }
 
-  return map;
+  // terrain 2
+  for (int i = 0; i < 64; i++) {
+    palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x40+i, 0x20+i, 0x00, 0xff));
+  }
+
+  // sky
+  palette[pal_count++] = sys_htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x36, 0xBB, 0xE0, 0xFF));
 }
 
-static void load_map(void) {
-  uint8_t gif_palette[256 * 3];
-  int pal_count;
+static uint8_t get_heightmap(int x, int y) {
+  return (uint8_t)(noise(x, y, world.height_freq, world.height_depth, world.height_seed) * 255);
+}
 
-  colormap = load_gifmap(GifResource, colorMap, &pal_count, gif_palette);
-  heightmap = load_gifmap(GifResource, heightMap, NULL, NULL);
+static uint8_t get_colormap(int x, int y, uint8_t h) {
+  uint8_t m;
 
-  for (int i = 0; i < pal_count; i++) {
-    uint16_t r = gif_palette[3 * i + 0];
-    uint16_t g = gif_palette[3 * i + 1];
-    uint16_t b = gif_palette[3 * i + 2];
-    r = (r & 63) << 2;
-    g = (g & 63) << 2;
-    b = (b & 63) << 2;
-    palette[i] = htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, r, g, b, 0xFF));
+  if (h <= world.sea_level) {
+    // water
+    m = h & 1;
+  } else if (h < world.sea_level+4) {
+    // sand
+    m = 2 + (h & 1);
+  } else {
+    // terrain
+    m = 4 + (uint8_t)(noise(x, y, world.color_freq, world.color_depth, world.color_seed) * 127);
   }
+
+  return m;
 }
 
 static void init_framebuffer(void) {
@@ -89,7 +120,7 @@ static void init_framebuffer(void) {
 }
 
 static void clear_framebuffer(uint16_t color) {
-  for (size_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+  for (size_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT/2; i++) {
     framebuffer[i] = color;
   }
 }
@@ -99,8 +130,7 @@ static void render_framebuffer(void) {
 }
 
 static void draw(void) {
-  uint16_t color = htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x36, 0xBB, 0xE0, 0xFF));
-  clear_framebuffer(color);
+  clear_framebuffer(palette[132]);
 
   // Pre-compute sine and cosine of the rotation angle
   float sin_angle = sys_sin(player.angle);
@@ -131,38 +161,52 @@ static void draw(void) {
       r_x += delta_x;
       r_y += delta_y;
 
-      // Find the offset that we have to go and fetch values from the heightmap
-      int map_offset = ((MAP_N * ((int)(r_y) & (MAP_N - 1))) + ((int)(r_x) & (MAP_N - 1)));
+      int ix;
+      if (r_x >= MAX_X) {
+        ix = r_x - MAX_X;
+      } else if (r_x < 0) {
+        ix = r_x + MAX_X;
+      } else {
+        ix = r_x;
+      }
+
+      int iy;
+      if (r_y >= MAX_Y) {
+        iy = r_y - MAX_Y;
+      } else if (r_y < 0) {
+        iy = r_y + MAX_Y;
+      } else {
+        iy = r_y;
+      }
 
       // Project height values and find the height on-screen
-      int proj_height = (int)((player.height - heightmap[map_offset]) / z * VERTICAL_SCALE_FACTOR + player.pitch);
+      uint8_t h0 = get_heightmap(ix, iy);
+      if (h0 > world.sea_level) {
+        if (r_x >= 0 && r_x < MARGIN) h0 = world.sea_level + (uint8_t)(((h0 - world.sea_level) * r_x) / MARGIN) - 4;
+        else if (r_x > -MARGIN && r_x <= 0) h0 = world.sea_level + (uint8_t)(((h0 - world.sea_level) * -r_x) / MARGIN) - 4;
+      }
+      if (h0 > world.sea_level) {
+        if (r_y >= 0 && r_y < MARGIN) h0 = world.sea_level + (uint8_t)(((h0 - world.sea_level) * r_y) / MARGIN) - 4;
+        else if (r_y > -MARGIN && r_y <= 0) h0 = world.sea_level + (uint8_t)(((h0 - world.sea_level) * -r_y) / MARGIN) - 4;
+      }
+      uint8_t h = (h0 < world.sea_level) ? world.sea_level : h0;
+      int proj_height = (int)((player.height - h) / z * VERTICAL_SCALE_FACTOR + player.pitch);
 
       // Only draw pixels if the new projected height is taller than the previous tallest height
       if (proj_height < tallest_height) {
         float tilt = (player.roll_vel * (i / (float)SCREEN_WIDTH - 0.5) + 0.5) * SCREEN_HEIGHT / 6.0;
 
         // Draw pixels from previous max-height until the new projected height
+        uint16_t c = palette[get_colormap(ix, iy, h0)];
         for (int y = (proj_height + tilt); y < (tallest_height + tilt); y++) {
           if (y >= 0) {
-            draw_pixel(framebuffer, i, y, palette[colormap[map_offset]]);
+            draw_pixel(framebuffer, i, y, c);
           }
         }
         tallest_height = proj_height;
       }
     }
   }
-
-/*
-  // Draw HUD lines on top of the terrain
-  color = htobe16(surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0xFF, 0x00, 0xFF));
-  int mid_width = SCREEN_WIDTH / 2;
-  int mid_height = SCREEN_HEIGHT / 2;
-  draw_pixel(framebuffer, mid_width, mid_height, color);
-  draw_line(framebuffer, mid_width,      mid_height - 10, mid_width,      mid_height - 40, color);
-  draw_line(framebuffer, mid_width,      mid_height + 10, mid_width,      mid_height + 40, color);
-  draw_line(framebuffer, mid_width - 10, mid_height,      mid_width - 40, mid_height,      color);
-  draw_line(framebuffer, mid_width + 10, mid_height,      mid_width + 40, mid_height,      color);
-*/
 
   render_framebuffer();
 }
@@ -277,7 +321,7 @@ static void EventLoop(void) {
   is_running = true;
 
   do {
-    EvtGetEvent(&event, 2);
+    EvtGetEvent(&event, 5);
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (ApplicationHandleEvent(&event)) continue;
@@ -287,7 +331,7 @@ static void EventLoop(void) {
 
 UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
   if (cmd == sysAppLaunchCmdNormalLaunch) {
-    load_map();
+    init_palette();
     init_framebuffer();
     FrmGotoForm(MainForm);
     EventLoop();

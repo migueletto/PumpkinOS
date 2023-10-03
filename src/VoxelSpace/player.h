@@ -43,6 +43,6 @@ typedef struct {
   float roll_max;     // maximum roll velocity (1.0)
 } player_t;
 
-void player_move(player_t* player);
+void player_move(player_t *player);
 
 #endif
