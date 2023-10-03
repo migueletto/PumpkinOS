@@ -1,0 +1,72 @@
+<html>
+<head>
+  <title>The GAL20RA10</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="gal22v10.html"><img src="prev.gif" alt="PREV" border=0></a><a href="software.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>I.2.3 The GAL20RA10</u>
+
+The next and last GAL which I want to indroduce is the GAL20RA10. This
+is also a second generation GAL, but this one is a special one. It is
+not as universal as a GAL16V8, GAL20V8 or GAL22V10.
+
+
+Here the pin designations:
+
+                         GAL20RA10
+                         ---- ----
+                  /PL   1|       |24  +5V
+                Input   2|       |23  Configurable Output Cell
+                Input   3|       |22  Configurable Output Cell
+                Input   4|       |21  Configurable Output Cell
+                Input   5|       |20  Configurable Output Cell
+                Input   6|       |19  Configurable Output Cell
+                Input   7|       |18  Configurable Output Cell
+                Input   8|       |17  Configurable Output Cell
+                Input   9|       |16  Configurable Output Cell
+                Input  10|       |15  Configurable Output Cell
+                Input  11|       |14  Configurable Output Cell
+                GND    12|       |13  /OE
+                         ---------
+
+
+The GAL20RA10 provides ten OLMCs. To each OLMC eight rows of the logic
+matrix are connected. One row (product term) is needed for tristate
+control again. Furthermore there are three product terms needed for
+fully asynchronous control of the register set, reset and clock functions.
+This means that there are four product terms left for the output definition.
+The output enable product term is AND'ed with the input from pin 13 (/OE).
+This allowes either a hard wired external control or a product term control,
+or a combination of both.
+
+Each OLMC has just one bit which can be programmed, the S0-bit (=XOR). This
+bit is for the active polarity control. This means that there is no other
+bit to define whether an output should be a registered or a tristated one.
+But there is no bit needed to do this: if both is true the product term
+of asynchronous reset and the product term of asynchronous preset, then the
+register is switched off and the output becomes a &quot;normal&quot; tristate
+output.
+
+By use of pin 1, /PL (preload), all registered outputs can be preloaded.
+This enhances the functional testability of the programmed GAL.
+To preload a register do the following:
+
+   1. supply a high to /PL and to /OE (so the registered outputs
+      become high impedance outputs)
+
+   2. impress the desired state on the register output pin
+
+   3. pulse low /PL for at least 35ns
+
+After this the registers will be loaded.
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="gal22v10.html"><img src="prev.gif" alt="PREV" border=0></a><a href="software.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

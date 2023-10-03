@@ -1,0 +1,176 @@
+<html>
+<head>
+  <title>GAL16V8</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="examples.html"><img src="prev.gif" alt="PREV" border=0></a><a href="example22v10.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.4.1 GAL16V8</u>
+
+At first I want to show an example with a tristate output.
+(sorry again for the European symbols)
+
+      /A ---------+
+                |\|
+                | \
+       B -------|  +------------------------ Y1
+                | /                
+                |/                 
+                                  VCC
+                                   |
+                +----+           |\|
+       C -------|    |           | \
+                | &#062;1 |-----------|  +------- Y2
+       D -------| =  |           | /
+                +----+           |/
+
+
+                +----+
+       E -------|    |
+                | &amp;  |------+
+       F -------|    |      |
+                +----+      |
+                          |\|
+                          | \
+       G -----------------|  +o------------- Y3
+                          | /
+                          |/
+
+
+
+Y1 should only be in the &quot;B&quot; state, when &quot;A&quot; = LOW. Y2 should always be
+active (either HIGH or LOW - depending on &quot;B&quot; and &quot;C&quot;). This corresponds
+to a combinational output. Y3 should only be active if &quot;D&quot; and &quot;E&quot; = HIGH.
+
+
+                     GAL16V8
+                    ---- ----
+                A  1|       |20  VCC
+                B  2|       |19  Y1
+                C  3|       |18  Y2
+                D  4|       |17  Y3
+                E  5|       |16  NC
+                F  6|       |15  NC
+                G  7|       |14  NC
+               NC  8|       |13  NC
+               NC  9|       |12  NC
+              GND 10|       |11  NC
+                    ---------
+
+In the source file, tristate outputs are designated with a &quot;.T&quot;. The
+tristate control is followed with an &quot;.E&quot;. If the tristate control
+is absent then the normal free switching is assumed (=VCC). Tristate
+control = GND means high impedance.
+
+NOTE: With tristate outputs you can only have seven product terms in
+your equation (all other output formats have a maximum of eight).
+In the tristate control you can only have ONE product term (no OR)
+in your equation.
+
+
+The source file looks like this:
+
+******************************************************
+GAL16V8
+ex.2
+
+A  B  C  D  E  F  G  NC NC GND
+NC NC NC NC NC NC Y3 Y2 Y1 VCC
+
+Y1.T = B
+
+Y2.T = C + D
+
+Y3.T = /G
+
+Y1.E = /A
+
+Y3.E = E * F
+
+
+DESCRIPTION
+******************************************************
+
+
+
+In the last GAL16V8-example we will deal with register outputs. We will
+program a 4-bit-counter.
+
+First the pin layout:
+
+
+                            GAL16V8
+
+                           ---- ----
+        (Input)    Clock  1|       |20  VCC
+        (Input)       D0  2|       |19  Q0              (Output)
+        (Input)       D1  3|       |18  Q1              (Output)
+        (Input)       D2  4|       |17  Q2              (Output)
+        (Input)       D3  5|       |16  Q3              (Output)
+        (Input)      Set  6|       |15  NC              (not used)
+        (Input)    Clear  7|       |14  NC              (not used)
+        (Input)       NC  8|       |13  NC              (not used)
+        (Input)       NC  9|       |12  NC              (not used)
+                     GND 10|       |11  /OE             (Input)
+                           ---------
+
+
+Since register output sets the GAL in mode 3, this means that pins 1
+and 11 are reserved for Clock and /OE. When /OE is HIGH, all register
+outputs (Q0-Q3) go to &quot;high impedance&quot; (=Z).
+
+When LOW-HIGH transition pulse is presented at the clock input, then
+the counter will be incremented.
+
+When Clear = HIGH and a (LOW-HIGH) clock transition occurs,
+the outputs are cleared.
+
+The inputs D0-D3 can be used to preset the counter. While Set = HIGH
+and a Clock pulse the values in D0-D3 are transferred to Q0-Q3.
+
+
+In the source file register outputs are designated with a &quot;.R&quot;.
+
+******************************************************
+GAL16V8                 4-Bit-Counter
+Counter
+
+
+Clock D0    D1    D2    D3    Set   Clear NC    NC   GND
+/OE   NC    NC    NC    NC    Q3    Q2    Q1    Q0   VCC
+
+
+
+Q0.R =   /Clear *  Set *  D0
+       + /Clear * /Set * /Q0
+
+Q1.R =   /Clear *  Set *  D1
+       + /Clear * /Set * /Q1 *  Q0
+       + /Clear * /Set *  Q1 * /Q0
+
+Q2.R =   /Clear *  Set *  D2
+       + /Clear * /Set *  Q2 * /Q1
+       + /Clear * /Set *  Q2 * /Q0
+       + /Clear * /Set * /Q2 *  Q1 *  Q0
+
+Q3.R =   /Clear *  Set *  D3
+       + /Clear * /Set *  Q3 * /Q2
+       + /Clear * /Set *  Q3 * /Q1
+       + /Clear * /Set *  Q3 * /Q0
+       + /Clear * /Set * /Q3 *  Q2 *  Q1 *  Q0
+
+
+DESCRIPTION
+******************************************************
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="examples.html"><img src="prev.gif" alt="PREV" border=0></a><a href="example22v10.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

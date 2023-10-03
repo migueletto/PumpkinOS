@@ -1,0 +1,32 @@
+GAL16V8               first line : used type of GAL
+Bsp.1                 second line: any text (max. 8 character)
+
+B  C   D   E   F  G  H  I  J  GND
+K  NC  NC  NC  Z  Y  X  W  A  VCC	 
+
+
+ W = A * B * C
+/X = D * E
+ Y = F + G
+ Z = H * I + J * K
+
+
+
+DESCRIPTION:
+
+format of the boolean equations:
+
+  output pin = boolean function of input and output pins
+
+  in this mode is no feedback of output pins allowed, this means that a output
+  pin can not be a function of output pins again
+
+ 
+ *: AND
+ +: OR
+ /: NEGATION
+
+ Example: Pin Y is HIGH if pin F OR pin G is HIGH, else Y will be LOW.
+
+	  Y = F + G
+

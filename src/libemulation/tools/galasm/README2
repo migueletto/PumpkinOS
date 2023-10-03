@@ -1,0 +1,11 @@
+This is a modified version of GALasm 2.1.
+
+It was modified by David Hovemeyer <david.hovemeyer@gmail.com>
+so that when writing JEDEC files, end of line is indicated by
+\r\n rather than just \n.  My GAL programmer (Wellon VP-190)
+does not accept JEDEC files with bare \n characters in them.
+
+I have compiled the modified version on Linux and Cygwin using
+gcc, and the .jed files produced appear to be valid.  (The Wellon
+software reports them as being valid, and successfully programs
+22V10 devices with them.)

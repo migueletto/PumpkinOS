@@ -1,0 +1,447 @@
+S-Records
+
+
+    -S-Record Format-
+
+        Chaplin@keinstr.uucp (Roger Chaplin) reposted an article written
+   by mcdchg!motmpl!ron (Ron Widell) that explained how Motorola
+   S-Records are formatted.  This comes from a unix man page.  No
+        mention of which version of Unix is specified.  This section
+   of the FAQ is a bit long.  An anonymous ftp archive is currently
+   being sought.  When one is found, the section will be placed in
+   the archive.
+
+
+        SREC(4)                UNIX 5.0 (03/21/84)                SREC(4)
+
+
+        An S-record file consists of a sequence of specially formatted
+   ASCII character strings.  An S-record will be less than or equal to
+   78 bytes in length.
+
+        The order of S-records within a file is of no significance and no
+   particular order may be assumed.
+
+        The general format of an S-record follow:
+
+        +------------------//-------------------//-----------------------+
+        | type | count | address  |            data           | checksum |
+        +------------------//-------------------//-----------------------+
+
+          type      A char-2- field.  These characters describe the
+                    type of record (S0, S1, S2, S3, S5, S7, S8, or
+                    S9).
+          count     A char-2- field.  These characters when paired and
+                    interpreted as a hexadecimal value, display the
+                    count of remaining character pairs in the record.
+
+          address   A char-4,6, or 8- field.  These characters grouped
+                    and interpreted as a hexadecimal value, display
+                    the address at which the data field is to be
+                    loaded into memory.  The length of the field
+                    depends on the number of bytes necessary to hold
+                    the address.  A 2-byte address uses 4 characters,
+                    a 3-byte address uses 6 characters, and a 4-byte
+                    address uses 8 characters.
+          data      A char -0-64- field.  These characters when paired
+                    and interpreted as hexadecimal values represent
+                    the memory loadable data or descriptive
+                    information.
+
+          checksum  A char-2- field.  These characters when paired and
+                    interpreted as a hexadecimal value display the
+                    least significant byte of the ones complement of
+                    the sum of the byte values represented by the
+                    pairs of characters making up the count, the
+                    address, and the data fields.
+
+          Each record is terminated with a line feed.  If any
+          additional or different record terminator(s) or delay
+          characters are needed during transmission to the target
+          system it is the responsibility of the transmitting program
+          to provide them.
+
+          S0 Record  The type of record is 'S0' (0x5330).  The address
+
+
+                     field is unused and will be filled with zeros
+                     (0x0000).  The header information within the data
+                     field is divided into the following subfields.
+
+                                  mname      is char-20- and is the
+                                             module name.
+                                  ver        is char-2- and is the
+                                             version number.
+
+                                  rev        is char-2- and is the
+                                             revision number.
+                                  description is char-0-36- and is a
+                                             text comment.
+
+                     Each of the subfields is composed of ASCII bytes
+                     whose associated characters, when paired,
+                     represent one byte hexadecimal values in the case
+                     of the version and revision numbers, or represent
+                     the hexadecimal values of the ASCII characters
+                     comprising the module name and description.
+
+          S1 Record  The type of record field is 'S1' (0x5331).  The
+                     address field is interpreted as a 2-byte address.
+                     The data field is composed of memory loadable
+                     data.
+          S2 Record  The type of record field is 'S2' (0x5332).  The
+                     address field is interpreted as a 3-byte address.
+                     The data field is composed of memory loadable
+                     data.
+
+          S3 Record  The type of record field is 'S3' (0x5333).  The
+                     address field is interpreted as a 4-byte address.
+                     The data field is composed of memory loadable
+                     data.
+          S5 Record  The type of record field is 'S5' (0x5335).  The
+                     address field is interpreted as a 2-byte value
+                     and contains the count of S1, S2, and S3 records
+                     previously transmitted.  There is no data field.
+
+          S7 Record  The type of record field is 'S7' (0x5337).  The
+                     address field contains the starting execution
+                     address and is interpreted as  4-byte address.
+                     There is no data field.
+          S8 Record  The type of record field is 'S8' (0x5338).  The
+                     address field contains the starting execution
+                     address and is interpreted as  3-byte address.
+                     There is no data field.
+
+          S9 Record  The type of record field is 'S9' (0x5339).  The
+                     address field contains the starting execution
+                     address and is interpreted as  2-byte address.
+                     There is no data field.
+
+     EXAMPLE
+
+          Shown below is a typical S-record format file.
+
+                 S00600004844521B
+                 S1130000285F245F2212226A000424290008237C2A
+                 S11300100002000800082629001853812341001813
+                 S113002041E900084E42234300182342000824A952
+                 S107003000144ED492
+                 S5030004F8
+                 S9030000FC
+
+          The file consists of one S0 record, four S1 records, one S5
+          record and an S9 record.
+
+          The S0 record is comprised as follows:
+
+             S0     S-record type S0, indicating it is a header
+                    record.
+             06     Hexadecimal 06 (decimal 6), indicating that six
+                    character pairs (or ASCII bytes) follow.
+
+             00 00  Four character 2-byte address field, zeroes in
+                    this example.
+             48     ASCII H, D, and R - "HDR".
+
+             1B     The checksum.
+
+          The first S1 record is comprised as follows:
+             S1     S-record type S1, indicating it is a data record
+                    to be loaded at a 2-byte address.
+
+             13     Hexadecimal 13 (decimal 19), indicating that
+                    nineteen character pairs, representing a 2 byte
+                    address, 16 bytes of binary data, and a 1 byte
+                    checksum, follow.
+             00 00  Four character 2-byte address field; hexadecimal
+                    address 0x0000, where the data which follows is to
+                    be loaded.
+
+             28 5F 24 5F 22 12 22 6A 00 04 24 29 00 08 23 7C Sixteen
+                    character pairs representing the actual binary
+                    data.
+             2A     The checksum.
+
+          The second and third S1 records each contain 0x13 (19)
+          character pairs and are ended with checksums of 13 and 52,
+          respectively.  The fourth S1 record contains 07 character
+          pairs and has a checksum of 92.
+
+          The S5 record is comprised as follows:
+
+             S5     S-record type S5, indicating it is a count record
+                    indicating the number of S1 records.
+
+
+
+             03     Hexadecimal 03 (decimal 3), indicating that three
+                    character pairs follow.
+
+             00 04  Hexadecimal 0004 (decimal 4), indicating that
+                    there are four data records previous to this
+                    record.
+             F8     The checksum.
+
+          The S9 record is comprised as follows:
+
+             S9     S-record type S9, indicating it is a termination
+                    record.
+             03     Hexadecimal 03 (decimal 3), indicating that three
+                    character pairs follow.
+
+             00 00  The address field, hexadecimal 0 (decimal 0)
+                    indicating the starting execution address.
+             FC     The checksum.
+
+
+    -Intel Hex ASCII Format-
+
+   Intel HEX-ASCII format takes the form:
+
+            +----------------------------------- Start Character
+            |
+            |  +-------------------------------- Byte Count
+            |  |                                     (# of data bytes)
+            |  |
+            |  |     +-------------------------- Address of first data.
+            |  |     |
+            |  |     |     +-------------------- Record Type (00 data,
+            |  |     |     |                         01 end of record)
+            |  |     |     |
+            |  |     |     |       +------------ Data Bytes
+            |  |     |     |       |
+            |  |     |     |       |       +---- Checksum
+            |  |     |     |       |       |
+       | / \ /     \ / \ /         \ / \
+       : B C A A A A T T H H ... H H C C
+
+   An examples:
+
+       :10000000DB00E60F5F1600211100197ED300C3004C
+       :1000100000000101030307070F0F1F1F3F3F7F7FF2
+       :01002000FFE0
+       :00000001FF
+
+   This information comes from _Microprocessors and Programmed
+   Logic_, Second Edition, Kenneth L. Short, 1987, Prentice-Hall,
+   ISBN 0-13-580606-2.
+
+   Provisions have been made for data spaces larger than 64 kBytes.
+   The above reference does not discuss them.  I suspect there is
+   a start of segment type record, but I do not know how it is
+   implemented.
+
+----------------------------------------------------------------------------
+
+/* This file contains source code to read a Motorola S-record file into
+** a memory image.  The size of the file cannot exceed BUFSIZE of data.
+** The image is then written to disk either as binary data starting at
+** address 0 with no data gaps, or as a C array of unsigned longs.
+** Input lines must be no longer than MAXLINE.  No check is made!
+**
+**      Author:         Eric McRae, Electro-Logic Machines, Inc.
+**      Date:           Copyright 1994
+**
+** This source code is made available to the public "as is".  No
+** warranty is given or implied for it's proper operation.  This source
+** code may be used in whole or in part as long as this copyright is
+** included.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* Comment the following line for non PC applications */
+#define PCDOS
+
+/* Uncomment the following line if you want a binary output instead of
+** a structure
+*/
+/* #define BINARY  */
+
+#ifdef PCDOS                    /* Intel x86 architecture */
+#define BUFSIZE 49152           /* 48K to avoid segment hopping */
+#else                           /* Any reasonable (non-segmented) arch... */
+#define BUFSIZE 65536           /* As big as you want */
+#endif
+
+#define MAXLINE 256             /* Length of longest input line + 1 */
+/* Globals */
+FILE *infilePH, *outfilePH;     /* Handles for input and output files */
+unsigned char *bufAC,           /* Allocated image buffer */
+    *highestPC = NULL;          /* Highest buffer address written */
+
+/* Change this string to reflect the name of the output array */
+char headerAC[] = "unsigned long sRec[] =\n{\n";
+
+/* Predeclarations */
+int parsebufN( char * );                /* Does the actual parsing */
+
+void main(int argc, const char * argv[])
+{
+    int c,                              /* Temp char storage */
+        resN;                           /* result status */
+    char *lbufPC, lbufAC[MAXLINE];
+   int linectrN = 0;            /* Used to correlate parse fail to input line */
+
+#ifndef BINARY
+        int i;
+    unsigned long *codePL; 
+    unsigned char *codePC;
+#endif
+ 
+    /* Check the argument count */
+    if( argc != 3 )             /* If didn't specify input and output files */
+    {
+        printf("Usage: %s: infile outfile\n", argv[0] );
+        exit(1);
+    }
+
+    /* OK, let's open some files */
+    if( ( infilePH = fopen( argv[1], "r" )  )== NULL )
+    {
+        printf("%s: Couldn't open input file %s\n", argv[0], argv[1] );
+        exit(2);
+    }
+
+    if( ( outfilePH = fopen( argv[2], "w" ) ) == NULL )
+    {
+        printf("%s: Couldn't open output file %s\n", argv[0], argv[3] );
+        exit(3);
+    }
+
+    /* OK, get a buffer and clear it. */
+    if( (bufAC = calloc( (size_t)BUFSIZE, (size_t)1 )) == NULL )
+    {
+        printf("%s: Couldn't malloc memory for buffer\n", argv[0] );
+        exit(4);
+    }
+
+    lbufPC = lbufAC;                    /* Point at beginning of line buffer */
+    while( c = fgetc( infilePH )) 
+    {
+        if( (c == '\n') || (c == EOF) ) /* If found end of line or file */
+        {                               /* Parse the Line */
+            if( ( c == EOF ) && (  ferror( infilePH ) ) )
+            {
+                printf("%s: Error reading input file\n", argv[0] );
+                exit(5);
+            }
+            else
+            {           /* OK, have a complete line in buffer */
+                linectrN++;             /* Increment line counter */
+                if( lbufPC == lbufAC )
+                        break;          /* ignore blank lines */
+                *lbufPC = 0;            /* Terminate the line string */
+                if( resN = parsebufN( lbufAC ) ) /* Parse data record to mem */
+                {
+                    printf("%s: Error reading input file at line %d, return code = %d\n",
+                        argv[0], linectrN, resN );
+                    exit( resN );
+                }
+                lbufPC = lbufAC;        /* Repoint line buffer pointer */
+            }           /* End of have a complete line */
+        }
+        else
+        *lbufPC++ = c;                  /* Place char into line buffer */
+    }
+
+    /* At this point, the input file has been emptied.  Now dispose of the
+    ** output data according to compilation mode.
+    */
+
+#ifdef BINARY
+
+    /* Write the buffer back to disk as a binary image */
+    resN = fwrite( bufAC, 1, (size_t)((highestPC - bufAC) + 1), outfilePH );
+    if( resN != (int)( (highestPC - bufAC) + 1) )
+    {
+        printf("%s: Error writing output file\n", argv[0] );
+        exit( 6 );
+    }
+
+#else
+    /* Produce a file that can be included in a C program.  Data is read
+    ** from buffer as bytes to avoid portability/endian problems with
+    ** this program.
+    */
+    /* Output header first, then 1 long per line */
+    fwrite( (void *)headerAC, 1, (size_t)(sizeof( headerAC )-1), outfilePH );
+
+    codePL = (unsigned long *)bufAC;
+    for( i = (highestPC - bufAC + 1) / 4; i; i-- )      /* for each long */
+    {
+        codePC = (unsigned char *)codePL++;
+        sprintf(lbufAC, "0x%02x%02x%02x%02x%s",
+            *codePC, *(codePC + 1), *(codePC + 2), *(codePC + 3),
+            i == 1 ? "\n" : ",\n" );            /* No comma after final long */
+        fwrite( lbufAC, 1, (size_t)(strlen( lbufAC )), outfilePH );
+    }
+    /* OK, data has been written out, close end of array */
+    fwrite( "};\n", 1, (size_t)3, outfilePH );
+#endif
+}                                             
+
+/* Function: parsebufV
+**      Parses an S-record in the buffer and writes it into the buffer
+**      if it is has a valid checksum.
+**
+** Args:        pointer to character buffer for null terminated line
+** Returns:     int result code: 0 = success, else failure
+*/
+int parsebufN(  char *lbufPC )
+{
+    unsigned long addrL;
+    unsigned char cksmB,        /* checksum of addr, count, & data length */
+        *bufPC;                 /* Pointer into memory array */
+    int i, countN,              /* Number of bytes represented in record */
+        oheadN,                 /* Number of overhead (addr + chksum) bytes */
+        tvalN;                  /* Temp for check checksum */
+
+    switch( *(lbufPC+1) )       /* examine 2nd character on the line */
+    {
+    case '1':                   /* 16 bit address field */
+        if( sscanf(lbufPC, "S1%2x%4lx", &countN, &addrL ) != 2 )
+            return( 10 );       /* Flag error in S1 record */
+        oheadN = 3;             /* 2 address + 1 checksum */
+        break;
+
+    case '2':                   /* 24 bit address field */
+        if( sscanf(lbufPC, "S2%2x%6lx", &countN, &addrL ) != 2 )
+            return( 11 );       /* Flag error in S2 record */
+        oheadN = 4;             /* 3 address + 1 checksum */
+        break;
+
+    case '3':                   /* 32 bit address field */
+        if( sscanf(lbufPC, "S3%2x%8lx", &countN, &addrL ) != 2 )
+            return( 12 );       /* Flag error in S3 record */
+        oheadN = 5;             /* 4 address + 1 checksum */
+        break;
+
+    default:                    /* ignore all but S1,2,3 records. */
+        return( 0 );
+    }
+
+    if( addrL > BUFSIZE ) return( 13 ); /* if address exceeds buffer size */
+    bufPC = bufAC + addrL;      /* otherwise, point to right spot in buffer */
+
+    /* OK now see if checksum is OK, while reading data to buffer */
+    cksmB = 0;
+    countN++;                   /* Bump counter to read final checksum too */
+    for( i = 1; i <= countN; i++ )
+    {
+        sscanf( lbufPC + i*2, "%2x", &tvalN );  /* Scan a 2 hex digit byte  */
+        cksmB += (unsigned char)tvalN;
+        if( ( i > oheadN ) && ( i < countN ) )  /* If scanned a data byte */
+            *bufPC++ = (unsigned char) tvalN;   /* write it to the buffer */
+    }
+    if( cksmB += 1 ) return( 14 );      /* flag checksum error */
+
+    if( (bufPC - 1) > highestPC )
+        highestPC = bufPC - 1;          /* track highest address loaded */
+
+    return( 0 );                        /* Successful return */
+}
+
+
+

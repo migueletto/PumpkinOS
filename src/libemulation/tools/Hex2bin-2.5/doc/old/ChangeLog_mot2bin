@@ -1,0 +1,49 @@
+(UTF8 encoding tab = 4)
+- mot2bin 1.0.12 - 20141122 Simone Fratini
+    small feature added
+                   20141121 Slucx
+    added line for removing extra CR when entering file name at run time.
+
+- mot2bin 1.0.11 - 20141005 Jacques Pelletier
+	added option to support byte-swapped hex used by Microchip's MPLAB IDE
+    corrected bug caused by extra LF at end or within file
+
+- mot2bin 1.0.10 - 20120509 Yoshimasa Nakane
+	modified error checking (also for output file, JP)
+
+- mot2bin 1.0.9 - 20120125 - Danny Schneider
+	Added code for filling a binary file to a given Max_Length relative to
+	Starting Address if Max-Address is larger than Highest-Address
+	(JP) corrected a bug in the checksum checking
+	(JP) added code for record types 0,5,7,8,9
+
+- mot2bin 1.0.8 - 20100402 - Jacques Pelletier
+	ADDRESS_MASK is now calculated from MEMORY_SIZE
+
+- mot2bin 1.0.7 - 20091212 - Jacques Pelletier
+	Fixed the crash on 0 byte length data records
+
+- mot2bin 1.0.6	- 20080103 - Jacques Pelletier
+	Corrected a bug when generating a binary file near the end of the buffer.
+
+- mot2bin 1.0.5	- 20071005 - Paweł Grabski -
+	Improved parsing of options (same code as hex2bin).
+
+- mot2bin 1.0.4 - 20050128 - Jacques Pelletier -
+	Modified the checksum code to be able to generate other checksum types
+	later (ex. CRC).
+
+- mot2bin 1.0.3 - 20041026 - Scott A. Mintz -
+	Modified the MOT2BIN file to compute a checksum over a range using
+	8bit, 16bit little endian, or 16bit big endian and optionally forcing
+	the checksum to a specific value by modifying a memory location.
+
+- mot2bin 1.0.2 - 20040617 - Alf Lacis -
+	Added pad byte (may not always want FF).
+	Added initialisation to Checksum to remove GNU
+	compiler warning about possible uninitialised usage
+	Added 2x'break;' to remove GNU compiler warning about label at
+	end of compound statement
+	Added PROGRAM & VERSION strings.
+
+- no previous ChangeLog -

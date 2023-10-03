@@ -1,0 +1,52 @@
+GAL16V8    ; 4-Bit-Counter  first line : used GAL
+Counter    ;                second line: any text (max. 8 char.)
+
+
+Clock D0    D1    D2    D3    Set   Clear NC    NC   GND
+/OE   NC    NC    NC    NC    Q3    Q2    Q1    Q0   VCC
+
+
+
+
+
+Q0.R =   /Clear *  Set *  D0
+       + /Clear * /Set * /Q0
+
+
+Q1.R =   /Clear *  Set *  D1
+       + /Clear * /Set * /Q1 *  Q0
+       + /Clear * /Set *  Q1 * /Q0
+
+
+Q2.R =   /Clear *  Set *  D2
+       + /Clear * /Set *  Q2 * /Q1
+       + /Clear * /Set *  Q2 * /Q0
+       + /Clear * /Set * /Q2 *  Q1 *  Q0
+
+
+Q3.R =   /Clear *  Set *  D3
+       + /Clear * /Set *  Q3 * /Q2
+       + /Clear * /Set *  Q3 * /Q1
+       + /Clear * /Set *  Q3 * /Q0
+       + /Clear * /Set * /Q3 *  Q2 *  Q1 *  Q0
+
+
+
+
+
+DESCRIPTION
+
+this is a 4-Bit-Counter
+
+registered outputs are signed with the postfix .R
+
+
+ Pin 'Set' HIGH while clock signal (LOW-HIGH) at pin 'Clock':
+        load Q0-Q3 with state of D0-D3
+
+ Pin 'Clear' HIGH while clock signal:
+        Q0-Q3 are cleared
+
+ Clock signal while pins 'Set' and 'Clear' are LOW:
+        increment counter
+

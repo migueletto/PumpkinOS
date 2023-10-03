@@ -1,0 +1,2 @@
+MEMSIZE:	equ	64	; KB
+;MEMSIZE:	equ	48	; KB

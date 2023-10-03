@@ -1,0 +1,23 @@
+include ../common.mak
+
+PROGRAM=$(BIN)/libemulation$(SOEXT)
+
+OBJS=libemulation.o z80.o cz80.o modem.o disk.o rom.o z80disasm.o coco.o m6809.o dasm6809.o vdg.o cas.o spectrum.o spectrumcas.o zx81.o zx81cas.o trs80.o wd1793.o m6502.o apple2.o 8086tiny.o c8086.o i8086disasm.o
+
+CUSTOMFLAGS=-I$(SRC)/font -I$(SRC)/libzycore -I$(SRC)/libzydis
+
+$(PROGRAM): $(OBJS)
+	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit -lzydis
+	cd tools && make
+
+8086tiny: 8086tiny_orig.o
+	$(CC) -o 8086tiny 8086tiny_orig.o -L$(BIN) -lzydis
+
+8086tiny_orig.o: 8086tiny_orig.c
+	$(CC) -I$(SRC)/libzycore -I$(SRC)/libzydis -DNO_GRAPHICS -c 8086tiny_orig.c
+
+clean:
+	rm -f $(PROGRAM) 8086tiny *.o
+	cd tools && make clean
+
+# nasm -o ../../vfs/app_card/PALM/Programs/CZ80/bios2.bin bios.asm

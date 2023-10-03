@@ -1,0 +1,57 @@
+<html>
+<head>
+  <title>How to Test Programmed GALs</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="program.html"><img src="prev.gif" alt="PREV" border=0></a><a href="optimizer.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.2.6 How to Test Programmed GALs</u>
+
+Once the GAL has been programmed, the question remains, &quot;does it work the
+way you envisaged it?&quot;. Answering this question is the purpose of the
+GAL-Checker.
+
+In order to verify the GAL's functions, you must of course first plug
+the GAL into the programmer's socket, and select the correct GAL-type.
+Now you can select the menu item GAL-Checker.
+
+In the middle of the screen you'll see a symbolic GAL displayed. In this
+GAL, you'll see a number of 'I's and 'O's. The 'I' stands for Input and
+the 'O' for Output.
+The 'O' is a gadget. By clicking on the 'O' it turns into an 'I' and
+clicking on it again it becomes an 'O' again. In other words, you can
+determine if this pin is to be used as an input or an output.
+
+If a pin is an input, then you can select from another gadget if the pin
+is to be in a  &quot;High&quot; ('H') or in a &quot;Low&quot; ('L') state. An output can
+assume three states: 'H' (High), 'L' (Low) and&nbsp;'Z' (high impedance).
+The current state is displayed near the corresponding pin.
+
+If you're using the GAL from the <a href="sourcefile.html">above example</a>, pin 19
+must be defined as an input (=&quot;A&quot;) by clicking on the 'O' (the one at pin 19),
+since this pin was defined as an input during  programming in the above
+example.
+
+The inputs of the AND gate are:  pin 19  (=&quot;A&quot;),  pin  1 (=&quot;B&quot;), pin 2 (=&quot;C&quot;).
+The output is pin 18 (=&quot;W&quot;).
+
+If you now  set the inputs of the AND gate HIGH (by clicking on the gadgets),
+the output (=pin 18) should also go HIGH.  If it doesn't work or if the output
+also goes high with other combinations of input levels, then the fault is
+probably in the source file.  The error should be corrected in the source file.
+The GAL must then be erased and reprogrammed (a GAL can be erased and
+reprogrammed at least a hundred times). In this manner the whole GAL can
+be fully tested, and if no errors are detected, it can be used in your circuit.
+
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="program.html"><img src="prev.gif" alt="PREV" border=0></a><a href="optimizer.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

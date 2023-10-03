@@ -1,0 +1,60 @@
+<html>
+<head>
+  <title>Error Messages</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="jedecerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="proggal.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.5.3 Reassembler</u>
+
+&quot;mode AC0 = SYN = 0 is not supported&quot;
+   In the JEDEC file the bits AC0 and SYN are set to 0. This mode
+   is not supported by GALer.
+
+
+&quot;Pin xx: pin name defined twice&quot;
+   A pin name is used for more than one pin.
+
+
+&quot;Pin xx: illegal character&quot;
+   Legal characters are  : digits, letters and the '/'
+   Illegal characters are: Space, #, *, ...
+
+
+&quot;Pin xx: no pin name found&quot;
+   There is no name for the pin xx defined.
+
+
+&quot;Pin xx: VCC/GND at wrong pin&quot;
+   VCC and GND must be the pin names for the VCC and GND pin of the GAL.
+
+
+&quot;Pin xx: illegal use of '/'&quot;
+   Usage of the negation character: /pinname
+   Illegal:  pinname/, /, //pinname etc.
+
+
+&quot;Pin xx: GND expected&quot;
+   Pin 10 of GAL16V8 respectively pin 12 of GAL20V8 must be defined as GND.
+
+
+&quot;Pin xx: VCC expected&quot;
+   Pin 20 of GAL16V8 respectively pin 24 of GAL20V8 must be defined as VCC.
+
+
+&quot;Pin xx: AR is not allowed as pin name&quot;
+   When using a GAL22V10, AR is a keyword which is not allowed as pin name.
+
+&quot;Pin xx: SP is not allowed as pin name&quot;
+   When using a GAL22V10, SP is a keyword which is not allowed as pin name.
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="jedecerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="proggal.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

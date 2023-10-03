@@ -1,0 +1,28 @@
+GAL20RA10
+20RA10
+
+/PL Set Enable1 Enable2 Clock1  Clock2 NC NC NC NC NC GND
+/OE NC  NC      ResetB1 ResetA1 D2     D1 Y4 Y3 Y2 Y1 VCC
+
+
+Y1.R     =  D1				; define register output
+Y1.E     =  Enable1			; define tristate control
+Y1.CLK   =  Clock1			; define clock for the register
+Y1.ARST  =  ResetA1 * ResetB1		; define async. reset
+Y1.APRST =  Set				; define async. preset
+
+Y2  =  Set + D1				; Y2 is a "normal" output
+
+/Y3.R  =  D2				; Y3 is active low and a reg. output
+Y3.E   =  Enable2
+Y3.CLK =  Clock2
+
+Y4.T   =  /D1 + /D2			; Y4 is a tristate output
+Y4.E   =  /Enable2
+
+
+DESCRIPTION
+To define the clock, asynchronous reset and asynchronous preset for registered
+outputs you can use the suffixes .CLK, .ARST and .APRST.
+Clock must be defined for every register output whereas async. reset and async.
+preset are optinal.

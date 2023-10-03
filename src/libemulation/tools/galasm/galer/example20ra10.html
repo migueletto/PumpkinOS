@@ -1,0 +1,135 @@
+<html>
+<head>
+  <title>GAL20RA10</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="example22v10.html"><img src="prev.gif" alt="PREV" border=0></a><a href="errors.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.4.3 GAL20RA10</u>
+
+The next example can be realized only with a GAL20RA10. The reason for this
+is that each register output needs it's own clock input and tristate
+control. But GAL16V8, GAL20V8 and GAL22V10 offers just one clock input
+for all registers and GAL16V8 and GAL20V8 offers just one tristate enable
+for all registers.
+
+
+ Enable1 ----------------------------------+
+                  +----+                   |
+ ResetA1 ---------|    |                   |
+                  | &amp;  |-------+           |
+ ResetB1 ---------|    |       |         |\|
+                  +----+    +-----+      | \
+  Clock1 -------------------|&#062; R Q|------|  +------- Y1
+                            |     |      | /   
+      D1 ---o---------------|D S  |      |/   
+            |               +-----+
+            |                  |
+     Set ---+--o---------------+
+            |  |  +----+
+            |  +--|    |
+            |     | &#062;1 |---------------------------- Y2
+            o-----| =  |
+            |     +----+                 |\
+            |               +-----+      | \
+  Clock2 ---+---------------|&#062;   Q|------|  +o------ Y3
+            |               |     |      | /   
+      D2 ---+--o------------|D    |      |/|   
+            |  |            +-----+        |
+ Enable2 ---+--+---------------------------o
+            |  |                           |
+            |  |                           |
+            |  |  +----+                 |\o
+            |  +--|    |                 | \
+            |     | &amp;  |o----------------|  +------- Y4
+            +-----|    |                 | /
+                  +----+                 |/
+
+
+
+Don't think about what the function of this circuit is - there is non again.
+It is just an example again.
+
+This is one of many possible pin designations:
+
+                           GAL20RA10
+
+                           ---- ----
+                     /PL  1|       |24  +5V
+                     Set  2|       |23  Y1
+                 Enable1  3|       |22  Y2
+                 Enable2  4|       |21  Y3
+                  Clock1  5|       |20  Y4
+                  Clock2  6|       |19  D1
+                      NC  7|       |18  D2
+                      NC  8|       |17  ResetA1
+                      NC  9|       |16  ResetB1
+                      NC 10|       |15  NC
+                      NC 11|       |14  NC
+                    GND  12|       |13  /OE
+                           ---------
+
+
+Pin 1 and 13 are reserved for /PL (preload) and /OE (output enable), they
+can't be used for your own. Since Y1 to Y4 are outputs they must be at OLMC
+pins.
+
+When using a GAL20RA10 the GAL assembler provides three additonal suffixes:
+.CLK, .ARST and .APRST.
+
+.CLK defines the clock signal for the corresponding register output.
+You have to define such a clock signal for EACH register output!
+
+.ARST (asynchronous reset) and .APRST (asynchronous preset) are
+optinal, you need not to define them for each register output.
+
+For .CLK, .ARST and .APRST is only one product term allowed. For the
+definition of the output function are four product terms allowed.
+
+Please keep this in mind: when both is true the asynchnonous reset and
+the synchronous preset the register is swichted off and the output becomes
+to a &quot;normal&quot; tristate output (see section <a href="gal20ra10.html">The GAL20RA10</a>).
+So the type of the output can be changed &quot;on the fly&quot;.
+
+
+This is source file for this example:
+
+******************************************************
+GAL20RA10
+20RA10
+
+/PL Set Enable1 Enable2 Clock1  Clock2 NC NC NC NC NC GND
+/OE NC  NC      ResetB1 ResetA1 D2     D1 Y4 Y3 Y2 Y1 VCC
+
+
+Y1.R     =  D1                          ; define register output
+Y1.E     =  Enable1                     ; define tristate control
+Y1.CLK   =  Clock1                      ; define clock for the register
+Y1.ARST  =  ResetA1 * ResetB1           ; define async. reset
+Y1.APRST =  Set                         ; define async. preset
+
+Y2  =  Set + D1                         ; Y2 is a &quot;normal&quot; output
+
+/Y3.R  =  D2                            ; Y3 is active low and a reg. output
+Y3.E   =  Enable2
+Y3.CLK =  Clock2
+
+Y4.T   =  /D1 + /D2                     ; Y4 is a tristate output
+Y4.E   =  /Enable2
+
+
+DESCRIPTION
+******************************************************
+
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="example22v10.html"><img src="prev.gif" alt="PREV" border=0></a><a href="errors.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

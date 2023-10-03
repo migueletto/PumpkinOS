@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export LD_LIBRARY_PATH=/home/marcio/PumpkinOS/bin
+
+clear
+stty cbreak raw -echo min 0
+./8086tiny ../../vfs/app_card/PALM/Programs/CZ80/bios.bin ../../vfs/app_card/PALM/Programs/CZ80/fd.img 2> saida
+stty cooked echo

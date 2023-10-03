@@ -1,0 +1,113 @@
+<html>
+<head>
+  <title>Circuit Description</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="proggal.html"><img src="prev.gif" alt="PREV" border=0></a><a href="construction.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>III.2 Circuit Description</u>
+
+In the following section I'll describe the functioning of my GAL-programming
+device. I'll refer to my circuit diagram, so if you haven't ordered that,
+you can skip this section.
+
+The hardware is connected to the Amiga's parallel port. The connected data
+signals are D0-D4 and the BUSY-Line.
+ 
+IC1, IC3, IC4 and IC5 are eight way &quot;serial in/parallel out&quot; shift registers.
+The outputs of the shift-register from IC3, IC4 and IC5 are connected to the
+Textool-Zero insertion force socket for the GAL. Therefore it is possible to
+(besides VCC and GND) define each of the GAL's pins with a level (HIGH or
+LOW).
+
+The possible outputs of the GAL (pin 14 to 23) can be read through IC7 and
+IC6. IC7 is an eight way &quot;parallel in/serial out&quot; shift register.
+
+IC1 is so to speak the switch centre, this IC selects IC3, 4 and 5 (OE).
+Furthermore, this IC switches the programming voltages for the GAL (VCC,
+Edit-voltage) on or off.
+
+Since the ICs 1, 3, 4, 5, 7 can be individually accessed, a separate clock
+line is provided for each IC. These clock lines are selected via IC2, a 1 out
+of 4-decoder, by the parallel port's data lines D0 and D1.
+
+D3 determines whether a read (low) or write (high) operation is to occur.
+It must be ensured that D3 does not go low until the IC to be accessed is
+selected through D0 and D1. Otherwise an IC gets an unwanted clock-pulse
+and at the next Strobe-pulse (D2) the wrong (once left shifted) data is
+presented at the outputs.
+
+The Strobe-pulse for the shift-register is derived from D2 . When D2 goes
+high, the data in the shift registers is transferred to the output registers
+of ICs 1, 3, 4, 5.
+
+Through IC7, D2 can be made high (D2 = high), so that the data on Pins P1-P8
+are transferred to the internal shift register and may be read through the
+BUSY line by clocking the relevant clock-line.
+
+D4 transfers the individual bits from the Amiga to the GAL-Burner.
+
+Since Pins 2 and 4 of the Textool-socket may be supplied with the programming
+voltage of up to 16.5 Volt, we have to protect IC4 with the diodes D2 and D3
+against over voltage.
+
+The programming voltage is derived from IC9, a switch mode voltage regulator.
+This voltage can be precisely adjusted with the trimpots R40-R44.
+
+The relay K1 connects the supply voltage of the GAL to pin 24 of the
+Textool-Socket, Relay K2 connects the output Q7 from IC3 or +5V supply voltage
+(according to the GAL type) to Pin 22 of the Textool-Socket. Both relays are
+driven by IC1.
+
+The LED shows whether voltage is supplied to the Textool-Socket or not
+(controlled by software). When the LED is on, a GAL may not be inserted or
+removed from the socket.
+
+
+Parallel-Port:
+
+ D0-D1:  Selection of individual ICs by Clk
+ D2:     Strobe-pulse for IC 1, 3, 4, 5
+ D3:     write = low, read = high
+ D4:     Data line for &quot;Write Bits&quot;
+ BUSY:   Data line for &quot;Read Bits&quot;
+
+IC1:
+ Q1   make 16.5V (but don't switch it!)
+ Q2   switch edit-current on pin 2 for GAL20V8
+ Q3   switch edit-current on pin 4 for GAL16V8
+ Q5   switch Vcc
+ Q6   OE for IC3, 4, 5
+ Q7   controlles LED on : high, low = off
+ Q8   not used
+
+IC3:
+ Q1-Q8  pin 16-23 of the Textool-socket over R3-R8
+
+IC4:
+ Q1-Q8  pin 1-8 of the Textool-socket
+
+IC5:
+ Q1-Q3  pin 9-11 of the Textool-socket
+ Q4     pin 13 of the Textool-socket
+ Q5-Q6  pins 14, 15 of the Textool-socket over R9, R10
+
+IC6:
+ a      read level at pin 13 of the Textool-socket
+ b      read buffer of IC7
+ c      read level at pin 23 of the Textool-socket
+
+IC7:
+ P1-P8  read level at pin 14-21 of the Textool-socket
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="proggal.html"><img src="prev.gif" alt="PREV" border=0></a><a href="construction.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

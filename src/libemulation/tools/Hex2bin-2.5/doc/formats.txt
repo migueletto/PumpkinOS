@@ -1,0 +1,72 @@
+Hex formats
+
+Intel
+=====
+
+Hexadecimal values are always in uppercase. Each line is a record.
+The sum of all the bytes in each record should be 00 (modulo 256).
+
+Record types:
+
+00: data records
+01: end-of-file record
+02: extended address record
+
+Data record
+-----------
+
+	:0D011C0000000000C3E0FF0000000000C30F
+
+: 0D 011C 00 00000000C3E0FF0000000000C3 0F
+|  |   |   | -------------+------------  |
+|  |   |   |              |              +--- Checksum
+|  |   |   |              +------------------ Data bytes
+|  |   |   +--------------------------------- Record type
+|  |   +------------------------------------- Address
+|  +----------------------------------------- Number of data bytes
++-------------------------------------------- Start of record
+
+
+End of file record
+------------------
+
+	:00000001FE
+
+: 00 0000 01 FE
+|  |   |   |  |
+|  |   |   |  +--- Checksum
+|  |   |   +------ Record type
+|  |   +---------- Address
+|  +-------------- Number of data bytes
++----------------- Start of record
+
+
+
+Extended address record
+-----------------------
+
+	:02010002E0001B
+
+: 02 0100 02 E000 1B
+|  |   |   |  |    |
+|  |   |   |  |    +--- Checksum
+|  |   |   |  +-------- Segment address
+|  |   |   +----------- Record type
+|  |   +--------------- Address
+|  +------------------- Number of data bytes
++---------------------- Start of record
+
+Following data records will start at E000:0100 or E0100
+
+
+
+
+
+
+
+
+
+
+
+
+

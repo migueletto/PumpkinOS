@@ -1,0 +1,361 @@
+S-Record Format
+    
+    A file in Motorola S-record format is an ASCII file. There are three different 
+    formats:
+
+        S19     for 16-bit address 
+        S2      for 24-bit address
+        S3      for 32-bit address
+
+    
+    The files consist of optional symbol table information, data specifications 
+    for loading memory, and a terminator record.
+
+        [ $$ {module_record}
+        symbol records
+        $$ [ module_record ]
+        symbol_records
+        $$]
+        header_record
+        data_records
+        record_count_record
+        terminator_record
+
+
+Module Record (Optional)
+
+    Each object file contains one record for each module that is a component of it. This
+    record contains the name of the module. There is one module record for each relocatable 
+    object created by the assembler. The name of the relocatable object module
+    contained in the record comes from the IDNT directive. For absolute objects created
+    by the linker, there is one module record for each relocatable object file linked,
+    plus an additional record whose name comes from the NAME command for the
+    linker.
+
+    Example:
+
+        $$ MODNAME
+
+
+Symbol Record (Optional)
+
+    As many symbol records as needed can be contained in the object module. Up to 4
+    symbols per line can be used, but it is not mandatory that each line contain 4 
+    symbols. A module can contain only symbol records.
+
+    Example:
+
+        APPLE $00000 LABEL1 $ODOC3
+        MEM $OFFFF ZEEK $01947
+
+    The module name associated with the symbols can be specified in the
+    module_record preceding the symbol records.
+
+    Example:
+
+        $$MAIN
+
+    Symbols are assumed to be in the module named in the preceding module_record
+    until another module is specified with another module_record. Symbols defined by
+    the linker's PUBLIC command appear following the first module record, which
+    indicates the name of the output object module specified by the linker's NAME
+    command.
+
+
+*****************************************************************************************
+
+Header Record (SO)
+
+    Each object module has exactly one header record with the following format:
+
+        S00600004844521B
+
+    Description:
+
+        S0         Identifies the record as a header record
+        06         The number of bytes following this one
+        0000       The address field, which is ignored
+        484452     The string HDR in ASCII
+        1B         The checksum
+
+
+
+*****************************************************************************************
+
+Data Record (S1)
+
+    A data record specifies data bytes that are to be loaded into memory. Figure 1
+    shows the format for such a record. The columns shown in the figure represent half
+    of a byte (4 bits).
+
+                ---------------------------------------------
+                |  1 2  3 4   5 6 7 8   9 ... 40    41 42   |
+                |                                           |
+                |  S ID byte   load    data...data checksum |
+                |       count address   1      n            |
+                ---------------------------------------------
+            Figure 1: Data Record Formatter 16-Bit Load Address
+
+
+        Column      Description
+
+        1           Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+        2           Contains the ASCII character identifying the record type.
+                    For data records, this character is 1.
+
+        3 to 4      Contain the count of the number of bytes following this one
+                    within the record. The count includes the checksum and the
+                    load address bytes but not the byte count itself.
+
+        5 to 8      Contain the load address. The first data byte is to be loaded
+                    into this address and subsequent bytes into the next sequential
+                    address. Columns 5 and 6 contain the high-order address
+                    byte, and columns 7 and 8 contain the low-order address byte.
+
+        9 to 40     Contain the specifications for up to 16 bytes of data.
+
+        41 to 42    Contain a checksum for the record. To calculate this, take the
+                    sum of the values of all bytes from the byte count up to the
+                    last data byte, inclusive, modulo 256. Subtract this result
+                    from 255.
+
+
+*****************************************************************************************
+
+Data Record (S2)
+
+
+    A data record specifies data bytes that are to be loaded into memory. Figure 2
+    shows the format for such a record. The columns shown in the figure represent half
+    of a byte (4 bits).
+
+
+                ----------------------------------------------------
+                |  1 2   3 4   5 6 7 8 9 10   11 ...  42   43 44   |
+                |                                                  |
+                |  S ID  byte     load        data...data checksum |
+                |        count   address       1      n            |
+                ----------------------------------------------------
+                Figure 2: Data Record Format for 24-Bit Load Address
+
+        Column      Description
+
+        1           Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+        2           Contains the ASCII character identifying the record type.
+                    For data records, this character is 2.
+
+        3 to 4      Contain the count of the number of bytes following this one
+                    within the record. The count includes the checksum and the
+                    load address bytes but not the byte count itself.
+
+        5 to 10     Contain the load address. The first data byte is to be loaded
+                    into this address and subsequent bytes into the next sequential 
+                    address. Columns 5 and 6 contain the high-order address
+                    byte, and columns 9 and 10 contain the low-order address byte.
+
+        11 to 42    Contain the specifications for up to 16 bytes of data.
+
+        43 to 44    Contain a checksum for the record. To calculate this, take the
+                    sum of the values of all bytes from the byte count up to the
+                    last data byte, inclusive, modulo 256. Subtract this result
+                    from 255.
+
+
+*****************************************************************************************
+
+Data Record (S3)
+
+
+    A data record specifies data bytes that are to be loaded into memory. Figure 3
+    shows the format for such a record. The columns shown in the figure represent half
+    of a byte (4 bits).
+
+                ----------------------------------------------------------
+                |  1 2   3 4   5 6 7 8 9 10 11 12   13 ... 44    45 46   |
+                |                                                        |
+                |  S ID  byte        load          data...data  checksum |
+                |        count      address         1      n             |
+                ----------------------------------------------------------
+                Figure 3: Data Record Format for 32-Bit Load Address
+
+    Column          Description
+
+    1               Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+    2               Contains the ASCII character identifying the record type.
+                    For data records, this digit is 3 for 32-bit addresses.
+
+    3 to 4          Contain the count of the number of bytes following this one
+                    within the record. The count includes the checksum and the
+                    load address bytes but not the byte count itself.
+
+    5 to 12         Contain the load address. The first data byte is to be loaded
+                    into this address and subsequent bytes into the next sequential 
+                    address. Columns 5 and 6 contain the high-order address
+                    byte, and columns 11 and 12 contain the low-order address byte.
+
+    13 to 44        Contain the specifications for up to 15 bytes of data.
+
+    45 to 46        Contain a checksum for the record. To calculate this, take the
+                    sum of the values of all bytes from the byte count up to the
+                    last data byte, inclusive, modulo 256. Subtract this result
+                    from 255.
+
+
+*****************************************************************************************
+
+Record Count Record (S5)
+
+
+    The record count record verifies the number of data records preceding it. Figure 4
+    shows the format for such a record. The columns shown in the figure represent half
+    of a byte (4 bits).
+
+                --------------------------------------
+                |  1 2   3 4      5 6 7 8     9 10   |
+                |                                    |
+                |  S ID  byte    # of data  checksum |
+                |        count    records            |
+                --------------------------------------
+                Figure 4: Record Count Record Format
+
+    Column          Description
+
+    1               Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+    2               Contains the ASCII character 5, which indicates a record
+                    count record.
+
+    3 to 4          Contain the byte count, ASCII string 03.
+
+    5 to 8          Contain the number of data records in this file. The high-
+                    order byte is in columns 5 and 6.
+
+    9 to 10         Contain the checksum for the record.
+
+    Example:
+
+        S503010DEE
+
+    The example above shows a record count record indicating a total of 269 records
+    (0x010D) and a checksum of 0xEE.
+
+
+
+*****************************************************************************************
+
+Terminator Record for 32-bit address (S7)
+
+    A terminator record specifies the end of the data records. Figure 5 shows the
+    format for such a record. The columns shown in the figure represent half of a byte
+    (4 bits).
+
+                -------------------------------------
+                |  1 2   3 4      5...12    13 14   |
+                |                                   |
+                |  S ID  byte     load     checksum |
+                |        count   address            |
+                -------------------------------------
+                Figure5: Terminator Record Format for 32-Bit Load Address
+
+    Column          Description
+
+    1               Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+    2               Contains the ASCII character 7, which indicates a 32-bit
+                    load address.
+
+    3 to 4          Contain the byte count, ASCII string 04.
+
+    5 to 12         Contain the load address that is either set to zero or to the
+                    starting address specified in the END directive or START
+                    command (there are no data bytes).
+
+    13 to 14        Contain the checksum for the record.
+
+*****************************************************************************************
+
+Terminator Record for 24-bit address (S8)
+
+
+    A terminator record specifies the end of the data records. Figure 6 shows the
+    format for such a record. The columns shown in the figure represent half of a byte
+    (4 bits).
+
+                ----------------------------------------
+                |  1 2   3 4    5 6 7 8 9 10   11 12   |
+                |                                      |
+                |  S ID  byte       load      checksum |
+                |        count     address             |
+                ----------------------------------------
+                Figure 6: Terminator Record Format for 24-Bit Load Address
+
+    Column          Description
+
+    1               Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+    2               Contains the ASCII character 8, which indicates a 24-bit
+                    load address.
+
+    3 to 4          Contain the byte count, ASCII string 04.
+
+    5 to 10         Contain the load address, which is either set to zero or to the
+                    starting address specified in the END directive or START
+                    command. There are no data bytes.
+
+    11 to 12        Contain the checksum for the record.
+
+    Example:
+
+        S804000AF0001
+
+    The previous example shows a terminator record with a 24-bit load address of
+    0x000AF0 and a checksum of 0x01.
+
+
+*****************************************************************************************
+
+Terminator Record for 16-bit address (S9)
+
+
+    A terminator record specifies the end of the data records. Figure 7 shows the
+    format for such a record. The columns shown in the figure represent half of a byte
+    (4 bits).
+
+                -------------------------------------
+                |  1 2   3 4    5 6 7 8      9 10   |
+                |                                   |
+                |  S ID  byte    load      checksum |
+                |        count  address             |
+                -------------------------------------
+                Figure 7: Terminator Record Format for 16-Bit Load Address
+
+
+    Column         Description
+
+    1               Contains the ASCII character S, which indicates the start of
+                    a record in Motorola S-record format.
+
+    2               Contains the ASCII character 9, which indicates a 16-bit
+                    load address.
+
+    3 to 4          Contain the byte count, ASCII string 04.
+
+    5 to 8          Contain the load address, which is either set to zero or to the
+                    starting address specified in the END directive or START
+                    command (there are no data bytes).
+
+    9 to 10         Contain the checksum for the record.
+
+
+
+*****************************************************************************************
+ hagen.v.tronje@on-line.de

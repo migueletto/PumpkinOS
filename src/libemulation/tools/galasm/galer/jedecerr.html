@@ -1,0 +1,138 @@
+<html>
+<head>
+  <title>Error Messages</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="asmerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="reasmerr.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.5.2 JEDEC File</u>
+
+&quot;unexpected end of file&quot;
+   The last thing in a JEDEC file should be either the file checksum or
+   a '*'.
+
+
+&quot;unknown command found&quot;
+   There is a unknown command in your JEDEC file (see chapter JEDEC File for
+   possible commands). In most cases the reason for this error message
+   is a missing '*'.
+
+
+&quot;bad format of number&quot;
+   A dez. or hex. number is expected and found, but there are illegal
+   characters in it.
+   Example:  C1a#3       
+
+
+&quot;number expected after command&quot;
+   After this command a dez. or hex. number is expected but not found.
+
+
+&quot;0 or 1 expected&quot;
+   Fuses can be set to 0 or 1. Using another digit will cause this error.
+
+
+&quot;can't find out type of GAL&quot;
+   GALer can't identify for which type of GAL (GAL16V8 or GAL20V8) this
+   JEDEC file is. But GALer must know this in order to program a GAL.
+
+
+&quot;QF multible found&quot;
+   In the JEDEC file the command QF is found multiple. This is not
+   allowed.
+
+
+&quot;QP multible found&quot;
+   In the JEDEC file the command QP is found multiple. This is not
+   allowed.
+
+
+&quot;ending '*' expected&quot;
+   GALer expects a '*' character.
+
+
+&quot;after 'C' command no 'L' command allowed&quot;
+   After the fuse checksum no change of fuses (L command) is allowed.
+
+
+&quot;bad fuse checksum&quot;
+   The fuse checksum is bad. The reason for this can be that you have
+   changed some state of fuses with a text editor.
+
+
+&quot;too many &#060;STX&#062; (= CTRL-B, 0x02) found&quot;
+   The &#060;STX&#062; control character should be once at the beginning of the
+   JEDEC file.
+
+
+&quot;too many &#060;ETX&#062; (= CTRL-C, 0x03) found&quot;
+   The &#060;ETX&#062; control character should be once at the end of the
+   JEDEC file.
+
+
+&quot;bad sequence of &#060;STX&#062;, &#060;ETX&#062;&quot;
+   The first control character must be a &#060;STX&#062; then a &#060;ETX&#062; not vice versa.
+
+
+&quot;after file checksum end of file expected&quot;
+   There is a character after a file checksum which is not a Space, TAB
+   or Carriage Return. This is not allowed.
+
+
+&quot;bad fuse address (L... too short)&quot;
+   It's easier to show an example:
+          L0010 1011*
+          L0013 0111*
+      Address 13 is defined twice.
+
+
+&quot;addresses skiped but no default value (F0/1*) defined&quot;
+   It's easier to show an example:
+          L0010 11*
+          L0015 01*
+    The fuses of the addresses 12, 13 and 14 are not defined and there
+    is no F command which would define the values of missing fuses.
+
+
+&quot;'*' expected&quot;
+   '*' expected but not found (what else should I say here).
+
+
+&quot;QF... and last fuse address (L...) are not equal&quot;
+   QF defines the number of fuses in this JEDEC file (GAL16V8: 2194,
+   GAL20V8: 2706). If the last fuse of a L command does not match
+   to the QF command, this error will occur.
+
+
+&quot;no values for the fuses found (no F0/1, L...)&quot;
+   In your JEDEC file are no fuses defined. Such a file is useless
+   and therefore rejected by GALer.
+
+
+&quot;only QF2194 *, QF2706 *, QF3274 *, QF5892 * allowed&quot;
+   There is a QF... command which fits to no GAL which is supported by
+   GALer.
+
+&quot;too many fuses found&quot;
+   In your JEDEC file are too many fuses defined.
+
+
+&quot;found several fuse checksumms&quot;
+   In your JEDEC file are several fuse checksumms. This is not allowed.
+
+
+&quot;selected type of GAL fits not to JEDEC file&quot;
+   You have selected a to-be-programmed-GAL which does not fit to
+   the JEDEC file.
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="asmerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="reasmerr.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

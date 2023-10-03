@@ -1,0 +1,135 @@
+<html>
+<head>
+  <title>GAL22V10</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="example16v8.html"><img src="prev.gif" alt="PREV" border=0></a><a href="example20ra10.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.4.2 GAL22V10 </u>
+
+The next circuit can't be realized with a GAL16V8 or GAL20V8. The reason
+for this is that there are different tristate controls for the register
+outputs. A GAL16V8 and GAL20V8 has only one tristate control for all
+register outputs, this is the /OE (output enable) pin in mode 3.
+
+
+ Enable1 ---------------------------------+
+                                          |
+                                        |\|
+                            +----+      | \
+   Clock ---o---------------|&#062;  Q|------|  +------- Y1
+            |  +----+       |    |      | /
+       A ---+--|    |   +---|D   |      |/
+            |  | &amp;  |---+   +----+
+       B ---+--|    |          
+            |  +----+                   |\
+            |               +----+      | \
+            +---------------|&#062;  Q|------|  +------- Y2
+                            |    |      | /   
+       C -------------------|D   |      |/|   
+                            +----+        |   
+                                          |
+                            +----+        |
+ Enable2 -------------------|    |        |
+                            | &amp;  |--------o-------- Y3
+                        +---|    |
+                        |   +----+
+             +----+     |
+       D ----|    |     |
+             |    |     |
+       E ----| &#062;1 |-----o-------------------------- Y4
+             | =  |      
+       F ----|    |      
+             +----+
+
+
+     Futhermore all register outputs should be reseted asynchronously
+     when the inputs F and AsyncRe are high and they should be preseted
+     synchronously when the input SyncPre is high.
+     (To keep the circuit diagram as simple as possible the inputs
+     AsyncRe and SyncPre are not drawn in it.)
+
+
+Don't think about what the function of this circuit is - there is non.
+It is just an example.
+
+Well, and this is one of many possible pin designations:
+
+                           GAL22V10
+
+                           ---- ----
+                   Clock  1|       |24  +5V
+                       A  2|       |23  Y1
+                       B  3|       |22  Y2
+                       C  4|       |21  Y3
+                       D  5|       |20  Y4
+                       E  6|       |19  Enable1
+                       F  7|       |18  Enable2
+                      NC  8|       |17  NC
+                      NC  9|       |16  NC
+                      NC 10|       |15  NC
+                      NC 11|       |14  AsyncRe
+                    GND  12|       |13  SyncPre
+                           ---------
+
+The only thing which you have to keep in mind here is that the clock
+signal for the register outputs must be at pin 1 and that the outputs
+must be at OLMC pins (pin 14-23).
+
+To define the asynchronous reset and the synchronous preset for the register
+outputs the GAL assembler offers you the keywords AR (asynchronous reset) and
+SP (synchronous preset). Since AR and SP are keywords it is not allowed to
+use them as pin names when a GAL22V10 is used.
+
+
+The source file of this example looks like this:
+
+******************************************************
+GAL22V10
+22V10
+
+Clock   A       B  C  D  E       F       NC NC NC NC GND
+SyncPre AsyncRe NC NC NC Enable2 Enable1 Y4 Y3 Y2 Y1 VCC
+
+
+Y1.R  = A * B                   ; Y1 is a registered output =&#062; .R
+Y1.E  = Enable1
+
+Y2.R  = C
+Y2.E  = Enable2 * Y4            ; Attention: there is a feedback of Y4
+                                ; (Y4 is defined as output but it's
+                                ; used as input again)
+
+Y3    = Enable2 * Y4            ; there is a feedback again
+
+Y4    = D + E + F
+
+
+AR    = F * AsyncRe             ; define asynchronous reset
+
+SP    = SyncPre                 ; define synchronous preset
+
+
+DESCRIPTION
+******************************************************
+
+Instead of Y3 = Enable2 * Y4 you could also write:
+
+  Y3 = Enable2*D + Enable2*E + Enable2*F.
+
+But using a feedback is much more comfortable than using this long
+equation. Another reason for using a feedback is for example the
+tristate control of Y2. In tristate controls there is just one
+product term allowed, this means no ORs.
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="example16v8.html"><img src="prev.gif" alt="PREV" border=0></a><a href="example20ra10.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

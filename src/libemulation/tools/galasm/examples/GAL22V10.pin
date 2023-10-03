@@ -1,0 +1,29 @@
+
+
+ Pin # | Name     | Pin Type
+-----------------------------
+   1   | Clock    | Clock/Input
+   2   | A        | Input
+   3   | B        | Input
+   4   | C        | Input
+   5   | D        | Input
+   6   | E        | Input
+   7   | F        | Input
+   8   | NC       | Input
+   9   | NC       | Input
+  10   | NC       | Input
+  11   | NC       | Input
+  12   | GND      | GND
+  13   | SyncPre  | Input
+  14   | AsyncRe  | Input
+  15   | NC       | NC
+  16   | NC       | NC
+  17   | NC       | NC
+  18   | Enable2  | Input
+  19   | Enable1  | Input
+  20   | Y4       | Output
+  21   | Y3       | Output
+  22   | Y2       | Output
+  23   | Y1       | Output
+  24   | VCC      | VCC
+

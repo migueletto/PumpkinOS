@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>GAL-Disassembler</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="menmakejedec.html"><img src="prev.gif" alt="PREV" border=0></a><a href="menreasm.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+ JEDEC file parameter   Selecting this menu puts up a requester in which
+                        you can determine parameters concerning the writing
+                        of <a href="jedecfile.html">JEDEC files</a>.
+
+                        Security bit: If this is enabled, GALer will write
+                        JEDEC files in which a special flag is set.
+                        Reading this JEDEC file to program a GAL will bring
+                        up a requester in which you can choose to set the
+                        security bit after programming or not.
+
+                        Fuse-Checksum: If this is enabled, GALer will write
+                        JEDEC files with a checksum calculated over all
+                        fuses. Manually changed fuses (with text editor)
+                        will be detected by GALer and GALer will warn you
+                        that this JEDEC file has been changed when reading
+                        this file next time. You are allowed to change
+                        comments etc. but you are not allowed to change
+                        fuses ('0' and '1').
+
+                        File-Checksum: If this is enabled, GALer will write
+                        JEDEC files with a checksum calculated over all
+                        characters in this file. This means that you are
+                        not allowed to change anything in this file
+                        by using a text editor.
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="menmakejedec.html"><img src="prev.gif" alt="PREV" border=0></a><a href="menreasm.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<html>
+<head>
+  <title>Source File</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="software.html"><img src="prev.gif" alt="PREV" border=0></a><a href="installation.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.1 Source File</u>
+
+First a source file has to be created with a text editor. This source file
+must contain the following information:
+
+  1. The GAL type (GAL16V8 or GAL20V8 )
+
+  2. an 8 byte long comment, which will be written into the GAL as the
+     signature (see I.2)
+
+  3. The pin names - here pin numbers are replaced with names, which is
+     easier to oversee.
+
+  4. The Boolean equations
+
+  5. The keyword DESCRIPTION - after this you can place some desired text.
+     This text generally describes the GAL's function. That way you can know
+     years later what the GAL's intended use was.
+
+
+Before it's getting boreing here is a first example (be happy).
+
+Example 1:
+
+Assuming you need the following gates in your circuit:
+
+- one AND  with 3 inputs
+- one NAND with 2 Inputs
+- one OR with 2 inputs
+- one small digital circuit which feeds the outputs from 2 AND gates
+  to the inputs of one OR gate.
+
+Circuit diagram:
+(sorry for the European symbols)
+
+
+    AND:                        +----+                  W = A * B * C
+                          A ----|    |
+                          B ----| &amp;  |---- W
+                          C ----|    |
+                                +----+
+
+    NAND:                       +----+                  /X = D * E
+                          D ----|    |
+                                | &amp;  |o--- X
+                          E ----|    |
+                                +----+
+    OR:
+                                +----+                  Y = F + G
+                          F ----|    |
+                                | &#062;1 |---- Y
+                          G ----| =  |
+                                +----+
+
+    small  digital              +----+                  Z = H * I + J * K
+    circuit:              H ----|    |
+                                | &amp;  |----+
+                          I ----|    |    |   +----+
+                                +----+    +---|    |
+                                              | &#062;1 |---- Z
+                                +----+    +---|    |
+                          J ----|    |    |   +----+
+                                | &amp;  |----+
+                          K ----|    |
+                                +----+
+
+     Legend:
+        * : AND  - connection
+        + : OR - Connection
+        / : low active
+
+
+In order to create the source file we have to determine which type of GAL
+will suit our purpose.
+
+For the implementation of the above logic functions, we need a total of 11
+inputs and 4 outputs. From chapter I we know (or not?) that the type of GAL
+is dependant on the number of needed inputs.
+
+The number of inputs in turn depends on the mode (see
+<a href="gal16_20v8.html">pin designations of the various modes</a>). Since neither tristate
+nor register outputs are used, the GAL will be in mode 1 after programming.
+
+It therefore follows, the GAL16V8 has 10 inputs and 8 configurable outputs.
+Since we only need 4 outputs, we can program the rest of the outputs as inputs,
+so that we obtain the total required 11 inputs and 4 outputs.
+
+Therefore GAL16V8 is adequate for our purposes. GAL20V8 can also be used, but
+that leaves a lot of unused inputs (WASTE !).
+
+
+The second thing we need is a signature for the GAL. Remember, it can
+be up to 8 characters long. For example &quot;example&quot;.
+
+
+Now we have to define the pins.  The pins are named one after the other
+from 1 to 20. Pins that are not used should be named &quot;NC&quot; (not connected),
+ground with &quot;GND&quot; and +5V with &quot;VCC&quot;.
+
+here:    B  C   D   E   F  G  H  I  J  GND
+         K  NC  NC  NC  Z  Y  X  W  A  VCC
+
+that is:
+        Pin  1 := B     Input
+        Pin  2 := C     Input
+        Pin  3 := D     Input
+        Pin  4 := E     Input
+        Pin  5 := F     Input
+        Pin  6 := G     Input
+        Pin  7 := H     Input
+        Pin  8 := I     Input
+        Pin  9 := J     Input
+        Pin 10 := GND   Ground
+        Pin 11 := K     Input
+        Pin 12 := NC    Not Connected
+        Pin 13 := NC    Not Connected
+        Pin 14 := NC    Not Connected
+        Pin 15 := Z     Combinational Output
+        Pin 16 := Y     Combinational Output
+        Pin 17 := X     Combinational Output
+        Pin 18 := W     Combinational Output
+        Pin 19 := A     (Configurable Output defined as Input)
+        Pin 20 := VCC   Voltage Supply
+
+
+                     GAL16V8
+                    ---- ----
+                B  1|       |20  VCC
+                C  2|       |19  A
+                D  3|       |18  W
+                E  4|       |17  X
+                F  5|       |16  Y
+                G  6|       |15  Z
+                H  7|       |14  NC
+                I  8|       |13  NC
+                J  9|       |12  NC
+              GND 10|       |11  K
+                    ---------
+
+
+Next come the Boolean equations:
+
+        W  = A * B * C
+        /X = D * E
+        Y  = F + G
+        Z  = H * I + J * K
+
+Therewith we have all the parts required for the source file. Now the
+question arises, what format does such a file have?:
+
+In line 1 must be the type of GAL. Here  &quot;GAL16V8&quot;
+
+In line 2 must be the signature. Here  &quot;Example&quot;
+
+Then follow the pin declaration:
+
+         B  C   D   E   F  G  H  I  J  GND
+         K  NC  NC  NC  Z  Y  X  W  A  VCC
+
+Then the Boolean Equations:
+
+        W = A * B * C
+       /X = D * E
+        Y = F + G
+        Z = H * I + J * K
+and the keyword DESCRIPTION.
+
+Comments are introduced by a ';'.
+
+Now using a text editor you can create your source file, and save it with
+the title &quot;example.pld&quot;. Don't forget the extension &quot;.pld&quot;.
+
+This is how the file should look:
+
+(**** These characters designate the start and end of the file, please
+don't type it.)
+
+******************************************************
+GAL16V8         ; this is the GAL type
+Example         ; this is the signature
+
+B  C   D   E   F  G  H  I  J  GND       ; this is the pin declaration
+K  NC  NC  NC  Z  Y  X  W  A  VCC
+
+W  = A * B * C                  ; here are the pin definitions
+/X = D * E
+Y  = F + G
+Z  = H * I + J * K
+
+DESCRIPTION:
+here could be a comment which describes the function
+of this GAL
+******************************************************
+
+
+
+Negations ('/') in the pin declaration are considered in the Boolean
+equations. This means, if you use a '/' in the pin declaration and
+if you use the related pin in a Boolean equation this pin will be
+negated.
+
+<u>Example:</u>
+
+        A  B  /C  D .....  GND
+        K  L  M   N .....  VCC
+
+        N = C
+
+
+     This is the same:
+
+        A  B  C   D .....  GND
+        K  L  M   N .....  VCC
+
+        N = /C
+
+
+
+How do you obtain from this source file a programmed GAL? For that you
+need the program &quot;GALer&quot; which is described in the following sections.
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="software.html"><img src="prev.gif" alt="PREV" border=0></a><a href="installation.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

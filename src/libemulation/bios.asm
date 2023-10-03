@@ -1,0 +1,481 @@
+; BIOS source for 8086tiny IBM PC emulator (revision 1.21 and above). Compiles with NASM.
+; Copyright 2013-14, Adrian Cable (adrian.cable@gmail.com) - http://www.megalith.co.uk/8086tiny
+;
+; Revision 1.61
+;
+; This work is licensed under the MIT License. See included LICENSE.TXT.
+
+	cpu	8086
+
+; Here we define macros for some custom instructions that help the emulator talk with the outside
+; world. They are described in detail in the hint.html file, which forms part of the emulator
+; distribution.
+
+%macro	extended_get_rtc 0
+	db	0x0f, 0x01
+%endmacro
+
+org	100h				; BIOS loads at offset 0x0100
+
+main:
+
+	jmp	bios_entry
+
+; These values (BIOS ID string, BIOS date and so forth) go at the very top of memory
+
+biosstr	db	'8086tiny BIOS Revision 1.61!', 0, 0		; Why not?
+mem_top	db	0xea, 0, 0x01, 0, 0xf0, '03/08/14', 0, 0xfe, 0
+
+bios_entry:
+
+	; Set up initial stack to F000:F000
+
+	mov	sp, 0xf000
+	mov	ss, sp
+
+	push	cs
+	pop	es
+
+	cld
+
+	; DL starts off being the boot disk.
+	mov	[cs:boot_device], dl
+
+	; Check cold boot/warm boot. We initialise disk parameters on cold boot only
+
+	cmp	byte [cs:boot_state], 0	; Cold boot?
+	jne	boot
+
+	mov	byte [cs:boot_state], 1	; Set flag so next boot will be warm boot
+
+	; First, set up the disk subsystem. Only do this on the very first startup, when
+	; the emulator sets up the CX/AX registers with disk information.
+
+	; Compute the cylinder/head/sector count for the HD disk image, if present.
+	; Total number of sectors is in CX:AX, or 0 if there is no HD image. First,
+	; we put it in DX:CX.
+
+	mov	dx, cx
+	mov	cx, ax
+
+	mov	[cs:hd_secs_hi], dx
+	mov	[cs:hd_secs_lo], cx
+
+	cmp	cx, 0
+	je	maybe_no_hd
+
+	mov	word [cs:num_disks], 2
+	jmp	calc_hd
+
+maybe_no_hd:
+
+	cmp	dx, 0
+	je	no_hd
+
+	mov	word [cs:num_disks], 2
+	jmp	calc_hd
+
+no_hd:
+
+	mov	word [cs:num_disks], 1
+
+calc_hd:
+
+	mov	ax, cx
+	mov	word [cs:hd_max_track], 1
+	mov	word [cs:hd_max_head], 1
+
+	cmp	dx, 0		; More than 63 total sectors? If so, we have more than 1 track.
+	ja	sect_overflow
+	cmp	ax, 63
+	ja	sect_overflow
+
+	mov	[cs:hd_max_sector], ax
+	jmp	calc_heads
+
+sect_overflow:
+
+	mov	cx, 63		; Calculate number of tracks
+	div	cx
+	mov	[cs:hd_max_track], ax
+	mov	word [cs:hd_max_sector], 63
+
+calc_heads:
+
+	mov	dx, 0		; More than 1024 tracks? If so, we have more than 1 head.
+	mov	ax, [cs:hd_max_track]
+	cmp	ax, 1024
+	ja	track_overflow
+	
+	jmp	calc_end
+
+track_overflow:
+
+	mov	cx, 1024
+	div	cx
+	mov	[cs:hd_max_head], ax
+	mov	word [cs:hd_max_track], 1024
+
+calc_end:
+
+	; Convert number of tracks into maximum track (0-based) and then store in INT 41
+	; HD parameter table
+
+	mov	ax, [cs:hd_max_head]
+	mov	[cs:int41_max_heads], al
+	mov	ax, [cs:hd_max_track]
+	mov	[cs:int41_max_cyls], ax
+	mov	ax, [cs:hd_max_sector]
+	mov	[cs:int41_max_sect], al
+
+	dec	word [cs:hd_max_track]
+	dec	word [cs:hd_max_head]
+	
+; Main BIOS entry point. Zero the flags, and set up registers.
+
+boot:	mov	ax, 0
+	push	ax
+	popf
+
+	push	cs
+	push	cs
+	pop	ds
+	pop	ss
+	mov	sp, 0xf000
+	
+; Set up the IVT. First we zero out the table
+
+	cld
+
+	xor	ax, ax
+	mov	es, ax
+	xor	di, di
+	mov	cx, 512
+	rep	stosw
+
+; Then we load in the pointers to our interrupt handlers
+
+	mov	di, 0
+	mov	si, int_table
+	mov	cx, [itbl_size]
+	rep	movsb
+
+; Set pointer to INT 41 table for hard disk
+
+	mov	cx, int41
+	mov	word [es:4*0x41], cx
+	mov	cx, 0xf000
+	mov	word [es:4*0x41 + 2], cx
+
+; Set up last 16 bytes of memory, including boot jump, BIOS date, machine ID byte
+
+	mov	ax, 0xffff
+	mov	es, ax
+	mov	di, 0
+	mov	si, mem_top
+	mov	cx, 16
+	rep	movsb
+
+; Set up the BIOS data area
+
+	mov	ax, 0x40
+	mov	es, ax
+	mov	di, 0
+	mov	si, bios_data
+	mov	cx, 0x100
+	rep	movsb
+
+; Clear video memory
+
+	mov	ax, 0xb800
+	mov	es, ax
+	mov	di, 0
+	mov	cx, 80*25
+	mov	ax, 0x0700
+	rep	stosw
+
+; Get initial RTC value
+
+	push	cs
+	pop	es
+	mov	bx, timetable
+	extended_get_rtc
+	mov	ax, [es:tm_msec]
+	mov	[cs:last_int8_msec], ax
+
+; Read boot sector from FDD, and load it into 0:7C00
+
+	mov	ax, 0
+	mov	es, ax
+
+	mov	ax, 0x0201
+	mov	dh, 0
+	mov	dl, [cs:boot_device]
+	mov	cx, 1
+	mov	bx, 0x7c00
+	int	13h
+
+; Jump to boot sector
+
+	jmp	0:0x7c00
+
+; ************************* INT 19h = reboot
+
+int19:
+	jmp	boot
+
+; ************************* INT 1Eh - diskette parameter table
+
+int1e:
+		db 0xdf ; Step rate 2ms, head unload time 240ms
+		db 0x02 ; Head load time 4 ms, non-DMA mode 0
+		db 0x25 ; Byte delay until motor turned off
+		db 0x02 ; 512 bytes per sector
+		db 18	; 18 sectors per track (1.44MB)
+		db 0x1B ; Gap between sectors for 3.5" floppy
+		db 0xFF ; Data length (ignored)
+		db 0x54 ; Gap length when formatting
+		db 0xF6 ; Format filler byte
+		db 0x0F ; Head settle time (1 ms)
+		db 0x08 ; Motor start time in 1/8 seconds
+
+; ************************* INT 41h - hard disk parameter table
+
+int41:
+
+int41_max_cyls	dw 0
+int41_max_heads	db 0
+		dw 0
+		dw 0
+		db 0
+		db 11000000b
+		db 0
+		db 0
+		db 0
+		dw 0
+int41_max_sect	db 0
+		db 0
+
+; Internal state variables
+
+num_disks	dw 0	; Number of disks present
+hd_secs_hi	dw 0	; Total sectors on HD (high word)
+hd_secs_lo	dw 0	; Total sectors on HD (low word)
+hd_max_sector	dw 0	; Max sector number on HD
+hd_max_track	dw 0	; Max track number on HD
+hd_max_head	dw 0	; Max head number on HD
+boot_state	db 0
+
+; Default interrupt handlers
+
+int0:
+int1:
+int2:
+int3:
+int4:
+int5:
+int6:
+int7:
+int8:
+int9:
+inta:
+intb:
+intc:
+intd:
+inte:
+intf:
+int10:
+int11:
+int12:
+int13:
+int14:
+int15:
+int16:
+int17:
+int18:
+int1a:
+int1b:
+int1c:
+int1d:
+	iret
+
+; Standard PC-compatible BIOS data area - to copy to 40:0
+
+bios_data:
+
+com1addr	dw	0
+com2addr	dw	0
+com3addr	dw	0
+com4addr	dw	0
+lpt1addr	dw	0
+lpt2addr	dw	0
+lpt3addr	dw	0
+lpt4addr	dw	0
+equip		dw	0b0000000000100001
+		db	0
+memsize		dw	0x280
+		db	0
+		db	0
+        	db	0
+        	db	0
+		db	0
+kbbuf_head	dw	kbbuf-bios_data
+kbbuf_tail	dw	kbbuf-bios_data
+kbbuf: times 32	db	'X'
+drivecal	db	0
+diskmotor	db	0
+motorshutoff	db	0x07
+disk_laststatus	db	0
+times 7		db	0
+vidmode		db	0x03
+vid_cols	dw	80
+page_size	dw	0x1000
+		dw	0
+curpos_x	db	0
+curpos_y	db	0
+times 7		dw	0
+cur_v_end	db	7
+cur_v_start	db	6
+disp_page	db	0
+crtport		dw	0x3d4
+		db	10
+		db	0
+times 5		db	0
+clk_dtimer	dd	0
+clk_rollover	db	0
+ctrl_break	db	0
+soft_rst_flg	dw	0x1234
+		db	0
+num_hd		db	0
+		db	0
+		db	0
+		dd	0
+		dd	0
+kbbuf_start_ptr	dw	0x001e
+kbbuf_end_ptr	dw	0x003e
+vid_rows	db	25         ; at 40:84
+		db	0
+		db	0
+vidmode_opt	db	0 ; 0x70
+		db	0 ; 0x89
+		db	0 ; 0x51
+		db	0 ; 0x0c
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+kb_mode		db	0
+kb_led		db	0
+		db	0
+		db	0
+		db	0
+		db	0
+boot_device	db	0
+crt_curpos_x	db	0
+crt_curpos_y	db	0
+key_now_down	db	0
+next_key_fn	db	0
+cursor_visible	db	1
+escape_flag_last	db	0
+next_key_alt	db	0
+escape_flag	db	0
+notranslate_flg	db	0
+this_keystroke	db	0
+this_keystroke_ext		db	0
+timer0_freq	dw	0xffff ; PIT channel 0 (55ms)
+timer2_freq	dw	0      ; PIT channel 2
+cga_vmode	db	0
+vmem_offset	dw	0      ; Video RAM offset
+ending:		times (0xff-($-com1addr)) db	0
+
+; Interrupt vector table - to copy to 0:0
+
+int_table	dw int0
+          	dw 0xf000
+          	dw int1
+          	dw 0xf000
+          	dw int2
+          	dw 0xf000
+          	dw int3
+          	dw 0xf000
+          	dw int4
+          	dw 0xf000
+          	dw int5
+          	dw 0xf000
+          	dw int6
+          	dw 0xf000
+          	dw int7
+          	dw 0xf000
+          	dw int8
+          	dw 0xf000
+          	dw int9
+          	dw 0xf000
+          	dw inta
+          	dw 0xf000
+          	dw intb
+          	dw 0xf000
+          	dw intc
+          	dw 0xf000
+          	dw intd
+          	dw 0xf000
+          	dw inte
+          	dw 0xf000
+          	dw intf
+          	dw 0xf000
+          	dw int10
+          	dw 0xf000
+          	dw int11
+          	dw 0xf000
+          	dw int12
+          	dw 0xf000
+          	dw int13
+          	dw 0xf000
+          	dw int14
+          	dw 0xf000
+          	dw int15
+          	dw 0xf000
+          	dw int16
+          	dw 0xf000
+          	dw int17
+          	dw 0xf000
+          	dw int18
+          	dw 0xf000
+          	dw int19
+          	dw 0xf000
+          	dw int1a
+          	dw 0xf000
+          	dw int1b
+          	dw 0xf000
+          	dw int1c
+          	dw 0xf000
+          	dw int1d
+          	dw 0xf000
+          	dw int1e
+
+itbl_size	dw $-int_table
+
+; INT 8 millisecond counter
+
+last_int8_msec	dw	0
+
+; This is the format of the 36-byte tm structure, returned by the emulator's RTC query call
+
+timetable:
+
+tm_sec		equ $
+tm_min		equ $+4
+tm_hour		equ $+8
+tm_mday		equ $+12
+tm_mon		equ $+16
+tm_year		equ $+20
+tm_wday		equ $+24
+tm_yday		equ $+28
+tm_dst		equ $+32
+tm_msec		equ $+36

@@ -1,0 +1,1366 @@
+.Overview of zmac
+zmac is a Z-80 macro cross-assembler. It has all the features you'd
+expect. It assembles the specified input file (with a '.z' extension
+if there is no pre-existing extension and the file as given doesn't
+exist) and produces program output in many different formats@format.
+It also produces a nicely-formatted
+listing of the machine code and cycle counts alongside the source
+in a ".lst" file.
+
+To reduce clutter and command line option usage, by default all zmac output is put
+into an (auto-created) _zout_ subdirectory.  For _file.z_ the listing
+will be in _zout/file.lst_, the TRS-80 executable format in _zout/file.cmd_
+and so on.  For more friendly usage in make files and integrated development
+environments the _-o_, _--oo_, _--xo_ and _--xd_ options may be used to select
+sepcific output file formats and where they are written.
+
+Undocumented@undoc Z-80 instructions are supported as well as 8080 and
+Z-180 (aka HD64180).
+
+zmac strives to be a powerful assembler with expressions familiar to C
+programmers while providing good backward compatibility with original
+assemblers such as Edtasm, MRAS and Macro-80.
+---
+.Usage
+zmac
+[ --help ]
+[ --version ]
+[ --dep ]
+[ --mras ]
+[ --od dir ]
+[ --oo sfx1,sfx2 ]
+[ --xo sfx1,sfx2 ]
+[ --dri ]
+[ --rel ]
+[ --rel7 ]
+[ --nmnv ]
+[ --z180 ]
+[ --fcal ]
+[ --doc ]
+[ --zmac ]
+[ -8bcefghijJlLmnopstz ]
+[ filename[.z] ]
+
+Space-separated arguments in the ZMAC__ARGS environment variable are added to
+the end of the command line.
+
+.Options
+
+ --help
+  Display a list of options and a terse description of what the options do.
+ 
+ --version
+  Print zmac version name.
+ 
+ --mras
+  MRAS compatibility mode.  Any _?_ in a label will be expanded to the
+  current module identifier as set by _*mod_. Operator precedence@mrasord
+  and results are changed.
+ 
+ --od dir
+  Place output files in _dir_ instead of the default "zout" subdirectory.
+  Creates _dir_ if necessary.
+ 
+ --oo hex,cmd
+  Output only the the file types by suffix.  Multiple --oo arguments may
+  be used.  "--oo lst,cas" is equivalent to "--oo lst --oo cas".
+  See "Output Formats" for a list of output types by suffix@format.
+ 
+ --xo tap,wav
+  Do not output the file type types listed by suffix.
+ 
+ --dri
+  Enable compatibility with Digital Research (CP/M) assemblers:
+  Ignores dollar signs in constants and symbols.
+  Silences a warning when using Z80.LIB.
+  Allows the use of '*' in first column for comment lines.
+  Accepts $-MACRO directives.
+ 
+ --nmnv
+  Do not interpret Z-80 or 8080 mnemonics as values in expressions.
+ 
+ --rel
+  Output ".rel" (relocatable object file) format only.  Exported symbols are
+  truncated to length 6.
+ 
+ --rel7
+  Output ".rel" (relocatable object file) format only.  Exported symbols are
+  truncated to length 7.
+ 
+ --zmac
+  zmac compatibility mode.  _defl_ labels are undefined after each pass.
+  Quotes and double quotes are stripped from macro arguments before expansion.
+  _$_ is ignored in identifiers allowing _foo$bar_ to construct identifiers
+  in macro expansions.  Use _`_ (backquote) instead in normal mode.  Labels
+  starting with _"."_ are temporary and are reset whenever a non-temporary
+  label is defined (thus they may be reused).  Labels starting with _"__"_
+  are local to their file thus avoid multiple definition when brought in
+  with _include_.
+ 
+ --z180
+  Use Z-180 timings and extended instructions.  Undocumented Z-80 instructions
+  will generate errors as the Z-180 (or H64810) does not support them.
+  Equivalent to _.z180_ pseudo-op.
+ 
+ --dep
+  Print all files read by _include_, _incbin_ and _import_.
+ 
+ --doc
+  Print this documentation in HTML format to standard output.
+ 
+ -Pk=number
+  Set _@@k_ to the given numeric value before assembly.  Up to 10 parameters
+  can be set from 0 though 9.  _-Pk_ is shorthand for _-Pk=-1_.
+  For example, _P4=$123_ effectively puts _@@4 equ $123_ at the top of the
+  first file.
+ 
+ -Dsymbol
+  Define _symbol_ to be 1 before assembly.
+ 
+ --fcal
+  Always treat an indentifier in the first column as a label.  zmac uses
+  various heuristics in the case of ambiguity when a label does not have
+  a colon.  This option turns heuristics off.
+ 
+ -8
+  Accept 8080 mnemonics preferentially and use 8080 instruction timings.
+  Equivalent to _.8080_ pseudo-op.
+ 
+ -b
+  Don't generate any machine code output at all.
+ 
+ -c
+  Don't display cycle counts in the listing.
+ 
+ -e
+  Omit the "error report" section in the listing.
+ 
+ -f
+  List instructions not assembled due to "_if_" expressions being
+  false. (Normally these are not shown in the listing.)
+ 
+ -g
+  List only the first line of equivalent hex for a source line.
+ 
+ -h
+  Display a list of options and a terse description of what the options do.
+  (same as --help)
+ 
+ -i
+  Don't list files included with _include_, _read_ or _import_.
+ 
+ -I dir
+  Add _dir_ to the end of the include file search path.
+ 
+ -j
+  Promote relative jumps and _DJNZ_ to absolute equivalents as needed.
+ 
+ -J
+  Error if an absolute jump could be replaced with a relative jump.
+ 
+ -l
+  List to standard output.
+ 
+ -L
+  Generate listing no matter what. Overrides any conflicting options.
+ 
+ -m
+  List macro expansions.
+ 
+ -n
+  Omit line numbers from listing.
+ 
+ -o filename.cmd
+  Output only the named file.  Multiple "-o" options can be used to name a
+  set of different files.
+ 
+ -p
+  Use a few linefeeds for page break in listing rather than ^L.
+ 
+ -P
+  Output listing for a printer with headers, multiple symbols per column, etc.
+ 
+ -s
+  Omit the symbol table from the listing.
+ 
+ -t
+  Only output number of errors instead list of each one.
+ 
+ -z
+  Accept Z-80 mnemonics preferentially and use Z-80 instruction timings.
+  Equivalent to _.z80_ pseudo-op.
+---
+.Input Format
+
+zmac uses the standard Zilog mnemonics, and the pseudo-ops are also
+largely as you'd expect.
+
+A "_._" may optionally preceeed any psuedo-op.
+For example, "_.org_" and "_org_" are treated as equivalent.
+
+Input can be upper or lowercase.
+
+Comments start with _;_ and carry on to the end of the line.
+
+Number constants can take a trailing h or a leading $ or 0x for hex,
+a trailing b for binary, a trailing o or q for octal, or a trailing
+d for decimal.
+
+_'LH'_ (any length 2 string) can be treated as a number whose value
+is _'H'_ * 256 + _'L'_.
+
+For compatibility and to ease writing code that generates code, any
+mnemonic can be used as a data value.  For example, _mvi a,xra_ will
+load A register with $A8.  And _dw ldir_ will output the same data a _ldir_
+by itself (_ldir_ evaluates to $B0ED).
+A full table@mneval of mnemonics and their values is in Mnemonic Values.
+The --nmnv command line option turns off this feature.
+
+Labels are declared with _label:_ or just _label_ - indentation is unimportant.
+Labels can be up to 40 chars long.  They can start with and contain 
+letters, digits, _$_, _._, _?_, _@_ and __.  Ambiguous identifiers like
+_$FCB_ will be treated as hex constants unless defined as a label.  Labels
+declared with two colons (_label::_) make the label public.
+
+Single quotes are ignored at the end of identifiers allowing non-binding
+notation@prime indicating alternate register use during heavy applications
+of _exx_ and _ex_.
+
+Here is how other things work.  Numbers are used as examples, but a full
+expression@expr can be used in their place.
+
+..Data
+
+_defb 42_
+|A byte.  _ascii_, _byte_, _db_, _defm_, _dm_ and _text_ are synonyms.
+
+_defb 'foobar'_
+|An ASCII character string (not NUL-terminated).
+|Double quotes can also be used.
+
+_defb 'Who needs anything more than CP/M?',13,10,'$'_
+|Strings and bytes can mix together.
+
+_defw 2112_
+
+_defw $123,0x456_
+|A word (16 bits).  _word_ and _dw_ are synonyms.
+
+_def3 $123456_
+|A 3 byte word (24 bits). _d3_ is a synonym.
+
+_defd $12345678_
+|A double word (32 bits). _dword_ is a synonym.
+
+_defs 500_
+|Skip output ahead 500 bytes.  This will insert 500 zeros in the ".ams"
+|and ".cim" output files or if inside a ".phase" section.
+|_block_, _ds_ and _rmem_ are synonyms.
+
+_dc 'string'_
+|Like _ascii_ but accepts only a single string and the high bit of the
+|last character will be set. _bytes_ is a synonym.
+
+_dc count,value_
+|Repeat the byte _value_ a total of _count_ times.  Similar to _defs_
+|except that memory is always filled with _value_.
+
+_incbin file_
+|Inserts the raw contents of the file into the assembly.  Simpler for
+|large amounts of data.
+
+..Symbols
+
+_label equ 100_
+|Define a symbol to have a fixed value.  The symbol can be used before it
+|is defined.  A symbol defined with _equ_ or as a label can be defined only
+|once, except that a symbol defined with _equ_ may be redefined to the
+|same value.
+
+_varname defl 200_
+|Define a symbol to have a changeable value.  The symbol cannot be used
+|before it is defined, and it can be redefined to a different value later
+|with another _defl_. _aset_, _set_ and _=_ are synonyms (despite _set_
+|also being a Z-80 mnemonic).
+
+_varname OP = expression_
+|Shorthand for _varname defl varname OP expression_.  Allows for C-like
+|handling of variable such as _var += 5_.  _OP_ can be _+_, _-_, _*_, _/_,
+|_%_, _&_, _|_, _^_, _<<_, _>>_, _&&_ or _||_.
+
+_varname++_
+|Shorthand for _varname defl varname + 1_
+
+_varname--_
+|Shorthand for _varname defl varname - 1_
+
+_min_
+
+_max_
+|Same as _defl_ except that the symbol is defined as the
+|smaller or bigger of two comma-separated expressions.
+
+_name equ register_
+|Define a symbol to be an alias of a register.  _count equ bc_ lets _count_
+|stand for register _bc_ so _push count_ and _dec count_ will both operate on
+|register _bc_.
+
+_*mod_
+|Increment the internal module name string.  The first time this results
+|in "a".  Then "b", "c", ... "z".  Then "aa", "ab", "ac", etc. all the way
+|up to "zzzz".  The module name string is used in _--mras_ mode where "?" in
+|label names is replaced with the current module name.
+
+_extern lab1,lab2,..._
+|The listed labels are defined in an external module for later linking.
+|No effect unless zmac is producing ".rel" output.
+|_ext_ and _extrn_ are synonyms.
+
+_public lab1,lab2,..._
+|The given labels will be visible to external modules when linking.
+|No effect unless zmac is producing ".rel" output.
+|_global_ and _entry_ are synonyms.
+
+_label ++_
+|Equivalent to _label defl label + 1_.
+
+_label --_
+|Equivalent to _label defl label - 1_.
+
+_label += 10_
+
+_label -= 10_
+
+|Equivalent to _label defl label + 10_ and _label defl label - 10_ respectively.
+|Also works for _*=_, _/=_, _%=_, _|=_, _&=_, _^=_, _<<=_ and _>>=_.
+
+..Location Control
+
+_org 9000h_
+|Set the address to assemble to 0x9000.
+
+_phase address_
+|Continue to produce code and data for loading at the current address
+|but assemble instructions and define labels as if they originated at
+|the given address.  Useful when producing code that will be copied to
+|a different location before being executed (e.g., an overlay).
+
+_dephase_
+|End _phase_ mode assembly.
+
+_aseg_
+_cseg_
+_dseg_
+|Switch to the absolute, code and data segments respectively.
+|No effect unless zmac is producing ".rel" output.
+
+_common /name/_
+|Set the address to the start of the selected common block.  The blank
+|common block will be selected if name is empty or all blanks or
+|omitted entirely.
+|No effect unless zmac is producing ".rel" output.
+
+..Input Control
+
+_end_
+|Ends the input.  Any lines after an _end_ are silently ignored.
+|If an arg is given, it declares the entry address for the program.
+|This has no effect in ".cim" output. In ".hex" output
+|it generates an S-record directing 0 bytes of data to be loaded
+|at the given address.  It is required for ".500.cas", ".1000.cas"
+|and ".1500.cas" output.
+
+_if_ ... [ _else_ ... ] _endif_
+|For conditional assembly. If you do _if foo_ and _foo_ evaluates to
+|zero, all the lines up until the next corresponding _else_ or _endif_
+|are completely ignored.  Conversely, if _foo_ evaluates to non-zero, any
+|lines from a corresponding _else_ to the _endif_ are ignored.  Ifs can
+|be nested.  _cond_/_endc_ are synonyms for _if_/_endif_.
+
+_ifdef symbol_
+|Like _if_, but tests if _symbol_ has been defined.  Declaring a symbol
+|as external counts as it being defined.
+
+_ifndef symbol_
+|Like _if_, but tests if _symbol_ has not yet been defined.
+
+_import file_
+|Like _include_ but will only bring in the file once.  File tracking is done
+|using only the file name so, for example, an _import file_ will stop
+|both _import ./file_ and _import dir/file_ even if they actually refer to
+|different files.
+
+_include file_
+|Include a file. Like C's (well, cpp's) #include and follows the same
+|include path search rules, but the filename arg
+|lacks the angle brackets or quotes (though single or double quotes may be used).
+|_read_ is a synonym.  _*include file_ also works if started in the first
+|column.  In _--mras_ mode _".asm"_ will be added if _file_ has
+|no suffix.
+
+_maclib file_
+|Like _include_ but adds _.lib_ to the file name so includes _file.lib_.
+
+_comment X_
+|Suspend assembly until the next occurence of character _X_ on a line.
+|The rest of the line will be ignored.  A multi-line comment.
+
+_assert expr_
+|Stop assembly if _expr_ is non-zero.
+
+..Cycle Counting
+
+_sett expr_
+|Set the current T-state count to _expr_. _tstate_ is a synonym.
+
+_setocf expr_
+|Set the current opcode fetch count to _expr_.
+
+..Code Generation
+
+_8080_
+|Make cycle counting operators return 8080 cycle counts and
+|interpret any ambiguous assembly statements as Intel 8080 mnemonics.
+|_CP_ will be interpreted as "call on positive" and _JP_ as "jump on positive".
+
+_z80_
+|Make cycle counting operators return Z-80 cycle counts and
+|interpret any ambiguous assembly statements as Zilog Z-80 mnemonics.
+|_CP_ will be interpreted as "compare accumulator" and _JP_ as "jump unconditionally".
+
+_z180_
+|Allow assembly of Z-180 instructions.
+|Make cycle counting operators return Z-180 cycle counts and
+|interpret any ambiguous assembly statements as Zilog Z-180 mnemonics.
+|_CP_ will be interpreted as "compare accumulator" and _JP_ as "jump unconditionally".
+
+_jperror enable_
+|If _enable_ is non-zero, turn on errors when _JR_ instructions could be used
+|instead of _JP_, off otherwise.  Used to check existing code for situations
+|where shorter code could be generated.  Same as _-J_ option.
+|No effect if in 8080 mode.
+
+_jrpromote enable_
+|If _enable_ is non-zero, _JR_ and _DJNZ_ instructions will be promoted to
+|equivalent _JP_ and _DEC##B_, _JP##NZ_ instructions if the relative branch
+|offset is out of range.  If _enable_ is zero, promotion is disabled.
+|Same as the _-j_ option.
+|No effect if in 8080 mode.
+
+..Undocumented Instructions\undoc
+
+Most Z-80 chips support a number of undocumented instructions that were part of
+the original design but not made an offical part of the Zilog specification.
+These instructions may not be supported by all Z-80 chips, especially
+licensed variants, but are fairly widely available nonetheless.
+
+_sl1 r_
+|Same as _sla r_ but shifts a 1 into the lower bit of _r_ rather than a 0.
+
+_in (c)_
+|Inputs a byte from port _c_ but does not store the value.  Flags are still
+|set as with the normal _in r,(c)_ instruction.
+
+_out (c),0_
+|Outputs a zero to port _c_.
+
+_bit/set/res n,(ix+d),r_
+
+_rlc/rrc/rl/rr/sla/sl1/sra/srl (iy+d),r_
+|Same as the corresponding operation on just _(ix+d)_ or _(iy+d)_ but with
+|the result being stored both into _(ix+d)_ and register _r_.  Except for _bit_
+|which has no effect on _r_. zmac supports the syntax to allow those
+|instruction patterns to be generated.
+
+The upper and lower bytes of the _ix_ and _iy_ can be used in a number of
+instructions much in the same way as _d_ and _e_ correspond to the upper and
+lower bytes of _de_.  zmac names these _ixh_, _ixl_, _iyh_ and _iyl_ and
+are referred to generically as _ixylh_ here.
+
+_inc/dec/add/adc/sub/sbc/and/xor/or/cp ixylh_
+|Arithmetic or logical operation on _ix_ or _iy_ high or low byte.
+
+_ld a/b/c/d/e,ixylh_
+|Load register with _ix_ or _iy_ high or low byte.
+
+_ld ixylh,a/b/c/d/e_
+|Load _ix_ or _iy_ high or low byte with register.
+
+_pfix_
+
+_pfiy_
+|Output $DD and $FD prefix bytes.  The Z-80 allows multiple prefix bytes
+|for IX and IY instructions.  This allows you to specify them abstractly.
+|There is little purpose except for delaying an interrupt or confusing
+|disassemblers.
+
+..Miscellaneous
+
+_pragma str ..._
+|Like C's #pragma, a generic hook for special purpose operations.  Only two
+|are currently defined.
+
+|_pragma bds rest-of-line_ to
+|output _rest-of-line_ to the _.bds_ output file.
+
+|_pragma mds rest-of-line_ to
+|output _rest-of-line_ to the _.mds_ output file.
+
+|The _.bds_ output format supports setting initial values for Z-80 registers
+|and I/O ports so _pragma_ gives you access to that.
+
+|The _.mds_ output format is a MAME debug script thus additional initial
+|debugging commands may be output.  Of particular use on the TRS-80 Model II
+|is _pragma mds ib@$ff=1_ which maps page 1 of RAM into $8000 .. $FFFF
+|and thus allows programs to load into that area.
+
+_name str_
+|Set the name of the output module to _str_.  For compatibility reasons
+|_str_ may be parenthesized (e.g., "_name ('foo')_").  Not all output
+|formats support an internal name and many have severe length limits.
+
+_rsym_ and _wsym_
+|Read/write a symbol file. These simply load/save the currently defined
+|symbols from/to the file specified (in a non-portable format). _rsym_
+|takes place at the point it is encountered in the file (on the first
+|pass); _wsym_ is delayed until assembly has finished.
+
+..Listing Pseudo-ops
+
+There are several pseudo-ops for controlling the listing. None of
+these ops appear in the listing themselves:
+
+_eject_
+|Start a new listing page.
+
+_nolist_
+|Do nothing. This can be used to have a comment in the source but not
+|the listing, I suppose.
+
+_elist_, _flist_, _glist_, _mlist_
+|These have the same effect as the similarly-named command-line
+|options, though possibly with the sense reversed depending on the
+|default. Use an arg >0 (or no arg) to enable, and an arg <0 to
+|disable.
+
+_list arg_
+|Turns output to listing file (.list) off if _arg_ < 0 or on if _arg_ > 0.
+|If no _arg_ supplied then listing is enabled.
+|Use this to avoid listing certain parts of the source.
+|In _--mras_ mode _arg_ must be either _on_ or _off_ and
+|_*list_ can be used if started in the first column.
+
+_title_
+|Set title (used in listing and symbol file).
+
+_space arg_
+|Output arg blank lines in the listing, or one line if no arg is given.
+
+---
+
+.Expressions\expr
+
+Expressions feature a full set of C operators with the same precedence
+rules and some common assembler extensions and names.
+Here is the complete list of operators, highest-precedence first.
+Operators separated only by a space are synonyms; for example, _~_
+is the same as _not_.
+
+_!_ (logical), _~ not_ (bitwise), _+_ (unary), _-_ (unary), _low_, _high_, _t_, _tilo_, _tihi_, _ocf_
+
+_*_, _/_, _% mod_
+
+_+_, _-_
+
+_<< shl_, _>> shr_
+
+_< lt_, _> gt_, _<= le_, _>= ge_
+
+_== = eq_, _!= <> ne_
+
+_& and_ (bitwise)
+
+_^ xor_ (bitwise)
+
+_| or_ (bitwise)
+
+_&&_
+
+_||_
+
+_? :_  (ternary choice operator)
+
+Expressions\mrasord change significantly in _--mras_ mode:
+|Evaluation is strictly left to right.  Except for _and_, _or_,
+|_xor_ and _=_.  This doesn't break compatibility as original MRAS
+|source code only allows _.and._, _.or._ and _.xor._ but the precedence
+|difference may surprise if code is added.
+
+|_!_ is bitwise OR instead of logical not.
+
+|_<_ is left shift (or right shift when shift amount is negative)
+
+|MRAS operators (_.and._ _.eq._ _.ge._ _.gt._ _.high._ _.le._ _.low._
+|_.lt._ _.mod._ _.ne._ _.not._ _.or._ _.shl._ _.shr._ _.xor._)
+|are recognized even if apparently in identifers.  (e.g., _a.or.b_ is
+|seen as _a .or. b_).
+
+|Logical operators return -1 for true and 0 for false.  Normally
+|zmac, like C, uses 1 for true.
+
+You can use normal parentheses or square brackets to override
+the precedence rules. Square brackets can be used where parentheses would
+conflict with Z-80 mnemonic syntax, but this is not necessary in any
+practical case.
+
+The _?_ may need spaces around it to distinguish it from a label that
+has _?_ in it.
+
+The unary operators not familiar to C programmers:
+
+ low expr
+  Returns low 8 bits of _expr_
+ 
+ high expr
+  Returns high 8 bits of _expr_
+ 
+ t expr
+  Current count of T-states up to memory location _expr_
+ 
+ tilo expr
+  Low count of T-states used by instruction at memory location _expr_
+ 
+ tihi expr
+  High count of T-states used by instruction at memory location _expr_
+ 
+ ocf expr
+  Current count of opcode fetches up to memory location _expr_
+---
+.Macros
+The following defines a macro named m with zero or more formal parameters
+_p1_, _p2_, ..., _pn_, zero or more local symbols _?s1_, _?s2_, ..., _?sm_,
+and body _b1_, _b2_, ...:
+
+ _m macro p1, p2, ..., pn, ?s1, ?s2, ..., ?sm_
+  
+ _####b1_
+  
+ _####b2_
+  
+ _####..._
+  
+ _####endm_
+
+The macro is called by writing:
+|_m v1, v2, ..., vn_
+
+A macro call expands to the text of the macro's body, with each 
+occurrence of a formal parameter _pk_ replaced by the corresponding 
+value _vk_, and with each local symbol _?sk_ replaced by a new, unique 
+symbol invented for this call.  Invented symbols begin with _?_,
+so you should avoid using such symbols elsewhere in your program.
+
+zmac currently does not check that you have provided the right number 
+of parameters when calling a macro.  If you provide too few, unmatched 
+formals are replaced with the empty string.  If you provide too 
+many, the additional values begin to replace local symbols as if 
+they were ordinary parameters.  (This could be considered a feature.)  
+After the local symbols are all replaced, additional parameters 
+are silently ignored.
+
+For compatibility with Macro-80, the first line of a macro definition can
+list other labels that will be treated locally:
+
+|_####local lab1,lab2,..._
+
+Each time the macro is expanded the local labels are replaced with unique
+names thus avoiding multiple definition problems.
+
+For compatability with MRAS, macro arguments may be preceeded by _#_
+in their definition and use.
+
+Any _`_ (backquote) in a macro is ignored thus allowing a macro to
+construct identifiers.  For example:
+
+ _move macro dir_
+  
+ _######ld`dir`r_
+  
+ _######endm_
+
+Invoking _move i_ will construct a _ldir_ block move instruction.
+
+For compatibility, _&_ can also be used as in MAC to concatenate
+macro parameters.  This conflicts with zmac's bitwise and operator but
+you can use the _and_ synonym in macros to avoid the conflict.
+
+In _--mras_ mode arguments will be expanded even if they are inside other
+identifiers.  The _move_ could be written:
+
+ _move macro dir_
+  
+ _######lddirr_
+  
+ _######endm_
+
+Macro definitions can contain macro definitions which will be defined
+when the outer macro is first exapnded.  Macros can be redefined as
+well.
+
+Macro expansion continues to the _endm_ directive but can be stopped
+prematurely by the _exitm_ directive.  Typically the _exitm_ is inside
+some conditional part of the macro.
+
+Parameters passed to a macro can be empty and are tested with the _nul_
+operator:
+
+ _if nul &par_
+  
+ _..._
+  
+ _endif_
+
+Macro parameters can contain commas if grouped inside _<_ and _>_.
+Or a comma can be escaped with _^_ which can also escape spaces and other
+special characters.  It is also be put in front of a macro parameter
+name inside the expansion to suppress the replacement by its value.
+
+Expansion of parameters in a macro body is purely textual.  This can
+lead to surprises in complex situations.  The _%_ character can be used
+to force a macro parameter to be replaced with the evaluation of it
+as an expression.
+
+
+..Inline Macros
+
+zmac supports the commonly available _rept_, _irp_ and _irpc_ inline macros
+
+_rept_ repeats its block the given number of times.  This will output 10
+_nop_ instructions:
+
+ _rept 10_
+  
+ _######nop_
+  
+ _endm_
+
+_irpc_ runs through a string of letters assigning them to a variable and
+expanding the macro block each time.  For example, this will load 7 into
+registers _b_, _d_ and _h_:
+
+ _irpc reg,bdh_
+  
+ _######ld &reg,7_
+  
+ _endm_
+
+_irp_ runs through a list of parameters assiging each entry to a variable
+and expanding the macro block.  Here we load _bc_, _de_ and _hl_ with 0:
+
+ _irp rpair,<bc,de,hl>_
+  
+ _######ld &rpair,0_
+  
+ _endm_
+
+Lists can be nested.  Here's an example of and _irp_ passing lists on down
+to another _irp_:
+
+ _irp listlist,<<one,two,three>,<four,five,six>>_
+  
+ _irp list,<listlist>_
+  
+ _ascii '&list'_
+  
+ _endm_
+  
+ _endm_
+
+
+---
+.Compatibility
+
+zmac is broadly compatible with many original Z-80 and 8080 assemblers
+because it accepts many different names for common operations and has
+liberal identifier and numeric formats.  It also accepts most simple
+usage of macros.
+
+When assembling old code keep these portability problems in mind.
+
+Expression order of evaluation may be different.  zmac uses C semantics
+more order of evaluation but assemblers often used simple left to right
+ordering.  zmac will evaluate _2+2*3_ as _8_ where other assemblers will
+yield _12_.  However, in _--mras_ mode expressions are evaluated strictly
+left-to-right for compatibility.
+
+zmac has no support operating on strings in macros.  Assemblers like Macro-80
+could perform conditional tests on strings.
+
+Advanced macros are unlikely to work.  zmac hasn't advanced to the state where
+all the possible ways of substituting parameters are supported.
+
+Consult the original assembler manual.  zmac error messages won't help you
+figure out what an unknown assembler command is supposed to do.
+
+Compare against original output.  The very safest thing to do when porting
+assembly code is to compare the binary output of zmac against that produced
+by the original assembler.  This way you can ensure everything has been
+interpreted correctly.  Only once that has been achieved should you modify
+the code.
+---
+.Errors and Warnings
+
+Any errors or warnings encountered during assembly are reported to standard
+error and in the listing file.  The errors output immediately give the source
+file and line number containing the error.  In listings the error letter
+and message appear just after the line containing the error.
+
+ B
+  Balance error
+ ##
+  A string is missing an closing quote or an _if_ is missing an _endif_
+ E
+  Expression error
+ ##
+  An expression did not parse or attempts a divide or modulus by 0.
+ F
+  Syntax error
+ ##
+  General problem with the syntax on a line.  Sometimes extra explanation
+  will be printed on standard output.
+ I
+  Digit error
+ ##
+  A numeric constant has too many digits to be represented as a 32 bit number.
+ M
+  Mult. def. error
+ ##
+  A symbol has been defined more than once and those values differ.
+ P
+  Phase error
+ ##
+  On the second or subsequent assembly passes the assembly has changed
+  significantly.  Most commonly it means an _if_ has changed conditions
+  but can also happen when labels or equated values do not converge to
+  a fixed value.
+ U
+  Undeclared error
+ ##
+  An undeclared symbol was used in an expression or _public_ statement.
+ V
+  Value error
+ ##
+  An invalid value was given to a statement.  Often this means using less
+  than -128 or greater then 255 in a _defb_ or less than -32768 or greater
+  than 65535 in a _defw_.  Or similar invalid values used Z-80/8080 opcodes
+  requiring an 8 or 16 bit value (and other restrictions like 0 to 7 for _BIT_).
+  Also if a relative jump is out of range or if a negative value is given
+  in _defs_ or _dc_.
+ O
+  Phase/Dephase error
+ ##
+  _phase_ was used within another _phase_ or _dephase_ without _phase_.
+  Or if _org_ is used within _phase_.
+ A
+  Assertion failure error
+ ##
+  An assert statement evaluated to zero.
+ J
+  Use JR error
+ ##
+  An absolute jump instruction was used where relative jump was in range
+  of the destination address.  Only generated if _-j_ or _jrpromote_ is
+  in effect.
+ R
+  Not relocatable error
+ ##
+  An expression was used that must be generated at link time but cannot
+  be handled by the ".rel" format.  For instance, an _org_ to a symbol in
+  the data segment when in the code segment.  Or a relative jump to a
+  different segment.  The ".rel" format can evaluate expressions at link
+  time using the _high_, _low_, _not_, _-_, _+_, _*_, _/_ and _%_ operators.
+  zmac is clever enough to use _high_ or _low_ in place of _& $ff00_ and
+  _& 255_.  But it won't replace a _shl_ with a multiply.
+ G
+  Register usage error
+ ##
+  A invalid register was given to an instruction.  For example, _LD B,(DE)_
+  or _ADD HL,IX_.
+ Z
+  Invalid instruction.
+ ##
+  The instruction is not valid for the current architecture.  For example,
+  a Z-80@zmn instruction in 8080 mode (_.8080_ or _-8_ mode is in effect).
+  Or a Z-180@zzmn instruction in 8080 or Z-80 mode.
+  Or an undocumented Z-80 instruction in Z-180 mode.
+  However, use use of Z-80 mnemonics that
+  output valid 8080 instructions is always OK.
+ H
+  $hex constant interpreted as symbol warning
+ ##
+  A symbol such as _$FCB_ has been defined even though it could appear to
+  be a hexadecimal constant.  zmac will treat _$FCB_ as symbol for the entire
+  assembly which could be rather surprising if that were not the intent.
+ N
+  Not implemented warning
+ ##
+  For statements that have been added as parse rules but have no effect.
+  The only current example is _subttl_ which sets the sub title of a listing
+  in certain assemblers.
+ W
+  Generic warning
+ ##
+  Higher-level warning; see text of warning for explanation.
+
+---
+.Output Formats\format
+
+Except for ".rel", zmac writes every known output when assembling by default.
+This is no burden on modern computers and saves having to meticulously select
+the desired output format.
+
+".rel" is a special case since that format is intended for linking and
+can have undefined external symbols which would be errors in the other formats.
+Conversely, a simple "org $8000" will be an error for ".rel" output as it
+defaults to the code segment where absolute origin statements are forbidden.
+
+If ".rel" is selected for output either by _--relopt_ or with
+_--oo rel_ or _-o file.rel_ then all other output formats are suppressed
+(except the ".lst" source file listing).
+
+ .ams
+  AMSDOS executable format for Amstrad computers.
+ .bds
+  For source-level debugging and automatic memory protecttion in
+  trs80gp@http://www.48k.ca/trs80gp.html
+ .1500.cas
+  TRS-80 high-speed (1500 baud) cassette SYSTEM file.  The internal name of the
+  file is the source file name shortened to 6 characters with suffixes
+  removed.  Requires an entry address.
+ .250.cas
+  TRS-80 250 baud cassette Level I CLOAD file.  If your program has an
+  entry address and $41FE does not contain that entry address then the file
+  will be loaded at $41FE with relocation code added to move it to the desired
+  location.
+ .500.cas
+  TRS-80 low-speed (500 baud) cassette SYSTEM file.  The internal name of the
+  file is the source file name shortened to 6 characters with suffixes removed.
+  Requires an entry address.
+ .1000.cas
+  Identical to 500 baud but intended for double-speed LNW-80 which can
+  can load cassette files at double speed for an effective 1000 baud rate.
+  Requires an entry address.
+ .cim
+  Core In-Memory image.  A raw binary format with the first byte corresponding
+  to the lowest generated code or data and proceeding contiguously until the
+  highest address generated.  Any gaps are filled with zeros.  Typically used
+  for CP/M where all executables start at address 256 or for ROM images.
+ .cmd
+  TRS-80 DOS executable file format as used by all major DOSes on the TRS-80
+  (TRS-DOS, LDOS, MULTIDOS, NEWDOS, etc.)
+ .hex
+  Intel hex record format.
+ .rel
+  Relocatable object module format as produced by MACRO-80 and other assemblers.
+ .tap
+  ZX Spectrum cassette tape format.
+ .1500.wav
+  Same as .1500.cas but in ready-to-play audio format.
+ .250.wav
+  Same as .250.cas but in ready-to-play audio format.
+ .500.wav
+  Same as .500.cas but in ready-to-play audio format.
+ .1000.wav
+  Same as .1000.cas but in ready-to-play audio format.
+ .mds
+  MAME debug script (e.g., mame trs80 -d -debugscript zout/prog.mds)
+
+---
+.Miscellaneous
+In the symbol table listing, the _=_ separator is given for those symbols
+defined by _equ_ or _defl_.  The _/_ separator is shown for common blocks.
+Aliases are distinguished by their double-quoted strings.
+
+The _.rel_ file format can store symbol names of up to 7 characters in length.
+However, MACRO-80 truncates symbols to 6 characters so that it has one
+character in reserve for extending linking operations such as subtracting
+two externals from each other.  To be compatible (and sensible), _--rel_
+truncates externals to 6 characters.  For MRAS compatibility, _--mras_
+truncates symbols to 7 characters.  This is not a problem for MRAS as it
+doesn't support extended linking.  But necessary if you want zmac to produce
+_.rel_ files that will link with MRAS generated _.rel_ files.  The _--rel7_
+option sets symbol truncation to 7 characters so you can assemble files
+that will link with MRAS output.  However, it will break extended linking
+on labels longer than 6 characters.
+
+The ignoring\prime of single quotes can be handy for tracking alternate
+register usage.  Consider the following code fragment:
+
+ _ld    a,(hl)_
+  
+ _rra_
+  
+ _exx_
+  
+ _ld    a,(hl')_
+  
+ _ex    af,af'_
+  
+ _ld    a',(hl')_
+  
+ _rra'_
+  
+ _ex    af,af'_
+  
+ _djnz' loop_
+  
+ _ld    d',e'_
+  
+ _exx_
+
+Although zmac does nothing but ignore the single quotes they are useful for
+indicating which register is currently active.  A more advanced mode
+where zmac pays attention to the trailing quotes and emits exchange
+instructions as needed has been considered.
+
+---
+.Official Zilog\zsyn Syntax
+
+The official Zilog syntax for Z-80 has some rather arbitrary restrictions
+that zmac ignores.  For instance, _add a,b_ is the only correct form but
+_sub a,b_ is invalid as _sub b_ must be used.
+Here is a list of
+the official and alternate forms of the various affected instructions.
+_rmn_ refers to _a_, _b_, _c_, _d_, _e_, _h_, _l_, _(hl)_, _(ix+d)_, _(iy+d)_
+or 8 bit immediate value.
+
+ _   Official        Accepted Variant _
+  
+ _ add   a,rmn         add   rmn_
+  
+ _ adc   a,rmn         adc   rmn_
+  
+ _ sub   rmn           sub   a,rmn_
+  
+ _ sbc   a,rmn         sbc   rmn_
+  
+ _ cp    rmn           cp    a,rmn_
+  
+ _ and   rmn           and   a,rmn_
+  
+ _ xor   rmn           xor   a,rmn_
+  
+ _ or    rmn           or    a,rmn_
+  
+ _ jp    (hl)          jp    hl_
+  
+ _ jp    (ix)          jp    ix_
+  
+ _ jp    (iy)          jp    iy_
+  
+ _ ex    de,hl         ex    hl,de_
+  
+ _ ex    hl,(sp)       ex    (sp),hl_
+  
+ _ ex    ix,(sp)       ex    (sp),ix_
+  
+ _ ex    iy,(sp)       ex    (sp),iy_
+  
+ _ in    a,(n)         in    a,n_
+  
+ _ out   (n),a         out   n,a_
+  
+ _ in    r,(c)         in    r,(bc)_
+  
+ _ out   (c),r         out   (bc),r_
+  
+ _ rst   8             rst   1_
+  
+ _ rst   16            rst   2_
+  
+ _ rst   24            rst   3_
+  
+ _ rst   32            rst   4_
+  
+ _ rst   40            rst   5_
+  
+ _ rst   48            rst   6_
+  
+ _ rst   56            rst   7_
+
+---
+.Mnemonic Values\mneval
+
+Values for 8080 mnemonics.  Note that _cpi_ and _jp_ are interpreted as
+"compare immediate" and "jump if positive" in 8080 mode.
+
+ _ aci $CE    dad $09   ldax $0A    rnz $C0_
+  
+ _ adc $88    dcr $05   lhld $2A     rp $F0_
+  
+ _ add $80    dcx $0B    lxi $01    rpe $E8_
+  
+ _ adi $C6    dec $01    mov $40    rpo $E0_
+  
+ _ ana $A0     di $F3    mvi $06    rrc $0F_
+  
+ _ ani $E6     ei $FB    nop $00    rst $C7_
+  
+ _call $CD    hlt $76    ora $B0     rz $C8_
+  
+ _  cc $DC     in $DB    ori $F6    sbb $98_
+  
+ _  cm $FC    inr $04    out $D3    sbi $DE_
+  
+ _ cma $2F    inx $03   pchl $E9   shld $22_
+  
+ _ cmc $3F     jc $DA    pop $C1   sphl $F9_
+  
+ _ cmp $B8     jm $FA   push $C5    sta $32_
+  
+ _ cnc $D4    jmp $C3    ral $17   stax $02_
+  
+ _ cnz $C4    jnc $D2    rar $1F    stc $37_
+  
+ _  cp $B8    jnz $C2     rc $D8    sub $90_
+  
+ _ cpe $EC     jp $F2    ret $C9    sui $D6_
+  
+ _ cpi $FE    jpe $EA    rlc $07   xchg $EB_
+  
+ _ cpo $E4    jpo $E2   rlcr $07    xra $A8_
+  
+ _  cz $CC     jz $CA     rm $F8    xri $EE_
+  
+ _ daa $27    lda $3A    rnc $D0   xthl $E3_
+
+Values for Z-80\zmn mnemonics.
+Ambiguous mnemonics such as _ld_ and _inc_ evaluate to the 8 bit register
+operation base value.  _ex_ is arbitrarily mapped to _ex de,hl_.
+Bit and shift operations on _(IX+d)_ and _(IY+d)_
+evaluate to 32 bit values and the offset goes into the third byte.
+_and_, _or_ and _xor_ can be used in data statements but parsing ambiguity
+prevents their use in operations.
+
+ _adc      $88            otir     $B3ED_
+  
+ _adcx     $8EDD          out      $D3_
+  
+ _adcy     $8EFD          outd     $ABED_
+  
+ _add      $80            outdr    $BBED_
+  
+ _addx     $86DD          outi     $A3ED_
+  
+ _addy     $86FD          outir    $B3ED_
+  
+ _and      $A0            outp     $41ED_
+  
+ _andx     $A6DD          pcix     $E9DD_
+  
+ _andy     $A6FD          pciy     $E9FD_
+  
+ _bit      $40CB          pfix     $DD_
+  
+ _bitx     $4600CBDD      pfiy     $FD_
+  
+ _bity     $4600CBFD      pop      $C1_
+  
+ _call     $CD            popix    $E1DD_
+  
+ _ccd      $A9ED          popiy    $E1FD_
+  
+ _ccdr     $B9ED          push     $C5_
+  
+ _ccf      $3F            pushix   $E5DD_
+  
+ _cci      $A1ED          pushiy   $E5FD_
+  
+ _ccir     $B1ED          ralr     $10CB_
+  
+ _cmpx     $BEDD          ralx     $1600CBDD_
+  
+ _cmpy     $BEFD          raly     $1600CBFD_
+  
+ _cp       $B8            rarr     $18CB_
+  
+ _cpd      $A9ED          rarx     $1E00CBDD_
+  
+ _cpdr     $B9ED          rary     $1E00CBFD_
+  
+ _cpi      $A1ED          res      $80CB_
+  
+ _cpir     $B1ED          resx     $8600CBDD_
+  
+ _cpl      $2F            resy     $8600CBFD_
+  
+ _daa      $27            ret      $C9_
+  
+ _dadc     $4AED          reti     $4DED_
+  
+ _dadx     $9DD           retn     $45ED_
+  
+ _dady     $9FD           rl       $10CB_
+  
+ _dcrx     $35DD          rla      $17_
+  
+ _dcry     $35FD          rlc      $CB_
+  
+ _dcxix    $2BDD          rlca     $7_
+  
+ _dcxiy    $2BFD          rlcr     $CB_
+  
+ _dec      $5             rlcx     $600CBDD_
+  
+ _di       $F3            rlcy     $600CBFD_
+  
+ _djnz     $10            rld      $6FED_
+  
+ _dsbc     $42ED          rr       $18CB_
+  
+ _ei       $FB            rra      $1F_
+  
+ _ex       $EB            rrc      $8CB_
+  
+ _exaf     $8             rrca     $F_
+  
+ _exx      $D9            rrcr     $8CB_
+  
+ _halt     $76            rrcx     $E00CBDD_
+  
+ _im       $46ED          rrcy     $E00CBFD_
+  
+ _im0      $46ED          rrd      $67ED_
+  
+ _im1      $56ED          rst      $C7_
+  
+ _im2      $5EED          sbc      $98_
+  
+ _in       $DB            sbcd     $43ED_
+  
+ _inc      $4             sbcx     $9EDD_
+  
+ _ind      $AAED          sbcy     $9EFD_
+  
+ _indr     $BAED          scf      $37_
+  
+ _ini      $A2ED          sded     $53ED_
+  
+ _inir     $B2ED          set      $C0CB_
+  
+ _inp      $40ED          setb     $C0CB_
+  
+ _inrx     $34DD          setx     $C600CBDD_
+  
+ _inry     $34FD          sety     $C600CBFD_
+  
+ _inxix    $23DD          sixd     $22DD_
+  
+ _inxiy    $23FD          siyd     $22FD_
+  
+ _jp       $F2            sl1      $30CB_
+  
+ _jr       $18            sla      $20CB_
+  
+ _jrc      $38            slar     $20CB_
+  
+ _jrnc     $30            slax     $2600CBDD_
+  
+ _jrnz     $20            slay     $2600CBFD_
+  
+ _jrz      $28            sll      $30CB_
+  
+ _lbcd     $4BED          spix     $F9DD_
+  
+ _ld       $40            spiy     $F9FD_
+  
+ _ldai     $57ED          sra      $28CB_
+  
+ _ldar     $5FED          srar     $28CB_
+  
+ _ldd      $A8ED          srax     $2E00CBDD_
+  
+ _lddr     $B8ED          sray     $2E00CBFD_
+  
+ _lded     $5BED          srl      $38CB_
+  
+ _ldi      $A0ED          srlr     $38CB_
+  
+ _ldir     $B0ED          srlx     $3E00CBDD_
+  
+ _ldx      $46DD          srly     $3E00CBFD_
+  
+ _ldy      $46FD          sspd     $73ED_
+  
+ _lixd     $2ADD          stai     $47ED_
+  
+ _liyd     $2AFD          star     $4FED_
+  
+ _lspd     $7BED          stx      $70DD_
+  
+ _lxix     $21DD          sty      $70FD_
+  
+ _lxiy     $21FD          sub      $90_
+  
+ _mvix     $36DD          subx     $96DD_
+  
+ _mviy     $36FD          suby     $96FD_
+  
+ _neg      $44ED          xor      $A8_
+  
+ _nop      $0             xorx     $AEDD_
+  
+ _or       $B0            xory     $AEFD_
+  
+ _orx      $B6DD          xtix     $E3DD_
+  
+ _ory      $B6FD          xtiy     $E3FD_
+  
+ _otdr     $BBED_
+
+Values for Z-180\zzmn mnemonics.
+
+ _in0      $00ED_
+  
+ _mlt      $4CED_
+  
+ _otdm     $8BED_
+  
+ _otdmr    $9BED_
+  
+ _otim     $83ED_
+  
+ _otimr    $93ED_
+  
+ _out0     $01ED_
+  
+ _slp      $76ED_
+  
+ _tst      $04ED_
+  
+ _tstio    $74ED_
+
+---
+.Exit Status
+
+ 0
+  No errors.
+ 1
+  One or more errors were found during assembly, or zmac exited with a
+  fatal error.
+
+--
+.Credits
+Bruce Norskog originally wrote zmac in 1978.
+
+Updates and bugfixes over the years by John Providenza, Colin Kelley,
+and more recently by Russell Marks, Mark RISON, Chris Smith,
+Matthew Phillips and Tim Mann.
+
+Extensive modifications for cycle counting, multiple output formats,
+".rel" output, 8080 mode and older assembler compatibilty were written
+by George Phillips.
+
+This document was based on Russell Marks zmac man page which had
+tweaks by Mark RISON and Tim Mann.  George Phillips converted it to HTML
+and documented the new features and some older ones (e.g., _phase_/_dephase_).

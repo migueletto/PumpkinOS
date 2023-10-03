@@ -1,0 +1,542 @@
+http://regregex.bbcmicro.net/crc-catalogue.htm
+
+CRC-8
+07
+<crc-8-atm>
+   Name   : "CRC-8"
+   Width  : 8
+   Poly   : 07
+   Init   : 00
+   RefIn  : False
+   RefOut : False
+   XorOut : 00
+   Check  : F4
+
+<crc-8-itu>
+   Name   : "CRC-8/ITU"
+   Width  : 8
+   Poly   : 07
+   Init   : 00
+   RefIn  : False
+   RefOut : False
+   XorOut : 55
+   Check  : A1
+
+<crc-8-rohc>
+   Name   : "CRC-8/ROHC"
+   Width  : 8
+   Poly   : 07
+   Init   : FF
+   RefIn  : True
+   RefOut : True
+   XorOut : 0
+   Check  : D0
+
+39
+<crc-8-darc>
+   Name   : "CRC-8/DARC"
+   Width  : 8
+   Poly   : 39
+   Init   : 00
+   RefIn  : True
+   RefOut : True
+   XorOut : 00
+   Check  : 15
+
+1D
+<crc-8-icode>
+   Name   : "CRC-8/I-CODE"
+   Width  : 8
+   Poly   : 1D
+   Init   : FD
+   RefIn  : False
+   RefOut : False
+   XorOut : 00
+   Check  : 7E
+
+<crc-8-j1850>
+   Name   : "CRC-8/J1850" (new entry)
+   Width  : 8
+   Poly   : 1D
+   Init   : FF
+   RefIn  : False
+   RefOut : False
+   XorOut : FF
+   Check  : 4B
+
+31
+<crc-8-maxim>
+   Name   : "CRC-8/MAXIM"
+   Alias  : "DOW-CRC"
+   Width  : 8
+   Poly   : 31
+   Init   : 00
+   RefIn  : True
+   RefOut : True
+   XorOut : 00
+   Check  : A1
+
+9B
+<crc-8-wcdma>
+   Name   : "CRC-8/WCDMA"
+   Width  : 8
+   Poly   : 9B
+   Init   : 00
+   RefIn  : True
+   RefOut : True
+   XorOut : 00
+   Check  : 25
+
+8D
+<crc-8-ccitt>
+   Name   : "CRC-8/CCITT" (new entry) 1-Wire?
+   Width  : 8
+   Poly   : 8D
+   Init   : 00?
+   RefIn  : False?
+   RefOut : False?
+   XorOut : 00?
+   Check  : D2
+
+D5
+<crc-8>
+   Name   : "CRC-8" (new entry)
+   Width  : 8
+   Poly   : D5
+   Init   : 00?
+   RefIn  : False?
+   RefOut : False?
+   XorOut : 00?
+   Check  : BC
+
+CRC-16
+8005
+<crc-16>
+   Name   : "ARC"
+   Alias  : "CRC-16"
+   Alias  : "CRC-IBM"
+   Alias  : "CRC-16/ARC"
+   Alias  : "CRC-16/LHA"
+   Width  : 16
+   Poly   : 8005
+   Init   : 0000
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000
+   Check  : BB3D
+
+<crc-16-buypass>
+   Name   : "CRC-16/BUYPASS"
+   Alias  : "CRC-16/VERIFONE"
+   Width  : 16
+   Poly   : 8005
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : FEE8
+
+<crc-dds-110>
+   Name   : "CRC-16/DDS-110"
+   Width  : 16
+   Poly   : 8005
+   Init   : 800D
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : 9ECF
+   XCheck : CFE9
+
+<crc-16-maxim>
+   Name   : "CRC-16/MAXIM"
+   Width  : 16
+   Poly   : 8005
+   Init   : 0000
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFF
+   Check  : 44C2
+
+<crc-usb>
+   Name   : "CRC-16/USB"
+   Width  : 16
+   Poly   : 8005
+   Init   : FFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFF
+   Check  : B4C8
+
+<crc-modbus>
+   Name   : "MODBUS"
+   Width  : 16
+   Poly   : 8005
+   Init   : FFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000
+   Check  : 4B37
+
+1021
+<crc-ccitt-1d0f>
+   Name   : "CRC-16/AUG-CCITT"
+   Alias  : "CRC-16/SPI-FUJITSU"
+   Width  : 16
+   Poly   : 1021
+   Init   : 1D0F
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : E5CC
+
+<crc-ccitt-ffff>
+   Name   : "CRC-16/CCITT-FALSE"
+   Width  : 16
+   Poly   : 1021
+   Init   : FFFF
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : 29B1
+
+<crc-genibus>
+   Name   : "CRC-16/GENIBUS"
+   Alias  : "CRC-16/I-CODE"
+   Alias  : "CRC-16/DARC"
+   Width  : 16
+   Poly   : 1021
+   Init   : FFFF
+   RefIn  : False
+   RefOut : False
+   XorOut : FFFF
+   Check  : D64E
+
+<crc-ccitt-xmodem>
+   Name   : "XMODEM"
+   Alias  : "ZMODEM"
+   Alias  : "CRC-16/ACORN"
+   Width  : 16
+   Poly   : 1021
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : 31C3
+
+<crc-mcrf4xx>
+   Name   : "CRC-16/MCRF4XX"
+   Width  : 16
+   Poly   : 1021
+   Init   : FFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000
+   Check  : 6F91
+
+<crc-riello>
+   Name   : "CRC-16/RIELLO"
+   Width  : 16
+   Poly   : 1021
+   Init   : B2AA
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000
+   Check  : 63D0
+
+ <crc-ccitt-kermit>
+   Name   : "KERMIT"
+   Alias  : "CRC-16/CCITT"
+   Alias  : "CRC-16/CCITT-TRUE"
+   Alias  : "CRC-CCITT"
+   Width  : 16
+   Poly   : 1021
+   Init   : 0000
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000
+   Check  : 2189
+   XCheck : 8921
+
+<crc-x25>
+   Name   : "X-25"
+   Alias  : "CRC-16/IBM-SDLC"
+   Alias  : "CRC-16/ISO-HDLC"
+   Width  : 16
+   Poly   : 1021
+   Init   : FFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFF
+   Check  : 906E
+   XCheck : 6E90
+
+0589
+<crc-dect-r>
+   Name   : "CRC-16/DECT-R"
+   Alias  : "R-CRC-16"
+   Width  : 16
+   Poly   : 0589
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0001
+   Check  : 007E
+
+<crc-dect-x>
+   Name   : "CRC-16/DECT-X"
+   Alias  : "X-CRC-16"
+   Width  : 16
+   Poly   : 0589
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : 007F
+
+3D65
+<crc-dnp>
+   Name   : "CRC-16/DNP"
+   Width  : 16
+   Poly   : 3D65
+   Init   : 0000
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFF
+   Check  : EA82
+   XCheck : 82EA
+
+<crc-en-13757>
+   Name   : "CRC-16/EN-13757"
+   Width  : 16
+   Poly   : 3D65
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : FFFF
+   Check  : C2B7
+
+8BB7
+<crc-t10-dif>
+   Name   : "CRC-16/T10-DIF"
+   Width  : 16
+   Poly   : 8BB7
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : D0DB
+
+A097
+<crc-teledisk>
+   Name   : "CRC-16/TELEDISK"
+   Width  : 16
+   Poly   : A097
+   Init   : 0000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000
+   Check  : 0FB3
+
+CRC-24
+864CFB
+<crc-24>
+   Name   : "CRC-24"
+   Alias  : "CRC-24/OPENPGP"
+   Width  : 24
+   Poly   : 864CFB
+   Init   : B704CE
+   RefIn  : False
+   RefOut : False
+   XorOut : 000000
+   Check  : 21CF02
+
+5D6DCB
+<crc-24-flexray-a>
+   Name   : "CRC-24/FLEXRAY-A"
+   Width  : 24
+   Poly   : 5D6DCB
+   Init   : FEDCBA
+   RefIn  : False
+   RefOut : False
+   XorOut : 000000
+   Check  : 7979BD
+
+<crc-24-flexray-b>
+   Name   : "CRC-24/FLEXRAY-B"
+   Width  : 24
+   Poly   : 5D6DCB
+   Init   : ABCDEF
+   RefIn  : False
+   RefOut : False
+   XorOut : 000000
+   Check  : 1F23B8
+
+CRC-32
+04C11DB7
+<crc-32>
+   Name   : "CRC-32"
+   Alias  : "CRC-32/ADCCP"
+   Alias  : "PKZIP"
+   Width  : 32
+   Poly   : 04C11DB7
+   Init   : FFFFFFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFFFFFF
+   Check  : CBF43926
+
+<crc-32-bzip2>
+   Name   : "CRC-32/BZIP2"
+   Alias  : "B-CRC-32"
+   Width  : 32
+   Poly   : 04C11DB7
+   Init   : FFFFFFFF
+   RefIn  : False
+   RefOut : False
+   XorOut : FFFFFFFF
+   Check  : FC891918
+
+<crc-32-mpeg-2>
+   Name   : "CRC-32/MPEG-2"
+   Width  : 32
+   Poly   : 04C11DB7
+   Init   : FFFFFFFF
+   RefIn  : False
+   RefOut : False
+   XorOut : 00000000
+   Check  : 0376E6E7
+
+<crc-32-posix>
+   Name   : "CRC-32/POSIX"
+   Alias  : "CKSUM"
+   Width  : 32
+   Poly   : 04C11DB7
+   Init   : 00000000
+   RefIn  : False
+   RefOut : False
+   XorOut : FFFFFFFF
+   Check  : 765E7680
+   LCheck : 377A6011
+
+<crc-32-jamcrc>
+   Name   : "JAMCRC"
+   Width  : 32
+   Poly   : 04C11DB7
+   Init   : FFFFFFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : 00000000
+   Check  : 340BC6D9
+
+1EDC6F41
+<crc-32-C>
+   Name   : "CRC-32C"
+   Alias  : "CRC-32/ISCSI"
+   Alias  : "CRC-32/CASTAGNOLI"
+   Width  : 32
+   Poly   : 1EDC6F41
+   Init   : FFFFFFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFFFFFF
+   Check  : E3069283
+
+A833982B
+<crc-32-D>
+   Name   : "CRC-32D"
+   Width  : 32
+   Poly   : A833982B
+   Init   : FFFFFFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : FFFFFFFF
+   Check  : 87315576
+
+741B8CD7
+<crc-32-K> (new entry)
+   Name   : "CRC-32K"
+   Alias  : "CRC-32/KOOPMAN"
+   Width  : 32
+   Poly   : 741B8CD7
+   Init   : 00000000?
+   RefIn  : False?
+   RefOut : False?
+   XorOut : 00000000?
+   Check  : 085A3197 ?
+
+814141AB
+<crc-32-Q>
+   Name   : "CRC-32Q"
+   Width  : 32
+   Poly   : 814141AB
+   Init   : 00000000
+   RefIn  : False
+   RefOut : False
+   XorOut : 00000000
+   Check  : 3010BF7F
+
+000000AF
+<crc-32-xfer>
+   Name   : "XFER"
+   Width  : 32
+   Poly   : 000000AF
+   Init   : 00000000
+   RefIn  : False
+   RefOut : False
+   XorOut : 00000000
+   Check  : BD0BE338
+
+CRC-40
+<crc-40-gsm>
+   Name   : "CRC-40/GSM"
+   Width  : 40
+   Poly   : 0004820009
+   Init   : 0000000000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000000000
+   Check  : 2BE9B039B9
+
+CRC-64
+42F0E1EBA9EA3693
+<crc-64>
+   Name   : "CRC-64"
+   Width  : 64
+   Poly   : 42F0E1EBA9EA3693
+   Init   : 0000000000000000
+   RefIn  : False
+   RefOut : False
+   XorOut : 0000000000000000
+   Check  : 6C40DF5F0B497347
+
+<crc-64-we>
+   Name   : "CRC-64/WE"
+   Width  : 64
+   Poly   : 42F0E1EBA9EA3693
+   Init   : FFFFFFFFFFFFFFFF
+   RefIn  : False
+   RefOut : False
+   XorOut : FFFFFFFFFFFFFFFF
+   Check  : 62EC59E3F1A4F00A
+
+000000000000001B
+<crc-64-1b>
+   Name   : "CRC-64/1B" (New entry)
+   Width  : 64
+   Poly   : 000000000000001B
+   Init   : 0000000000000000
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000000000000000
+   Check  : 46A5A9388A5BEFFE
+
+AD93D23594C935A9
+<crc-64-jones>
+   Name   : "CRC-64/Jones" (New entry)
+   Width  : 64
+   Poly   : AD93D23594C935A9
+   Init   : FFFFFFFFFFFFFFFF
+   RefIn  : True
+   RefOut : True
+   XorOut : 0000000000000000
+   Check  : CAA717168609F281

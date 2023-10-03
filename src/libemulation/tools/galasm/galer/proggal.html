@@ -1,0 +1,188 @@
+<html>
+<head>
+  <title>Programming GALs</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="reasmerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="schaltbesch.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>III.1 Programming GALs</u>
+
+The first question that arises is how can you program a GAL when all the
+pins are already defined and no pins are free for the programming?
+
+If you apply a voltage of 12.00 Volt up to 16.5 Volt (depends on GAL type
+and on that whether the GAL should be read or programmed) to pin 2, then
+the pin description changes, the GAL is then in the Edit mode.
+
+In this section I'll explain how a GAL16V8 and GAL20V8 is read and
+programmed. The reading/programming algorithm of the GAL22V10 and GAL20RA10
+is similar to that of the GAL16V8 and GAL20V8 so I'll explain only the
+GAL16V8 and GAL20V8.
+
+Here the pins in the Edit mode:
+
+                                GAL16V8
+                                ---- ----
+                         VIL   1|       |20  +5V
+                        EDIT   2|       |19  P,/V
+                        RAG1   3|       |18  RAG0
+                        RAG2   4|       |17  VIL
+                        RAG3   5|       |16  VIL
+                        RAG4   6|       |15  VIL
+                        RAG5   7|       |14  VIL
+                        SCLK   8|       |13  VIL
+                        SDIN   9|       |12  SDOUT
+                        GND   10|       |11  /STR
+                                ---------
+
+
+                                GAL20V8
+                                ---- ----
+                         VIL   1|       |24  +5V
+                        EDIT   2|       |23  VIL
+                        RAG1   3|       |22  P,/V
+                        RAG2   4|       |21  RAG0
+                        RAG3   5|       |20  VIL
+                         VIL   6|       |19  VIL
+                         VIL   7|       |18  VIL
+                        RAG4   8|       |17  VIL
+                        RAG5   9|       |16  VIL
+                        SCLK  10|       |15  SDOUT
+                        SDIN  11|       |14  VIL
+                         GND  12|       |13  /STR
+                                ---------
+
+
+Whether the GAL is to be read from or written to is determined by the level
+of P,/V. A HIGH means write, a LOW read.
+
+The to be read/written addresses are presented to pins RAG0-RAG5. The
+programming occurs as follows:
+
+After giving the addresses to RAG0-RAG5, the to be written bits have to be
+presented to SDIN (serially) and by clocking SCLK with a LOW-HIGH-transition
+the data is transferred to an internal shift register. A LOW-pulse on the
+/STR pin programs the addressed row. This repeats until the whole GAL is
+programmed.
+
+The reading of a GAL proceeds similarly: After presenting the addresses to
+RAG0-RAG5 the bits of the corresponding address are put into the internal
+shift register by clocking /STR with a LOW-pulse. By clocking SCLK with a
+LOW-HIGH-clock transition all the various bits are sent out the SDOUT pin.
+The bit width of an address determines the number of SCLK pulses required
+to complete the programming or reading the address.
+
+VIL means Input Voltage Low. These pins must be connected to ground
+or LOW when the GAL is in the Edit mode.
+
+GALs do have different algorithm codes. These codes determine the parameters
+Edit mode voltage and STR pulse width. GALer supports the algorithm codes
+0 to 4. The function <a href="mengalinfo.html">GAL-Info</a> of GALer returns the algorithm code of
+the inserted GAL. This code is not very importent for you, but GALer needs
+this code for reading and programming GALs.
+
+
+
+            |             READ           |           PROGRAM
+------------+----------------------------+----------------------------
+ Algorithm  |  Edit mode    | STR pulse  |   Edit mode    | STR pulse
+            | read voltage  |            | prog. voltage  |
+------------+---------------+------------+----------------+-----------
+          0 |  12 &plusmn; 0,25 V  |    5 us    | 15,75 &plusmn; 0,25 V | 80 &plusmn; 5 ms
+          1 |  12 &plusmn; 0,25 V  |    5 us    | 15,75 &plusmn; 0,25 V | 80 &plusmn; 5 ms
+          2 |  12 &plusmn; 0,25 V  |    5 us    | 16,50 &plusmn; 0,25 V | 10 &plusmn; 1 ms
+          3 |  12 &plusmn; 0,25 V  |    5 us    | 14,50 &plusmn; 0,25 V | 40 &plusmn; 5 ms
+          4 |  12 &plusmn; 0,25 V  |    5 us    | 14,00 &plusmn; 0,25 V |100 &plusmn; 5 ms
+
+
+
+To erase a GAL you have to apply HIGH to P/V then pulse STR low for
+100 ms and then apply LOW to P/V. After this the GAL is erased and ready
+to be programmed again.
+
+
+The internal organization of the GAL (addresses of the parts) looks as
+follows:
+
+
+GAL16V8, GAL16V8A,B:
+
+Address                                         Width
+
+ 0-31           Fuse-Matrix                     64 Bit
+   32           Signature                       64 Bit
+33-59           reserved space                  64 Bit
+   60           Architecture-Control-Word ACW   82 Bit
+   61           Security bit
+   62           reserved
+   63           Bulk Erase
+
+
+
+GAL20V8, GAL20V8A,B:
+
+Address                                         Width
+
+ 0-39           Fuse-Matrix                     64 Bit
+   40           Signature                       64 Bit
+41-59           reserved space                  64 Bit
+   60           Architecture-Control-Word ACW   82 Bit
+   61           Security bit
+   62           reserved
+   63           Bulk Erase
+
+
+
+The Architecture-Control-Word has the following structure (82 Bit wide):
+
+
+
+GAL16V8:
+Bits  0-31: 32 bit product term enable 0-31
+Bits 32-35: 4 Bit XOR(n) for OLMC pins 19-16
+Bit     36: AC0-Bit
+Bits 37-44: 8 Bit AC1(n) for OLMC pins 19-12
+Bit     45: SYN-Bit
+Bits 46-49: 4 Bit XOR(n) for OLMC pins 15-12
+Bits 50-81: 32 Bit product term enable 32-63
+
+GAL16V8A,B:
+Bits  0-3: 4 Bit XOR(n) for OLMC pins 19-16
+Bit     4: AC0
+Bit   5-8: 4 Bit AC1(n) for OLMC pins 19-16
+Bit  9-72: 64 Bit product term enable PT0 - PT63
+Bit 73-76: 4 Bit AC1(n) for OLMC pins 15-12
+Bit    77: SYN
+Bit 78-81: 4 Bit XOR(n) for OLMC pins 15-12
+
+
+GAL20V8:
+Bits  0-31: 32 Bit product term enable 0-31
+Bits 32-35: 4 Bit XOR(n) for OLMC pins 22-19
+Bit     36: AC0-Bit
+Bits 37-44: 8 Bit AC1(n) f&uuml;r OLMC pins 22-15
+Bit     45: SYN-Bit
+Bits 46-49: 4 Bit XOR(n) f&uuml;r OLMC pins 18-15
+Bits 50-81: 32 Bit product term enable 32-63
+
+GAL20V8A,B:
+Bits  0-3: 4 Bit XOR(n) for OLMC pins 22-19
+Bit     4: AC0
+Bit   5-8: 4 Bit AC1(n) for OLMC pins 22-19
+Bit  9-72: 64 Bit product term enable PT0 - PT63
+Bit 73-76: 4 Bit AC1(n) for OLMC pins 18-15
+Bit    77: SYN
+Bit 78-81: 4 Bit XOR(n) for OLMC pins 18-15
+
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="reasmerr.html"><img src="prev.gif" alt="PREV" border=0></a><a href="schaltbesch.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

@@ -1,0 +1,102 @@
+
+
+Pin 23 = Y1           S0 = 1
+  0  ---- x--- ---- ---- ---- ---- ---- ---- ---- ---- ----
+  1  ---- ---- x--- ---- ---- ---- ---- ---- ---- ---- ----
+  2  ---- ---- ---- ---- --x- --x- ---- ---- x--- ---- ----
+  3  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+  4  --x- ---- ---- ---- ---- ---- xxxx xxxx xxxx xxxx xxxx
+  5  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  6  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  7  xxxx xxxx xxxx ---- ---- ---- ---- ---- ---- ---- ----
+
+Pin 22 = Y2           S0 = 1
+  8  ---- ---- xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  9  xxxx ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 10  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- x---
+ 11  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 12  ---- ---- --x- ---- ---- ---- ---- ---- xxxx xxxx xxxx
+ 13  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 14  xxxx xxxx xxxx xxxx xxxx xxxx ---- ---- x--- ---- ----
+ 15  ---- ---- ---- ---- ---- ---- ---- ---- ---- x--- ----
+
+Pin 21 = Y3           S0 = 0
+ 16  ---- ---- ---- ---- xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 17  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 18  xxxx xxxx ---- ---- ---- ---- ---- --x- ---- ---- ----
+ 19  ---- xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 20  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 21  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx ---- ----
+ 22  -x-- ---- ---- ---- ---- ---- ---- ---- xxxx xxxx xxxx
+ 23  xxxx xxxx xxxx xxxx xxxx xxxx xxxx ---- ---- ---- ----
+
+Pin 20 = Y4           S0 = 1
+ 24  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 25  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---x ----
+ 26  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---x ----
+ 27  ---- ---- ---- xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 28  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 29  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 30  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 31  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 19 = D1           S0 = 0
+ 32  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 33  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 34  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 35  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 36  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 37  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 38  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 39  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 18 = D2           S0 = 0
+ 40  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 41  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 42  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 43  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 44  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 45  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 46  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 47  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 17 = ResetA1      S0 = 0
+ 48  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 49  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 50  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 51  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 52  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 53  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 54  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 55  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 16 = ResetB1      S0 = 0
+ 56  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 57  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 58  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 59  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 60  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 61  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 62  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 63  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 15 = NC           S0 = 0
+ 64  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 65  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 66  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 67  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 68  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 69  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 70  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 71  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 14 = NC           S0 = 0
+ 72  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx ---- ---- ----
+ 73  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 74  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 75  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 76  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 77  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 78  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 79  ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+

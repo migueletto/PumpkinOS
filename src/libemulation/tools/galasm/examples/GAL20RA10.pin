@@ -1,0 +1,29 @@
+
+
+ Pin # | Name     | Pin Type
+-----------------------------
+   1   | /PL      | Input
+   2   | Set      | Input
+   3   | Enable1  | Input
+   4   | Enable2  | Input
+   5   | Clock1   | Input
+   6   | Clock2   | Input
+   7   | NC       | Input
+   8   | NC       | Input
+   9   | NC       | Input
+  10   | NC       | Input
+  11   | NC       | Input
+  12   | GND      | GND
+  13   | /OE      | Input
+  14   | NC       | NC
+  15   | NC       | NC
+  16   | ResetB1  | Input
+  17   | ResetA1  | Input
+  18   | D2       | Input
+  19   | D1       | Input
+  20   | Y4       | Output
+  21   | Y3       | Output
+  22   | Y2       | Output
+  23   | Y1       | Output
+  24   | VCC      | VCC
+

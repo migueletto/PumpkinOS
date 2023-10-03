@@ -1,0 +1,95 @@
+
+
+                                GALasm 2.1
+
+                          Portable GAL Assembler
+                 Copyright (c) 1998-2003 Alessandro Zummo
+        Original sources Copyright (c) 1991-96 Christian Habermann
+                            All Rights Reserved
+
+                   Commercial use is strictly forbidden
+
+
+Introduction
+------------
+
+GALasm was created simply because there were no other
+open source GAL assemblers. The assembler core
+is basically the one of GALer, a GAL development
+environment for the Amiga platform. I was unable
+to get in touch with his author to get the permission to 
+do the port, so if he complains i'll have to 
+stop the development.
+
+
+Copyright
+---------
+
+GALasm is Copyright (c) 1998-2003 by Alessandro Zummo
+but any bug and any piece of code taken from the original GALer
+sources is still Copyright (c) 1991-96 by Christian Habermann.
+
+
+Disclaimer
+----------
+
+The authors can not be made responsible for any damage caused
+by a fault of GALasm. In other words: use it at your own risk.
+Even if i've ported it, i've not fully understood every
+aspect of the assembler core.
+
+
+Sources
+-------
+
+The sources are written in ANSI-C, so it should
+be possible to compile them on any platform.
+The sources have been successfully compiled
+with SAS/C on the Amiga platform and with gcc
+on Debian GNU/Linux.
+
+
+About GALs
+----------
+
+Some kind of GALs are not reprogrammable and some others,
+especially the one i belong to, are even not programmable at all...
+ok, just kidding. The original GALer documentation
+is a very well written, so if you want to know
+how to write down a GAL equation, run your favorite
+browser and load galer/main.html. All the non-Amiga
+related sections are still valid for GALasm.
+
+
+GALasm
+------
+
+If you type GALasm -h you should obtain the following text:
+
+GALasm 2.1, Portable GAL Assembler
+Copyright (c) 1998-2003 Alessandro Zummo. All Rights Reserved
+Original sources Copyright (c) 1991-96 Christian Habermann
+
+Usage:
+GALasm [-scfpa] <filename>
+-s Enable security fuse
+-c Do not create the .chp file
+-f Do not create the .fus file
+-p Do not create the .pin file
+-a Restrict checksum to the fuse array only
+
+I think it's self explanatory, but if you've
+any trouble, drop me a note. 
+
+
+Author
+------
+
+ The author (me) can be contacted at azummo-galasm@towertech.it
+ while the GALasm support page is located at
+ http://www.towertech.it/azummo/
+
+ If you have a bug report, a comment or anything else, 
+ feel free to write me. 
+ Donations are also welcome 8-) .
+

@@ -1,0 +1,24 @@
+GAL16V8                ; this is the second example
+Exa.2
+
+A  B  C  D  E  F  G  NC NC GND
+NC NC NC NC NC NC Y3 Y2 Y1 VCC
+
+
+Y1.T = B
+
+Y2.T = C + D
+
+Y3.T = /G
+
+
+Y1.E = /A
+
+Y3.E = E * F
+
+
+DESCRIPTION
+
+ tristate output:  pinname.T
+ tristate control: pinname.E
+

@@ -1,0 +1,271 @@
+<html>
+<head>
+  <title>Error Messages</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="errors.html"><img src="prev.gif" alt="PREV" border=0></a><a href="jedecerr.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.5.1 Assembler</u>
+
+&quot;Line  1: type of GAL expected&quot;
+   The first line of your source file must define for what type of GAL
+   this source file is. So the first line must contain one of the
+   following keywords: GAL16V8, GAL20V8, GAL16V8A, GAL20V8A
+
+
+&quot;unexpected end of file&quot;
+   Normaly this error occurs when there is no DESCRIPTION keyword
+   at the end of your Boolean equations.
+
+
+&quot;pin name expected after '/'&quot;
+   A '/' must be followed by a pin name. If there is a '/' but no pin name
+   this error will occur.
+
+
+&quot;max. length of pin name is 8 characters&quot;
+   Pin names are not allowed to be longer than 8 characters.
+
+
+&quot;illegal character in pin declaration&quot;
+   In a pin name is a character which is not allowed to use. Possible
+   characters are: a..z, A..Z, 0..9, /
+
+
+&quot;illegal VCC/GND assignment&quot;
+   VCC and GND are keywords. It's not allowed to use these words for
+   other pins. Use it only for the pins VCC and GND.
+
+
+&quot;pn declaration: expected VCC at VCC pin&quot;
+   The pin VCC must have the name VCC.
+
+
+&quot;pin declaration: expected GND at GND pin&quot;
+   The pin GND must have the name GND.
+
+
+&quot;pin name defined twice&quot;
+   In the pin declaration a pin name is used multiple.
+
+
+&quot;illegal use of '/'&quot;
+   Negations ('/') must be followed by a pin name. 
+
+
+&quot;unknown pin name&quot;
+   Within a Boolean equation is a undefined pin name.
+
+
+&quot;NC (Not Connected) is not allowed in logic equations&quot;
+   NC is a keyword for unused pins. So don't use this in your
+   Boolean equations.
+
+
+&quot;unknown suffix found&quot;
+   A '.' must be followed by a T, E, R, CLK, ARST or APRST. This defines
+
+
+&quot;'=' expected&quot;
+   A '=' is expected but not found (what else should I say).
+
+
+&quot;this pin can't be used as output&quot;
+   You have tried to define a pin as output which can't be used as output.
+
+
+&quot;same pin is defined multible as output&quot;
+   It's easier to show an example:
+     X = ...
+     X = ...
+   This brings up this error message.
+
+
+&quot;before using .E, the output must be defined&quot;
+   You have defined a Boolean equation for tristate enable but there
+   was no Boolean equation for the trisate output.
+   The order must be:
+     name.T = ...
+     name.E = ...
+
+   Possibly you have done:
+     name.E = ...
+     name.T = ...
+   this is wrong!
+
+
+&quot;GAL22V10: AR and SP is not allowed as pinname&quot;
+   When using a GAL22V10 AR and SP are keywords for the asynchronous reset
+   and synchronous preset. So AR and SP is not allowed to be used as pin
+   names.
+
+
+&quot;.E, .CLK, .ARST and .APRST is not allowed to be negated&quot;
+   The definitions for tristate control,... can't be negated.
+
+
+&quot;mode 2: pins 12, 19 can't be used as input&quot;
+   The GAL would be in mode 2. In this mode you can't define the pins
+   12 and 19 as input pins. These pins do not have a feedback too. This
+   means that the following equation is not allowed.
+
+     a := pin 19
+     b := pin 4
+     y := pin 17
+
+     a = b              a is output, b is input
+     y = a * b          y is output
+                        a is used as input, this is not allowed in mode 2
+                        because there is on feedback
+
+&quot;mode 2: pins 15, 22 can't be used as input&quot;
+   The GAL would be in mode 2. In this mode you can't define the pins
+   15 and 22 as input pins. These pins do not have a feedback too. This
+   means that the following eqauation is not allowed.
+
+     a := pin 22
+     b := pin 4
+     y := pin 17
+
+     a = b              a is output, b is input
+     y = a * b          y is output
+                        a is used as input, this is not allowed in mode 2
+
+
+&quot;tristate control is defined twice&quot;
+   Example:    name.E = A * B
+               name.E = C
+   this is not allowed!
+
+
+&quot;GAL16V8/20V8: tri. control for reg. output is not allowed&quot;
+   When using a GAL16V8/20V8 it is not possible to define a tristate
+   control for registered outputs.
+
+
+&quot;tristate control without previous '.T'&quot;
+   There is a tristate control for a combinational output.
+   wrong:       name   = ...
+                name.E = ...
+
+   right:       name.T = ...
+                name.E = ...
+
+
+&quot;use GND, VCC instead of /VCC, /GND&quot;
+   I think there is nothing to explain.
+
+
+&quot;mode 3: pins 1,11 are reservated for 'Clock' and '/OE'&quot;
+   Using register outputs causes mode 3 for the GAL. In this mode the
+   pins 1 and 11 of a GAL16V8 can't be used by your own. These pins are
+   reserved for Clock and /OE.
+
+
+&quot;mode 3: pins 1,13 are reservated for 'Clock' and '/OE'&quot;
+   Using register outputs causes mode 3 for the GAL. In this mode the
+   pins 1 and 13 of a GAL20V8 can't be used by your own. These pins are
+   reserved for Clock and /OE.
+
+
+&quot;use of VCC and GND is not allowed in equations&quot;
+   Expressions like  &quot;X = A * VCC&quot; are not allowed (and not necassary).
+
+
+&quot;tristate control: only one product term allowed (no OR)&quot;
+   In Boolean equations for tristate controls only one product
+   term can be used. This means no ORs in your name.E=... equation.
+
+
+&quot;too many product terms&quot;
+   In this definition are too many product terms.
+
+
+&quot;use of AR and SP is not allowed in equations&quot;
+   AR and SP are keywords which can't be used in output definitions.
+
+
+&quot;negation of AR and SP is not allowed&quot;
+   AR and SP definitions can't be negated.
+
+
+&quot;no equations found&quot;
+   Sorry, but there are no Boolean equations in your source file. So GALer
+   does not know what to do with your source file.
+
+
+&quot;.CLK is not allowed when this type of GAL is used&quot;
+   A clock definition is only allowed when a GAL20RA10 is used.
+
+
+&quot;.ARST is not allowed when this type of GAL is used&quot;
+   A .ARST definition is only allowed when a GAL20RA10 is used.
+   
+
+.APRST is not allowed when this type of GAL is used
+   A .ARPST definition is only allowed when a GAL20RA10 is used.
+
+
+&quot;GAL20RA10: pin 1 can't be used in equations&quot;
+   Pin 1 of the GAL20RA10 is reserved for the preloading /PL.
+
+
+&quot;GAL20RA10: pin 13 can't be used in equations&quot;
+   Pin 13 of the GAL20RA10 is reserved for the output enable /OE.
+
+
+&quot;AR, SP: no suffix allowed&quot;
+   It's not allowed to add a suffix to AR, SP definitions.
+
+
+&quot;AR or SP is defined twice&quot;
+   A AR or SP definition is defined twice.
+
+
+&quot;missing clock definition (.CLK) of registered output&quot;
+   When using a GAL20RA10 all registered outputs must get a clock
+   definition.
+
+
+&quot;before using .CLK, the output must be defined&quot;
+   At first you have to define the registered output by using .R before
+   you can define the clock for this output.
+
+
+&quot;before using .ARST, the output must be defined&quot;
+   At first you have to define the registered output by using .R before
+   you can define the asynchronous reset.
+
+
+&quot;before using .APRST the output must be defined&quot;
+   At first you have to define the registered output by using .R before
+   you can define the asynchronous preset.
+
+
+&quot;several .CLK definitions for the same output found&quot;
+   You have defined more than one clock definition for the same output.
+
+
+&quot;several .ARST definitions for the same output found&quot;
+   You have defined more than one asynchronous reset definition for the
+   same output.
+
+
+&quot;several .APRST definitions for the same output found&quot;
+   You have defined more than one asynchronous preset definition for the
+   same output.
+
+
+&quot;use of .CLK, .ARST, .APRST only allowed for registered outputs&quot;
+   Well, use of .CLK, .ARST and .APRST is only allowed for registered
+   outputs :-)
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="errors.html"><img src="prev.gif" alt="PREV" border=0></a><a href="jedecerr.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

@@ -1,0 +1,7 @@
+
+- 2.1 20030508
+
+	- Fixed fuse checksum for GAL22V10 (Hilgart Elmar)
+	- Now gives the correct "Operation mode" on stdout
+	- Added Makefile
+	- Minor code cleanup

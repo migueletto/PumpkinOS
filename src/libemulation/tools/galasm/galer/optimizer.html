@@ -1,0 +1,67 @@
+<html>
+<head>
+  <title>Optimizer</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="testing.html"><img src="prev.gif" alt="PREV" border=0></a><a href="jedecfile.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.2.7 Optimizer</u>
+
+Boolean equations can be simplified very often, but for human beings
+it is a hard way to do. A computer can do this much faster (in most
+times).
+
+The Optimizer of GALer tries to optimize Boolean equations by use of
+the Quine-McCluskey algorithm. How this algorithm works can be read
+in many books which deal with Boolean mathamatics, so it's not
+described here. I just will described the usage of the Optimizer.
+
+Hm, well, the usage of the Optimizer:
+
+   Just select the menu <a href="menoptimizer.html">Optimizer</a> to start GALer's Optimizer.
+   After this a file requester pops up. Now you have to select the
+   <a href="sourcefile.html">source file</a> which equations you want to be optimized.
+   After successfully loading this source file GALer starts to optimize
+   the equations.
+
+   GALer displays the original equation and the optimized one. If you
+   are happy with the result of the optimization you should select the
+   gadget 'use it'. Then the original equation is replaced by the
+   optimized equation in your loaded source file.
+
+   If you don't like the result of the optimization, you should select the
+   gadget 'reject'. Then the original equation is not replaced.
+
+   After trying to optimize all equations GALer will pop up a file requester
+   again. Now you have to select a file name of your optimized source file.
+   Please don't use the file name of the original source file for the
+   optimized source file. Give the new file a new name, just like name_opt.pld
+   instead of name.pld.
+
+
+   Example of optimization:
+
+     Original Boolean equation:
+
+         X = /A*/C + A*/C + C*/D + /B*/C + /A*C*D + B*/D
+
+     By GALer optimized Boolean equation:
+
+         X = /C + /D + /A
+
+   Both equations are equal, but the second one is much easier to read.
+
+
+Not all equations can be simplified. It could be that a &quot;optimized&quot;
+equation is more complicate than the original one. Just try it.
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="testing.html"><img src="prev.gif" alt="PREV" border=0></a><a href="jedecfile.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

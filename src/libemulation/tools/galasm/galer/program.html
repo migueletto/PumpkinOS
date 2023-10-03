@@ -1,0 +1,46 @@
+<html>
+<head>
+  <title>How to Program GALs</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="assembler.html"><img src="prev.gif" alt="PREV" border=0></a><a href="testing.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>II.2.5  How to Program GALs</u>
+
+After the GAL-Assembler has created the <a href="jedecfile.html">JEDEC file</a> from the <a href="sourcefile.html">source file</a>,
+the GAL can be programmed using this JEDEC file. To initiate the
+programming of the GAL, simply select <a href="menprog.html">Program</a> and give the JEDEC file
+name. As soon as the GAL is programmed, a requester pops up, and tells
+you the GAL is programmed, and it is OK to remove the GAL from the
+programmer's socket.
+
+
+The steps in programming a GAL:
+
+  1. With a text editor create the source file and save this
+     file as &quot;name.pld&quot; (add the extension .pld!)
+
+  2. Assemble the source file. As a result of this you'll get
+     a JEDEC file (&quot;name.jed&quot;).
+
+  3. Select the GAL type
+
+  4. Insert the GAL in the programmer's socket
+
+  5. Perform the <a href="menempty.html">Blank test</a> to verify that the GAL is empty.
+     When the GAL is not empty, then you must first erase the GAL
+     before it can be programmed, use therefore the function <a href="menerase.html">Erase</a>.
+
+  6. Initiate programming by selecting <a href="menprog.html">Program</a>.
+
+  7. Take the GAL out of the programmer's socket, -  DONE !
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="assembler.html"><img src="prev.gif" alt="PREV" border=0></a><a href="testing.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

@@ -1,0 +1,29 @@
+GAL22V10
+22V10
+
+Clock   A       B  C  D  E       F       NC NC NC NC GND
+SyncPre AsyncRe NC NC NC Enable2 Enable1 Y4 Y3 Y2 Y1 VCC
+
+
+Y1.R  = A * B			; Y1 is a registered output => .R
+Y1.E  = Enable1
+
+Y2.R  = C
+Y2.E  = Enable2 * Y4		; Attention: there is a feedback of Y4
+				; (Y4 is defined as output but it's
+				; used as input again)
+
+Y3    = Enable2 * Y4		; there is a feedback again
+
+Y4    = D + E + F
+
+
+AR    = F * AsyncRe		; define asynchronous reset
+
+SP    = SyncPre			; define synchronous preset
+
+
+DESCRIPTION
+To define the asynchronous reset and the synchronous preset you can use
+the keywords AR and SP. But this keywords can't be used as pin names.
+For AR and SP is one product term allowed.

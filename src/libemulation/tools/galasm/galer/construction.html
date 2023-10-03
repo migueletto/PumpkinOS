@@ -1,0 +1,97 @@
+<html>
+<head>
+  <title>Construction</title>
+  <meta name="Generator" content="GuideML V1.6">
+  <meta http-equiv="Content-Type" content="text/html">
+</head>
+<body>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="schaltbesch.html"><img src="prev.gif" alt="PREV" border=0></a><a href="keywords.html"><img src="next.gif" alt="NEXT" border=0></a>
+<hr>
+<pre>
+
+<u>III.3 Construction</u>
+
+The parts list can be found in the appendix. If you want to save the cost
+of the Textool-socket, you can also use a normal 24 pin socket, but since the
+two pin rows are too far apart, you will have to carefully cut the socket
+along it's length, and set them to the correct distance. Or you might like
+to use &quot;MOLEX&quot; pins instead. For IC-sockets you should only use precision
+sockets. The 25 Pin Sub-D-socket (A1000) or the Sub-D-plug (other Amiga
+models) is connected as follows:
+
+  D0   = pin 2
+  D1   = pin 3
+  D2   = pin 4
+  D3   = pin 5
+  D4   = pin 6
+  BUSY = pin 11
+  GND  : A1000  pin 14
+         A500, A2000, A3000, ...  pin 17
+
+The supply voltage (+5V and ground (GND) you will have to get from the
+Amiga's Expansion-Port or from a regulated +5V power supply. The GAL-Burner
+has a maximum current consumption of about 220 mA.
+
+The main difficulty in the construction of the GAL-burner is probably the
+printed circuit board (PCB). Most likely a double sided through plated PCB
+is required, so probably the best solution is to use a piece of veroboard,
+and connect the relevant pins with fine hookup wire, or wire wrap wire. If
+you want the whole thing to look impressive, you can use wiring guides.
+The wires can be conducted via these guides, and wont go here there an
+everywhere.  I have constructed my GAL-Burner and endless other projects
+in this way.
+
+If you are able to make a PCB, you can find the PostScript- or
+Gerber-Files in the directory &quot;Layout&quot;. This PCB-layout is copyright by
+Thorsten Elle. Thank you Thorsten for giving me the permission to
+distribute your layout together with GALer.
+If you want to use the PCB-layout, please not this:
+On the PCB the resistors R28 to R32 of the circuit diagram are replaced
+by a resistor-array (8 * 1.8kOhm). Futhermore there is for each IC a
+capacitor for anti-interferencing. These capacitors are C5 to C14 (each 100nF).
+
+When you have built the circuit and you have connected it to the Amiga,
+and the Amiga DIDN'T blow up, you can run the test program &quot;GALerTest&quot;.
+The program set various voltage levels on the Textool-socket, which you
+can check with a VOM. The programming voltages are adjusted with R40-R44.
+For this you can use &quot;GALerTest&quot;.
+
+DON'T FORGET: adjust the programming voltage with the trimpots, otherwise
+              the GAL-burner will NOT FUNCTION !!!!
+              (start the &quot;GALerTest&quot; and click through to the
+               relevant test points).
+
+If the GAL-Burner works just as the test program demands, then you can try
+burning a test GAL and test it with the GAL-Checker function of GALer. If
+this all works then there are no faults in the hardware. GALs of the type
+GAL16V8 must be inserted in the Textool-socket, so that pin 1 of the GAL
+lines up with pin 3 of the socket. With GALs of the type GAL20V8 pin 1 of
+the GAL must line up with pin 1 of the socket.
+
+
+Here is the pin layout of the used transistors (bottom view):
+
+
+                       BC 237 and BC 327
+                               _
+                             -   -
+                            -     -
+                            -o o o-
+                             -----
+
+                             E B C
+
+
+
+
+
+Well that's about it. Chau and have fun with the cute GALs.
+
+
+
+
+</pre>
+<hr>
+<a href="main.html"><img src="toc.gif" alt="CONTENTS" border=0></a><a href="index.html"><img src="index.gif" alt="INDEX" border=0></a><a href="schaltbesch.html"><img src="prev.gif" alt="PREV" border=0></a><a href="keywords.html"><img src="next.gif" alt="NEXT" border=0></a>
+</body>
+</html>

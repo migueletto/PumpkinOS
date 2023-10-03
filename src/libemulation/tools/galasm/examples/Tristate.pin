@@ -1,0 +1,25 @@
+
+
+ Pin # | Name     | Pin Type
+-----------------------------
+   1   | A        | Input
+   2   | B        | Input
+   3   | C        | Input
+   4   | D        | Input
+   5   | E        | Input
+   6   | F        | Input
+   7   | G        | Input
+   8   | NC       | Input
+   9   | NC       | Input
+  10   | GND      | GND
+  11   | NC       | Input
+  12   | NC       | NC
+  13   | NC       | NC
+  14   | NC       | NC
+  15   | NC       | NC
+  16   | NC       | NC
+  17   | Y3       | Output
+  18   | Y2       | Output
+  19   | Y1       | Output
+  20   | VCC      | VCC
+

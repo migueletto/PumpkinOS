@@ -1,0 +1,206 @@
+HEX2BIN 1 "2017 may 10th" "Hex2bin Version 2.5"
+=head1 NAME
+
+hex2bin/mot2bin  \- converts Intel/Motorola  hex files into binary
+
+=head1 SYNOPSIS
+
+hex2bin [options] file
+
+Option list:
+    [-a]                Address Alignment Word (hex2bin only)
+    [-b]                Batch mode: exits if specified file doesn't exist
+    [-c]                Enable record checksum verification
+    [-C Poly Init RefIn RefOut XorOut]
+                        CRC parameters
+    [-e extension]      Output filename extension (without the dot)
+    [-E 0|1]            Endian for checksum/CRC, 0: little, 1: big
+    [-f address]        Address of check result to write
+    [-F address value]  Address and value to force
+    [-k 0-5]            Select check method (checksum or CRC) and size
+    [-d]                Display list of check methods/value size
+    [-l length]         Maximal Length (Starting address + Length -1 is Max Address)
+                        File will be filled with Pattern until Max Address is reached
+    [-m size]           Minimum Block Size
+                        File Size Dimension will be a multiple of Minimum block size
+                        File will be filled with Pattern
+                        Length must be a power of 2 in hexadecimal [see -l option]
+                        Attention this option is STRONGER than Maximal Length
+    [-p pad byte]       Pad-byte value in hex (default: 0xFF)
+    [-r start end]      Range to compute checksum over (default is min and max addresses)
+    [-s address]        Starting address in hex for binary file (default: 0)
+                         ex.: if the first record is :nn010000ddddd...
+                        the data supposed to be stored at 0100 will start at 0000
+                        in the binary file.
+                        Specifying starting address with -s 0100 will put pad bytes in the
+                        binary file so that the data supposed to be stored at 0100
+                        will start at the same address in the binary file.
+    [-t address]        Floor address in hex
+    [-T address]        Ceiling address in hex
+    [-v]                Verbose messages for debugging purposes
+    [-w]                Swap wordwise (low <-> high)
+
+=head1 DESCRIPTION
+
+B<Hex2bin>
+is a program that converts an Intel hex format into binary.
+It can handle the extended Intel hex format. Both the segmented
+and linear address records are supported.
+Records need not be sorted and there can be gaps between records.
+Records are assumed to be non-overlapping.
+Padding bytes may be specified and a checksum may be inserted in the
+binary file.
+
+B<Mot2bin>
+does the same with Motorola hex files. It has the same features and command line
+options as hex2bin except where indicated. 24 bit and 32 bit records are supported.
+
+=head1 OPTIONS
+
+Options can be specified in any order, with the file name at the end. Options are
+now case sensitive. All option values are specified in hexadecimal.
+
+B<-a>
+
+Address Alignment Word. (hex2bin only)
+
+Hex with record type, where data is represented in Word (2 Byte)
+e.g Texas Instruments: TMS320F2835, TMS320F28065.
+
+B<-b>
+
+Batch processing mode: the program won't ask for a file name if the one specified is wrong.
+
+B<-c>
+
+Enables checksum verification.
+
+By default, it ignores checksum errors in the hex file, so that someone can change
+by hand some bytes with a text editor, allowing quick fixes without recompiling a source
+code all over again. This is useful when tweaking constants directly in the code or
+something similar. If you want checksum error reporting, specify the option -c.
+
+B<Ex.: hex2bin -c example.hex>
+
+If there is a checksum error somewhere, the program will continue the
+conversion anyway.
+
+B<-C Poly Init RefIn RefOut XorOut>
+
+CRC parameters. See the doc/CRC list.txt file for a description of common CRCs. See also
+the test/Makefile for examples of command lines. Needs B<-k> and B<-f> option.
+RefIn and RefOut parameters are specified by B<t> or B<f> for true or false.
+
+B<-d>
+
+Display the list of available check methods and sizes.
+
+B<-e extension>
+
+By default, the output file will have an extension B<filename.bin>.
+Another extension may be specified with this command:
+
+B<Ex.: hex2bin -e com example.hex>
+
+The output file will be example.com
+
+B<-E 0|1>
+
+Endianness for writing the check result or forcing a 16-bit value.
+    B<0>: little, B<1>: big.
+
+By default, little endian is used.
+
+B<-f address>
+
+Address in hexadecimal for inserting the check value in the binary file. Needs B<-k>
+option to specify the check method. A range can be specified with option B<-r>.
+
+B<-F address value>
+
+Address and value of checksum to insert (force) in the binary file. Needs B<-k>
+option to specify the size. The value is written as is.
+
+B<-k 0-5>
+
+In many cases, someone needs to insert a check value in the binary file. For example,
+a boot rom is programmed with a checksum which is verified at power-up. This feature
+uses also options B<-r>, B<-C> and B<-f>. Display the list of checksum/CRC with B<-d>.
+
+Select the checksum type to insert into the binary file
+ 0:  Checksum  8-bit
+ 1:  Checksum 16-bit (adds 16-bit words into a 16-bit sum, data and result BE or LE)
+ 2:  CRC8
+ 3:  CRC16
+ 4:  CRC32
+ 5:  Checksum 16-bit (adds bytes into a 16-bit sum, result BE or LE)
+
+B<-l length>
+
+The binary file will be padded with FF or pad bytes as specified by the option
+below, up to a maximal Length (Starting address + Length -1 is Max Address)
+
+B<-m minimum_block_size>
+
+File Size Dimension will be a multiple of Minimum block size.
+File will be filled with Pattern.
+Length must be a power of 2 in hexadecimal [see B<-l> option]
+Attention this option is STRONGER than Maximal Length
+
+B<-p pad_byte>
+
+Pads unused locations with the specified byte.
+
+By default, this byte is FF, which is the unprogrammed value for most EPROM/EEPROM/Flash.
+
+B<Ex.: hex2bin -p 3E example.hex>
+
+B<-r [start] [end]>
+
+Range to compute binary checksum over (default is min and max addresses)
+
+B<-s address>
+
+Specify the starting address of the binary file.
+
+Normally, hex2bin will generate a binary file starting at the lowest address in
+the hex file. If the lowest address isn't 0000, ex: 0100, the first byte that
+should be at 0100 will be stored at address 0000 in the binary file. This may
+cause problems when using the binary file to program an EPROM.
+
+If you can't specify the starting address (or offset) to your EPROM programmer,
+you can specify a starting address on the command line:
+
+B<Ex.: hex2bin -s 0000 records_start_at_0100.hex>
+
+The bytes will be stored in the binary file with a padding from 0000 to the
+lowest address (00FF in this case). Padding bytes are all FF by default so an EPROM
+programmer can skip these bytes when programming. The padding value can be changed
+with the -p option.
+
+B<-t address> 
+
+Specify the flooring address in hexadecimal of the binary file. (hex2bin only)
+
+This option discards all lower addresses than the flooring address.
+
+B<-T address> 
+
+Specify the ceiling address in hexadecimal of the binary file. (hex2bin only)
+
+This option discards all higher addresses than the ceiling address.
+B<-v>
+
+Verbose mode for diagnostics
+
+B<-w>
+
+Swap wordwise (low <-> high).
+
+=head1 NOTES
+
+This program does minimal error checking since many hex files are
+generated by known good assemblers.
+
+=head1 AUTHOR
+Jacques Pelletier (jpelletier@ieee.org) - version 2.5
