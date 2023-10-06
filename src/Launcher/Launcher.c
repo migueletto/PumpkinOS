@@ -2783,7 +2783,7 @@ static void EventLoop(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "event loop begin");
   do {
     CheckNotifications();
-    EvtGetEvent(&event, 10);
+    EvtGetEvent(&event, 30);
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (ApplicationHandleEvent(&event)) continue;

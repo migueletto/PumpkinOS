@@ -12,6 +12,8 @@
 
 #define PALMOS_MODULE "Event"
 
+#define TIMEOUT 50000
+
 typedef struct {
   EventType events[MAX_EVENTS];
   EventType aux[MAX_EVENTS];
@@ -244,19 +246,19 @@ int EvtPumpEvents(Int32 timeoutUs) {
 
   if (timeoutUs < 0) {
     // wait forever
-    wait = 10000;
+    wait = TIMEOUT;
     forever = 1;
   } else if (timeoutUs == 0) {
     // no wait
     wait = 0;
     forever = 0;
-  } else if (timeoutUs <= 10000) {
+  } else if (timeoutUs <= TIMEOUT) {
     // wait at most timeoutUs
     wait = timeoutUs;
     forever = 0;
   } else {
-    // wait at most 10000 us each time
-    wait = 10000;
+    // wait at most TIMEOUT us each time
+    wait = TIMEOUT;
     forever = 0;
   }
 
@@ -327,7 +329,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
     if (timeoutUs <= dt) break;
     timeoutUs -= dt;
     t0 = t;
-    wait = (timeoutUs < 10000) ? timeoutUs : 10000;
+    wait = (timeoutUs < TIMEOUT) ? timeoutUs : TIMEOUT;
   }
 
   //event->tapCount = ???; // XXX
