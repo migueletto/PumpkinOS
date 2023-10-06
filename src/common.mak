@@ -16,17 +16,29 @@ MACHINE := $(shell uname -m)
 ifeq ($(findstring arm,$(MACHINE)),arm)
 SYS_CPU=1
 SYS_ENDIAN=LITTLE_ENDIAN
+ifeq ($(BITS),)
+BITS=32
+endif
+else ifeq ($(MACHINE),aarch64)
+SYS_CPU=1
+SYS_ENDIAN=LITTLE_ENDIAN
+ifeq ($(BITS),)
+BITS=32
+endif
+MBITS=
 else ifeq ($(MACHINE),x86_64)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=64
 endif
+MBITS=
 else ifeq ($(MACHINE),x86_32)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
+MBITS=-m$(BITS)
 endif
 else ifeq ($(MACHINE),i686)
 SYS_ENDIAN=LITTLE_ENDIAN
@@ -34,12 +46,14 @@ SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
 endif
+MBITS=-m$(BITS)
 else ifeq ($(MACHINE),i386)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
 endif
+MBITS=-m$(BITS)
 else ifeq ($(MACHINE),ppc64le)
 SYS_ENDIAN=LITTLE_ENDIAN
 SYS_CPU=3
@@ -68,7 +82,7 @@ EXTLIBS=-lrt -ldl
 SOEXT=.so
 LUAPLAT=linux
 OS=Linux
-OSDEFS=-m$(BITS) -DLINUX -DSOEXT=\"$(SOEXT)\"
+OSDEFS=$(MBITS) -DLINUX -DSOEXT=\"$(SOEXT)\"
 CC=gcc
 else ifeq ($(OSNAME),Msys)
 SYS_OS=2
@@ -76,7 +90,7 @@ EXTLIBS=-lwsock32 -lws2_32
 SOEXT=.dll
 LUAPLAT=mingw
 OS=Windows
-OSDEFS=-m$(BITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
+OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
 else ifeq ($(OSNAME),Serenity)
 ifeq ($(SERENITY),)
@@ -87,7 +101,7 @@ EXTLIBS=
 SOEXT=.so
 LUAPLAT=linux
 OS=Serenity
-OSDEFS=-m$(BITS) -DSERENITY -DSOEXT=\"$(SOEXT)\" -I$(SERENITY)/Build/x86_64/Root/usr/include -D_GNU_SOURCE
+OSDEFS=$(MBITS) -DSERENITY -DSOEXT=\"$(SOEXT)\" -I$(SERENITY)/Build/x86_64/Root/usr/include -D_GNU_SOURCE
 CC=$(SERENITY)/Toolchain/Local/x86_64/bin/x86_64-pc-serenity-gcc
 else ifeq ($(OSNAME),Android)
 ifeq ($(NDK),)
