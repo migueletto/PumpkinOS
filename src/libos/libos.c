@@ -75,7 +75,6 @@ static int libos_action(void *arg) {
   int encoding, height;
 
   data = (libos_t *)arg;
-  height = data->dia ? (data->height * 2) / 3 : data->height;
 
   if (data->wp) {
     debug(DEBUG_INFO, PUMPKINOS, "creating window");
@@ -85,7 +84,7 @@ static int libos_action(void *arg) {
       xfree(data);
       return 0;
     }
-    height = data->dia ? (data->height * 2) / 3 : data->height;
+    height = data->dia ? ((data->height - 64) * 2) / 3 : data->height;
     pumpkin_set_window(data->w, data->width, height);
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
