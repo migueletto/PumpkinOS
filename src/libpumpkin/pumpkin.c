@@ -78,6 +78,8 @@
 #define PUMPKIN_USER_AGENT  PUMPKINOS
 #define PUMPKIN_SERVER_NAME PUMPKINOS
 
+#define MAX_EVENTS 16
+
 typedef struct {
   uint16_t refNum;
   uint32_t type;
@@ -169,6 +171,10 @@ typedef struct {
 } notif_registration_t;
 
 typedef struct {
+  int ev, arg1, arg2, arg3;
+} event_t;
+
+typedef struct {
   script_engine_t *engine;
   window_provider_t *wp;
   audio_provider_t *ap;
@@ -212,6 +218,8 @@ typedef struct {
   int num_notif;
   FontTypeV2 *fontPtr[128];
   MemHandle fontHandle[128];
+  event_t events[MAX_EVENTS];
+  int nev, iev, oev;
 } pumpkin_module_t;
 
 typedef union {
@@ -1883,20 +1891,52 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
   return updated;
 }
 
-// XXX this can block if the pipe is full, which can happen if the task is not reading quite often
+static void put_event(int ev, int arg1, int arg2, int arg3) {
+  if (pumpkin_module.nev < MAX_EVENTS) {
+    pumpkin_module.events[pumpkin_module.iev].ev = ev;
+    pumpkin_module.events[pumpkin_module.iev].arg1 = arg1;
+    pumpkin_module.events[pumpkin_module.iev].arg2 = arg2;
+    pumpkin_module.events[pumpkin_module.iev].arg3 = arg3;
+    pumpkin_module.iev++;
+    if (pumpkin_module.iev == MAX_EVENTS) pumpkin_module.iev = 0;
+    pumpkin_module.nev++;
+  }
+}
+
+static int get_event(int *arg1, int *arg2, int *arg3) {
+  int ev = 0;
+
+  if (pumpkin_module.nev) {
+    ev = pumpkin_module.events[pumpkin_module.oev].ev;
+    *arg1 = pumpkin_module.events[pumpkin_module.oev].arg1;
+    *arg2 = pumpkin_module.events[pumpkin_module.oev].arg2;
+    *arg3 = pumpkin_module.events[pumpkin_module.oev].arg3;
+    pumpkin_module.oev++;
+    if (pumpkin_module.oev == MAX_EVENTS) pumpkin_module.oev = 0;
+    pumpkin_module.nev--;
+  }
+
+  return ev;
+}
+
 static void task_forward_event(int i, int ev, int a1, int a2, int a3) {
   unsigned char *buf;
   unsigned int len;
   uint32_t carg[4];
 
-  carg[0] = ev;
-  carg[1] = a1;
-  carg[2] = a2;
-  carg[3] = a3;
-  buf = (unsigned char *)&carg[0];
-  len = sizeof(uint32_t)*4;
+  if (pumpkin_module.dia || pumpkin_module.single) {
+    put_event(ev, a1, a2, a3);
+  } else {
+    carg[0] = ev;
+    carg[1] = a1;
+    carg[2] = a2;
+    carg[3] = a3;
+    buf = (unsigned char *)&carg[0];
+    len = sizeof(uint32_t)*4;
 
-  thread_client_write(pumpkin_module.tasks[i].handle, buf, len);
+    // XXX this can block if the pipe is full, which can happen if the task is not reading quite often
+    thread_client_write(pumpkin_module.tasks[i].handle, buf, len);
+  }
 }
 
 void pumpkin_forward_event(int i, int ev, int a1, int a2, int a3) {
@@ -2279,7 +2319,98 @@ int pumpkin_event_peek(void) {
   return thread_server_peek();
 }
 
-int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
+static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
+  int ev, arg1, arg2, wait;
+  int x, y, w, h, tmp;
+  uint64_t now;
+
+  if ((ev = get_event(&arg1, &arg2, &tmp)) != 0) {
+    *key = arg1;
+    *mods = arg2;
+    *buttons = tmp;
+    return ev;
+  }
+
+  wait = usec/1000;
+  if (usec && !wait) wait = 1;
+
+  if ((ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2)) > 0) {
+    switch (ev) {
+      case WINDOW_KEYDOWN:
+        pumpkin_set_key(arg1);
+        ev = 0;
+        break;
+      case WINDOW_KEYUP:
+        *key = pumpkin_reset_key(arg1);
+        *mods = pumpkin_module.modMask;
+        *buttons = 0;
+        ev = MSG_KEY;
+        break;
+      case WINDOW_BUTTONDOWN:
+        if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
+        pumpkin_module.buttonMask |= arg1;
+        pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
+        pumpkin_module.tasks[0].penX = pumpkin_module.lastX;
+        pumpkin_module.tasks[0].penY = pumpkin_module.lastY;
+        put_event(MSG_BUTTON, 0, 0, 1);
+        *key = pumpkin_module.lastX;
+        *mods = pumpkin_module.lastY;
+        *buttons = 0;
+        ev = MSG_MOTION;
+        break;
+      case WINDOW_BUTTONUP:
+        if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
+        pumpkin_module.buttonMask &= ~arg1;
+        pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
+        *key = *mods = 0;
+        *buttons = 0;
+        ev = MSG_BUTTON;
+        break;
+      case WINDOW_MOTION:
+        ev = 0;
+        x = arg1;
+        y = arg2;
+        if (!dia_stroke(pumpkin_module.dia, x, y)) {
+          if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
+            pumpkin_module.tasks[0].penX = x;
+            pumpkin_module.tasks[0].penY = y;
+            *key = x;
+            *mods = y;
+            ev = MSG_MOTION;
+          }
+        }
+        pumpkin_module.lastX = x;
+        pumpkin_module.lastY = y;
+        break;
+      default:
+        ev = 0;
+        break;
+    }
+  }
+
+  now = sys_get_clock();
+
+  if ((now - pumpkin_module.lastUpdate) > 50000) {
+    if (draw_task(0, &x, &y, &w, &h)) {
+      wman_update(pumpkin_module.wm, pumpkin_module.tasks[0].taskId, x, y, w, h);
+      pumpkin_module.render = 1;
+    }
+    if (dia_update(pumpkin_module.dia)) {
+      pumpkin_module.render = 1;
+    }
+    if (pumpkin_module.render) {
+      if (pumpkin_module.wp->render) {
+        pumpkin_module.wp->render(pumpkin_module.w);
+      }
+      pumpkin_module.render = 0;
+    }
+    pumpkin_module.lastUpdate = now;
+  }
+
+  return ev;
+}
+
+static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   client_request_t *creq;
   EventType event;
@@ -2389,6 +2520,12 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
   }
 
   return ev;
+}
+
+int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
+  return pumpkin_module.dia || pumpkin_module.single ?
+    pumpkin_event_single_thread(key, mods, buttons, data, n, usec) :
+    pumpkin_event_multi_thread(key, mods, buttons, data, n, usec);
 }
 
 uint32_t pumpkin_get_taskid(void) {
@@ -2680,25 +2817,6 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
       ptr_unlock(task->screen_ptr, TAG_SCREEN);
     }
   }
-
-  /*
-  // this code is not necessary for DIA
-  if ((pumpkin_module.dia || pumpkin_module.single) && mutex_lock(mutex) == 0) {
-    uint64_t now = sys_get_clock();
-    if ((now - pumpkin_module.lastUpdate) > 50000) {
-      if (draw_task(0, &x, &y, &w, &h)) {
-        wman_update(pumpkin_module.wm, pumpkin_module.tasks[0].taskId, x, y, w, h);
-        if (pumpkin_module.wp->render) {
-          pumpkin_module.wp->render(pumpkin_module.w);
-        }
-      }
-      pumpkin_module.lastUpdate = now;
-
-    }
-    mutex_unlock(mutex);
-    dbg_poll();
-  }
-  */
 
 //debug(1, "XXX", "pumpkin_screen_dirty done");
 }
