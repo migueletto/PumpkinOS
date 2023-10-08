@@ -79,12 +79,12 @@ static int libos_action(void *arg) {
   if (data->wp) {
     debug(DEBUG_INFO, PUMPKINOS, "creating window");
     encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
+    height = data->dia ? ((data->height - 64) * 2) / 3 : data->height;
     if ((data->w = data->wp->create(encoding, &data->width, &data->height, 1, 1, 0, data->fullscreen, 0, data->wp->data)) == NULL) {
       thread_end(PUMPKINOS, thread_get_handle());
       xfree(data);
       return 0;
     }
-    height = data->dia ? ((data->height - 64) * 2) / 3 : data->height;
     pumpkin_set_window(data->w, data->width, height);
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
