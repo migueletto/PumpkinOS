@@ -2399,10 +2399,12 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
         break;
       case WINDOW_MOTION:
         ev = 0;
-        x = calibrateX(&pumpkin_module.calibration, arg1, arg2);
-        y = calibrateY(&pumpkin_module.calibration, arg1, arg2);
-debug(1, "XXX", "motion x=%d y=%d", arg1, arg2);
-debug(1, "XXX", "calib  x=%d y=%d", x, y);
+        x = arg1;
+        y = arg2;
+        //x = calibrateX(&pumpkin_module.calibration, arg1, arg2);
+        //y = calibrateY(&pumpkin_module.calibration, arg1, arg2);
+//debug(1, "XXX", "motion x=%d y=%d", arg1, arg2);
+//debug(1, "XXX", "calib  x=%d y=%d", x, y);
         if (!dia_stroke(pumpkin_module.dia, x, y)) {
           if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
             pumpkin_module.tasks[0].penX = x;
