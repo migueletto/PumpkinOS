@@ -30,6 +30,7 @@
 #include "grail.h"
 #include "dia.h"
 #include "wman.h"
+#include "calibrate.h"
 #include "color.h"
 #include "rgb.h"
 #include "dbg.h"
@@ -220,6 +221,7 @@ typedef struct {
   MemHandle fontHandle[128];
   event_t events[MAX_EVENTS];
   int nev, iev, oev;
+  calibration_t calibration;
 } pumpkin_module_t;
 
 typedef union {
@@ -1016,6 +1018,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   task_screen_t *screen;
   LocalID dbID;
   UInt32 language;
+  UInt16 size;
   uint32_t color;
   int j, ptr;
 
@@ -1145,6 +1148,20 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   }
 
   mutex_unlock(mutex);
+
+  if (pumpkin_module.dia) {
+    size = 0;
+    if (PrefGetAppPreferences('toch', 1, &pumpkin_module.calibration, &size, true) == noPreferenceFound) {
+      debug(DEBUG_INFO, PUMPKINOS, "calibrating touch screen");
+      pumpkin_calibrate(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.width, 480, &pumpkin_module.calibration);
+      size = sizeof(calibration_t);
+      PrefSetAppPreferences('toch', 1, 1, &pumpkin_module.calibration, size, true);
+    }
+    debug(DEBUG_INFO, PUMPKINOS, "calibration parameters a=%u b=%d c=%d d=%d e=%d f=%d div=%d",
+      pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,
+      pumpkin_module.calibration.d, pumpkin_module.calibration.e, pumpkin_module.calibration.f,
+      pumpkin_module.calibration.div);
+  }
 
   pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
 
@@ -2319,6 +2336,20 @@ int pumpkin_event_peek(void) {
   return thread_server_peek();
 }
 
+static uint32_t calibrateX(calibration_t *c, int x, int y) {
+  x = ((c->a * x) + (c->b * y) + c->c) / c->div;
+  if (x < 0) x = 0;
+  else if (x >= 320) x = 320-1;
+  return x;
+}
+
+static uint32_t calibrateY(calibration_t *c, int x, int y) {
+  y = ((c->d * x) + (c->e * y) + c->f) / c->div;
+  if (y < 0) y = 0;
+  else if (y >= 480) y = 480-1;
+  return y;
+}
+
 static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
   int x, y, w, h, tmp;
@@ -2368,8 +2399,10 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
         break;
       case WINDOW_MOTION:
         ev = 0;
-        x = arg1;
-        y = arg2;
+        x = calibrateX(&pumpkin_module.calibration, arg1, arg2);
+        y = calibrateY(&pumpkin_module.calibration, arg1, arg2);
+debug(1, "XXX", "motion x=%d y=%d", arg1, arg2);
+debug(1, "XXX", "calib  x=%d y=%d", x, y);
         if (!dia_stroke(pumpkin_module.dia, x, y)) {
           if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
             pumpkin_module.tasks[0].penX = x;
