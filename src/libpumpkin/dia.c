@@ -18,7 +18,6 @@
 #define DIA_GHEIGHT   112
 #define ALPHA_WIDTH   97
 #define ALPHA_HEIGHT  65
-#define BUTTON_HEIGHT 32
 
 #define CODE_CAPS   157
 #define CODE_SHIFT  158
@@ -118,7 +117,7 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
     dia->graffiti_height = DIA_GHEIGHT;
     dia->alpha_width = ALPHA_WIDTH;
     dia->alpha_height = ALPHA_HEIGHT;
-    dia->button_height = BUTTON_HEIGHT;
+    dia->button_height = BUTTONS_HEIGHT / 2;
     if (dbl) {
       dia->width *= 2;
       dia->height *= 2;
@@ -290,6 +289,11 @@ static void dia_set_mode(dia_t *dia, int mode) {
 void dia_set_graffiti_state(dia_t *dia, uint16_t state) {
   dia->graffiti_state = state;
   dia->graffiti_dirty = true;
+}
+
+void dia_refresh(dia_t *dia) {
+  dia->graffiti_dirty = true;
+  dia->first = true;
 }
 
 int dia_update(dia_t *dia) {

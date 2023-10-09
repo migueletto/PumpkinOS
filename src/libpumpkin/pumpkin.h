@@ -30,6 +30,8 @@ extern "C" {
 
 #define GPSLibRefNum (MAX_SYSLIBS+3)
 
+#define BUTTONS_HEIGHT 64
+
 #define MSG_KEY     1
 #define MSG_BUTTON  2
 #define MSG_MOTION  3
@@ -144,11 +146,12 @@ void pumpkin_local_refresh(void);
 void pumpkin_set_spawner(int handle);
 int pumpkin_is_spawner(void);
 int pumpkin_get_spawner(void);
-void pumpkin_set_window(window_t *w, int width, int height);
+void pumpkin_set_window(window_t *w, int width, int height, int full_height);
 void pumpkin_get_window(int *width, int *height);
 int pumpkin_set_single(int depth);
 int pumpkin_is_single(void);
 int pumpkin_set_dia(int depth);
+int pumpkin_is_dia(void);
 void pumpkin_set_display(int ptr, int width, int height);
 void pumpkin_set_input(int num, int width, int height);
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b);
@@ -202,6 +205,7 @@ void pumpkin_screen_dirty(WinHandle win, int x, int y, int w, int h);
 void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1);
 int pumpkin_change_display(int width, int height);
 int pumpkin_default_density(void);
+void pumpkin_calibrate(int restore);
 ColorTableType *pumpkin_defaultcolorTable(void);
 
 void pumpkin_set_data(void *data);

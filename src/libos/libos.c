@@ -79,13 +79,13 @@ static int libos_action(void *arg) {
   if (data->wp) {
     debug(DEBUG_INFO, PUMPKINOS, "creating window");
     encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
-    height = data->dia ? ((data->height - 64) * 2) / 3 : data->height;
+    height = data->dia ? ((data->height - BUTTONS_HEIGHT) * 2) / 3 : data->height;
     if ((data->w = data->wp->create(encoding, &data->width, &data->height, 1, 1, 0, data->fullscreen, 0, data->wp->data)) == NULL) {
       thread_end(PUMPKINOS, thread_get_handle());
       xfree(data);
       return 0;
     }
-    pumpkin_set_window(data->w, data->width, height);
+    pumpkin_set_window(data->w, data->width, height, data->height - BUTTONS_HEIGHT);
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
     }
@@ -143,7 +143,7 @@ int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int wid
 
   if (dia) {
     width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-    height = (width * 3 ) / 2 + 64;
+    height = (width * 3 ) / 2 + BUTTONS_HEIGHT;
   } else if (single) {
     width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
     height = width;

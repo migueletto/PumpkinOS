@@ -30,7 +30,8 @@ typedef struct {
 
 static const char *choices[] = {
   "Date & Time",
-  "Formats"
+  "Formats",
+  "Calibration"
 };
 
 static void formSetup(FormType *frm) {
@@ -40,7 +41,7 @@ static void formSetup(FormType *frm) {
 
   index = FrmGetObjectIndex(frm, panelList);
   lst = (ListType *)FrmGetObjectPtr(frm, index);
-  LstSetListChoices(lst, (char **)choices, 2);
+  LstSetListChoices(lst, (char **)choices, pumpkin_is_dia() ? 3 : 2);
 
   index = FrmGetObjectIndex(frm, panelTrigger);
   ctl = (ControlType *)FrmGetObjectPtr(frm, index);
@@ -64,6 +65,9 @@ static void formSelect(UInt16 index) {
       break;
     case 1:
       FrmGotoForm(formatsForm);
+      break;
+    case 2:
+      pumpkin_calibrate(1);
       break;
   }
 }

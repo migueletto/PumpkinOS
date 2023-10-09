@@ -6,8 +6,10 @@ end
 
 pit.cleanup(cleanup_callback)
 
-if not pit.loadlib("liblsdl2") then
-  print("liblsdl2 not found")
+wp = pit.loadlib("liblsdl2")
+
+if not wp then
+  print("window provider not found")
   pit.finish(0)
   return
 end

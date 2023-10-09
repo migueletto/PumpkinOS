@@ -1044,6 +1044,39 @@ static int libsdl_window_destroy(window_t *window) {
   return libsdl_video_close((libsdl_window_t *)window);
 }
 
+// fake "average" function just for testing the UI
+static int libsdl_window_average(window_t *_window, int *x, int *y, int ms) {
+  libsdl_window_t *window = (libsdl_window_t *)_window;
+  int arg1, arg2;
+
+  for (;;) {
+    if (thread_must_end()) return -1;
+
+    switch (libsdl_event2(window, 1, &arg1, &arg2)) {
+      case WINDOW_BUTTONUP:
+        return 1;
+      case WINDOW_MOTION:
+        *x = arg1;
+        *y = arg2;
+        break;
+      case 0:
+        if (ms == -1) continue;
+        if (ms == 0) return 0;
+        ms--;
+        break;
+      case -1:
+        return -1;
+    }
+  }
+
+  return -1;
+}
+
+static int libsdl_calib(int pe) {
+  window_provider.average = libsdl_window_average;
+  return 0;
+}
+
 int liblsdl2_load(void) {
   SDL_version version;
 
@@ -1075,7 +1108,6 @@ int liblsdl2_load(void) {
   window_provider.update = libsdl_window_update;
   window_provider.draw_texture_rect = libsdl_window_draw_texture_rect;
   window_provider.update_texture_rect = libsdl_window_update_texture_rect;
-  window_provider.move = NULL;
 
   xmemset(&audio_provider, 0, sizeof(audio_provider));
   audio_provider.mixer_init = libsdl_mixer_init;
@@ -1095,6 +1127,8 @@ int liblsdl2_init(int pe, script_ref_t obj) {
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
   script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+
+  script_add_function(pe, obj, "calib", libsdl_calib);
 
   return 0;
 }

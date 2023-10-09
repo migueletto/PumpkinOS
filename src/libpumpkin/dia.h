@@ -7,6 +7,7 @@ typedef struct dia_t dia_t;
 
 dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int dbl);
 void dia_set_wh(dia_t *dia, int mode, WinHandle wh, RectangleType *bounds);
+void dia_refresh(dia_t *dia);
 int dia_update(dia_t *dia);
 int dia_stroke(dia_t *dia, int x, int y);
 void dia_draw_stroke(dia_t *dia, int x1, int y1, int x2, int y2, int alpha);

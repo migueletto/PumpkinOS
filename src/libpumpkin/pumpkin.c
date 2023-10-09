@@ -191,7 +191,8 @@ typedef struct {
   int launched;
   int spawner;
   int encoding;
-  int width, height, depth, mono, border;
+  int width, height, full_height;
+  int depth, mono, border;
   int dragging;
   int lastX, lastY;
   int current_task;
@@ -621,11 +622,12 @@ int pumpkin_get_spawner(void) {
   return pumpkin_module.spawner;
 }
 
-void pumpkin_set_window(window_t *w, int width, int height) {
-  debug(DEBUG_INFO, PUMPKINOS, "set window %dx%d", width, height);
+void pumpkin_set_window(window_t *w, int width, int height, int full_height) {
+  debug(DEBUG_INFO, PUMPKINOS, "set window %dx%d (%dx%d)", width, height, width, full_height);
   pumpkin_module.w = w;
   pumpkin_module.width = width;
   pumpkin_module.height = height;
+  pumpkin_module.full_height = full_height;
 
   pumpkin_module.wm = wman_init(pumpkin_module.wp, w, width, height);
 }
@@ -678,6 +680,10 @@ int pumpkin_set_dia(int depth) {
   pumpkin_module.depth = depth;
 
   return pumpkin_module.dia ? 0 : -1;
+}
+
+int pumpkin_is_dia(void) {
+  return pumpkin_module.dia ? 1 : 0;
 }
 
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b) {
@@ -1013,6 +1019,58 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   return r;
 }
 
+static uint32_t calibrate_x(int x, int y) {
+  calibration_t *c = &pumpkin_module.calibration;
+  x = ((c->a * x) + (c->b * y) + c->c) / c->div;
+  if (x < 0) x = 0;
+  else if (x >= pumpkin_module.width) x = pumpkin_module.width - 1;
+  return x;
+}
+
+static uint32_t calibrate_y(int x, int y) {
+  calibration_t *c = &pumpkin_module.calibration;
+  y = ((c->d * x) + (c->e * y) + c->f) / c->div;
+  if (y < 0) y = 0;
+  else if (y >= pumpkin_module.full_height) y = pumpkin_module.full_height - 1;
+  return y;
+}
+
+static void calibrate_test(char *label, int x, int y) {
+  int cx, cy;
+
+  cx = calibrate_x(x, y);
+  cy = calibrate_y(x, y);
+  debug(DEBUG_INFO, "TOUCH", "%-12s (%3d,%3d) mapped to (%3d,%3d)", label, x, y, cx, cy);
+}
+
+void pumpkin_calibrate(int restore) {
+  int dx, dy;
+
+  if (pumpkin_module.dia && pumpkin_module.wp->average) {
+    debug(DEBUG_INFO, "TOUCH", "calibrating touch screen");
+    dx = pumpkin_module.width;
+    dy = pumpkin_module.full_height;
+    calibrate(pumpkin_module.wp, pumpkin_module.w, dx, dy, restore ? 0 : BUTTONS_HEIGHT, &pumpkin_module.calibration);
+
+    debug(DEBUG_INFO, "TOUCH", "calibration parameters a=%d b=%d c=%d d=%d e=%d f=%d div=%d",
+      pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,
+      pumpkin_module.calibration.d, pumpkin_module.calibration.e, pumpkin_module.calibration.f,
+      pumpkin_module.calibration.div);
+    calibrate_test("top left    ", 0, 0);
+    calibrate_test("top right   ", dx-1, 0);
+    calibrate_test("bottom left ", 0, dy-1);
+    calibrate_test("bottom right", dx-1, dy-1);
+    calibrate_test("center      ", dx/2, dy/2);
+
+    PrefSetAppPreferences('toch', 1, 1, &pumpkin_module.calibration, sizeof(calibration_t), true);
+    if (restore) {
+      FrmUpdateForm(FrmGetActiveFormID(), 0);
+      dia_refresh(pumpkin_module.dia);
+      dia_update(pumpkin_module.dia);
+    }
+  }
+}
+
 static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
@@ -1152,15 +1210,8 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   if (pumpkin_module.dia && pumpkin_module.wp->average) {
     size = 0;
     if (PrefGetAppPreferences('toch', 1, &pumpkin_module.calibration, &size, true) == noPreferenceFound) {
-      debug(DEBUG_INFO, PUMPKINOS, "calibrating touch screen");
-      pumpkin_calibrate(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.width, 480, &pumpkin_module.calibration);
-      size = sizeof(calibration_t);
-      PrefSetAppPreferences('toch', 1, 1, &pumpkin_module.calibration, size, true);
+      pumpkin_calibrate(0);
     }
-    debug(DEBUG_INFO, PUMPKINOS, "calibration parameters a=%d b=%d c=%d d=%d e=%d f=%d div=%d",
-      pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,
-      pumpkin_module.calibration.d, pumpkin_module.calibration.e, pumpkin_module.calibration.f,
-      pumpkin_module.calibration.div);
   }
 
   pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
@@ -2336,20 +2387,6 @@ int pumpkin_event_peek(void) {
   return thread_server_peek();
 }
 
-static uint32_t calibrateX(calibration_t *c, int x, int y) {
-  x = ((c->a * x) + (c->b * y) + c->c) / c->div;
-  if (x < 0) x = 0;
-  else if (x >= 320) x = 320-1;
-  return x;
-}
-
-static uint32_t calibrateY(calibration_t *c, int x, int y) {
-  y = ((c->d * x) + (c->e * y) + c->f) / c->div;
-  if (y < 0) y = 0;
-  else if (y >= 480) y = 480-1;
-  return y;
-}
-
 static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
   int x, y, w, h, tmp;
@@ -2379,8 +2416,8 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
         break;
       case WINDOW_BUTTONDOWN:
         pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
-        pumpkin_module.lastX = calibrateX(&pumpkin_module.calibration, arg1, arg2);
-        pumpkin_module.lastY = calibrateY(&pumpkin_module.calibration, arg1, arg2);
+        pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+        pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
         if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
         pumpkin_module.buttonMask |= arg1;
         pumpkin_module.tasks[0].penX = pumpkin_module.lastX;
@@ -2393,8 +2430,8 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
         break;
       case WINDOW_BUTTONUP:
         pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
-        pumpkin_module.lastX = calibrateX(&pumpkin_module.calibration, arg1, arg2);
-        pumpkin_module.lastY = calibrateY(&pumpkin_module.calibration, arg1, arg2);
+        pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+        pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
         if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
         pumpkin_module.buttonMask &= ~arg1;
         *key = *mods = 0;
@@ -2405,8 +2442,8 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
         ev = 0;
         x = arg1;
         y = arg2;
-        x = calibrateX(&pumpkin_module.calibration, arg1, arg2);
-        y = calibrateY(&pumpkin_module.calibration, arg1, arg2);
+        x = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+        y = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
         if (!dia_stroke(pumpkin_module.dia, x, y)) {
           if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
             pumpkin_module.tasks[0].penX = x;
