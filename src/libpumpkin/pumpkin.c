@@ -948,6 +948,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   uint32_t r = 0;
   LocalID dbID;
   DmOpenRef dbRef;
+  UInt32 creator;
   MemHandle h;
   Boolean firstLoad;
   void *lib;
@@ -962,6 +963,8 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
     } else {
       debug(DEBUG_INFO, PUMPKINOS, "searching PilotMain in dlib");
       if ((dbID = DmFindDatabase(0, request->name)) != 0) {
+        DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
+        pumpkin_set_compat(creator, appCompatOk, 0);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
@@ -1046,11 +1049,11 @@ static void calibrate_test(char *label, int x, int y) {
 void pumpkin_calibrate(int restore) {
   int dx, dy;
 
-  if (pumpkin_module.dia && pumpkin_module.wp->average) {
+  if (pumpkin_module.wp->average) {
     debug(DEBUG_INFO, "TOUCH", "calibrating touch screen");
     dx = pumpkin_module.width;
     dy = pumpkin_module.full_height;
-    calibrate(pumpkin_module.wp, pumpkin_module.w, dx, dy, restore ? 0 : BUTTONS_HEIGHT, &pumpkin_module.calibration);
+    calibrate(pumpkin_module.wp, pumpkin_module.w, dx, dy, &pumpkin_module.calibration);
 
     debug(DEBUG_INFO, "TOUCH", "calibration parameters a=%d b=%d c=%d d=%d e=%d f=%d div=%d",
       pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,
@@ -1207,7 +1210,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
 
   mutex_unlock(mutex);
 
-  if (pumpkin_module.dia && pumpkin_module.wp->average) {
+  if (pumpkin_module.wp->average) {
     size = 0;
     if (PrefGetAppPreferences('toch', 1, &pumpkin_module.calibration, &size, true) == noPreferenceFound) {
       pumpkin_calibrate(0);
@@ -1349,7 +1352,6 @@ int pumpkin_launcher(char *name, int width, int height) {
   if (pumpkin_local_init(0, texture, name, width, height, pumpkin_module.border, pumpkin_module.border) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
-    pumpkin_set_compat(creator, appCompatOk, 0);
 
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
@@ -1357,6 +1359,7 @@ int pumpkin_launcher(char *name, int width, int height) {
     } else {
       MemSet(&request, sizeof(launch_request_t), 0);
 #ifdef ANDROID
+      pumpkin_set_compat(creator, appCompatOk, 0);
       extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
       request.pilot_main = LauncherPilotMain;
 #endif
@@ -1389,7 +1392,6 @@ static int pumpkin_launch_action(void *arg) {
 
   if (pumpkin_local_init(data->index, data->texture, data->request.name, data->width, data->height, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
-    pumpkin_set_compat(data->creator, appCompatOk, 0);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
       pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);

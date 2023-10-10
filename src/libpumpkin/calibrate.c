@@ -59,11 +59,11 @@ static void drawTarget(int i, uint32_t color, int width, int height, int *x, int
   surface->setpixel(surface->data, *x, *y, color);
 }
 
-void calibrate(window_provider_t *wp, window_t *w, int width, int height, int extra_height, calibration_t *c) {
+void calibrate(window_provider_t *wp, window_t *w, int width, int height, calibration_t *c) {
   surface_t *surface;
   texture_t *texture;
   uint8_t *raw;
-  uint32_t red, white, black, gray;
+  uint32_t red, white, black;
   int lcdx[3], lcdy[3], tpx[3], tpy[3];
   int i, x, y, len, font, fw, fh, r;
 
@@ -73,14 +73,6 @@ void calibrate(window_provider_t *wp, window_t *w, int width, int height, int ex
     black = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0x00, 0x00, 0xff);
     red = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0x00, 0x00, 0xff);
     raw = (uint8_t *)surface->getbuffer(surface->data, &len);
-
-    if (extra_height) {
-      gray = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x80, 0x80, 0x80, 0xff);
-      surface_rectangle(surface, 0, 0, width-1, extra_height-1, 1, gray);
-      wp->update_texture_rect(w, texture, raw, 0, 0, width, extra_height);
-      wp->draw_texture_rect(w, texture, 0, 0, width, extra_height, 0, height);
-    }
-
     surface_rectangle(surface, 0, 0, width-1, height-1, 1, white);
 
     font = 6;

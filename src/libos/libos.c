@@ -85,7 +85,7 @@ static int libos_action(void *arg) {
       xfree(data);
       return 0;
     }
-    pumpkin_set_window(data->w, data->width, height, data->height - BUTTONS_HEIGHT);
+    pumpkin_set_window(data->w, data->width, height, data->height);
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
     }

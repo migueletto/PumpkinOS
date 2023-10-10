@@ -25,6 +25,10 @@ typedef struct {
   uint16_t xcal[5], ycal[5];
 } libwaveshare_t;
 
+typedef struct {
+  int i, x, y;
+} point_t;
+
 struct texture_t {
   int width, height, size;
   uint16_t *p16;
@@ -77,12 +81,6 @@ static int window_destroy(window_t *window) {
 }
 
 static int window_render(window_t *window) {
-  libwaveshare_t *ws = (libwaveshare_t *)window;
-
-  if (ws) {
-    //ili9486_draw(ws->spip, ws->tft_spi, ws->gpiop, ws->gpio, ws->dc_pin, ws->p16, 0, 0, ws->width, ws->height, ws->aux);
-  }
-
   return 0;
 }
 
@@ -192,10 +190,17 @@ static int window_draw_texture(window_t *window, texture_t *texture, int x, int 
 
 static int window_average(window_t *window, int *x, int *y, int ms) {
   libwaveshare_t *ws = (libwaveshare_t *)window;
-  int pressure, ax, ay, tx, ty, n, down;
+  int pressure, n, down;
+  point_t xmin, xmax, ymin, ymax;
+  point_t p, t;
 
   down = 0;
-  tx = ty = n = 0;
+  t.x = t.y = 0;
+  xmin.x = ymin.y = 99999;
+  xmin.y = ymin.x = 0;
+  xmax.x = ymax.y = -1;
+  xmax.y = ymax.x = 0;
+  n = 0;
 
   for (;!thread_must_end();) {
     if (thread_must_end()) return -1;
@@ -203,20 +208,47 @@ static int window_average(window_t *window, int *x, int *y, int ms) {
     pressure = ads7846_pressure(ws->spip, ws->touch_spi);
     if (down) {
       if (pressure <= MIN_PRESSURE) {
-        if (n == 0) {
-          debug(DEBUG_ERROR, "WAVESHARE", "pressure %d, no points collected", pressure);
+        if (n < 5) {
+          debug(DEBUG_ERROR, "WAVESHARE", "pressure %d, not enough points were collected", pressure);
           return -1;
         }
-        *x = tx / n;
-        *y = ty / n;
+        // discard leftmost point
+        t.x -= xmin.x;
+        t.y -= xmin.y;
+        n--;
+        if (xmax.i != xmin.i) {
+          // discard rightmost point (it not already discarded)
+          t.x -= xmax.x;
+          t.y -= xmax.y;
+          n--;
+        }
+        if (ymin.i != xmin.i && ymin.i != xmax.i) {
+          // discard topmost point (it not already discarded)
+          t.x -= ymin.x;
+          t.y -= ymin.y;
+          n--;
+        }
+        if (ymax.i != xmin.i && ymax.i != xmax.i && ymax.i != ymin.i) {
+          // discard bottommost point (it not already discarded)
+          t.x -= ymax.x;
+          t.y -= ymax.y;
+          n--;
+        }
+        *x = t.x / n;
+        *y = t.y / n;
         debug(DEBUG_ERROR, "WAVESHARE", "pressure %d, %d points collected, x=%d y=%d", pressure, n, *x, *y);
         return 1;
       }
-      ay = ads7846_y(ws->spip, ws->touch_spi);
-      ax = ads7846_x(ws->spip, ws->touch_spi);
-      if (ax && ay) {
-        tx += ax;
-        ty += ay;
+      p.i = n;
+      p.y = ads7846_y(ws->spip, ws->touch_spi);
+      p.x = ads7846_x(ws->spip, ws->touch_spi);
+      if (p.x && p.y) {
+        if (p.x < xmin.x) xmin = p;
+        if (p.x > xmax.x) xmax = p;
+        if (p.y < ymin.y) ymin = p;
+        if (p.y > ymax.y) ymax = p;
+        t.x += p.x;
+        t.y += p.y;
         n++;
       }
     } else {
