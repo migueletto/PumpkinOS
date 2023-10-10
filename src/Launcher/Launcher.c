@@ -901,28 +901,25 @@ static void compat_callback(UInt32 creator, UInt16 index, UInt16 id, void *p, vo
   AppRegistryCompat *c;
   AppRegistrySize *s;
 
-  if (index >= 1) {
-    index--;
-    if (index < MAX_ITEMS) {
-      switch (id) {
-        case appRegistryCompat:
-          c = (AppRegistryCompat *)p;
-          data->item[index].type = sysFileTApplication;
-          data->item[index].creator = creator;
-          data->item[index].compat = c->compat;
-          data->item[index].code = c->code;
-          break;
-        case appRegistrySize:
+  if (data->numItems < MAX_ITEMS) {
+    switch (id) {
+      case appRegistryCompat:
+        data->numItems++;
+        c = (AppRegistryCompat *)p;
+        data->item[data->numItems-1].type = sysFileTApplication;
+        data->item[data->numItems-1].creator = creator;
+        data->item[data->numItems-1].compat = c->compat;
+        data->item[data->numItems-1].code = c->code;
+        break;
+      case appRegistrySize:
+        if (data->numItems > 0) {
           s = (AppRegistrySize *)p;
-          data->item[index].type = sysFileTApplication;
-          data->item[index].creator = creator;
-          data->item[index].width = s->width;
-          data->item[index].height = s->height;
-          break;
-      }
-      if (index+1 > data->numItems) {
-        data->numItems = index+1;
-      }
+          data->item[data->numItems-1].type = sysFileTApplication;
+          data->item[data->numItems-1].creator = creator;
+          data->item[data->numItems-1].width = s->width;
+          data->item[data->numItems-1].height = s->height;
+        }
+        break;
     }
   }
 }
@@ -1052,6 +1049,7 @@ static void printApp(launcher_data_t *data, launcher_item_t *item, int x, int y,
   if (item->iconWh) {
     RctSetRectangle(&rect, 0, 0, data->cellWidth, data->cellHeight);
     WinCopyRectangle(item->iconWh, WinGetDrawWindow(), &rect, x, y, winPaint);
+    WinCopyRectangle(item->iconWh, WinGetDisplayWindow(), &rect, x, y, winPaint);
   }
 
   len = adjustName(buf, dmDBNameLength, item->name, &nameWidth, data->cellWidth-2);
@@ -1128,6 +1126,7 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
       if (item->iconWh) {
         RctSetRectangle(&rect, 0, 0, data->cellHeight, data->cellHeight);
         WinCopyRectangle(item->iconWh, WinGetDrawWindow(), &rect, x, y+1, winPaint);
+        WinCopyRectangle(item->iconWh, WinGetDisplayWindow(), &rect, x, y+1, winPaint);
       }
     } else if (bmpId > 0) {
       paintBitmap(bmpId, x, y);
