@@ -1053,7 +1053,7 @@ void pumpkin_calibrate(int restore) {
     debug(DEBUG_INFO, "TOUCH", "calibrating touch screen");
     dx = pumpkin_module.width;
     dy = pumpkin_module.full_height;
-    calibrate(pumpkin_module.wp, pumpkin_module.w, dx, dy, &pumpkin_module.calibration);
+    calibrate(pumpkin_module.wp, pumpkin_module.w, DEFAULT_DEPTH, dx, dy, &pumpkin_module.calibration);
 
     debug(DEBUG_INFO, "TOUCH", "calibration parameters a=%d b=%d c=%d d=%d e=%d f=%d div=%d",
       pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,

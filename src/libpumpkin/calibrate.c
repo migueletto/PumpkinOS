@@ -57,7 +57,7 @@ static void drawTarget(int i, uint32_t color, int width, int height, int radius,
   surface->setpixel(surface->data, *x, *y, color);
 }
 
-void calibrate(window_provider_t *wp, window_t *w, int width, int height, calibration_t *c) {
+void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int height, calibration_t *c) {
   surface_t *surface;
   texture_t *texture;
   uint8_t *raw;
@@ -69,7 +69,7 @@ void calibrate(window_provider_t *wp, window_t *w, int width, int height, calibr
     texture = wp->create_texture(w, width, height);
     white = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0xff, 0xff, 0xff);
     black = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0x00, 0x00, 0xff);
-    red = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0x00, 0x00, 0xff);
+    red = depth >= 8 ? surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0x00, 0x00, 0xff) : black;
     raw = (uint8_t *)surface->getbuffer(surface->data, &len);
     surface_rectangle(surface, 0, 0, width-1, height-1, 1, white);
     radius = width / 10;
