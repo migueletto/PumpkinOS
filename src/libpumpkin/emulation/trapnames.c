@@ -1344,7 +1344,7 @@ static void getp(uint32_t addr, char *a, char *buf) {
   }
 }
 
-static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutput) {
+static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, int isoutput) {
   int8_t b;
   uint8_t B;
   int16_t w;
@@ -1406,6 +1406,7 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
           j++;
           if (b == 0) break;
           buf[i++] = b;
+          if (i == max - 2) break;
         }
         buf[i++] = '"';
         buf[i] = 0;
@@ -1428,9 +1429,11 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int isoutp
 
 #define doarg(n) \
   if (allTraps[trap].nArgs > n-1) { \
-    idx = getarg(allTraps[trap].arg##n, sp, idx, buf, isoutput); \
-    sys_strcat(line, " "); \
-    sys_strcat(line, buf); \
+    idx = getarg(allTraps[trap].arg##n, sp, idx, buf, sizeof(buf)-1, isoutput); \
+    if (sys_strlen(line) + 1 + sys_strlen(buf) + 1 < sizeof(line)) { \
+      sys_strcat(line, " "); \
+      sys_strcat(line, buf); \
+    } \
   }
 
 #define doargs() \
@@ -1517,6 +1520,7 @@ void trapHook(uint32_t pc) {
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
       isoutput = 1;
+      sys_memset(line, 0, sizeof(line));
       doargs();
       if (allTraps[trap].rType[1]) {
         d = m68k_get_reg(NULL, M68K_REG_A0);
