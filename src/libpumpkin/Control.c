@@ -45,6 +45,7 @@ void CtlDrawControl(ControlType *controlP) {
   Coord bw, bh;
   UInt16 rb;
   FontID old;
+  Boolean wasVisible;
   Int16 tw, th, x, y;
 
   if (controlP) {
@@ -56,6 +57,7 @@ void CtlDrawControl(ControlType *controlP) {
     oldt = WinSetTextColor(objFore);
     oldPattern = WinGetPatternType();                                                                                                                                                       
     WinSetPatternType(blackPattern);                                                                                                                                                        
+    wasVisible = controlP->attr.visible;
     controlP->attr.visible = true;
 
     switch (controlP->style) {
@@ -116,7 +118,7 @@ void CtlDrawControl(ControlType *controlP) {
         }
 
         if (controlP->attr.on) {
-          CtlInvertControl(controlP, true);
+          CtlInvertControl(controlP, wasVisible);
         }
         break;
 
@@ -401,7 +403,9 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value) {
   if (controlP->attr.on != value) {
     controlP->attr.on = true;
     debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d ON group %d visible %d", controlP->id, controlP->group, controlP->attr.visible);
-    CtlInvertControl(controlP, false);
+    if (controlP->attr.visible) {
+      CtlInvertControl(controlP, false);
+    }
     formP = (FormType *)controlP->formP;
 
     if (formP && controlP->group) {
