@@ -147,7 +147,7 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   WinSetDrawWindow(menu->barWin);
 
   mFrame = UIColorGetTableEntryIndex(UIFormFrame);
-  mTitle = UIColorGetTableEntryIndex(UIFormTitle);
+  mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
   mFill = UIColorGetTableEntryIndex(UIMenuFill);
   mFore = UIColorGetTableEntryIndex(UIMenuForeground);
   oldb = WinSetBackColor(mFill);
@@ -184,12 +184,11 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
   cmd[1] = 'W';
   cmd[3] = 0;
   old = FntSetFont(boldFont);
-  //px = FntCharsWidth(cmd, 2) + FntCharWidth('A');
   px = FntCharsWidth(cmd, 2) - 1;
   y = item->localBounds.topLeft.y;
 
   mFrame = UIColorGetTableEntryIndex(UIFormFrame);
-  mTitle = UIColorGetTableEntryIndex(UIFormTitle);
+  mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
   mFill = UIColorGetTableEntryIndex(UIMenuFill);
   mFore = UIColorGetTableEntryIndex(UIMenuForeground);
 

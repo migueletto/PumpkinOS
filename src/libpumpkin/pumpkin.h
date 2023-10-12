@@ -381,7 +381,7 @@ void FldReplaceText(FieldType *fldP, char *s, Boolean focus);
 IndexedColorType WinGetForeColor(void);
 IndexedColorType WinGetBackColor(void);
 void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, Boolean draw, UInt16 *drawnLines, UInt16 *totalLines, UInt16 *maxWidth, LineInfoType *lineInfo);
-void WinInvertRect(RectangleType *rect, UInt16 corner);
+void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted);
 void RctRectToAbs(const RectangleType *rP, AbsRectType *arP);
 void RctAbsToRect(const AbsRectType *arP, RectangleType *rP);
 UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r);

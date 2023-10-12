@@ -29,12 +29,11 @@
 #define ICON_SHIFT    4
 #define ICON_UP_DOWN 10
 
-#define ICON_HARD1    0
-#define ICON_HARD2    1
-#define ICON_HARD3    2
-#define ICON_HARD4    3
-#define ICON_UP       4
-#define ICON_DOWN     5
+#define ICON_HARD1    1
+#define ICON_HARD2    2
+#define ICON_UPDOWN   3
+#define ICON_HARD3    4
+#define ICON_HARD4    5
 
 #define TRIGGER_UP   27
 #define TRIGGER_DOWN 28
@@ -48,6 +47,7 @@ struct dia_t {
   int alpha_width;
   int alpha_height;
   int taskbar_height;
+  int button_width;
   int button_height;
   int icon_width;
   int graffiti_alpha;
@@ -76,6 +76,20 @@ struct dia_t {
   RectangleType *bounds;
 };
 
+static void update_area(dia_t *dia, RectangleType *r, UInt16 y0) {
+  uint8_t *raw;
+  int len;
+
+  BmpDrawSurface(WinGetBitmap(dia->wh), r->topLeft.x, r->topLeft.y, r->extent.x, r->extent.y, dia->surface, r->topLeft.x, r->topLeft.y, true);
+  raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
+  dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, r->topLeft.x, r->topLeft.y, r->extent.x, r->extent.y);
+  dia->wp->draw_texture_rect(dia->w, dia->graffiti,
+    r->topLeft.x, r->topLeft.y,
+    r->extent.x,  r->extent.y,
+    r->topLeft.x, y0 + r->topLeft.y);
+  if (dia->wp->render) dia->wp->render(dia->w);
+}
+
 static void dia_invert_button(dia_t *dia, int i) {
   RectangleType rect;
   UInt16 prev;
@@ -86,7 +100,33 @@ static void dia_invert_button(dia_t *dia, int i) {
   WinInvertRectangle(&rect, 0);
   WinSetDrawWindow(old);
   WinSetCoordinateSystem(prev);
-  dia->first = 1;
+  update_area(dia, &rect, dia->height - dia->graffiti_height);
+}
+
+static void dia_invert_hard_button(dia_t *dia, int i) {
+  RectangleType rect;
+  UInt16 prev;
+
+  prev = WinSetCoordinateSystem(dia->dbl ? kCoordinatesDouble : kCoordinatesStandard);
+  WinHandle old = WinSetDrawWindow(dia->wh);
+  RctSetRectangle(&rect, i * dia->button_width, dia->alpha_height + dia->taskbar_height - dia->button_height, dia->button_width, dia->button_height);
+  WinInvertRectangle(&rect, 0);
+  WinSetDrawWindow(old);
+  WinSetCoordinateSystem(prev);
+  update_area(dia, &rect, dia->height - dia->graffiti_height);
+}
+
+static void dia_invert_updown_button(dia_t *dia, int i) {
+  RectangleType rect;
+  UInt16 prev;
+
+  prev = WinSetCoordinateSystem(dia->dbl ? kCoordinatesDouble : kCoordinatesStandard);
+  WinHandle old = WinSetDrawWindow(dia->wh);
+  RctSetRectangle(&rect, 3 * dia->button_width, dia->alpha_height + dia->taskbar_height - dia->button_height + i * dia->button_height / 2, dia->button_width, dia->button_height / 2);
+  WinInvertRectangle(&rect, 0);
+  WinSetDrawWindow(old);
+  WinSetCoordinateSystem(prev);
+  update_area(dia, &rect, dia->height - dia->graffiti_height);
 }
 
 static void dia_invert_key(dia_t *dia, int i) {
@@ -99,7 +139,7 @@ static void dia_invert_key(dia_t *dia, int i) {
   WinInvertRectangle(&rect, 0);
   WinSetDrawWindow(old);
   WinSetCoordinateSystem(prev);
-  dia->first = 1;
+  update_area(dia, &rect, dia->height - dia->graffiti_height);
 }
 
 dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int dbl) {
@@ -125,8 +165,10 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
       dia->alpha_width *= 2;
       dia->alpha_height *= 2;
       dia->button_height *= 2;
+      dia->button_width = 45;
       dia->icon_width = 29;  // 11*29 + 1 = 320
     } else {
+      dia->button_width = 22;
       dia->icon_width = 14;  // 11*14 + 1 = 155
     }
 
@@ -405,15 +447,27 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
   uint32_t aux;
   int i, c, glyph, r = -1;
 
-  if (y >= (dia->height - dia->button_height) && y < dia->height && x >= 0 && x < dia->width) {
-    // button area
+  if (y >= (dia->height - dia->button_height) && y < dia->height && x >= 3 && x < dia->width - 2) {
+    // hard button area
+    i = (x - 3) / dia->button_width;
+
+    switch (i) {
+      case ICON_HARD1:
+      case ICON_HARD2:
+      case ICON_HARD3:
+      case ICON_HARD4:
+        dia_invert_hard_button(dia, i);
+        break;
+      case ICON_UPDOWN:
+        dia_invert_updown_button(dia, y < dia->height - dia->button_height / 2 ? 0 : 1);
+        break;
+    }
+
     if (!down) {
       if (dia->sel != -1) {
         dia_invert_key(dia, dia->sel);
         dia->sel = -1;
       }
-
-      i = x / dia->icon_width;
 
       switch (i) {
         case ICON_HARD1:
@@ -422,17 +476,18 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
         case ICON_HARD2:
           pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F2, 0, 0);
           break;
+        case ICON_UPDOWN:
+          if (y < dia->height - dia->button_height / 2) {
+            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
+          } else {
+            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
+          }
+          break;
         case ICON_HARD3:
           pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F3, 0, 0);
           break;
         case ICON_HARD4:
           pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F4, 0, 0);
-          break;
-        case ICON_UP:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
-          break;
-        case ICON_DOWN:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
           break;
       }
     }
@@ -587,8 +642,8 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
           }
         }
         dia->sel = -1;
-        r = 0;
       }
+      r = 0;
     }
   }
 

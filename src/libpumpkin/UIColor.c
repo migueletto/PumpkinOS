@@ -4,6 +4,46 @@
 #include "debug.h"
 #include "xalloc.h"
 
+/*
+    UIObjectFrame
+    UIObjectFill
+    UIObjectForeground
+    UIObjectSelectedFill
+    UIObjectSelectedForeground
+
+    UIMenuFrame
+    UIMenuFill
+    UIMenuForeground
+    UIMenuSelectedFill
+    UIMenuSelectedForeground
+
+    UIFieldBackground
+    UIFieldText
+    UIFieldTextLines
+    UIFieldCaret
+    UIFieldTextHighlightBackground
+
+    UIFieldTextHighlightForeground
+    UIFieldFepRawText
+    UIFieldFepRawBackground
+    UIFieldFepConvertedText
+    UIFieldFepConvertedBackground
+
+    UIFieldFepUnderline
+    UIFormFrame
+    UIFormFill
+    UIDialogFrame
+    UIDialogFill
+
+    UIAlertFrame
+    UIAlertFill
+    UIOK
+    UICaution
+    UIWarning
+
+    UIFieldFepConvertedUnderline
+*/
+
 static const IndexedColorType table[UILastColorTableEntry] = {
   0xff, 0x00, 0xff, 0x59, 0x00,
   0xff, 0x00, 0xff, 0x59, 0x00, 
@@ -11,7 +51,7 @@ static const IndexedColorType table[UILastColorTableEntry] = {
   0xff, 0xff, 0x00, 0xff, 0x5a, 
   0x59, 0x59, 0x00, 0x59, 0x00, 
   0x59, 0x00, 0xd3, 0x79, 0x7d,
-  0x00, 0xe0
+  0x00
 };
 
 typedef struct {
@@ -57,39 +97,6 @@ IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
 
   return 0;
 }
-/*
-    case UIObjectFrame:
-    case UIObjectFill:
-    case UIObjectForeground:
-    case UIObjectSelectedFill:
-    case UIObjectSelectedForeground:
-    case UIMenuFrame:
-    case UIMenuFill:
-    case UIMenuForeground:
-    case UIMenuSelectedFill:
-    case UIMenuSelectedForeground:
-    case UIFieldBackground:
-    case UIFieldText:
-    case UIFieldTextLines:
-    case UIFieldCaret:
-    case UIFieldTextHighlightBackground:
-    case UIFieldTextHighlightForeground:
-    case UIFieldFepRawText:
-    case UIFieldFepRawBackground:
-    case UIFieldFepConvertedText:
-    case UIFieldFepConvertedBackground:
-    case UIFieldFepUnderline:
-    case UIFormFrame:
-    case UIFormFill:
-    case UIDialogFrame:
-    case UIDialogFill:
-    case UIAlertFrame:
-    case UIAlertFill:
-    case UIOK:
-    case UICaution:
-    case UIWarning:
-    case UIFieldFepConvertedUnderline:
-*/
 
 void UIColorGetTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
   uic_module_t *module = (uic_module_t *)thread_get(uic_key);

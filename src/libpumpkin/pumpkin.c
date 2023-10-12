@@ -2398,69 +2398,75 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
     *key = arg1;
     *mods = arg2;
     *buttons = tmp;
-    return ev;
-  }
 
-  wait = usec/1000;
-  if (usec && !wait) wait = 1;
+  } else {
+    wait = usec/1000;
+    if (usec && !wait) wait = 1;
 
-  if ((ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2)) > 0) {
-    switch (ev) {
-      case WINDOW_KEYDOWN:
-        pumpkin_set_key(arg1);
-        ev = 0;
-        break;
-      case WINDOW_KEYUP:
-        *key = pumpkin_reset_key(arg1);
-        *mods = pumpkin_module.modMask;
-        *buttons = 0;
-        ev = MSG_KEY;
-        break;
-      case WINDOW_BUTTONDOWN:
-        pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
-        pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
-        pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-        if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
-        pumpkin_module.buttonMask |= arg1;
-        pumpkin_module.tasks[0].penX = pumpkin_module.lastX;
-        pumpkin_module.tasks[0].penY = pumpkin_module.lastY;
-        put_event(MSG_BUTTON, 0, 0, 1);
-        *key = pumpkin_module.lastX;
-        *mods = pumpkin_module.lastY;
-        *buttons = 0;
-        ev = MSG_MOTION;
-        break;
-      case WINDOW_BUTTONUP:
-        pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
-        pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
-        pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-        if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
-        pumpkin_module.buttonMask &= ~arg1;
-        *key = *mods = 0;
-        *buttons = 0;
-        ev = MSG_BUTTON;
-        break;
-      case WINDOW_MOTION:
-        ev = 0;
-        x = arg1;
-        y = arg2;
-        x = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
-        y = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-        if (!dia_stroke(pumpkin_module.dia, x, y)) {
-          if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
-            pumpkin_module.tasks[0].penX = x;
-            pumpkin_module.tasks[0].penY = y;
-            *key = x;
-            *mods = y;
-            ev = MSG_MOTION;
+    if ((ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2)) > 0) {
+      switch (ev) {
+        case WINDOW_KEYDOWN:
+          pumpkin_set_key(arg1);
+          ev = 0;
+          break;
+        case WINDOW_KEYUP:
+          *key = pumpkin_reset_key(arg1);
+          *mods = pumpkin_module.modMask;
+          *buttons = 0;
+          ev = MSG_KEY;
+          break;
+        case WINDOW_BUTTONDOWN:
+          pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
+          pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+          pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
+          if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) {
+            ev = 0;
+            break;
           }
-        }
-        pumpkin_module.lastX = x;
-        pumpkin_module.lastY = y;
-        break;
-      default:
-        ev = 0;
-        break;
+          pumpkin_module.buttonMask |= arg1;
+          pumpkin_module.tasks[0].penX = pumpkin_module.lastX;
+          pumpkin_module.tasks[0].penY = pumpkin_module.lastY;
+          put_event(MSG_BUTTON, 0, 0, 1);
+          *key = pumpkin_module.lastX;
+          *mods = pumpkin_module.lastY;
+          *buttons = 0;
+          ev = MSG_MOTION;
+          break;
+        case WINDOW_BUTTONUP:
+          pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
+          pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+          pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
+          if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) {
+            ev = 0;
+            break;
+          }
+          pumpkin_module.buttonMask &= ~arg1;
+          *key = *mods = 0;
+          *buttons = 0;
+          ev = MSG_BUTTON;
+          break;
+        case WINDOW_MOTION:
+          ev = 0;
+          x = arg1;
+          y = arg2;
+          x = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
+          y = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
+          if (!dia_stroke(pumpkin_module.dia, x, y)) {
+            if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
+              pumpkin_module.tasks[0].penX = x;
+              pumpkin_module.tasks[0].penY = y;
+              *key = x;
+              *mods = y;
+              ev = MSG_MOTION;
+            }
+          }
+          pumpkin_module.lastX = x;
+          pumpkin_module.lastY = y;
+          break;
+        default:
+          ev = 0;
+          break;
+      }
     }
   }
 

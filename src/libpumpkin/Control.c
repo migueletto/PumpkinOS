@@ -7,32 +7,31 @@
 #include "debug.h"
 #include "xalloc.h"
 
-static void CtlInvertControl(ControlType *controlP) {
+static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
   RectangleType rect;
-  UInt16 corner;
 
   if (controlP && controlP->attr.visible) {
+    debug(DEBUG_TRACE, "Control", "CtlInvertControl style %d control %d", controlP->style, controlP->id);
     MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-    corner = 0;
 
     switch (controlP->style) {
       case pushButtonCtl:
       case selectorTriggerCtl:
+        WinInvertRect(&rect, 0, isInverted);
+        WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
         break;
       case buttonCtl:
       case repeatingButtonCtl:
         switch (controlP->attr.frame) {
           case standardButtonFrame:
           case boldButtonFrame:
-            corner = 3;
+            WinInvertRect(&rect, 3, isInverted);
+            WinDrawRectangleFrame(roundFrame, &controlP->bounds);
         }
         break;
       default:
         return;
     }
-
-    debug(DEBUG_TRACE, "Control", "CtlInvertControl style %d control %d corner %d", controlP->style, controlP->id, corner);
-    WinInvertRect(&rect, corner);
   }
 }
 
@@ -117,7 +116,7 @@ void CtlDrawControl(ControlType *controlP) {
         }
 
         if (controlP->attr.on) {
-          CtlInvertControl(controlP);
+          CtlInvertControl(controlP, true);
         }
         break;
 
@@ -402,7 +401,7 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value) {
   if (controlP->attr.on != value) {
     controlP->attr.on = true;
     debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d ON group %d visible %d", controlP->id, controlP->group, controlP->attr.visible);
-    CtlInvertControl(controlP);
+    CtlInvertControl(controlP, false);
     formP = (FormType *)controlP->formP;
 
     if (formP && controlP->group) {
@@ -411,7 +410,7 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value) {
           control2P = formP->objects[objIndex].object.control;
           if (control2P->id != controlP->id && control2P->attr.on && control2P->group == controlP->group) {
             debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d OFF group %d visible %d", controlP->id, controlP->group, controlP->attr.visible);
-            CtlInvertControl(control2P);
+            CtlInvertControl(control2P, true);
             control2P->attr.on = !controlP->attr.on;
           }
         }
@@ -508,7 +507,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
           if (controlP->attr.on) {
-            CtlInvertControl(controlP);
+            CtlInvertControl(controlP, true);
             controlP->attr.on = false;
           }
         }
@@ -532,7 +531,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       } else {
         if (!controlP->attr.on) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
-          CtlInvertControl(controlP);
+          CtlInvertControl(controlP, false);
           controlP->attr.on = true;
         }
       }
@@ -584,7 +583,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (controlP->attr.on) {
           if (controlP->style == buttonCtl && controlP->attr.visible) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit invert control %d to 0", controlP->id);
-            CtlInvertControl(controlP);
+            CtlInvertControl(controlP, true);
           }
           controlP->attr.on = false;
         } else {

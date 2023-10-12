@@ -60,8 +60,6 @@ typedef enum UIColorTableEntries {
 
 	UIFieldFepConvertedUnderline,
 	
-	UIFormTitle, // XXX not in original PalmOS
-
 	UILastColorTableEntry
 } UIColorTableEntries;
 

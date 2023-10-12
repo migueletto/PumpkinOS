@@ -405,7 +405,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
   if (formP && objIndex < formP->numObjects) {
     obj = formP->objects[objIndex].object;
-    formTitle = UIColorGetTableEntryIndex(UIFormTitle);
+    formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     formFrame = UIColorGetTableEntryIndex(UIFormFrame);
     objFill = UIColorGetTableEntryIndex(UIObjectFill);

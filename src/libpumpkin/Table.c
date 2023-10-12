@@ -486,13 +486,13 @@ void TblSelectItem(TableType *tableP, Int16 row, Int16 column) {
     if (TblGetSelection(tableP, &currentRow, &currentCol)) {
       // unhighligh previous item
       TblGetItemBounds(tableP, currentRow, currentCol, &rect);
-      WinInvertRect(&rect, 0);
+      WinInvertRect(&rect, 0, true);
     }
 
     TblSetSelection(tableP, row, column);
     // highligh new item
     TblGetItemBounds(tableP, row, column, &rect);
-    WinInvertRect(&rect, 0);
+    WinInvertRect(&rect, 0, false);
   }
 }
 
@@ -532,7 +532,7 @@ void TblUnhighlightSelection(TableType *tableP) {
   if (tableP) {
     if (TblGetSelection(tableP, &currentRow, &currentCol)) {
       TblGetItemBounds(tableP, currentRow, currentCol, &rect);
-      WinInvertRect(&rect, 0);
+      WinInvertRect(&rect, 0, true);
     }
 //debug(1, "XXX", "TblUnhighlightSelection selected=false");
     tableP->attr.selected = false;

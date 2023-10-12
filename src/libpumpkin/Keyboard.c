@@ -372,7 +372,7 @@ static Boolean SysKeyboardHandleEvent(EventType *eventP) {
         if (module->bounds[i].extent.x > 0) {
           if (RctPtInRectangle(eventP->screenX, eventP->screenY, &module->bounds[i])) {
             module->sel = i;
-            WinInvertRect(&module->bounds[i], 0);
+            WinInvertRect(&module->bounds[i], 0, false);
             handled = true;
             break;
           }
@@ -384,7 +384,7 @@ static Boolean SysKeyboardHandleEvent(EventType *eventP) {
         if (module->bounds[i].extent.x > 0) {
           if (RctPtInRectangle(eventP->screenX, eventP->screenY, &module->bounds[i])) {
             if (i == module->sel) {
-              WinInvertRect(&module->bounds[i], 0);
+              WinInvertRect(&module->bounds[i], 0, true);
               switch (i) {
                 case CODE_SHIFT:
                   module->upper = !module->upper;
