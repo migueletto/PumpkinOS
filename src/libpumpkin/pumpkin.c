@@ -81,6 +81,8 @@
 
 #define MAX_EVENTS 16
 
+#define SCREEN_DB "ScreenDB"
+
 typedef struct {
   uint16_t refNum;
   uint32_t type;
@@ -2389,6 +2391,39 @@ int pumpkin_event_peek(void) {
   return thread_server_peek();
 }
 
+static void save_screen_callback(void *context, void *data, int size) {
+  surface_t *surface = (surface_t *)context;
+  UInt32 creator;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  char buf[8];
+
+  creator = pumpkin_get_app_creator();
+  pumpkin_id2s(creator, buf);
+
+  debug(DEBUG_INFO, PUMPKINOS, "save screen app '%s', dimension %dx%d, size %d", buf, surface->width, surface->height, size);
+
+  if ((dbID = DmFindDatabase(0, SCREEN_DB)) == 0) {
+    DmCreateDatabase(0, SCREEN_DB, 'Scrn', 'Data', true);
+  }
+
+  if ((dbID = DmFindDatabase(0, SCREEN_DB)) != 0) {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
+      DmNewResourceEx(dbRef, pumpkin_get_app_creator(), 1, size, data);
+      DmCloseDatabase(dbRef);
+    }
+  }
+}
+
+static void save_screen(void) {
+  task_screen_t *screen;
+
+  if ((screen = ptr_lock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN))) {
+    surface_save_mem(screen->surface, 0, screen->surface, save_screen_callback);
+    ptr_unlock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN);
+  }
+}
+
 static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
   int x, y, w, h, tmp;
@@ -2410,10 +2445,15 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
           ev = 0;
           break;
         case WINDOW_KEYUP:
-          *key = pumpkin_reset_key(arg1);
-          *mods = pumpkin_module.modMask;
-          *buttons = 0;
-          ev = MSG_KEY;
+          if (arg1 == WINDOW_KEY_F10) {
+            save_screen();
+            ev = 0;
+          } else {
+            *key = pumpkin_reset_key(arg1);
+            *mods = pumpkin_module.modMask;
+            *buttons = 0;
+            ev = MSG_KEY;
+          }
           break;
         case WINDOW_BUTTONDOWN:
           pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);

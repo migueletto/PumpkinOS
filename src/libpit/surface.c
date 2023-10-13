@@ -818,8 +818,8 @@ surface_t *surface_load(char *filename, int encoding) {
   return surface;
 }
 
-int surface_save(surface_t *surface, char *filename, int quality) {
-  char *ext;
+int surface_save_mem(surface_t *surface, int quality, void *context, void (*callback)(void *context, void *data, int size)) {
+  char *filename, *ext;
   uint32_t color;
   uint8_t *buf;
   int red, green, blue, alpha;
@@ -841,44 +841,53 @@ int surface_save(surface_t *surface, char *filename, int quality) {
         return -1;
     }
 
-    if ((ext = getext(filename)) != NULL) {
-      buf = xcalloc(1, surface->width * surface->height * ocomp);
+    buf = xcalloc(1, surface->width * surface->height * ocomp);
 
-      if (ocomp >= 3) {
-        for (i = 0, k = 0; i < surface->height; i++) {
-          for (j = 0; j < surface->width; j++) {
-            color = surface->getpixel(surface->data, j, i);
-            surface->rgb_color(surface->data, color, &red, &green, &blue, &alpha);
-            buf[k++] = red;
-            buf[k++] = green;
-            buf[k++] = blue;
-            if (ocomp == 4) buf[k++] = alpha;
-          }
-        }
-      } else {
-        for (i = 0, k = 0; i < surface->height; i++) {
-          for (j = 0; j < surface->width; j++) {
-            buf[k++] = surface->getpixel(surface->data, j, i); // gray
-          }
+    if (ocomp >= 3) {
+      for (i = 0, k = 0; i < surface->height; i++) {
+        for (j = 0; j < surface->width; j++) {
+          color = surface->getpixel(surface->data, j, i);
+          surface->rgb_color(surface->data, color, &red, &green, &blue, &alpha);
+          buf[k++] = red;
+          buf[k++] = green;
+          buf[k++] = blue;
+          if (ocomp == 4) buf[k++] = alpha;
         }
       }
-
-      if (!strcasecmp(ext, "png")) {
-        r = stbi_write_png(filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
-      } else if (!strcasecmp(ext, "bmp")) {
-        r = stbi_write_bmp(filename, surface->width, surface->height, ocomp, buf);
-      } else if (!strcasecmp(ext, "jpg")) {
-        r = stbi_write_jpg(filename, surface->width, surface->height, ocomp, buf, quality);
-      } else {
-       debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
-      }
-      xfree(buf);
     } else {
-      debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
+      for (i = 0, k = 0; i < surface->height; i++) {
+        for (j = 0; j < surface->width; j++) {
+          buf[k++] = surface->getpixel(surface->data, j, i); // gray
+        }
+      }
     }
+
+    if (callback == NULL) {
+      filename = (char *)context;
+      if ((ext = getext(filename)) != NULL) {
+        if (!strcasecmp(ext, "png")) {
+          r = stbi_write_png(filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+        } else if (!strcasecmp(ext, "bmp")) {
+          r = stbi_write_bmp(filename, surface->width, surface->height, ocomp, buf);
+        } else if (!strcasecmp(ext, "jpg")) {
+          r = stbi_write_jpg(filename, surface->width, surface->height, ocomp, buf, quality);
+        } else {
+          debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
+        }
+      } else {
+        debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
+      }
+    } else {
+      r = stbi_write_png_to_func(callback, context, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+    }
+    xfree(buf);
   }
 
   return r;
+}
+
+int surface_save(surface_t *surface, char *filename, int quality) {
+  return surface_save_mem(surface, quality, filename, NULL);
 }
 
 int surface_destroy(surface_t *surface) {
