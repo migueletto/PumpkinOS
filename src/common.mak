@@ -11,7 +11,9 @@ LIBPIT=$(SRC)/libpit
 SYSNAME=pit
 VERSION=1.0
 
+ifeq ($(MACHINE),)
 MACHINE := $(shell uname -m)
+endif
 
 ifeq ($(findstring arm,$(MACHINE)),arm)
 SYS_CPU=1
