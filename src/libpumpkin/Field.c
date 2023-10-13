@@ -540,7 +540,7 @@ static void FldCalcLineInfo(FieldType *fldP) {
       fldP->totalLines = 1000;
       fldP->lines = xcalloc(fldP->totalLines, sizeof(LineInfoType));
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldCalcLineInfo alloc lines %p", fldP->lines);
-      WinDrawCharBox(fldP->text, fldP->textLen, fldP->fontID, &fldP->rect, false, &drawnLines, &totalLines, NULL, fldP->lines);
+      WinDrawCharBox(fldP->text, fldP->textLen, fldP->fontID, &fldP->rect, false, &drawnLines, &totalLines, NULL, fldP->lines, fldP->totalLines);
       fldP->numUsedLines = drawnLines;
       fldP->totalLines = totalLines;
       fldP->lines = xrealloc(fldP->lines, fldP->totalLines * sizeof(LineInfoType));
@@ -962,7 +962,7 @@ UInt16 FldCalcFieldHeight(const Char *chars, UInt16 maxWidth) {
     RctSetRectangle(&rect, 0, 0, maxWidth, 32767);
     if (chars[0]) {
 //debug(1, "XXX", "FldCalcFieldHeight chars not empty \"%s\" len %d", chars, StrLen(chars));
-      WinDrawCharBox((char *)chars, StrLen(chars), FntGetFont(), &rect, false, NULL, &totalLines, NULL, NULL);
+      WinDrawCharBox((char *)chars, StrLen(chars), FntGetFont(), &rect, false, NULL, &totalLines, NULL, NULL, 0);
 //debug(1, "XXX", "FldCalcFieldHeight \"%s\" total=%d", chars, totalLines);
     } else {
       totalLines = 1;

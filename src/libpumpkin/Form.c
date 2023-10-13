@@ -319,7 +319,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           old = FntSetFont(obj.label->fontID);
           max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
-          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL);
+          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
           FntSetFont(old);
           erase = true;
@@ -430,13 +430,13 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           old = FntSetFont(obj.label->fontID);
           oldb = WinSetBackColor(objFill);
           oldt = WinSetTextColor(fieldText);
-          max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1; // XXX se nao tiver +1, segunda pagina de ChemTable fica errada
+          max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
-          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL);
+          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
           rect.extent.y = FntCharHeight()*totalLines;
           obj.label->extent.x = max;
           obj.label->extent.y = rect.extent.y;
-          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL);
+          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
           WinSetBackColor(oldb);
           WinSetTextColor(oldt);
           FntSetFont(old);
@@ -1489,7 +1489,7 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
 
     labelW = 156 - labelX;
     RctSetRectangle(&rect, labelX, labelY, labelW, FntCharHeight()*5);
-    WinDrawCharBox(msg, StrLen(msg), boldFont, &rect, false, &totalLines, NULL, NULL, NULL);
+    WinDrawCharBox(msg, StrLen(msg), boldFont, &rect, false, &totalLines, NULL, NULL, NULL, 0);
     labelH = FntCharHeight() * totalLines;
     formH = 46 + labelH;
 

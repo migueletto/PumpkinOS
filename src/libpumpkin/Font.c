@@ -217,15 +217,15 @@ Int16 FntLineWidth(Char const *pChars, UInt16 length) {
 // within the specified width with a line break at a tab or space character.
 
 UInt16 FntWordWrap(Char const *chars, UInt16 maxWidth) {
-  LineInfoType lineInfo;
+  LineInfoType lineInfo[8];
   RectangleType rect;
   UInt16 totalLines, r = 0;
 
   if (chars) {
     RctSetRectangle(&rect, 0, 0, maxWidth, FntCharHeight());
-    WinDrawCharBox((char *)chars, StrLen(chars), FntGetFont(), &rect, false, NULL, &totalLines, NULL, &lineInfo);
+    WinDrawCharBox((char *)chars, StrLen(chars), FntGetFont(), &rect, false, NULL, &totalLines, NULL, lineInfo, 8);
     if (totalLines > 0) {
-      r = lineInfo.length;
+      r = lineInfo[0].length;
     }
   }
 

@@ -3048,7 +3048,7 @@ static Boolean isLineBreak(Char c) {
   return c == '\r' || c == '\n';
 }
 
-void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, Boolean draw, UInt16 *drawnLines, UInt16 *totalLines, UInt16 *maxWidth, LineInfoType *lineInfo) {
+void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, Boolean draw, UInt16 *drawnLines, UInt16 *totalLines, UInt16 *maxWidth, LineInfoType *lineInfo, UInt16 maxLines) {
   UInt16 drawn, total, start, span;
   UInt16 i, tw, th, x, y;
   UInt16 lastSpaceOffset, width;
@@ -3070,7 +3070,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
   if (text && len && bounds) {
     debug(DEBUG_TRACE, "Window", "WinDrawCharBox: text \"%.*s\"", len, text);
 
-    for (i = 0; i < len;) {
+    for (i = 0; i < len && (!lineInfo || total < maxLines);) {
       c = text[i];
       debug(DEBUG_TRACE, "Window", "WinDrawCharBox: char %d \'%c\'", i, c);
       tw = FntCharWidth(c);
