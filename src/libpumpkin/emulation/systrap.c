@@ -2533,6 +2533,14 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
     }
       break;
+    case sysTrapGsiSetShiftState: {
+      // void GsiSetShiftState(const UInt16 lockFlags, const UInt16 tempShift)
+      uint16_t lockFlags = ARG16;
+      uint16_t tempShift = ARG16;
+      GsiSetShiftState(lockFlags, tempShift);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetShiftState(0x%04X, 0x%04X)", lockFlags, tempShift);
+    }
+      break;
     case sysTrapErrExceptionList: {
       // MemPtr *ErrExceptionList(void)
       uint8_t *e = (uint8_t *)ErrExceptionList();
