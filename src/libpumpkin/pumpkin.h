@@ -291,7 +291,7 @@ uint32_t pumpkin_dt(void);
 int pumpkin_getstr(char **s, uint8_t *p, int i);
 
 void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wHeight, Coord width, Coord height, char *filename);
-void pumpkin_save_icon(char *name);
+void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename);
 
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);

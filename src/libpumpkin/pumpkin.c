@@ -4124,23 +4124,17 @@ int pumpkin_httpd_destroy(pumpkin_httpd_t *h) {
   return r;
 }
 
-void pumpkin_save_icon(char *name) {
-  DmOpenRef dbRef;
+void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename) {
   LocalID dbID;
+  DmOpenRef dbRef;
   BitmapType *bmp;
   MemHandle h;
-  Coord cellWidth, cellHeight;
-  char filename[256];
 
-  cellWidth = 50;
-  cellHeight = 35;
-
-  if ((dbID = DmFindDatabase(0, name)) != 0) {
+  if ((dbID = DmFindDatabase(0, dbname)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
-      if ((h = DmGet1Resource(iconType, 1000)) != NULL) {
+      if ((h = DmGet1Resource(type, id)) != NULL) {
         if ((bmp = MemHandleLock(h)) != NULL) {
-          sys_snprintf(filename, sizeof(filename)-1, "%s.png", name);
-          pumpkin_save_bitmap(bmp, BmpGetDensity(bmp), cellWidth, cellHeight, 0, 0, filename);
+          pumpkin_save_bitmap(bmp, BmpGetDensity(bmp), 0, 0, 0, 0, filename);
           MemHandleUnlock(h);
         }
         DmReleaseResource(h);
