@@ -1466,7 +1466,7 @@ int cpu_instr_callback(int pc) {
       d[i] = m68k_get_reg(NULL, M68K_REG_D0 + i);
     }
     a0 = m68k_get_reg(NULL, M68K_REG_A0);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (,%d,%d,%d,%d,%d,%d,%d,%d) (0x%08X)", pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0);
+    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (0x%08X)", pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0);
   }
 
   return 0;

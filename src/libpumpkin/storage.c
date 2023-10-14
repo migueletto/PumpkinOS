@@ -2064,12 +2064,12 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
       db = (storage_db_t *)(sto->base + dbRef->dbID);
       if (db->ftype != STO_TYPE_RES) continue;
 
-      debug(DEBUG_TRACE, "STOR", "checking database \"%s\"", db->name);
+      debug(DEBUG_TRACE, "STOR", "checking database \"%s\" (%d resources)", db->name, db->numRecs);
       for (i = 0; i < db->numRecs; i++) {
         h = db->elements[i];
         found = resH ? (h == resH) : (h->d.res.type == resType && h->d.res.id == resID);
         if (found) {
-          debug(DEBUG_TRACE, "STOR", "found resource");
+          debug(DEBUG_TRACE, "STOR", "found resource at index %d", i);
           index = i;
           *dbPP = dbRef;
           found = true;

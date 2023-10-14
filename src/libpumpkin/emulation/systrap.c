@@ -1122,6 +1122,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       Err res = DmDetachRecord(dbRef, index, oldHP ? &old : NULL);
       if (oldHP) m68k_write_memory_32(oldHP, emupalmos_trap_out(old));
       debug(DEBUG_TRACE, "EmuPalmOS", "DmDetachRecord(0x%08X, %d, 0x%08X): %d", dbP, index, oldHP, res);
+      m68k_set_reg(M68K_REG_D0, res);
       }
       break;
     case sysTrapDmDetachResource: {
@@ -1135,6 +1136,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       Err res = DmDetachResource(dbRef, index, oldHP ? &old : NULL);
       if (oldHP) m68k_write_memory_32(oldHP, emupalmos_trap_out(old));
       debug(DEBUG_TRACE, "EmuPalmOS", "DmDetachsource(0x%08X, %d, 0x%08X): %d", dbP, index, oldHP, res);
+      m68k_set_reg(M68K_REG_D0, res);
       }
       break;
     case sysTrapDmSearchResource: {
@@ -1150,7 +1152,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       if (dbPP) m68k_write_memory_32(dbPP, emupalmos_trap_out(dbP));
       pumpkin_id2s(type, buf);
       debug(DEBUG_TRACE, "EmuPalmOS", "DmSearchResource('%s', %d, 0x%08X, 0x%08X): %d", buf, resID, ih, dbPP, index);
-      m68k_set_reg(M68K_REG_A0, index);
+      m68k_set_reg(M68K_REG_D0, index);
       }
       break;
     case sysTrapMemHandleLock: {
