@@ -103,23 +103,11 @@ void FrmGotoForm(UInt16 formId) {
     event.eType = frmCloseEvent;
     event.data.frmClose.formID = module->currentForm->formId;
     EvtAddEventToQueue(&event);
-
-    xmemset(&event, 0, sizeof(EventType));
-    event.eType = winExitEvent;
-    event.data.winExit.exitWindow = WinGetActiveWindow();
-    //event.data.winExit.enterWindow = ?; // not available yet
-    EvtAddEventToQueue(&event);
   }
 
   xmemset(&event, 0, sizeof(EventType));
   event.eType = frmLoadEvent;
   event.data.frmLoad.formID = formId;
-  EvtAddEventToQueue(&event);
-
-  xmemset(&event, 0, sizeof(EventType));
-  event.eType = winEnterEvent;
-  event.data.winExit.exitWindow = WinGetActiveWindow();
-  //event.data.winExit.enterWindow = ?; // not available yet
   EvtAddEventToQueue(&event);
 
   xmemset(&event, 0, sizeof(EventType));
@@ -221,14 +209,28 @@ FormType *FrmInitForm(UInt16 rscID) {
 
 void FrmSetActiveForm(FormType *formP) {
   frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  WinHandle wh;
+  EventType event;
 
   if (formP) {
     debug(DEBUG_TRACE, "Form", "FrmSetActiveForm %d", formP->formId);
     module->currentForm = formP;
-    //WinSendWindowEvents(module->currentForm ? &module->currentForm->window : NULL);
+    wh = WinGetActiveWindow();
     WinSetActiveWindow(&module->currentForm->window);
     WinSetDrawWindow(&module->currentForm->window);
     MenuSetActiveMenu(module->currentForm->mbar);
+
+    xmemset(&event, 0, sizeof(EventType));
+    event.eType = winExitEvent;
+    event.data.winExit.exitWindow = wh;
+    event.data.winExit.enterWindow = WinGetActiveWindow();
+    EvtAddEventToQueue(&event);
+
+    xmemset(&event, 0, sizeof(EventType));
+    event.eType = winEnterEvent;
+    event.data.winEnter.exitWindow = wh;
+    event.data.winEnter.enterWindow = WinGetActiveWindow();
+    EvtAddEventToQueue(&event);
   }
 }
 
