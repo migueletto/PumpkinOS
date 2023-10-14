@@ -16,6 +16,8 @@
 typedef struct {
   launch_request_t request;
   char *serialNumber;
+  uint64_t t0;
+  UInt32 last;
 } sys_module_t;
 
 extern thread_key_t *sys_key;
@@ -29,6 +31,7 @@ int SysInitModule(void) {
 
   if ((module->serialNumber = MemPtrNew(8)) != NULL) {
     StrCopy(module->serialNumber, "12345");
+    module->t0 = sys_get_clock();
   }
   thread_set(sys_key, module);
 
@@ -504,4 +507,10 @@ UInt16 SysBatteryInfo(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalThres
   }
 
   return 370;
+}
+
+// Return the tick count since the last reset.
+UInt32 TimGetTicks(void) {
+  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  return ((uint64_t)sys_get_clock() - module->t0) / 10000; // XXX 100 ticks per second
 }
