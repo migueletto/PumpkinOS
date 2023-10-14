@@ -21,9 +21,9 @@
 
 #include "m68k.h"
 #include "m68kcpu.h"
-#include "trapnames.h"
 #include "emupalmosinc.h"
 #include "emupalmos.h"
+#include "trapnames.h"
 
 #define TRAPS_SIZE 0x40000
 
@@ -1438,13 +1438,14 @@ static void print_regs(void) {
 */
 
 int cpu_instr_callback(int pc) {
+  emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint32_t instr_size, d[8], a0;
   uint16_t trap;
   char buf[128], buf2[128], *s;
   int i;
 
-  trapHook(pc);
+  trapHook(pc, state);
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
     trap = (pc - size) >> 2;

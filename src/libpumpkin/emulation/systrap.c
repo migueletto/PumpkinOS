@@ -12,11 +12,11 @@
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
-#include "trapnames.h"
 #include "emupalmosinc.h"
 #include "m68k.h"
 #include "m68kcpu.h"
 #include "emupalmos.h"
+#include "trapnames.h"
 #include "dbg.h"
 #include "debug.h"
 

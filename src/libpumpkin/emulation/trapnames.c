@@ -8,9 +8,9 @@
 #endif
 #include "m68k.h"
 #include "m68kcpu.h"
-#include "trapnames.h"
 #include "emupalmosinc.h"
 #include "emupalmos.h"
+#include "trapnames.h"
 #include "endianness.h"
 
 #include "debug.h"
@@ -38,13 +38,9 @@ typedef struct {
   char *arg16;
 } trap_t;
 
-static uint32_t stackp;
-static uint32_t stack[256];
-static uint32_t stackt[256];
-
 static trap_t allTraps[0x10000];
 
-static trap_t traps[] = {
+static const trap_t traps[] = {
   { 0xA000, "MemInit", "W", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
   { 0xA001, "MemInitHeapTable", "W", 1, "W", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
   { 0xA002, "MemStoreInit", "?", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
@@ -1229,8 +1225,6 @@ void allTrapsInit(void) {
     allTraps[traps[i].trap].arg15 = traps[i].arg15;
     allTraps[traps[i].trap].arg16 = traps[i].arg16;
   }
-
-  stackp = 0;
 }
 
 char *getTrapName(uint16_t trap) {
@@ -1506,16 +1500,16 @@ static int getret(char *rType, char *buf) {
   return ret;
 }
 
-void trapHook(uint32_t pc) {
+void trapHook(uint32_t pc, emu_state_t *state) {
   uint16_t trap, idx, instruction;
   uint32_t sp, d;
   char line[512];
   char buf[128];
   int isoutput, ret;
 
-  if (stackp && pc == stack[stackp-1]) {
-    stackp--;
-    trap = stackt[stackp];
+  if (state->stackp && pc == state->stack[state->stackp-1]) {
+    state->stackp--;
+    trap = state->stackt[state->stackp];
     if (allTraps[trap].name) {
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
@@ -1542,12 +1536,16 @@ void trapHook(uint32_t pc) {
   instruction = m68k_read_memory_16(pc);
 
   if (instruction == 0x4E4F) {
-    if (stackp == 0 || stackt[stackp-1] == sysTrapSysAppLaunch || stackt[stackp-1] == sysTrapFrmDispatchEvent || stackt[stackp-1] == sysTrapFrmHandleEvent) {
+    if (state->stackp == 0 ||
+        state->stackt[state->stackp-1] == sysTrapSysAppLaunch ||
+        state->stackt[state->stackp-1] == sysTrapFrmDispatchEvent ||
+        state->stackt[state->stackp-1] == sysTrapFrmHandleEvent) {
+
       trap = m68k_read_memory_16(pc + 2);
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
-      stackt[stackp] = trap;
-      stack[stackp++] = pc+4;
+      state->stackt[state->stackp] = trap;
+      state->stack[state->stackp++] = pc+4;
 
       if (allTraps[trap].name) {
         isoutput = 0;

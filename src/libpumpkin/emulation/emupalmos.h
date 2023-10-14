@@ -76,6 +76,9 @@ typedef struct {
   MemHandle hNative;
   uint32_t screenStart;
   uint32_t screenEnd;
+  uint32_t stackp;
+  uint32_t stack[256];
+  uint32_t stackt[256];
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);
