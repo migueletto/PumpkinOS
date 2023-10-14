@@ -80,10 +80,12 @@ MenuBarType *MenuInit(UInt16 resourceId) {
       pd = &mbar->menus[i];
       w = pd->bounds.extent.x;
       h = pd->bounds.extent.y;
-      pd->menuWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
-      pd->menuWin->windowBounds.topLeft.x = pd->bounds.topLeft.x;
-      pd->menuWin->windowBounds.topLeft.y = pd->bounds.topLeft.y;
-      pd->bitsBehind = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
+      if (w && h) {
+        pd->menuWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
+        pd->menuWin->windowBounds.topLeft.x = pd->bounds.topLeft.x;
+        pd->menuWin->windowBounds.topLeft.y = pd->bounds.topLeft.y;
+        pd->bitsBehind = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
+      }
       pd->hidden = 1;
       pd->selectedItem = -1;
     }
