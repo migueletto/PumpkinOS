@@ -1424,9 +1424,9 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
   uint8_t *buf;
   unsigned int len;
   uint32_t *p;
-  int ack, client, i, r = -1;
+  int ack, client, r = -1;
 
-  for (i = 0, ack = 0; i < 10 && !ack; i++) {
+  for (ack = 0; !ack && !thread_must_end();) {
     if ((r = thread_server_read_timeout_from(100000, &buf, &len, &client)) == -1) {
       debug(DEBUG_ERROR, PUMPKINOS, "error receiving ack from %d", port);
       break;
@@ -2579,7 +2579,7 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           }
           break;
         case MSG_PAUSE:
-          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event pausing");
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event pausing, sending ack to %d", client);
           task->paused = client;
           reply = 0;
           thread_client_write(client, (uint8_t *)&reply, sizeof(uint32_t));
