@@ -35,8 +35,8 @@ MENU AppListMenu
 BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
-    MENUITEM "Shutdown"     shutdownCmd "S"
-    MENUITEM "About"        aboutCmd    "A"
+    MENUITEM "Exit"     shutdownCmd "S"
+    MENUITEM "About"    aboutCmd    "A"
   END
 
   PULLDOWN "View"
