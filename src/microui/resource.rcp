@@ -1,0 +1,12 @@
+#include "resource.h"
+
+FORM MainForm 0 0 160 160
+USABLE
+NOFRAME
+BEGIN
+END
+
+HEX "wind" ID 1
+  0x01 0x40 0x01 0xC2
+
+VERSION "1.0"
