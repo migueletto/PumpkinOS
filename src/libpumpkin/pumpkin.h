@@ -157,6 +157,7 @@ void pumpkin_set_input(int num, int width, int height);
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b);
 void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b);
 void pumpkin_set_mono(int mono);
+int pumpkin_get_encoding(void);
 int pumpkin_get_current(void);
 
 void pumpkin_set_secure(void *secure);

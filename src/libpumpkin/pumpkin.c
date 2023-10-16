@@ -656,6 +656,10 @@ static void pumpkin_set_encoding(int depth) {
   }
 }
 
+int pumpkin_get_encoding(void) {
+  return pumpkin_module.encoding;
+}
+
 void pumpkin_set_secure(void *secure) {
   pumpkin_module.secure = secure;
 }
