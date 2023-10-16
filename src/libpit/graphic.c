@@ -285,29 +285,49 @@ void graphic_ellipse(void *data, int x, int y, int rx, int ry, int filled, uint3
   }
 }
 
-static void graphic_char(void *data, int x, int y, uint8_t c, int i, font_t *f, uint32_t fg, uint32_t bg, setpixel_f p) {
+static void graphic_char(void *data, int x, int y, uint8_t c, int i, int h, font_t *f, uint32_t fg, uint32_t bg, setpixel_f p) {
   uint8_t *d, b, mask;
-  int j, k;
+  int j, k, width;
 
-  d = (i ? f->font1 : f->font0) + (c - f->min) * f->width;
+  if (f->index) {
+    d = f->font + i * f->len + f->index[c - f->min];
+    width = f->cwidth[c - f->min];
+  } else {
+    d = f->font + i * f->len + (c - f->min) * f->width;
+    width = f->width;
+  }
 
-  for (j = 0; j < f->width; j++) {
+//char buf[10];
+//debug(1, "XXX", "graphic_char '%c' i=%d h=%d y=%d len=%d width=%d index=%d", c, i, h, y, f->len, width, d - f->font);
+  for (j = 0; j < width; j++) {
     b = d[j];
     mask = 0x01;
-    for (k = 0; k < 8; k++) {
+    for (k = 0; k < h; k++) {
+//buf[k] = (b & mask) ? '1' : '0';
       p(data, x+j, y+k, (b & mask) ? fg : bg);
       mask <<= 1;
     }
+//buf[k] = 0;
+//debug(1, "XXX", "%2d 0x%02X %s", j, b, buf);
   }
 }
 
 void graphic_printchar(void *data, int x, int y, uint8_t c, font_t *f, uint32_t fg, uint32_t bg, setpixel_f p) {
-  if (f->height == 8) {
-    graphic_char(data, x, y, c, 1, f, fg, bg, p);
-  } else {
-    graphic_char(data, x, y,   c, 0, f, fg, bg, p);
-    graphic_char(data, x, y+8, c, 1, f, fg, bg, p);
+  int i, h, n;
+
+  n = (f->height + 7) / 8;
+  h = f->height;
+  for (i = n - 1; i >= 0; i--, h -= 8, y += 8) {
+    graphic_char(data, x, y, c, i, i == 0 ? h : 8, f, fg, bg, p);
   }
+/*
+  if (f->height <= 8) {
+    graphic_char(data, x, y, c, 0, f->height, f, fg, bg, p);
+  } else {
+    graphic_char(data, x, y,   c, 1, 8, f, fg, bg, p);
+    graphic_char(data, x, y+8, c, 0, f->height - 8, f, fg, bg, p);
+  }
+*/
 }
 
 #define SPACE 4

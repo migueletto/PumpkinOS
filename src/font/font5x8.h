@@ -2,8 +2,9 @@
 #define FONT_5_8_HEIGHT 8
 #define FONT_5_8_MIN    32
 #define FONT_5_8_MAX    127
+#define FONT_5_8_LEN    (FONT_5_8_MAX - FONT_5_8_MIN + 1) * FONT_5_8_WIDTH
 
-static uint8_t font_5_8[(FONT_5_8_MAX - FONT_5_8_MIN + 1) * FONT_5_8_WIDTH] = {
+static uint8_t font_5_8[FONT_5_8_LEN] = {
   // space
   0b00000000,
   0b00000000,
@@ -679,7 +680,7 @@ static uint8_t font_5_8[(FONT_5_8_MAX - FONT_5_8_MIN + 1) * FONT_5_8_WIDTH] = {
 
 static font_t font5x8 = {
   FONT_5_8_WIDTH, FONT_5_8_HEIGHT,
-  FONT_5_8_MIN,   FONT_5_8_MAX,
-  NULL,
-  &font_5_8[0]
+  FONT_5_8_MIN,   FONT_5_8_MAX, FONT_5_8_LEN,
+  font_5_8,
+  NULL, NULL
 };

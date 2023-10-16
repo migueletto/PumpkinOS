@@ -50,22 +50,41 @@ static font_t *getfont(int font) {
   return f;
 }
 
-int surface_font_width(int font) {
-  font_t *f = getfont(font);
+int surface_font_width(font_t *f, int font) {
+  if (!f) f = getfont(font);
   return f->width;
 }
 
-int surface_font_height(int font) {
-  font_t *f = getfont(font);
+int surface_font_char_width(font_t *f, int font, int c) {
+  if (!f) f = getfont(font);
+  if (c < f->min || c > f->max) return 0;
+  return f->cwidth ? f->cwidth[c - f->min] : f->width;
+}
+
+int surface_font_chars_width(font_t *f, int font, char *s, int len) {
+  if (!f) f = getfont(font);
+  int i, width = 0;
+
+  for (i = 0; s[i] && (len < 0 || i < len); i++) {
+    if (s[i] >= f->min && s[i] <= f->max) {
+      width += f->cwidth ? f->cwidth[s[i] - f->min] : f->width;
+    }
+  }
+
+  return width;
+}
+
+int surface_font_height(font_t *f, int font) {
+  if (!f) f = getfont(font);
   return f->height;
 }
 
-void surface_print(surface_t *surface, int x, int y, char *s, int font, uint32_t fg, uint32_t bg) {
-  font_t *f = getfont(font);
+void surface_print(surface_t *surface, int x, int y, char *s, font_t *f, int font, uint32_t fg, uint32_t bg) {
+  if (!f) f = getfont(font);
   int i;
 
   if (surface && s) {
-    for (i = 0; s[i]; i++, x += f->width) {
+    for (i = 0; s[i]; x += surface_font_char_width(f, font, s[i]), i++) {
       if (surface->printchar) {
         surface->printchar(surface->data, x, y, s[i], fg, bg);
       } else {

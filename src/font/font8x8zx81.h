@@ -649,5 +649,6 @@ static font_t font8x8zx81 = {
   FONT_8_8_ZX81_WIDTH, FONT_8_8_ZX81_HEIGHT,
   FONT_8_8_ZX81_MIN,   FONT_8_8_ZX81_MAX,
   NULL,
-  &font_8_8_zx81[0]
+  &font_8_8_zx81[0],
+  NULL, NULL
 };

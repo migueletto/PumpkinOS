@@ -2,8 +2,9 @@
 #define FONT_6_8_APPLE_HEIGHT 8
 #define FONT_6_8_APPLE_MIN    32
 #define FONT_6_8_APPLE_MAX    127
+#define FONT_6_8_APPLE_LEN    (FONT_6_8_APPLE_MAX - FONT_6_8_APPLE_MIN + 1) * FONT_6_8_APPLE_WIDTH
 
-static uint8_t font_6_8_apple[(FONT_6_8_APPLE_MAX - FONT_6_8_APPLE_MIN + 1) * FONT_6_8_APPLE_WIDTH] = {
+static uint8_t font_6_8_apple[FONT_6_8_APPLE_LEN] = {
   // space
   0b00000000,
   0b00000000,
@@ -775,7 +776,7 @@ static uint8_t font_6_8_apple[(FONT_6_8_APPLE_MAX - FONT_6_8_APPLE_MIN + 1) * FO
 
 static font_t font6x8apple = {
   FONT_6_8_APPLE_WIDTH, FONT_6_8_APPLE_HEIGHT,
-  FONT_6_8_APPLE_MIN,   FONT_6_8_APPLE_MAX,
-  NULL,
-  &font_6_8_apple[0]
+  FONT_6_8_APPLE_MIN,   FONT_6_8_APPLE_MAX, FONT_6_8_APPLE_LEN,
+  font_6_8_apple,
+  NULL, NULL
 };

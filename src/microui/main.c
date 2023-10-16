@@ -4,15 +4,15 @@
 #include "thread.h"
 #include "pumpkin.h"
 #include "surface.h"
+#include "fontstd.h"
 #include "palette.h"
 #include "renderer.h"
 #include "debug.h"
 
-#define FONT 3
-
 static surface_t *surface;
 static void (*old_setpixel)(void *data, int x, int y, uint32_t color);
 static mu_Real bg[3] = { 128, 128, 128 };
+static mu_Rect clip = { 0, 0, 9999, 99999 };
 
 static mu_Style style = {
   /* font | size | padding | spacing | indent */
@@ -44,40 +44,47 @@ void r_draw_rect(mu_Rect r, mu_Color c) {
 
 void r_draw_text(const char *text, mu_Vec2 pos, mu_Color c) {
   int color = surface_color_rgb(surface->encoding, NULL, 0, c.r, c.g, c.b, 0xff);
-  surface_print(surface, pos.x, pos.y, (char *)text, FONT, color, -1);
+  surface_print(surface, pos.x, pos.y, (char *)text, &fontstd, 0, color, -1);
 }
 
 void r_draw_icon(int id, mu_Rect r, mu_Color c) {
   int x, y, color;
 
   color = surface_color_rgb(surface->encoding, NULL, 0, c.r, c.g, c.b, 0xff);
-  x = r.x + (r.w - surface_font_width(FONT)) / 2;
-  y = r.y + (r.h - surface_font_height(FONT)) / 2;
+  y = r.y + (r.h - surface_font_height(&fontstd, 0)) / 2;
 
   switch (id) {
     case MU_ICON_CLOSE:
       break;
     case MU_ICON_CHECK:
-      surface_print(surface, x, y, "X", FONT, color, -1);
+      x = r.x + (r.w - surface_font_char_width(&fontstd, 0, 'X')) / 2;
+      surface_print(surface, x, y, "X", &fontstd, 0, color, -1);
       break;
     case MU_ICON_COLLAPSED:
-      surface_print(surface, x, y, ">", FONT, color, -1);
+      x = r.x + (r.w - surface_font_char_width(&fontstd, 0, '>')) / 2;
+      surface_print(surface, x, y, ">", &fontstd, 0, color, -1);
       break;
     case MU_ICON_EXPANDED:
-      surface_print(surface, x, y, "v", FONT, color, -1);
+      x = r.x + (r.w - surface_font_char_width(&fontstd, 0, 'v')) / 2;
+      surface_print(surface, x, y, "v", &fontstd, 0, color, -1);
       break;
   }
 }
 
 int r_get_text_width(const char *text, int len) {
-  return surface_font_width(FONT) * len;
+  int i, width = 0;
+  for (i = 0; i < len; i++) {
+    width += surface_font_char_width(&fontstd, 0, text[i]);
+  }
+  return width;
 }
 
 int r_get_text_height(void) {
-  return surface_font_height(FONT);
+  return surface_font_height(&fontstd, 0);
 }
 
-void r_set_clip_rect(mu_Rect rect) {
+void r_set_clip_rect(mu_Rect r) {
+  clip = r;
 }
 
 void r_clear(mu_Color c) {
@@ -101,7 +108,7 @@ static int text_height(mu_Font font) {
 }
 
 static void surface_setpixel(void *data, int x, int y, uint32_t color) {
-  if (color != -1) {
+  if (color != -1 && x >= clip.x && y >= clip.y && x < clip.x+clip.w && y < clip.y+clip.h) {
     old_setpixel(data, x, y, color);
   }
 }
@@ -161,7 +168,7 @@ static void StopApplication(void) {
 
 static void test_window(mu_Context *ctx) {
   /* do window */
-  if (mu_begin_window_ex(ctx, "Demo Window", mu_rect(0, 0, 320, 450), MU_OPT_NODRAG)) {
+  if (mu_begin_window_ex(ctx, "Demo Window", mu_rect(0, 0, 320, 450), MU_OPT_NORESIZE | MU_OPT_NODRAG)) {
     mu_Container *win = mu_get_current_container(ctx);
     win->rect.w = mu_max(win->rect.w, 240);
     win->rect.h = mu_max(win->rect.h, 300);
@@ -179,12 +186,12 @@ static void test_window(mu_Context *ctx) {
 
     /* labels + buttons */
     if (mu_header_ex(ctx, "Test Buttons", MU_OPT_EXPANDED)) {
-      mu_layout_row(ctx, 3, (int[]) { 100, -110, -1 }, 0);
+      mu_layout_row(ctx, 3, (int[]) { 130, -110, -1 }, 0);
       mu_label(ctx, "Test buttons 1:");
-      mu_button(ctx, "Button 1");
-      mu_button(ctx, "Button 2");
+      mu_button(ctx, "Btn 1");
+      mu_button(ctx, "Btn 2");
       mu_label(ctx, "Test buttons 2:");
-      mu_button(ctx, "Button 3");
+      mu_button(ctx, "Btn 3");
       if (mu_button(ctx, "Popup")) { mu_open_popup(ctx, "Test Popup"); }
       if (mu_begin_popup(ctx, "Test Popup")) {
         mu_button(ctx, "Hello");
@@ -195,7 +202,7 @@ static void test_window(mu_Context *ctx) {
 
     /* tree */
     if (mu_header_ex(ctx, "Tree and Text", MU_OPT_EXPANDED)) {
-      mu_layout_row(ctx, 2, (int[]) { 140, -1 }, 0);
+      mu_layout_row(ctx, 2, (int[]) { 145, -1 }, 0);
       mu_layout_begin_column(ctx);
       if (mu_begin_treenode(ctx, "Test 1")) {
         if (mu_begin_treenode(ctx, "Test 1a")) {
@@ -204,8 +211,8 @@ static void test_window(mu_Context *ctx) {
           mu_end_treenode(ctx);
         }
         if (mu_begin_treenode(ctx, "Test 1b")) {
-          mu_button(ctx, "Button 1");
-          mu_button(ctx, "Button 2");
+          mu_button(ctx, "Btn 1");
+          mu_button(ctx, "Btn 2");
           mu_end_treenode(ctx);
         }
         mu_end_treenode(ctx);
@@ -229,9 +236,7 @@ static void test_window(mu_Context *ctx) {
 
       mu_layout_begin_column(ctx);
       mu_layout_row(ctx, 1, (int[]) { -1 }, 0);
-      mu_text(ctx, "Lorem ipsum dolor sit amet, consectetur adipiscing "
-        "elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus "
-        "ipsum, eu varius magna felis a nulla.");
+      mu_text(ctx, "Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
       mu_layout_end_column(ctx);
     }
 
@@ -240,7 +245,7 @@ static void test_window(mu_Context *ctx) {
       mu_layout_row(ctx, 2, (int[]) { -78, -1 }, 74);
       /* sliders */
       mu_layout_begin_column(ctx);
-      mu_layout_row(ctx, 2, (int[]) { 54, -1 }, 0);
+      mu_layout_row(ctx, 2, (int[]) { 60, -1 }, 0);
       mu_label(ctx, "Red:");   mu_slider(ctx, &bg[0], 0, 255);
       mu_label(ctx, "Green:"); mu_slider(ctx, &bg[1], 0, 255);
       mu_label(ctx, "Blue:");  mu_slider(ctx, &bg[2], 0, 255);
@@ -260,7 +265,7 @@ static void test_window(mu_Context *ctx) {
 static void EventLoop(mu_Context *ctx) {
   int ev, key, mods, buttons;
   mu_Command *cmd;
-  uint64_t t, last = 0;
+  uint64_t last = 0;
   int draw, x = 0, y = 0;
 
   for (; !thread_must_end();) {
@@ -291,8 +296,7 @@ static void EventLoop(mu_Context *ctx) {
         return;
     }
 
-    t = sys_get_clock();
-    if ((t - last) > 50000) {
+    if ((sys_get_clock() - last) > 50000) {
       mu_begin(ctx);
       test_window(ctx);
       mu_end(ctx);
@@ -304,12 +308,14 @@ static void EventLoop(mu_Context *ctx) {
           case MU_COMMAND_TEXT: r_draw_text(cmd->text.str, cmd->text.pos, cmd->text.color); draw = 1; break;
           case MU_COMMAND_RECT: r_draw_rect(cmd->rect.rect, cmd->rect.color); draw = 1; break;
           case MU_COMMAND_ICON: r_draw_icon(cmd->icon.id, cmd->icon.rect, cmd->icon.color); draw = 1; break;
-          case MU_COMMAND_CLIP: r_set_clip_rect(cmd->clip.rect); draw = 1; break;
+          case MU_COMMAND_CLIP: r_set_clip_rect(cmd->clip.rect); break;
         }
       }
 
-      if (draw) r_present();
-      last = t;
+      if (draw) {
+        r_present();
+        last = sys_get_clock();
+      }
     }
   }
 }

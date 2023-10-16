@@ -44,9 +44,11 @@ typedef struct {
   void *udata;
 } surface_t;
 
-int surface_font_height(int font);
-int surface_font_width(int font);
-void surface_print(surface_t *surface, int x, int y, char *s, int font, uint32_t fg, uint32_t bg);
+int surface_font_height(font_t *f, int font);
+int surface_font_width(font_t *f, int font);
+int surface_font_char_width(font_t *f, int font, int c);
+int surface_font_chars_width(font_t *f, int font, char *s, int len);
+void surface_print(surface_t *surface, int x, int y, char *s, font_t *f, int font, uint32_t fg, uint32_t bg);
 void surface_printvf(surface_t *surface, int x, int y, char *s, uint32_t color, double size, double angle, graphic_vfont_t *vf);
 void surface_sizevf(char *s, double size, int *dx, int *dy, graphic_vfont_t *vf);
 void surface_ellipse(surface_t *surface, int x, int y, int rx, int ry, int filled, uint32_t color);

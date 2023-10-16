@@ -75,11 +75,11 @@ void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int hei
     radius = width / 10;
 
     font = 6;
-    fw = surface_font_height(font);
-    fh = surface_font_width(font);
-    x = (width - fw * sys_strlen(msg)) / 2;
+    fw = surface_font_chars_width(NULL, font, (char *)msg, sys_strlen(msg));
+    fh = surface_font_height(NULL, font);
+    x = (width - fw) / 2;
     y = height / 2 + radius + fh;
-    surface_print(surface, x, y, (char *)msg, font, black, white);
+    surface_print(surface, x, y, (char *)msg, NULL, font, black, white);
     wp->update_texture_rect(w, texture, raw, 0, 0, width, height);
     wp->draw_texture_rect(w, texture, 0, 0, width, height, 0, 0);
     if (wp->render) wp->render(w);

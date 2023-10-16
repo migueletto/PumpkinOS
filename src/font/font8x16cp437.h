@@ -2,8 +2,9 @@
 #define FONT_8_16_CP437_HEIGHT 16
 #define FONT_8_16_CP437_MIN    0
 #define FONT_8_16_CP437_MAX    255
+#define FONT_8_16_CP437_LEN    (FONT_8_16_CP437_MAX - FONT_8_16_CP437_MIN + 1) * FONT_8_16_CP437_WIDTH
 
-static uint8_t font_8_16_cp437[(FONT_8_16_CP437_MAX - FONT_8_16_CP437_MIN + 1) * FONT_8_16_CP437_WIDTH * 2] = {
+static uint8_t font_8_16_cp437[FONT_8_16_CP437_LEN * 2] = {
   // 0x00
   0b00000000,
   0b00000000,
@@ -5127,7 +5128,7 @@ static uint8_t font_8_16_cp437[(FONT_8_16_CP437_MAX - FONT_8_16_CP437_MIN + 1) *
 
 static font_t font8x16_cp437 = {
   FONT_8_16_CP437_WIDTH, FONT_8_16_CP437_HEIGHT,
-  FONT_8_16_CP437_MIN,   FONT_8_16_CP437_MAX,
-  &font_8_16_cp437[sizeof(font_8_16_cp437)/2],
-  &font_8_16_cp437[0]
+  FONT_8_16_CP437_MIN,   FONT_8_16_CP437_MAX, FONT_8_16_CP437_LEN,
+  font_8_16_cp437,
+  NULL, NULL
 };

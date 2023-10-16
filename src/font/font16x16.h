@@ -2,8 +2,9 @@
 #define FONT_16_16_HEIGHT 16
 #define FONT_16_16_MIN    32
 #define FONT_16_16_MAX    255
+#define FONT_16_16_LEN    (FONT_16_16_MAX - FONT_16_16_MIN + 1) * FONT_16_16_WIDTH
 
-static uint8_t font_16_16[(FONT_16_16_MAX - FONT_16_16_MIN + 1) * FONT_16_16_WIDTH * 2] = {
+static uint8_t font_16_16[FONT_16_16_LEN * 2] = {
   // space
   0b00000000,
   0b00000000,
@@ -8071,7 +8072,7 @@ static uint8_t font_16_16[(FONT_16_16_MAX - FONT_16_16_MIN + 1) * FONT_16_16_WID
 
 static font_t font16x16 = {
   FONT_16_16_WIDTH, FONT_16_16_HEIGHT,
-  FONT_16_16_MIN,   FONT_16_16_MAX,
-  &font_16_16[sizeof(font_16_16)/2],
-  &font_16_16[0]
+  FONT_16_16_MIN,   FONT_16_16_MAX, FONT_16_16_LEN,
+  font_16_16,
+  NULL, NULL
 };

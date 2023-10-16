@@ -2,8 +2,9 @@
 #define FONT_12_16_COCO_HEIGHT 16
 #define FONT_12_16_COCO_MIN    32
 #define FONT_12_16_COCO_MAX    127
+#define FONT_12_16_COCO_LEN    (FONT_12_16_COCO_MAX - FONT_12_16_COCO_MIN + 1) * FONT_12_16_COCO_WIDTH
 
-static uint8_t font_12_16_coco[(FONT_12_16_COCO_MAX - FONT_12_16_COCO_MIN + 1) * FONT_12_16_COCO_WIDTH * 2] = {
+static uint8_t font_12_16_coco[FONT_12_16_COCO_LEN * 2] = {
   // space
   0b00000000,
   0b00000000,
@@ -2695,7 +2696,7 @@ static uint8_t font_12_16_coco[(FONT_12_16_COCO_MAX - FONT_12_16_COCO_MIN + 1) *
 
 static font_t font12x16coco = {
   FONT_12_16_COCO_WIDTH, FONT_12_16_COCO_HEIGHT,
-  FONT_12_16_COCO_MIN, FONT_12_16_COCO_MAX,
-  &font_12_16_coco[sizeof(font_12_16_coco)/2],
-  &font_12_16_coco[0]
+  FONT_12_16_COCO_MIN, FONT_12_16_COCO_MAX, FONT_12_16_COCO_LEN,
+  font_12_16_coco,
+  NULL, NULL
 };

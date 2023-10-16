@@ -7,8 +7,10 @@ extern "C" {
 
 typedef struct {
   int width, height;
-  int min, max;
-  uint8_t *font0, *font1;
+  int min, max, len;
+  uint8_t *font;
+  uint8_t *cwidth;
+  int *index;
 } font_t;
 
 #ifdef __cplusplus
