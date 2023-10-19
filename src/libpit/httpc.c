@@ -10,7 +10,7 @@
 
 #define DEFAULT_PORT         80
 #define DEFAULT_SECURE_PORT  443
-#define BUFFER_LEN           65536
+#define BUFFER_LEN           (65536*4)
 #define TIMEOUT              5
 
 #define TAG_HTTPC  "HTTPC"
@@ -75,19 +75,19 @@ static void free_http_client(void *p) {
 }
 
 static int secure_peek(conn_filter_t *filter, uint32_t us) {
-  http_client_t *hc = (http_client_t *)filter->data;;
+  http_client_t *hc = (http_client_t *)filter->data;
   int r = hc->secure->peek(hc->s, us);
   return r;
 }
 
 static int secure_read(conn_filter_t *filter, uint8_t *b) {
-  http_client_t *hc = (http_client_t *)filter->data;;
+  http_client_t *hc = (http_client_t *)filter->data;
   int r = hc->secure->read(hc->s, (char *)b, 1);
   return r;
 }
 
 static int secure_write(conn_filter_t *filter, uint8_t *b, int n) {
-  http_client_t *hc = (http_client_t *)filter->data;;
+  http_client_t *hc = (http_client_t *)filter->data;
   int r = hc->secure->write(hc->s, (char *)b, n);
   return r;
 }
@@ -160,6 +160,7 @@ static int io_callback(io_arg_t *arg) {
 
       if (hc->response_end_header) {
         if (arg->len > 0) {
+          debug(DEBUG_INFO, "WEB", "writing %d bytes to response file", arg->len);
           sys_write(hc->response_fd, arg->buf, arg->len);
         }
       } else {
@@ -174,6 +175,7 @@ static int io_callback(io_arg_t *arg) {
                 r = 1;
               } else {
                 if (arg->len - (i+1) > 0) {
+                  debug(DEBUG_INFO, "WEB", "writing %d bytes to response file", arg->len - (i+1));
                   sys_write(hc->response_fd, arg->buf + i+1, arg->len - (i+1));
                   i = arg->len;
                 }
@@ -204,6 +206,7 @@ static int io_callback(io_arg_t *arg) {
       if (hc->callback) {
         hc->tag = TAG_HTTP_CLIENT;
         if ((ptr = ptr_new(hc, free_http_client)) != -1) {
+          debug(DEBUG_INFO, "WEB", "calling data callback");
           hc->callback(ptr, hc->data);
           ptr_free(ptr, TAG_HTTP_CLIENT);
         }
@@ -238,7 +241,7 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
   hc->buflen = BUFFER_LEN;
 
   hc->request_url = xstrdup(url);
-  hc->request_type = xstrdup(content_type);
+  hc->request_type = content_type ? xstrdup(content_type) : NULL;
   hc->request_body = body ? xmalloc(len) : NULL;
 
   if (!hc->request_url || (body && !hc->request_body)) {

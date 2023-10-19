@@ -396,8 +396,13 @@ static int io_stream_connection_loop(io_connection_t *con, int handle) {
   if (con->filter) {
     if ((r = con->filter->peek(con->filter, con->timer ? con->timer*1000 : 20000)) > 0) {
       for (nread = 0; nread < MAX_BUFFER; nread++) {
-        if ((r = con->filter->peek(con->filter, 0)) <= 0) break;
-        if ((r = con->filter->read(con->filter, &con->buffer[nread])) < 0) break;
+        if ((r = con->filter->peek(con->filter, 0)) <= 0) {
+          if (r == 0) r = nread > 0 ? 1 : 0;
+          break;
+        }
+        if ((r = con->filter->read(con->filter, &con->buffer[nread])) < 0) {
+          break;
+        }
         if (r == 0) {
           r = 1;
           break;
@@ -415,6 +420,7 @@ static int io_stream_connection_loop(io_connection_t *con, int handle) {
   } 
 
   if (r > 0) {
+    debug(DEBUG_INFO, "IO", "read %d bytes", nread);
     if (nread == 0) {
       // peer disconnected
       debug(DEBUG_INFO, "IO", "peer disconnected");
