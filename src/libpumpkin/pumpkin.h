@@ -332,6 +332,7 @@ void EvtEmptyQueue(void);
 int EvtPumpEvents(Int32 timeoutUs);
 void EvtGetEventUs(EventType *event, Int32 timeoutUs);
 void EvtPrintEvent(char *op, EventType *event);
+void EvtReturnPenMove(Boolean penMove);
 
 #define ErrFatalDisplayEx(msg, finish) ErrDisplayFileLineMsgEx(__FILE__, __FUNCTION__, (UInt16) __LINE__, msg, finish)
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);

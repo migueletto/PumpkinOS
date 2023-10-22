@@ -27,6 +27,7 @@ typedef struct {
   UInt32 repeatingButtonTime;
   UInt16 repeatingButtonID;
   void *repeatingButtonP;
+  Boolean penMove;
 } evt_module_t;
 
 extern thread_key_t *evt_key;
@@ -96,6 +97,11 @@ int EvtFinishModule(void) {
   }
 
   return 0;
+}
+
+void EvtReturnPenMove(Boolean penMove) {
+  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  module->penMove = penMove;
 }
 
 char *EvtGetEventName(UInt16 eType) {
@@ -292,7 +298,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
       module->screenX = key;
       module->screenY = mods;
       adjustCoords(&module->screenX, &module->screenY);
-      if (!module->penDown) ev = 0;
+      if (!module->penDown && !module->penMove) ev = 0;
 
 /*
     } else if (ev == MSG_NOTIFY) {
