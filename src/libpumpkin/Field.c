@@ -423,7 +423,6 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
           }
           InsPtEnable(fldP->textLen == 0 || fldP->insPtYPos < fldP->numUsedLines);
           handled = true;
-        } else {
         }
         break;
 
