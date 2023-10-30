@@ -692,7 +692,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
       case 3:
         bmpV3 = (BitmapTypeV3 *)bitmapP;
         debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
-        if (bmpV3->pixelSize >= best_depth && !exact_depth && bmpV3->density >= best_density && !exact_density /*bmpV3->density <= density*/) {
+        if (bmpV3->pixelSize >= best_depth && bmpV3->density >= best_density && (!exact_density || exact_density) /*bmpV3->density <= density*/) {
           if (bmpV3->flags.compressed == 0) {
             best = (BitmapType *)bmpV3;
             best_depth = bmpV3->pixelSize;
