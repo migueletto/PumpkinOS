@@ -180,7 +180,7 @@ static int line(io_connection_t *con, int n, int handle) {
   return 0;
 }
 
-static int io_connect_addr(io_addr_t *src, io_addr_t *addr, bt_provider_t *bt) {
+static int io_connect_addr(io_addr_t *src, io_addr_t *addr, bt_provider_t *bt, int timeout) {
   int fd = -1;
 
   if (addr) {
@@ -192,7 +192,7 @@ static int io_connect_addr(io_addr_t *src, io_addr_t *addr, bt_provider_t *bt) {
         if (src) {
           fd = sys_socket_bind_connect(src->addr.ip.host, src->addr.ip.port, addr->addr.ip.host, addr->addr.ip.port, IP_STREAM);
         } else {
-          fd = sys_socket_open_connect(addr->addr.ip.host, addr->addr.ip.port, IP_STREAM);
+          fd = sys_socket_open_connect_timeout(addr->addr.ip.host, addr->addr.ip.port, IP_STREAM, timeout * 1000000);
         }
         break;
       case IO_BT_ADDR:
@@ -325,7 +325,7 @@ int io_connect(char *peer, int port, bt_provider_t *bt) {
   int fd = -1;
 
   if (io_fill_addr(peer, port, &addr) == 0) {
-    fd = io_connect_addr(NULL, &addr, bt);
+    fd = io_connect_addr(NULL, &addr, bt, -1);
   }
 
   return fd;
@@ -340,7 +340,7 @@ static int io_stream_connection_loop(io_connection_t *con, int handle) {
   t = sys_time();
 
   if (con->fd == -1 && con->connect && t > con->next_try) {
-    if ((con->fd = io_connect_addr(con->has_src ? &con->src : NULL, &con->addr, con->bt)) != -1) {
+    if ((con->fd = io_connect_addr(con->has_src ? &con->src : NULL, &con->addr, con->bt, con->timeout)) != -1) {
       if (io_callback_filter(con, handle)) {
         debug(DEBUG_INFO, "IO", "exiting on filter callback");
         return -1;
@@ -493,12 +493,17 @@ static int io_stream_connection_action(void *arg) {
     if (io_stream_connection_loop(con, handle)) break;
   }
 
-  io_callback_disconnect(con, handle);
+  if (!thread_must_end()) {
+    io_callback_disconnect(con, handle);
+  }
+
   if (con->end) {
     thread_end(con->tag, handle);
   }
-  debug(DEBUG_INFO, "IO", "closing fd %d", con->fd);
-  sys_close(con->fd);
+  if (con->fd != -1) {
+    debug(DEBUG_INFO, "IO", "closing fd %d", con->fd);
+    sys_close(con->fd);
+  }
   xfree(con);
 
   return 0;
@@ -728,7 +733,7 @@ static int io_simple_client_action(void *arg) {
   io_simple_t *client;
 
   client = (io_simple_t *)arg;
-  client->fd = io_connect_addr(NULL, &client->addr, client->bt);
+  client->fd = io_connect_addr(NULL, &client->addr, client->bt, -1);
 
   if (client->fd != -1) {
     client->loop(client->fd, client->ptr);

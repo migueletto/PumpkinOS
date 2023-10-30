@@ -35,20 +35,22 @@ typedef struct http_client_t {
   int response_num_headers;
   char *response_header_name[MAX_RES_HEADERS];
   char *response_header_value[MAX_RES_HEADERS];
-  int response_ok;
+  int response_code_found;
   int response_code;
   int response_end_header;
   int response_fd;
+  int response_error;
 
   // callback
   void *data;
   int (*callback)(int ptr, void *data);
 } http_client_t;
 
-int pit_http_get(char *user_agent, char *url, secure_provider_t *secure, int (*callback)(int ptr, void *data), void *data);
-int pit_http_post(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int (*callback)(int ptr, void *data), void *data);
-int pit_http_put(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int (*callback)(int ptr, void *data), void *data);
-int pit_http_delete(char *user_agent, char *url, secure_provider_t *secure, int (*callback)(int ptr, void *data), void *data);
+int pit_http_get(char *user_agent, char *url, secure_provider_t *secure, int timeout, int (*callback)(int ptr, void *data), void *data);
+int pit_http_post(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int timeout, int (*callback)(int ptr, void *data), void *data);
+int pit_http_put(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int timeout, int (*callback)(int ptr, void *data), void *data);
+int pit_http_delete(char *user_agent, char *url, secure_provider_t *secure, int timeout, int (*callback)(int ptr, void *data), void *data);
+void pit_http_abort(int handle);
 
 #ifdef __cplusplus
 }

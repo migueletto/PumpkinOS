@@ -11,7 +11,6 @@
 #define DEFAULT_PORT         80
 #define DEFAULT_SECURE_PORT  443
 #define BUFFER_LEN           (65536*4)
-#define TIMEOUT              5
 
 #define TAG_HTTPC  "HTTPC"
 
@@ -21,7 +20,7 @@ static void http_parse_headers(char *buf, http_client_t *hc) {
 
   if (!sys_strncmp(buf, "HTTP/1.", 7)) {
     if (sys_sscanf(buf, "HTTP/1.%d %d ", &minor, &code) == 2) {
-      hc->response_ok = 1;
+      hc->response_code_found = 1;
       hc->response_code = code;
 
     } else {
@@ -152,6 +151,8 @@ static int io_callback(io_arg_t *arg) {
       break;
 
     case IO_CONNECT_ERROR:
+      debug(DEBUG_INFO, "WEB", "connection error");
+      hc->response_error = 1;
       r = 1;
       break;
 
@@ -196,15 +197,15 @@ static int io_callback(io_arg_t *arg) {
 
     case IO_TIMEOUT:
       debug(DEBUG_INFO, "WEB", "timeout reading from http server");
+      hc->response_error = 1;
       r = 1;
       break;
 
     case IO_DISCONNECT:
-      if (!hc->response_ok) debug(DEBUG_ERROR, "WEB", "http server reply code not found");
+      if (!hc->response_code_found) debug(DEBUG_ERROR, "WEB", "http server reply code not found");
       if (!hc->response_end_header) debug(DEBUG_ERROR, "WEB", "http server reply header did not end properly");
       if (hc->response_fd) sys_seek(hc->response_fd, 0, SYS_SEEK_SET);
       if (hc->callback) {
-        hc->tag = TAG_HTTP_CLIENT;
         if ((ptr = ptr_new(hc, free_http_client)) != -1) {
           debug(DEBUG_INFO, "WEB", "calling data callback");
           hc->callback(ptr, hc->data);
@@ -219,9 +220,10 @@ static int io_callback(io_arg_t *arg) {
   return r;
 }
 
-static int http_request(char *user_agent, char *method, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int (*callback)(int ptr, void *data), void *data) {
+static int http_request(char *user_agent, char *method, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int timeout, int (*callback)(int ptr, void *data), void *data) {
   http_client_t *hc;
   io_addr_t addr;
+  int handle;
   char *p;
 
   if ((hc = xcalloc(1, sizeof(http_client_t))) == NULL) {
@@ -301,46 +303,50 @@ static int http_request(char *user_agent, char *method, char *url, secure_provid
   sys_strncpy(addr.addr.ip.host, hc->request_host, MAX_HOST-1);
   addr.addr.ip.port = hc->request_port;
 
-  if (io_stream_client(TAG_HTTPC, &addr, io_callback, hc, TIMEOUT, NULL) == -1) {
+  if ((handle = io_stream_client(TAG_HTTPC, &addr, io_callback, hc, timeout, NULL)) == -1) {
     free_http_client(hc);
     return -1;
   }
 
-  return 0;
+  return handle;
 }
 
-int pit_http_get(char *user_agent, char *url, secure_provider_t *secure, int (*callback)(int ptr, void *data), void *data) {
+void pit_http_abort(int handle) {
+  thread_end(TAG_HTTPC, handle);
+}
+
+int pit_http_get(char *user_agent, char *url, secure_provider_t *secure, int timeout, int (*callback)(int ptr, void *data), void *data) {
   if (!url) {
     debug(DEBUG_ERROR, "WEB", "invalid http get parameters");
     return -1;
   }
 
-  return http_request(user_agent, "GET", url, secure, NULL, NULL, 0, callback, data);
+  return http_request(user_agent, "GET", url, secure, NULL, NULL, 0, timeout, callback, data);
 }
 
-int pit_http_post(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int (*callback)(int ptr, void *data), void *data) {
+int pit_http_post(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int timeout, int (*callback)(int ptr, void *data), void *data) {
   if (!url || !content_type || !body || len <= 0) {
     debug(DEBUG_ERROR, "WEB", "invalid http post parameters");
     return -1;
   }
 
-  return http_request(user_agent, "POST", url, secure, content_type, body, len, callback, data);
+  return http_request(user_agent, "POST", url, secure, content_type, body, len, timeout, callback, data);
 }
 
-int pit_http_put(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int (*callback)(int ptr, void *data), void *data) {
+int pit_http_put(char *user_agent, char *url, secure_provider_t *secure, char *content_type, char *body, int len, int timeout, int (*callback)(int ptr, void *data), void *data) {
   if (!url || !content_type || !body || len <= 0) {
     debug(DEBUG_ERROR, "WEB", "invalid http put parameters");
     return -1;
   }
 
-  return http_request(user_agent, "PUT", url, secure, content_type, body, len, callback, data);
+  return http_request(user_agent, "PUT", url, secure, content_type, body, len, timeout, callback, data);
 }
 
-int pit_http_delete(char *user_agent, char *url, secure_provider_t *secure, int (*callback)(int ptr, void *data), void *data) {
+int pit_http_delete(char *user_agent, char *url, secure_provider_t *secure, int timeout, int (*callback)(int ptr, void *data), void *data) {
   if (!url) {
     debug(DEBUG_ERROR, "WEB", "invalid http delete parameters");
     return -1;
   }
 
-  return http_request(user_agent, "DELETE", url, secure, NULL, NULL, 0, callback, data);
+  return http_request(user_agent, "DELETE", url, secure, NULL, NULL, 0, timeout, callback, data);
 }

@@ -256,6 +256,8 @@ int sys_socket_open(int type, int ipv6);
 
 int sys_socket_connect(int sock, char *host, int port);
 
+int sys_socket_open_connect_timeout(char *host, int port, int type, uint32_t us);
+
 int sys_socket_open_connect(char *host, int port, int type);
 
 int sys_socket_binds(int sock, char *host, int *port);

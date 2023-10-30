@@ -161,7 +161,8 @@ int pumpkin_get_encoding(void);
 int pumpkin_get_current(void);
 
 void pumpkin_set_secure(void *secure);
-int pumpkin_http_get(char *url, int (*callback)(int ptr, void *_data), void *data);
+int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data);
+void pumpkin_http_abort(int handle);
 
 int pumpkin_dia_enabled(void);
 int pumpkin_dia_set_trigger(int trigger);

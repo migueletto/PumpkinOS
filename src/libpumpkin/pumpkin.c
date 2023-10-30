@@ -664,8 +664,12 @@ void pumpkin_set_secure(void *secure) {
   pumpkin_module.secure = secure;
 }
 
-int pumpkin_http_get(char *url, int (*callback)(int ptr, void *_data), void *data) {
-  return pit_http_get(PUMPKIN_USER_AGENT, url, pumpkin_module.secure, callback, data);
+int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data) {
+  return pit_http_get(PUMPKIN_USER_AGENT, url, pumpkin_module.secure, timeout, callback, data);
+}
+
+void pumpkin_http_abort(int handle) {
+  pit_http_abort(handle);
 }
 
 int pumpkin_set_single(int depth) {
