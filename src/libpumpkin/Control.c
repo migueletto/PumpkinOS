@@ -27,6 +27,10 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
           case boldButtonFrame:
             WinInvertRect(&rect, 3, isInverted);
             WinDrawRectangleFrame(roundFrame, &controlP->bounds);
+            break;
+          case noFrame:
+            WinInvertRect(&rect, 0, isInverted);
+            break;
         }
         break;
       default:

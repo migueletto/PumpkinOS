@@ -3154,11 +3154,10 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
 void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   IndexedColorType objFore, objFill, objSelFill, objSelFore, oldb, oldf;
+  RGBColorType rgb, old;
   RectangleType aux;
   WinDrawOperation prev;
   UInt16 coordSys;
-
-  prev = WinSetDrawMode(winSwap);
 
   // using double coordinates to preserve font shape
   MemMove(&aux, rect, sizeof(RectangleType));
@@ -3166,37 +3165,53 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
   if (coordSys == kCoordinatesStandard) WinScaleRectangle(&aux);
   corner = WinScaleCoord(corner, false);
 
-  if (module->depth == 1) {
-    oldb = WinSetBackColor(0x00);
-    oldf = WinSetForeColor(0xff);
-    WinPaintRectangle(&aux, corner);
+  switch (module->depth) {
+    case 1:
+      prev = WinSetDrawMode(winSwap);
+      oldb = WinSetBackColor(0x00);
+      oldf = WinSetForeColor(0xff);
+      WinPaintRectangle(&aux, corner);
+      WinSetBackColor(oldb);
+      WinSetForeColor(oldf);
+      break;
 
-  } else {
-    objFill = UIColorGetTableEntryIndex(UIObjectFill);
-    objFore = UIColorGetTableEntryIndex(UIObjectForeground);
-    objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
-    objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+    case 16:
+      prev = WinSetDrawMode(winInvert);
+      rgb.r = rgb.g = rgb.b = 0xff;
+      WinSetForeColorRGB(&rgb, &old);
+      WinPaintRectangle(&aux, corner);
+      WinSetForeColorRGB(&old, NULL);
+      break;
 
-    if (isInverted) {
-      oldb = WinSetBackColor(objFore);
-      oldf = WinSetForeColor(objSelFore);
-      WinPaintRectangle(&aux, corner);
-      WinSetBackColor(objFill);
-      WinSetForeColor(objSelFill);
-      WinPaintRectangle(&aux, corner);
-    } else {
-      oldb = WinSetBackColor(objFill);
-      oldf = WinSetForeColor(objSelFill);
-      WinPaintRectangle(&aux, corner);
-      WinSetBackColor(objFore);
-      WinSetForeColor(objSelFore);
-      WinPaintRectangle(&aux, corner);
-    }
+    default:
+      prev = WinSetDrawMode(winSwap);
+      objFill = UIColorGetTableEntryIndex(UIObjectFill);
+      objFore = UIColorGetTableEntryIndex(UIObjectForeground);
+      objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+      objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+
+      if (isInverted) {
+        oldb = WinSetBackColor(objFore);
+        oldf = WinSetForeColor(objSelFore);
+        WinPaintRectangle(&aux, corner);
+        WinSetBackColor(objFill);
+        WinSetForeColor(objSelFill);
+        WinPaintRectangle(&aux, corner);
+      } else {
+        oldb = WinSetBackColor(objFill);
+        oldf = WinSetForeColor(objSelFill);
+        WinPaintRectangle(&aux, corner);
+        WinSetBackColor(objFore);
+        WinSetForeColor(objSelFore);
+        WinPaintRectangle(&aux, corner);
+      }
+
+      WinSetBackColor(oldb);
+      WinSetForeColor(oldf);
+      break;
   }
 
   WinSetCoordinateSystem(coordSys);
-  WinSetBackColor(oldb);
-  WinSetForeColor(oldf);
   WinSetDrawMode(prev);
 }
 
