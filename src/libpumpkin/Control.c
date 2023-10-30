@@ -46,8 +46,9 @@ void CtlDrawControl(ControlType *controlP) {
   WinDrawOperation mode;
   PatternType oldPattern;
   IndexedColorType objFill, objFore, oldb, oldf, oldt;
+  RectangleType rect;
   Coord bw, bh;
-  UInt16 rb;
+  UInt16 rb, coordSys;
   FontID old;
   Boolean wasVisible;
   Int16 tw, th, x, y;
@@ -75,9 +76,21 @@ void CtlDrawControl(ControlType *controlP) {
             if ((bmp = MemHandleLock(h)) != NULL) {
               debug(DEBUG_TRACE, "Control", "GraphicControl draw id=%d, bitmapID=%d, selectedBitmapID=%d", controlP->id, controlP->bitmapID, controlP->selectedBitmapID);
               BmpGetDimensions(bmp, &bw, &bh, &rb);
-              x = controlP->bounds.topLeft.x + (controlP->bounds.extent.x - bw) / 2;
-              y = controlP->bounds.topLeft.y + (controlP->bounds.extent.y - bh) / 2;
+
+              MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
+              coordSys = WinSetCoordinateSystem(kCoordinatesDouble);
+              if (coordSys == kCoordinatesStandard) {
+                WinScaleRectangle(&rect);
+                bw = WinScaleCoord(bw, false);
+                bh = WinScaleCoord(bh, false);
+              }
+
+              x = rect.topLeft.x + (rect.extent.x - bw) / 2;
+              y = rect.topLeft.y + (rect.extent.y - bh) / 2;
               WinDrawBitmap(bmp, x, y);
+
+              WinSetCoordinateSystem(coordSys);
+
               MemHandleUnlock(h);
             }
             DmReleaseResource(h);
