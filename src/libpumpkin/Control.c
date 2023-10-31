@@ -633,6 +633,13 @@ Boolean CtlValidatePointer(const ControlType *controlP) {
   return false;
 }
 
+void CtlGetGraphics(ControlType *ctlP, DmResID *newBitmapID, DmResID *newSelectedBitmapID) {
+  if (ctlP && ctlP->attr.graphical) {
+    if (newBitmapID) *newBitmapID = ctlP->bitmapID;
+    if (newSelectedBitmapID) *newSelectedBitmapID = ctlP->selectedBitmapID;
+  }
+}
+
 void CtlSetGraphics(ControlType *ctlP, DmResID newBitmapID, DmResID newSelectedBitmapID) {
   if (ctlP && ctlP->attr.graphical) {
     ctlP->bitmapID = newBitmapID;
