@@ -1843,7 +1843,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       if (state->panic) {
         SysFatalAlert(state->panic);
         xfree(state->panic);
-        pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
+        pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
       }
 
       if (paramBlock) {

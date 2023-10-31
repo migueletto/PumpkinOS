@@ -43,6 +43,7 @@ extern "C" {
 #define MSG_DEPLOY  9
 #define MSG_KEYDOWN 10
 #define MSG_KEYUP   11
+#define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
 
@@ -198,7 +199,8 @@ int pumpkin_pause(int pause);
 int pumpkin_is_paused(void);
 int pumpkin_sys_event(void);
 int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec);
-void pumpkin_forward_event(int i, int ev, int a1, int a2, int a3);
+void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3);
+void pumpkin_forward_event(int i, EventType *event);
 int pumpkin_event_peek(void);
 void pumpkin_keymask(uint32_t keyMask);
 void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32_t *buttonMask, uint64_t *extKeyMask);
@@ -375,6 +377,7 @@ void pumpkin_destroy_form(FormType *formP);
 ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height, FontID font, Int16 visibleItems, Int16 triggerId, Boolean usable);
 void LstFreeListChoices(ListType *listP);
 
+void CtlGetGraphics(ControlType *ctlP, DmResID *newBitmapID, DmResID *newSelectedBitmapID);
 void CtlUpdateGroup(ControlType *controlP, Boolean value);
 FieldType *FldGetActiveField(void);
 void FldSetActiveField(FieldType *fldP);

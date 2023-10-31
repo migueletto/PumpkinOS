@@ -1227,7 +1227,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
     }
   }
 
-  pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
+  pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
 
   return 0;
 }
@@ -1334,7 +1334,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   mutex_unlock(mutex);
 
-  pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppFinished, 0);
+  pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppFinished, 0);
 
   return 0;
 }
@@ -1404,7 +1404,7 @@ static int pumpkin_launch_action(void *arg) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
-      pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
+      pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
     } else {
       pumpkin_launch_sub(&data->request, data->request.opendb);
       cont = SysUIAppSwitchCont(&launch);
@@ -1931,7 +1931,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
         if (width != pumpkin_module.tasks[i].width || height != pumpkin_module.tasks[i].height) {
           debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
           if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
-            pumpkin_forward_event(i, MSG_DISPLAY, width, height, 0);
+            pumpkin_forward_msg(i, MSG_DISPLAY, width, height, 0);
           }
         }
       }
@@ -1941,7 +1941,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
       height = pumpkin_module.tasks[i].new_height;
       debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
       if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
-        pumpkin_forward_event(i, MSG_DISPLAY, width, height, 0);
+        pumpkin_forward_msg(i, MSG_DISPLAY, width, height, 0);
       }
     }
 
@@ -1999,7 +1999,7 @@ static int get_event(int *arg1, int *arg2, int *arg3) {
   return ev;
 }
 
-static void task_forward_event(int i, int ev, int a1, int a2, int a3) {
+void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3) {
   unsigned char *buf;
   unsigned int len;
   uint32_t carg[4];
@@ -2019,8 +2019,18 @@ static void task_forward_event(int i, int ev, int a1, int a2, int a3) {
   }
 }
 
-void pumpkin_forward_event(int i, int ev, int a1, int a2, int a3) {
-  task_forward_event(i, ev, a1, a2, a3);
+void pumpkin_forward_event(int i, EventType *event) {
+  struct {
+    uint16_t ev;
+    EventType event;
+  } msg;
+
+  if (mutex_lock(mutex) == 0) {
+    msg.ev = MSG_USER;
+    sys_memcpy(&msg.event, event, sizeof(EventType));
+    thread_client_write(pumpkin_module.tasks[i].handle, (unsigned char *)&msg, sizeof(msg));
+    mutex_unlock(mutex);
+  }
 }
 
 void grail_draw_stroke(int x1, int y1, int x2, int y2, int alpha) {
@@ -2045,7 +2055,7 @@ static int task_clicked(int x, int y, int *tx, int *ty) {
 
 int pumpkin_get_current(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  return task ? task->task_index+1 : 0;
+  return task ? task->task_index : 0;
 }
 
 static void pumpkin_make_current(int i) {
@@ -2064,7 +2074,7 @@ static void pumpkin_make_current(int i) {
 
     if (pumpkin_module.wm) {
       wman_raise(pumpkin_module.wm, pumpkin_module.tasks[i].taskId);
-      pumpkin_forward_event(i, MSG_RAISE, 0, 0, 0);
+      pumpkin_forward_msg(i, MSG_RAISE, 0, 0, 0);
       pumpkin_module.render = 1;
     }
   }
@@ -2226,13 +2236,13 @@ int pumpkin_sys_event(void) {
     switch (ev) {
       case WINDOW_KEYDOWN:
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
-          task_forward_event(i, MSG_KEYDOWN, arg1, 0, 0);
+          pumpkin_forward_msg(i, MSG_KEYDOWN, arg1, 0, 0);
         }
         pumpkin_set_key(arg1);
         break;
       case WINDOW_KEYUP:
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
-          task_forward_event(i, MSG_KEYUP, arg1, 0, 0);
+          pumpkin_forward_msg(i, MSG_KEYUP, arg1, 0, 0);
         }
         arg1 = pumpkin_reset_key(arg1);
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
@@ -2247,7 +2257,7 @@ int pumpkin_sys_event(void) {
           }
           if (ok) {
             arg2 = pumpkin_module.modMask;
-            task_forward_event(i, MSG_KEY, arg1, arg2, 0);
+            pumpkin_forward_msg(i, MSG_KEY, arg1, arg2, 0);
           }
         }
         break;
@@ -2275,11 +2285,11 @@ int pumpkin_sys_event(void) {
           pumpkin_module.dragging = -1;
           if (i != -1 && i == pumpkin_module.current_task) {
             if (pumpkin_module.dia || pumpkin_module.single) {
-              task_forward_event(i, MSG_MOTION, tx, ty, 0);
+              pumpkin_forward_msg(i, MSG_MOTION, tx, ty, 0);
               pumpkin_module.tasks[i].penX = tx;
               pumpkin_module.tasks[i].penY = ty;
             }
-            task_forward_event(i, MSG_BUTTON, 0, 0, 1);
+            pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 1);
           }
         }
         break;
@@ -2295,7 +2305,7 @@ int pumpkin_sys_event(void) {
         if (arg1 == 1) {
           i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
           if (i != -1  && i == pumpkin_module.current_task) {
-            task_forward_event(i, MSG_BUTTON, 0, 0, 0);
+            pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
           }
         }
         break;
@@ -2314,7 +2324,7 @@ int pumpkin_sys_event(void) {
               if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
                 if (x >= tx && x < tx + pumpkin_module.tasks[i].width &&
                     y >= ty && y < ty + pumpkin_module.tasks[i].height) {
-                  task_forward_event(i, MSG_MOTION, x - tx, y - ty, 0);
+                  pumpkin_forward_msg(i, MSG_MOTION, x - tx, y - ty, 0);
                   pumpkin_module.tasks[i].penX = x - tx;
                   pumpkin_module.tasks[i].penY = y - ty;
                 }
@@ -3639,7 +3649,7 @@ void pumpkin_set_m68k(int m68k) {
     mutex_unlock(mutex);
   }
 
-  pumpkin_forward_event(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrRefreshState, 0);
+  pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrRefreshState, 0);
 }
 
 int pumpkin_is_m68k(void) {

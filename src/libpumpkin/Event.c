@@ -430,6 +430,14 @@ int EvtPumpEvents(Int32 timeoutUs) {
       EvtAddEventToQueue(&event);
       r = 1;
       break;
+
+    case MSG_USER:
+      if (n <= sizeof(EventType)) {
+        sys_memcpy(&event, buf, n);
+        EvtAddEventToQueue(&event);
+        r = 1;
+      }
+      break;
   }
 
   return r;

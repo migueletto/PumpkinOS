@@ -471,23 +471,23 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
 
       switch (i) {
         case ICON_HARD1:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F1, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F1, 0, 0);
           break;
         case ICON_HARD2:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F2, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F2, 0, 0);
           break;
         case ICON_UPDOWN:
           if (y < dia->height - dia->button_height / 2) {
-            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
           } else {
-            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
           }
           break;
         case ICON_HARD3:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F3, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F3, 0, 0);
           break;
         case ICON_HARD4:
-          pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F4, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F4, 0, 0);
           break;
       }
     }
@@ -516,18 +516,18 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
       switch (i) {
         case ICON_HOME:
           if (current_task >= 0 && pumpkin_is_launched()) {
-            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_HOME, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_HOME, 0, 0);
           }
           break;
         case ICON_MENU:
           if (current_task >= 0) {
-            pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F5, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F5, 0, 0);
           }
           break;
         case ICON_FIND:
           // not implemented
           //if (current_task >= 0) {
-          //  pumpkin_forward_event(current_task, MSG_KEY, WINDOW_KEY_F6, 0, 0);
+          //  pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F6, 0, 0);
           //}
           break;
         case ICON_KBD:
@@ -588,7 +588,7 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
           if (glyph) {
             debug(DEBUG_TRACE, "DIA", "glyph '%c'", glyph);
             if (current_task >= 0) {
-              pumpkin_forward_event(current_task, MSG_KEY, glyph, 0, 0);
+              pumpkin_forward_msg(current_task, MSG_KEY, glyph, 0, 0);
             }
           }
         }
@@ -630,7 +630,7 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
               default:
                 c = i;
                 if (current_task >= 0) {
-                  pumpkin_forward_event(current_task, MSG_KEY, c, 0, 0);
+                  pumpkin_forward_msg(current_task, MSG_KEY, c, 0, 0);
                 }
                 if (dia->graffiti_state == GRAFFITI_SHIFT) {
                   KbdGrfSetState(0);
