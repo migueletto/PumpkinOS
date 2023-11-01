@@ -2305,7 +2305,7 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
     sys_fdset(sock, &fds);
     timeout.tv_sec = 0;
     timeout.tv_usec = us;
-    r = sys_select_fds(1, NULL, &fds, NULL, us == -1 ? NULL : &timeout);
+    r = sys_select_fds(sock+1, NULL, &fds, NULL, us == -1 ? NULL : &timeout);
     if (r == -1) {
       debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
       closesocket(sock);
