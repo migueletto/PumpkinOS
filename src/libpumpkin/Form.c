@@ -1491,7 +1491,11 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
 
     labelW = 156 - labelX;
     RctSetRectangle(&rect, labelX, labelY, labelW, FntCharHeight()*5);
-    WinDrawCharBox(msg, StrLen(msg), boldFont, &rect, false, &totalLines, NULL, NULL, NULL, 0);
+    if (msg && msg[0]) {
+      WinDrawCharBox(msg, StrLen(msg), boldFont, &rect, false, &totalLines, NULL, NULL, NULL, 0);
+    } else {
+      totalLines = 1;
+    }
     labelH = FntCharHeight() * totalLines;
     formH = 46 + labelH;
 
@@ -1502,7 +1506,9 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
       }
 
       // label
-      FrmNewLabel(&formP, 2000, msg, labelX, labelY, boldFont);
+      if (msg && msg[0]) {
+        FrmNewLabel(&formP, 2000, msg, labelX, labelY, boldFont);
+      }
 
       // buttons
       FntSetFont(stdFont);
