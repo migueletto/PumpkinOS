@@ -2020,15 +2020,12 @@ void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3) {
 }
 
 void pumpkin_forward_event(int i, EventType *event) {
-  struct {
-    uint16_t ev;
-    EventType event;
-  } msg;
+  uint32_t buf[64];
 
   if (mutex_lock(mutex) == 0) {
-    msg.ev = MSG_USER;
-    sys_memcpy(&msg.event, event, sizeof(EventType));
-    thread_client_write(pumpkin_module.tasks[i].handle, (unsigned char *)&msg, sizeof(msg));
+    buf[0] = MSG_USER;
+    sys_memcpy(&buf[1], event, sizeof(EventType));
+    thread_client_write(pumpkin_module.tasks[i].handle, (uint8_t *)buf, 4 + sizeof(EventType));
     mutex_unlock(mutex);
   }
 }
