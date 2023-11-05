@@ -535,6 +535,20 @@ int script_add_function(int pe, script_ref_t obj, char *name, int (*f)(int pe)) 
   return script_object_set(pe, obj, &key, &value);
 }
 
+int script_add_function_data(int pe, script_ref_t obj, char *name, int (*f)(int pe, void *data), void *data) {
+  script_arg_t key, value;
+  script_ref_t function;
+
+  function = script_create_function_data(pe, f, data);
+
+  key.type = SCRIPT_ARG_STRING;
+  key.value.s = name;
+  value.type = SCRIPT_ARG_FUNCTION;
+  value.value.r = function;
+
+  return script_object_set(pe, obj, &key, &value);
+}
+
 int script_set_pointer(int pe, char *name, void *p) {
   script_arg_t value;
 
