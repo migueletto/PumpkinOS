@@ -17,7 +17,11 @@
 #include "xalloc.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_ONLY_PNG
+#define STBI_NO_PSD
+#define STBI_NO_TGA
+#define STBI_NO_HDR
+#define STBI_NO_PIC
+#define STBI_NO_PNM
 #include "stb_image.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -774,7 +778,7 @@ int surface_scale(surface_t *src, surface_t *dst) {
   return r;
 }
 
-surface_t *surface_load(char *filename, int encoding) {
+static surface_t *surface_load_internal(char *filename, uint8_t *buffer, int size, int encoding) {
   surface_t *surface = NULL;
   uint8_t *buf, red, green, blue, alpha;
   uint32_t color;
@@ -795,7 +799,13 @@ surface_t *surface_load(char *filename, int encoding) {
       return NULL;
   }
 
-  if ((buf = stbi_load(filename, &width, &height, &icomp, ocomp)) != NULL) {
+  if (filename) {
+    buf = stbi_load(filename, &width, &height, &icomp, ocomp);
+  } else {
+    buf = stbi_load_from_memory(buffer, size, &width, &height, &icomp, ocomp);
+  }
+
+  if (buf != NULL) {
     mono = 0;
     if (icomp == 1) {
       len = width * height;
@@ -835,6 +845,14 @@ surface_t *surface_load(char *filename, int encoding) {
   }
 
   return surface;
+}
+
+surface_t *surface_load(char *filename, int encoding) {
+  return surface_load_internal(filename, NULL, 0, encoding);
+}
+
+surface_t *surface_load_mem(uint8_t *buffer, int size, int encoding) {
+  return surface_load_internal(NULL, buffer, size, encoding);
 }
 
 int surface_save_mem(surface_t *surface, int quality, void *context, void (*callback)(void *context, void *data, int size)) {

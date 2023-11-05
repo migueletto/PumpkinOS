@@ -67,6 +67,7 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
 
 surface_t *surface_create(int width, int height, int encoding);
 surface_t *surface_load(char *filename, int encoding);
+surface_t *surface_load_mem(uint8_t *buffer, int size, int encoding);
 int surface_save(surface_t *surface, char *filename, int quality);
 int surface_save_mem(surface_t *surface, int quality, void *context, void (*callback)(void *context, void *data, int size));
 int surface_scale(surface_t *src, surface_t *dst);
