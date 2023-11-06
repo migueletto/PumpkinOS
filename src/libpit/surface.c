@@ -253,8 +253,37 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
   }
 }
 
+static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
+  uint8_t r1, g1, b1, r2, g2, b2, alpha;
+
+  alpha = c2 >> 24;
+
+  switch (alpha) {
+    case 0x00:
+      c2 = c1;
+      break;
+    case 0xFF:
+      break;
+    default:
+      r2 = c2 >> 16;
+      g2 = c2 >> 8;
+      b2 = c2;
+      r1 = c1 >> 16;
+      g1 = c1 >> 8;
+      b1 = c1;
+      r2 = ((r2 * alpha) + (r1 * (255 - alpha))) / 255;
+      g2 = ((g2 * alpha) + (g1 * (255 - alpha))) / 255;
+      b2 = ((b2 * alpha) + (b1 * (255 - alpha))) / 255;
+      alpha = 255;
+      c2 = (alpha << 24) | (r2 << 16) | (g2 << 8) | b2;
+      break;
+  }
+
+  return c2;
+}
+
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
-  uint32_t color, transp;
+  uint32_t color, c1, c2, transp;
   int i, j, red, green, blue, alpha, transparent;
 
   transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
@@ -276,59 +305,45 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
         color = src->getpixel(src->data, src_x + j, src_y + i);
         if (!transparent || color != transp) {
           src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
-          color = dst->color_rgb(dst->data, red, green, blue, alpha);
-          dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          if (alpha == 0xff) {
+            color = dst->color_rgb(dst->data, red, green, blue, alpha);
+            dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          } else if (alpha) {
+            c1 = color;
+            c2 = dst->getpixel(dst->data, dst_x + j, dst_y + i);
+            dst->rgb_color(dst->data, c2, &red, &green, &blue, &alpha);
+            c2 = src->color_rgb(src->data, red, green, blue, alpha);
+            c1 = surface_mix_rgb(c2, c1);
+            src->rgb_color(src->data, c1, &red, &green, &blue, &alpha);
+            color = dst->color_rgb(dst->data, red, green, blue, alpha);
+            dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          }
         }
       }
     }
   }
 }
 
-static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
-  uint8_t r1, g1, b1, r2, g2, b2, alpha;
-
-  alpha = c2 >> 24;
-
-  switch (alpha) {
-    case 0x00:
-      c2 = c1;
-      break;
-    case 0xFF:
-      break;
-    default:
-      b2 = c2 >> 16;
-      g2 = c2 >> 8;
-      r2 = c2;
-      b1 = c1 >> 16;
-      g1 = c1 >> 8;
-      r1 = c1;
-      b2 = ((b2 * alpha) + (b1 * (255 - alpha))) / 255;
-      g2 = ((g2 * alpha) + (g1 * (255 - alpha))) / 255;
-      r2 = ((r2 * alpha) + (r1 * (255 - alpha))) / 255;
-      alpha = 255;
-      c2 = (alpha << 24) | (b2 << 16) | (g2 << 8) | r2;
-      break;
-  }
-
-  return c2;
-}
-
 #define SETPIXEL1(x,y,c) \
   p = &b->buffer[y * b->rowBytes + ((x) >> 3)]; \
   m = 1 << ((x) & 7); \
-  if (c) *p |= m; else *p &= (m ^ 0xff); \
+  if (c) *p |= m; else *p &= (m ^ 0xff);
 
 #define SETPIXEL8(x,y,c) \
   p = &b->buffer[y * b->rowBytes + x]; \
-  *p = c; \
+  *p = c;
 
 #define SETPIXEL16(x,y,c) \
   p16 = (uint16_t *)&b->buffer[y * b->rowBytes + x * 2]; \
-  *p16 = c; \
+  *p16 = c;
 
 #define SETPIXEL32(x,y,c) \
   p32 = (uint32_t *)&b->buffer[y * b->rowBytes + x * 4]; \
-  *p32 = surface_mix_rgb(*p32, c); \
+  *p32 = surface_mix_rgb(*p32, c);
+
+#define SETPIXEL32_direct(x,y,c) \
+  p32 = (uint32_t *)&b->buffer[y * b->rowBytes + x * 4]; \
+  *p32 = c;
 
 static void bsurface_setpixel(void *data, int x, int y, uint32_t color) {
   buffer_surface_t *b = (buffer_surface_t *)data;
@@ -352,6 +367,24 @@ static void bsurface_setpixel(void *data, int x, int y, uint32_t color) {
         SETPIXEL32(x, y, color)
         break;
     }
+  }
+}
+
+// for ARGB, ignores dst surface alpha values
+static void bsurface_setpixel_direct(void *data, int x, int y, uint32_t color) {
+  buffer_surface_t *b = (buffer_surface_t *)data;
+  uint32_t *p32;
+
+  switch (b->encoding) {
+    case SURFACE_ENCODING_MONO:
+    case SURFACE_ENCODING_GRAY:
+    case SURFACE_ENCODING_PALETTE:
+    case SURFACE_ENCODING_RGB565:
+      bsurface_setpixel(data, x, y, color);
+      break;
+    case SURFACE_ENCODING_ARGB:
+      SETPIXEL32_direct(x, y, color)
+      break;
   }
 }
 
@@ -836,7 +869,7 @@ static surface_t *surface_load_internal(char *filename, uint8_t *buffer, int siz
             } else {
               color = buf[k++]; // gray
             }
-            bsurface_setpixel(surface->data, j, i, color);
+            bsurface_setpixel_direct(surface->data, j, i, color);
           }
         }
       }
