@@ -69,7 +69,7 @@ If you are using an Apple Silicon-based Mac (anything with an M1, M2, etc, proce
 
     brew install sdl2
 
-Then, clone the respository and compule it using:
+Then, clone the respository and compile it using:
 
     cd PumpkinOS/src
     ./mk.sh Darwin 64
