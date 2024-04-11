@@ -65,8 +65,17 @@ Again, you must clone the repository and compile it using:
 On Windows 11 and recent releases of Windows 10, it is also possible to build PumpkinOS on WSL (Windows Subsystem for Linux, version 2). 
 Open a WSL terminal and follow the same instructions for a Linux build.
 
+If you are using an Apple Silicon-based Mac (anything with an M1, M2, etc, processor), you will need Xcode and the SDL2 libraries. You can install them using Homebrew with something like:
+
+    brew install sdl2
+
+Then, clone the respository and compule it using:
+
+    cd PumpkinOS/src
+    ./mk.sh Darwin 64
+
 ## Running
-On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. PumpkinOS will open on a new window.
+On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. On macOS, run pumpkin_macos.sh. PumpkinOS will open on a new window.
 On WSL you may need to run a X-Window Manager, otherwise the PumpkinOS window will not have a border.
 
 When you run PumpkinOS, all PRCs inside vfs/app_install will be removed and expanded into folders inside vfs/app_storage.

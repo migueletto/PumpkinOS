@@ -756,7 +756,7 @@ static void launcherScanResources(launcher_data_t *data) {
           sys_size = id & 0x07;
           sys_cpu = (id & 0x38) >> 3;
           sys_os  = (id & 0x1C0) >> 6;
-          sys_snprintf(buf, sizeof(buf)-1, "Code (%d bits %s CPU for %s)", (sys_size == 1) ? 32 : 64, (sys_cpu == 1) ? "ARM" : "x86", (sys_os == 1) ? "Linux" : "Windows");
+          sys_snprintf(buf, sizeof(buf)-1, "Code (%d bits %s CPU for %s)", (sys_size == 1) ? 32 : 64, (sys_cpu == 1) ? "ARM" : "x86", (sys_os == 1) ? "Linux" : (sys_os == 5) ? "macOS" : "Windows");
           data->item[index].info = xstrdup(buf);
           break;
         case sysFileTLibrary:
@@ -2880,6 +2880,9 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       break;
     case 4:
       debug(DEBUG_INFO, PUMPKINOS, "Host OS is Android");
+      break;
+    case 5:
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is macOS");
       break;
     default:
       debug(DEBUG_ERROR, PUMPKINOS, "Host OS is unknown");

@@ -8,6 +8,12 @@ extern "C" {
 #include <stdint.h>
 #include <setjmp.h>
 
+#ifdef DARWIN
+#include <stddef.h>   /* for size_t */
+#undef _POSIX_TIMERS
+#define _POSIX_TIMERS 200809L
+#endif
+
 typedef enum {
   SYS_SEEK_SET, SYS_SEEK_CUR, SYS_SEEK_END
 } sys_seek_t;
@@ -94,12 +100,16 @@ typedef struct {
   uint64_t tv_nsec;
 } sys_timespec_t;
 
+#ifdef DARWIN
+typedef size_t sys_size_t;
+#else
 #if UINTPTR_MAX == 0xffffffff
 typedef uint32_t sys_size_t;
 #elif UINTPTR_MAX == 0xffffffffffffffff
 typedef uint64_t sys_size_t;
 #else
 #error "Word size not known"
+#endif
 #endif
 
 typedef struct sys_dir_t sys_dir_t;

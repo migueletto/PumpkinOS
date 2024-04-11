@@ -2,7 +2,7 @@
 
 if [ $# -lt 2 ]; then
   echo "usage: $0 <OS> <BITS> [ <TARGET> ]"
-  echo " <OS> must be Msys, GNU/Linux or Serenity"
+  echo " <OS> must be Msys, GNU/Linux, Darwin, or Serenity"
   echo " <BITS> must be 64 or 32"
   echo " <TARGET> must be empty or clean"
   exit 0
@@ -28,6 +28,9 @@ elif [ $OSNAME = "Serenity" ]; then
     echo "Environment variable SERENITY must point to SerenityOS home directory"
     exit 1
   fi
+  SDL2=liblsdl2
+  GUI=linux
+elif [ $OSNAME = "Darwin" ]; then
   SDL2=liblsdl2
   GUI=linux
 else
