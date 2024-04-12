@@ -67,9 +67,9 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
   }
 
   sys_init();
-  debug_init(debugfile);
   ptr_init();
   thread_init();
+  debug_init(debugfile);
 
   debug(DEBUG_INFO, "MAIN", "%s starting on %s (%s endian)", SYSTEM_NAME, SYSTEM_OS, little_endian() ? "little" : "big");
 

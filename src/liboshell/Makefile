@@ -6,6 +6,10 @@ ifeq ($(OSNAME),GNU/Linux)
 OSHELL=oshell.o
 endif
 
+ifeq ($(OSNAME),Darwin)
+OSHELL=oshell.o
+endif
+
 ifeq ($(OSNAME),Msys)
 OSHELL=wshell.o
 endif

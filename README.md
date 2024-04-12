@@ -88,6 +88,19 @@ The Windows version implements Drag & Drop functionality. You can drag a PalmOS 
 it will be installed and show up in the Launcher. The Linux version lacks this functionality. For now, you have to manually copy PRCs
 to the vfs/app_install directory and restart PumpkinOS.
 
+Currently Pumpkin OS maps some keys on the host to keys on PalmOS:
+
+    F1: vchrHard1
+    F2: vchrHard2
+    F3: vchrHard3
+    F4: vchrHard4
+    F5: vchrMenu
+    Up Arrow: vchrPageUp (“up” hard button)
+    Down Arrow: vchrPageDown (“down” hard button)
+    Left Arrow: vchrRockerLeft
+    Right Arrow: vchrRockerRight
+    Home: vchrLaunch (“home” button; on Mac laptops, this is Fn-Left Arrow)
+
 If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WSL. On Windows, edit pumpkin.bat and change the last line to (you should also add the Windows equivalent of the /usr/bin directory of your MSYS2 installation the the PATH):
 
     gdb.exe --args .\pumpkin.exe -d 1 -f pumpkin.log -s libscriptlua.dll script\pumpkin_windows.lua
@@ -95,5 +108,11 @@ If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WS
 On Linux and WSL edit pumpkin.sh and change the last line to:
 
     gdb --args ./pumpkin -d 1 -f pumpkin.log -s libscriptlua.so ./script/pumpkin_linux.lua
+
+On macOS debugging is done with `lldb`:
+
+    lldb -- ./pumpkin -d 1 -f pumpkin.log -s ./bin/libscriptlua.so ./script/pumpkin_linux.lua
+    (lldb) env DYLD_LIBRARY_PATH=./bin
+    (lldb) run
 
 I am writing a full Wiki article on source level debuging PumpkinOS.
