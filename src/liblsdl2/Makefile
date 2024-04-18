@@ -19,11 +19,6 @@ ifeq ($(OSNAME),serenity)
 LIBSDL=-lSDL2
 endif
 
-ifeq ($(OSNAME),Darwin)
-LIBSDL=-lSDL2 -L/opt/homebrew/lib
-CUSTOMFLAGS=-I/opt/homebrew/include
-endif
-
 $(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBSDL)
 

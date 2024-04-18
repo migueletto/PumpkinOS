@@ -1,0 +1,6 @@
+#include "main.h"
+#include "sys.h"
+#include "script.h"
+#include "pwindow.h"
+#include "media.h"
+#include "vfslocal.h"

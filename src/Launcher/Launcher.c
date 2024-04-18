@@ -2780,6 +2780,10 @@ static void EventLoop(launcher_data_t *data) {
   do {
     CheckNotifications();
     EvtGetEvent(&event, 30);
+    if ((event.eType == keyDownEvent) && (event.data.keyDown.chr == vchrLaunch) && (event.data.keyDown.modifiers & commandKeyMask)) {
+      debug(DEBUG_INFO, "Launcher", "skipping home key event");
+      continue;
+    }
     if (SysHandleEvent(&event)) continue;
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (ApplicationHandleEvent(&event)) continue;

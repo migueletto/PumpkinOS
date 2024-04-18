@@ -130,6 +130,21 @@ LUAPLAT=macosx
 OS=macOS
 OSDEFS=$(MBITS) -DDARWIN -DSOEXT=\"$(SOEXT)\"
 CC=gcc
+else ifeq ($(OSNAME),Xcode)
+SYS_OS=5
+EXTLIBS=-ldl
+SOEXT=.so
+LUAPLAT=macosx
+OS=macOS
+OSDEFS=$(MBITS) -DDARWIN -DSOEXT=\"$(SOEXT)\"
+CC=gcc
+
+ROOT=$(CONFIGURATION_BUILD_DIR)
+BIN=$(ROOT)
+SRC=../
+VFS=$(SRC)/xcode/PumpkinVFS
+TOOLS=$(ROOT)
+LIBPIT=$(SRC)/libpit
 else
 $(error Unknown OS $(OSNAME))
 endif

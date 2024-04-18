@@ -1,0 +1,10 @@
+disabled_rules:
+- opening_brace
+- line_length
+- identifier_name
+- function_parameter_count
+- cyclomatic_complexity
+- type_body_length
+- file_length
+- nesting
+
