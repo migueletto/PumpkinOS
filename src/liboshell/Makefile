@@ -6,7 +6,7 @@ ifeq ($(OSNAME),GNU/Linux)
 OSHELL=oshell.o
 endif
 
-ifeq ($(OSNAME),Darwin)
+ifeq ($(OSNAME),Xcode)
 OSHELL=oshell.o
 endif
 
