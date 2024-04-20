@@ -3681,11 +3681,11 @@ static Boolean StoValidName(UInt8 *buf) {
 static Boolean StoValidTypeCreator(UInt8 *buf) {
   Int32 i;
 
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 4 && buf[i]; i++) {
     if (buf[i] < 32 || buf[i] > 126) return false;
   }
 
-  return true;
+  return i > 0;
 }
 
 Err DmCreateDatabaseFromImage(MemPtr bufferP) {
