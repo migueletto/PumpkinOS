@@ -10,6 +10,21 @@ import OSLog
 
 @Observable
 final class Pit: Sendable {
+    enum LogLevel: Int, CaseIterable, Codable {
+        case error, info, debug
+    }
+
+    struct ModuleLogLevel: Codable, Identifiable {
+        let id: UUID
+        var level: LogLevel
+        var module: String
+        init(level: LogLevel, module: String) {
+            self.id = UUID()
+            self.level = level
+            self.module = module
+        }
+    }
+
     private(set) var logId = UUID()
     private(set) var logLines: AsyncStream<LogLine>?
     @MainActor private(set) var running = false
@@ -34,7 +49,12 @@ final class Pit: Sendable {
     }
 
     @MainActor
-    func main(debugLevel: Int = 1, width: Int = 320, height: Int = 320) {
+    func main(
+        globalLogLevel: LogLevel = .info,
+        moduleLogging: [ModuleLogLevel] = [],
+        width: Int = 320,
+        height: Int = 320
+    ) {
         guard
             let templateURL = Bundle.main.url(forResource: "main", withExtension: "lua"),
             let template = try? String(contentsOf: templateURL)
@@ -56,7 +76,10 @@ final class Pit: Sendable {
         createLogStream()
         mainLoopTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            let args = ["app", "-d", "\(debugLevel)", "-f", Constants.logUrl.path, "-s", "libscriptlua.so", Constants.tempScript.path]
+            let logging = ["-d", "\(globalLogLevel.rawValue)"] + moduleLogging.flatMap {
+                ["-d", "\($0.level.rawValue):\($0.module)"]
+            }
+            let args = ["app"] + logging + ["-f", Constants.logUrl.path, "-s", "libscriptlua.so", Constants.tempScript.path]
             var cargs = args.map { strdup($0) }
             defer { cargs.forEach { free($0) } }
             let result = pit_main(

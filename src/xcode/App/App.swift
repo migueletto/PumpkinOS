@@ -14,7 +14,7 @@ struct PumpkinApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ConsoleWindow()
                 .environment(pit)
         }
 

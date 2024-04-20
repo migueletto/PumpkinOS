@@ -24,7 +24,7 @@
 		442E5C942BCDF1CA00E4445D /* libscriptlua.so in Copy Dylibs */ = {isa = PBXBuildFile; fileRef = 442E5C912BCDEC7400E4445D /* libscriptlua.so */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		442E5C9C2BCE114B00E4445D /* Pit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E5C9B2BCE114B00E4445D /* Pit.swift */; };
 		44C5B7422BCDDA850043DD3E /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C5B7412BCDDA850043DD3E /* App.swift */; };
-		44C5B7442BCDDA850043DD3E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C5B7432BCDDA850043DD3E /* ContentView.swift */; };
+		44C5B7442BCDDA850043DD3E /* ConsoleWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C5B7432BCDDA850043DD3E /* ConsoleWindow.swift */; };
 		44C5B7462BCDDA870043DD3E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 44C5B7452BCDDA870043DD3E /* Assets.xcassets */; };
 		44C5B75A2BCDE4680043DD3E /* main.lua in Resources */ = {isa = PBXBuildFile; fileRef = 44C5B7382BCDD8B90043DD3E /* main.lua */; };
 		44C5B75C2BCDE4B90043DD3E /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C5B75B2BCDE4B90043DD3E /* Logging.swift */; };
@@ -570,7 +570,7 @@
 		44C5B7392BCDD9720043DD3E /* font */ = {isa = PBXFileReference; lastKnownFileType = folder; name = font; path = ../font; sourceTree = "<group>"; };
 		44C5B73E2BCDDA850043DD3E /* PumpkinOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PumpkinOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		44C5B7412BCDDA850043DD3E /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
-		44C5B7432BCDDA850043DD3E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		44C5B7432BCDDA850043DD3E /* ConsoleWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleWindow.swift; sourceTree = "<group>"; };
 		44C5B7452BCDDA870043DD3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		44C5B7502BCDDB700043DD3E /* App-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "App-Debug.xcconfig"; sourceTree = "<group>"; };
 		44C5B7512BCDDB700043DD3E /* App-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "App-Release.xcconfig"; sourceTree = "<group>"; };
@@ -679,7 +679,7 @@
 				44C5B7382BCDD8B90043DD3E /* main.lua */,
 				44C5B7412BCDDA850043DD3E /* App.swift */,
 				44D8F67B2BCF3B0B00E3127F /* AsyncSharedStream.swift */,
-				44C5B7432BCDDA850043DD3E /* ContentView.swift */,
+				44C5B7432BCDDA850043DD3E /* ConsoleWindow.swift */,
 				44D8F6792BCF362C00E3127F /* DeviceWindow.swift */,
 				44C5B75B2BCDE4B90043DD3E /* Logging.swift */,
 				442E5C9B2BCE114B00E4445D /* Pit.swift */,
@@ -1233,7 +1233,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				44C5B7442BCDDA850043DD3E /* ContentView.swift in Sources */,
+				44C5B7442BCDDA850043DD3E /* ConsoleWindow.swift in Sources */,
 				44D8F6562BCEB8B400E3127F /* WindowProvider.swift in Sources */,
 				44D8F67C2BCF3B0B00E3127F /* AsyncSharedStream.swift in Sources */,
 				442E5C9C2BCE114B00E4445D /* Pit.swift in Sources */,
