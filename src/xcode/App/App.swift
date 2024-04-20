@@ -44,7 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 .appending(path: "windows.plist")
             try FileManager.default.removeItem(at: windowsPlistFile)
         } catch {
-            Logger.default.warning("Unable to delete window state file: \(String(describing: error), privacy: .public)")
+            Logger.default.warning("Unable to delete window state file: \(error.log, privacy: .public)")
         }
     }
 }

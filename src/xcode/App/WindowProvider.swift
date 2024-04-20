@@ -22,6 +22,7 @@ final class WindowProvider: Sendable {
         case mouseDown
         case mouseUp
         case mouseMove(x: Int32, y: Int32)
+        case deployApps
         case stop
     }
 
@@ -107,6 +108,11 @@ final class WindowProvider: Sendable {
     @MainActor
     func stop() {
         inputEvents.append(.stop)
+    }
+
+    @MainActor
+    func deployApps() {
+        inputEvents.append(.deployApps)
     }
 
     private static func create(
@@ -324,6 +330,10 @@ final class WindowProvider: Sendable {
             arg1Ptr?.pointee = 1
             arg2Ptr?.pointee = 0
             return WINDOW_BUTTONUP
+        case .deployApps:
+            arg1Ptr?.pointee = 0
+            arg2Ptr?.pointee = 0
+            return WINDOW_DEPLOY
         case .stop:
             return -1
         }

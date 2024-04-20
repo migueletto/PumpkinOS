@@ -2208,6 +2208,7 @@ int pumpkin_sys_event(void) {
   int arg1, arg2, w, h;
   int i, j, x, y, tx, ty, ev, tmp;
   int paused, wait, r = -1;
+  SysNotifyParamType notify;
 
   for (;;) {
     if (thread_must_end()) return -1;
@@ -2366,6 +2367,13 @@ int pumpkin_sys_event(void) {
 
         pumpkin_module.lastX = x;
         pumpkin_module.lastY = y;
+        break;
+      case WINDOW_DEPLOY:
+        debug(DEBUG_INFO, PUMPKINOS, "received deploy message");
+        MemSet(&notify, sizeof(notify), 0);
+        notify.notifyType = sysNotifySyncFinishEvent;
+        notify.broadcaster = sysNotifyBroadcasterCode;
+        SysNotifyBroadcast(&notify);
         break;
     }
 

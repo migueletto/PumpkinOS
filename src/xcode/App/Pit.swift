@@ -36,6 +36,7 @@ final class Pit: Sendable {
         static let tempScript = URL.temporaryDirectory.appending(path: "main.lua")
         static let libraryDir = URL.libraryDirectory.appending(path: Bundle.main.bundleIdentifier!)
         static let vfsUrl = libraryDir.appending(path: "vfs/") // The trailing / is necessary
+        static let appInstall = vfsUrl.appending(path: "app_install")
         static let cachesDir =  URL.cachesDirectory.appending(path: Bundle.main.bundleIdentifier!)
         static let logUrl = cachesDir.appending(path: "pumpkin.log")
     }
@@ -68,7 +69,7 @@ final class Pit: Sendable {
         do {
             try script.write(to: Constants.tempScript, atomically: true, encoding: .utf8)
         } catch {
-            Logger.default.critical("Failed to write lua script: \(String(describing: error), privacy: .public)")
+            Logger.default.critical("Failed to write lua script: \(error.log, privacy: .public)")
             return
         }
         windowProvider.reset()
@@ -113,10 +114,29 @@ final class Pit: Sendable {
             do {
                 try FileManager.default.removeItem(at: Constants.libraryDir)
             } catch {
-                Logger.default.critical("Unable to delete library folder: \(String(describing: error), privacy: .public)")
+                Logger.default.critical("Unable to delete library folder: \(error.log, privacy: .public)")
             }
         }
         createVFSDirectory()
+    }
+
+    @MainActor
+    func installApps(_ urls: [URL]) -> Bool {
+        do {
+            for source in urls {
+                let filename = source.lastPathComponent
+                let destination = Constants.appInstall.appending(path: filename)
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.copyItem(at: source, to: destination)
+            }
+        } catch {
+            Logger.default.critical("Failed to copy app for isntall: \(error.log, privacy: .public)")
+            return false
+        }
+        windowProvider.deployApps()
+        return true
     }
 
     private static func mainCallback(enginePtr: Int32, data: UnsafeMutableRawPointer?) {
@@ -191,7 +211,7 @@ final class Pit: Sendable {
                     to: Constants.vfsUrl
                 )
             } catch {
-                Logger.default.critical("Failed to create VFS folders in library: \(String(describing: error), privacy: .public)")
+                Logger.default.critical("Failed to create VFS folders in library: \(error.log, privacy: .public)")
             }
         }
     }

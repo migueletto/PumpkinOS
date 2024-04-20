@@ -12,6 +12,10 @@ extension Logger {
     static var wp: Self { .init(subsystem: Bundle.main.bundleIdentifier!, category: "windowProvider") }
 }
 
+extension Error {
+    var log: String { String(describing: self) }
+}
+
 struct LogLine: Identifiable, Sendable {
     enum Level {
         case trace, info, error, unknown

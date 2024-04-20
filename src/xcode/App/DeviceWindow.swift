@@ -62,6 +62,11 @@ struct DeviceWindow: View {
                 await pit.stop()
             }
         }
+        .dropDestination(for: URL.self) { urls, _ in
+            let items = urls.compactMap { $0.pathExtension == "prc" ? $0 : nil }
+            guard items.isEmpty == false else { return false }
+            return pit.installApps(items)
+        }
         .task {
             let events = await pit.windowProvider.events.subscribe()
             for await event in events {
