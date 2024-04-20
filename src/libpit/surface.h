@@ -55,6 +55,7 @@ void surface_ellipse(surface_t *surface, int x, int y, int rx, int ry, int fille
 void surface_line(surface_t *surface, int x1, int y1, int x2, int y2, uint32_t color);
 void surface_rectangle(surface_t *surface, int x1, int y1, int x2, int y2, int filled, uint32_t color);
 void surface_polygon(surface_t *surface, point_t *points, int n, int filled, uint32_t color);
+void surface_curve(surface_t *surface, int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color);
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h);
 void surface_update(surface_t *surface);
 int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2);

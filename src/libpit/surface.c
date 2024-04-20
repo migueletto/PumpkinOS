@@ -122,6 +122,10 @@ void surface_polygon(surface_t *surface, point_t *points, int n, int filled, uin
   graphic_polygon(surface->data, points, n, filled, color, surface->setpixel, surface->setarea);
 }
 
+void surface_curve(surface_t *surface, int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color) {
+  graphic_curve(surface->data, x0, y0, x1, y1, x2, y2, color, surface->setpixel, surface->setarea);
+}
+
 static uint8_t surface_best_color(surface_palette_t *palette, int npalette, int red, int green, int blue) {
   int32_t i, r, g, b, dr, dg, db, imin;
   uint32_t d, dmin;
