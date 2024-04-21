@@ -115,6 +115,7 @@ static int libos_action(void *arg) {
 
   debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
   pumpkin_deploy_files("/app_install");
+  pumpkin_init_boot_file();
   pumpkin_load_plugins();
 
   if (data->dia || data->single) {

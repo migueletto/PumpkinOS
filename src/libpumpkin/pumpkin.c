@@ -633,10 +633,12 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 }
 
 void pumpkin_deploy_files(char *path) {
+  StoDeployFiles(path, pumpkin_module.registry);
+}
+
+void pumpkin_init_boot_file(void) {
   DmOpenRef dbRef;
   LocalID dbID;
-
-  StoDeployFiles(path, pumpkin_module.registry);
 
   dbID = DmFindDatabase(0, BOOT_NAME);
   dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly);
