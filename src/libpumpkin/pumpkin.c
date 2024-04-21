@@ -1609,9 +1609,13 @@ int pumpkin_launch(launch_request_t *request) {
         data->width = pumpkin_module.width;
         data->height = pumpkin_module.height;
       }
-      if (data->width >= pumpkin_module.width || data->height >= pumpkin_module.height) {
-        //data->width = pumpkin_module.width;
-        //data->height = pumpkin_module.height;
+      if (data->width >= pumpkin_module.width) {
+        data->width = pumpkin_module.width;
+        data->x = 0;
+      }
+      if (data->height >= pumpkin_module.height) {
+        data->height = pumpkin_module.height;
+        data->y = 0;
         if (pumpkin_module.dia) data->height -= (DEFAULT_DENSITY == kDensityDouble) ? 160 : 80; // XXX
       }
 
