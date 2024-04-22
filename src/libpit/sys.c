@@ -42,6 +42,8 @@
 #ifdef SERENITY
 #include <sys/select.h>
 #include <sys/statvfs.h>
+#elif defined(DARWIN)
+#include <sys/mount.h>
 #else
 #include <sys/syscall.h>
 #include <sys/vfs.h>
@@ -396,7 +398,7 @@ uint64_t sys_timelocal(sys_tm_t *tm) {
 #ifdef WINDOWS
   t = mktime(&stm);
 #endif
-#ifdef LINUX
+#if defined(LINUX) || defined(DARWIN)
   t = timelocal(&stm);
 #endif
 #ifdef SERENITY
@@ -584,6 +586,9 @@ uint32_t sys_get_tid(void) {
 #endif
 #ifdef SERENITY
   return gettid();
+#endif
+#ifdef DARWIN
+  return (uint32_t)(pthread_self());
 #endif
 }
 
@@ -1342,7 +1347,7 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
     r = 0;
   }
 #endif
-#ifdef LINUX
+#if defined(LINUX) || defined(DARWIN)
   struct statfs sb;
 
   if (statfs(pathname, &sb) == 0) {
@@ -1921,7 +1926,7 @@ int64_t sys_get_process_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetProcessTimes failed");
   }
 #else
-#ifdef LINUX
+#if defined(LINUX) || defined(DARWIN)
   ts = gettime(CLOCK_PROCESS_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_PROCESS_CPUTIME_ID is not implemented");
@@ -1942,7 +1947,7 @@ int64_t sys_get_thread_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetThreadTimes failed");
   }
 #else
-#ifdef LINUX
+#if defined(LINUX) || defined(DARWIN)
   ts = gettime(CLOCK_THREAD_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_THREAD_CPUTIME_ID is not implemented");
@@ -1955,6 +1960,9 @@ int64_t sys_get_thread_time(void) {
 int sys_set_thread_name(char *name) {
 #ifdef LINUX
   pthread_setname_np(pthread_self(), name);
+#endif
+#ifdef DARWIN
+  pthread_setname_np(name);
 #endif
   return 0;
 }

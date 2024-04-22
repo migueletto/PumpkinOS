@@ -30,6 +30,9 @@ elif [ $OSNAME = "Serenity" ]; then
   fi
   SDL2=liblsdl2
   GUI=linux
+elif [ $OSNAME = "Darwin" ]; then
+  SDL2=
+  GUI=
 else
   echo "Invalid OS parameter"
   exit 1

@@ -20,3 +20,7 @@ zig-cache
 !/lib/*
 !/lib32/*
 !/vfs/app_card/PALM/Programs/Command/
+.DS_Store
+src/.vscode/
+xcuserdata/
+project.xcworkspace/

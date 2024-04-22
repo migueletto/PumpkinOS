@@ -344,11 +344,15 @@ int semaphore_timedwait(sema_t *sem, int us) {
     t -= ts.tv_sec * 1000000;
     ts.tv_nsec = t * 1000;
 
+#ifdef DARWIN
+    debug(DEBUG_ERROR, "MUTEX", "semaphore_timedwait not implemented");
+#else
     r = sem_timedwait(sem->s, &ts);
 
     if (r != 0 && errno != ETIMEDOUT) {
       debug_errno("MUTEX", "sem_timedwait");
     }
+#endif
   }
 
   return r;

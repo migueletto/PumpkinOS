@@ -122,6 +122,29 @@ LUAPLAT=linux
 OS=Android
 OSDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -DANDROID -DSOEXT=\"$(SOEXT)\"
 CC=$(NDK)/bin/clang
+else ifeq ($(OSNAME),Darwin)
+SYS_OS=5
+EXTLIBS=-ldl
+SOEXT=.so
+LUAPLAT=macosx
+OS=macOS
+OSDEFS=$(MBITS) -DDARWIN -DSOEXT=\"$(SOEXT)\"
+CC=gcc
+else ifeq ($(OSNAME),Xcode)
+SYS_OS=5
+EXTLIBS=-ldl
+SOEXT=.so
+LUAPLAT=macosx
+OS=macOS
+OSDEFS=$(MBITS) -DDARWIN -DSOEXT=\"$(SOEXT)\"
+CC=gcc
+
+ROOT=$(CONFIGURATION_BUILD_DIR)
+BIN=$(ROOT)
+SRC=../
+VFS=$(SRC)/xcode/PumpkinVFS
+TOOLS=$(ROOT)
+LIBPIT=$(SRC)/libpit
 else
 $(error Unknown OS $(OSNAME))
 endif

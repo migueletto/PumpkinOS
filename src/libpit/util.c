@@ -7,7 +7,7 @@ char *getext(char *file) {
 
   ext = NULL;
 
-  for (i = sys_strlen(file)-1; i > 0; i--) {
+  for (i = sys_strlen(file)-1; i >= 0; i--) {
     if (file[i] == '.') {
       ext = &file[i+1];
       break;

@@ -65,6 +65,10 @@ Again, you must clone the repository and compile it using:
 On Windows 11 and recent releases of Windows 10, it is also possible to build PumpkinOS on WSL (Windows Subsystem for Linux, version 2). 
 Open a WSL terminal and follow the same instructions for a Linux build.
 
+If you are using an Apple Silicon-based Mac (anything with an M1, M2, etc, processor), you will need Xcode to build the Mac-native app.
+
+After cloning the repository, open the Xcode project in the src/xcode directory. Select the "App" scheme and then build and run.
+
 ## Running
 On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. PumpkinOS will open on a new window.
 On WSL you may need to run a X-Window Manager, otherwise the PumpkinOS window will not have a border.
@@ -78,6 +82,19 @@ You can reach me for questions (and send me your log file if you wish).
 The Windows version implements Drag & Drop functionality. You can drag a PalmOS PRC over the PumpkinOS window and hopefully
 it will be installed and show up in the Launcher. The Linux version lacks this functionality. For now, you have to manually copy PRCs
 to the vfs/app_install directory and restart PumpkinOS.
+
+Currently Pumpkin OS maps some keys on the host to keys on PalmOS:
+
+    F1: vchrHard1
+    F2: vchrHard2
+    F3: vchrHard3
+    F4: vchrHard4
+    F5: vchrMenu
+    Up Arrow: vchrPageUp (“up” hard button)
+    Down Arrow: vchrPageDown (“down” hard button)
+    Left Arrow: vchrRockerLeft
+    Right Arrow: vchrRockerRight
+    Home: vchrLaunch (“home” button; on Mac laptops, this is Fn-Left Arrow)
 
 If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WSL. On Windows, edit pumpkin.bat and change the last line to (you should also add the Windows equivalent of the /usr/bin directory of your MSYS2 installation the the PATH):
 

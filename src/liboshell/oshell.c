@@ -4,7 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#ifdef DARWIN
+//#include <util.h>
+int openpty(int *, int *, char *, struct termios *, struct winsize *);
+#else
 #include <pty.h>
+#endif
 #include <time.h>
 
 #include "sys.h"
@@ -21,10 +26,12 @@ static int login_tty(int t) {
     return -1;
   }
 
+#ifndef DARWIN
   if (ioctl(t, TIOCSCTTY, NULL) == -1) {
     debug_errno("OSHELL", "ioctl(TIOCSCTTY)");
     return -1;
   }
+#endif
 
   if (t != 0) dup2(t, 0);
   if (t != 1) dup2(t, 1);
@@ -44,9 +51,11 @@ static int getptyslave(int masterfd, int slavefd, int cols, int rows) {
   memset(&ws, 0, sizeof(ws));
   ws.ws_col = cols;
   ws.ws_row = rows;
+#ifndef DARWIN
   if (ioctl(slavefd, TIOCSWINSZ, &ws) == -1) {
     debug_errno("OSHELL", "ioctl(TIOCSWINSZ)");
   }
+#endif
 
   termbuf.c_lflag |= ECHO;
   termbuf.c_oflag |= OPOST|ONLCR;
