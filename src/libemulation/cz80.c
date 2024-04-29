@@ -147,7 +147,7 @@ static int term_draw(uint8_t col, uint8_t row, uint8_t code, uint32_t fg, uint32
   if (code == 0) code = ' ';
   s[0] = code;
   s[1] = 0;
-  surface_print(surface, x, y, s, cz80->font, fg, bg);
+  surface_print(surface, x, y, s, NULL, cz80->font, fg, bg);
   unlock_surface(cz80);
   cz80->dirty = 1;
 
@@ -509,8 +509,8 @@ static int cz80_option(computer_t *c, char *name, char *value) {
 
   if (!sys_strcmp(name, "font")) {
     cz80->font = sys_atoi(value);
-    cz80->char_width = surface_font_width(cz80->font);
-    cz80->char_height = surface_font_height(cz80->font);
+    cz80->char_width = surface_font_width(NULL, cz80->font);
+    cz80->char_height = surface_font_height(NULL, cz80->font);
   }
 
   return 0;
