@@ -1,0 +1,198 @@
+Selectors:
+tag : div
+id: #abc
+class: .qwerty
+tag and class: p.querty
+tag group: h1, h2, p
+universal: *
+
+External css (inside head):
+<link rel="stylesheet" href="mystyle.css">
+
+Internal css (inside head):
+<style>
+body {
+  background-color: linen;
+}
+</style>
+
+Inline css:
+<p style="color:red;">
+
+If some properties have been defined for the same selector in different style sheets,
+the value from the last read style sheet will be used.
+
+All the styles in a page will "cascade" into a new "virtual" style sheet by the following rules,
+where number one has the highest priority:
+
+1. Inline style (inside an HTML element)
+2. External and internal style sheets (in the head section)
+3. Browser default
+
+Colors are specified using predefined color names, or RGB, HEX, HSL, RGBA, HSLA values.
+rgb(255, 99, 71)
+rgba(255, 99, 71, 0.5)
+#ff6347
+hsl(9, 100%, 64%)
+hsla(9, 100%, 64%, 0.5)
+
+Background color:
+background-color: rgba(0, 128, 0, 0.3);
+
+Background images:
+background-image: url("paper.gif");
+background-repeat: repeat-x;
+background-repeat: repeat-y;
+background-repeat: no-repeat;
+background-position: right top;
+background-attachment: fixed;
+background-attachment: scroll;
+background: #ffffff url("img_tree.png") no-repeat right top;
+
+Margins (outside borders):
+margin-top: 100px;
+margin-bottom: 100px;
+margin-right: 150px;
+margin-left: 80px;
+
+Borders:
+border-style: solid;
+border-color: red;
+border-width: 5px;
+border-radius: 5px;
+border: 5px solid red;
+The border-style property can have from one to four values (for the top border, right border, bottom border, and the left border).
+
+Padding (inside borders):
+padding-top: 50px;
+padding-right: 30px;
+padding-bottom: 50px;
+padding-left: 80px;
+
+The height and width properties do not include padding, borders, or margins. It sets the height/width of the area inside the padding, border, and margin of the element.
+The height and width properties may have the following values:
+- auto : This is default. The browser calculates the height and width
+- length : Defines the height/width in px, cm, etc.
+- % : Defines the height/width in percent of the containing block
+- initial : Sets the height/width to its default value
+- inherit : The height/width will be inherited from its parent value
+
+CSS box model:
+Margin -> Border -> Padding -> Content <- Padding <- Border <- Margin
+
+Text:
+color: blue;
+text-align: justify;
+text-align-last: right;
+vertical-align: text-top;
+text-transform: uppercase;
+text-indent: 50px; (indentation of the first line of a text)
+letter-spacing: 5px;
+word-spacing: 10px;
+line-height: 1.8; (space between lines)
+font-family: "Times New Roman", Times, serif;
+font-family: "Courier New", Courier, monospace;
+font-size: 40px;
+font-size: 2.5em; (the default size of 1em is 16px)
+
+Links:
+a:link {
+  color: red;
+  text-decoration: none;
+}
+a:visited {
+  color: green;
+  text-decoration: none;
+}
+a:hover {
+  color: hotpink;
+  text-decoration: underline;
+}
+a:active {
+  color: blue;
+  text-decoration: underline;
+}
+
+HTML lists:
+ul {
+  list-style-type: circle;
+}
+ol {
+  list-style-type: upper-roman;
+}
+
+HTML tables:
+table {
+  border: 1px solid;
+  width: 100%;
+}
+td {
+  text-align: center;
+}
+
+Display:
+Every HTML element has a default display value depending on what type of element it is.
+The default display value for most elements is block or inline.
+A block-level element always starts on a new line and takes up the full width available.
+Examples of block-level elements: <div> <h1> - <h6> <p> <form> <header> <footer> <section>
+An inline element does not start on a new line and only takes up as much width as necessary.
+Examples of inline elements: <span> <a> <img>
+display: block;
+display: inline;
+display: none;
+
+Position:
+The position property specifies the type of positioning method used for an element.
+There are five different position values: static relative fixed absolute sticky
+
+z-index:
+img {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  z-index: -1;
+}
+
+Overflow:
+The overflow property has the following values:
+visible : Default. The overflow is not clipped. The content renders outside the element's box
+hidden : The overflow is clipped, and the rest of the content will be invisible
+scroll : The overflow is clipped, and a scrollbar is added to see the rest of the content
+auto : Similar to scroll, but it adds scrollbars only when necessary
+div {
+  overflow-x: hidden; (Hide horizontal scrollbar)
+  overflow-y: scroll; (Add vertical scrollbar)
+}
+
+Float:
+The float property is used for positioning and formatting content e.g. let an image float left to the text in a container.
+The float property can have one of the following values:
+left : The element floats to the left of its container
+right : The element floats to the right of its container
+none : The element does not float (will be displayed just where it occurs in the text). This is default
+inherit : The element inherits the float value of its parent
+
+In its simplest use, the float property can be used to wrap text around images.
+
+Combinators:
+Descendant Selector: the following example selects all <p> elements inside <div> elements
+div p {
+  background-color: yellow;
+}
+
+Child selector: the following example selects all <p> elements that are children of a <div> element
+div > p {
+  background-color: yellow;
+}
+
+Adjacent Sibling Selector: the following example selects the first <p> element that are placed immediately after <div> elements
+div + p {
+  background-color: yellow;
+}
+
+General Sibling Selector: the following example selects all <p> elements that are next siblings of <div> elements
+div ~ p {
+  background-color: yellow;
+}
+
+<p class="center large">
