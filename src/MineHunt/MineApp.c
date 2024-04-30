@@ -1665,7 +1665,7 @@ static void DrawGameBoard()
 	WinCopyRectangle(gOffscreenBoardWinH, 0/*dstWin*/, &srcRect,
 						gGame.board.origin.x, gGame.board.origin.y, winPaint);
 						
-	DrawScrollingBorders();
+	//DrawScrollingBorders();
 }
 
 
