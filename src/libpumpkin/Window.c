@@ -1711,6 +1711,10 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
 
   debug(DEBUG_TRACE, "Window", "WinCopyRectangle srcWin=%p srcBmp=%p %d,%d,%d,%d -> dstWin=%p dstBmp=%p %d,%d (mode %d)", srcWin, srcWin->bitmapP, srcRect->topLeft.x, srcRect->topLeft.y, srcRect->extent.x, srcRect->extent.y, dstWin, dstWin->bitmapP, dstX, dstY, mode);
   WinBlitBitmap(srcWin->bitmapP, dstWin, srcRect, dstX, dstY, mode, false);
+
+  if (dstWin == module->activeWindow && dstWin != module->displayWindow) {
+    WinBlitBitmap(srcWin->bitmapP, module->displayWindow, srcRect, dstX, dstY, mode, false);
+  }
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
