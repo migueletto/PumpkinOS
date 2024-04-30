@@ -61,7 +61,8 @@
 // Graphic Bitmaps
 #define kFirstBitmap						2001
 #define BitmapNumber(n) 					(kFirstBitmap + (n))
-#define kFirstCustomBitmap					2101
+//#define kFirstCustomBitmap					2101
+#define kFirstCustomBitmap					2001
 #define CustomBitmapNumber(n)				(kFirstCustomBitmap + (n))
 
 

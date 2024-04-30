@@ -2721,7 +2721,6 @@ static void resize(FormType *frm) {
   wh = FrmGetWindowHandle(frm);
   RctSetRectangle(&rect, 0, 0, swidth, sheight);
   WinSetBounds(wh, &rect);
-debug(1, "XXX", "resize %dx%d", swidth, sheight);
 }
 
 /***********************************************************************
