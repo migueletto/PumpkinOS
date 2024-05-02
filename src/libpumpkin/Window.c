@@ -1713,7 +1713,7 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
   WinBlitBitmap(srcWin->bitmapP, dstWin, srcRect, dstX, dstY, mode, false);
 
   if (dstWin == module->activeWindow && dstWin != module->displayWindow) {
-    WinBlitBitmap(srcWin->bitmapP, module->displayWindow, srcRect, dstX, dstY, mode, false);
+    WinBlitBitmap(srcWin->bitmapP, module->displayWindow, srcRect, dstX + dstWin->windowBounds.topLeft.x, dstY + dstWin->windowBounds.topLeft.y, mode, false);
   }
 }
 
