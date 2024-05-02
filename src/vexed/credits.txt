@@ -1,0 +1,23 @@
+Vexed was originally written by James McCombe.
+
+This version includes changes by:
+
+   Wolfgang Gaertner
+   Mark Ingebretson
+   Scott Ludwig
+   Daniel Holth
+   Marcin Orlowski
+
+Release maintainer: Marcin Orlowski
+
+Graphics for this version are by:
+
+   Matt McClintock
+   David Croy
+   Lukasz Grupa
+
+For release changes history, please refer to changes.txt file, enclosed in each Vexed archive.
+
+To let us make this game even better, please report any bug spotted or send us your enhancement suggestions.
+
+For more info about the Vexed Source Forge Project, visit http://vexed.sf.net/

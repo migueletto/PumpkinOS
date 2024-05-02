@@ -1,0 +1,891 @@
+/*  vexed.rcp "Vexed program resource definitions"
+    Copyright (C) 1999 James McCombe (cybertube@earthling.net)
+    Copyright (C) 2006 The Vexed Source Forge Project Team
+
+    except for the following files:
+
+        hypo1.bmp, hypo2.bmp, hypo3.bmp, hypo4.bmp, hypo5.bmp, hypo6.bmp, hypo7.bmp, hypo8.bmp
+        The files above are Copyright (C) 2001 David Croy (deathskull@earthlink.net)
+
+    This file is part of Vexed.
+
+    Vexed is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    Vexed is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Vexed; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+#include "vexed.h"
+
+//{{{..................................................... Program	.
+
+APPLICATIONICONNAME ID IconID "Vexed"
+VERSION "2.2"
+APPLICATION ID ApplicationID "Vexd"
+
+ICONFAMILYEX
+BEGIN
+    BITMAP "icons/lowres/vexed.bmp" BPP 1
+    BITMAP "icons/lowres/vexed4.bmp" BPP 4
+    BITMAP "icons/lowres/vexed8a.bmp" BPP 8 TRANSPARENCY 0 255 0
+    BITMAP "icons/hires/vexed.bmp" BPP 16 DENSITY 144 TRANSPARENCY 227 35 173
+END
+
+SMALLICONFAMILY "icons/lowres/vexeds.bmp" "" "icons/lowres/vexeds4.bmp" "icons/lowres/vexeds8.bmp" TRANSPARENT 255 255 255
+
+//DATA "pack" ID 1 "../levelpacks/Classic Levels.bin"
+//DATA "pack" ID 2 "../levelpacks/Classic II Levels.bin"
+
+LAUNCHERCATEGORY ID 1000 "Games"
+
+//}}}
+//{{{..................................................... String		.
+
+STRING ID StringInfo "The object of Vexed is to end up with no blocks left on a level, and to do this in \"par\" or fewer moves. Your score is a total of how many moves above or below par you have made for all levels in the level pack.\n\nWhen two or more blocks of the same type touch, they each disappear.\n\nThe blocks all adhere to gravity, i.e. if you remove a block from the bottom of a pile, they will all tumble down.\n\nTo move the blocks, hold the stylus on the block you want to move and slide to the right or left one or more block positions and lift the stylus.\n\nIf you make a mistake and a level is impossible to complete, you can press the \"Restart\" button (the circular arrow on the bottom right).\n\nYou may navigate through the levels using the arrows and the lookup feature (the \"magnifying glass\" icon).\n\nIn order to memorize the state of a current level you are working on, push \"M\". Tap on \"R\" (recall) to return to where you were when you last memorized. This memory is removed when Vexed is quit, when you move between levels, or when you use the replay function.\n\nOnce you have made one move, you can press the \"U\" icon to Undo the previous move. You can undo up to 15 moves back.\n\nTo hide all blocks except the ones you want to check press the PAGE UP key and tap the block."
+STRING ID StringPrefsInfo "These checkboxes allow you to turn on and off various options.\n\nThe top four control different animations. Disabling one or more can speed up game play.\n\nThe transition effects occurs each time a level is loaded, changed or restarted.\n\nDisable sound if you do not want the sound effects.\n\nSkip Intro lets you jump right into the game when you start Vexed.\n\nThe block set option lets you select between sets of block graphics.\n\nUsers of color devices can opt to use monochrome instead of color control icons. This is useful if you have a dark background color."
+STRING ID StringSelectLevelInfo "Press the up and down arrows to cycle the level number to the level you want to move to. You can only move to one level past the highest level solved."
+STRING ID StringCredits FILE "credits.txt"
+
+//}}}
+//{{{..................................................... Alert		.
+
+ALERT ID AlertResetYesNo
+    CONFIRMATION
+    BEGIN
+        TITLE "Are you sure?"
+        MESSAGE "Clear solved levels for this level pack?"
+        BUTTONS "Yes" "No"
+    END
+
+ALERT ID AlertNoReplayCurrent
+    CONFIRMATION
+    BEGIN
+        TITLE "No Replay Data"
+        MESSAGE "Sorry, no replay data available for the current level"
+        BUTTONS "OK"
+    END
+
+ALERT ID AlertNoReplayPrevious
+    CONFIRMATION
+    BEGIN
+        TITLE "No Replay Data"
+        MESSAGE "Sorry, no replay data available for the previous level"
+        BUTTONS "OK"
+    END
+
+ALERT ID AlertNoPreviousLevel
+    CONFIRMATION
+    BEGIN
+        TITLE "No Previous Level"
+        MESSAGE "Sorry, you're on the first level, there is no previous level!"
+        BUTTONS "OK"
+    END
+
+ALERT ID AlertLevelNotSolved
+    CONFIRMATION
+    BEGIN
+        TITLE "Select Level"
+        MESSAGE "Sorry, you need to solve previous levels before you can select that level!"
+        BUTTONS "OK"
+    END
+
+ALERT ID AlertLoadFailed
+    ERROR
+    BEGIN
+        TITLE "Load Level Pack"
+        MESSAGE "Unable to load last played level pack. Choose other one."
+		BUTTONS "Choose" "Quit"
+    END
+
+ ALERT ID AlertNoLevelPacksInstalled
+    ERROR
+    BEGIN
+        TITLE "No Level Pack Found"
+        MESSAGE "Could not find any usable level pack. Please install at least one Vexed level pack."
+		BUTTONS "OK"
+    END
+
+ALERT ID AlertDeleteLevelPack
+    CONFIRMATION
+    BEGIN
+        TITLE "Delete Level Pack"
+        MESSAGE "Delete this level pack?"
+		BUTTONS "Yes" "No"
+    END
+
+ALERT ID AlertCannotDeleteCurrent
+	ERROR
+	BEGIN
+        TITLE "Delete Level Pack"
+        MESSAGE "Cannot delete current level pack!"
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertNoSolution
+	ERROR
+	BEGIN
+        TITLE "Level Solution"
+        MESSAGE "No solution recorded for this level!"
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertShowSolution
+	CONFIRMATION
+    BEGIN
+        TITLE "Show Solution"
+        MESSAGE "Viewing the solution will add 5 points to your score. Continue?"
+		BUTTONS "Yes" "No"
+    END
+
+ALERT ID AlertOldPrefsFound
+	CONFIRMATION
+	BEGIN
+        TITLE "Old Vexed Detected!"
+        MESSAGE "You've run a previous version of Vexed! Which version was this?"
+		BUTTONS "Original" "New Levels"
+	END
+
+ALERT ID AlertNoBeam
+	ERROR
+	BEGIN
+        TITLE "Beam"
+        MESSAGE "Beaming not supported on this device."
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertNoHiRes
+	ERROR
+	BEGIN
+		TITLE "Not a Hi-Res device"
+		MESSAGE "This device does not support Hi-Res graphics. Please install standard version of Vexed instead."
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertNoBrightnessAdjust
+	ERROR
+	BEGIN
+		TITLE "Brightness Adjust"
+		MESSAGE "Brightness Adjustment is not supported on this device."
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertConfirmLevelRestart
+	CONFIRMATION
+	BEGIN
+		TITLE "Restart Level"
+		MESSAGE "Do you really want to restart this level?"
+		BUTTONS "Yes" "No"
+	END
+
+ALERT ID AlertConfirmLevelChange
+	CONFIRMATION
+	BEGIN
+		TITLE "Change Level"
+		MESSAGE "Do you really want to abandon current level and switch to the other one?"
+		BUTTONS "Yes" "No"
+	END
+
+ALERT ID AlertNoWebBrowserFound
+	ERROR
+	BEGIN
+		TITLE "No Web Browser"
+		MESSAGE "This feature requires web browser to be installed on your device but none was found."
+		BUTTONS "OK"
+	END
+
+ALERT ID AlertConfirmWebBrowsing
+	CONFIRMATION
+	BEGIN
+		TITLE "Browse The Web"
+		MESSAGE "Launching web browser will clear your current Undo history. Do you want to continue?"
+		BUTTONS "Yes" "No"
+	END
+
+ALERT ID AlertDebug
+	ERROR
+	BEGIN
+		TITLE "Debug"
+		MESSAGE "1: '^1'\n2: '^2'\n3: ^3"
+		BUTTONS "OK"
+	END
+
+//}}}
+//{{{..................................................... Menu		.
+
+MENU ID Menu1038
+BEGIN
+   PULLDOWN "Game"
+        BEGIN
+        MENUITEM "Preferences..." ID ItemPreferences "R"
+        MENUITEM "Adjust Brightness..." ID ItemAdjustBrightness
+        MENUITEM SEPARATOR
+        MENUITEM "Replay Current Level" ItemReplayCurrent "1"
+        MENUITEM "Replay Previous Level" ItemReplayPrevious "2"
+        MENUITEM SEPARATOR
+        MENUITEM "Show Solution" ID ItemSolution "S"
+        MENUITEM SEPARATOR
+        MENUITEM "Blocks Remaining..." ID ItemInfo "B"
+   END
+
+   PULLDOWN "Levels"
+        BEGIN
+        MENUITEM "Level Packs..." ID ItemLevelPacks "L"
+		  MENUITEM "Clear Solved Levels" ID ItemClear
+   END
+
+   PULLDOWN "Help"
+        BEGIN
+        MENUITEM "How To Play..." ID ItemHowToPlay
+        MENUITEM SEPARATOR
+        MENUITEM "Beam Vexed" ID ItemBeamVexed
+
+        MENUITEM "Check For Update..." ID ItemCheckForUpdate
+        MENUITEM SEPARATOR
+        MENUITEM "About..." ID ItemAbout
+	END
+END
+
+//}}}
+//{{{..................................................... Bitmap		.
+// Bitmaps are now in ID order
+// 4 and 8 bit bitmaps are first
+
+
+BITMAPFAMILYEX ID BitmapWall
+BEGIN
+  BITMAP "./blockset/wall/lowres/wall4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/wall/lowres/wall8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/wall/hires/wall.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapVexed       "" "" "icons/lowres/vexed4.bmp"   "icons/lowres/vexed8a.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+
+/*
+BITMAPFAMILY ID BitmapIntroV
+COMPRESS
+BEGIN
+	BITMAP "./intro/lowres/introv4.bmp"  BPP 4 TRANSPARENT 255 255 255
+	BITMAP "./intro/lowres/introv8.bmp" BPP 8 TRANSPARENT 255 255 255
+	BITMAP "./intro/hires/introv8.bmp" BPP 16 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroE
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introe4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introe8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introe8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroX
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introx4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introx8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introx8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroE2
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introe24.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introe28.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introe28.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroD
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introd4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introd8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introd8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroT
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introt4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introt8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introt8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroO
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introo4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introo8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introo8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILY ID BitmapIntroO
+COMPRESS
+BEGIN
+  BITMAP "./intro/lowres/introw4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./intro/lowres/introw8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./intro/hires/introw8.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+*/
+
+BITMAPFAMILY ID BitmapIntroV      "" "" "./intro/lowres/introv4.bmp"  "./intro/lowres/introv8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroE      "" "" "./intro/lowres/introe4.bmp"  "./intro/lowres/introe8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroX      "" "" "./intro/lowres/introx4.bmp"  "./intro/lowres/introx8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroE2     "" "" "./intro/lowres/introe24.bmp" "./intro/lowres/introe28.bmp" FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroD      "" "" "./intro/lowres/introd4.bmp"  "./intro/lowres/introd8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroT      "" "" "./intro/lowres/introt4.bmp"  "./intro/lowres/introt8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroO      "" "" "./intro/lowres/introo4.bmp"  "./intro/lowres/introo8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID BitmapIntroW      "" "" "./intro/lowres/introw4.bmp"  "./intro/lowres/introw8.bmp"  FORCECOMPRESS TRANSPARENT 255 255 255
+
+BITMAPFAMILYEX ID BitmapFirst
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/first4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/first8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/first.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBack
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/back4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/back8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/back.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapSelectLevel
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/lookup4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/lookup8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/lookup.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapForward
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/forward4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/forward8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/forward.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapLast
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/last4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/last8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/last.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapUndo
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/undo4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/undo8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/undo.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapRecall
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/recall4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/recall8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/recall.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapMemory
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/memory4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/memory8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/memory.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapRestart
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/restart4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/restart8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/restart.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapPending
+COMPRESS
+BEGIN
+  BITMAP "./controls/lowres/pending4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./controls/lowres/pending8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./controls/hires/pending.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+// 1 bit mono
+BITMAPFAMILY ID MBitmapWall        "./blockset/wall/lowres/wall.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapVexed       "./icons/lowres/vexed.bmp"   "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroV      "./intro/lowres/introv.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroE      "./intro/lowres/introe.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroX      "./intro/lowres/introx.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroE2     "./intro/lowres/introe2.bmp" "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroD      "./intro/lowres/introd.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroT      "./intro/lowres/introt.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroO      "./intro/lowres/introo.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapIntroW      "./intro/lowres/introw.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+
+BITMAPFAMILY ID MBitmapFirst       "./controls/lowres/first.bmp"   "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBack        "./controls/lowres/back.bmp"    "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapSelectLevel "./controls/lowres/lookup.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapForward     "./controls/lowres/forward.bmp" "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapLast        "./controls/lowres/last.bmp"    "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapUndo        "./controls/lowres/undo.bmp"    "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapRecall      "./controls/lowres/recall.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapMemory      "./controls/lowres/memory.bmp"  "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapRestart     "./controls/lowres/restart.bmp" "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapPending     "./controls/lowres/pending.bmp" "" "" ""             FORCECOMPRESS TRANSPARENT 255 255 255
+
+// Game board block sets
+// First 6 sets are 4 and 8 bit only
+
+// Original
+BITMAPFAMILYEX ID BitmapBS1_1
+BEGIN
+  BITMAP "./blockset/original/lowres/block18.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block1.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_2
+BEGIN
+  BITMAP "./blockset/original/lowres/block28.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block2.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_3
+BEGIN
+  BITMAP "./blockset/original/lowres/block38.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block3.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_4
+BEGIN
+  BITMAP "./blockset/original/lowres/block48.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block4.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_5
+BEGIN
+  BITMAP "./blockset/original/lowres/block58.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block5.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_6
+BEGIN
+  BITMAP "./blockset/original/lowres/block68.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block6.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_7
+BEGIN
+  BITMAP "./blockset/original/lowres/block78.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block7.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS1_8
+BEGIN
+  BITMAP "./blockset/original/lowres/block88.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/original/hires//block8.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+
+// 4 bit is noir (black), 8/16 bit is pills
+BITMAPFAMILYEX ID BitmapBS2_8
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir1.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo1.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill1.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_7
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir2.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo2.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill2.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_6
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir3.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo3.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill3.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_5
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir4.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo4.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill4.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_4
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir5.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo5.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill5.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_3
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir6.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo6.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill6.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_2
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir7.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo7.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill7.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+BITMAPFAMILYEX ID BitmapBS2_1
+COMPRESS
+BEGIN
+  BITMAP "./blockset/pills/lowres/noir8.bmp" BPP 4 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/lowres/hypo8.bmp" BPP 8 TRANSPARENT 255 255 255
+  BITMAP "./blockset/pills/hires/pill8.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+// Greek symbols
+BITMAPFAMILYEX ID BitmapBS3_1
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk41.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh1.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_2
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk42.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh2.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_3
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk43.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh3.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_4
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk44.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh4.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_5
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk45.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh5.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_6
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk46.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh6.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_7
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk47.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh7.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS3_8
+BEGIN
+  BITMAP "./blockset/greek/lowres/gk48.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/greek/hires/gkh8.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+
+// Flags
+BITMAPFAMILYEX ID BitmapBS4_1
+BEGIN
+  BITMAP "./blockset/flags/lowres/vanatu4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/vanatu.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_2
+BEGIN
+  BITMAP "./blockset/flags/lowres/tonga4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/tonga.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_3
+BEGIN
+  BITMAP "./blockset/flags/lowres/sweden4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/sweden.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_4
+BEGIN
+  BITMAP "./blockset/flags/lowres/germany4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/germany.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_5
+BEGIN
+  BITMAP "./blockset/flags/lowres/GB4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/GB.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_6
+BEGIN
+  BITMAP "./blockset/flags/lowres/france4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/france.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_7
+BEGIN
+  BITMAP "./blockset/flags/lowres/czech4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/czech.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS4_8
+BEGIN
+  BITMAP "./blockset/flags/lowres/US4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/flags/hires/US.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+
+// Jewels
+BITMAPFAMILYEX ID BitmapBS5_1
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j1.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel1.bmp" BPP 16 DENSITY 144 TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_2
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j2.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel2.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_3
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j3.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel3.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_4
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j4.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel4.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_5
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j5.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel5.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_6
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j6.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel6.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_7
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j7.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel7.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+BITMAPFAMILYEX ID BitmapBS5_8
+BEGIN
+  BITMAP "./blockset/jewels/lowres/j8.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/jewels/hires/jewel8.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 255 255 255
+END
+
+// International symbols
+BITMAPFAMILYEX ID BitmapBS6_1
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int14.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int1.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_2
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int24.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int2.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_3
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int34.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int3.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_4
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int44.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int4.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_5
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int54.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int5.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_6
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int64.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int6.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_7
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int74.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int7.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+BITMAPFAMILYEX ID BitmapBS6_8
+BEGIN
+  BITMAP "./blockset/symbols/lowres/int84.bmp" BPP 8 DENSITY 72 TRANSPARENT 255 255 255
+  BITMAP "./blockset/symbols/hires/int8.bmp" BPP 16 DENSITY 144 FORCECOMPRESS TRANSPARENT 227 35 173
+END
+
+// 1 bit mono block sets
+// original blocks
+BITMAPFAMILY ID MBitmapBS1_1      "./blockset/original/lowres/block1.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_2      "./blockset/original/lowres/block2.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_3      "./blockset/original/lowres/block3.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_4      "./blockset/original/lowres/block4.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_5      "./blockset/original/lowres/block5.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_6      "./blockset/original/lowres/block6.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_7      "./blockset/original/lowres/block7.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS1_8      "./blockset/original/lowres/block8.bmp" "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+// numbers
+BITMAPFAMILY ID MBitmapBS2_1      "./blockset/numbers/lowres/1.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_2      "./blockset/numbers/lowres/2.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_3      "./blockset/numbers/lowres/3.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_4      "./blockset/numbers/lowres/4.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_5      "./blockset/numbers/lowres/5.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_6      "./blockset/numbers/lowres/6.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_7      "./blockset/numbers/lowres/7.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS2_8      "./blockset/numbers/lowres/8.bmp"      "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+// Greek symbols
+BITMAPFAMILY ID MBitmapBS3_1      "./blockset/greek/lowres/1grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_2      "./blockset/greek/lowres/2grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_3      "./blockset/greek/lowres/3grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_4      "./blockset/greek/lowres/4grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_5      "./blockset/greek/lowres/5grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_6      "./blockset/greek/lowres/6grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_7      "./blockset/greek/lowres/7grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+BITMAPFAMILY ID MBitmapBS3_8      "./blockset/greek/lowres/8grk.bmp"   "" ""                  FORCECOMPRESS TRANSPARENT 255 255 255
+
+BITMAP ID kidrBitmapCongrats "congrats/lowres/congrats.bmp"
+
+
+
+BITMAPFAMILYEX ID BitmapThumbUp
+COMPRESS
+BEGIN
+	BITMAP "./misc/thumb_up4.bmp" BPP 8 DENSITY 144 FORCECOMPRESS TRANSPARENT 204 204 204
+END
+BITMAPFAMILYEX ID BitmapThumbDown
+COMPRESS
+BEGIN
+	BITMAP "./misc/thumb_down4.bmp" BPP 8 DENSITY 144 FORCECOMPRESS TRANSPARENT 204 204 204
+END
+
+
+//}}}
+//{{{..................................................... Form		.
+FORM ID FormMain AT (0 0 160 160)
+MODAL
+NOSAVEBEHIND
+MENUID Menu1038
+BEGIN
+END
+
+FORM ID FormIntro AT (0 0 160 160)
+FRAME
+NOSAVEBEHIND
+USABLE
+BEGIN
+    BUTTON "OK" ID ButtonOK3 AT (62 138 37 13) USABLE LEFTANCHOR FRAME FONT 0
+END
+
+FORM ID FormAbout AT (2 2 156 156)
+NOFRAME
+MODAL
+SAVEBEHIND
+USABLE
+HELPID StringInfo
+BEGIN
+    TITLE "About"
+    BUTTON "OK" ID ButtonOK AT (6 138 37 13) USABLE LEFTANCHOR FRAME FONT 0
+    BUTTON "Credits" ID ButtonCredits AT (49 138 37 13) USABLE LEFTANCHOR FRAME FONT 0
+END
+
+FORM ID FormPrefs AT (2 2 156 156)
+NOFRAME
+MODAL
+SAVEBEHIND
+USABLE
+HELPID StringPrefsInfo
+BEGIN
+    TITLE "Preferences"
+    LABEL "Animation" AUTOID AT (58 16) USABLE FONT 0
+    CHECKBOX "Piece Move" ID CheckBoxPieceAnim AT (6 32 70 12) USABLE RIGHTANCHOR FONT 0
+    CHECKBOX "Gravity" ID CheckBoxGravityAnim AT (80 32 70 12) USABLE RIGHTANCHOR FONT 0
+    CHECKBOX "Block Erase" ID CheckBoxEliminationAnim AT (6 48 70 12) USABLE RIGHTANCHOR FONT 0
+    CHECKBOX "Transitions" ID CheckBoxBlindsEffect AT (80 48 70 12) USABLE RIGHTANCHOR FONT 0
+    CHECKBOX "Sound F/X" ID CheckBoxSound AT (80 80 70 12) USABLE RIGHTANCHOR FONT 0
+    CHECKBOX "Skip Intro" ID CheckBoxSkipIntro AT (6 80 70 12) USABLE RIGHTANCHOR FONT 0
+//    CHECKBOX "Confirm Restart" ID CheckConfirmRestart AT (6 96 70 12) USABLE RIGHTANCHOR FONT 0
+
+    LABEL "Block Set" AUTOID AT (8 112) USABLE FONT 0
+    POPUPTRIGGER "Original" ID PopupBlockSet AT (PrevRight+4 PrevTop 40 AUTO) USABLE LEFTANCHOR FONT 0
+    LIST "Original" "Pills" "Greek" "Flags" "Jewels" "Symbols" ID PopupBlockSetList AT (PrevLeft+10 PrevTop 70 80) NONUSABLE VISIBLEITEMS 6
+    POPUPLIST PopupBlockSet PopupBlockSetList
+    BUTTON "OK" ID ButtonOK2 AT (6 138 37 13) USABLE LEFTANCHOR FRAME FONT 0
+    BUTTON "Cancel" ID ButtonCancel AT (49 138 37 13) USABLE LEFTANCHOR FRAME FONT 0
+END
+
+FORM ID FormInfo AT ( 2 42 156 116 )
+NOFRAME
+MODAL
+SAVEBEHIND
+USABLE
+BEGIN
+    TITLE "Blocks Remaining"
+	LABEL "00" LabelBlock1Count AT (44 23)
+	LABEL "00" LabelBlock2Count AT (44 39)
+	LABEL "00" LabelBlock3Count AT (44 55)
+	LABEL "00" LabelBlock4Count AT (44 71)
+	LABEL "00" LabelBlock5Count AT (104 23)
+	LABEL "00" LabelBlock6Count AT (104 39)
+	LABEL "00" LabelBlock7Count AT (104 55)
+	LABEL "00" LabelBlock8Count AT (104 71)
+
+	BUTTON "OK" ID InfoButtonOK AT (6 98 37 13) USABLE LEFTANCHOR FRAME FONT 0
+END
+
+FORM ID FormLevelPack AT (2 2 156 156)
+MODAL
+FRAME
+BEGIN
+	TITLE "Level Packs"
+	LIST "" ID ListLevelPacks AT (4 18 148 70) FONT 0 VISIBLEITEMS 6
+	FIELD ID FieldName AT (4 PREVBOTTOM+5 150 11) FONT 0 NONEDITABLE MULTIPLELINES HASSCROLLBAR MAXCHARS 128
+	FIELD ID FieldURL AT (4 PREVBOTTOM 150 11) FONT 0 NONEDITABLE MULTIPLELINES HASSCROLLBAR MAXCHARS 128
+	FIELD ID FieldDescription AT (4 PREVBOTTOM 150 22) FONT 0 NONEDITABLE MULTIPLELINES HASSCROLLBAR MAXCHARS 2048
+    BUTTON "OK"  ButtonOK AT (4 PREVBOTTOM+7 30 12)
+    BUTTON "Cancel" ButtonCancel AT (PREVRIGHT+6 PREVTOP 34 12)
+	BUTTON "Delete" ButtonDelete AT (PREVRIGHT+6 PREVTOP 35 12)
+	BUTTON "Beam" ButtonBeam AT (PREVRIGHT+6 PREVTOP 31 12)
+END
+
+FORM ID FormSolution AT (0 0 160 160)
+FRAME
+SAVEBEHIND
+USABLE
+BEGIN
+    TITLE "Level Solution"
+    BUTTON "Done"  ButtonDone AT (6 147 37 12)
+    BUTTON "\002" ID ButtonLeft AT (70 146 10 13) FONT 4 NOFRAME
+    BUTTON "\003" ID ButtonRight AT (80 146 10 13) FONT 4 NOFRAME
+END
+
+FORM ID FormSelectLevel AT (2 2 156 156)
+MODAL
+FRAME
+BEGIN
+	TITLE "Select Level"
+	FIELD ID FieldLevelPackName AT (4 17 150 11) FONT 0 NONEDITABLE MAXCHARS 128
+	LIST "" ID ListSelectLevel AT (4 PREVBOTTOM+2 148 104) FONT 0 VISIBLEITEMS 9
+    BUTTON "OK" ButtonOK AT (4 PREVBOTTOM+11 30 12)
+    BUTTON "Cancel" ButtonCancel AT (PREVRIGHT+7 PREVTOP 34 12)
+END
+
+//}}}
