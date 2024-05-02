@@ -573,7 +573,7 @@ void WriteAboutInfo() {
 
    for (x = 17; x < 142; x += 25) {
       // Copy the source window (contains the image to draw) to the draw window.
-      WinCopyRectangle (ObjectWindowHandles[idx++], 0, &r, x, 12, winPaint);
+      WinCopyRectangle (ObjectWindowHandles[idx++], 0, &r, x, 14, winPaint);
    }
 
 
