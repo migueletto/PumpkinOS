@@ -1,0 +1,1 @@
+#define BPP4 1
