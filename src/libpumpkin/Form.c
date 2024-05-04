@@ -278,7 +278,7 @@ Boolean FrmDispatchEvent(EventType *eventP) {
   Boolean r;
 
   r = FrmDispatchEventInternal(formP, eventP);
-  if (!r) {
+  if (!r && formP) {
     r = FrmHandleEvent(formP, eventP);
   }
 
