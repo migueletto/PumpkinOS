@@ -14,7 +14,13 @@ if not wp then
   return
 end
 
-pit.mount("./vfs/", "/")
+xdg_pumpkin_os = os.getenv("XDG_PUMPKINOS")
+
+if not xdg_pumpkin_os then
+  pit.mount("./vfs/", "/")
+else
+  pit.mount(xdg_pumpkin_os .. "/vfs/", "/")
+end
 
 pumpkin = pit.loadlib("libos")
 pumpkin.init()
