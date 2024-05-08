@@ -16,10 +16,10 @@ end
 
 xdg_pumpkin_os = os.getenv("XDG_PUMPKINOS")
 
-if not xdg_pumpkin_os then
-  pit.mount("./vfs/", "/")
-else
+if xdg_pumpkin_os then
   pit.mount(xdg_pumpkin_os .. "/vfs/", "/")
+else
+  pit.mount("./vfs/", "/")
 end
 
 pumpkin = pit.loadlib("libos")
