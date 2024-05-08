@@ -2205,6 +2205,7 @@ Err FrmAddSpaceForObject(FormType **formPP, MemPtr *objectPP, FormObjectKind obj
 }
 
 FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coord width, Coord height, Boolean modal, UInt16 defaultButton, UInt16 helpRscID, UInt16 menuRscID) {
+  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
   FormTitleType *title;
   FormType *formP;
   int len;
@@ -2228,6 +2229,10 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
     formP->window.windowBounds.extent.y = height;
 
     FrmInitFormInternal(formP);
+
+    if (formP->window.windowFlags.modal && module->centerDialogs) {
+      FrmCenterForm(formP);
+    }
 
     if (titleStrP) {
       if ((title = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL) {
