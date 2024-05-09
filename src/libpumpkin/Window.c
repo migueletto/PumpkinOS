@@ -3158,7 +3158,6 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
 void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   IndexedColorType objFore, objFill, objSelFill, objSelFore, oldb, oldf;
-  RGBColorType rgb, old;
   RectangleType aux;
   WinDrawOperation prev;
   UInt16 coordSys;
@@ -3177,14 +3176,6 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
       WinPaintRectangle(&aux, corner);
       WinSetBackColor(oldb);
       WinSetForeColor(oldf);
-      break;
-
-    case 16:
-      prev = WinSetDrawMode(winInvert);
-      rgb.r = rgb.g = rgb.b = 0xff;
-      WinSetForeColorRGB(&rgb, &old);
-      WinPaintRectangle(&aux, corner);
-      WinSetForeColorRGB(&old, NULL);
       break;
 
     default:
