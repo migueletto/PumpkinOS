@@ -509,6 +509,18 @@ UInt16 SysBatteryInfo(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalThres
   return 370;
 }
 
+UInt16 SysBatteryInfoV20(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalThresholdP, Int16 *maxTicksP, SysBatteryKind *kindP, Boolean *pluggedIn) {
+  if (!set) {
+    if (warnThresholdP) *warnThresholdP = 320;
+    if (criticalThresholdP) *criticalThresholdP = 300;
+    if (maxTicksP) *maxTicksP = 0; // XXX what is this ?
+    if (kindP) *kindP = sysBatteryKindLiIon;
+    if (pluggedIn) *pluggedIn = true;
+  }
+
+  return 370;
+}
+
 // Return the tick count since the last reset.
 UInt32 TimGetTicks(void) {
   sys_module_t *module = (sys_module_t *)thread_get(sys_key);

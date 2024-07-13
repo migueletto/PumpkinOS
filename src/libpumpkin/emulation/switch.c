@@ -4354,6 +4354,28 @@ case sysTrapSysBatteryInfo: {
   debug(DEBUG_TRACE, "EmuPalmOS", "SysBatteryInfo(set=%d, warnThresholdP=0x%08X [%d], criticalThresholdP=0x%08X [%d], maxTicksP=0x%08X [%d], kindP=0x%08X, pluggedIn=0x%08X, percentP=0x%08X): %d", set, warnThresholdP, l_warnThresholdP, criticalThresholdP, l_criticalThresholdP, maxTicksP, l_maxTicksP, kindP, pluggedIn, percentP, res);
 }
 break;
+case sysTrapSysBatteryInfoV20: {
+  // UInt16 SysBatteryInfoV20(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalThresholdP, UInt16 *maxTicksP, SysBatteryKind *kindP, Boolean *pluggedIn)
+  uint8_t set = ARG8;
+  uint32_t warnThresholdP = ARG32;
+  UInt16 l_warnThresholdP;
+  uint32_t criticalThresholdP = ARG32;
+  UInt16 l_criticalThresholdP;
+  uint32_t maxTicksP = ARG32;
+  Int16 l_maxTicksP;
+  uint32_t kindP = ARG32;
+  SysBatteryKind l_kindP;
+  uint32_t pluggedIn = ARG32;
+  Boolean l_pluggedIn;
+  UInt16 res = SysBatteryInfoV20(set, warnThresholdP ? &l_warnThresholdP : NULL, criticalThresholdP ? &l_criticalThresholdP : NULL, maxTicksP ? &l_maxTicksP : NULL, kindP ? &l_kindP : NULL, pluggedIn ? &l_pluggedIn : NULL);
+  if (warnThresholdP) m68k_write_memory_16(warnThresholdP, l_warnThresholdP);
+  if (criticalThresholdP) m68k_write_memory_16(criticalThresholdP, l_criticalThresholdP);
+  if (maxTicksP) m68k_write_memory_16(maxTicksP, l_maxTicksP);
+  if (pluggedIn) m68k_write_memory_8(pluggedIn, l_pluggedIn);
+  m68k_set_reg(M68K_REG_D0, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "SysBatteryInfoV20(set=%d, warnThresholdP=0x%08X [%d], criticalThresholdP=0x%08X [%d], maxTicksP=0x%08X [%d], kindP=0x%08X, pluggedIn=0x%08X): %d", set, warnThresholdP, l_warnThresholdP, criticalThresholdP, l_criticalThresholdP, maxTicksP, l_maxTicksP, kindP, pluggedIn, res);
+}
+break;
 case sysTrapKeyCurrentState: {
   // UInt32 KeyCurrentState(void)
   UInt32 res = KeyCurrentState();
