@@ -1710,6 +1710,9 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
       }
       creq.data.launch.param = gotoParam;
       break;
+    case sysAppLaunchCmdPanelCalledFromApp:
+      debug(DEBUG_ERROR, PUMPKINOS, "sysAppLaunchCmdPanelCalledFromApp not supported");
+      return r;
     default:
       debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\"", cmd, name);
       handle = pumpkin_pause_task(name, &call_sub);
