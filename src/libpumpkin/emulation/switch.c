@@ -4051,7 +4051,7 @@ case sysTrapCtlSetLabel: {
   uint32_t controlP = ARG32;
   ControlType *s_controlP = emupalmos_trap_in(controlP, trap, 0);
   uint32_t newLabel = ARG32;
-  char *s_newLabel = newLabel ? (char *)(ram + newLabel) : NULL;
+  char *s_newLabel = emupalmos_trap_in(newLabel, trap, 1);
   CtlSetLabel(controlP ? s_controlP : NULL, newLabel ? s_newLabel : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "CtlSetLabel(controlP=0x%08X, newLabel=0x%08X [%s])", controlP, newLabel, s_newLabel);
 }

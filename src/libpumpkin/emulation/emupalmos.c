@@ -153,9 +153,10 @@ void emupalmos_panic(char *msg, int code) {
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg) {
   char name[64], argument[64], selector[64], buf[256], *s;
   uint8_t *ram = pumpkin_heap_base();
-  uint32_t size = pumpkin_heap_size();
+  int32_t size = pumpkin_heap_size();
+  int32_t addr = (int32_t)address;
 
-  if (address > size-4) {
+  if (addr > size-4) {
     m68k_pulse_halt();
 
     s = getTrapName(trap);
@@ -182,7 +183,7 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
     return NULL;
   }
 
-  return address ? ram + address : NULL;
+  return addr ? ram + addr : NULL;
 }
 
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg) {
