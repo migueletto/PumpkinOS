@@ -614,6 +614,7 @@ void pumpkin_deploy_files(char *path) {
 void pumpkin_set_spawner(int handle) {
   debug(DEBUG_INFO, PUMPKINOS, "spawner set to port %d", handle);
   pumpkin_module.spawner = handle;
+  wman_clear(pumpkin_module.wm);
 }
 
 int pumpkin_is_spawner(void) {

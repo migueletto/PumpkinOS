@@ -174,18 +174,6 @@ static void set_right_border(wman_t *wm, int i, rect_t *b) {
   set_rect(b, wm->area[i].r.x + wm->area[i].r.width, wm->area[i].r.y - wm->border, wm->border, wm->area[i].r.height + 2*wm->border, "set_right_border");
 }
 
-wman_t *wman_init(window_provider_t *wp, window_t *w, int width, int height) {
-  wman_t *wm;
-
-  if ((wm = xcalloc(1, sizeof(wman_t))) != NULL) {
-    wm->wp = wp;
-    wm->w = w;
-    set_rect(&wm->r, 0, 0, width, height, "wman_init");
-  }
-
-  return wm;
-}
-
 static texture_t *solid_texture(wman_t *wm, int depth, int width, int height, uint8_t r, uint8_t g, uint8_t b) {
   texture_t *t = NULL;
   uint32_t i, n;
@@ -285,6 +273,18 @@ static void wman_draw(wman_t *wm, int i, int x, int y, int w, int h, int dstX, i
   }
 }
 
+wman_t *wman_init(window_provider_t *wp, window_t *w, int width, int height) {
+  wman_t *wm;
+
+  if ((wm = xcalloc(1, sizeof(wman_t))) != NULL) {
+    wm->wp = wp;
+    wm->w = w;
+    set_rect(&wm->r, 0, 0, width, height, "wman_init");
+  }
+
+  return wm;
+}
+
 static void callback_if_visible(wman_t *wm, int id, rect_t *b) {
   rect_t r, d[4];
   int i, n;
@@ -341,13 +341,14 @@ static void change_top(wman_t *wm, int area, int select, int unselect) {
   }
 }
 
+void wman_clear(wman_t *wm) {
+  wman_draw(wm, WMAN_BACK, 0, 0, wm->r.width, wm->r.height, 0, 0);
+}
+
 int wman_add(wman_t *wm, int id, texture_t *t, int x, int y, int w, int h) {
   int i, r = -1;
 
   if (wm && w > 0 && h > 0 && wm->n < MAX_AREAS) {
-    if (wm->n == 0) {
-      wman_draw(wm, WMAN_BACK, 0, 0, wm->r.width, wm->r.height, 0, 0);
-    }
     i = wm->n++;
     wm->area[i].id = id;
     wm->area[i].t = t;
