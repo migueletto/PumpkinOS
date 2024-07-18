@@ -21,3 +21,19 @@ Boolean TxtGlueCharIsValid(WChar inChar) {
 Boolean TxtGlueFindString(const Char* inSourceStr, const Char* inTargetStr, UInt32* outPos, UInt16* outLength) {
   return TxtFindString(inSourceStr, inTargetStr, outPos, outLength);
 }
+
+UInt16 TxtGlueGetPreviousChar(const Char* inText, UInt32 inOffset, WChar* outChar) {
+  return TxtGetPreviousChar(inText, inOffset, outChar);
+}
+
+UInt16 TxtGlueGetNextChar(const Char* inText, UInt32 inOffset, WChar* outChar) {
+  return TxtGetNextChar(inText, inOffset, outChar);
+}
+
+UInt16 TxtGlueSetNextChar(Char* ioText, UInt32 inOffset, WChar inChar) {
+  return TxtGlueSetNextChar(ioText, inOffset, inChar);
+}
+
+UInt16 TxtGlueCharSize(WChar inChar) {
+  return TxtCharSize(inChar);
+}
