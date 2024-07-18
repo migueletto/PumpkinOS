@@ -310,7 +310,7 @@ void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt1
       AppRegistryProcess(ar, creator, id, seq, AppRegistryPositionCallback, p, sizeof(AppRegistryPosition), true);
       break;
     case appRegistryNotification:
-      AppRegistryProcess(ar, creator, id, seq, AppRegistryNotificationCallback, p, 0, true);
+      AppRegistryProcess(ar, creator, id, seq, AppRegistryNotificationCallback, p, sizeof(AppRegistryNotification), true);
       break;
     default:
       break;
