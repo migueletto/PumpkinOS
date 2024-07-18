@@ -634,7 +634,6 @@ void StoRemoveLocks(char *path) {
         if (ent == NULL) break;
         if (ent->type != VFS_DIR) continue;
         if (ent->name[0] == '.') continue;
-        if (sys_strlen(ent->name) >= dmDBNameLength) continue;
         sys_snprintf(buf, VFS_PATH-1, "%s%s/lock", path, ent->name);
         StoVfsUnlink(session, buf);
       }
@@ -2072,7 +2071,6 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
           debug(DEBUG_TRACE, "STOR", "found resource at index %d", i);
           index = i;
           *dbPP = dbRef;
-          found = true;
 
           if (!(h->htype & STO_INFLATED)) {
             if ((h->buf = StoPtrNew(h, h->size, resType, resID)) != NULL) {
@@ -2116,6 +2114,74 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
       }
       err = errNone;
     }
+    mutex_unlock(sto->mutex);
+  }
+
+  StoCheckErr(err);
+  return index;
+}
+
+UInt16 DmSearchRecord(MemHandle recH, DmOpenRef *dbPP) {
+  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_db_t *db;
+  DmOpenType *dbRef;
+  vfs_file_t *f;
+  UInt16 index = 0xffff;
+  Boolean found;
+  char buf[VFS_PATH];
+  uint32_t i;
+  storage_handle_t *h = NULL;
+  Err err = dmErrResourceNotFound;
+
+  if (recH && dbPP && mutex_lock(sto->mutex) == 0) {
+    debug(DEBUG_TRACE, "STOR", "searching record handle %p", recH);
+
+    for (dbRef = sto->dbRef, found = false; dbRef && !found; dbRef = dbRef->next) {
+      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
+      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (db->ftype != STO_TYPE_REC) continue;
+
+      debug(DEBUG_TRACE, "STOR", "checking database \"%s\" (%d resources)", db->name, db->numRecs);
+      for (i = 0; i < db->numRecs; i++) {
+        h = db->elements[i];
+        found = (h == recH);
+        if (found) {
+          debug(DEBUG_TRACE, "STOR", "found record at index %d", i);
+          index = i;
+          *dbPP = dbRef;
+
+          if (!(h->htype & STO_INFLATED)) {
+            if ((h->buf = StoPtrNew(h, h->size, 0, 0)) != NULL) {
+              h->htype |= STO_INFLATED;
+              h->useCount = 1;
+              debug(DEBUG_TRACE, "STOR", "reading record %d at %p", i, h->buf);
+              storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
+              if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+                if (vfs_read(f, h->buf, h->size) == h->size) {
+                  h->d.rec.attr &= ~dmRecAttrDirty;
+                  h->d.rec.attr |= dmRecAttrBusy;
+                  h->lockCount = 0;
+                  err = errNone;
+                } else {
+                  h = NULL;
+                }
+                vfs_close(f);
+              } else {
+                h = NULL;
+              }
+            } else {
+              h = NULL;
+            }
+          } else {
+            h->useCount++;
+            err = errNone;
+          }
+
+          break;
+        }
+      }
+    }
+
     mutex_unlock(sto->mutex);
   }
 
