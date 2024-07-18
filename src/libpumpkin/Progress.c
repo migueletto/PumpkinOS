@@ -20,3 +20,6 @@ Boolean	PrgHandleEvent(ProgressPtr prgGP, EventType *eventP) {
   return 0;
 }
 
+void PrgUpdateDialog(ProgressPtr prgGP, UInt16 err, UInt16 stage, const Char *messageP, Boolean updateNow) {
+  debug(DEBUG_ERROR, "PALMOS", "PrgUpdateDialog not implemented");
+}
