@@ -464,7 +464,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmListObj:
         if (setUsable) obj.list->attr.usable = 1;
-        if (obj.list->attr.usable && formP->attr.visible) {
+        if (obj.list->attr.usable && obj.list->attr.visible) {
           LstDrawList(obj.list);
         }
         break;
