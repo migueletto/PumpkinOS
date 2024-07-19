@@ -571,20 +571,27 @@ Int16 LstPopupList(ListType *listP) {
           }
           break;
         case appStopEvent:
+          debug(DEBUG_TRACE, "List", "LstPopupList appStop");
           stop = true;
           break;
         case lstEnterEvent:
+          debug(DEBUG_TRACE, "List", "LstPopupList lstEnter");
           entered = true;
           break;
         case penDownEvent:
+          debug(DEBUG_TRACE, "List", "LstPopupList penDown");
           handled = LstHandleEvent(listP, &event);
           break;
         case penUpEvent:
+          debug(DEBUG_TRACE, "List", "LstPopupList penUp");
           if (entered) {
             handled = LstHandleEvent(listP, &event);
+          } else {
+            handled = true;
           }
           break;
         default:
+          debug(DEBUG_TRACE, "List", "LstPopupList event %d", event.eType);
           break;
       }
 
