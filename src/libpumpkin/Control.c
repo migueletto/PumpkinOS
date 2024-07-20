@@ -231,7 +231,7 @@ void CtlEraseControl(ControlType *controlP) {
       }
 
       WinEraseRectangle(&controlP->bounds, 0);
-      WinSetBackColor(oldf);
+      WinSetForeColor(oldf);
       WinSetBackColor(oldb);
       controlP->attr.visible = 0;
     }
