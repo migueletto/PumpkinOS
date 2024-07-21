@@ -1975,7 +1975,7 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
       for (i = 0; i < db->numRecs; i++) {
         h = db->elements[i];
         pumpkin_id2s(h->d.res.type, st);
-        debug(DEBUG_TRACE, "STOR", "DmGetResourceEx resource %d: %s %d", i, st, resID);
+        debug(DEBUG_TRACE, "STOR", "DmGetResourceEx resource %d: %s %d", i, st, h->d.res.id);
         if (h->d.res.type == type && h->d.res.id == resID) {
           debug(DEBUG_TRACE, "STOR", "DmGetResourceEx found resource %s %d inflated %d on \"%s\"", st, resID, (h->htype & STO_INFLATED) ? 1 : 0, db->name);
           found = 1;
