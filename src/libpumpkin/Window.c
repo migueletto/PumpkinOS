@@ -1803,7 +1803,8 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   Boolean v10;
   RectangleType rect;
   uint16_t ch;
-  uint32_t i, col, index, mult;
+  uint32_t i, col, mult;
+  int32_t index;
 
   if (module->drawWindow && chars && len > 0) {
     x0 = x;
@@ -1853,12 +1854,12 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       }
     } else {
       f2 = (FontTypeV2 *)f;
-      if (f2->densityCount >= 2 && f2->densities[0].density == kDensityLow && f2->densities[1].density == kDensityDouble) {
-        density = BmpGetDensity(WinGetBitmap(module->drawWindow));
-        prev = WinGetCoordinateSystem();
+      density = BmpGetDensity(WinGetBitmap(module->drawWindow));
+      prev = WinGetCoordinateSystem();
 
-        switch (density) {
-          case kDensityLow:
+      switch (density) {
+        case kDensityLow:
+          if (f2->densityCount >= 1 && f2->densities[0].density == kDensityLow) {
             index = 0; // low density font
             mult = 1;
             if (module->coordSys == kCoordinatesDouble) {
@@ -1866,37 +1867,49 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
               y >>= 1;
             }
             WinSetCoordinateSystem(kCoordinatesStandard);
-            break;
-          case kDensityDouble:
+          } else {
+            index = -1;
+          }
+          break;
+        case kDensityDouble:
+          if (f2->densityCount >= 2 && f2->densities[1].density == kDensityDouble) {
             index = 1; // double density font
+          } else if (f2->densityCount >= 1 && f2->densities[0].density == kDensityDouble) {
+            index = 0; // double density font
+          } else {
+            index = -1;
+          }
+          if (index >= 0) {
             mult = 2;
             if (module->coordSys == kCoordinatesStandard) {
               x <<= 1;
               y <<= 1;
             }
             WinSetCoordinateSystem(kCoordinatesDouble);
+          }
             break;
         }
 //debug(1, "XXX", "WinDrawCharsC(\"%.*s\", %d, %d) %p v2 density %d mode %d", len, chars, x, y, WinGetDrawWindow(), density, module->transferMode);
 //debug_bytes(1, "XXX", chars, len);
 
-        for (i = 0; i < len;) {
-          i += pumpkin_next_char(chars, i, &wch);
-          ch = pumpkin_map_char(wch, &f);
-          f2 = (FontTypeV2 *)f;
-          if (v10 && ch == 0x80) ch = 0x19; // numeric space
-          if (ch >= f2->firstChar && ch <= f2->lastChar) {
-            col = f2->column[ch - f2->firstChar]*mult;
-            RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
-            WinBlitBitmap(f2->bmp[index], module->drawWindow, &rect, x, y, module->transferMode, true);
-            x += f2->width[ch - f2->firstChar]*mult;
-          } else {
-            debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
-            x += MISSING_SYMBOL_WIDTH;
+        if (index >= 0) {
+          for (i = 0; i < len;) {
+            i += pumpkin_next_char(chars, i, &wch);
+            ch = pumpkin_map_char(wch, &f);
+            f2 = (FontTypeV2 *)f;
+            if (v10 && ch == 0x80) ch = 0x19; // numeric space
+            if (ch >= f2->firstChar && ch <= f2->lastChar) {
+              col = f2->column[ch - f2->firstChar]*mult;
+              RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
+              WinBlitBitmap(f2->bmp[index], module->drawWindow, &rect, x, y, module->transferMode, true);
+              x += f2->width[ch - f2->firstChar]*mult;
+            } else {
+              debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
+              x += MISSING_SYMBOL_WIDTH;
+            }
           }
+          WinSetCoordinateSystem(prev);
         }
-        WinSetCoordinateSystem(prev);
-      }
     }
 
     if (module->drawWindow == module->activeWindow) {
