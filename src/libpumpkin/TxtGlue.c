@@ -31,7 +31,7 @@ UInt16 TxtGlueGetNextChar(const Char* inText, UInt32 inOffset, WChar* outChar) {
 }
 
 UInt16 TxtGlueSetNextChar(Char* ioText, UInt32 inOffset, WChar inChar) {
-  return TxtGlueSetNextChar(ioText, inOffset, inChar);
+  return TxtSetNextChar(ioText, inOffset, inChar);
 }
 
 UInt16 TxtGlueCharSize(WChar inChar) {
