@@ -77,8 +77,6 @@ typedef struct {
   Boolean finish, top, deploy, reload;
   Int16 lastMinute;
   RectangleType gadRect, sclRect;
-  MemHandle fontHandle;
-  FontType *font;
   UInt32 filterDbType, filterCreator, filterResType, filterId;
   Boolean filterRsrc;
   LocalID dbID;
@@ -2855,6 +2853,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #endif
 {
   launcher_data_t *data;
+  MemHandle fontHandle;
+  FontType *font;
   UInt32 value;
 
   switch (cmd) {
@@ -2921,9 +2921,11 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   data->mode = launcher_app;
   data->filterId = 0xffffffff;
 
-  data->fontHandle = DmGetResource(fontExtRscType, fakeFnt);
-  data->font = MemHandleLock(data->fontHandle);
-  FntDefineFont(fakeMonoFont, data->font);
+  fontHandle = DmGetResource(fontExtRscType, fakeFnt);
+  font = MemHandleLock(fontHandle);
+  FntDefineFont(fakeMonoFont, font);
+  MemHandleUnlock(fontHandle);
+  DmReleaseResource(fontHandle);
 
   StrCopy(data->path, "/");
 
@@ -2942,9 +2944,6 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent, sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,  sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,  sysNotifyNormalPriority);
-
-  MemHandleUnlock(data->fontHandle);
-  DmReleaseResource(data->fontHandle);
 
   launcherResetItems(data);
   pumpkin_set_data(NULL);

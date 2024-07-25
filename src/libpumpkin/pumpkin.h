@@ -393,6 +393,8 @@ void RctAbsToRect(const AbsRectType *arP, RectangleType *rP);
 UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r);
 void RctGetUnion(const RectangleType *a, const RectangleType *b, RectangleType *r);
 
+FontPtr FntCopyFont(FontPtr f);
+void FntFreeFont(FontPtr f);
 void FntSaveFonts(void);
 
 Err HwrGetROMToken(UInt16 cardNo, UInt32 token, UInt8 **dataP, UInt16 *sizeP);

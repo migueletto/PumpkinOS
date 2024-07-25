@@ -105,6 +105,7 @@ typedef struct FontTagV2
   uint8_t *width;
   uint8_t **data;
   BitmapType **bmp;
+  uint32_t size;
 }
 #endif
 FontTypeV2;

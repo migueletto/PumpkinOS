@@ -232,6 +232,98 @@ UInt16 FntWordWrap(Char const *chars, UInt16 maxWidth) {
   return r;
 }
 
+FontPtr FntCopyFont(FontPtr f) {
+  FontType *f1;
+  FontTypeV2 *f2, *ff;
+  uint8_t *bits;
+  uint32_t j, glyph_len, glyph_offset;
+  Err err;
+
+  if (!f) return NULL;
+
+  if (f->v == 1) {
+    f1 = xcalloc(1, sizeof(FontType));
+    xmemcpy(f1, f, sizeof(FontType));
+    f1->column = xcalloc(f->lastChar - f->firstChar + 1, sizeof(uint16_t));
+    xmemcpy(f1->column, f->column, (f->lastChar - f->firstChar + 1) * sizeof(uint16_t));
+    f1->width = xcalloc(f->lastChar - f->firstChar + 1, sizeof(uint8_t));
+    xmemcpy(f1->width, f->width, (f->lastChar - f->firstChar + 1) * sizeof(uint8_t));
+    f1->data = xcalloc(1, f->pitch * f->fRectHeight);
+    xmemcpy(f1->data, f->data, f->pitch * f->fRectHeight);
+    f1->bmp = BmpCreate3(f->pitch*8, f->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+    bits = BmpGetBits(f1->bmp);
+    xmemcpy(bits, f->data, f->fRectHeight * f->pitch);
+    f = f1;
+  } else {
+    ff = (FontTypeV2 *)f;
+    f2 = xcalloc(1, sizeof(FontTypeV2));
+    xmemcpy(f2, ff, sizeof(FontTypeV2));
+    f2->densities = xcalloc(ff->densityCount, sizeof(FontDensityType));
+    xmemcpy(f2->densities, ff->densities, ff->densityCount * sizeof(FontDensityType));
+    f2->pitch = xcalloc(ff->densityCount, sizeof(uint16_t));
+    xmemcpy(f2->pitch, ff->pitch, ff->densityCount * sizeof(uint16_t));
+    f2->column = xcalloc(ff->lastChar - ff->firstChar + 1, sizeof(uint16_t));
+    xmemcpy(f2->column, ff->column, (ff->lastChar - ff->firstChar + 1) * sizeof(uint16_t));
+    f2->width = xcalloc(ff->lastChar - ff->firstChar + 1, sizeof(uint8_t));
+    xmemcpy(f2->width, ff->width, (ff->lastChar - ff->firstChar + 1) * sizeof(uint8_t));
+    f2->data = xcalloc(ff->densityCount, sizeof(uint8_t *));
+    f2->bmp = xcalloc(ff->densityCount, sizeof(BitmapType *));
+
+    for (j = 0; j < ff->densityCount; j++) {
+      glyph_offset = ff->densities[j].glyphBitsOffset;
+
+      switch (ff->densities[j].density) {
+        case kDensityLow:
+          glyph_len = ff->densities[1].glyphBitsOffset - ff->densities[0].glyphBitsOffset;
+          f2->data[j] = xcalloc(1, glyph_len);
+          xmemcpy(f2->data[j], ff->data[j], glyph_len);
+          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+          bits = BmpGetBits(f2->bmp[j]);
+          xmemcpy(bits, ff->data[j], ff->fRectHeight * ff->pitch[j]);
+          break;
+        case kDensityDouble:
+          glyph_len = ff->size - glyph_offset;
+          f2->data[j] = xcalloc(1, glyph_len);
+          xmemcpy(f2->data[j], ff->data[j], glyph_len);
+          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight*2, kDensityDouble, 1, true, 0, NULL, &err);
+          bits = BmpGetBits(f2->bmp[j]);
+          xmemcpy(bits, ff->data[j], ff->fRectHeight * 2 * ff->pitch[j]);
+          break;
+      }
+    }
+
+    f = (FontPtr)f2;
+  }
+
+  return f;
+}
+
+void FntFreeFont(FontPtr f) {
+  FontTypeV2 *ff;
+  uint32_t j;
+
+  if (f) {
+    if (f->v == 1) {
+      BmpDelete(f->bmp);
+      xfree(f->column);
+      xfree(f->width);
+      xfree(f->data);
+      xfree(f);
+    } else {
+      ff = (FontTypeV2 *)f;
+      for (j = 0; j < ff->densityCount; j++) {
+        BmpDelete(ff->bmp[j]);
+        xfree(ff->data[j]);
+      }
+      xfree(ff->densities);
+      xfree(ff->pitch);
+      xfree(ff->width);
+      xfree(ff->column);
+      xfree(ff);
+    }
+  }
+}
+
 Err FntDefineFont(FontID font, FontPtr fontP) {
   fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
   FontTypeV2 *f2;
@@ -239,13 +331,19 @@ Err FntDefineFont(FontID font, FontPtr fontP) {
 
   if (font >= 128 && font < 256) {
     if (fontP->v == 1) {
+      fontP = FntCopyFont(fontP);
+      if (module->fonts[font]) FntFreeFont(module->fonts[font]);
+      if (module->fontsv2[font]) FntFreeFont((FontPtr)module->fontsv2[font]);
       module->fonts[font] = fontP;
       module->fontsv2[font] = NULL;
       debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
       err = errNone;
 
     } else if (fontP->v == 2) {
+      fontP = FntCopyFont(fontP);
       f2 = (FontTypeV2 *)fontP;
+      if (module->fonts[font]) FntFreeFont(module->fonts[font]);
+      if (module->fontsv2[font]) FntFreeFont((FontPtr)module->fontsv2[font]);
       module->fonts[font] = NULL;
       module->fontsv2[font] = f2;
       debug(DEBUG_TRACE, "Font", "FntDefineFont: font %d version %d %p", font, fontP->v, fontP);
@@ -473,6 +571,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
 
   if ((font = StoNewDecodedResource(h, sizeof(FontTypeV2), 0, 0)) != NULL) {
     font->v = 2;
+    font->size = size;
     font->fontType = fontType;
     font->firstChar = firstChar;
     font->lastChar = lastChar;
