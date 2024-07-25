@@ -2543,6 +2543,21 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetShiftState(0x%04X, 0x%04X)", lockFlags, tempShift);
     }
       break;
+    case sysTrapGsiEnable: {
+      // void GsiEnable(const Boolean enableIt)
+      uint8_t enableIt = ARG8;
+      GsiEnable(enableIt);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GsiEnable(%d)", enableIt);
+    }
+      break;
+    case sysTrapGsiSetLocation: {
+      // void GsiSetLocation(const Int16 x, const Int16 y)
+      uint16_t x = ARG16;
+      uint16_t y = ARG16;
+      GsiSetLocation(x, y);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetLocation(%d, %d)", x, y);
+    }
+      break;
     case sysTrapErrExceptionList: {
       // MemPtr *ErrExceptionList(void)
       uint8_t *e = (uint8_t *)ErrExceptionList();
