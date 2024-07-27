@@ -33,6 +33,7 @@ typedef struct {
   UInt8 patternData[8];
   UnderlineModeType underlineMode; // XXX it is not being used. Change WinDrawChars() to use this attribute.
   UInt16 density, width, height, depth, depth0, coordSys;
+  Boolean nativeCoordSys;
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
@@ -2376,7 +2377,7 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
   UInt16 prev;
 
   debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem %d", coordSys);
-  prev = module->coordSys;
+  prev = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
 
   switch (coordSys) {
      case kCoordinatesNative:
@@ -2384,13 +2385,16 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
          case kDensityLow:       module->coordSys = kCoordinatesStandard;  break;
          case kDensityDouble:    module->coordSys = kCoordinatesDouble;    break;
        }
+       module->nativeCoordSys = true;
        break;
      case kCoordinatesStandard:
        module->coordSys = coordSys;
+       module->nativeCoordSys = false;
        break;
      case kCoordinatesDouble:
        if (module->density == kDensityDouble) {
          module->coordSys = coordSys;
+         module->nativeCoordSys = false;
        }
        break;
      default:
@@ -2404,7 +2408,7 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
 
 UInt16 WinGetCoordinateSystem(void) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
-  return module->coordSys;
+  return module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
 }
 
 Coord WinScaleCoord(Coord coord, Boolean ceiling) {
