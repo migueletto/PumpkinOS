@@ -89,8 +89,10 @@ WChar TxtGetChar(const Char *inText, UInt32 inOffset) {
 }
 
 UInt16 TxtSetNextChar(Char *ioText, UInt32 inOffset, WChar inChar) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtSetNextChar not implemented");
-  return 0;
+  if (ioText) {
+    ioText[inOffset] = inChar;
+  }
+  return 1;
 }
 
 UInt16 TxtReplaceStr(Char *ioStr, UInt16 inMaxLen, const Char *inParamStr, UInt16 inParamNum) {
