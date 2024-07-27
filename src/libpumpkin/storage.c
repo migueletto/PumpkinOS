@@ -104,6 +104,7 @@ typedef struct {
   UInt32 comparF68K;
   Int16 other;
   LocalID watchID;
+  storage_db_t *tmpDb;
 } storage_t;
 
 static void StoDecodeResource(storage_handle_t *res);
@@ -5082,6 +5083,10 @@ static int StoCompareHandle(const void *e1, const void *e2) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   storage_handle_t *h1, *h2;
   SortRecordInfoType r1, r2;
+  UInt8 *b1, *b2;
+  Boolean free1, free2;
+  vfs_file_t *f;
+  char buf[VFS_PATH];
   UInt8 *b;
   UInt32 a;
   int r = 0;
@@ -5089,6 +5094,32 @@ static int StoCompareHandle(const void *e1, const void *e2) {
   if (e1 && e2 && (sto->comparF || sto->comparF68K)) {
     h1 = *(storage_handle_t **)e1;
     h2 = *(storage_handle_t **)e2;
+
+    b1 = h1->buf;
+    free1 = false;
+    if (b1 == NULL) {
+      if ((b1 = pumpkin_heap_alloc(h1->size, "TmpHandleBuf")) != NULL) {
+        storage_name(sto, sto->tmpDb->name, STO_FILE_ELEMENT, 0, 0, h1->d.rec.attr & ATTR_MASK, h1->d.rec.uniqueID, buf);
+        if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+          vfs_read(f, b1, h1->size);
+          vfs_close(f);
+        }
+        free1 = true;
+      }
+    }
+
+    b2 = h2->buf;
+    free2 = false;
+    if (b2 == NULL) {
+      if ((b2 = pumpkin_heap_alloc(h2->size, "TmpHandleBuf")) != NULL) {
+        storage_name(sto, sto->tmpDb->name, STO_FILE_ELEMENT, 0, 0, h2->d.rec.attr & ATTR_MASK, h2->d.rec.uniqueID, buf);
+        if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+          vfs_read(f, b2, h2->size);
+          vfs_close(f);
+        }
+        free2 = true;
+      }
+    }
 
     if (sto->comparF) {
       r1.attributes = h1->d.rec.attr;
@@ -5101,7 +5132,7 @@ static int StoCompareHandle(const void *e1, const void *e2) {
       r2.uniqueID[1] = (h2->d.rec.uniqueID >>  8) & 0xFF;
       r2.uniqueID[2] = (h2->d.rec.uniqueID >>  0) & 0xFF;
 
-      r = sto->comparF(h1->buf, h2->buf, sto->other, &r1, &r2, sto->appInfoH);
+      r = sto->comparF(b1, b2, sto->other, &r1, &r2, sto->appInfoH);
 
     } else if (sto->comparF68K) {
       sto->recInfo[0] = h1->d.rec.attr;
@@ -5116,8 +5147,11 @@ static int StoCompareHandle(const void *e1, const void *e2) {
 
       b = sto->base;
       a = sto->appInfoH ? (UInt8 *)sto->appInfoH - b : 0;
-      r = CallDmCompare(sto->comparF68K, h1->buf ? h1->buf - b : 0, h2->buf ? h2->buf - b : 0, sto->other, &sto->recInfo[0] - b, &sto->recInfo[4] - b, a);
+      r = CallDmCompare(sto->comparF68K, b1 ? b1 - b : 0, b2 ? b2 - b : 0, sto->other, &sto->recInfo[0] - b, &sto->recInfo[4] - b, a);
     }
+
+    if (free1) pumpkin_heap_free(b1, "TmpHandleBuf");
+    if (free2) pumpkin_heap_free(b2, "TmpHandleBuf");
   }
 
   return r;
@@ -5145,8 +5179,10 @@ static Err StoSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 o
             sto->comparF68K = comparF68K;
             sto->other = other;
             sto->appInfoH = db->appInfoID ? MemLocalIDToHandle(db->appInfoID) : NULL;
+            sto->tmpDb = db;
             debug(DEBUG_INFO, "STOR", "StoSort sorting database \"%s\" with %d records (%s)", db->name, db->numRecs, comparF ? "native" : "68K");
             sys_qsort(db->elements, db->numRecs, sizeof(storage_handle_t *), StoCompareHandle);
+            sto->tmpDb = NULL;
             sto->comparF = NULL;
             sto->comparF68K = 0;
             sto->other = 0;
