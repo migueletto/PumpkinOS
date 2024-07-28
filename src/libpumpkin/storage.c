@@ -2818,6 +2818,8 @@ MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
   storage_db_t *db;
   DmOpenType *dbRef;
   void *p;
+  vfs_file_t *f;
+  char buf[VFS_PATH];
   storage_handle_t *h = NULL;
   Err err = dmErrInvalidParam;
 
@@ -2830,7 +2832,20 @@ MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
         if (h->htype & STO_INFLATED) {
           p = StoPtrNew(h, newSize, 0, 0);
           MemMove(p, h->buf, newSize < h->size ? newSize : h->size);
+          StoPtrFree(h->buf);
           h->buf = p;
+        } else {
+          if ((h->buf = StoPtrNew(h, newSize, 0, 0)) != NULL) {
+            h->htype |= STO_INFLATED;
+            h->useCount = 1;
+            storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
+            if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+              if (vfs_read(f, h->buf, newSize) == newSize) {
+                h->lockCount = 0;
+              }
+              vfs_close(f);
+            }
+          }
         }
         h->size = newSize;
         h->d.rec.attr &= ~dmRecAttrDirty;
