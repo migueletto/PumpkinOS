@@ -23,7 +23,7 @@ extern thread_key_t *fnt_key;
 static void FntSaveFont(FontPtr font, FontID id);
 
 static void adjust(Int16 *r) {
-  switch (WinGetCoordinateSystem()) {
+  switch (WinGetRealCoordinateSystem()) {
     case kCoordinatesDouble:    *r *= 2; break;
     case kCoordinatesQuadruple: *r *= 4; break;
   }

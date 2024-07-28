@@ -322,6 +322,7 @@ void WinLegacyWriteByte(UInt32 offset, UInt8 value);
 void WinLegacyWriteWord(UInt32 offset, UInt16 value);
 void WinLegacyWriteLong(UInt32 offset, UInt32 value);
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
+UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 
 int PrefInitModule(void);

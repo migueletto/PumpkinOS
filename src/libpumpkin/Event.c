@@ -200,19 +200,19 @@ static void adjustCoords(Coord *x, Coord *y) {
 
    switch (density) {
      case kDensityLow:
-       switch (WinGetCoordinateSystem()) {
+       switch (WinGetRealCoordinateSystem()) {
          case kCoordinatesDouble:    *x *= 2; *y *= 2; break;
          case kCoordinatesQuadruple: *x *= 4; *y *= 4; break;
        }
        break;
      case kDensityDouble:
-       switch (WinGetCoordinateSystem()) {
+       switch (WinGetRealCoordinateSystem()) {
          case kCoordinatesStandard:  *x /= 2; *y /= 2; break;
          case kCoordinatesQuadruple: *x *= 2; *y *= 2; break;
        }
        break;
      case kDensityQuadruple:
-       switch (WinGetCoordinateSystem()) {
+       switch (WinGetRealCoordinateSystem()) {
          case kCoordinatesStandard:  *x /= 4; *y /= 4; break;
          case kCoordinatesDouble:    *x /= 2; *y /= 2; break;
        }
