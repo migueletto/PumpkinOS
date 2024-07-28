@@ -2840,15 +2840,14 @@ MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
             h->useCount = 1;
             storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-              if (vfs_read(f, h->buf, newSize) == newSize) {
-                h->lockCount = 0;
-              }
+              vfs_read(f, h->buf, newSize < h->size ? newSize : h->size);
               vfs_close(f);
             }
+            h->lockCount = 0;
           }
         }
         h->size = newSize;
-        h->d.rec.attr &= ~dmRecAttrDirty;
+        h->d.rec.attr |= dmRecAttrDirty;
         db->modDate = TimGetSeconds();
         err = errNone;
       }
