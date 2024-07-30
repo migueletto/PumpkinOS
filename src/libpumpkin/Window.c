@@ -1003,7 +1003,7 @@ void WinErasePixel(Coord x, Coord y) {
 #define invertPrefix() \
     WinDrawOperation prevMode = WinSetDrawMode(winInvert); \
     UInt16 prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard); \
-    Boolean isDouble = prevCoordSys == kCoordinatesDouble; \
+    Boolean isDouble = (prevCoordSys == kCoordinatesDouble) || (prevCoordSys == kCoordinatesNative && module->density == kDensityDouble); \
     RGBColorType back, white; \
     white.r = white.g = white.b = 0xFF; \
     WinSetBackColorRGB(&white, &back); \
@@ -2928,7 +2928,7 @@ void WinPushDrawState(void) {
     module->state[module->numPush].foreColorRGB = module->foreColorRGB;
     module->state[module->numPush].backColorRGB = module->backColorRGB;
     module->state[module->numPush].textColorRGB = module->textColorRGB;
-    module->state[module->numPush].coordinateSystem = module->coordSys;
+    module->state[module->numPush].coordinateSystem = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
     module->state[module->numPush].fontId = FntGetFont();
     WinGetPattern(&module->state[module->numPush].patternData);
     module->numPush++;
@@ -2957,7 +2957,13 @@ void WinPopDrawState(void) {
     module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
     module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
     module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
-    module->coordSys = module->state[module->numPush].coordinateSystem;
+    if (module->state[module->numPush].coordinateSystem == kCoordinatesNative) {
+      module->coordSys = module->density == kDensityLow ? kCoordinatesStandard : kCoordinatesDouble;
+      module->nativeCoordSys = true;
+    } else {
+      module->coordSys = module->state[module->numPush].coordinateSystem;
+      module->nativeCoordSys = false;
+    }
     FntSetFont(module->state[module->numPush].fontId);
 
   } else {
