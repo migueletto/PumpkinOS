@@ -150,34 +150,41 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             event.data.sclEnter.pScrollBar = bar;
             EvtAddEventToQueue(&event);
             debug(DEBUG_TRACE, "Form", "scrollBar %d enter", bar->id);
+
+            // not sure hilighted is used for anything else, but it is necessary to
+            // register if a penDown occurred inside the ScrollBar so that penUp
+            // is handled correctly.
+            bar->attr.hilighted = true;
+
             handled = true;
           }
         }
         break;
 
       case penUpEvent:
-        // assuming a penUp event always exits a scrollBar
+        if (bar->attr.hilighted) {
+          if (screenY < bar->bounds.topLeft.y) {
+            screenY = bar->bounds.topLeft.y;
+          } else if (screenY >= bar->bounds.topLeft.y + bar->bounds.extent.y) {
+            screenY = bar->bounds.topLeft.y + bar->bounds.extent.y - 1;
+          }
+          y = screenY - bar->bounds.topLeft.y;
+          value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
+          if (value > bar->maxValue) value = bar->maxValue;
+          if (value < bar->minValue) value = bar->minValue;
 
-        if (screenY < bar->bounds.topLeft.y) {
-          screenY = bar->bounds.topLeft.y;
-        } else if (screenY >= bar->bounds.topLeft.y + bar->bounds.extent.y) {
-          screenY = bar->bounds.topLeft.y + bar->bounds.extent.y - 1;
+          MemSet(&event, sizeof(EventType), 0);
+          event.eType = sclExitEvent;
+          event.screenX = eventP->screenX;
+          event.screenY = screenY;
+          event.data.sclExit.scrollBarID = bar->id;
+          event.data.sclExit.pScrollBar = bar;
+          event.data.sclExit.value = value;
+          event.data.sclExit.newValue = value;
+          EvtAddEventToQueue(&event);
+          handled = true;
         }
-        y = screenY - bar->bounds.topLeft.y;
-        value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
-        if (value > bar->maxValue) value = bar->maxValue;
-        if (value < bar->minValue) value = bar->minValue;
-
-        MemSet(&event, sizeof(EventType), 0);
-        event.eType = sclExitEvent;
-        event.screenX = eventP->screenX;
-        event.screenY = screenY;
-        event.data.sclExit.scrollBarID = bar->id;
-        event.data.sclExit.pScrollBar = bar;
-        event.data.sclExit.value = value;
-        event.data.sclExit.newValue = value;
-        EvtAddEventToQueue(&event);
-        handled = true;
+        bar->attr.hilighted = false;
         break;
 
       case penMoveEvent:
