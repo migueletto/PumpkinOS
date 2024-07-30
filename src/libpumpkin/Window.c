@@ -2726,22 +2726,22 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
         case winUp:
 //debug(1, "XXX", "WinScrollRectangle %p (%d,%d,%d,%d) %d", module->drawWindow, rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, distance);
           RctSetRectangle(&rect, rP->topLeft.x, rP->topLeft.y + distance, rP->extent.x, rP->extent.y - distance);
-          WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y, winPaint);
+          if (rect.extent.y > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x, rP->topLeft.y + rP->extent.y - distance, rP->extent.x, distance);
           break;
         case winDown:
           RctSetRectangle(&rect, rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y - distance);
-          WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y + distance, winPaint);
+          if (rect.extent.y > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y + distance, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x, rP->topLeft.y, rP->extent.x, distance);
           break;
         case winLeft:
           RctSetRectangle(&rect, rP->topLeft.x + distance, rP->topLeft.y, rP->extent.x - distance, rP->extent.y);
-          WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y, winPaint);
+          if (rect.extent.x > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x + rP->extent.x - distance, rP->topLeft.y, distance, rP->extent.y);
           break;
         case winRight:
           RctSetRectangle(&rect, rP->topLeft.y, rP->topLeft.x, rP->extent.x - distance, rP->extent.y);
-          WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x + distance, rP->topLeft.y, winPaint);
+          if (rect.extent.x > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x + distance, rP->topLeft.y, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x, rP->topLeft.y, distance, rP->extent.y);
           break;
       }
