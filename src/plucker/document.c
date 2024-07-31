@@ -2059,8 +2059,8 @@ YOffset GetSequenceHeight( void )
     MetaRecord* meta;
     YOffset     height;
     meta   = MemHandleLock( metaRecord );
-debug(1, "XXX", "GetSequenceHeight metaRecord");
-debug_bytes(1, "XXX", (UInt8 *)meta, sizeof(MetaRecord));
+//debug(1, "XXX", "GetSequenceHeight metaRecord");
+//debug_bytes(1, "XXX", (UInt8 *)meta, sizeof(MetaRecord));
     height = meta->height + estimatedHeight[ DIRECTION_UP ] + 
                  estimatedHeight[ DIRECTION_DOWN ];
     MemHandleUnlock( metaRecord );
