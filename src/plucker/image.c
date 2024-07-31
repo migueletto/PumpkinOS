@@ -131,14 +131,19 @@ static BitmapType *ImageLock(ImageType *image) {
   if (image && imagesRef) {
     if (image->imgHandle) {
       bmp = MemHandleLock(image->imgHandle);
-//debug(1, "XXX", "ImageLock image=%p bmp=%p", image, bmp);
+//debug(1, "XXX", "ImageLock   image %p ref %d bmp %p", image, image->reference, bmp);
     } else if (image->data.bitmapHandle) {
-      rec = MemHandleLock(image->data.bitmapHandle);
-//debug(1, "XXX", "ImageLock image=%p handle=%p rec=%p", image, image->data.bitmapHandle, rec);
-//debug_bytes(1, "XXX", rec, 128);
-      size = MemHandleSize(image->data.bitmapHandle);
-      image->imgHandle = DmNewResourceEx(imagesRef, bitmapRsc, image->reference, size, rec);
-      index = DmFindResource(imagesRef, bitmapRsc, image->reference, image->imgHandle);
+      index = DmFindResource(imagesRef, bitmapRsc, image->reference, NULL);
+      if (index == 0xffff) {
+//debug(1, "XXX", "ImageLock   image %p ref %d load", image, image->reference);
+        rec = MemHandleLock(image->data.bitmapHandle);
+        size = MemHandleSize(image->data.bitmapHandle);
+        image->imgHandle = DmNewResourceEx(imagesRef, bitmapRsc, image->reference, size, rec);
+        index = DmFindResource(imagesRef, 0, 0, image->imgHandle);
+      } else {
+//debug(1, "XXX", "ImageLock   image %p ref %d reuse", image, image->reference);
+        MemHandleLock(image->data.bitmapHandle);
+      }
       image->imgHandle = DmGetResourceIndex(imagesRef, index);
       bmp = MemHandleLock(image->imgHandle);
 //debug(1, "XXX", "ImageLock image=%p rec=%p size=%d handle=%d index=%d bmp=%p", image, rec, size, image->imgHandle, index, bmp);
@@ -149,15 +154,15 @@ static BitmapType *ImageLock(ImageType *image) {
 }
 
 static void ImageUnlock(ImageType *image) {
-  UInt16 index;
+  //UInt16 index;
 
   if (image && imagesRef) {
-//debug(1, "XXX", "ImageUnlock image=%p", image);
+//debug(1, "XXX", "ImageUnlock image %p ref %d", image, image->reference);
     if (image->imgHandle) {
       MemHandleUnlock(image->imgHandle);
       DmReleaseResource(image->imgHandle);
-      index = DmFindResource(imagesRef, bitmapRsc, image->reference, image->imgHandle);
-      DmRemoveResource(imagesRef, index);
+      //index = DmFindResource(imagesRef, 0, 0, image->imgHandle);
+      //DmRemoveResource(imagesRef, index);
       image->imgHandle = NULL;
     }
     if (image->data.bitmapHandle) {
@@ -213,7 +218,7 @@ void GetImageMetrics
         *width  = image->width;
         *height = image->height;
     }
-debug(1, "XXX", "GetImageMetrics         image %p ref %d type %d %dx%d", image, image->reference, image->type, image->width, image->height);
+//debug(1, "XXX", "GetImageMetrics         image %p ref %d type %d %dx%d", image, image->reference, image->type, image->width, image->height);
 
     if ( ! HasCacheNode( IMAGEHANDLE, image->reference ) &&
          image->type != MULTIIMAGE ) {
@@ -300,8 +305,8 @@ static void DrawInlineImageByHandle
                   image->reference, tContext->cursorX,
                   (Int16)tContext->cursorY - image->height, image->width,
                   image->height ) );
-debug(1, "XXX", "DrawInlineImage         image %p ref %d type %d dim %d,%d at %d,%d",
-  image, image->reference, image->type, image->width, image->height, tContext->cursorX, tContext->cursorY - image->height);
+//debug(1, "XXX", "DrawInlineImage         image %p ref %d type %d dim %d,%d at %d,%d",
+  //image, image->reference, image->type, image->width, image->height, tContext->cursorX, tContext->cursorY - image->height);
             RotDrawBitmap( image->bitmap, tContext->cursorX,
                 tContext->cursorY - image->height );
         }
@@ -443,7 +448,7 @@ MemHandle GetImageHandle
             image->err = errBadImageType;
             break;
     }
-debug(1, "XXX", "GetImageHandle          image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "GetImageHandle          image %p ref %d type %d", image, image->reference, image->type);
 
     if ( image->err == errNone ) {
         if ( image->type == MULTIIMAGE ) {
@@ -530,7 +535,7 @@ debug(1, "XXX", "GetImageHandle          image %p ref %d type %d", image, image-
                 else {
                     BmpGlueGetDimensions( image->bitmap, &image->width,
                         &image->height, NULL );
-debug(1, "XXX", "BmpGlueGetDimensions    image %p ref %d type %d dim %d,%d", image, image->reference, image->type, image->width, image->height);
+//debug(1, "XXX", "BmpGlueGetDimensions    image %p ref %d type %d dim %d,%d", image, image->reference, image->type, image->width, image->height);
                     image->pixelDepth = BmpGlueGetBitDepth( image->bitmap );
                     if ( GetMaxBitDepth() < image->pixelDepth )
                         image->err = errImageTooHighBitDepth;
@@ -594,7 +599,7 @@ void SaveImageInStorageCache
     if ( image == NULL || image->err != errNone )
         return;
 
-debug(1, "XXX", "SaveImageInStorageCache image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "SaveImageInStorageCache image %p ref %d type %d", image, image->reference, image->type);
     if ( Support40() ) {
         BmpGetSizes( image->bitmap, &bmpDataSize, &bmpHeaderSize );
         separateData = true;
@@ -653,7 +658,7 @@ void SetImageHandleType
 
     ReleaseImageHandle( imageHandle, KEEPALIVE_CACHE );
     image = MemHandleLock( imageHandle );
-debug(1, "XXX", "SetImageHandleType      image %p ref %d type %d -> %d", image, image->reference, image->type, type);
+//debug(1, "XXX", "SetImageHandleType      image %p ref %d type %d -> %d", image, image->reference, image->type, type);
     image->type = type;
     switch ( image->type ) {
         case DIRECT:
@@ -692,7 +697,7 @@ ImageType* LockImage
     actualImage = false;
 
     if ( image->err == errNone ) {
-debug(1, "XXX", "LockImage               image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "LockImage               image %p ref %d type %d", image, image->reference, image->type);
         switch ( image->type ) {
             case DIRECT:
             case OPTIMIZED:
@@ -743,7 +748,7 @@ MemHandle UnlockImage
     if ( image == NULL )
         return NULL;
 
-debug(1, "XXX", "UnlockImage             image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "UnlockImage             image %p ref %d type %d", image, image->reference, image->type);
     if ( image->err == errNone ) {
         switch ( image->type ) {
             case UNCOMPRESSED:
@@ -829,7 +834,7 @@ void FreeImageHandle
 
     /* Lock imageHandle one last time to free any remaining artifacts */
     image = MemHandleLock( *imageHandle );
-debug(1, "XXX", "FreeImageHandle         image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "FreeImageHandle         image %p ref %d type %d", image, image->reference, image->type);
     MSG( _( "freeing image refID %ld (type %d)\n", image->reference,
           image->type ) );
     if ( image->recordHandle != NULL ) {
@@ -974,7 +979,7 @@ Boolean OptimizeImage_OS35
     MSG( _( "Optimizing Image...\n" ) );
     MSG( _( "Before: %dx%dx%d (%ld bytes)\n", image->width, image->height,
         image->pixelDepth, (UInt32) BmpBitsSize( image->bitmap ) ) );
-debug(1, "XXX", "OptimizeImage_OS35      image %p ref %d type %d", image, image->reference, image->type);
+//debug(1, "XXX", "OptimizeImage_OS35      image %p ref %d type %d", image, image->reference, image->type);
 
     if ( image->pixelDepth <= Prefs()->screenDepth ) {
         MSG( _( "Image cannot be optimized further\n" ) );
