@@ -16,8 +16,10 @@
 *.prc
 *.pdb
 *.log
+*.pyc
 res
 zig-cache
 !/lib/*
 !/lib32/*
 !/vfs/app_card/PALM/Programs/Command/
+!/src/plucker/fonts/*
