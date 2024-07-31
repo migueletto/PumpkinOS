@@ -1503,17 +1503,27 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
 
         } else {
           // copy an arbitraty rectangle (generic case)
-          srcLineSize = srcWidth * pixelSize;
-          dstLineSize = dstWidth * pixelSize;
-          srcOffset = srcRect->topLeft.y * srcLineSize + srcRect->topLeft.x * pixelSize;
-          dstOffset = dstRect.topLeft.y * dstLineSize + dstRect.topLeft.x * pixelSize;
-          srcBits += srcOffset;
-          dstBits += dstOffset;
-          len = srcRect->extent.x * pixelSize;
-          for (y = 0; y < srcRect->extent.y; y++) {
-            MemMove(dstBits, srcBits, len);
-            srcBits += srcLineSize;
-            dstBits += dstLineSize;
+          if (srcRect->topLeft.y < 0) {
+            srcRect->extent.y += srcRect->topLeft.y;
+            srcRect->topLeft.y = 0;
+          }
+          if (srcRect->topLeft.x < 0) {
+            srcRect->extent.x += srcRect->topLeft.x;
+            srcRect->topLeft.x = 0;
+          }
+          if (srcRect->extent.x > 0 && srcRect->extent.y > 0) {
+            srcLineSize = srcWidth * pixelSize;
+            dstLineSize = dstWidth * pixelSize;
+            srcOffset = srcRect->topLeft.y * srcLineSize + srcRect->topLeft.x * pixelSize;
+            dstOffset = dstRect.topLeft.y * dstLineSize + dstRect.topLeft.x * pixelSize;
+            srcBits += srcOffset;
+            dstBits += dstOffset;
+            len = srcRect->extent.x * pixelSize;
+            for (y = 0; y < srcRect->extent.y; y++) {
+              MemMove(dstBits, srcBits, len);
+              srcBits += srcLineSize;
+              dstBits += dstLineSize;
+            }
           }
         }
       }
