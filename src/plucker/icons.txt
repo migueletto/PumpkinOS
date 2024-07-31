@@ -1,0 +1,16 @@
+1006  menu_x2-8bpp.bmp
+1003  library_x2-8bpp.bmp
+1008  bookmark_x2-8bpp.bmp
+
+1004  find_x2-8bpp.bmp  (left part of glasses)
+1005  again_x2-8bpp.bmp (right part of glasses)
+
+1012  autodecr_x2-8bpp.bmp
+1010  autostop_x2-8bpp.bmp  \ at the same place
+1009  autostart_x2-8bpp.bmp /
+1011  autoincr_x2-8bpp.bmp
+
+1001  left_x2-8bpp.bmp
+2000  bubble_x2-8bpp.bmp \ at the same place
+1000  home_x2-8bpp.bmp   /
+1002  right_x2-8bpp.bmp
