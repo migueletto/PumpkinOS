@@ -109,6 +109,37 @@ typedef struct {
 
 static void StoDecodeResource(storage_handle_t *res);
 
+static const char *errorCodes[] = {
+  "dmErrMemError",
+  "dmErrIndexOutOfRange",
+  "dmErrInvalidParam",
+  "dmErrReadOnly",
+  "dmErrDatabaseOpen",
+  "dmErrCantOpen",
+  "dmErrCantFind",
+  "dmErrRecordInWrongCard",
+  "dmErrCorruptDatabase",
+  "dmErrRecordDeleted",
+  "dmErrRecordArchived",
+  "dmErrNotRecordDB",
+  "dmErrNotResourceDB",
+  "dmErrROMBased",
+  "dmErrRecordBusy",
+  "dmErrResourceNotFound",
+  "dmErrNoOpenDatabase",
+  "dmErrInvalidCategory",
+  "dmErrNotValidRecord",
+  "dmErrWriteOutOfBounds",
+  "dmErrSeekFailed",
+  "dmErrAlreadyOpenForWrites",
+  "dmErrOpenedByAnotherTask",
+  "dmErrUniqueIDNotFound",
+  "dmErrAlreadyExists",
+  "dmErrInvalidDatabaseName",
+  "dmErrDatabaseProtected",
+  "dmErrDatabaseNotProtected"
+};
+
 extern thread_key_t *sto_key;
 
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
@@ -826,21 +857,16 @@ Err DmInit(void) {
   return errNone;
 }
 
-static void check_err(Err err) {
-  /*
-  if (err == dmErrCantFind) {
-    debug(1, "XXX", "dmErrCantFind");
+static const char *errorMessage(Err err) {
+  if (err >= dmErrMemError && err <= dmErrDatabaseNotProtected) {
+    return errorCodes[err - dmErrorClass - 1];
   }
-  if (err == memErrInvalidParam) {
-    debug(1, "XXX", "memErrInvalidParam");
-  }
-  */
+  return "unknown";
 }
 
 #define StoCheckErr(err) \
-  check_err(err);        \
   sto->lastErr = err; \
-  if (err) debug(DEBUG_ERROR, "STOR", "error 0x%04X", err);
+  if (err) debug(DEBUG_ERROR, "STOR", "%s: error %s (0x%04X)", __FUNCTION__, errorMessage(err), err);
 
 static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
   storage_db_t *db = NULL;
