@@ -10,7 +10,7 @@ void SclGetScrollBar(const ScrollBarType *bar, Int16 *valueP, Int16 *minP, Int16
     if (minP) *minP = bar->minValue;
     if (maxP) *maxP = bar->maxValue;
     if (pageSizeP) *pageSizeP = bar->pageSize;
-    debug(DEBUG_TRACE, "Form", "SclGetScrollBar value=%d, min=%d, max=%d, page=%d", bar->value, bar->minValue, bar->maxValue, bar->pageSize);
+    debug(DEBUG_TRACE, "Scroll", "SclGetScrollBar value=%d, min=%d, max=%d, page=%d", bar->value, bar->minValue, bar->maxValue, bar->pageSize);
   }
 }
 
@@ -18,7 +18,7 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
   Boolean redraw;
 
   if (bar && value >= 0 && min >= 0 && max >= min && pageSize >= 0) {
-    debug(DEBUG_TRACE, "Form", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
+    debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
 
     if (bar->value != value) {
       bar->value = value;
@@ -58,7 +58,7 @@ void SclDrawScrollBar(ScrollBarType *bar) {
   UInt16 numPages, h, y, ah;
 
   if (bar) {
-    debug(DEBUG_TRACE, "Form", "SclDrawScrollBar min=%d max=%d (%d,%d,%d,%d)", bar->minValue, bar->maxValue, bar->bounds.topLeft.x, bar->bounds.topLeft.y, bar->bounds.extent.x, bar->bounds.extent.y);
+    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d (%d,%d,%d,%d)", bar->minValue, bar->value, bar->maxValue, bar->bounds.topLeft.x, bar->bounds.topLeft.y, bar->bounds.extent.x, bar->bounds.extent.y);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     oldb = WinSetBackColor(formFill);
     WinEraseRectangle(&bar->bounds, 0);
@@ -109,13 +109,15 @@ void SclDrawScrollBar(ScrollBarType *bar) {
       WinSetForeColor(oldf);
     }
     WinSetBackColor(oldb);
-    debug(DEBUG_TRACE, "Form", "SclDrawScrollBar end");
+    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar end");
   }
 }
 
 static void SclAddRepeatEvent(ScrollBarType *bar, UInt16 value) {
   EventType event;
 
+  debug(DEBUG_TRACE, "Scroll", "SclAddRepeatEvent value %d (%d)", value, bar->value);
+  MemSet(&event, sizeof(EventType), 0);
   event.eType = sclRepeatEvent;
   event.data.sclRepeat.scrollBarID = bar->id;
   event.data.sclRepeat.pScrollBar = bar;
@@ -123,9 +125,6 @@ static void SclAddRepeatEvent(ScrollBarType *bar, UInt16 value) {
   event.data.sclRepeat.newValue = value;
   event.data.sclRepeat.time = TimGetTicks();
   EvtAddEventToQueue(&event);
-
-  bar->value = value;
-  SclDrawScrollBar(bar);
 }
 
 Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
@@ -149,7 +148,7 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             event.data.sclEnter.scrollBarID = bar->id;
             event.data.sclEnter.pScrollBar = bar;
             EvtAddEventToQueue(&event);
-            debug(DEBUG_TRACE, "Form", "scrollBar %d enter", bar->id);
+            debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d enter", bar->id);
 
             // not sure hilighted is used for anything else, but it is necessary to
             // register if a penDown occurred inside the ScrollBar so that penUp
@@ -169,9 +168,14 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             screenY = bar->bounds.topLeft.y + bar->bounds.extent.y - 1;
           }
           y = screenY - bar->bounds.topLeft.y;
-          value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
-          if (value > bar->maxValue) value = bar->maxValue;
-          if (value < bar->minValue) value = bar->minValue;
+
+          if (y >= ah && y < bar->bounds.extent.y - ah) {
+            value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
+            if (value > bar->maxValue) value = bar->maxValue;
+            if (value < bar->minValue) value = bar->minValue;
+          } else {
+            value = bar->value;
+          }
 
           MemSet(&event, sizeof(EventType), 0);
           event.eType = sclExitEvent;
@@ -196,6 +200,7 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
         // fall through
 
       case sclEnterEvent:
+        debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclEnterEvent");
         y = screenY - bar->bounds.topLeft.y;
         MemSet(&event, sizeof(EventType), 0);
         event.screenX = eventP->screenX;
@@ -203,13 +208,13 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
 
         if (y < ah) {
           // top arrow
-          debug(DEBUG_TRACE, "Form", "scrollBar %d top arrow", bar->id);
+          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d top arrow", bar->id);
           if (bar->value > bar->minValue) {
             SclAddRepeatEvent(bar, bar->value-1);
           }
         } else if (y >= bar->bounds.extent.y - ah) {
           // bottom arrow
-          debug(DEBUG_TRACE, "Form", "scrollBar %d bottom arrow", bar->id);
+          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d bottom arrow", bar->id);
           if (bar->value < bar->maxValue) {
             SclAddRepeatEvent(bar, bar->value+1);
           }
@@ -218,13 +223,24 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
           value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
           if (value > bar->maxValue) value = bar->maxValue;
           if (value < bar->minValue) value = bar->minValue;
-          debug(DEBUG_TRACE, "Form", "scrollBar %d rod value %d (%d)", bar->id, value, bar->value);
+          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d rod value %d (%d)", bar->id, value, bar->value);
           if (value != bar->value) {
             SclAddRepeatEvent(bar, value);
           }
         }
         handled = true;
         break;
+
+      case sclRepeatEvent:
+        debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent scrollBar %d value %d (%d)", bar->id, eventP->data.sclRepeat.newValue, bar->value);
+        if (eventP->data.sclRepeat.scrollBarID == bar->id) {
+          bar->value = eventP->data.sclRepeat.newValue;
+          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent draw %d", bar->value);
+          SclDrawScrollBar(bar);
+          handled = true;
+        }
+        break;
+
       default:
         break;
     }
