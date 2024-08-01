@@ -475,7 +475,7 @@ static Boolean HandleScrollbar
         trueStartingValue = ScrollbarScale( startingValue );
     }
     else if ( event->eType == sclExitEvent ) {
-        newPosition = ScrollbarScale( event->data.sclRepeat.newValue );
+        newPosition = ScrollbarScale( event->data.sclExit.newValue );
         delta = trueStartingValue - newPosition;
     }
     else {
