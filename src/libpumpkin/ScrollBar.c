@@ -97,6 +97,7 @@ void SclDrawScrollBar(ScrollBarType *bar) {
       // car
       numPages = (bar->maxValue - bar->minValue + 1 + bar->pageSize) / bar->pageSize;
       h = (bar->bounds.extent.y - 2*ah - 2) / numPages;
+      if (h < 1) h = 1;
       y = ((bar->value - bar->minValue) * (bar->bounds.extent.y - 2*ah - 2 - h)) / (bar->maxValue - bar->minValue);
       rect.topLeft.y = bar->bounds.topLeft.y + ah + 1 + y;
       rect.extent.y = h;
