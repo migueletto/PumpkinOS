@@ -586,7 +586,7 @@ void WinGetClip(RectangleType *rP) {
       y2 = y2 >> 1;
     }
 
-    if (x1 < x2 && y1 < y2) {
+    if (x1 <= x2 && y1 <= y2) {
       RctSetRectangle(rP, x1, y1, x2 - x1 + 1, y2 - y1 + 1);
     } else {
       RctSetRectangle(rP, 0, 0, 0, 0);
