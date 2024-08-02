@@ -1,0 +1,2 @@
+# example of PyPlucker usage:
+python2 PyPlucker/Spider.py -f WarOfTheWorlds -M 1 -V 2 --maxwidth=310 --bpp=8 --stayonhost 'https://www.gutenberg.org/cache/epub/36/pg36-images.html'
