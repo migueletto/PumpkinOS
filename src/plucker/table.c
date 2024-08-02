@@ -1328,7 +1328,7 @@ Boolean LoadTable
             if ( Support35() && 1 < pieces ) {
                 AddPtrToCache( IMAGEHANDLE, dynamicUid, subTableHandle,
                                FreeImageHandle );
-                SaveImageInStorageCache( subTableHandle );
+                //SaveImageInStorageCache( subTableHandle );
                 if ( convert ) {
                     BmpDelete( bitmap );
                     PortableBmpDelete( oldBitmap );
@@ -1394,7 +1394,7 @@ Boolean LoadTable
             tablePtr            = MemHandleLock( fsTableHandle );
             tablePtr->reference = record->uid;
             MemHandleUnlock( fsTableHandle );
-            SaveImageInStorageCache( fsTableHandle );
+            //SaveImageInStorageCache( fsTableHandle );
             if ( convert ) {
                 BmpDelete( bitmap );
                 PortableBmpDelete( oldBitmap );

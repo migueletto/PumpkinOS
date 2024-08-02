@@ -31,7 +31,7 @@
 #include "history.h"
 #include "hires.h"
 #include "list.h"
-#include "loadbar.h"
+//#include "loadbar.h"
 #include "mainform.h"
 #include "os.h"
 #include "paragraph.h"
@@ -129,6 +129,9 @@ static BitmapType *ImageLock(ImageType *image) {
   UInt16 index;
 
   if (image && imagesRef) {
+    if (image->data.bitmapHandle) {
+      rec = MemHandleLock(image->data.bitmapHandle);
+    }
     if (image->imgHandle) {
       bmp = MemHandleLock(image->imgHandle);
 //debug(1, "XXX", "ImageLock   image %p ref %d bmp %p", image, image->reference, bmp);
@@ -136,17 +139,13 @@ static BitmapType *ImageLock(ImageType *image) {
       index = DmFindResource(imagesRef, bitmapRsc, image->reference, NULL);
       if (index == 0xffff) {
 //debug(1, "XXX", "ImageLock   image %p ref %d load", image, image->reference);
-        rec = MemHandleLock(image->data.bitmapHandle);
         size = MemHandleSize(image->data.bitmapHandle);
         image->imgHandle = DmNewResourceEx(imagesRef, bitmapRsc, image->reference, size, rec);
         index = DmFindResource(imagesRef, 0, 0, image->imgHandle);
-      } else {
-//debug(1, "XXX", "ImageLock   image %p ref %d reuse", image, image->reference);
-        MemHandleLock(image->data.bitmapHandle);
       }
       image->imgHandle = DmGetResourceIndex(imagesRef, index);
       bmp = MemHandleLock(image->imgHandle);
-//debug(1, "XXX", "ImageLock image=%p rec=%p size=%d handle=%d index=%d bmp=%p", image, rec, size, image->imgHandle, index, bmp);
+//debug(1, "XXX", "ImageLock image=%p rec=%p size=%d handle=%p index=%d bmp=%p", image, rec, size, image->imgHandle, index, bmp);
     }
   }
 
@@ -154,16 +153,10 @@ static BitmapType *ImageLock(ImageType *image) {
 }
 
 static void ImageUnlock(ImageType *image) {
-  //UInt16 index;
-
   if (image && imagesRef) {
 //debug(1, "XXX", "ImageUnlock image %p ref %d", image, image->reference);
     if (image->imgHandle) {
       MemHandleUnlock(image->imgHandle);
-      DmReleaseResource(image->imgHandle);
-      //index = DmFindResource(imagesRef, 0, 0, image->imgHandle);
-      //DmRemoveResource(imagesRef, index);
-      image->imgHandle = NULL;
     }
     if (image->data.bitmapHandle) {
       MemHandleUnlock(image->data.bitmapHandle);
@@ -460,16 +453,16 @@ MemHandle GetImageHandle
             Coord               row;
             ImageType*          subImage;
             PointType           placeImage;
-            LoadBarType*        loadBar;
+            //LoadBarType*        loadBar;
 
             image->width = image->height = 0;
             column = row = 0;
             placeImage.x = placeImage.y = 0;
-            loadBar = LoadBarNew( image->totalImages );
+            //loadBar = LoadBarNew( image->totalImages );
 
             node = ListFirst( image->data.multiList );
             while ( node != NULL ) {
-                LoadBarNextStep( loadBar );
+                //LoadBarNextStep( loadBar );
 
                 /* ...first it populates node->imageHandle. This is useful for
                    quick successive references of the sub-images directly... */
@@ -522,7 +515,7 @@ MemHandle GetImageHandle
                 UnlockImage( subImage );
                 node = ListNext( image->data.multiList, node );
             }
-            LoadBarFree( loadBar );
+            //LoadBarFree( loadBar );
         }
         else {
             /* Locking at this point is only necessary to ensure we have
@@ -547,8 +540,8 @@ MemHandle GetImageHandle
         }
     }
 
-#if 0
     AddPtrToCache( IMAGEHANDLE, reference, imageHandle, FreeImageHandle );
+#if 0
 
     /* If our image is either optimized or uncompressed, its data is
        currently being stored within the precious dynamic heap. Transfer it off
