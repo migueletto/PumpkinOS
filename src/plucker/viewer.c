@@ -592,12 +592,15 @@ static void EventLoop( void )
 
     do {
         if ( TimeoutGet( &waitTicks ) ) {
+            if (waitTicks < 1) waitTicks = 1;
             EvtGetEvent( &event, waitTicks );
         }
         /* FIXME: Move autoscroll into Timeout API */
-        else if ( Prefs()->autoscrollEnabled )
-            EvtGetEvent( &event, CalculateAutoscrollTimeout() );
-        else
+        else if ( Prefs()->autoscrollEnabled ) {
+            UInt32 w = CalculateAutoscrollTimeout();
+            if (w < 1) w = 1;
+            EvtGetEvent( &event, w );
+        } else
             EvtGetEvent( &event, evtWaitForever );
 
         if ( event.eType == keyDownEvent && HandleVChrs( &event ) )
