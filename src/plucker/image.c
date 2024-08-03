@@ -298,10 +298,12 @@ static void DrawInlineImageByHandle
                   image->reference, tContext->cursorX,
                   (Int16)tContext->cursorY - image->height, image->width,
                   image->height ) );
-//debug(1, "XXX", "DrawInlineImage         image %p ref %d type %d dim %d,%d at %d,%d",
-  //image, image->reference, image->type, image->width, image->height, tContext->cursorX, tContext->cursorY - image->height);
-            RotDrawBitmap( image->bitmap, tContext->cursorX,
-                tContext->cursorY - image->height );
+            UInt32 ymax = TopLeftY() + ExtentY();
+            UInt32 xmax = TopLeftX() + ExtentX();
+            if (tContext->cursorY - image->height < ymax && tContext->cursorY >= 0 &&
+                tContext->cursorX < xmax && tContext->cursorX + image->width >= 0) {
+              RotDrawBitmap( image->bitmap, tContext->cursorX, tContext->cursorY - image->height );
+            }
         }
     }
 
