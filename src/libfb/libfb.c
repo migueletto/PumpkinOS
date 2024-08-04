@@ -18,12 +18,16 @@
 #include "debug.h"
 #include "xalloc.h"
 
+#include "cursor.c"
+
 typedef struct {
   int fb_num, kbd_num, mouse_num;
   int width, height, depth;
   int fb_fd, kbd_fd, mouse_fd, len;
   int xmin, xmax, ymin, ymax;
   int x, y, buttons, button_down;
+  int sx, sy, cursor;
+  uint32_t saved[32 * 32 * sizeof(uint32_t)];
   uint16_t *p16;
   uint32_t *p32;
   void *p;
@@ -38,22 +42,94 @@ struct texture_t {
 static window_provider_t wp;
 static fb_t fb;
 
+static void save_behind(fb_t *fb, uint32_t x, uint32_t y) {
+  uint32_t i, j, k, windex;
+
+  windex = y * fb->width + x;
+
+  for (i = 0, k = 0; i < cursor.height; i++) {
+    for (j = 0; j < cursor.width; j++, k++) {
+      fb->saved[k] = fb->p32[windex + j];
+    }
+    windex += fb->width;
+  }
+}
+
+static void restore_behind(fb_t *fb, uint32_t x, uint32_t y) {
+  uint32_t i, j, k, windex;
+
+  windex = y * fb->width + x;
+
+  for (i = 0, k = 0; i < cursor.height; i++) {
+    for (j = 0; j < cursor.width; j++, k++) {
+      fb->p32[windex + j] = fb->saved[k];
+    }
+    windex += fb->width;
+  }
+}
+
+static void draw_cursor(fb_t *fb, uint32_t x, uint32_t y) {
+  uint32_t *c = (uint32_t *)cursor.data;
+  uint32_t i, j, windex, d;
+
+  windex = y * fb->width + x;
+
+  for (i = 0; i < cursor.height; i++) {
+    for (j = 0; j < cursor.width; j++) {
+      d = c[i * cursor.width + j];
+      if (d & 0xff000000) {
+        fb->p32[windex + j] = d;
+      }
+    }
+    windex += fb->width;
+  }
+}
+
+static uint16_t evt2key(uint16_t code) {
+  switch (code) {
+    case 106: code = WINDOW_KEY_RIGHT; break;
+    case 105: code = WINDOW_KEY_LEFT; break;
+    case 108: code = WINDOW_KEY_DOWN; break;
+    case 103: code = WINDOW_KEY_UP; break;
+    case 104: code = WINDOW_KEY_PGUP; break;
+    case 109: code = WINDOW_KEY_PGDOWN; break;
+    case 102: code = WINDOW_KEY_HOME; break;
+    case 107: code = WINDOW_KEY_END; break;
+    case 110: code = WINDOW_KEY_INS; break;
+    case  59: code = WINDOW_KEY_F1; break;
+    case  60: code = WINDOW_KEY_F2; break;
+    case  61: code = WINDOW_KEY_F3; break;
+    case  62: code = WINDOW_KEY_F4; break;
+    case  63: code = WINDOW_KEY_F5; break;
+    case  64: code = WINDOW_KEY_F6; break;
+    case  65: code = WINDOW_KEY_F7; break;
+    case  66: code = WINDOW_KEY_F8; break;
+    case  67: code = WINDOW_KEY_F9; break;
+    case  68: code = WINDOW_KEY_F10; break;
+    case  87: code = WINDOW_KEY_F11; break;
+    case  88: code = WINDOW_KEY_F12; break;
+    default: code = 0; break;
+  }
+
+  return code;
+}
+
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0000: 28 E9 8A 60 3F C9 07 00 01 00 4A 01 01 00 00 00
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0010: 28 E9 8A 60 3F C9 07 00 03 00 00 00 12 03 00 00
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0020: 28 E9 8A 60 3F C9 07 00 03 00 01 00 2D 0D 00 00
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0030: 28 E9 8A 60 3F C9 07 00 03 00 18 00 85 00 00 00
 // 2021-04-29 17:13:12.516 I 10910 PalmOS   INPUT: 0040: 28 E9 8A 60 3F C9 07 00 00 00 00 00 00 00 00 00
 
-static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
+static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button, int *key) {
   uint8_t buf[24];
   uint32_t value;
   int32_t ivalue;
   uint16_t type, code;
   struct timeval tv;
   fd_set fds;
-  int i, nfds, len, nread, hast, hasx, hasy, down, ev = -1;
+  int i, nfds, fd, len, nread, hask, hast, hasx, hasy, down, ev = -1;
 
-  hast = hasx = hasy = down = 0;
+  hask = hast = hasx = hasy = down = 0;
   len = sizeof(struct timeval) + 8; // struct timeval can be 16 bytes or 24 bytes
   *x = 0;
   *y = 0;
@@ -79,17 +155,19 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
         nread = 0;
         if (FD_ISSET(fb->kbd_fd, &fds)) {
           sys_read_timeout(fb->kbd_fd, buf, len, &nread, 0);
+          fd = fb->kbd_fd;
         } else {
           sys_read_timeout(fb->mouse_fd, buf, len, &nread, 0);
+          fd = fb->mouse_fd;
         }
-        debug(DEBUG_TRACE, "FB", "read %d bytes", nread);
+        debug(DEBUG_TRACE, "FB", "read %d bytes from fd %d", nread, fd);
 
         if (nread == len) {
           i = len - 8; // ignore struct timeval
           i += get2l(&type, buf, i);
           i += get2l(&code, buf, i);
           i += get4l(&value, buf, i);
-          debug(DEBUG_TRACE, "FB", "type %u code %u value %u", type, code, value);
+          debug(DEBUG_TRACE, "FB", "type %u code %u value %d", type, code, value);
 
           // types and codes defined in /usr/include/linux/input-event-codes.h
           switch (type) {
@@ -102,6 +180,8 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
                 ev = WINDOW_MOTION;
                 *x = fb->x;
                 *y = fb->y;
+              } else if (hask) {
+                ev = down ? WINDOW_KEYDOWN : WINDOW_KEYUP;
               } else {
                 ev = 0;
               }
@@ -121,6 +201,14 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
                   down = value ? 1 : 0;
                   hast = 1;
                   break;
+                default:
+                  code = evt2key(code);
+                  if (code) {
+                    *key = code;
+                    down = value ? 1 : 0;
+                    hask = 1;
+                  }
+                  break;
               }
               break;
             case 0x02: // EV_REL
@@ -131,6 +219,13 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
                     fb->x += ivalue;
                     if (fb->x < 0) fb->x = 0;
                     else if (fb->x >= fb->width) fb->x = fb->width-1;
+                    if (fb->cursor) {
+                      if (fb->sx >= 0) restore_behind(fb, fb->sx, fb->sy);
+                      save_behind(fb, fb->x, fb->y);
+                      draw_cursor(fb, fb->x, fb->y);
+                      fb->sx = fb->x;
+                      fb->sy = fb->y;
+                    }
                     hasx = 1;
                     break;
                   case 0x01: // REL_Y
@@ -138,6 +233,13 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button) {
                     fb->y += ivalue;
                     if (fb->y < 0) fb->y = 0;
                     else if (fb->y >= fb->height) fb->y = fb->height-1;
+                    if (fb->cursor) {
+                      if (fb->sx >= 0) restore_behind(fb, fb->sx, fb->sy);
+                      save_behind(fb, fb->x, fb->y);
+                      draw_cursor(fb, fb->x, fb->y);
+                      fb->sx = fb->x;
+                      fb->sy = fb->y;
+                    }
                     hasy = 1;
                     break;
                 }
@@ -181,7 +283,7 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
   int fb_fd, kbd_fd, mouse_fd;
   char device[32];
   void *p;
-  window_t *w;
+  window_t *w = NULL;
 
   if (fb->fb_fd == 0) {
     snprintf(device, sizeof(device)-1, "/dev/fb%d", fb->fb_num);
@@ -241,6 +343,7 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
           fb->ymax = ymax;
           fb->x = fb->width / 2;
           fb->y = fb->height / 2;
+          fb->sx = fb->sy = -1;
           fb->depth = vinfo.bits_per_pixel;
           fb->len = finfo.smem_len;
           if (fb->depth == 16) {
@@ -265,7 +368,6 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
     }
   } else {
     debug(DEBUG_ERROR, "FB", "only one window can be created");
-    w = NULL;
   }
 
   return w;
@@ -400,6 +502,9 @@ static int window_draw_texture_rect(window_t *window, texture_t *texture, int tx
     }
 
     if (w > 0 && h > 0) {
+      if (fb->cursor) {
+        if (fb->sx >= 0) restore_behind(fb, fb->sx, fb->sy);
+      }
       tpitch = texture->width;
       wpitch = fb->width;
       tindex = ty * tpitch + tx;
@@ -418,6 +523,12 @@ static int window_draw_texture_rect(window_t *window, texture_t *texture, int tx
         }
         tindex += tpitch;
         windex += wpitch;
+      }
+      if (fb->cursor) {
+        save_behind(fb, fb->x, fb->y);
+        draw_cursor(fb, fb->x, fb->y);
+        fb->sx = fb->x;
+        fb->sy = fb->y;
       }
       r = 0;
     }
@@ -438,9 +549,9 @@ static int window_draw_texture(window_t *window, texture_t *texture, int x, int 
 
 static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
   fb_t *fb = (fb_t *)window;
-  int button, ev = 0;
+  int button, key, ev = 0;
 
-  if (fb->kbd_fd > 0) {
+  if (fb->mouse_fd || fb->kbd_fd > 0) {
     if (fb->button_down) {
       debug(DEBUG_TRACE, "FB", "restoring button down");
       ev = WINDOW_BUTTONDOWN;
@@ -448,7 +559,7 @@ static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
       *arg2 = 0;
       fb->button_down = 0;
     } else {
-      ev = input_event(fb, wait, arg1, arg2, &button);
+      ev = input_event(fb, wait, arg1, arg2, &button, &key);
       switch (ev) {
         case WINDOW_BUTTONDOWN:
           debug(DEBUG_TRACE, "FB", "changing first button down into motion");
@@ -457,6 +568,11 @@ static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
           break;
         case WINDOW_BUTTONUP:
           *arg1 = button;
+          *arg2 = 0;
+          break;
+        case WINDOW_KEYDOWN:
+        case WINDOW_KEYUP:
+          *arg1 = key;
           *arg2 = 0;
           break;
       }
@@ -492,6 +608,17 @@ static int libfb_setup(int pe) {
   return r;
 }
 
+static int libfb_cursor(int pe) {
+  int on, r = -1;
+
+  if (script_get_boolean(pe, 0, &on) == 0) {
+    fb.cursor = on;
+    r = 0;
+  }
+
+  return r;
+}
+
 int libfb_init(int pe, script_ref_t obj) {
   xmemset(&wp, 0, sizeof(window_provider_t));
   xmemset(&fb, 0, sizeof(fb_t));
@@ -512,7 +639,8 @@ int libfb_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "FB", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &wp);
 
-  script_add_function(pe, obj, "setup", libfb_setup);
+  script_add_function(pe, obj, "setup",  libfb_setup);
+  script_add_function(pe, obj, "cursor", libfb_cursor);
 
   return 0;
 }
