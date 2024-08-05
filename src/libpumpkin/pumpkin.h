@@ -286,7 +286,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
 int pumpkin_httpd_destroy(pumpkin_httpd_t *h);
 int pumpkin_httpd_status(pumpkin_httpd_t *h);
 
-UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt16 *w);
+UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w);
 UInt8 pumpkin_map_char(UInt16 w, FontType **f);
 
 UInt32 pumpkin_s2id(UInt32 *ID, char *s);

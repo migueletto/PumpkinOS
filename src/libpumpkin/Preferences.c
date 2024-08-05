@@ -278,7 +278,7 @@ static locale_map_t languages[NUM_LANGUAGES] = {
   { "DE", 2, "German" },
   { "IT", 3, "Italian" },
   { "ES", 4, "Spanish" },
-  { "Unused", 5, "Unused" },
+  { "UTF8", 5, "UTF8" }, // was "Unused"
   { "JA", 6, "Japanese" },
   { "NL", 7, "Dutch" },
   { "AA", 8, "Afar" },

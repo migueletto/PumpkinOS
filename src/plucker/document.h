@@ -177,3 +177,4 @@ void SetScrollbarDirection( DirectionType direction ) DOCUMENT_SECTION;
 
 #endif
 
+void select_utf8(int on);

@@ -157,7 +157,6 @@ static void DrawButtons
             CtlEraseControl( buttonList[ i ].control );
             CtlDrawControl( buttonList[ i ].control );
         }
-        debug(1, "XXX", "DisplayChar font %d obj %d", buttonList[ i ].fontID, buttonList[ i ].objID);
         DisplayChar( buttonList[ i ].fontID, letter, form,
             buttonList[ i ].objID );
     }

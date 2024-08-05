@@ -82,9 +82,8 @@ static int getIndex(UInt16 c) {
   return index;
 }
 
-static UInt32 nextChar(UInt8 *s, UInt32 i, UInt16 *w, void *data) {
-  UInt32 n;
-  UInt16 c;
+static UInt32 nextChar(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w, void *data) {
+  UInt32 c, n;
 
   c = s[i];
 
@@ -99,7 +98,7 @@ static UInt32 nextChar(UInt8 *s, UInt32 i, UInt16 *w, void *data) {
   return n;
 }
 
-static UInt8 mapChar(UInt16 w, FontType **f, void *data) {
+static UInt8 mapChar(UInt32 w, FontType **f, void *data) {
   japanese_t *japanese = (japanese_t *)data;
   FontID fontId;
   int index = -1;

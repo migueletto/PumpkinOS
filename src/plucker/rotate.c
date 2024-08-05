@@ -35,6 +35,7 @@
 
 #define NO_GRAY_FONT_SUBSTITUTION
 #include "rotate.h"
+#include "../libpit/debug.h"
 
 #ifdef BUILD_ARMLETS
 #include <PceNativeCall.h>
@@ -613,6 +614,7 @@ void RotDrawChars
         GrayFntSetOrientation( GRAY_FONT_NORMAL );
         GrayWinDrawChars( string, length, x, y );
 #else
+//debug(1, "XXX", "WinDrawChars(\"%.*s\", %d, %d)", length, string, x, y);
         WinDrawChars( string, length, x, y );
 #endif
         return;

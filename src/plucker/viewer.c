@@ -57,6 +57,8 @@
 #include "statusform.h"
 
 #include "viewer.h"
+#include "language.h"
+#include "../libpit/debug.h"
 
 /***********************************************************************
  *
@@ -102,6 +104,8 @@ static Err StartApplication(MemPtr cmdPBP) VIEWER_SECTION;
 static void EventLoop(void) VIEWER_SECTION;
 static void StopApplication(void) VIEWER_SECTION;
 
+static language_t *old_lang = NULL;
+static language_t *utf8_lang = NULL;
 
 /***********************************************************************
  *
@@ -152,7 +156,6 @@ static Err StartApplication
 {
     volatile UInt16 formId;
     Err             err;
-
 
     OS_Init();
 
@@ -711,6 +714,16 @@ static void StopApplication( void )
     OS_Release();
 }
 
+void select_utf8(int on) {
+  language_t *lang;
+
+  if (on) {
+    lang = LanguageSelect(utf8_lang);
+    if (old_lang == NULL) old_lang = lang;
+  } else {
+    LanguageSelect(old_lang);
+  }
+}
 
 
 #ifndef HAVE_PALMCUNIT
@@ -730,7 +743,11 @@ UInt32 PilotMain
         if ( err != errNone )
             return err;
 
+        utf8_lang = LanguageInit(langUTF8);
         EventLoop();
+        LanguageSelect(NULL);
+        LanguageFinish(utf8_lang);
+        utf8_lang = NULL;
         StopApplication();
     }
     else if ( cmd == sysAppLaunchCmdOpenDB ) {

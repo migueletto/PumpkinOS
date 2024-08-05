@@ -4159,11 +4159,21 @@ void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename) {
   }
 }
 
-UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt16 *w) {
+language_t *LanguageSelect(language_t *lang) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  language_t *old;
+
+  old = task->lang;
+  task->lang = lang;
+
+  return old;
+}
+
+UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   if (task->lang && task->lang->nextChar) {
-    i = task->lang->nextChar(s, i, w, task->lang->data);
+    i = task->lang->nextChar(s, i, len, w, task->lang->data);
   } else {
    *w = s[i];
     i = 1;

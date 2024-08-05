@@ -1747,10 +1747,6 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
 
   debug(DEBUG_TRACE, "Window", "WinCopyRectangle srcWin=%p srcBmp=%p %d,%d,%d,%d -> dstWin=%p dstBmp=%p %d,%d (mode %d)", srcWin, srcWin->bitmapP, srcRect->topLeft.x, srcRect->topLeft.y, srcRect->extent.x, srcRect->extent.y, dstWin, dstWin->bitmapP, dstX, dstY, mode);
   WinBlitBitmap(srcWin->bitmapP, dstWin, srcRect, dstX, dstY, mode, false);
-
-  if (dstWin == module->activeWindow && dstWin != module->displayWindow) {
-    WinBlitBitmap(srcWin->bitmapP, module->displayWindow, srcRect, dstX + dstWin->windowBounds.topLeft.x, dstY + dstWin->windowBounds.topLeft.y, mode, false);
-  }
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
@@ -1835,7 +1831,8 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   FontID font;
   UInt16 density;
   Coord x0, y0, w, h;
-  UInt16 prev, wch;
+  UInt16 prev;
+  UInt32 wch;
   Boolean v10;
   RectangleType rect;
   uint16_t ch;
@@ -1880,7 +1877,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       }
 
       for (i = 0; i < len;) {
-        i += pumpkin_next_char(chars, i, &wch);
+        i += pumpkin_next_char(chars, i, len, &wch);
         ch = pumpkin_map_char(wch, &f);
         if (v10 && ch == 0x80) ch = 0x19; // numeric space
         if (ch >= f->firstChar && ch <= f->lastChar) {
@@ -1939,7 +1936,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
         if (index >= 0) {
           for (i = 0; i < len;) {
-            i += pumpkin_next_char(chars, i, &wch);
+            i += pumpkin_next_char(chars, i, len, &wch);
             ch = pumpkin_map_char(wch, &f);
             f2 = (FontTypeV2 *)f;
             if (v10 && ch == 0x80) ch = 0x19; // numeric space
@@ -2762,7 +2759,7 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
           RctSetRectangle(vacatedP, rP->topLeft.x + rP->extent.x - distance, rP->topLeft.y, distance, rP->extent.y);
           break;
         case winRight:
-          RctSetRectangle(&rect, rP->topLeft.y, rP->topLeft.x, rP->extent.x - distance, rP->extent.y);
+          RctSetRectangle(&rect, rP->topLeft.x, rP->topLeft.y, rP->extent.x - distance, rP->extent.y);
           if (rect.extent.x > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x + distance, rP->topLeft.y, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x, rP->topLeft.y, distance, rP->extent.y);
           break;

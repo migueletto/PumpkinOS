@@ -492,6 +492,8 @@ static void RenderRecord
     TextContext     thisContext;
     MetaRecord*     meta;
 
+    select_utf8(1);
+
     meta = MemHandleLock( metaRecord );
 
     SaveExtents();
@@ -607,6 +609,8 @@ static void RenderRecord
     if ( mode == WRITEMODE_DRAW_CHAR )
         WinResetClip();
     RotCharClearClipRange();
+
+    select_utf8(0);
 }
 
 
@@ -1256,6 +1260,8 @@ static Boolean ViewRecordAt
     UInt16  searchFirstRecordId;
     UInt16  searchLastRecordId;
 
+    select_utf8(1);
+
     if ( Prefs()->rotate != GetHistoryPtr()->rotate )
         ReRenderAllIfNeeded();
 
@@ -1304,6 +1310,7 @@ static Boolean ViewRecordAt
 
                 PalmSetCoordinateSystem( prevCoordSys );
 
+                select_utf8(0);
                 return true;
             } ErrEndCatch
         }
@@ -1424,6 +1431,7 @@ static Boolean ViewRecordAt
         MemHandleUnlock( metaRecord );
     }
 
+    select_utf8(0);
     return success;
 }
 
