@@ -863,6 +863,20 @@ uint32_t palmos_systrap(uint16_t trap) {
         rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, insetAmt);
       }
       break;
+    case sysTrapRctOffsetRectangle: {
+      // void RctOffsetRectangle(RectangleType *rP, Coord deltaX, Coord deltaY)
+      uint32_t rP = ARG32;
+      int16_t deltaX = ARG16;
+      int16_t deltaY = ARG16;
+      emupalmos_trap_in(rP, trap, 0);
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      RctOffsetRectangle(rP ? &rect : NULL, deltaX, deltaY);
+      encode_rectangle(rP, &rect);
+      debug(DEBUG_TRACE, "EmuPalmOS", "RctOffsetRectangle(0x%08X [%d,%d,%d,%d], %d, %d)",
+        rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, deltaX, deltaY);
+      }
+      break;
     case sysTrapRctCopyRectangle: {
       // void RctCopyRectangle(const RectangleType *srcRectP, RectangleType *dstRectP)
       uint32_t srcRectP = ARG32;
