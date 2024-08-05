@@ -764,18 +764,14 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 //debug(1, "XXX", "dirty_region done");
 }
 
-//#define CLIP_OK(left,right,top,bottom,x,y) 1
 #define CLIP_OK(left,right,top,bottom,x,y) (left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom)
-
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 
 static void WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
 
-  //pointTo(&x, &y);
   pointTo(wh->density, &x, &y);
   if (CLIPW_OK(wh, x, y)) {
-    //Boolean dbl = BmpGetDensity(wh->bitmapP) == kDensityDouble && WinGetCoordinateSystem() == kCoordinatesStandard;
     Boolean dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
     BmpPutBit(b, false, wh->bitmapP, x, y, mode, dbl);
   }
@@ -1563,7 +1559,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   UInt32 tc, bc, tcd, bcd, transparentValue;
   Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
-  Coord x1, y1, x2, y2, x3, y3, x4, y4;
+  Coord x1, y1, x2, y2;
   Boolean bitmapTransp, dbl, hlf;
 
   if (bitmapP && wh && rect) {
@@ -1690,12 +1686,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
 //debug(1, "XXX", "window %p clipping %d %d %d %d", wh, x1, x2, y1, y2);
 
-      x3 = module->displayWindow->clippingBounds.left;
-      x4 = module->displayWindow->clippingBounds.right;
-      y3 = module->displayWindow->clippingBounds.top;
-      y4 = module->displayWindow->clippingBounds.bottom;
-//debug(1, "XXX", "display clipping %d %d %d %d", x3, x4, y3, y4);
-
       tc = windowDepth == 16 ? module->textColor565 : module->textColor;
       bc = windowDepth == 16 ? module->backColor565 : module->backColor;
 
@@ -1707,10 +1697,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         for (j = srcX0, jd = dstX0; j >= 0 && j < w; j += srcIncX, jd += dstIncX) {
           if (CLIP_OK(x1, x2, y1, y2, dstX + jd, dstY + id)) {
             BmpCopyBit(best, srcX + j, srcY + i, windowBitmap, dstX + jd, dstY + id, mode, dbl, text, tc, bc);
-          }
-
-          if (wh == module->activeWindow && wh != module->displayWindow) {
-            if (CLIP_OK(x3, x4, y3, y4, ax + dstX + jd, ay + dstY + id)) {
+            if (wh == module->activeWindow && wh != module->displayWindow) {
               BmpCopyBit(best, srcX + j, srcY + i, displayBitmap, ax + dstX + jd, ay + dstY + id, mode, dbl, text, tcd, bcd);
             }
           }
