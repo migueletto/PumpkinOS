@@ -3105,7 +3105,8 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       // The position representing a particular bit depth corresponds to the value 2^(bitDepth-1)
       if (depthP) {
         // XXX 1, 2 and 4 ?
-        *depthP  = 1 << ( 8 - 1);
+        *depthP  = 1 << ( 4 - 1);
+        *depthP |= 1 << ( 8 - 1);
         *depthP |= 1 << (16 - 1);
         err = 0;
       }
