@@ -764,34 +764,72 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 //debug(1, "XXX", "dirty_region done");
 }
 
-#define CLIP_OK(left,right,top,bottom,x,y) (left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom)
+#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 
-static void WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode) {
+static Boolean WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode, Boolean checked) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
+  Boolean r = false;
 
   pointTo(wh->density, &x, &y);
-  if (CLIPW_OK(wh, x, y)) {
+  if (checked || CLIPW_OK(wh, x, y)) {
     Boolean dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
     BmpPutBit(b, false, wh->bitmapP, x, y, mode, dbl);
+    r = true;
   }
+
+  return r;
 }
 
 static void WinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   Coord x0, y0;
+  Boolean ok;
 
   if (wh) {
-    WinPutBit(wh, x, y, windowColor, mode);
+    ok = WinPutBit(wh, x, y, windowColor, mode, false);
 
-    if (wh == module->activeWindow && wh != module->displayWindow) {
+    if (ok && wh == module->activeWindow && wh != module->displayWindow) {
       x0 = wh->windowBounds.topLeft.x;
       y0 = wh->windowBounds.topLeft.y;
       if (module->coordSys == kCoordinatesDouble) {
         x0 <<= 1;
         y0 <<= 1;
       }
-      WinPutBit(module->displayWindow, x0 + x, y0 + y, displayColor, mode);
+      WinPutBit(module->displayWindow, x0 + x, y0 + y, displayColor, mode, true);
+    }
+  } else {
+    debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
+  }
+}
+
+static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
+  win_module_t *module = (win_module_t *)thread_get(win_key);
+  Coord cx, cy, x0, y0;
+  Boolean dbl;
+
+  if (wh) {
+    cx = x;
+    cy = y;
+    pointTo(wh->density, &cx, &cy);
+
+    if (CLIPW_OK(wh, cx, cy)) {
+      dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
+      BmpPutBit(windowColor, false, wh->bitmapP, cx, cy, mode, dbl);
+
+      if (wh == module->activeWindow && wh != module->displayWindow) {
+        cx = x;
+        cy = y;
+        pointTo(module->displayWindow->density, &cx, &cy);
+        x0 = wh->windowBounds.topLeft.x;
+        y0 = wh->windowBounds.topLeft.y;
+        dbl = module->displayWindow->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
+        if (dbl) {
+          x0 <<= 1;
+          y0 <<= 1;
+        }
+        BmpPutBit(windowColor, false, module->displayWindow->bitmapP, x0 + cx, y0 + cy, mode, dbl);
+      }
     }
   } else {
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
@@ -2316,6 +2354,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
 
   for (i = 0; i < colorTable->numEntries; i++) {
     if (rgbP->r == colorTable->entry[i].r && rgbP->g == colorTable->entry[i].g && rgbP->b == colorTable->entry[i].b) {
+      debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d exact (%d)", rgbP->r, rgbP->g, rgbP->b, i);
       return i;
     }
     dr = (int32_t)rgbP->r - (int32_t)colorTable->entry[i].r;
@@ -2330,7 +2369,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
       imin = i;
     }
   }
-  debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d -> %d,%d,%d", rgbP->r, rgbP->g, rgbP->b, colorTable->entry[imin].r, colorTable->entry[imin].g, colorTable->entry[imin].b);
+  debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d -> %d,%d,%d (%d)", rgbP->r, rgbP->g, rgbP->b, colorTable->entry[imin].r, colorTable->entry[imin].g, colorTable->entry[imin].b, imin);
 
   return imin;
 }
