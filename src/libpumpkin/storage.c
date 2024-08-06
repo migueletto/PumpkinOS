@@ -211,7 +211,7 @@ static storage_handle_t *StoPtrRecoverHandle(void *p) {
   return h;
 }
 
-static void StoEscapeName(char *src, char *dst, int n) {
+static void StoEscapeName(uint8_t *src, char *dst, int n) {
   int i, j;
 
   for (i = 0, j = 0; src[i] && j < n-1; i++) {
@@ -287,7 +287,7 @@ static void storage_name(storage_t *sto, char *name, int file, int id, uint32_t 
   char escaped[4*dmDBNameLength], st[8];
   int n, i;
 
-  StoEscapeName(name, escaped, sizeof(escaped)-1);
+  StoEscapeName((uint8_t *)name, escaped, sizeof(escaped)-1);
   sys_snprintf(buf, VFS_PATH - 1, "%s%s", sto->path, escaped);
   n = sys_strlen(buf);
 
