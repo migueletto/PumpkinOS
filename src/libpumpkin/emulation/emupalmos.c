@@ -1667,26 +1667,30 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
             }
             if ((b & 0x80) == 0x80) {
               n = b & 0x7F;
-              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x80 block %d bytes", i-1, b, n+1);
+              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x80 block %3d bytes (0x%08X to 0x%08X)",
+                i-1, b, n+1, dataStart + st + k, dataStart + st + k + n);
               for (j = 0; j < n+1; j++) {
                 start[k++] = p8[i++];
               }
             } else if ((b & 0xC0) == 0x40) {
               n = b & 0x3F;
-              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x40 block %d bytes", i-1, b, n+1);
+              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x40 block %3d bytes (0x%08X to 0x%08X = 0x00)",
+                i-1, b, n+1, dataStart + st + k, dataStart + st + k + n);
               for (j = 0; j < n+1; j++) {
                 start[k++] = 0x00;
               }
             } else if ((b & 0xE0) == 0x20) {
               n = b & 0x1F;
-              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x20 block %d bytes", i-1, b, n+2);
               b = p8[i++];
+              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x20 block %3d bytes (0x%08X to 0x%08X = 0x%02X)",
+                i-1, b, n+2, dataStart + st + k, dataStart + st + k + n+1, b);
               for (j = 0; j < n+2; j++) {
                 start[k++] = b;
               }
             } else if ((b & 0xF0) == 0x10) {
               n = b & 0x0F;
-              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x10 block %d bytes", i-1, b, n+1);
+              debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x10 block %3d bytes (0x%08X to 0x%08X = 0xFF)",
+                i-1, b, n+1, dataStart + st + k, dataStart + st + k + n);
               for (j = 0; j < n+1; j++) {
                 start[k++] = 0xFF;
               }
