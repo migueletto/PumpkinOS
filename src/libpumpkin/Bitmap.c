@@ -1165,8 +1165,7 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
       case  4:
         offset = y * bitmapP->rowBytes + (x >> 1);
         b = bits[offset];
-        //value = (x & 0x01) ? b & 0x0F : b >> 4;
-        value = (x & 0x01) ? b >> 4 : b & 0x0F;
+        value = !(x & 0x01) ? b >> 4 : b & 0x0F;
         break;
       case  8:
         offset = y * bitmapP->rowBytes + x;
@@ -2192,7 +2191,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
       case 4:
         srcPixel = bits[sy * src->rowBytes + (sx >> 1)];
-        srcPixel = (sx & 0x01) ? srcPixel >> 4 : srcPixel & 0x0F;
+        srcPixel = !(sx & 0x01) ? srcPixel >> 4 : srcPixel & 0x0F;
         dstPixel = (dstDepth == 4) ? srcPixel : BmpConvertFrom4Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
         break;
       case 8:
