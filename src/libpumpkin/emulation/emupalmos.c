@@ -1778,7 +1778,6 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
               get4b((uint32_t *)&value, data, offset);
               debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: 0x%04X %5d 0x%04X 0x%08X -> 0x%08X", xr, i-2, w, sw, offset, value, dataStart + dataSize + value);
               value += dataStart + dataSize;
-value = 0;
               put4b(value, data, offset);
             } else {
               // 24 bits offset ?
