@@ -14,6 +14,20 @@
 #include "debug.h"
 #include "xalloc.h"
 
+#define check_bitmap(b,r) \
+  if (BmpGetMagic((BitmapType *)b) != BITMAP_MAGIC) { \
+    debug(DEBUG_ERROR, "Bitmap", "%s: bitmap %p was not decoded", __FUNCTION__, b); \
+    debug_bytes(DEBUG_ERROR, "Bitmap", (UInt8 *)b, 64); \
+    return r; \
+  }
+
+#define checkv_bitmap(b) \
+  if (BmpGetMagic((BitmapType *)b) != BITMAP_MAGIC) { \
+    debug(DEBUG_ERROR, "Bitmap", "%s: bitmap %p was not decoded", __FUNCTION__, b); \
+    debug_bytes(DEBUG_ERROR, "Bitmap", (UInt8 *)b, 64); \
+    return; \
+  }
+
 typedef struct {
   UInt16 density;
 } bmp_module_t;
@@ -75,6 +89,12 @@ static void BmpEncodeFlags(BitmapFlagsType flags, void *p, UInt16 offset) {
   if (flags.indirectColorTable) f |= 0x0200;
   if (flags.noDither)           f |= 0x0100;
   put2b(f, p, offset);
+}
+
+UInt32 BmpGetMagic(BitmapType *bitmapP) {
+  UInt32 magic;
+  get4b(&magic, (UInt8 *)bitmapP, BITMAP_SPACE-4);
+  return magic;
 }
 
 void BmpFillData(BitmapType *bitmapP) {
@@ -576,41 +596,45 @@ Err BmpDelete(BitmapType *bitmapP) {
 
   debug(DEBUG_TRACE, "Bitmap", "BmpDelete %p begin", bitmapP);
 
-  for (bmp = bitmapP, first = true; bmp; first = false) {
-    debug(DEBUG_TRACE, "Bitmap", "BmpDelete V%d %p", bmp->version, bmp);
+  if (bitmapP) {
+    check_bitmap(bitmapP, 0);
 
-    switch (bmp->version) {
-      case 0:
-        bmpV0 = (BitmapTypeV0 *)bmp;
-        next = bmpV0->next;
-        break;
-      case 1:
-        bmpV1 = (BitmapTypeV1 *)bmp;
-        next = bmpV1->next;
-        break;
-      case 2:
-        bmpV2 = (BitmapTypeV2 *)bmp;
-        next = bmpV2->next;
-        break;
-      case 3:
-        bmpV3 = (BitmapTypeV3 *)bmp;
-        next = bmpV3->next;
-        break;
-      default:
-        debug(DEBUG_ERROR, "Bitmap", "BmpDelete invalid bitmap version %d", bmp->version);
-        bmp = next = NULL;
-        break;
-    }
-    if (bmp) {
-      debug(DEBUG_TRACE, "Bitmap", "BmpDelete next is %p", next);
-      BmpFreeBits(bmp);
-      if (first) {
-        debug(DEBUG_TRACE, "Bitmap", "MemChunkFree %p", bmp);
-        MemChunkFree(bmp); // caused a fault in BookWorm once
-      } else {
-        StoPtrFree(bmp);
+    for (bmp = bitmapP, first = true; bmp; first = false) {
+      debug(DEBUG_TRACE, "Bitmap", "BmpDelete V%d %p", bmp->version, bmp);
+
+      switch (bmp->version) {
+        case 0:
+          bmpV0 = (BitmapTypeV0 *)bmp;
+          next = bmpV0->next;
+          break;
+        case 1:
+          bmpV1 = (BitmapTypeV1 *)bmp;
+          next = bmpV1->next;
+          break;
+        case 2:
+          bmpV2 = (BitmapTypeV2 *)bmp;
+          next = bmpV2->next;
+          break;
+        case 3:
+          bmpV3 = (BitmapTypeV3 *)bmp;
+          next = bmpV3->next;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Bitmap", "BmpDelete invalid bitmap version %d", bmp->version);
+          bmp = next = NULL;
+          break;
       }
-      bmp = next;
+      if (bmp) {
+        debug(DEBUG_TRACE, "Bitmap", "BmpDelete next is %p", next);
+        BmpFreeBits(bmp);
+        if (first) {
+          debug(DEBUG_TRACE, "Bitmap", "MemChunkFree %p", bmp);
+          MemChunkFree(bmp); // caused a fault in BookWorm once
+        } else {
+          StoPtrFree(bmp);
+        }
+        bmp = next;
+      }
     }
   }
 
@@ -623,100 +647,104 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
   UInt16 best_depth, best_density;
   Boolean exact_depth;
   Boolean exact_density;
-  BitmapType *best;
+  BitmapType *best = NULL;
   BitmapTypeV0 *bmpV0;
   BitmapTypeV1 *bmpV1;
   BitmapTypeV2 *bmpV2;
   BitmapTypeV3 *bmpV3;
   uint8_t *bmp, *base, *end;
 
-  base = (uint8_t *)pumpkin_heap_base();
-  end = base + pumpkin_heap_size();
+  if (bitmapP) {
+    check_bitmap(bitmapP, NULL);
 
-  for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
-    bmp = (uint8_t *)bitmapP;
-    if (checkAddr && (bmp < base || bmp >= end)) {
-      debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap invalid bitmap %p", bitmapP);
-      break;
+    base = (uint8_t *)pumpkin_heap_base();
+    end = base + pumpkin_heap_size();
+
+    for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
+      bmp = (uint8_t *)bitmapP;
+      if (checkAddr && (bmp < base || bmp >= end)) {
+        debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap invalid bitmap %p", bitmapP);
+        break;
+      }
+
+      switch (bitmapP->version) {
+        case 0:
+          bmpV0 = (BitmapTypeV0 *)bitmapP;
+          debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV0->width, bmpV0->height, 1, kDensityLow);
+          if (best == NULL) {
+            if (bmpV0->flags.compressed == 0) {
+              best = (BitmapType *)bmpV0;
+              best_depth = 1;
+              best_density = kDensityLow;
+              exact_depth = best_depth == depth;
+              exact_density = best_density == density;
+            } else {
+              debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
+            }
+          }
+          bitmapP = bmpV0->next;
+          break;
+        case 1:
+          bmpV1 = (BitmapTypeV1 *)bitmapP;
+          debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV1->width, bmpV1->height, bmpV1->pixelSize, kDensityLow);
+          if (bmpV1->pixelSize > best_depth && !exact_depth) {
+            if (bmpV1->flags.compressed == 0) {
+              best = (BitmapType *)bmpV1;
+              best_depth = bmpV1->pixelSize;
+              best_density = kDensityLow;
+              exact_depth = best_depth == depth;
+              exact_density = best_density == density;
+            } else {
+              debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
+            }
+          }
+          bitmapP = bmpV1->next;
+          break;
+        case 2:
+          bmpV2 = (BitmapTypeV2 *)bitmapP;
+          debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV2->width, bmpV2->height, bmpV2->pixelSize, kDensityLow);
+          if (bmpV2->pixelSize > best_depth && !exact_depth) {
+            if (bmpV2->flags.compressed == 0) {
+              best = (BitmapType *)bmpV2;
+              best_depth = bmpV2->pixelSize;
+              best_density = kDensityLow;
+              exact_depth = best_depth == depth;
+              exact_density = best_density == density;
+            } else {
+              debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
+            }
+          }
+          bitmapP = bmpV2->next;
+          break;
+        case 3:
+          bmpV3 = (BitmapTypeV3 *)bitmapP;
+          debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
+          if (bmpV3->pixelSize >= best_depth && bmpV3->density >= best_density && (!exact_density || exact_density) /*bmpV3->density <= density*/) {
+            if (bmpV3->flags.compressed == 0) {
+              best = (BitmapType *)bmpV3;
+              best_depth = bmpV3->pixelSize;
+              best_density = bmpV3->density;
+              exact_depth = best_depth == depth;
+              exact_density = best_density == density;
+            } else {
+              debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
+            }
+          }
+          bitmapP = bmpV3->next;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap invalid version %d", bitmapP->version);
+          debug_bytes(DEBUG_ERROR, "Bitmap", (uint8_t *)bitmapP, 256);
+          return NULL;
+      }
     }
 
-    switch (bitmapP->version) {
-      case 0:
-        bmpV0 = (BitmapTypeV0 *)bitmapP;
-        debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV0->width, bmpV0->height, 1, kDensityLow);
-        if (best == NULL) {
-          if (bmpV0->flags.compressed == 0) {
-            best = (BitmapType *)bmpV0;
-            best_depth = 1;
-            best_density = kDensityLow;
-            exact_depth = best_depth == depth;
-            exact_density = best_density == density;
-          } else {
-            debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
-          }
-        }
-        bitmapP = bmpV0->next;
-        break;
-      case 1:
-        bmpV1 = (BitmapTypeV1 *)bitmapP;
-        debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV1->width, bmpV1->height, bmpV1->pixelSize, kDensityLow);
-        if (bmpV1->pixelSize > best_depth && !exact_depth) {
-          if (bmpV1->flags.compressed == 0) {
-            best = (BitmapType *)bmpV1;
-            best_depth = bmpV1->pixelSize;
-            best_density = kDensityLow;
-            exact_depth = best_depth == depth;
-            exact_density = best_density == density;
-          } else {
-            debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
-          }
-        }
-        bitmapP = bmpV1->next;
-        break;
-      case 2:
-        bmpV2 = (BitmapTypeV2 *)bitmapP;
-        debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV2->width, bmpV2->height, bmpV2->pixelSize, kDensityLow);
-        if (bmpV2->pixelSize > best_depth && !exact_depth) {
-          if (bmpV2->flags.compressed == 0) {
-            best = (BitmapType *)bmpV2;
-            best_depth = bmpV2->pixelSize;
-            best_density = kDensityLow;
-            exact_depth = best_depth == depth;
-            exact_density = best_density == density;
-          } else {
-            debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
-          }
-        }
-        bitmapP = bmpV2->next;
-        break;
-      case 3:
-        bmpV3 = (BitmapTypeV3 *)bitmapP;
-        debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", bitmapP->version, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
-        if (bmpV3->pixelSize >= best_depth && bmpV3->density >= best_density && (!exact_density || exact_density) /*bmpV3->density <= density*/) {
-          if (bmpV3->flags.compressed == 0) {
-            best = (BitmapType *)bmpV3;
-            best_depth = bmpV3->pixelSize;
-            best_density = bmpV3->density;
-            exact_depth = best_depth == depth;
-            exact_density = best_density == density;
-          } else {
-            debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap compressed bitmap V%d can not be used", bitmapP->version);
-          }
-        }
-        bitmapP = bmpV3->next;
-        break;
-      default:
-        debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap invalid version %d", bitmapP->version);
-        debug_bytes(DEBUG_ERROR, "Bitmap", (uint8_t *)bitmapP, 256);
-        return NULL;
+    if (best) {
+      debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap V%d, %dx%d, bpp %d (%d), density %d",
+        best->version, best->width, best->height, best_depth, exact_depth ? 1 : 0, best_density);
+    } else {
+      debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap no suitable bitmap for bpp %d, density %d", depth, density);
     }
-  }
-
-  if (best) {
-    debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap V%d, %dx%d, bpp %d (%d), density %d",
-      best->version, best->width, best->height, best_depth, exact_depth ? 1 : 0, best_density);
-  } else {
-    debug(DEBUG_ERROR, "Bitmap", "BmpGetBestBitmap no suitable bitmap for bpp %d, density %d", depth, density);
   }
 
   return best;
@@ -729,6 +757,7 @@ BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth) {
 // Compress or uncompress a bitmap.
 Err BmpCompress(BitmapType *bitmapP, BitmapCompressionType compType) {
   debug(DEBUG_ERROR, "Bitmap", "BmpCompress not implemented");
+  check_bitmap(bitmapP, sysErrParamErr);
   return sysErrParamErr;
 }
 
@@ -740,6 +769,8 @@ void *BmpGetBits(BitmapType *bitmapP) {
   void *bits = NULL;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, NULL);
+
     switch (bitmapP->version) {
       case 0:
         bmpV0 = (BitmapTypeV0 *)bitmapP;
@@ -768,6 +799,8 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   BitmapTypeV3 *bmpV3;
   ColorTableType *colorTable = NULL;
 
+  check_bitmap(bitmapP, NULL);
+
   if (bitmapP) {
     switch (bitmapP->version) {
       case 2:
@@ -788,6 +821,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
 UInt16 BmpSize(const BitmapType *bitmapP) {
   UInt32 headerSize, dataSize;
 
+  check_bitmap(bitmapP, 0);
   BmpGetSizes(bitmapP, &dataSize, &headerSize);
 
   return headerSize + dataSize;
@@ -799,6 +833,8 @@ UInt16 BmpBitsSize(const BitmapType *bitmapP) {
   BitmapTypeV2 *bmpV2;
   BitmapTypeV3 *bmpV3;
   UInt16 bitsSize = 0;
+
+  check_bitmap(bitmapP, 0);
 
   if (bitmapP) {
     switch (bitmapP->version) {
@@ -832,6 +868,8 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
 
   // headerSize is not accurate, because BitmapTypeVn is bigger than on real PalmOS
 
+  checkv_bitmap(bitmapP);
+
   if (bitmapP) {
     switch (bitmapP->version) {
       case 0:
@@ -863,6 +901,8 @@ UInt16 BmpColortableSize(const BitmapType *bitmapP) {
   UInt16 r = 0;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, 0);
+
     if ((colorTable = BmpGetColortable((BitmapType *)bitmapP)) != NULL) {
       // XXX is it correct to include size of field numEntries (UInt16) ?
       r = sizeof(UInt16) + colorTable->numEntries * sizeof(RGBColorType);
@@ -874,6 +914,7 @@ UInt16 BmpColortableSize(const BitmapType *bitmapP) {
 
 void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {
   if (bitmapP) {
+    checkv_bitmap(bitmapP);
     if (widthP) *widthP = bitmapP->width;
     if (heightP) *heightP = bitmapP->height;
     if (rowBytesP) *rowBytesP = bitmapP->rowBytes;
@@ -882,9 +923,12 @@ void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, 
 
 UInt8 BmpGetBitDepth(const BitmapType *bitmapP) {
   UInt8 depth = 0;
+
   if (bitmapP) {
+    check_bitmap(bitmapP, 0);
     depth = bitmapP->version == 0 ? 1 : bitmapP->pixelSize;
   }
+
   return depth;
 }
 
@@ -895,6 +939,8 @@ BitmapType *BmpGetNextBitmapAnyDensity(BitmapType *bitmapP) {
   BitmapTypeV3 *bmpV3;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, NULL);
+
     switch (bitmapP->version) {
       case 0:
         bmpV0 = (BitmapTypeV0 *)bitmapP;
@@ -925,6 +971,7 @@ BitmapType *BmpGetNextBitmapAnyDensity(BitmapType *bitmapP) {
 
 BitmapType *BmpGetNextBitmap(BitmapType *bitmapP) {
   for (;;) {
+    check_bitmap(bitmapP, NULL);
     bitmapP = BmpGetNextBitmapAnyDensity(bitmapP);
     if (bitmapP == NULL) break;
     if (BmpGetDensity(bitmapP) == kDensityDouble) continue;
@@ -934,7 +981,14 @@ BitmapType *BmpGetNextBitmap(BitmapType *bitmapP) {
 }
 
 UInt8 BmpGetVersion(const BitmapType *bitmapP) {
-  return bitmapP ? bitmapP->version : 0;
+  UInt8 version = 0;
+
+  if (bitmapP) {
+    check_bitmap(bitmapP, 0);
+    version = bitmapP->version;
+  }
+
+  return version;
 }
 
 BitmapCompressionType BmpGetCompressionType(const BitmapType *bitmapP) {
@@ -942,6 +996,8 @@ BitmapCompressionType BmpGetCompressionType(const BitmapType *bitmapP) {
   BitmapCompressionType ct = BitmapCompressionTypeNone;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, 0);
+
     if (bitmapP->version >= 2) {
       bmpV2 = (BitmapTypeV2 *)bitmapP;
       ct = bmpV2->compressionType;
@@ -956,6 +1012,8 @@ UInt16 BmpGetDensity(const BitmapType *bitmapP) {
   UInt16 d = kDensityLow;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, 0);
+
     if (bitmapP->version >= 3) {
       bmpV3 = (BitmapTypeV3 *)bitmapP;
       d = bmpV3->density;
@@ -970,6 +1028,8 @@ Err BmpSetDensity(BitmapType *bitmapP, UInt16 density) {
   Err err = sysErrParamErr;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, err);
+
     if (bitmapP->version >= 3) {
       switch (density) {
         case kDensityLow:
@@ -991,6 +1051,8 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
   Boolean r = false;
 
   if (bitmapP) {
+    check_bitmap(bitmapP, false);
+
     switch (bitmapP->version) {
       case 2:
         bmpV2 = (BitmapTypeV2 *)bitmapP;
@@ -1020,6 +1082,8 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   BitmapTypeV3 *bmpV3;
 
   if (bitmapP) {
+    checkv_bitmap(bitmapP);
+
     switch (bitmapP->version) {
       case 2:
         bmpV2 = (BitmapTypeV2 *)bitmapP;
@@ -1257,6 +1321,8 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
 
 //debug(1, "XXX", "BmpDraw sx=%d sy=%d w=%d h=%d x=%d y=%d", sx, sy, w, h, x, y);
   if (bitmapP && surface && w > 0 && h > 0 && sx < bitmapP->width && sy < bitmapP->height) {
+    checkv_bitmap(bitmapP);
+
 //debug(1, "XXX", "BmpDraw coords ok");
     bits = BmpGetBits(bitmapP);
 

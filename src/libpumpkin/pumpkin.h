@@ -357,6 +357,7 @@ void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *lab
 const UInt8 *BmpGetGray(UInt8 depth);
 surface_t *BmpBitmapCreateSurface(UInt16 id);
 UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
+UInt32 BmpGetMagic(BitmapType *bitmapP);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);
@@ -370,6 +371,7 @@ void FrmGrfSetState(UInt16 state);
 UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
 void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh);
 char *FrmAskPassword(UInt16 maxLength);
+void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible);
 
 void pumpkin_fix_popups(FormType *form);
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize);
