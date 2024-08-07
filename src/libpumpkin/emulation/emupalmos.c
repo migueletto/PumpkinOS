@@ -1440,7 +1440,7 @@ static void print_regs(void) {
 int cpu_instr_callback(int pc) {
   emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
-  uint32_t instr_size, d[8], a0;
+  uint32_t instr_size, d[8], a0, a1;
   uint16_t trap;
   char buf[128], buf2[128], *s;
   int i;
@@ -1467,7 +1467,9 @@ int cpu_instr_callback(int pc) {
       d[i] = m68k_get_reg(NULL, M68K_REG_D0 + i);
     }
     a0 = m68k_get_reg(NULL, M68K_REG_A0);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (0x%08X)", pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0);
+    a1 = m68k_get_reg(NULL, M68K_REG_A1);
+    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (0x%08X,0x%08X)",
+      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0, a1);
   }
 
   return 0;
@@ -1577,7 +1579,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   uint32_t pc, a5, a7, st;
   uint32_t sysAppInfoStart, stackStart, codeStart, codeSize, dataStart, data0Size, dataSize, aboveSize;
   uint8_t *p8, *start, b;
-  uint32_t i, j, k, n, m, xr, count, creator;
+  uint32_t i, j, k, k0, n, m, xr, count, creator;
   uint32_t paramBlockStart;
   int32_t code1_xrefs, data0_xrefs, offset;
   uint8_t *ram = pumpkin_heap_base();
@@ -1669,9 +1671,10 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
               n = b & 0x7F;
               debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x80 block %3d bytes (0x%08X to 0x%08X)",
                 i-1, b, n+1, dataStart + st + k, dataStart + st + k + n);
-              for (j = 0; j < n+1; j++) {
+              for (j = 0, k0 = k; j < n+1; j++) {
                 start[k++] = p8[i++];
               }
+              debug_bytes(DEBUG_TRACE, "EmuPalmOS", &start[k0], n+1);
             } else if ((b & 0xC0) == 0x40) {
               n = b & 0x3F;
               debug(DEBUG_TRACE, "EmuPalmOS", "%3d 0x%02X 0x40 block %3d bytes (0x%08X to 0x%08X = 0x00)",
@@ -1760,9 +1763,12 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
               offset += sd;
               int32_t value;
               get4b((uint32_t *)&value, data, offset);
-              debug(DEBUG_TRACE, "EmuPalmOS", "8-bits data xref %2d at 0x%04X: 0x%02X   %5d 0x%04X 0x%08X -> 0x%08X", xr, i-1, b, sd, offset, value, dataStart + dataSize + value);
-              value += dataStart + dataSize;
-              put4b(value, data, offset);
+              if (value < 0) {
+                // XXX if values > 0 are processed, some apps crash (why ??)
+                debug(DEBUG_TRACE, "EmuPalmOS", "8-bits data xref %2d at 0x%04X: 0x%02X   %5d 0x%08X 0x%08X -> 0x%08X", xr, i-1, b, sd, dataStart + offset, value, dataStart + dataSize + value);
+                value += dataStart + dataSize;
+                put4b(value, data, offset);
+              }
             } else if (b & 0x40) {
               // 16 bits offsets
               uint16_t w = b;
@@ -1780,9 +1786,12 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
               offset += sw;
               int32_t value;
               get4b((uint32_t *)&value, data, offset);
-              debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: 0x%04X %5d 0x%04X 0x%08X -> 0x%08X", xr, i-2, w, sw, offset, value, dataStart + dataSize + value);
-              value += dataStart + dataSize;
-              put4b(value, data, offset);
+              if (value < 0) {
+                // XXX if values > 0 are processed, some apps crash (why ??)
+                debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: 0x%04X %5d 0x%08X 0x%08X -> 0x%08X", xr, i-2, w, sw, dataStart + offset, value, dataStart + dataSize + value);
+                value += dataStart + dataSize;
+                put4b(value, data, offset);
+              }
             } else {
               // 24 bits offset ?
               debug(DEBUG_ERROR, "EmuPalmOS", "24-bits data xref ?");
