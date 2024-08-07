@@ -1451,9 +1451,12 @@ int cpu_instr_callback(int pc) {
     trap = (pc - size) >> 2;
     if ((s = getTrapName(trap)) != NULL) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct call to trap %s (pc 0x%08X)", s, pc);
+      uint32_t a7 = m68k_get_reg(NULL, M68K_REG_A7);
+      m68k_set_reg(M68K_REG_A7, a7+4);
       palmos_systrap(0xA000 | trap);
+      m68k_set_reg(M68K_REG_A7, a7);
       debug(DEBUG_TRACE, "EmuPalmOS", "returned from trap %s (pc 0x%08X)", s, pc);
-      return 0 ;
+      return 0;
     }
     sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown (pc 0x%08X)", trap, pc);
     emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
