@@ -29,6 +29,23 @@ typedef struct {
 
 extern thread_key_t *frm_key;
 
+static const char *frmObjType[] = {
+  "frmFieldObj",
+  "frmControlObj",
+  "frmListObj",
+  "frmTableObj",
+  "frmBitmapObj",
+  "frmLineObj",
+  "frmFrameObj",
+  "frmRectangleObj",
+  "frmLabelObj",
+  "frmTitleObj",
+  "frmPopupObj",
+  "frmGraffitiStateObj",
+  "frmGadgetObj",
+  "frmScrollBarObj"
+};
+
 int FrmInitModule(void) {
   frm_module_t *module;
 
@@ -63,6 +80,10 @@ int FrmFinishModule(void) {
   }
 
   return 0;
+}
+
+static const char *FrmObjectTypeName(UInt16 type) {
+  return (type >= frmFieldObj && type <= frmScrollBarObj) ? frmObjType[type] : "unknown";
 }
 
 static void FrmCenterForm(FormType *formP) {
@@ -464,6 +485,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmListObj:
         if (setUsable) obj.list->attr.usable = 1;
+        if (setUsable && formP->attr.visible) obj.list->attr.visible = 1;
         if (obj.list->attr.usable && obj.list->attr.visible) {
           LstDrawList(obj.list);
         }
@@ -584,6 +606,24 @@ void FrmSetUsable(FormType *formP, UInt16 objIndex, Boolean usable) {
       case frmTableObj:     obj.table->attr.usable     = usable; break;
       case frmGadgetObj:    obj.gadget->attr.usable    = usable; break;
       case frmScrollBarObj: obj.scrollBar->attr.usable = usable; break;
+      default: break;
+    }
+  }
+}
+
+void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible) {
+  FormObjectType obj;
+
+  if (formP && objIndex < formP->numObjects) {
+    obj = formP->objects[objIndex].object;
+
+    switch (formP->objects[objIndex].objectType) {
+      case frmFieldObj:     obj.field->attr.visible     = visible; break;
+      case frmControlObj:   obj.control->attr.visible   = visible; break;
+      case frmListObj:      obj.list->attr.visible      = visible; break;
+      case frmTableObj:     obj.table->attr.visible     = visible; break;
+      case frmGadgetObj:    obj.gadget->attr.visible    = visible; break;
+      case frmScrollBarObj: obj.scrollBar->attr.visible = visible; break;
       default: break;
     }
   }
@@ -1080,6 +1120,12 @@ void FrmDrawForm(FormType *formP) {
     // draw form objects
     formP->attr.visible = 1;
     for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
+      if (formP->objects[objIndex].objectType == frmControlObj) {
+        // CtlInvertControl uses the current visible state to perform color inversion.
+        // Since all controls were erased by FrmDrawEmptyDialog above, the visible status
+        // must be set here, otherwise the inversion routine would produce garbled pixels.
+        FrmSetVisible(formP, objIndex, false);
+      }
       FrmDrawObject(formP, objIndex, false);
     }
 
@@ -1273,13 +1319,17 @@ void FrmSetObjectPtr(const FormType *formP, UInt16 objIndex, void *p) {
 }
 
 void FrmHideObject(FormType *formP, UInt16 objIndex) {
-  debug(DEBUG_TRACE, "Form", "FrmHideObject %d", objIndex);
-  FrmEraseObject(formP, objIndex, true);
+  if (formP && objIndex < formP->numObjects) {
+    debug(DEBUG_TRACE, "Form", "FrmHideObject %d %s", objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
+    FrmEraseObject(formP, objIndex, true);
+  }
 }
 
 void FrmShowObject(FormType *formP, UInt16 objIndex) {
-  debug(DEBUG_TRACE, "Form", "FrmShowObject %d", objIndex);
-  FrmDrawObject(formP, objIndex, true);
+  if (formP && objIndex < formP->numObjects) {
+    debug(DEBUG_TRACE, "Form", "FrmShowObject %d %s", objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
+    FrmDrawObject(formP, objIndex, true);
+  }
 }
 
 Int16 FrmGetControlValue(const FormType *formP, UInt16 objIndex) {
