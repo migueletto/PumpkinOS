@@ -1028,6 +1028,14 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, value);
       }
       break;
+    case sysTrapPrefSetPreference: {
+      //void PrefSetPreference(SystemPreferencesChoice choice, UInt32 value)
+      uint8_t choice = ARG8;
+      uint32_t value = ARG32;
+      PrefSetPreference(choice, value);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetPreference(%d, %d)", choice, value);
+      }
+      break;
     case sysTrapPrefOpenPreferenceDB: {
       // DmOpenRef PrefOpenPreferenceDB(Boolean saved)
       uint8_t saved = ARG8;
