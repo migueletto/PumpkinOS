@@ -363,7 +363,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmGadgetObj:
         if (setUsable) obj.gadget->attr.usable = false;
-        if (obj.gadget->handler) {
+        if (formP->attr.visible && obj.gadget->handler) {
           formFill = UIColorGetTableEntryIndex(UIFormFill);
           oldb = WinSetBackColor(formFill);
           WinPushDrawState();
@@ -467,7 +467,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmGadgetObj:
         if (setUsable) obj.gadget->attr.usable = 1;
-        if (formP->attr.visible) {
+        if (obj.gadget->attr.usable && formP->attr.visible) {
           if (obj.gadget->m68k_handler || obj.gadget->handler) {
             oldb = WinSetBackColor(formFill);
             WinPushDrawState();
@@ -1320,14 +1320,14 @@ void FrmSetObjectPtr(const FormType *formP, UInt16 objIndex, void *p) {
 
 void FrmHideObject(FormType *formP, UInt16 objIndex) {
   if (formP && objIndex < formP->numObjects) {
-    debug(DEBUG_TRACE, "Form", "FrmHideObject %d %s", objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
+    debug(DEBUG_TRACE, "Form", "FrmHideObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
     FrmEraseObject(formP, objIndex, true);
   }
 }
 
 void FrmShowObject(FormType *formP, UInt16 objIndex) {
   if (formP && objIndex < formP->numObjects) {
-    debug(DEBUG_TRACE, "Form", "FrmShowObject %d %s", objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
+    debug(DEBUG_TRACE, "Form", "FrmShowObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
     FrmDrawObject(formP, objIndex, true);
   }
 }
@@ -3133,7 +3133,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
       i += get1(&dummy8, p, i);
       i += get4b(&offset[j], p, i);
       form->objects[j].objectType = objectType;
-      debug(DEBUG_TRACE, "Form", "object %d type %d offset %u", j, objectType, offset[j]);
+      debug(DEBUG_TRACE, "Form", "object %d type %d (%s) offset %u", j, objectType, FrmObjectTypeName(objectType), offset[j]);
     }
 
     for (j = 0; j < form->numObjects; j++) {
