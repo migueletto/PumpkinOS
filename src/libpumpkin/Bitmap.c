@@ -13,11 +13,13 @@
 #include "dbg.h"
 #include "debug.h"
 #include "xalloc.h"
+#include "emupalmosinc.h"
 
 #define check_bitmap(b,r) \
   if (BmpGetMagic((BitmapType *)b) != BITMAP_MAGIC) { \
     debug(DEBUG_ERROR, "Bitmap", "%s: bitmap %p was not decoded", __FUNCTION__, b); \
     debug_bytes(DEBUG_ERROR, "Bitmap", (UInt8 *)b, 64); \
+    pumpkin_generic_error("Undecoded bitmap", EMUPALMOS_GENERIC_ERROR); \
     return r; \
   }
 
@@ -25,6 +27,7 @@
   if (BmpGetMagic((BitmapType *)b) != BITMAP_MAGIC) { \
     debug(DEBUG_ERROR, "Bitmap", "%s: bitmap %p was not decoded", __FUNCTION__, b); \
     debug_bytes(DEBUG_ERROR, "Bitmap", (UInt8 *)b, 64); \
+    pumpkin_generic_error("Undecoded bitmap", EMUPALMOS_GENERIC_ERROR); \
     return; \
   }
 
