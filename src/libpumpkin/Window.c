@@ -243,6 +243,11 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   Err err = sysErrNoFreeResource;
 
   if (bitmapP) {
+    if (BmpGetMagic(bitmapP) != BITMAP_MAGIC) {
+      debug(DEBUG_ERROR, "Window", "WinCreateBitmapWindow using undecoded bitmap");
+      return NULL;
+    }
+
     width = bitmapP->width;
     height = bitmapP->height;
 
@@ -1920,6 +1925,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       f2 = (FontTypeV2 *)f;
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
       prev = module->coordSys;
+      mult = 0;
 //debug(1, "XXX", "WinDrawCharsC font v2 density %d", density);
 
       switch (density) {
@@ -1956,8 +1962,12 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
             WinSetCoordinateSystem(kCoordinatesDouble);
 //debug(1, "XXX", "WinDrawCharsC set coord double");
           }
-            break;
-        }
+          break;
+        default:
+          debug(DEBUG_ERROR, "Window", "invalid window density %d", density);
+          index = -1;
+          break;
+      }
 
         if (index >= 0) {
           for (i = 0; i < len;) {
