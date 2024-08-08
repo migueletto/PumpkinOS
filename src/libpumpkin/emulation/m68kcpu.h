@@ -1027,6 +1027,7 @@ typedef struct {
   uint s_m68ki_aerr_write_mode;
   uint s_m68ki_aerr_fc;
   //jmp_buf s_m68ki_bus_error_jmp_buf;
+  int finish;
 } m68k_state_t;
 
 m68k_state_t *m68k_get_state(void);

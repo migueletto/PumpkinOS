@@ -129,6 +129,7 @@ static int debug_on;
 
 void emupalmos_finish(int f) {
   emu_state_t *state = thread_get(emu_key);
+  state->m68k_state.finish = f;
   state->finish = f;
 }
 

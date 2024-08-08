@@ -1008,7 +1008,7 @@ int m68k_execute(m68k_state_t *m68k_state, int num_cycles)
 
 			/* Trace m68k_exception, if necessary */
 			m68ki_exception_if_trace(); /* auto-disable (see m68kcpu.h) */
-		} while(GET_CYCLES() > 0 && !CPU_STOPPED);
+		} while(GET_CYCLES() > 0 && !CPU_STOPPED && !m68k_state->finish);
 
 		/* set previous PC to current PC for the next entry into the loop */
 		REG_PPC = REG_PC;

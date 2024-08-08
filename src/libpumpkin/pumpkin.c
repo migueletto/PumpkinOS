@@ -286,13 +286,17 @@ uint32_t pumpkin_heap_size(void) {
   return heap_size(heap_get());
 }
 
-void heap_exhausted_error(void) {
+void pumpkin_generic_error(char *msg, int code) {
   if (pumpkin_is_m68k()) {
-    emupalmos_panic("Heap exhausted", EMUPALMOS_HEAP_EXHAUSTED);
+    emupalmos_panic(msg, code);
   } else {
-   SysFatalAlert("Heap exhausted");
+   SysFatalAlert(msg);
    pumpkin_fatal_error(0);
   }
+}
+
+void heap_exhausted_error(void) {
+  pumpkin_generic_error("Heap exhausted", EMUPALMOS_HEAP_EXHAUSTED);
 }
 
 void heap_assertion_error(char *msg) {

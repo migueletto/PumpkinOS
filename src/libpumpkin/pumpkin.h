@@ -184,6 +184,7 @@ UInt32 pumpkin_get_app_creator(void);
 void *pumpkin_get_exception(void);
 void pumpkin_error_dialog(char *msg);
 void pumpkin_fatal_error(int finish);
+void pumpkin_generic_error(char *msg, int code);
 void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height);
 void pumpkin_create_compat(uint32_t creator);
 void pumpkin_set_compat(uint32_t creator, int compat, int code);
