@@ -116,26 +116,24 @@ static Boolean putBitN(BitmapType *bmp, UInt32 x, UInt32 y, int n, UInt16 value,
 }
 
 static Boolean getBit(BitmapType *bmp, UInt32 x, UInt32 y, UInt32 *index, RGBColorType *rgb) {
-  BitmapTypeV1 *bmpV1;
-  BitmapTypeV2 *bmpV2;
-  BitmapTypeV3 *bmpV3;
+  UInt8 version, depth;
   Boolean transp = false;
 
-  switch (bmp->version) {
+  version = BmpGetVersion(bmp);
+  depth = BmpGetBitDepth(bmp);
+
+  switch (version) {
     case 0:
       transp = getBitN(bmp, x, y, 1, index, rgb);
       break;
     case 1:
-      bmpV1 = (BitmapTypeV1 *)bmp;
-      transp = getBitN(bmp, x, y, bmpV1->pixelSize, index, rgb);
+      transp = getBitN(bmp, x, y, depth, index, rgb);
       break;
     case 2:
-      bmpV2 = (BitmapTypeV2 *)bmp;
-      transp = getBitN(bmp, x, y, bmpV2->pixelSize, index, rgb);
+      transp = getBitN(bmp, x, y, depth, index, rgb);
       break;
     case 3:
-      bmpV3 = (BitmapTypeV3 *)bmp;
-      transp = getBitN(bmp, x, y, bmpV3->pixelSize, index, rgb);
+      transp = getBitN(bmp, x, y, depth, index, rgb);
       break;
     default:
       break;
@@ -145,26 +143,24 @@ static Boolean getBit(BitmapType *bmp, UInt32 x, UInt32 y, UInt32 *index, RGBCol
 }
 
 static Boolean putBit(BitmapType *bmp, UInt32 x, UInt32 y, UInt16 value, Boolean transpPixel) {
-  BitmapTypeV1 *bmpV1;
-  BitmapTypeV2 *bmpV2;
-  BitmapTypeV3 *bmpV3;
+  UInt8 version, depth;
   Boolean transp = false;
 
-  switch (bmp->version) {
+  version = BmpGetVersion(bmp);
+  depth = BmpGetBitDepth(bmp);
+
+  switch (version) {
     case 0:
       putBitN(bmp, x, y, 1, value, false);
       break;
     case 1:
-      bmpV1 = (BitmapTypeV1 *)bmp;
-      putBitN(bmp, x, y, bmpV1->pixelSize, value, false);
+      putBitN(bmp, x, y, depth, value, false);
       break;
     case 2:
-      bmpV2 = (BitmapTypeV2 *)bmp;
-      transp = putBitN(bmp, x, y, bmpV2->pixelSize, value, transpPixel);
+      transp = putBitN(bmp, x, y, depth, value, transpPixel);
       break;
     case 3:
-      bmpV3 = (BitmapTypeV3 *)bmp;
-      transp = putBitN(bmp, x, y, bmpV3->pixelSize, value, transpPixel);
+      transp = putBitN(bmp, x, y, depth, value, transpPixel);
       break;
     default:
       break;
@@ -247,6 +243,7 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   bmp_edit_t *data;
   RGBColorType rgb, oldf;
   PatternType oldp;
+  Coord width, height;
   UInt16 index;
   UInt32 c;
   int i, j, x, y, w, h, dw, dh;
@@ -261,8 +258,9 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
   bmp = data->bmps[data->index];
 
-  data->width = bmp->width;
-  data->height = bmp->height;
+  BmpGetDimensions(bmp, &width, &height, NULL);
+  data->width = width;
+  data->height = height;
   w = rect.extent.x;
   h = rect.extent.y;
   dw = (w-1) / data->width;
@@ -285,7 +283,7 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   data->y = rect.topLeft.y + (rect.extent.y - h) / 2;
   data->dw = dw;
   data->dh = dh;
-  data->truncated = (data->height != bmp->height) || (data->width != bmp->width);
+  data->truncated = (data->height != height) || (data->width != width);
 
   switch (cmd) {
     case formGadgetDrawCmd:
@@ -571,29 +569,28 @@ static Boolean toolsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
 
 static void getLabel(bmp_edit_t *data) {
   BitmapType *bmp;
-  BitmapTypeV0 *bmpV0;
-  BitmapTypeV1 *bmpV1;
-  BitmapTypeV2 *bmpV2;
-  BitmapTypeV3 *bmpV3;
+  Coord width, height;
+  UInt8 version, depth;
+  UInt16 density;
 
   bmp = data->bmps[data->index];
+  version = BmpGetVersion(bmp);
+  depth = BmpGetBitDepth(bmp);
+  BmpGetDimensions(bmp, &width, &height, NULL);
 
-  switch (bmp->version) {
+  switch (version) {
     case 0:
-      bmpV0 = (BitmapTypeV0 *)bmp;
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, bmpV0->width, bmpV0->height);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, width, height);
       break;
     case 1:
-      bmpV1 = (BitmapTypeV1 *)bmp;
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, bmpV1->width, bmpV1->height, bmpV1->pixelSize);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, width, height, depth);
       break;
     case 2:
-      bmpV2 = (BitmapTypeV2 *)bmp;
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, bmpV2->width, bmpV2->height, bmpV2->pixelSize);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, width, height, depth);
       break;
     case 3:
-      bmpV3 = (BitmapTypeV3 *)bmp;
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->density);
+      density = BmpGetDensity(bmp);
+      sys_snprintf(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, width, height, depth, density);
       break;
     default:
       sys_snprintf(data->title, MAX_TITLE-1, "%s: V?", data->prefix);
@@ -636,6 +633,7 @@ static Boolean eventHandler(EventType *event) {
   RGBColorType rgb;
   UInt16 index, ctlIndex, depth;
   UInt32 c, transparentValue;
+  Coord width, height;
   bmp_edit_t *data;
   int x, y, i, j, i0, j0;
   Boolean changed, handled = false;
@@ -726,12 +724,13 @@ static Boolean eventHandler(EventType *event) {
                 case dragMode:
                   if (data->truncated && (i != data->iDown || j != data->jDown)) {
                     bmp = data->bmps[data->index];
+                    BmpGetDimensions(bmp, &width, &height, NULL);
                     i0 = data->i0 + (data->iDown - i);
                     j0 = data->j0 + (data->jDown - j);
                     if (i0 < 0) i0 = 0;
                     if (j0 < 0) j0 = 0;
-                    if (i0 >= bmp->height - data->height) i0 = bmp->height - data->height;
-                    if (j0 >= bmp->width - data->width) j0 = bmp->width - data->width;
+                    if (i0 >= height - data->height) i0 = height - data->height;
+                    if (j0 >= width - data->width) j0 = width - data->width;
                     if (i0 != data->i0 || j0 != data->j0) {
                       debug(DEBUG_INFO, "Launcher", "edit bmp penMove drag %d,%d pixel %d,%d origin %d,%d", x, y, j, i, j0, i0);
                       data->i0 = i0;

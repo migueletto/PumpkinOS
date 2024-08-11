@@ -33,7 +33,7 @@
 #include "calibrate.h"
 #include "color.h"
 #include "rgb.h"
-#include "dbg.h"
+//#include "dbg.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -2181,7 +2181,7 @@ int pumpkin_sys_event(void) {
 
   for (;;) {
     if (thread_must_end()) return -1;
-    dbg_poll();
+    //dbg_poll();
     paused = pumpkin_is_paused();
     wait = paused ? 100 : 1;
     ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2);
@@ -2906,16 +2906,14 @@ void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1) {
 void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen;
-  RectangleType *r;
-  Int16 sx, sy;
+  BitmapType *bmp;
+  Coord sx, sy;
 
   if (!task) return;
 
 //debug(1, "XXX", "pumpkin_screen_dirty (%d,%d,%d,%d) ...", x, y, w, h);
   if (wh) {
-    r = &wh->windowBounds;
-    sx = r->topLeft.x;
-    sy = r->topLeft.y;
+    WinGetPosition(wh, &sx, &sy);
     switch (DEFAULT_DENSITY) {
       case kDensityDouble: sx *= 2; sy *= 2; break;
       default: break;
@@ -2923,7 +2921,8 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 
     if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
 //debug(1, "XXX", "pumpkin_screen_dirty BmpDrawSurface (%d,%d,%d,%d) %d,%d", x, y, w, h, sx+x, sy+y);
-      BmpDrawSurface(wh->bitmapP, x, y, w, h, screen->surface, sx+x, sy+y, true);
+      bmp = WinGetBitmap(wh);
+      BmpDrawSurface(bmp, x, y, w, h, screen->surface, sx+x, sy+y, true);
 
       x += sx;
       y += sy;
@@ -3678,6 +3677,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
   surface_t *surface;
   RectangleType rect;
   WinHandle wh, old;
+  BitmapType *winBmp;
   char *card, buf[256];
 
   if (width == 0 || height == 0) {
@@ -3695,7 +3695,8 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     WinEraseRectangle(&rect, 0);
     WinPaintBitmap(bmp, (wWidth - width)/2, 0);
     WinSetDrawWindow(old);
-    BmpDrawSurface(wh->bitmapP, 0, 0, wWidth*2, wHeight*2, surface, 0, 0, false);
+    winBmp = WinGetBitmap(wh);
+    BmpDrawSurface(winBmp, 0, 0, wWidth*2, wHeight*2, surface, 0, 0, false);
 
     card = VFS_CARD;
     if (card[0] == '/') card++;

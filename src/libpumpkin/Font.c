@@ -250,7 +250,7 @@ FontPtr FntCopyFont(FontPtr f) {
     xmemcpy(f1->width, f->width, (f->lastChar - f->firstChar + 1) * sizeof(uint8_t));
     f1->data = xcalloc(1, f->pitch * f->fRectHeight);
     xmemcpy(f1->data, f->data, f->pitch * f->fRectHeight);
-    f1->bmp = BmpCreate3(f->pitch*8, f->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+    f1->bmp = BmpCreate3(f->pitch*8, f->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
     bits = BmpGetBits(f1->bmp);
     xmemcpy(bits, f->data, f->fRectHeight * f->pitch);
     f = f1;
@@ -277,7 +277,7 @@ FontPtr FntCopyFont(FontPtr f) {
           glyph_len = ff->densities[1].glyphBitsOffset - ff->densities[0].glyphBitsOffset;
           f2->data[j] = xcalloc(1, glyph_len);
           xmemcpy(f2->data[j], ff->data[j], glyph_len);
-          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
           bits = BmpGetBits(f2->bmp[j]);
           xmemcpy(bits, ff->data[j], ff->fRectHeight * ff->pitch[j]);
           break;
@@ -285,7 +285,7 @@ FontPtr FntCopyFont(FontPtr f) {
           glyph_len = ff->size - glyph_offset;
           f2->data[j] = xcalloc(1, glyph_len);
           xmemcpy(f2->data[j], ff->data[j], glyph_len);
-          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight*2, kDensityDouble, 1, true, 0, NULL, &err);
+          f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight*2, 0, kDensityDouble, 1, true, 0, NULL, &err);
           bits = BmpGetBits(f2->bmp[j]);
           xmemcpy(bits, ff->data[j], ff->fRectHeight * 2 * ff->pitch[j]);
           break;
@@ -506,7 +506,7 @@ FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsiz
     }
     debug(DEBUG_TRACE, "Font", "totalWidth %d", font->totalWidth);
 
-    font->bmp = BmpCreate3(font->pitch*8, font->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+    font->bmp = BmpCreate3(font->pitch*8, font->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
     bits = BmpGetBits(font->bmp);
     xmemcpy(bits, font->data, font->fRectHeight * font->pitch);
   }
@@ -635,7 +635,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
           font->pitch[j] = glyph_len / font->fRectHeight;
           font->data[j] = xcalloc(1, glyph_len);
           xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
-          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight, kDensityLow, 1, true, 0, NULL, &err);
+          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
           xmemcpy(bits, font->data[j], font->fRectHeight * font->pitch[j]);
           debug(DEBUG_TRACE, "Font", "single density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);
@@ -645,7 +645,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
           font->pitch[j] = glyph_len / (font->fRectHeight*2);
           font->data[j] = xcalloc(1, glyph_len);
           xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
-          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight*2, kDensityDouble, 1, true, 0, NULL, &err);
+          font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight*2, 0, kDensityDouble, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
           xmemcpy(bits, font->data[j], font->fRectHeight * 2 * font->pitch[j]);
           debug(DEBUG_TRACE, "Font", "double density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);

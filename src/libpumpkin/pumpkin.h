@@ -325,6 +325,7 @@ void WinLegacyWriteLong(UInt32 offset, UInt32 value);
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
+void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -346,7 +347,7 @@ void SysFatalAlertFinish(void);
 BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr);
 void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc);
-BitmapType *BmpCreate3(Coord width, Coord height, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error);
+BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error);
 void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp);
 IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y);
 UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y);
@@ -358,7 +359,9 @@ void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *lab
 const UInt8 *BmpGetGray(UInt8 depth);
 surface_t *BmpBitmapCreateSurface(UInt16 id);
 UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
+Err BmpSetBitDepth(BitmapType *bitmapP, UInt8 depth);
 UInt32 BmpGetMagic(BitmapType *bitmapP);
+BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);

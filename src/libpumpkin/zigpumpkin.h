@@ -32,7 +32,7 @@ void *MemHandleLock(void *h);
 void MemHandleUnlock(void *h);
 
 void BmpGetDimensions(void *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP);
-void *BmpCreate3(Coord width, Coord height, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, void *colorTableP, UInt16 *error);
+void *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, void *colorTableP, UInt16 *error);
 Err BmpDelete(void *bitmapP);
 
 void *WinGetDisplayWindow(void);

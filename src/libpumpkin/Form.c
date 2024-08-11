@@ -8,7 +8,7 @@
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
-#include "dbg.h"
+//#include "dbg.h"
 #include "AppRegistry.h"
 #include "storage.h"
 #include "debug.h"
@@ -167,9 +167,9 @@ static Err FrmInitFormInternal(FormType *formP) {
 
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
-  formP->window.bitmapP = BmpCreate3(w, h, density, depth, false, 0, NULL, &err);
+  formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, NULL, &err);
   formP->window.density = density;
-  dbg_add(0, formP->window.bitmapP);
+  //dbg_add(0, formP->window.bitmapP);
 
   //RctSetRectangle(&rect, 0, 0, width, height);
   //WinSetClipingBounds(formP->wh, &rect);
@@ -311,8 +311,9 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   RectangleType rect;
   IndexedColorType formFill, oldb;
   MemHandle h;
-  BitmapPtr bmp;
+  BitmapPtr bitmapP;
   FontID old;
+  Coord width, height;
   UInt16 totalLines, max;
   Boolean erase = false;
 
@@ -352,8 +353,9 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmBitmapObj:
         if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
-          if ((bmp = MemHandleLock(h)) != NULL) {
-            RctSetRectangle(&rect, obj.bitmap->pos.x, obj.bitmap->pos.y, bmp->width, bmp->height);
+          if ((bitmapP = MemHandleLock(h)) != NULL) {
+            BmpGetDimensions(bitmapP, &width, &height, NULL);
+            RctSetRectangle(&rect, obj.bitmap->pos.x, obj.bitmap->pos.y, width, height);
             erase = true;
             MemHandleUnlock(h);
           }
@@ -421,7 +423,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   RectangleType rect;
   Coord bw, bh;
   MemHandle h;
-  BitmapPtr bmp;
+  BitmapPtr bitmapP;
   FontID old;
   UInt16 totalLines, max, graffitiState;
   Int16 x, y, tw, th;
@@ -500,9 +502,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (setUsable) obj.bitmap->attr.usable = 1;
         if (obj.bitmap->attr.usable && formP->attr.visible) {
           if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
-            if ((bmp = MemHandleLock(h)) != NULL) {
+            if ((bitmapP = MemHandleLock(h)) != NULL) {
               mode = WinSetDrawMode(winPaint);
-              WinPaintBitmap(bmp, obj.bitmap->pos.x, obj.bitmap->pos.y);
+              WinPaintBitmap(bitmapP, obj.bitmap->pos.x, obj.bitmap->pos.y);
               WinSetDrawMode(mode);
               MemHandleUnlock(h);
             }
@@ -1019,7 +1021,7 @@ static void FrmDeleteFormInternal(FormType *formP) {
   }
 
   if (formP->window.bitmapP) {
-    dbg_delete(formP->window.bitmapP);
+    //dbg_delete(formP->window.bitmapP);
     debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal BmpDelete %p", formP->window.bitmapP);
     BmpDelete(formP->window.bitmapP);
   }
@@ -2111,7 +2113,7 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
 
 void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *rP) {
   MemHandle h;
-  BitmapPtr bmp;
+  BitmapPtr bitmapP;
   FontID old;
   Coord width, height;
 
@@ -2140,8 +2142,8 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         break;
       case frmBitmapObj:
         if ((h = DmGetResource(bitmapRsc, formP->objects[objIndex].object.bitmap->rscID)) != NULL) {
-          if ((bmp = MemHandleLock(h)) != NULL) {
-            BmpGetDimensions(bmp, &width, &height, NULL);
+          if ((bitmapP = MemHandleLock(h)) != NULL) {
+            BmpGetDimensions(bitmapP, &width, &height, NULL);
             rP->topLeft.x = formP->objects[objIndex].object.bitmap->pos.x;
             rP->topLeft.y = formP->objects[objIndex].object.bitmap->pos.y;
             rP->extent.x = width;
@@ -2302,18 +2304,18 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
 }
 
 FormBitmapType *FrmNewBitmap(FormType **formPP, UInt16 ID, UInt16 rscID, Coord x, Coord y) {
-  FormBitmapType *bitmapP = NULL;
+  FormBitmapType *formBitmapP = NULL;
   FormType *formP;
 
   if (formPP) {
     formP = *formPP;
 
     if (formP) {
-      if ((bitmapP = pumpkin_heap_alloc(sizeof(FormBitmapType), "FormBitmap")) != NULL) {
-        bitmapP->attr.usable = true;
-        bitmapP->pos.x = x;
-        bitmapP->pos.y = y;
-        bitmapP->rscID = rscID;
+      if ((formBitmapP = pumpkin_heap_alloc(sizeof(FormBitmapType), "FormBitmap")) != NULL) {
+        formBitmapP->attr.usable = true;
+        formBitmapP->pos.x = x;
+        formBitmapP->pos.y = y;
+        formBitmapP->rscID = rscID;
 
         if (formP->numObjects == 0) {
           formP->objects = xcalloc(1, sizeof(FormObjListType));
@@ -2321,14 +2323,14 @@ FormBitmapType *FrmNewBitmap(FormType **formPP, UInt16 ID, UInt16 rscID, Coord x
           formP->objects = xrealloc(formP->objects, (formP->numObjects + 1) * sizeof(FormObjListType));
         }
         formP->objects[formP->numObjects].objectType = frmBitmapObj;
-        formP->objects[formP->numObjects].object.bitmap = bitmapP;
+        formP->objects[formP->numObjects].object.bitmap = formBitmapP;
         formP->objects[formP->numObjects].id = ID;
         formP->numObjects++;
       }
     }
   }
 
-  return bitmapP;
+  return formBitmapP;
 }
 
 FormLabelType *FrmNewLabel(FormType **formPP, UInt16 id, const Char *textP, Coord x, Coord y, FontID font) {

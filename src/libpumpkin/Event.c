@@ -195,6 +195,7 @@ void EvtAddUniqueEventToQueue(const EventType *eventP, UInt32 id, Boolean inPlac
 static void adjustCoords(Coord *x, Coord *y) {
   UInt32 density;
   WinHandle wh;
+  Coord x0, y0;
 
    WinScreenGetAttribute(winScreenDensity, &density);
 
@@ -220,8 +221,9 @@ static void adjustCoords(Coord *x, Coord *y) {
    }
 
    if ((wh = WinGetActiveWindow()) != NULL) {
-     *x -= wh->windowBounds.topLeft.x;
-     *y -= wh->windowBounds.topLeft.y;
+     WinGetPosition(wh, &x0, &y0);
+     *x -= x0;
+     *y -= y0;
    }
 }
 

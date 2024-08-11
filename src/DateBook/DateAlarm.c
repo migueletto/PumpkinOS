@@ -278,8 +278,10 @@ static void DrawListAlarm (UInt32 eventTime, UInt16 duration, char* description,
 	smallIconH = DmGet1Resource(iconType, 1001);
 	if (smallIconH) 
 		{	
+    Coord width;
 		smallIconP = (BitmapPtr)(MemHandleLock(smallIconH));
-		iconOffset = (kAttnListMaxIconWidth - smallIconP->width)/2;
+    BmpGetDimensions(smallIconP, &width, NULL, NULL);
+		iconOffset = (kAttnListMaxIconWidth - width)/2;
 		WinDrawBitmap(smallIconP, x+iconOffset, y);
 		MemHandleUnlock (smallIconH);
 		DmReleaseResource(smallIconH);

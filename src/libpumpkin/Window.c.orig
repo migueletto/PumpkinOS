@@ -124,7 +124,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->windowBounds.extent.x = width/2;
     module->displayWindow->windowBounds.extent.y = height/2;
     module->displayWindow->windowFlags.freeBitmap = true;
-    module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, NULL, &err);
+    module->displayWindow->bitmapP = BmpCreate3(width, height, module->density, module->depth, false, 0, NULL, &err);
     module->displayWindow->density = module->density;
     directAccessHack(module->displayWindow, 0, 0, width/2, height/2);
     //dbg_add(0, module->displayWindow->bitmapP);
@@ -246,6 +246,11 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   Err err = sysErrNoFreeResource;
 
   if (bitmapP) {
+    if (BmpGetMagic(bitmapP) != BITMAP_MAGIC) {
+      debug(DEBUG_ERROR, "Window", "WinCreateBitmapWindow using undecoded bitmap");
+      return NULL;
+    }
+
     BmpGetDimensions(bitmapP, &width, &height, NULL);
 
     if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL) {
@@ -431,7 +436,7 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
     debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
     BmpDelete(bitmapP);
   }
-  module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, NULL, &err);
+  module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, module->density, module->depth, false, 0, NULL, &err);
   directAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
 }
 
@@ -490,7 +495,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinSetCoordinateSystem(prevCoordSys);
     WinScreenGetAttribute(winScreenDensity, &density);
     WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
-    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+    bmp = BmpCreate3(width, height, density, depth, false, 0, NULL, &err);
     if (bmp) {
       old = winHandle->bitmapP;
       winHandle->bitmapP = bmp;
@@ -1619,8 +1624,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
   Coord x1, y1, x2, y2;
-  BitmapCompressionType compression;
-  Boolean bitmapTransp, delete, dbl, hlf;
+  Boolean bitmapTransp, dbl, hlf;
 
   if (bitmapP && wh && rect) {
     windowBitmap = WinGetBitmap(wh);
@@ -1628,18 +1632,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     windowDepth = BmpGetBitDepth(windowBitmap);
 
     if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, windowDepth, !text)) != NULL) {
-      compression = BmpGetCompressionType(best);
-      delete = false;
-
-      if (compression != BitmapCompressionTypeNone) {
-        best = BmpDecompressBitmap(best);
-        delete = true;
-      }
-
       bitmapDensity = BmpGetDensity(best);
       bitmapDepth = BmpGetBitDepth(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
-      debug(DEBUG_TRACE, "Bitmap", "WinBlitBitmap %d,%d text %d bitmap density %d window density %d", x, y, text, bitmapDensity, windowDensity);
+//debug(1, "XXX", "WinBlitBitmap %d,%d text %d bitmap density %d window density %d", x, y, text, bitmapDensity, windowDensity);
 
 #ifndef ANDROID
       if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
@@ -1661,7 +1657,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         }
         WinCopyBitmap(best, wh, &srcRect, x, y);
         WinSetCoordinateSystem(coordSys);
-        if (delete) BmpDelete(best);
         return;
       }
 #endif
@@ -1781,8 +1776,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 //debug(1, "XXX", "dirty %p %d,%d,%d,%d", wh, dstX, dstY, w, h);
         pumpkin_screen_dirty(wh, dstX, dstY, w, h);
       }
-
-      if (delete) BmpDelete(best);
     }
   }
 }
@@ -1811,17 +1804,51 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *windowBitmap, *best;
   RectangleType rect;
+  MemHandle handle;
+  DmResType resType;
+  DmResID resID;
+  UInt32 size;
   UInt16 bitmapDensity;
+  uint32_t magic;
   uint8_t *bmp, *base, *end;
+  char stype[8];
   Coord w, h;
+  Boolean destroy = false;
 
   if (bitmapP && module->drawWindow) {
+    // This a hack to make apps like Kyle's Quest work.
+    // KQ calls WinDrawBitmap passing a memory block containing a bitmap,
+    // but this bitmap was MemMove'd into the block instead of being decoded from a resource.
+    // Therefore it is not a valid PumpkinOS BitmapType, and must be created/decoded from the memory block.
+
     bmp = (uint8_t *)bitmapP;
     base = (uint8_t *)pumpkin_heap_base();
     end = base + pumpkin_heap_size();
     if (bmp < base || bmp >= end) {
       debug(DEBUG_ERROR, "Window", "WinPaintBitmap invalid address %p", bitmapP);
       return;
+    }
+
+    get4b(&magic, (uint8_t *)bitmapP, BITMAP_SPACE-4);
+
+    if (magic != BITMAP_MAGIC) {
+      if ((handle = MemPtrRecoverHandle(bitmapP)) == NULL) {
+        debug(DEBUG_INFO, "Window", "WinPaintBitmap local buffer 0x%08X %p", bmp - base, bitmapP);
+        bitmapP = pumpkin_create_bitmap(NULL, (uint8_t *)bitmapP, BITMAP_SPACE, bitmapRsc, 0, NULL);
+        destroy = true;
+      } else {
+        size = MemHandleSize(handle);
+        if (DmResourceType(handle, &resType, &resID) != errNone) {
+          debug(DEBUG_INFO, "Window", "WinPaintBitmap handle 0x%08X is not a resource (%d bytes)", (uint8_t *)handle - base, size);
+          bitmapP = pumpkin_create_bitmap(NULL, (uint8_t *)bitmapP, size, bitmapRsc, 0, NULL);
+          destroy = true;
+        } else if (resType != bitmapRsc && resType != iconType) {
+          pumpkin_id2s(resType, stype);
+          debug(DEBUG_INFO, "Window", "WinPaintBitmap handle 0x%08X of type '%s' is not a bitmap resource (%d bytes)", (uint8_t *)handle - base, stype, size);
+          bitmapP = pumpkin_create_bitmap(NULL, (uint8_t *)bitmapP, size, bitmapRsc, 0, NULL);
+          destroy = true;
+        }
+      }
     }
 
     BmpGetDimensions(bitmapP, &w, &h, NULL);
@@ -1835,6 +1862,10 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
       RctSetRectangle(&rect, 0, 0, w, h);
       if (bitmapDensity == kDensityLow) WinScaleRectangle(&rect);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
+    }
+
+    if (destroy) {
+      pumpkin_destroy_bitmap(bitmapP);
     }
   }
 }
@@ -2809,18 +2840,18 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
 
     switch (format) {
       case screenFormat:
-        // The window's bitmap is allocated using the hardware screen's depth, but for backward compatibility the bitmap associated with the
+        // The window’s bitmap is allocated using the hardware screen’s depth, but for backward compatibility the bitmap associated with the
         // offscreen window is always low density, and the window always uses a coordinate system that directly maps offscreen pixels to coordinates.
         density = kDensityLow;
         depth = module->depth;
-        debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (screenFormat)");
+        debug(DEBUG_INFO, "Window", "WinCreateOffscreenWindow creating low density window (screenFormat)");
         break;
       case genericFormat:
         // Like screenFormat, except that genericFormat offscreen windows do not accept pen input.
         wh->windowFlags.format = true;
         density = kDensityLow;
         depth = module->depth;
-        debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
+        debug(DEBUG_INFO, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
         break;
       case nativeFormat:
         // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
@@ -2835,7 +2866,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
     }
     debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %d,%d format %d depth %d density %d", width, height, format, depth, density);
 
-    wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+    wh->bitmapP = BmpCreate3(width, height, density, depth, false, 0, NULL, &err);
     if (wh->bitmapP) {
       wh->windowFlags.offscreen = true;
       wh->windowFlags.freeBitmap = true;
@@ -2854,7 +2885,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
       pumpkin_heap_free(wh, "Window");
       wh = NULL;
     }
-//debug(1, "XXX", "WinCreateOffscreenWindow %dx%d format %d, depth %d, density %d, bitmap %p: %p", width, height, format, depth, density, wh->bitmapP, wh);
+//debug(1, "XXX", "WinCreateOffscreenWindow %dx%d depth %d, density %d, bitmap %p: %p", width, height, depth, density, wh->bitmapP, wh);
   }
 
   if (error) *error = err;
@@ -3053,6 +3084,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           debug(DEBUG_ERROR, "Window", "WinScreenMode winScreenModeSet depth %d failed", *depthP);
         }
       }
+      BmpFillData(bitmapP);
       break;
 
     case winScreenModeGetSupportedDepths:

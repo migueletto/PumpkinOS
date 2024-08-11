@@ -4182,18 +4182,21 @@ void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID res
     }
     if (h != NULL) {
       h2 = h;
+      // bitmaps created with pumpkin_create_bitmap() are faked into a resource handle and
+      // have the standard bitmap destructor. Since dmRecAttached bit is not set, they can be freed.
       if ((h2->htype & ~STO_INFLATED) != STO_TYPE_RES && resType && resID) {
         h2->htype &= STO_INFLATED;
         h2->htype |= STO_TYPE_RES;
         h2->d.res.type = resType;
         h2->d.res.id = resID;
       }
+      p = StoPtrNew(h2, size, h2->d.res.type, h2->d.res.id);
       if (resType == bitmapRsc) {
-        p = h2->buf;
-      } else {
-        p = StoPtrNew(h2, size, h2->d.res.type, h2->d.res.id);
-        if (handle) handle->d.res.decoded = p;
+        h2->d.res.destructor = pumpkin_destroy_bitmap;
+        h2->d.res.encoder = pumpkin_encode_bitmap;
+        h2->d.res.decoded = p;
       }
+      if (handle) handle->d.res.decoded = p;
       err = errNone;
     }
   }
@@ -4282,6 +4285,19 @@ static void StoDecodeResource(storage_handle_t *res) {
           res->d.res.destructor = pumpkin_destroy_fontv2;
           res->d.res.decoded = p;
           res->d.res.decodedSize = dsize;
+        }
+        break;
+      case iconType:
+      case bitmapRsc:
+      case 'abmp':
+      case 'tRAW':  // XXXX sigh.. FreeJongg stores bitmaps as tRAW
+        debug(DEBUG_TRACE, "STOR", "decoding bitmap resource %s %d", st, res->d.res.id);
+        if ((p = pumpkin_create_bitmap(res, res->buf, res->size, res->d.res.type, 1, &dsize)) != NULL) {
+          res->d.res.destructor = pumpkin_destroy_bitmap;
+          res->d.res.encoder = pumpkin_encode_bitmap;
+          res->d.res.decoded = p;
+          res->d.res.decodedSize = dsize;
+          BmpPrintChain((BitmapType *)p, res->d.res.type, res->d.res.id, "decode");
         }
         break;
       case constantRscType:

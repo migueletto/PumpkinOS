@@ -602,14 +602,10 @@ static void launcherScanResources(launcher_data_t *data) {
   AlertTemplateType *alert;
   MenuBarType *menu;
   BitmapType *bmp;
-  BitmapTypeV0 *bmpV0;
-  BitmapTypeV1 *bmpV1;
-  BitmapTypeV2 *bmpV2;
-  BitmapTypeV3 *bmpV3;
   FontType *font;
   LocalID localId;
   UInt16 sys_os, sys_cpu, sys_size, x, y, width, height;
-  UInt8 *b;
+  UInt8 version, depth, *b;
   void *p;
   UInt32 *value, size;
   char *s, buf[256];
@@ -688,29 +684,11 @@ static void launcherScanResources(launcher_data_t *data) {
         case bitmapRsc:
         case 'abmp':
           bmp = (BitmapType *)p;
+          version = BmpGetVersion(bmp);
+          depth = BmpGetBitDepth(bmp);
+          BmpGetDimensions(bmp, (Coord *)&width, (Coord *)&height, NULL);
           s = (type == iconType) ? "Icon" : "Bitmap";
-          switch (bmp->version) {
-            case 0:
-              bmpV0 = (BitmapTypeV0 *)bmp;
-              sys_snprintf(buf, sizeof(buf)-1, "%s V0, %dx%d, 1 bpp%s", s, bmpV0->width, bmpV0->height, bmpV0->next ? ", chain" : "");
-              break;
-            case 1:
-              bmpV1 = (BitmapTypeV1 *)bmp;
-              sys_snprintf(buf, sizeof(buf)-1, "%s V1, %dx%d, %d bpp%s", s, bmpV1->width, bmpV1->height, bmpV1->pixelSize, bmpV1->next ? ", chain" : "");
-              break;
-            case 2:
-              bmpV2 = (BitmapTypeV2 *)bmp;
-              sys_snprintf(buf, sizeof(buf)-1, "%s V2, %dx%d, %d bpp%s", s, bmpV2->width, bmpV2->height, bmpV2->pixelSize, bmpV2->next ? ", chain" : "");
-              break;
-            case 3:
-              bmpV3 = (BitmapTypeV3 *)bmp;
-              sys_snprintf(buf, sizeof(buf)-1, "%s V3, %dx%d, %d bpp, format %d, density %d%s", s, bmpV3->width, bmpV3->height, bmpV3->pixelSize, bmpV3->pixelFormat,
-                bmpV3->density, bmpV3->next ? ", chain" : "");
-              break;
-            default:
-              sys_snprintf(buf, sizeof(buf)-1, "Invalid %s", s);
-              break;
-          }
+          sys_snprintf(buf, sizeof(buf)-1, "%s V%d, %dx%d, %d bpp", s, version, width, height, depth);
           data->item[index].info = xstrdup(buf);
           break;
         case scriptEngineLua:

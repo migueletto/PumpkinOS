@@ -351,7 +351,7 @@ static void formPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, vo
       density = BmpGetDensity(data->formP->window.bitmapP);
       depth = BmpGetBitDepth(data->formP->window.bitmapP);
       BmpDelete(data->formP->window.bitmapP);
-      data->formP->window.bitmapP = BmpCreate3(rect.extent.x, rect.extent.y, density, depth, false, 0, NULL, &err);
+      data->formP->window.bitmapP = BmpCreate3(rect.extent.x, rect.extent.y, 0, density, depth, false, 0, NULL, &err);
       data->changed = true;
       break;
     case finishForm:
@@ -965,7 +965,7 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       width = data.formP->window.windowBounds.extent.x;
       height = data.formP->window.windowBounds.extent.y;
       WinAdjustCoords(&width, &height);
-      data.formP->window.bitmapP = BmpCreate3(width, height, density, depth, false, 0, NULL, &err);
+      data.formP->window.bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
       data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
       data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
       data.bounds = xcalloc(data.formP->numObjects, sizeof(RectangleType));
