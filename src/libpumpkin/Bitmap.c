@@ -2887,3 +2887,64 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP) {
 
   return newBmp;
 }
+
+BitmapType *BmpDecompressBitmapChain(BitmapType *bitmapP) {
+  BitmapType *bmp, *newBmp[32];
+  BitmapCompressionType compression;
+  UInt32 i, r, total, compressed, newSize[32], size, totalSize;
+  UInt8 version, *p;
+
+  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain %p begin", bitmapP);
+
+  for (bmp = bitmapP, total = compressed = totalSize = 0; bmp && total < 32; total++) {
+    version = BmpGetVersion(bmp);
+    compression = BmpGetCompressionType(bmp);
+    if (compression == BitmapCompressionTypeNone) {
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u not compressed", total, version);
+      newBmp[total] = bmp;
+    } else {
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u compression type %u", total, version, compression);
+      newBmp[total] = BmpDecompressBitmap(bmp);
+      compressed++;
+    }
+    newSize[total] = BmpSize(newBmp[total]);
+    r = newSize[total] % 4;
+    if (r != 0) newSize[total] += 4 - r;
+    totalSize += newSize[total];
+    bmp = BmpGetNextBitmapAnyDensity(bmp);
+  }
+  debug(DEBUG_TRACE, "Bitmap", "bitmap chain has %d bitmap(s), %d compressed, size %u", total, compressed, MemPtrSize(bitmapP));
+
+  if (compressed == 0) {
+    debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end (nothing to do)");
+    return bitmapP;
+  }
+
+  debug(DEBUG_TRACE, "Bitmap", "new bitmap chain size is %u", totalSize);
+  p = MemPtrNew(totalSize);
+
+  for (i = 0; i < total; i++) {
+    size = BmpSize(newBmp[i]);
+    MemMove(p, newBmp[i], size);
+    version = BmpGetVersion(newBmp[i]);
+    debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u size %u (%u)", i, version, size, newSize[i]);
+
+    switch (version) {
+      case 1:
+        BmpV1SetField(newBmp[i], BitmapV1FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
+        break;
+      case 2:
+        BmpV2SetField(newBmp[i], BitmapV2FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
+        break;
+      case 3:
+        BmpV3SetField(newBmp[i], BitmapV3FieldNextBitmapOffset, (i < total - 1) ? newSize[i] : 0);
+        break;
+    }
+    p += newSize[i];
+  }
+
+  MemPtrFree(bitmapP);
+
+  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end %p", p);
+  return (BitmapType *)p;
+}
