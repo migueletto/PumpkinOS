@@ -9,25 +9,25 @@ CUSTOMPFLAGS=-DHIRES -I./vexpdb
 VPOBJS=vexpdb/main.o vexpdb/ini.o
 VEXPDB=vexpdb/vexpdb
 
-LEVELS=levelpacks/Childrens\ Pack.pdb \
-       levelpacks/Classic\ Levels.pdb \
-       levelpacks/Classic\ II\ Levels.pdb \
-       levelpacks/Confusion\ Pack.pdb \
-       levelpacks/Impossible\ Pack.pdb \
-       levelpacks/Panic\ Pack.pdb \
-       levelpacks/Twister\ Levels.pdb \
-       levelpacks/Variety\ Pack.pdb \
-       levelpacks/Variety\ II\ Pack.pdb \
-       levelpacks/Variety\ 3\ Pack.pdb \
-       levelpacks/Variety\ 4\ Pack.pdb \
-       levelpacks/Variety\ 5\ Pack.pdb \
-       levelpacks/Variety\ 6\ Pack.pdb \
-       levelpacks/Variety\ 7\ Pack.pdb \
-       levelpacks/Variety\ 8\ Pack.pdb \
-       levelpacks/Variety\ 9\ Pack.pdb \
-       levelpacks/Variety\ 10\ Pack.pdb \
-       levelpacks/Variety\ 11\ Pack.pdb \
-       levelpacks/Variety\ 12\ Pack.pdb
+LEVELS=levelpacks/ChildrensPack.pdb \
+       levelpacks/ClassicLevels.pdb \
+       levelpacks/ClassicIILevels.pdb \
+       levelpacks/ConfusionPack.pdb \
+       levelpacks/ImpossiblePack.pdb \
+       levelpacks/PanicPack.pdb \
+       levelpacks/TwisterLevels.pdb \
+       levelpacks/VarietyPack.pdb \
+       levelpacks/VarietyIIPack.pdb \
+       levelpacks/Variety3Pack.pdb \
+       levelpacks/Variety4Pack.pdb \
+       levelpacks/Variety5Pack.pdb \
+       levelpacks/Variety6Pack.pdb \
+       levelpacks/Variety7Pack.pdb \
+       levelpacks/Variety8Pack.pdb \
+       levelpacks/Variety9Pack.pdb \
+       levelpacks/Variety10Pack.pdb \
+       levelpacks/Variety11Pack.pdb \
+       levelpacks/Variety12Pack.pdb
 
 all: $(PROGRAM).prc levels
 

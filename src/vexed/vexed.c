@@ -120,6 +120,7 @@ void LoadBitmaps(Boolean LoadAll) {
    UInt8             idx;
    RectangleType     r;
    UInt8             MonoOffset;
+   Coord width, height;
    #ifdef HIRES
    WindowFormatType  wft=nativeFormat;
    #else
@@ -144,6 +145,7 @@ void LoadBitmaps(Boolean LoadAll) {
          idx = i + 8;
          ObjectBitmapHandles[idx] = DmGetResource( bitmapRsc, firstBitmap + i + MonoOffset);
          ObjectBitmapPtr[idx] = MemHandleLock(ObjectBitmapHandles[idx]);
+         BmpGetDimensions(ObjectBitmapPtr[idx], &width, &height, NULL);
 
          // Make erasing border around intro bitmaps
          x = 0;
@@ -156,12 +158,10 @@ void LoadBitmaps(Boolean LoadAll) {
             cx = 2;
             //cy = 2;
          }
-         ObjectWindowHandles[idx] = WinCreateOffscreenWindow(ObjectBitmapPtr[idx]->width + cx,
-                                                           ObjectBitmapPtr[idx]->height + cx,
-                                                           wft, &err);
+         ObjectWindowHandles[idx] = WinCreateOffscreenWindow(width + cx, height + cx, wft, &err);
          WinSetDrawWindow(ObjectWindowHandles[idx]);
-         r.extent.x = ObjectBitmapPtr[idx]->width + cx;
-         r.extent.y = ObjectBitmapPtr[idx]->height + cx;
+         r.extent.x = width + cx;
+         r.extent.y = height + cx;
          WinEraseRectangle(&r, 0);
 
          WinDrawBitmap(ObjectBitmapPtr[idx], x, y);
@@ -175,13 +175,12 @@ void LoadBitmaps(Boolean LoadAll) {
          ObjectBitmapHandles[i] = DmGetResource( bitmapRsc, MBitmapBS_Extras + (VexedPreferences.BlockSet * 10) + i);
       }
       ObjectBitmapPtr[i] = MemHandleLock(ObjectBitmapHandles[i]);
+      BmpGetDimensions(ObjectBitmapPtr[i], &width, &height, NULL);
 
-      ObjectWindowHandles[i] = WinCreateOffscreenWindow(ObjectBitmapPtr[i]->width + 3,
-                                                        ObjectBitmapPtr[i]->height + 2,
-                                                        wft, &err);
+      ObjectWindowHandles[i] = WinCreateOffscreenWindow(width + 3, height + 2, wft, &err);
       WinSetDrawWindow(ObjectWindowHandles[i]);
-      r.extent.x = ObjectBitmapPtr[i]->width + 3;
-      r.extent.y = ObjectBitmapPtr[i]->height + 2;
+      r.extent.x = width + 3;
+      r.extent.y = height + 2;
       WinEraseRectangle(&r, 0);
 
       WinDrawBitmap(ObjectBitmapPtr[i], 1, 1);
