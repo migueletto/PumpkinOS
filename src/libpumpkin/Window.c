@@ -1627,7 +1627,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     windowDensity = BmpGetDensity(windowBitmap);
     windowDepth = BmpGetBitDepth(windowBitmap);
 
-    if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, windowDepth, !text)) != NULL) {
+    //if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, windowDepth, !text)) != NULL) {
+    if ((best = bitmapP) != NULL) {
       compression = BmpGetCompressionType(best);
       delete = false;
 
@@ -1639,7 +1640,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDensity = BmpGetDensity(best);
       bitmapDepth = BmpGetBitDepth(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
-      debug(DEBUG_TRACE, "Bitmap", "WinBlitBitmap %d,%d text %d bitmap density %d window density %d", x, y, text, bitmapDensity, windowDensity);
 
 #ifndef ANDROID
       if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {

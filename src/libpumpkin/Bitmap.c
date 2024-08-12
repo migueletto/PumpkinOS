@@ -165,9 +165,22 @@ UInt8 BmpGetVersion(const BitmapType *bitmapP) {
 
   if (bitmapP) {
     get1(&version, (UInt8 *)bitmapP, BitmapFieldVersion);
+    version &= 0x7F;
   }
 
   return version;
+}
+
+Boolean BmpLittleEndian(const BitmapType *bitmapP) {
+  UInt8 version;
+  Boolean le = 0;
+
+  if (bitmapP) {
+    get1(&version, (UInt8 *)bitmapP, BitmapFieldVersion);
+    le = version & 0x80 ? true : false;
+  }
+
+  return le;
 }
 
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
@@ -237,6 +250,8 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
                   case BitmapFlagDirectColor:        value = (v16 & 0x0400) ? 1 : 0; break;
                   case BitmapFlagIndirectColorTable: value = (v16 & 0x0200) ? 1 : 0; break;
                   case BitmapFlagNoDither:           value = (v16 & 0x0100) ? 1 : 0; break;
+                } else {
+                  value = v16;
                 }
               }
               break;
@@ -446,22 +461,19 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
 BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const void *bitsP, const ColorTableType *colorTableP) {
   BitmapType *newBmp = NULL;
   Coord width, height;
-  UInt32 bitsSize, colorTableSize, newSize, index, entry, transparentValue, addr;
+  UInt32 colorTableSize, newSize, index, entry, transparentValue, addr;
   UInt16 rowBytes, numEntries, i;
   UInt8 version, depth;
-  UInt8 *ram, *bitmapColorTable, *bits;
-  Boolean hasColorTable, isDirectColor, isIndirect, indirectColorTable, hasTransparency;
+  UInt8 *ram, *bitmapColorTable;
+  Boolean hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
 
   if (bitmapP && bitsP) {
     version = BmpGetVersion(bitmapP);
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
     isDirectColor = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagDirectColor);
-    isIndirect = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirect);
     indirectColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirectColorTable);
     hasTransparency = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasTransparency);
-    bitsSize = BmpBitsSize(bitmapP);
 
-    bits = 0;
     newSize = BitmapV3HeaderSize;
     numEntries = 0;
     colorTableSize = 0;
@@ -504,14 +516,10 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
       newSize += colorTableSize;
     }
 
-    if (isIndirect) {
-      newSize += 4; // pointer to actual bits
-    } else {
-      newSize += bitsSize; // actual bits
-    }
+    newSize += 4; // pointer to actual bits
 
     if ((newBmp = MemPtrNew(newSize)) != NULL) {
-      // density: if 0, the returned bitmap’s density is set to the default value of kDensityLow
+      // density: if 0, the returned bitmap's density is set to the default value of kDensityLow
       if (density == 0) density = kDensityLow;
 
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
@@ -521,7 +529,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
       BmpSetCommonField(newBmp, BitmapFieldHeight, height);
       BmpSetCommonField(newBmp, BitmapFieldRowBytes, rowBytes);
       BmpSetCommonFlag(newBmp, BitmapFlagAll, BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagAll));
-      BmpSetCommonFlag(newBmp, BitmapFlagIndirect, isIndirect);
+      BmpSetCommonFlag(newBmp, BitmapFlagIndirect, 1);
       BmpSetCommonFlag(newBmp, BitmapFlagHasColorTable, hasColorTable);
       BmpSetCommonFlag(newBmp, BitmapFlagIndirectColorTable, indirectColorTable);
       BmpSetCommonField(newBmp, BitmapFieldPixelSize, depth);
@@ -539,13 +547,11 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           debug(DEBUG_TRACE, "Bitmap", "BmpCreateBitmapV3 create from V0 %p", bitmapP);
           BmpV3SetField(newBmp, BitmapV3FieldPixelFormat, pixelFormatIndexed);
           BmpSetCommonField(newBmp, BitmapFieldPixelSize, 1);
-          bits = (UInt8 *)bitmapP + BitmapV0HeaderSize;
           break;
         case 1:
           debug(DEBUG_TRACE, "Bitmap", "BmpCreateBitmapV3 create from V1 %p", bitmapP);
           BmpV3SetField(newBmp, BitmapV3FieldPixelFormat, pixelFormatIndexed);
           BmpSetCommonField(newBmp, BitmapFieldPixelSize, BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldPixelSize));
-          bits = (UInt8 *)bitmapP + BitmapV1HeaderSize;
           break;
         case 2:
           debug(DEBUG_TRACE, "Bitmap", "BmpCreateBitmapV3 create from V2 %p", bitmapP);
@@ -558,12 +564,6 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
               BmpV3SetField(newBmp, BitmapV3FieldTransparentValue, BmpV2GetField(newBmp, BitmapV2FieldTransparentIndex));
             }
           }
-          if (isIndirect) {
-            get4b(&addr, (UInt8 *)bitmapP, BitmapV2HeaderSize + colorTableSize + (isDirectColor ? 8 : 0));
-            bits = addr ? ram + addr : NULL;
-          } else {
-            bits = (UInt8 *)bitmapP + BitmapV2HeaderSize + colorTableSize + (isDirectColor ? 8 : 0);
-          }
           break;
         case 3:
           debug(DEBUG_TRACE, "Bitmap", "BmpCreateBitmapV3 create from V3 %p", bitmapP);
@@ -572,39 +572,30 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           if (hasTransparency) {
             BmpV3SetField(newBmp, BitmapV3FieldTransparentValue, BmpV3GetField(newBmp, BitmapV3FieldTransparentValue));
           }
-          bits = (UInt8 *)bitmapP + BitmapV3HeaderSize + colorTableSize;
           break;
         default:
           debug(DEBUG_ERROR, "Bitmap", "BmpCreateBitmapV3 create from invalid V%d", version);
-          bits = NULL;
           break;
       }
 
-      if (bits) {
-        index = BitmapV3HeaderSize;
+      index = BitmapV3HeaderSize;
 
-        if (hasColorTable) {
-          if (indirectColorTable) {
-            // indirect color table: pointer
-            index += put4b(bitmapColorTable - ram, (UInt8 *)newBmp, index);
-          } else {
-            // direct color table: numEntries followed by entries
-            index += put2b(numEntries, (UInt8 *)newBmp, index);
-            for (i = 0; i < numEntries; i++) {
-              get4b(&entry, bitmapColorTable, 2 + i * 4);
-              index += put4b(entry, (UInt8 *)newBmp, index);
-            }
+      if (hasColorTable) {
+        if (indirectColorTable) {
+          // indirect color table: pointer
+          index += put4b(bitmapColorTable - ram, (UInt8 *)newBmp, index);
+        } else {
+          // direct color table: numEntries followed by entries
+          index += put2b(numEntries, (UInt8 *)newBmp, index);
+          for (i = 0; i < numEntries; i++) {
+            get4b(&entry, bitmapColorTable, 2 + i * 4);
+            index += put4b(entry, (UInt8 *)newBmp, index);
           }
         }
-
-        if (isIndirect) {
-          // indirect bits: pointer
-          put4b(bits - ram, (UInt8 *)newBmp, index);
-        } else {
-          // direct bits: actual pixels
-          MemMove((UInt8 *)newBmp + index, bits, bitsSize);
-        }
       }
+
+      // indirect bits: pointer
+      put4b((UInt8 *)bitsP - ram, (UInt8 *)newBmp, index);
     }
   }
 
@@ -861,13 +852,15 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
   Coord width, height;
   UInt8 version, bitmapDepth;
   UInt16 bitmapDensity, rowBytes;
-  UInt32 offset;
-  UInt8 *bmp, *base, *end;
+  UInt32 size, offset;
+  UInt8 *bmp, *last, *base, *end;
 
   if (bitmapP) {
-    debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap begin");
+    debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap %p begin", bitmapP);
     base = (uint8_t *)pumpkin_heap_base();
     end = base + pumpkin_heap_size();
+    size = MemPtrSize(bitmapP);
+    last = (UInt8 *)bitmapP + size;
 
     for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
       bmp = (uint8_t *)bitmapP;
@@ -876,14 +869,16 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
         break;
       }
 
+      if (bmp >= last) break;
+
       version = BmpGetVersion(bitmapP);
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
       bitmapDepth = BmpGetBitDepth(bitmapP);
 
       if (width == 0 && height == 0 && rowBytes == 0 && bitmapDepth == 0xFF && version == 1) {
         // 00 00 00 00 00 00 00 00 ff 01 00 00 00 00 00 00
-        debug(DEBUG_TRACE, "Bitmap", "skip empty density slot");
-        bitmapP = (BitmapType *)((UInt8 *)bitmapP + 16);
+        debug(DEBUG_TRACE, "Bitmap", "skip empty slot");
+        bitmapP = (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize);
         continue;
       }
 
@@ -1231,6 +1226,8 @@ BitmapCompressionType BmpGetCompressionType(const BitmapType *bitmapP) {
 
   if (bitmapP && BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagCompressed)) {
     switch (BmpGetVersion(bitmapP)) {
+      case 0:
+      case 1: ct = BitmapCompressionTypeScanLine; break;
       case 2: ct = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldCompressionType); break;
       case 3: ct = BmpV3GetField((BitmapType *)bitmapP, BitmapV3FieldCompressionType); break;
     }
@@ -2767,7 +2764,7 @@ static int decompress_bitmap_scanline(uint8_t *p, uint8_t *dp, uint16_t rowBytes
   uint8_t diffmask, inval;
 
   dsize = rowBytes * height;
-  debug(DEBUG_TRACE, "Bitmap", "scanline bitmap decompressing %d bytes", dsize);
+  debug(DEBUG_TRACE, "Bitmap", "ScanLine bitmap decompressing %d bytes", dsize);
   i = 0;
 
   for (row = 0; row < height; row++) {
@@ -2799,12 +2796,52 @@ const UInt8 *BmpGetGray(UInt8 depth) {
   return NULL;
 }
 
+static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coord width, Coord height, UInt16 rowBytes, UInt8 *compressed, UInt8 *decompressed) {
+  int i, error = -1;
+
+  switch (version) {
+    case 0:
+    case 1:
+      // XXX Starship's tAIB.1000 icon has two leading zeros before the compressed size.
+      // Skip the leading zeros here: I am not sure why it is happening and if this is the right fix.
+      // Besides, the compressed size is little endian (?), or it is just 1 byte followed by a zero.
+      for (i = 0; compressed[i] == 0x00; i++);
+      compressed += i;
+      compressed += 2;
+      break;
+    case 2:
+      compressed += 2;
+      break;
+    case 3:
+      compressed += 4;
+      break;
+  }
+
+  switch (compression) {
+    case BitmapCompressionTypeScanLine:
+      error = decompress_bitmap_scanline(compressed, decompressed, rowBytes, width, height);
+      break;
+    case BitmapCompressionTypeRLE:
+      error = decompress_bitmap_rle(compressed, decompressed, rowBytes * height);
+      break;
+    case BitmapCompressionTypePackBits:
+      error = decompress_bitmap_packbits8(compressed, decompressed, rowBytes * height);
+      break;
+    default:
+      debug(DEBUG_ERROR, "Bitmap", "invalid compression type %u", compression);
+      error = -1;
+      break;
+  }
+
+  return error;
+}
+
 BitmapType *BmpDecompressBitmap(BitmapType *bitmapP) {
   BitmapCompressionType compression;
   Coord width, height;
-  UInt32 transparentValue, offset, oldBmpSize, newBmpSize, chainSize;
+  UInt32 transparentValue;
   UInt16 density, rowBytes, error;
-  UInt8 depth, *compressed, *decompressed, *chain, *tmp;
+  UInt8 version, depth, *compressed, *decompressed;
   Boolean hasTransparency;
   ColorTableType *colorTable;
   BitmapType *newBmp = NULL;
@@ -2821,62 +2858,11 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP) {
     newBmp = BmpCreate3(width, height, rowBytes, density, depth, hasTransparency, transparentValue, colorTable, &error);
 
     if (newBmp && error == 0) {
+      version = BmpGetVersion(bitmapP);
       BmpGetDimensions(newBmp, &width, &height, &rowBytes);
       compressed = BmpGetBits(bitmapP);
       decompressed = BmpGetBits(newBmp);
-
-      switch (BmpGetVersion(bitmapP)) {
-        case 0:
-          compressed += 2;
-          break;
-        case 1:
-          offset = BmpV1GetField(bitmapP, BitmapV1FieldNextDepthOffset) * 4;
-          compressed += 2;
-          break;
-        case 2:
-          offset = BmpV2GetField(bitmapP, BitmapV2FieldNextDepthOffset) * 4;
-          compressed += 2;
-          break;
-        case 3:
-          offset = BmpV3GetField(bitmapP, BitmapV3FieldNextBitmapOffset);
-          compressed += 4;
-          break;
-      }
-
-      switch (compression) {
-        case BitmapCompressionTypeScanLine:
-          debug(DEBUG_TRACE, "Bitmap", "decompressing ScanLine");
-          error = decompress_bitmap_scanline(compressed, decompressed, rowBytes, width, height);
-          break;
-        case BitmapCompressionTypeRLE:
-          debug(DEBUG_TRACE, "Bitmap", "decompressing RLE");
-          error = decompress_bitmap_rle(compressed, decompressed, rowBytes * height);
-          break;
-        case BitmapCompressionTypePackBits:
-          debug(DEBUG_TRACE, "Bitmap", "decompressing PackBits");
-          error = decompress_bitmap_packbits8(compressed, decompressed, rowBytes * height);
-          break;
-        default:
-          debug(DEBUG_ERROR, "Bitmap", "invalid compression type %u", compression);
-          error = 1;
-          break;
-      }
-
-      if (!error) {
-        if (offset) {
-          oldBmpSize = BmpSize(bitmapP);   // size of old compressed bitmap
-          newBmpSize = BmpSize(newBmp);    // size of new decompressed bitmap
-          chainSize = MemPtrSize(bitmapP); // size of whole bitmap chain (before decompression)
-          chainSize = chainSize - oldBmpSize + newBmpSize; // adjusted chain size (after decompression)
-          BmpV3SetField(newBmp, BitmapV3FieldNextBitmapOffset, newBmpSize);
-          chain = MemPtrNew(chainSize);
-          MemMove(chain, newBmp, newBmpSize);
-          MemMove(chain + newBmpSize, (UInt8 *)bitmapP + oldBmpSize, chainSize - newBmpSize);
-          tmp = (UInt8 *)newBmp;
-          newBmp = (BitmapType *)chain;
-          MemPtrFree(tmp);
-        }
-      } else {
+      if (BmpDecompress(version, compression, width, height, rowBytes, compressed, decompressed) != 0) {
         BmpDelete(newBmp);
         newBmp = NULL;
       }
@@ -2888,63 +2874,133 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP) {
   return newBmp;
 }
 
-BitmapType *BmpDecompressBitmapChain(BitmapType *bitmapP) {
-  BitmapType *bmp, *newBmp[32];
+void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID) {
+  BitmapType *bitmapP, *bmp, *oldBmp[32];
   BitmapCompressionType compression;
-  UInt32 i, r, total, compressed, newSize[32], size, totalSize;
-  UInt8 version, *p;
+  Coord width, height;
+  UInt32 i, r, total, compressed, newSize[32], headerSize, dataSize, totalSize;
+  UInt16 rowBytes, attr;
+  UInt8 version, depth, *p0, *p;
+  Boolean invalid;
+  char st[8];
 
-  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain %p begin", bitmapP);
+  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain %p begin", handle);
+
+  pumpkin_id2s(resType, st);
+  debug(DEBUG_TRACE, "Bitmap", "bitmap type %s id %u", st, resID);
+
+  bitmapP = MemHandleLock(handle);
 
   for (bmp = bitmapP, total = compressed = totalSize = 0; bmp && total < 32; total++) {
+    oldBmp[total] = bmp;
     version = BmpGetVersion(bmp);
-    compression = BmpGetCompressionType(bmp);
-    if (compression == BitmapCompressionTypeNone) {
-      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u not compressed", total, version);
-      newBmp[total] = bmp;
+    BmpGetDimensions(bmp, &width, &height, &rowBytes);
+    depth = BmpGetBitDepth(bmp);
+
+    if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", total);
+      newSize[total] = BitmapV1HeaderSize;
+      bmp = (BitmapType *)((UInt8 *)bmp + BitmapV1HeaderSize);
     } else {
-      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u compression type %u", total, version, compression);
-      newBmp[total] = BmpDecompressBitmap(bmp);
-      compressed++;
+      if (resType == 'tRAW') {
+        // XXX FreeJongg stores bitmaps as tRAW, but in general not all tRAW resources are bitmaps...
+        // Trying my best to detect if a tRAW resource is really a bitmap
+        switch (depth) {
+          case 1:
+          case 2:
+          case 4:
+            invalid = 0;
+            break;
+          case 8:
+            invalid = (rowBytes < width);
+            break;
+          case 16:
+            invalid = (rowBytes < width*2);
+            break;
+          default:
+            invalid = 1;
+            break;
+        }
+        attr = BmpGetCommonFlag(bmp, BitmapFlagAll);
+        if (invalid || version > 3 || width == 0 || height == 0 || (attr & 0x00FF) != 0x0000) {
+          debug(DEBUG_INFO, "Bitmap", "resource type %s id %u is probably not a bitmap (%04X)", st, resID, attr);
+          debug_bytes(DEBUG_INFO, "Bitmap", (UInt8 *)bmp, 32);
+          MemHandleUnlock(handle);
+          return;
+        }
+      }
+
+      BmpGetSizes(bmp, &dataSize, &headerSize);
+      newSize[total] = headerSize + rowBytes * height;
+      r = newSize[total] % 4;
+      if (r != 0) newSize[total] += 4 - r;
+      compression = BmpGetCompressionType(bmp);
+      if (compression == BitmapCompressionTypeNone) {
+        debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u not compressed, size %u", total, version, headerSize + dataSize);
+      } else {
+        debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u compression type %u, size %u", total, version, compression, headerSize + dataSize);
+        compressed++;
+      }
+      bmp = BmpGetNextBitmapAnyDensity(bmp);
     }
-    newSize[total] = BmpSize(newBmp[total]);
-    r = newSize[total] % 4;
-    if (r != 0) newSize[total] += 4 - r;
     totalSize += newSize[total];
-    bmp = BmpGetNextBitmapAnyDensity(bmp);
   }
-  debug(DEBUG_TRACE, "Bitmap", "bitmap chain has %d bitmap(s), %d compressed, size %u", total, compressed, MemPtrSize(bitmapP));
+  debug(DEBUG_TRACE, "Bitmap", "bitmap chain has %d bitmap(s), %d compressed, size %u", total, compressed, MemHandleSize(handle));
 
   if (compressed == 0) {
     debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end (nothing to do)");
-    return bitmapP;
+    MemHandleUnlock(handle);
+    return;
   }
 
-  debug(DEBUG_TRACE, "Bitmap", "new bitmap chain size is %u", totalSize);
-  p = MemPtrNew(totalSize);
+  debug(DEBUG_TRACE, "Bitmap", "new bitmap chain size is %u (0x%04X)", totalSize, totalSize);
+  if ((p0 = MemPtrNew(totalSize)) == NULL) {
+    MemHandleUnlock(handle);
+    return;
+  }
+  p = p0;
 
   for (i = 0; i < total; i++) {
-    size = BmpSize(newBmp[i]);
-    MemMove(p, newBmp[i], size);
-    version = BmpGetVersion(newBmp[i]);
-    debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u size %u (%u)", i, version, size, newSize[i]);
+    version = BmpGetVersion(oldBmp[i]);
+    BmpGetSizes(oldBmp[i], NULL, &headerSize);
+    BmpGetDimensions(oldBmp[i], &width, &height, &rowBytes);
+    compression = BmpGetCompressionType(oldBmp[i]);
+    depth = BmpGetBitDepth(oldBmp[i]);
 
-    switch (version) {
-      case 1:
-        BmpV1SetField(newBmp[i], BitmapV1FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
-        break;
-      case 2:
-        BmpV2SetField(newBmp[i], BitmapV2FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
-        break;
-      case 3:
-        BmpV3SetField(newBmp[i], BitmapV3FieldNextBitmapOffset, (i < total - 1) ? newSize[i] : 0);
-        break;
+    MemMove(p, oldBmp[i], headerSize);
+
+    if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", i);
+    } else {
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u %dx%d, %d bpp, offset 0x%08X", i, version, width, height, depth, p - p0);
+      if (compression == BitmapCompressionTypeNone) {
+        MemMove(p + headerSize, (UInt8 *)oldBmp[i] + headerSize, rowBytes * height);
+      } else {
+        BmpDecompress(version, compression, width, height, rowBytes, (UInt8 *)oldBmp[i] + headerSize, p + headerSize);
+        BmpSetCommonFlag((BitmapType *)p, BitmapFlagCompressed, 0);
+      }
+
+      switch (version) {
+        case 1:
+          BmpV1SetField((BitmapType *)p, BitmapV1FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
+          break;
+        case 2:
+          BmpV2SetField((BitmapType *)p, BitmapV2FieldNextDepthOffset, (i < total - 1) ? newSize[i] / 4 : 0);
+          break;
+        case 3:
+          BmpV3SetField((BitmapType *)p, BitmapV3FieldNextBitmapOffset, (i < total - 1) ? newSize[i] : 0);
+          break;
+      }
     }
     p += newSize[i];
   }
 
-  MemPtrFree(bitmapP);
+  MemHandleUnlock(handle);
+  MemHandleResize(handle, totalSize);
+  bitmapP = MemHandleLock(handle);
+  MemMove(bitmapP, p0, totalSize);
+  MemHandleUnlock(handle);
+  MemPtrFree(p0);
 
-  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end %p", p);
-  return (BitmapType *)p;
+  debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end %p", handle);
 }

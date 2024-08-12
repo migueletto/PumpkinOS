@@ -4284,6 +4284,13 @@ static void StoDecodeResource(storage_handle_t *res) {
           res->d.res.decodedSize = dsize;
         }
         break;
+      case iconType:
+      case bitmapRsc:
+      case 'abmp':
+      case 'tRAW':  // XXXX sigh.. FreeJongg stores bitmaps as tRAW
+        debug(DEBUG_TRACE, "STOR", "decoding bitmap resource %s %d", st, res->d.res.id);
+        BmpDecompressBitmapChain(res, res->d.res.type, res->d.res.id);
+        break;
       case constantRscType:
         debug(DEBUG_TRACE, "STOR", "decoding constant resource %s %d", st, res->d.res.id);
         if (!pumpkin_is_m68k() && res->size == sizeof(UInt32) && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {

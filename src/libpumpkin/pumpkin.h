@@ -362,6 +362,7 @@ UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable
 Err BmpSetBitDepth(BitmapType *bitmapP, UInt8 depth);
 UInt32 BmpGetMagic(BitmapType *bitmapP);
 BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
+void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);
