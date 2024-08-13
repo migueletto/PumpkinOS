@@ -220,7 +220,8 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
   char buf[256];
 
   if (monitor_start > 0 && address >= monitor_start && address < monitor_end) {
-    debug(DEBUG_INFO, "EmuPalmOS", "monitored access to 0x%08X", address);
+    debug(DEBUG_INFO, "EmuPalmOS", "monitored %s access %s 0x%08X (offset 0x%04X, size %d)",
+      read ? "Read" : "Write", read ? "from" : "to", monitor_start, address - monitor_start, size);
   }
 
   if (address > hsize-size) {
@@ -1157,6 +1158,7 @@ Boolean CallFormHandler(UInt32 addr, EventType *eventP) {
   uint8_t *p;
   Boolean handled = false;
 
+  debug(DEBUG_TRACE, "EmuPalmOS", "CallFormHandler addr 0x%08X event %d", addr, eventP->eType);
   argsSize = sizeof(uint32_t);
   eventOffset = argsSize;
 
@@ -1165,9 +1167,10 @@ Boolean CallFormHandler(UInt32 addr, EventType *eventP) {
     a = p - ram;
     m68k_write_memory_32(a, a + eventOffset);
     encode_event(a + eventOffset, eventP);
-    handled = call68K_func(0, addr, a, argsSize);
+    handled = (call68K_func(0, addr, a, argsSize) & 0xFF) != 0x00;
     pumpkin_heap_free(p, "CallForm");
   }
+  debug(DEBUG_TRACE, "EmuPalmOS", "CallFormHandler handled %d", handled);
 
   return handled;
 }
@@ -1441,7 +1444,7 @@ static void print_regs(void) {
 int cpu_instr_callback(int pc) {
   emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
-  uint32_t instr_size, d[8], a0, a1;
+  uint32_t instr_size, d[8], a0, a1, a2, a3, a7;
   uint16_t trap;
   char buf[128], buf2[128], *s;
   int i;
@@ -1472,8 +1475,11 @@ int cpu_instr_callback(int pc) {
     }
     a0 = m68k_get_reg(NULL, M68K_REG_A0);
     a1 = m68k_get_reg(NULL, M68K_REG_A1);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (0x%08X,0x%08X)",
-      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0, a1);
+    a2 = m68k_get_reg(NULL, M68K_REG_A2);
+    a3 = m68k_get_reg(NULL, M68K_REG_A3);
+    a7 = m68k_get_reg(NULL, M68K_REG_A7);
+    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A7=0x%08X)",
+      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0, a1, a2, a3, a7);
   }
 
   return 0;
