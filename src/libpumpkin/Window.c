@@ -64,6 +64,7 @@ static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t widt
   put2b(y,      (uint8_t *)wh, 12);
   put2b(width,  (uint8_t *)wh, 14);
   put2b(height, (uint8_t *)wh, 16);
+  put4b(addr,   (uint8_t *)wh, 28);
 }
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {

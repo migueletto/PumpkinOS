@@ -268,8 +268,9 @@ typedef struct WindowType
   uint16_t w_v20, h_v20;
   uint32_t addr_v20;
   uint16_t flags;
-
   int16_t x, y, w, h;
+  int16_t cx, cy, cw, ch;
+  uint32_t bitmap;
 
   Coord					displayWidthV20;		// use WinGetDisplayExtent instead
   Coord					displayHeightV20;		// use WinGetDisplayExtent instead
