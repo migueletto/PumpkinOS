@@ -858,9 +858,17 @@ Err DmInit(void) {
 }
 
 static const char *errorMessage(Err err) {
-  if (err >= dmErrMemError && err <= dmErrDatabaseNotProtected) {
-    return errorCodes[err - dmErrorClass - 1];
+  switch (err) {
+    case memErrInvalidParam:
+      return "memErrInvalidParam";
+    case memErrChunkLocked:
+      return "memErrChunkLocked";
+    default:
+      if (err >= dmErrMemError && err <= dmErrDatabaseNotProtected) {
+        return errorCodes[err - dmErrorClass - 1];
+      }
   }
+
   return "unknown";
 }
 
