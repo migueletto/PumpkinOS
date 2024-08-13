@@ -516,20 +516,19 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
       newSize += colorTableSize;
     }
 
-    newSize += 4; // pointer to actual bits
+    BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
+    newSize += rowBytes * height;
 
     if ((newBmp = MemPtrNew(newSize)) != NULL) {
       // density: if 0, the returned bitmap's density is set to the default value of kDensityLow
       if (density == 0) density = kDensityLow;
-
-      BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
       depth = BmpGetBitDepth(bitmapP);
     
       BmpSetCommonField(newBmp, BitmapFieldWidth, width);
       BmpSetCommonField(newBmp, BitmapFieldHeight, height);
       BmpSetCommonField(newBmp, BitmapFieldRowBytes, rowBytes);
       BmpSetCommonFlag(newBmp, BitmapFlagAll, BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagAll));
-      BmpSetCommonFlag(newBmp, BitmapFlagIndirect, 1);
+      BmpSetCommonFlag(newBmp, BitmapFlagIndirect, 0);
       BmpSetCommonFlag(newBmp, BitmapFlagHasColorTable, hasColorTable);
       BmpSetCommonFlag(newBmp, BitmapFlagIndirectColorTable, indirectColorTable);
       BmpSetCommonField(newBmp, BitmapFieldPixelSize, depth);
@@ -594,8 +593,8 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
         }
       }
 
-      // indirect bits: pointer
-      put4b((UInt8 *)bitsP - ram, (UInt8 *)newBmp, index);
+      // copy the pixels
+      MemMove((UInt8 *)newBmp + index, bitsP, rowBytes * height);
     }
   }
 
@@ -860,7 +859,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
     base = (uint8_t *)pumpkin_heap_base();
     end = base + pumpkin_heap_size();
     size = MemPtrSize(bitmapP);
-    last = (UInt8 *)bitmapP + size;
+    last = size ? (UInt8 *)bitmapP + size : NULL;
 
     for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
       bmp = (uint8_t *)bitmapP;
@@ -869,7 +868,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
         break;
       }
 
-      if (bmp >= last) break;
+      if (last && bmp >= last) break;
 
       version = BmpGetVersion(bitmapP);
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
