@@ -83,6 +83,19 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case intlTxtReplaceStr: {
+      // UInt16 TxtReplaceStr(Char *ioStr, UInt16 inMaxLen, const Char *inParamStr, UInt16 inParamNum)
+      uint32_t ioStrP = ARG32;
+      uint16_t inMaxLen = ARG16;
+      uint32_t inParamStrP = ARG32;
+      uint16_t inParamNum = ARG16;
+      char *ioStr = emupalmos_trap_sel_in(ioStrP, sysTrapIntlDispatch, sel, 0);
+      char *inParamStr = emupalmos_trap_sel_in(inParamStrP, sysTrapIntlDispatch, sel, 2);
+      UInt16 res = TxtReplaceStr(ioStr, inMaxLen, inParamStr, inParamNum);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtReplaceStr(0x%08X, %d, 0x%08X, %d): %d", ioStrP, inMaxLen, inParamStrP, inParamNum, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     //case intlIntlInit:
     //case intlTxtByteAttr:
     //case intlTxtCharXAttr:
@@ -91,7 +104,6 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //case intlTxtCharBounds:
     //case intlTxtPrepFindString:
     //case intlTxtFindString:
-    //case intlTxtReplaceStr:
     //case intlTxtWordBounds:
     //case intlTxtCharEncoding:
     //case intlTxtStrEncoding:

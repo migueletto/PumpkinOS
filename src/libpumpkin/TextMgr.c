@@ -96,8 +96,48 @@ UInt16 TxtSetNextChar(Char *ioText, UInt32 inOffset, WChar inChar) {
 }
 
 UInt16 TxtReplaceStr(Char *ioStr, UInt16 inMaxLen, const Char *inParamStr, UInt16 inParamNum) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtReplaceStr not implemented");
-  return 0;
+  UInt16 i, j, k, st, num = 0;
+  Char *s, c, param;
+
+  if (ioStr && inParamNum <= 9) {
+    if ((s = MemPtrNew(inMaxLen+1)) != NULL) {
+      param = '0' + inParamNum;
+      st = 0;
+      for (i = 0, j = 0; ioStr[i]; i++) {
+        c = ioStr[i];
+        switch (st) {
+          case 0:
+            if (c == '^') {
+              st = 1;
+            } else {
+              if (j < inMaxLen-1) s[j++] = c;
+            }
+            break;
+          case 1:
+            if (c == param) {
+              if (inParamStr) {
+                for (k = 0; inParamStr[k]; k++) {
+                  if (j < inMaxLen-1) s[j++] = inParamStr[k];
+                }
+              }
+              num++;
+            } else {
+              if (j < inMaxLen-1) s[j++] = '^';
+              if (j < inMaxLen-1) s[j++] = c;
+            }
+            st = 0;
+            break;
+        }
+      }
+      if (inParamStr) {
+        MemMove(ioStr, s, j);
+        ioStr[j] = 0;
+      }
+      MemPtrFree(s);
+    }
+  }
+
+  return num;
 }
 
 WChar TxtCharBounds(const Char *inText, UInt32 inOffset, UInt32 *outStart, UInt32 *outEnd) {
