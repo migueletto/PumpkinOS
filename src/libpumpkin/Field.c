@@ -192,7 +192,7 @@ void FldDrawField(FieldType *fldP) {
           hrect.topLeft.x = rect.topLeft.x + FldCharsWidth(fldP, &fldP->text[start], nBefore);
           hrect.topLeft.y = rect.topLeft.y+y;
           hrect.extent.x = FldCharsWidth(fldP, &fldP->text[start + nBefore], nHigh);
-          hrect.extent.y = th;
+          hrect.extent.y = th-1;
           WinSetBackColor(fieldBackHigh);
           WinEraseRectangle(&hrect, 0);
           WinSetBackColor(fieldBack);
