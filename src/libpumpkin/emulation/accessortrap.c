@@ -3,6 +3,7 @@
 #include <FrmGlue.h>
 #include <CtlGlue.h>
 #include <LstGlue.h>
+#include <BmpGlue.h>
 
 #include "sys.h"
 #ifdef ARMEMU
@@ -36,13 +37,29 @@ void palmos_accessortrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case 3: {
+      // BitmapCompressionType BmpGlueGetCompressionType(const BitmapType *bitmapP)
+      uint32_t bitmapP = ARG32;
+      BitmapType *bitmap = (BitmapType *)emupalmos_trap_sel_in(bitmapP, sysTrapAccessorDispatch, sel, 0);
+      BitmapCompressionType res = BmpGlueGetCompressionType(bitmapP ? bitmap : NULL);
+      debug(DEBUG_TRACE, "EmuPalmOS", "BmpGlueGetCompressionType(0x%08X): %d", bitmapP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
+    case 4: {
+      // Boolean BmpGlueGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentValueP)
+      uint32_t bitmapP = ARG32;
+      uint32_t transparentValueP = ARG32;
+      BitmapType *bitmap = (BitmapType *)emupalmos_trap_sel_in(bitmapP, sysTrapAccessorDispatch, sel, 0);
+      emupalmos_trap_sel_in(transparentValueP, sysTrapAccessorDispatch, sel, 1);
+      UInt32 transparentValue;
+      Boolean res = BmpGlueGetTransparentValue(bitmapP ? bitmap : NULL, &transparentValue);
+      if (transparentValueP) m68k_write_memory_32(transparentValueP, transparentValue);
+      debug(DEBUG_TRACE, "EmuPalmOS", "BmpGlueGetTransparentValue(0x%08X, 0x%08X [0x%08X]): %d", bitmapP, transparentValueP, transparentValue, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
 #if 0
-    case 3:
-      // BmpGlueGetCompressionType
-      break;
-    case 4:
-      // BmpGlueGetTransparentValue
-      break;
     case 5:
       // BmpGlueSetTransparentValue
       break;
