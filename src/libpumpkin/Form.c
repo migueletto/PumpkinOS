@@ -486,9 +486,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         }
         break;
       case frmListObj:
-        if (setUsable) obj.list->attr.usable = 1;
-        if (setUsable && formP->attr.visible) obj.list->attr.visible = 1;
-        if (obj.list->attr.usable && obj.list->attr.visible) {
+        if (obj.list->attr.usable) {
           LstDrawList(obj.list);
         }
         break;
@@ -1447,7 +1445,7 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
 
-    if (formP->handler) {
+    if (formP->handler || formP->m68k_handler) {
       MemSet(&event, sizeof(EventType), 0);
       event.eType = frmOpenEvent;
       event.data.frmOpen.formID = formP->formId;
