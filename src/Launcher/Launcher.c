@@ -606,9 +606,10 @@ static void launcherScanResources(launcher_data_t *data) {
   LocalID localId;
   UInt16 sys_os, sys_cpu, sys_size, x, y, width, height;
   UInt8 version, depth, *b;
-  void *p;
+  Boolean chain;
   UInt32 *value, size;
   char *s, buf[256];
+  void *p;
 
   index = 0;
   if ((dbRef = DmOpenDatabase(0, data->dbID, dmModeReadOnly)) != NULL) {
@@ -624,7 +625,7 @@ static void launcherScanResources(launcher_data_t *data) {
       if (DmResourceInfo(dbRef, i, &type, &id, NULL) != errNone) break;
       if (data->filterResType != 0 && data->filterResType != type) continue;
       if (data->filterId != 0xffffffff && data->filterId != id) continue;
-      if ((h = DmGetResourceIndex(dbRef, i)) == NULL) break;
+      if ((h = DmGetResourceIndex(dbRef, i)) == NULL) continue;
       size = MemHandleSize(h);
       p = MemHandleLock(h);
       data->item[index].type = type;
@@ -688,7 +689,8 @@ static void launcherScanResources(launcher_data_t *data) {
           depth = BmpGetBitDepth(bmp);
           BmpGetDimensions(bmp, (Coord *)&width, (Coord *)&height, NULL);
           s = (type == iconType) ? "Icon" : "Bitmap";
-          sys_snprintf(buf, sizeof(buf)-1, "%s V%d, %dx%d, %d bpp", s, version, width, height, depth);
+          chain = BmpGetNextBitmapAnyDensity(bmp) != NULL;
+          sys_snprintf(buf, sizeof(buf)-1, "%s V%d, %dx%d, %d bpp%s", s, version, width, height, depth, chain ? " (chain)" : "");
           data->item[index].info = xstrdup(buf);
           break;
         case scriptEngineLua:

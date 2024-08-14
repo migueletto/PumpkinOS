@@ -244,9 +244,11 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   RGBColorType rgb, oldf;
   PatternType oldp;
   Coord width, height;
-  UInt16 index;
+  UInt16 index, rowBytes;
+  UInt8 version, depth;
   UInt32 c;
   int i, j, x, y, w, h, dw, dh;
+  char *s;
 
   if (cmd == formGadgetDeleteCmd) {
     return true;
@@ -258,7 +260,24 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
   bmp = data->bmps[data->index];
 
-  BmpGetDimensions(bmp, &width, &height, NULL);
+  BmpGetDimensions(bmp, &width, &height, &rowBytes);
+  depth = BmpGetBitDepth(bmp);
+  version = BmpGetVersion(bmp);
+
+  if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+    switch (cmd) {
+      case formGadgetDrawCmd:
+        rgb.r = rgb.g = rgb.b = 0xff;
+        WinSetForeColorRGB(&rgb, &oldf);
+        WinPaintRectangle(&rect, 0);
+        s = "Empty bitmap slot";
+        WinDrawChars(s, StrLen(s), rect.topLeft.x, rect.topLeft.y);
+        WinSetForeColorRGB(&oldf, NULL);
+        break;
+    }
+    return true;
+  }
+
   data->width = width;
   data->height = height;
   w = rect.extent.x;
