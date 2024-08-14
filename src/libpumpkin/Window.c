@@ -361,8 +361,8 @@ Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect) {
     }
 
     rect->topLeft.x -= xmargin;
-    rect->topLeft.y -= xmargin;
-    rect->extent.x += 2*ymargin;
+    rect->topLeft.y -= ymargin;
+    rect->extent.x += 2*xmargin;
     rect->extent.y += 2*ymargin;
   }
 
