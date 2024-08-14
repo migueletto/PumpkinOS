@@ -2030,9 +2030,10 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
 
           if (h->buf) {
             if (load) {
+              debug(DEBUG_TRACE, "STOR", "reading %5d bytes from resource %s %d at %p", h->size, st, h->d.res.id, h->buf);
               storage_name(sto, db->name, STO_FILE_ELEMENT, resID, type, 0, 0, buf);
               if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-                if (vfs_read(f, h->buf, h->size) == h->size) {
+                if (vfs_read(f, h->buf, h->size) > 0) {
                   err = errNone;
                 }
                 vfs_close(f);
@@ -2114,7 +2115,7 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
               debug(DEBUG_TRACE, "STOR", "reading resource %s %d at %p", st, resID, h->buf);
               storage_name(sto, db->name, STO_FILE_ELEMENT, resID, resType, 0, 0, buf);
               if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-                if (vfs_read(f, h->buf, h->size) == h->size) {
+                if (vfs_read(f, h->buf, h->size) > 0) {
                   h->lockCount = 0;
                   err = errNone;
                 } else {
@@ -2244,10 +2245,10 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
             h->htype |= STO_INFLATED;
             h->useCount = 1;
             pumpkin_id2s(h->d.res.type, st);
-            debug(DEBUG_TRACE, "STOR", "reading resource %s %d at %p", st, h->d.res.id, h->buf);
+            debug(DEBUG_TRACE, "STOR", "reading %5d bytes from resource %s %d at %p", h->size, st, h->d.res.id, h->buf);
             storage_name(sto, db->name, STO_FILE_ELEMENT, h->d.res.id, h->d.res.type, 0, 0, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-              if (vfs_read(f, h->buf, h->size) == h->size) {
+              if (vfs_read(f, h->buf, h->size) > 0) {
                 h->lockCount = 0;
                 err = errNone;
               } else {
@@ -4296,8 +4297,9 @@ static void StoDecodeResource(storage_handle_t *res) {
       case bitmapRsc:
       case 'abmp':
       case 'tRAW':  // XXXX sigh.. FreeJongg stores bitmaps as tRAW
-        debug(DEBUG_TRACE, "STOR", "decoding bitmap resource %s %d", st, res->d.res.id);
+        debug(DEBUG_TRACE, "STOR", "decoding %d bytes from bitmap resource %s %d", res->size, st, res->d.res.id);
         BmpDecompressBitmapChain(res, res->d.res.type, res->d.res.id);
+        debug(DEBUG_TRACE, "STOR", "decoded size %d", res->size);
         break;
       case constantRscType:
         debug(DEBUG_TRACE, "STOR", "decoding constant resource %s %d", st, res->d.res.id);
@@ -4348,7 +4350,7 @@ MemHandle MemHandleNew(UInt32 size) {
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u: 0x%08X", size, h ? (uint8_t *)h - sto->base : 0);
+  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, h ? (uint8_t *)h - sto->base : 0, h);
   return h;
 }
 
@@ -4358,7 +4360,7 @@ Err MemHandleFree(MemHandle hh) {
   char st[8];
   Err err = dmErrInvalidParam;
 
-  debug(DEBUG_TRACE, "STOR", "MemHandleFree handle=%p", hh);
+  debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", hh ? (uint8_t *)hh - sto->base : 0, hh);
 
   if (hh) {
     h = (storage_handle_t *)hh;
@@ -4503,7 +4505,7 @@ MemPtr MemPtrNew(UInt32 size) {
     p = h ? MemHandleLock(h) : NULL;
     err = errNone;
   }
-  debug(DEBUG_TRACE, "STOR", "MemPtrNew size=%u p=%p", size, p);
+  debug(DEBUG_TRACE, "STOR", "MemPtrNew %u %p", size, p);
 
   StoCheckErr(err);
   return p;
@@ -4522,7 +4524,7 @@ Err MemChunkFree(MemPtr chunkDataP) {
   debug(DEBUG_TRACE, "STOR", "MemChunkFree %p", chunkDataP);
   if (chunkDataP) {
     if ((h = MemPtrRecoverHandle(chunkDataP)) != NULL) {
-      debug(DEBUG_TRACE, "STOR", "MemChunkFree 0x%08X", (uint8_t *)h - sto->base);
+      debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", (uint8_t *)h - sto->base);
       switch (h->htype & ~STO_INFLATED) {
         case STO_TYPE_MEM:
           debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p", chunkDataP, h);
