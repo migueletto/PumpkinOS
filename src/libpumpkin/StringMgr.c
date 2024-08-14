@@ -28,10 +28,20 @@ Char *StrCat(Char *dst, const Char *src) {
   return dst;
 }
 
+// StrNCat treats the parameter n as the maximum length in bytes for dst.
+// That means it will copy at most n - StrLen(dst) - 1 bytes from src.
+// The standard C function always copies n bytes from src into dst.
+// It copies the entire src into dst if the length of src is less than n.
+
 Char *StrNCat(Char *dst, const Char *src, Int16 n) {
   if (dst == NULL || src == NULL) ErrFatalDisplayEx("StrNCat NULL", 0);
   if (dst && src) {
-    sys_strncat(dst, src, n);
+    Int16 len = StrLen(dst) + 1;
+    n -= len;
+    if (n > 0) {
+      sys_strncat(dst, src, n);
+      dst[n-1] = 0;
+    }
   }
   return dst;
 }
