@@ -170,7 +170,7 @@ case sysTrapMemPtrNew: {
   MemPtr res = MemPtrNew(size);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "MemPtrNew(size=%d): 0x%08X", size, r_res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "MemPtrNew(size=%u): 0x%08X", size, r_res);
 }
 break;
 case sysTrapMemPtrRecoverHandle: {
