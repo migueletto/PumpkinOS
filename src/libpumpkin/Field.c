@@ -612,6 +612,9 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
     fldP->size = 0;
     fldP->textBlockSize = 0;
     handleSize = textHandle ? MemHandleSize(textHandle) : 0;
+    if (handleSize > fldP->maxChars) {
+      fldP->maxChars = handleSize;
+    }
 
     if (fldP->textBuf == NULL) {
       fldP->textBuf = pumpkin_heap_alloc(fldP->maxChars, "FieldTextBuf");
