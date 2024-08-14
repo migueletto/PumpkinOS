@@ -2197,7 +2197,12 @@ uint32_t palmos_systrap(uint16_t trap) {
       EventType event;
       MemSet(&event, sizeof(EventType), 0);
       EvtGetEvent(eventP ? &event : NULL, timeout);
-      debug(DEBUG_TRACE, "EmuPalmOS", "EvtGetEvent(0x%08X [0x%04X], %d)", eventP, event.eType, timeout);
+      char *eventName = EvtGetEventName(event.eType);
+      if (eventName) {
+        debug(DEBUG_TRACE, "EmuPalmOS", "EvtGetEvent(0x%08X [%s], %d)", eventP, eventName, timeout);
+      } else {
+        debug(DEBUG_TRACE, "EmuPalmOS", "EvtGetEvent(0x%08X [0x%04X], %d)", eventP, event.eType, timeout);
+      }
       if (eventP) encode_event(eventP, &event);
       }
       break;
