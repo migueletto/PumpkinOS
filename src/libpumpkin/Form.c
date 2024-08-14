@@ -339,15 +339,15 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = false;
         if (formP->attr.visible) {
-        if (obj.label->text) {
-          old = FntSetFont(obj.label->fontID);
-          max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
-          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
-          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
-          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
-          FntSetFont(old);
-          erase = true;
-        }
+          if (obj.label->text) {
+            old = FntSetFont(obj.label->fontID);
+            max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
+            RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
+            WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
+            RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
+            FntSetFont(old);
+            erase = true;
+          }
         }
         break;
 
@@ -427,6 +427,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FontID old;
   UInt16 totalLines, max, graffitiState;
   Int16 x, y, tw, th;
+  Boolean formVisible, objUsable, draw;
 
   if (formP && objIndex < formP->numObjects) {
     obj = formP->objects[objIndex].object;
@@ -439,19 +440,19 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
         if (setUsable) obj.field->attr.usable = 1;
-        if (obj.field->attr.usable && formP->attr.visible) {
+        if (obj.field->attr.usable) {
           FldDrawField(obj.field);
         }
         break;
       case frmControlObj:
         if (setUsable) obj.control->attr.usable = 1;
-        if (obj.control->attr.usable && formP->attr.visible) {
+        if (obj.control->attr.usable) {
           CtlDrawControl(obj.control);
         }
         break;
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = 1;
-        if (obj.label->attr.usable && formP->attr.visible) {
+        if (obj.label->attr.usable) {
           old = FntSetFont(obj.label->fontID);
           oldb = WinSetBackColor(objFill);
           oldt = WinSetTextColor(fieldText);
@@ -469,7 +470,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmGadgetObj:
         if (setUsable) obj.gadget->attr.usable = 1;
-        if (obj.gadget->attr.usable && formP->attr.visible) {
+        if (obj.gadget->attr.usable) {
           if (obj.gadget->m68k_handler || obj.gadget->handler) {
             oldb = WinSetBackColor(formFill);
             WinPushDrawState();
@@ -486,19 +487,40 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         }
         break;
       case frmListObj:
-        if (obj.list->attr.usable) {
+        formVisible = formP->attr.visible;
+        objUsable = obj.list->attr.usable;
+        draw = (!formVisible && objUsable) || (formVisible && setUsable);
+/*
+2024-08-14 00:30:18.236620 I 31096 Plucker  XXX: drawObject list 3242, formVisible 0, visible 0, usable 0, setUsable 1
+2024-08-14 00:30:18.236622 I 31096 Plucker  XXX: drawObject draw!
+
+2024-08-14 00:43:17.487624 I 31953 Plucker  XXX: drawObject list 3242, formVisible 0, visible 0, usable 1, setUsable 0
+2024-08-14 00:43:17.487626 I 31953 Plucker  XXX: drawObject draw!
+
+2024-08-14 00:34:11.389664 I 31312 ChemTabl XXX: drawObject list 1505, formVisible 1, visible 0, usable 0, setUsable 1
+2024-08-14 00:34:11.389666 I 31312 ChemTabl XXX: drawObject draw!
+
+2024-08-14 00:35:12.018367 I 31416 eReader  XXX: drawObject list 1503, formVisible 0, visible 0, usable 1, setUsable 0
+2024-08-14 00:35:12.018377 I 31416 eReader  XXX: drawObject draw!
+*/
+
+        debug(DEBUG_TRACE, "List", "drawObject list %d, formVisible %d, visible %d, usable %d, setUsable %d",
+          obj.list->id, formP->attr.visible, obj.list->attr.visible, obj.list->attr.usable, setUsable);
+        if (setUsable && formVisible) obj.list->attr.usable = 1;
+        if (draw) {
+          debug(DEBUG_TRACE, "List", "drawObject draw!");
           LstDrawList(obj.list);
         }
         break;
       case frmTableObj:
         if (setUsable) obj.table->attr.usable = 1;
-        if (obj.table->attr.usable && formP->attr.visible) {
+        if (obj.table->attr.usable) {
           TblDrawTable(obj.table);
         }
         break;
       case frmBitmapObj:
         if (setUsable) obj.bitmap->attr.usable = 1;
-        if (obj.bitmap->attr.usable && formP->attr.visible) {
+        if (obj.bitmap->attr.usable) {
           if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
             if ((bitmapP = MemHandleLock(h)) != NULL) {
               mode = WinSetDrawMode(winPaint);
@@ -517,15 +539,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
       case frmRectangleObj:
         break;
       case frmTitleObj:
-        if (formP->attr.visible) {
-//RGBColorType rgb;
-//rgb.r = 0x00;
-//rgb.g = 0xff;
-//rgb.b = 0x00;
           // PalmOS draws a 2-pixel line on the border between the title bar and the data area
           old = FntSetFont(boldFont);
           oldb = WinSetBackColor(formFrame);
-//WinSetBackColorRGB(&rgb, NULL);
           oldt = WinSetTextColor(formTitle);
           tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
           th = FntCharHeight();
@@ -561,7 +577,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           WinSetBackColor(oldb);
           WinSetTextColor(oldt);
           FntSetFont(old);
-        }
         break;
       case frmPopupObj:
         break;
@@ -581,7 +596,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmScrollBarObj:
         if (setUsable) obj.scrollBar->attr.usable = 1;
-        if (obj.scrollBar->attr.usable && formP->attr.visible) {
+        if (obj.scrollBar->attr.usable) {
           SclDrawScrollBar(obj.scrollBar);
         }
         break;
@@ -1118,7 +1133,6 @@ void FrmDrawForm(FormType *formP) {
     FrmDrawEmptyDialog(formP, &rect, margin, WinGetDisplayWindow());
 
     // draw form objects
-    formP->attr.visible = 1;
     for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
       if (formP->objects[objIndex].objectType == frmControlObj) {
         // CtlInvertControl uses the current visible state to perform color inversion.
@@ -1128,6 +1142,7 @@ void FrmDrawForm(FormType *formP) {
       }
       FrmDrawObject(formP, objIndex, false);
     }
+    formP->attr.visible = 1;
 
     WinSetDrawWindow(oldd);
     WinSetActiveWindow(olda);

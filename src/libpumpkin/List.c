@@ -98,8 +98,6 @@ void LstDrawList(ListType *listP) {
   IndexedColorType objFrame, oldf;
   int i, w, h;
 
-  if (!listP->attr.usable) return;
-
   oldw = WinGetActiveWindow();
   WinSetActiveWindow(listP->popupWin);
   oldd = WinSetDrawWindow(listP->popupWin);
@@ -514,15 +512,13 @@ Int16 LstPopupList(ListType *listP) {
   FormType *frm;
   EventType event;
   WinHandle prevActive, prevDraw;
-  Boolean stop, usable, entered, handled;
+  Boolean stop, entered, handled;
   Err err;
   UInt16 index;
   Int16 r = -1;
 
   debug(DEBUG_TRACE, "List", "LstPopupList begin");
   if (listP) {
-    usable = listP->attr.usable;
-    listP->attr.usable = true;
     LstDrawList(listP);
     prevActive = WinGetActiveWindow();
     WinSetActiveWindow(listP->popupWin);
@@ -606,13 +602,10 @@ Int16 LstPopupList(ListType *listP) {
       }
 
       if (!handled) {
-        listP->attr.usable = usable;
         FrmDispatchEvent(&event);
-        listP->attr.usable = true;
       }
     }
     debug(DEBUG_TRACE, "List", "LstPopupList loop end");
-    listP->attr.usable = usable;
   }
 
   debug(DEBUG_TRACE, "List", "LstPopupList end r=%d", r);
