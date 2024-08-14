@@ -127,8 +127,9 @@ Char *SysStringByIndex(UInt16 resID, UInt16 index, Char *strP, UInt16 maxLen) {
         i += pumpkin_getstr(&prefix, p, 0);
         i += get2b(&max, p, i);
         str = NULL;
-        for (j = 0; j < max && j <= index; j++) {
+        for (j = 0; j < max; j++) {
           i += pumpkin_getstr(&str, p, i);
+          if (j == index) break;
         }
         if (j < max && prefix && str) {
           sys_snprintf(strP, maxLen, "%s%s", prefix, str);
