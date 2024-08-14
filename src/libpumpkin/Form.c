@@ -126,6 +126,8 @@ void FrmGotoForm(UInt16 formId) {
     EvtAddEventToQueue(&event);
   }
 
+  EvtFlushPenQueue();
+
   xmemset(&event, 0, sizeof(EventType));
   event.eType = frmLoadEvent;
   event.data.frmLoad.formID = formId;
@@ -1797,14 +1799,16 @@ void FrmCloseAllForms(void) {
 
   for (p = module->list; p;) {
     debug(DEBUG_TRACE, "Form", "FrmCloseAllForms form %d", p->formP->formId);
+    q = p->next;
 
     xmemset(&event, 0, sizeof(EventType));
     event.eType = frmCloseEvent;
     event.data.frmClose.formID = p->formP->formId;
-    FrmDispatchEventInternal(p->formP, &event);
-    FrmDeleteFormInternal(p->formP);
-    q = p->next;
-    xfree(p);
+    if (!FrmDispatchEventInternal(p->formP, &event)) {
+      FrmDeleteFormInternal(p->formP);
+      xfree(p);
+    }
+
     p = q;
   }
   module->currentForm = NULL;
