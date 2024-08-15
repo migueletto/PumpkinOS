@@ -401,6 +401,37 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       debug(DEBUG_TRACE, "EmuPalmOS", "VFSRemoveFSLib(fsLibRefNum=%d): %d", fsLibRefNum, res);
     }
     break;
+    case vfsTrapFileDBInfo: {
+      // Err VFSFileDBInfo(FileRef ref, Char *nameP,
+      //    UInt16 *attributesP, UInt16 *versionP, UInt32 *crDateP,
+      //    UInt32 *modDateP, UInt32 *bckUpDateP,
+      //    UInt32 *modNumP, MemHandle *appInfoHP,
+      //    MemHandle *sortInfoHP, UInt32 *typeP,
+      //    UInt32 *creatorP, UInt16 *numRecordsP)
+      uint32_t refP = ARG32;
+      uint32_t nameP = ARG32;
+      uint32_t attributesP = ARG32;
+      uint32_t versionP = ARG32;
+      uint32_t crDateP = ARG32;
+      uint32_t modDateP = ARG32;
+      uint32_t bckUpDateP = ARG32;
+      uint32_t modNumP = ARG32;
+      uint32_t appInfoHP = ARG32;
+      uint32_t sortInfoHP = ARG32;
+      uint32_t typeP = ARG32;
+      uint32_t creatorP = ARG32;
+      uint32_t numRecordsP = ARG32;
+      char name[dmDBNameLength];
+      FileRefProxy *ref = (FileRefProxy *)emupalmos_trap_sel_in(refP, sysTrapFileSystemDispatch, sel, 0);
+      FileRef fileRef = ref ? ref->ref : NULL;
+      UInt16 attributes, version, numRecords;
+      UInt32 crDate, modDate, bckUpDate, modNum, type, creator;
+      MemHandle appInfoH, sortInfoH;
+      Err res = VFSFileDBInfo(fileRef, name, &attributes, &version, &crDate, &modDate, &bckUpDate, &modNum, &appInfoH, &sortInfoH, &type, &creator, &numRecords);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSFileDBInfo(fileRef=%d): %d", refP, res);
+    }
+    break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "FileSystemDispatch selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
