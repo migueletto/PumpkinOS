@@ -4636,6 +4636,8 @@ Err MemHeapFreeByOwnerID(UInt16 heapID, UInt16 ownerID) {
 }
 
 MemPtr MemChunkNew(UInt16 heapID, UInt32 size, UInt16 attr) {
+  // XXX is it MemHandleNew or MemPtrNew ?
+  // Bejeweled 2 assumes the returned value is a MemPtr ?
   return MemPtrNew(size);
 }
 
