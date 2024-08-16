@@ -2306,6 +2306,8 @@ int pumpkin_sys_event(void) {
         if (arg1 == 1) {
           i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
           if (i != -1  && i == pumpkin_module.current_task) {
+            pumpkin_module.tasks[i].penX = tx;
+            pumpkin_module.tasks[i].penY = ty;
             pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
           }
         }
