@@ -906,7 +906,9 @@ static Boolean frmMainEventH(EventPtr event)
 
 			if( controlButtonPressed == false ) {
 
-				controlButtonPressed = true;
+        // XXX commented because the condition above would not be satisfied the
+        // second time the button was clicked
+				//controlButtonPressed = true;
 
 				switch (Button) {
 					//{{{ FirstButton - First level icon			.
