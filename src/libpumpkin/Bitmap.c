@@ -62,6 +62,8 @@ typedef enum {
   BitmapV1HeaderSize = 16
 } BitmapV1Selector;
 
+#define BitmapV1FieldColorTable BitmapV1HeaderSize
+
 typedef enum {
   BitmapV2FieldWidth = BitmapFieldWidth,
   BitmapV2FieldHeight = BitmapFieldHeight,
@@ -483,6 +485,11 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
 
     if (hasColorTable) {
       switch (version) {
+        case 1:
+          numEntries = BmpV1GetField(newBmp, BitmapV1FieldColorTable);
+          colorTableSize = sizeof(UInt16) + numEntries * 4;
+          bitmapColorTable = (UInt8 *)bitmapP + BitmapV1FieldColorTable;
+          break;
         case 2:
           numEntries = BmpV2GetField(newBmp, BitmapV2FieldColorTable);
           colorTableSize = sizeof(UInt16) + numEntries * 4;
@@ -974,7 +981,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
         bits = (UInt8 *)bitmapP + headerSize;
         break;
       case 1:
-        headerSize = BitmapV1HeaderSize;
+        headerSize = BitmapV1HeaderSize + BmpColortableSize(bitmapP);
         bits = (UInt8 *)bitmapP + headerSize;
         break;
       case 2:
@@ -1016,6 +1023,9 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   if (bitmapP) {
     if (BmpGetCommonFlag(bitmapP, BitmapFlagHasColorTable)) {
       switch (BmpGetVersion(bitmapP)) {
+        case 1:
+          colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV1FieldColorTable);
+          break;
         case 2:
           colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV2FieldColorTable);
           break;
@@ -1072,7 +1082,7 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
         }
         break;
       case 1:
-        headerSize = BitmapV1HeaderSize;
+        headerSize = BitmapV1HeaderSize + BmpColortableSize(bitmapP);
         if (compressed) {
           get2b(&v16, bits, 0);
           dataSize = v16;
