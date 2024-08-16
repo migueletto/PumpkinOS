@@ -72,11 +72,11 @@ static Boolean 	MapPenPosition(Int16 penX, Int16 penY, PieceCoordType* coordP);
 static Boolean  HandleManualScroll(Boolean* inBoundsP, PieceCoordType* coordP);
 static Boolean 	HandlePenDown(Int16 penX, Int16 penY, Boolean marking, Boolean* inBoundsP);
 
-static void 	DrawTopBorder(Boolean drawBorder);
-static void 	DrawLeftBorder(Boolean drawBorder);
-static void 	DrawBottomBorder(Boolean drawBorder);
-static void 	DrawRightBorder(Boolean drawBorder);
-static void 	DrawScrollingBorders(void);
+//static void 	DrawTopBorder(Boolean drawBorder);
+//static void 	DrawLeftBorder(Boolean drawBorder);
+//static void 	DrawBottomBorder(Boolean drawBorder);
+//static void 	DrawRightBorder(Boolean drawBorder);
+//static void 	DrawScrollingBorders(void);
 static void 	UpdateScrollView(void);
 static void 	UpdateAutoScrollCoordinates(PieceCoordType* coordP);			
 static void 	UpdateManualScrollCoordinates(PieceCoordType* penDownCoordP, PieceCoordType* coordP);
@@ -424,7 +424,7 @@ static Boolean HandleManualScroll(Boolean* inBoundsP, PieceCoordType* coordP)
 				}
 
 			gGame.scroll.scrolling = false;
-			DrawScrollingBorders();
+			//DrawScrollingBorders();
 			}
 		}	
 		
@@ -678,6 +678,7 @@ Redraw:
 }
 
 
+#if 0
 //#pragma mark -
 /***********************************************************************
  *
@@ -942,7 +943,6 @@ static void DrawRightBorder(Boolean drawBorder)
 	WinSetForeColor(savedColor);
 }
 
-
 /***********************************************************************
  *
  * FUNCTION:    DrawScrollingBorders
@@ -991,6 +991,7 @@ static void DrawScrollingBorders()
 			(gGame.scroll.offset.x == kPieceBitmapWidth - kScrollingIncrement))
 		DrawRightBorder(false);				// erase border
 }
+#endif
 
 
 /***********************************************************************
