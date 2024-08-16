@@ -1615,7 +1615,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *windowBitmap, *displayBitmap, *best;
   RectangleType srcRect;
-  UInt16 windowDensity, bitmapDensity, bitmapDepth, coordSys, displayDepth, windowDepth;
+  UInt16 windowDensity, bitmapDensity, displayDensity, bitmapDepth, coordSys, displayDepth, windowDepth;
   UInt32 tc, bc, tcd, bcd, transparentValue;
   Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
@@ -1628,7 +1628,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     windowDensity = BmpGetDensity(windowBitmap);
     windowDepth = BmpGetBitDepth(windowBitmap);
 
-    //if ((best = BmpGetBestBitmapEx(bitmapP, windowDensity, windowDepth, !text)) != NULL) {
     if ((best = bitmapP) != NULL) {
       compression = BmpGetCompressionType(best);
       delete = false;
@@ -1641,6 +1640,9 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDensity = BmpGetDensity(best);
       bitmapDepth = BmpGetBitDepth(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
+
+      displayBitmap = WinGetBitmap(module->displayWindow);
+      displayDepth = BmpGetBitDepth(displayBitmap);
 
 #ifndef ANDROID
       if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
@@ -1662,6 +1664,14 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         }
         WinCopyBitmap(best, wh, &srcRect, x, y);
         WinSetCoordinateSystem(coordSys);
+
+        if (wh == module->activeWindow && wh != module->displayWindow) {
+          displayDensity = BmpGetDensity(displayBitmap);
+          if (bitmapDensity == displayDensity && bitmapDepth == displayDepth) {
+            WinCopyBitmap(best, module->displayWindow, &srcRect, x, y);
+          }
+        }
+
         if (delete) BmpDelete(best);
         return;
       }
@@ -1740,7 +1750,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 //debug(1, "XXX", "WinBlitBitmap normal");
       }
 
-      displayBitmap = WinGetBitmap(module->displayWindow);
       debug(DEBUG_TRACE, "Window", "WinBlitBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d",
         srcX, srcY, w, h, bitmapDensity, dstX, dstY, windowDensity, coordSys, dbl, hlf);
 
@@ -1759,7 +1768,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       tc = windowDepth == 16 ? module->textColor565 : module->textColor;
       bc = windowDepth == 16 ? module->backColor565 : module->backColor;
 
-      displayDepth = BmpGetBitDepth(displayBitmap);
       tcd = displayDepth == 16 ? module->textColor565 : module->textColor;
       bcd = displayDepth == 16 ? module->backColor565 : module->backColor;
 
