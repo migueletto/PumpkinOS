@@ -2801,9 +2801,10 @@ FParseObjects(RCPFILE * prcpfile)
         SETPBAFIELD(obj.table, numColumns, itm.numColumns);
         SETPBAFIELD(obj.table, numRows, itm.numRows);
         SETPBAFIELD(obj.table, rgdxcol,
-                    calloc(PBAFIELD(obj.table, numColumns), sizeof(int)));
-        for (icol = 0; icol < PBAFIELD(obj.table, numColumns); icol++)
+                    calloc(PBAFIELD(obj.table, numColumns), sizeof(p_int)));
+        for (icol = 0; icol < PBAFIELD(obj.table, numColumns); icol++) {
           SETPBAFIELD(obj.table, rgdxcol[icol], itm.rgdxcol[icol]);
+        }
         fok = frmTableObj;
         break;
 
