@@ -391,6 +391,7 @@ static void render(cz80_data_t *cz80) {
 }
 
 static uint8_t video_in(cz80_data_t *cz80, uint16_t port) {
+  surface_t *surface;
   uint8_t b = 0;
 
   switch (port) {
@@ -398,7 +399,7 @@ static uint8_t video_in(cz80_data_t *cz80, uint16_t port) {
       b = (pterm_getfg(cz80->t) << 4) | pterm_getbg(cz80->t);
       break;
     case 1:
-      surface_t *surface = lock_surface(cz80);
+      surface = lock_surface(cz80);
       b = surface->getpixel(surface->data, cz80->x, cz80->y);
       unlock_surface(cz80);
       break;
