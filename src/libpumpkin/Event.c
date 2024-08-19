@@ -293,6 +293,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
     }
 
     if (ev == MSG_KEYDOWN || ev == MSG_KEYUP) {
+      // XXX is this correct ?
       continue;
     }
 
