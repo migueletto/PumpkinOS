@@ -1246,7 +1246,7 @@ case sysTrapDmNewResource: {
   MemHandle res = DmNewResource(dbP ? l_dbP : 0, resType, resID, size);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmNewResource(dbP=0x%08X, resType=%d, resID=%d, size=%d): %d", dbP, resType, resID, size, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmNewResource(dbP=0x%08X, resType=%d, resID=%d, size=%d): 0x%08X", dbP, resType, resID, size, res);
 }
 break;
 case sysTrapDmRemoveResource: {
