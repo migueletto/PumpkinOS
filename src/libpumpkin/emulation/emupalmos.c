@@ -1591,7 +1591,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   uint8_t *p8, *start, b;
   uint32_t i, j, k, k0, n, m, xr, count, creator;
   uint32_t paramBlockStart;
-  int32_t code1_xrefs, data0_xrefs, offset;
+  int32_t code1_xrefs, data0_xrefs, offset, value;
   uint8_t *ram = pumpkin_heap_base();
   m68ki_cpu_core main_cpu;
   emu_state_t *oldState, *state;
@@ -1627,7 +1627,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       sysAppInfoStart = sysAppInfo - ram;
       m68k_write_memory_16(sysAppInfoStart, launchCode);
       m68k_write_memory_32(sysAppInfoStart +  2, paramBlockStart); // cmdPBP
-      m68k_write_memory_16(sysAppInfoStart +  6, flags); // launch flags
+      m68k_write_memory_16(sysAppInfoStart +  6, flags | sysAppLaunchFlagNewGlobals | sysAppLaunchFlagDataRelocated); // launch flags
       m68k_write_memory_32(sysAppInfoStart + 12, (uint8_t *)hCode1 - ram); // codeH
       debug(DEBUG_TRACE, "EmuPalmOS", "sysAppInfoStart 0x%08X", sysAppInfoStart);
       debug(DEBUG_TRACE, "EmuPalmOS", "cmdPBP %p 0x%08X", paramBlock, paramBlockStart);
@@ -1756,72 +1756,80 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         debug(DEBUG_TRACE, "EmuPalmOS", "data end");
 
         data0_xrefs = i;
-        debug(DEBUG_INFO, "EmuPalmOS", "data xrefs at 0x%04X", data0_xrefs);
+        if (data0_xrefs < data0Size - 12) {
+          debug(DEBUG_INFO, "EmuPalmOS", "data xrefs at 0x%04X", data0_xrefs);
 
-        for (m = 0; m < 3 && !state->panic; m++) {
-          i += get4b(&count, data0, i);
-          debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
-          offset = dataSize;
-
-          for (xr = 0; xr < count && !state->panic; xr++) {
-            b = data0[i++];
-            if (b & 0x80) {
-              // 8 bits offsets
-              uint8_t d = b & 0x7F;
-              d <<= 1;
-              int8_t sd = d;
-              offset += sd;
-              int32_t value;
-              get4b((uint32_t *)&value, data, offset);
-              if (value < 0) {
-                // XXX if values > 0 are processed, some apps crash (why ??)
-                debug(DEBUG_TRACE, "EmuPalmOS", "8-bits data xref %2d at 0x%04X: 0x%02X   %5d 0x%08X 0x%08X -> 0x%08X", xr, i-1, b, sd, dataStart + offset, value, dataStart + dataSize + value);
-                value += dataStart + dataSize;
-                put4b(value, data, offset);
-              }
-            } else if (b & 0x40) {
-              // 16 bits offsets
-              uint16_t w = b;
-              w <<= 8;
-              w |= data0[i++];
-              w <<= 2;
-              if (w & 0x8000) {
-                w >>= 1;
-                w |= 0x8000;
-              } else {
-                w >>= 1;
-                w &= 0x7FFF;
-              }
-              int16_t sw = w;
-              offset += sw;
-              int32_t value;
-              get4b((uint32_t *)&value, data, offset);
-              if (value < 0) {
-                // XXX if values > 0 are processed, some apps crash (why ??)
-                debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: 0x%04X %5d 0x%08X 0x%08X -> 0x%08X", xr, i-2, w, sw, dataStart + offset, value, dataStart + dataSize + value);
-                value += dataStart + dataSize;
-                put4b(value, data, offset);
-              }
+          for (m = 0; m < 3 && !state->panic; m++) {
+            i += get4b(&count, data0, i);
+            debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
+            uint32_t base;
+            if (m == 0) {
+              // chain 0 base is at the end of data segment
+              base = dataStart + dataSize;
             } else {
-              // 24 bits offset ?
-              debug(DEBUG_ERROR, "EmuPalmOS", "24-bits data xref ?");
-              //emupalmos_panic("Unsupported 24 bits offset in data xrefs.", EMUPALMOS_INVALID_XREF);
-              m = 3;
-              break;
+              // chain 1 base is at the beginning of code segment
+              base = codeStart;
+            }
+            offset = dataSize;
+
+            for (xr = 0; xr < count && !state->panic; xr++) {
+              b = data0[i++];
+              if (b & 0x80) {
+                // relative 8 bits signed delta
+                int8_t d = b;
+                d <<= 1;
+                offset += d;
+                get4b((uint32_t *)&value, data, offset);
+                debug(DEBUG_TRACE, "EmuPalmOS", " 8-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-1, d, dataStart + offset, value);
+              } else {
+                if (b & 0x40) {
+                  // relative 15 bits unsigned delta
+                  int16_t w = b;
+                  w <<= 8;
+                  w |= data0[i++];
+                  w <<= 2;
+                  w >>= 1;
+                  offset += w;
+                  get4b((uint32_t *)&value, data, offset);
+                  debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-2, w, dataStart + offset, value);
+                } else {
+                  // absolute 31 bits offset
+                  int32_t l = b;
+                  l <<= 8;
+                  l |= data0[i++];
+                  l <<= 8;
+                  l |= data0[i++];
+                  l <<= 8;
+                  l |= data0[i++];
+                  l <<= 2;
+                  l >>= 1;
+                  offset = l;
+                  get4b((uint32_t *)&value, data, offset);
+                  debug(DEBUG_TRACE, "EmuPalmOS", "31-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-4, l, dataStart + offset, value);
+                }
+              }
+              value += base;
+              if (m < 2) put4b(value, data, offset);
             }
           }
+        } else {
+          debug(DEBUG_INFO, "EmuPalmOS", "no data xrefs");
         }
 
         code1_xrefs = i;
-        debug(DEBUG_INFO, "EmuPalmOS", "code xrefs at 0x%04X", code1_xrefs);
+        if (code1_xrefs < data0Size - 12) {
+          debug(DEBUG_INFO, "EmuPalmOS", "code xrefs at 0x%04X", code1_xrefs);
 
-        for (m = 0; m < 3 && !state->panic; m++) {
-          i += get4b(&count, data0, i);
-          debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
-          if (count) {
-            //emupalmos_panic("Unsupported code xrefs.", EMUPALMOS_INVALID_XREF);
-            break;
+          for (m = 0; m < 3 && !state->panic; m++) {
+            i += get4b(&count, data0, i);
+            debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
+            if (count) {
+              //emupalmos_panic("Unsupported code xrefs.", EMUPALMOS_INVALID_XREF);
+              break;
+            }
           }
+        } else {
+          debug(DEBUG_INFO, "EmuPalmOS", "no code xrefs");
         }
 
         debug(DEBUG_TRACE, "EmuPalmOS", "data begin (fixed)");
