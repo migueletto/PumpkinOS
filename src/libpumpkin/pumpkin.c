@@ -2480,7 +2480,7 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
           pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
           pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
           pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-          if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) {
+          if (pumpkin_module.dia && dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) {
             ev = 0;
             break;
           }
@@ -2497,7 +2497,7 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
           pumpkin_module.wp->status(pumpkin_module.w, &arg1, &arg2, &tmp);
           pumpkin_module.lastX = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
           pumpkin_module.lastY = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-          if (dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) {
+          if (pumpkin_module.dia && dia_clicked(pumpkin_module.dia, 0, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) {
             ev = 0;
             break;
           }
@@ -2512,7 +2512,7 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
           y = arg2;
           x = pumpkin_module.wp->average ? calibrate_x(arg1, arg2) : arg1;
           y = pumpkin_module.wp->average ? calibrate_y(arg1, arg2) : arg2;
-          if (!dia_stroke(pumpkin_module.dia, x, y)) {
+          if (!pumpkin_module.dia || !dia_stroke(pumpkin_module.dia, x, y)) {
             if (x >= 0 && x < pumpkin_module.tasks[0].width && y >= 0 && y < pumpkin_module.tasks[0].height) {
               pumpkin_module.tasks[0].penX = x;
               pumpkin_module.tasks[0].penY = y;
@@ -2538,7 +2538,7 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
       wman_update(pumpkin_module.wm, pumpkin_module.tasks[0].taskId, x, y, w, h);
       pumpkin_module.render = 1;
     }
-    if (dia_update(pumpkin_module.dia)) {
+    if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
       pumpkin_module.render = 1;
     }
     if (pumpkin_module.render) {
