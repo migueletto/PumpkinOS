@@ -850,6 +850,36 @@ Err BmpDelete(BitmapType *bitmapP) {
   return errNone;
 }
 
+static UInt8 emptySlot[BitmapV1HeaderSize] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static Boolean isEmptySlot(BitmapType *bitmapP) {
+  UInt8 *bmp = (UInt8 *)bitmapP;
+  UInt32 i;
+
+  for (i = 0; i < BitmapV1HeaderSize; i++) {
+    if (bmp[i] != emptySlot[i]) return false;
+  }
+
+  return true;
+}
+
+static BitmapType *skipEmptySlot(BitmapType *bitmapP) {
+  return isEmptySlot(bitmapP) ? (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize) : bitmapP;
+}
+
+void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {
+  BitmapType *bmp;
+
+  if (bitmapP) {
+    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    if (widthP) *widthP = BmpGetCommonField(bmp, BitmapFieldWidth);
+    if (heightP) *heightP = BmpGetCommonField(bmp, BitmapFieldHeight);
+    if (rowBytesP) *rowBytesP = BmpGetCommonField(bmp, BitmapFieldRowBytes);
+  }
+}
+
 BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr) {
   UInt16 best_depth, best_density;
   Boolean exact_depth;
@@ -877,16 +907,10 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
 
       if (last && bmp >= last) break;
 
+      bitmapP = skipEmptySlot(bitmapP);
       version = BmpGetVersion(bitmapP);
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
       bitmapDepth = BmpGetBitDepth(bitmapP);
-
-      if (width == 0 && height == 0 && rowBytes == 0 && bitmapDepth == 0xFF && version == 1) {
-        // 00 00 00 00 00 00 00 00 ff 01 00 00 00 00 00 00
-        debug(DEBUG_TRACE, "Bitmap", "skip empty slot");
-        bitmapP = (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize);
-        continue;
-      }
 
       switch (version = BmpGetVersion(bitmapP)) {
         case 0:
@@ -1129,14 +1153,6 @@ UInt16 BmpColortableSize(const BitmapType *bitmapP) {
   }
 
   return size;
-}
-
-void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {
-  if (bitmapP) {
-    if (widthP) *widthP = BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldWidth);
-    if (heightP) *heightP = BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldHeight);
-    if (rowBytesP) *rowBytesP = BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldRowBytes);
-  }
 }
 
 UInt8 BmpGetBitDepth(const BitmapType *bitmapP) {
@@ -2909,16 +2925,18 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
   bitmapP = MemHandleLock(handle);
 
   for (bmp = bitmapP, total = compressed = totalSize = 0; bmp && total < 32; total++) {
-    oldBmp[total] = bmp;
-    version = BmpGetVersion(bmp);
-    BmpGetDimensions(bmp, &width, &height, &rowBytes);
-    depth = BmpGetBitDepth(bmp);
-
-    if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+    if (isEmptySlot(bmp)) {
       debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", total);
+      oldBmp[total] = bmp;
       newSize[total] = BitmapV1HeaderSize;
-      bmp = (BitmapType *)((UInt8 *)bmp + BitmapV1HeaderSize);
+      bmp = skipEmptySlot(bmp);
+
     } else {
+      oldBmp[total] = bmp;
+      version = BmpGetVersion(bmp);
+      BmpGetDimensions(bmp, &width, &height, &rowBytes);
+      depth = BmpGetBitDepth(bmp);
+
       if (resType == 'tRAW') {
         // XXX FreeJongg stores bitmaps as tRAW, but in general not all tRAW resources are bitmaps...
         // Trying my best to detect if a tRAW resource is really a bitmap
@@ -2978,17 +2996,18 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
   p = p0;
 
   for (i = 0; i < total; i++) {
-    version = BmpGetVersion(oldBmp[i]);
-    BmpGetSizes(oldBmp[i], NULL, &headerSize);
-    BmpGetDimensions(oldBmp[i], &width, &height, &rowBytes);
-    compression = BmpGetCompressionType(oldBmp[i]);
-    depth = BmpGetBitDepth(oldBmp[i]);
-
-    MemMove(p, oldBmp[i], headerSize);
-
-    if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+    if (isEmptySlot(oldBmp[i])) {
       debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", i);
+      MemMove(p, oldBmp[i], newSize[i]);
+
     } else {
+      version = BmpGetVersion(oldBmp[i]);
+      BmpGetSizes(oldBmp[i], NULL, &headerSize);
+      BmpGetDimensions(oldBmp[i], &width, &height, &rowBytes);
+      compression = BmpGetCompressionType(oldBmp[i]);
+      depth = BmpGetBitDepth(oldBmp[i]);
+      MemMove(p, oldBmp[i], headerSize);
+
       debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u %dx%d, %d bpp, offset 0x%08X", i, version, width, height, depth, p - p0);
       if (compression == BitmapCompressionTypeNone) {
         MemMove(p + headerSize, (UInt8 *)oldBmp[i] + headerSize, rowBytes * height);
