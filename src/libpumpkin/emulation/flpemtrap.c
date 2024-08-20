@@ -63,7 +63,7 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       flp_double_t d;
       d.d = (double)i;
       RES_DOUBLE(d, resP);
-      debug(DEBUG_TRACE, "FlpEm", "_f_itod(%d): %f", i, d.d);
+      debug(DEBUG_TRACE, "FlpEm", "_d_itod(%d): %f", i, d.d);
     }
       break;
     case sysFloatEm_d_dtof: {
