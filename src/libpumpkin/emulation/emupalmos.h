@@ -72,6 +72,7 @@ typedef struct {
   uint32_t SysFormPointerArrayToStrings_addr;
   uint32_t FrmDrawForm_addr;
   uint32_t SysQSort_addr;
+  uint32_t SysBinarySearch_addr;
   uint32_t SysLibLoad_addr;
   MemHandle hNative;
   uint32_t screenStart;

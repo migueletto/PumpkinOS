@@ -287,9 +287,25 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(baseP, trap, 0);
       emupalmos_trap_in(comparF, trap, 3);
       debug(DEBUG_TRACE, "EmuPalmOS", "SysQSort(0x%08X, %d, %d, 0x%08X, %d) native 0x%08X", baseP, numOfElements, width, comparF, other, state->SysQSort_addr);
-      if (baseP != 0 && numOfElements > 1 && width > 0 && comparF != 0) {
-        r = state->SysQSort_addr;
+      r = state->SysQSort_addr;
       }
+      break;
+    case sysTrapSysBinarySearch: {
+      // Boolean SysBinarySearch(void const *baseP, UInt16 numOfElements, Int16 width, SearchFuncPtr searchF, void const *searchData, Int32 other, Int32 *position, Boolean findFirst)
+      uint32_t baseP = ARG32;
+      uint16_t numOfElements = ARG16;
+      int16_t width = ARG16;
+      uint32_t searchF = ARG32;
+      uint32_t searchData = ARG32;
+      int32_t other = ARG32;
+      uint32_t positionP = ARG32;
+      uint8_t findFirst = ARG8;
+      emupalmos_trap_in(baseP, trap, 0);
+      emupalmos_trap_in(searchF, trap, 3);
+      emupalmos_trap_in(searchData, trap, 4);
+      emupalmos_trap_in(positionP, trap, 6);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysBinarySearch(0x%08X, %d, %d, 0x%08X, 0x%08X, %d, 0x%08X, %d) native 0x%08X", baseP, numOfElements, width, searchF, searchData, other, positionP, findFirst, state->SysQSort_addr);
+      r = state->SysBinarySearch_addr;
       }
       break;
     case sysTrapHostControl: {

@@ -105,6 +105,17 @@ static const uint8_t SysQSort_code[] = {
 0xff, 0xe0, 0x4e, 0x5e, 0x4e, 0x75,
 };
 
+static const uint8_t SysBinarySearch_code[] = {
+0x4e, 0x56, 0x00, 0x00, 0x48, 0xe7, 0x1f, 0x38, 0x28, 0x6e, 0x00, 0x10, 0x26, 0x6e, 0x00, 0x14,
+0x24, 0x6e, 0x00, 0x1c, 0x42, 0x07, 0x4a, 0xae, 0x00, 0x08, 0x67, 0x50, 0xb8, 0xfc, 0x00, 0x00,
+0x67, 0x4a, 0xb6, 0xfc, 0x00, 0x00, 0x67, 0x44, 0x42, 0x43, 0xb6, 0x6e, 0x00, 0x0c, 0x64, 0x3c,
+0x7c, 0x00, 0x42, 0x45, 0x78, 0x00, 0x2f, 0x2e, 0x00, 0x18, 0x3c, 0x05, 0x20, 0x6e, 0x00, 0x08,
+0x48, 0x70, 0x68, 0x00, 0x2f, 0x0b, 0x4e, 0x94, 0x4f, 0xef, 0x00, 0x0c, 0x4a, 0x40, 0x66, 0x0c,
+0xb4, 0xfc, 0x00, 0x00, 0x67, 0x04, 0x38, 0x03, 0x24, 0x84, 0x7e, 0x01, 0xda, 0x6e, 0x00, 0x0e,
+0x52, 0x43, 0xb6, 0x6e, 0x00, 0x0c, 0x64, 0x04, 0x4a, 0x07, 0x67, 0xca, 0x30, 0x07, 0x02, 0x40,
+0x00, 0x01, 0x4c, 0xee, 0x1c, 0xf8, 0xff, 0xe0, 0x4e, 0x5e, 0x4e, 0x75
+};
+
 static const uint8_t SysLibLoad_code[] = {
 0x4e, 0x56, 0xff, 0xc8, 0x48, 0xe7, 0x1f, 0x30, 0x2e, 0x2e, 0x00, 0x08, 0x2c, 0x2e, 0x00, 0x0c,
 0x26, 0x6e, 0x00, 0x10, 0x36, 0x3c, 0x05, 0x0a, 0x48, 0x6e, 0xff, 0xcc, 0x48, 0x6e, 0xff, 0xca,
@@ -1090,7 +1101,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
   //void *emulState;
   void *argsOnStack;
   m68ki_cpu_core old_cpu, aux_cpu;
-  uint32_t argsSize, wantA0, a5, sp, r = 0;
+  uint32_t argsSize, wantA0, a4, a5, sp, r = 0;
   m68k_state_t *m68k_state;
 
   debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func(0x%08X, 0x%08X, 0x%08X, 0x%08x)", emulStateP, trapOrFunction, argsOnStackP, argsSizeAndwantA0);
@@ -1128,6 +1139,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     sp -= 4;
     m68k_write_memory_32(sp, 0);
 
+    a4 = m68k_get_reg(NULL, M68K_REG_A4);
     a5 = m68k_get_reg(NULL, M68K_REG_A5);
     m68k_get_context(&old_cpu);
 
@@ -1138,6 +1150,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_pulse_reset();
     m68k_set_reg(M68K_REG_PC, trapOrFunction);
     m68k_set_reg(M68K_REG_SP, sp);
+    m68k_set_reg(M68K_REG_A4, a4);
     m68k_set_reg(M68K_REG_A5, a5);
 
     m68k_state = m68k_get_state();
@@ -1444,7 +1457,7 @@ static void print_regs(void) {
 int cpu_instr_callback(int pc) {
   emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
-  uint32_t instr_size, d[8], a0, a1, a2, a3, a7;
+  uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
   uint16_t trap;
   char buf[128], buf2[128], *s;
   int i;
@@ -1477,9 +1490,14 @@ int cpu_instr_callback(int pc) {
     a1 = m68k_get_reg(NULL, M68K_REG_A1);
     a2 = m68k_get_reg(NULL, M68K_REG_A2);
     a3 = m68k_get_reg(NULL, M68K_REG_A3);
+    a4 = m68k_get_reg(NULL, M68K_REG_A4);
+    a5 = m68k_get_reg(NULL, M68K_REG_A5);
+    a6 = m68k_get_reg(NULL, M68K_REG_A6);
     a7 = m68k_get_reg(NULL, M68K_REG_A7);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d) (A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A7=0x%08X)",
-      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], a0, a1, a2, a3, a7);
+    debug(DEBUG_INFO, "M68K", "A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A4=0x%08X,A5=0x%08X,A6=0x%08X,A7=0x%08X",
+      a0, a1, a2, a3, a4, a5, a6, a7);
+    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d)",
+      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
   }
 
   return 0;
@@ -1525,7 +1543,7 @@ static void palmos_systrap_init(emu_state_t *state) {
   uint8_t *native, *addr;
   uint32_t szfunc, nativeSize;
 
-  nativeSize = sizeof(SysFormPointerArrayToStrings_code) + sizeof(FrmDrawForm_code) + sizeof(SysQSort_code) + sizeof(SysLibLoad_code);
+  nativeSize = sizeof(SysFormPointerArrayToStrings_code) + sizeof(FrmDrawForm_code) + sizeof(SysQSort_code) + sizeof(SysBinarySearch_code) + sizeof(SysLibLoad_code);
   state->hNative = MemHandleNew(nativeSize);
   native = MemHandleLock(state->hNative);
   addr = native;
@@ -1543,6 +1561,11 @@ static void palmos_systrap_init(emu_state_t *state) {
   szfunc = sizeof(SysQSort_code);
   MemMove(addr, SysQSort_code, szfunc);
   state->SysQSort_addr = emupalmos_trap_out(addr);
+  addr += szfunc;
+
+  szfunc = sizeof(SysBinarySearch_code);
+  MemMove(addr, SysBinarySearch_code, szfunc);
+  state->SysBinarySearch_addr = emupalmos_trap_out(addr);
   addr += szfunc;
 
   szfunc = sizeof(SysLibLoad_code);
