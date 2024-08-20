@@ -755,7 +755,7 @@ static void MapDrawRoute(Int16 color)
 
   if (visible0) {
     MapDrawDot(x0, y0); // in case the symbol is not drawn
-    DrawSymbol(symbolId + GetSymbolIndex(rp->symbol),
+    DrawSymbol(hsymbolId + GetSymbolIndex(rp->symbol),
       x0, y0, true, rp->name, font, color, false);
   }
 
@@ -794,7 +794,7 @@ static void MapDrawRoute(Int16 color)
 
     if (visible) {
       MapDrawDot(x, y); // in case the symbol is not drawn
-      DrawSymbol(symbolId + GetSymbolIndex(rp->symbol),
+      DrawSymbol(hsymbolId + GetSymbolIndex(rp->symbol),
         x, y, true, rp->name, font, color, false);
     }
 
@@ -1080,12 +1080,12 @@ static void MapRedraw(void)
                      if (lastsymbol == 0xFFFE)	// 0xFFFE = empty
                        sel.layer = 0;
                      else
-                       sel.layer = symbolId + GetSymbolIndex(lastsymbol);
+                       sel.layer = hsymbolId + GetSymbolIndex(lastsymbol);
                    } else {
                      if (lastsymbol == 0xFFFE)	// 0xFFFE = empty
                        DrawSymbol(0, x, y, true, name, font, tc, false);
                      else
-                       DrawSymbol(symbolId + GetSymbolIndex(lastsymbol),
+                       DrawSymbol(hsymbolId + GetSymbolIndex(lastsymbol),
                          x, y, true, name, font, tc, false);
                    }
                  }
@@ -1311,9 +1311,9 @@ static void MapRedraw(void)
             sel.font = font;
             sel.color = tc;
             sel.label = p->name;
-            sel.layer = symbolId + GetSymbolIndex(p->symbol);
+            sel.layer = hsymbolId + GetSymbolIndex(p->symbol);
           } else
-            DrawSymbol(symbolId + GetSymbolIndex(p->symbol), x, y, true,
+            DrawSymbol(hsymbolId + GetSymbolIndex(p->symbol), x, y, true,
               p->name, font, tc, false);
         }
         DbCloseRec(ptRef, i, (char *)p);
