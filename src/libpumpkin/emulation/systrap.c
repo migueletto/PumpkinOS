@@ -2592,6 +2592,18 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetLocation(%d, %d)", x, y);
     }
       break;
+    case sysTrapEncDigestMD5: {
+      // Err EncDigestMD5(UInt8 *strP, UInt16 strLen, UInt8 digestP[16])
+      uint32_t strP = ARG32;
+      uint16_t strLen = ARG16;
+      uint32_t digestP = ARG32;
+      UInt8 *str = emupalmos_trap_in(strP, trap, 0);
+      UInt8 *digest = emupalmos_trap_in(digestP, trap, 1);
+      Err res = EncDigestMD5(str, strLen, digest);
+      debug(DEBUG_TRACE, "EmuPalmOS", "EncDigestMD5(0x%08X, %u, 0x%08X): %d", strP, strLen, digestP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
     case sysTrapErrExceptionList: {
       // MemPtr *ErrExceptionList(void)
       uint8_t *e = (uint8_t *)ErrExceptionList();
