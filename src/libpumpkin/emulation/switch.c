@@ -1610,6 +1610,22 @@ case sysTrapWinPaintPixel: {
   debug(DEBUG_TRACE, "EmuPalmOS", "WinPaintPixel(x=%d, y=%d)", x, y);
 }
 break;
+case sysTrapWinPaintPixels: {
+  // void WinPaintPixels(UInt16 numPoints, PointType pts[])
+  uint16_t numPoints = ARG16;
+  uint32_t pts = ARG32;
+  uint16_t i;
+  emupalmos_trap_in(pts, trap, 1);
+  for (i = 0; i < numPoints; i++) {
+    int16_t x = m68k_read_memory_16(pts);
+    pts += 2;
+    int16_t y = m68k_read_memory_16(pts);
+    pts += 2;
+    WinPaintPixel(x, y);
+  }
+  debug(DEBUG_TRACE, "EmuPalmOS", "WinPaintPixels(numPoints=%u, pts=0x%08X)", numPoints, pts);
+}
+break;
 case sysTrapWinDrawPixel: {
   // void WinDrawPixel(Coord x, Coord y)
   int16_t x = ARG16;
