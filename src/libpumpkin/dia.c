@@ -515,7 +515,7 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
 
       switch (i) {
         case ICON_HOME:
-          if (current_task >= 0 && pumpkin_is_launched()) {
+          if (current_task >= 0) {
             pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_HOME, 0, 0);
           }
           break;
