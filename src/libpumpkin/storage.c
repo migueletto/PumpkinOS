@@ -330,6 +330,30 @@ static void storage_name(storage_t *sto, char *name, int file, int id, uint32_t 
   }
 }
 
+static int StoInflateRec(storage_t *sto, storage_db_t *db, storage_handle_t *h) {
+  char buf[VFS_PATH];
+  vfs_file_t *f;
+  int r = -1;
+
+  if ((h->buf = StoPtrNew(h, h->size, 0, 0)) != NULL) {
+    h->htype |= STO_INFLATED;
+    h->useCount = 1;
+    debug(DEBUG_TRACE, "STOR", "reading record at %p", h->buf);
+    storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
+    if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+      if (vfs_read(f, h->buf, h->size) == h->size) {
+        h->d.rec.attr &= ~dmRecAttrDirty;
+        h->d.rec.attr |= dmRecAttrBusy;
+        h->lockCount = 0;
+        r = 0;
+      }
+      vfs_close(f);
+    }
+  }
+
+  return r;
+}
+
 static int StoWriteIndex(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
   vfs_file_t *f;
@@ -2789,6 +2813,7 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
           recInfoP = pumpkin_heap_alloc(4, "recInfo");
           for (i = 0; i < db->numRecs; i++) {
             h = db->elements[i];
+            if (StoInflateRec(sto, db, h) == -1) break;
             if (newRecordInfo) {
               recInfoP[0] = h->d.rec.attr;
               recInfoP[1] = (h->d.rec.uniqueID >> 16) & 0xFF;
@@ -2800,15 +2825,20 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
             }
             if (CallDmCompare(compar, newRecord, h->buf - sto->base, other, newRecordInfo, recInfo, appInfo) > 0) {
               pos = i;
+              err = errNone;
               break;
             }
+          }
+          if (i == db->numRecs) {
+            pos = i;
+            err = errNone;
           }
           //pos = i + 1;
           pumpkin_heap_free(recInfoP, "recInfo");
         } else {
           pos = 0;
+          err = errNone;
         }
-        err = errNone;
       }
     }
   }
