@@ -82,10 +82,6 @@ void DrawBmp(UInt16 id, Int16 x, Int16 y, Boolean centered)
 
   if (centered) {
     BmpGlueGetDimensions(bmp, (Coord *)&bwidth, (Coord *)&bheight, &rowBytes);
-    if (WinGetCoordinateSystem() == kCoordinatesDouble) {
-      bwidth <<= 1;
-      bheight <<= 1;
-    }
     WinDrawBitmap(bmp, x-bwidth/2, y-bheight/2);
   } else {
     WinDrawBitmap(bmp, x, y);

@@ -315,10 +315,6 @@ void DrawSymbol(UInt16 id, Int16 x, Int16 y, Boolean centered,
       bmp = pbitmap[index].bmp;
     
     BmpGlueGetDimensions(bmp, (Coord *)&bwidth, (Coord *)&bheight, &rowBytes);
-    if (WinGetCoordinateSystem() == kCoordinatesDouble) {
-      bwidth <<= 1;
-      bheight <<= 1;
-    }
 
     if (now) {
       if (centered)

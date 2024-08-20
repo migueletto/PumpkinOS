@@ -55,10 +55,6 @@ void LabelFinish(Boolean highDensity)
       case -1:
         bmp = (BitmapPtr)label[i].label;
         BmpGlueGetDimensions(bmp, &dx, &dy, NULL);
-        if (WinGetCoordinateSystem() == kCoordinatesDouble) {
-          dx <<= 1;
-          dy <<= 1;
-        }
 
         p = LabelBox(p, label[i].x, label[i].y, dx, dy, &ok);
 
