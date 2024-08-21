@@ -1785,15 +1785,16 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
           for (m = 0; m < 3 && !state->panic; m++) {
             i += get4b(&count, data0, i);
             debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
-            uint32_t base;
+            uint32_t segment, relocbase;
             if (m == 0) {
               // chain 0 base is at the end of data segment
-              base = dataStart + dataSize;
+              relocbase = dataStart + dataSize;
             } else {
               // chain 1 base is at the beginning of code segment
-              base = codeStart;
+              relocbase = codeStart;
             }
-            offset = dataSize;
+            segment = dataStart + dataSize;
+            offset = 0;
 
             for (xr = 0; xr < count && !state->panic; xr++) {
               b = data0[i++];
@@ -1802,8 +1803,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
                 int8_t d = b;
                 d <<= 1;
                 offset += d;
-                get4b((uint32_t *)&value, data, offset);
-                debug(DEBUG_TRACE, "EmuPalmOS", " 8-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-1, d, dataStart + offset, value);
+                get4b((uint32_t *)&value, ram, segment + offset);
+                debug(DEBUG_TRACE, "EmuPalmOS", " 8-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-1, d, segment + offset, value);
               } else {
                 if (b & 0x40) {
                   // relative 15 bits unsigned delta
@@ -1813,8 +1814,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
                   w <<= 2;
                   w >>= 1;
                   offset += w;
-                  get4b((uint32_t *)&value, data, offset);
-                  debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-2, w, dataStart + offset, value);
+                  get4b((uint32_t *)&value, ram, segment + offset);
+                  debug(DEBUG_TRACE, "EmuPalmOS", "16-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-2, w, segment + offset, value);
                 } else {
                   // absolute 31 bits offset
                   int32_t l = b;
@@ -1827,12 +1828,11 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
                   l <<= 2;
                   l >>= 1;
                   offset = l;
-                  get4b((uint32_t *)&value, data, offset);
-                  debug(DEBUG_TRACE, "EmuPalmOS", "31-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-4, l, dataStart + offset, value);
+                  get4b((uint32_t *)&value, ram, segment + offset);
+                  debug(DEBUG_TRACE, "EmuPalmOS", "31-bits data xref %2d at 0x%04X: %5d 0x%08X 0x%08X", xr, i-4, l, segment + offset, value);
                 }
               }
-              value += base;
-              if (m < 2) put4b(value, data, offset);
+              if (m < 2) put4b(value + relocbase, ram, segment + offset);
             }
           }
         } else {
