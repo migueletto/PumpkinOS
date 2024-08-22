@@ -356,7 +356,6 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value);
 BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth);
 void BmpFillData(BitmapType *bitmapP);
 void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *label);
-const UInt8 *BmpGetGray(UInt8 depth);
 surface_t *BmpBitmapCreateSurface(UInt16 id);
 UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 Err BmpSetBitDepth(BitmapType *bitmapP, UInt8 depth);

@@ -1640,7 +1640,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
               offsetb = (sx % 2) << 2;
               k = 0;
               for (j = 0; j < w; j++) {
-                b = (bits[offset + k] & (0xf << offsetb)) >> offsetb;
+                b = (bits[offset + k] & (0xf << (4-offsetb))) >> (4-offsetb);
                 gray = gray4values[b];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
                 surface->setpixel(surface->data, x+j, y+i, c);
@@ -2033,12 +2033,17 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
     bits[offset] |= (b); \
   }
 
+#define BmpSetBit4pd(offset, dataSize, b) \
+  if (offset < dataSize) { \
+    bits[offset] = b; \
+  }
+
 #define BmpSetBit4(offset, mask, dataSize, b, dbl) \
-  BmpSetBit4p(offset, mask, dataSize, b); \
   if (dbl) { \
-    BmpSetBit4p(offset, mask<<4, dataSize, b<<4); \
-    BmpSetBit4p(offset+rowBytes, mask, dataSize, b); \
-    BmpSetBit4p(offset+rowBytes, mask<<4, dataSize, b<<4); \
+    BmpSetBit4pd(offset, dataSize, b); \
+    BmpSetBit4pd(offset+rowBytes, dataSize, b); \
+  } else { \
+    BmpSetBit4p(offset, mask, dataSize, b); \
   }
 
 static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
@@ -2046,17 +2051,36 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   UInt32 offset, shift, dataSize;
   UInt16 rowBytes;
 
+  // even column -> 4 MSB, odd column -> 4 LSB
+  // b = 0x03
+  // dx = 0 (even)
+  // shift = (0 & 1) ? 0 : 4
+  // shift = 0 ? 0 : 4
+  // shift = 4
+  // b = 0x03 << 4
+  // b = 0x30
+  // mask = (0x0F << 4)
+  // mask = 0xF0
+  // bits[offset] &= ~(0xF0)
+  // bits[offset] &= 0x0F
+  // bits[offset] |= 0x30
+
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
   offset = dy * rowBytes + (dx >> 1);
-  shift = (dx & 0x01) ? 4 : 0;
-  b = b << shift;
-  mask = (0x0F << shift);
+  if (dbl) {
+    b |= b << 4;
+    mask = 0;
+  } else {
+    shift = (dx & 0x01) ? 0 : 4;
+    b = b << shift;
+    mask = (0x0F << shift);
+  }
 
   switch (mode) {
     case winPaint:        // write color-matched source pixels to the destination
-                          // If a bitmap’s hasTransparency flag is set, winPaint behaves like winOverlay instead.
+                          // If a bitmap's hasTransparency flag is set, winPaint behaves like winOverlay instead.
       if (!transp) {
         BmpSetBit4(offset, mask, dataSize, b, dbl);
       }
@@ -2068,7 +2092,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winMask:         // write backColor if the source pixel is not transparent
       if (!transp) {
-        BmpSetBit2(offset, mask, dataSize, 0x0F, dbl);
+        BmpSetBit4(offset, mask, dataSize, 0x0F, dbl);
       }
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
@@ -2817,16 +2841,6 @@ static int decompress_bitmap_scanline(uint8_t *p, uint8_t *dp, uint16_t rowBytes
   }
 
   return 0;
-}
-
-const UInt8 *BmpGetGray(UInt8 depth) {
-  switch (depth) {
-    case 1: return gray1;
-    case 2: return gray2;
-    case 4: return gray4;
-  }
-
-  return NULL;
 }
 
 static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coord width, Coord height, UInt16 rowBytes, UInt8 *compressed, UInt8 *decompressed) {

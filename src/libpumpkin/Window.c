@@ -10,12 +10,10 @@
 #include "bytes.h"
 #include "pumpkin.h"
 //#include "dbg.h"
+#include "palette.h"
 #include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
-
-#define MAX_PAL  256
-#include "palette.h"
 
 #define FORM_FILL_ALPHA 0xFF
 
@@ -42,6 +40,7 @@ typedef struct {
   DrawStateType state[DrawStateStackSize];
   FullColorTableType fcolorTable;
   ColorTableType *colorTable;
+  RGBColorType uiColor[UILastColorTableEntry];
   int numPush;
 } win_module_t;
 
@@ -69,6 +68,7 @@ static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t widt
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {
   win_module_t *module;
+  UInt16 entry;
   Err err;
 
   if ((module = xcalloc(1, sizeof(win_module_t))) == NULL) {
@@ -101,6 +101,11 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       module->backColor = 0; // white
       module->textColor = 3; // black
       break;
+    case 4:
+      module->foreColor = 15; // black
+      module->backColor = 0;  // white
+      module->textColor = 15; // black
+      break;
    default:
       module->foreColor = 0xff; // black
       module->backColor = 0x00; // white
@@ -109,12 +114,16 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   }
 
   module->colorTable = (ColorTableType *)&module->fcolorTable;
-  MemMove(module->colorTable->entry, defaultPalette, MAX_PAL * sizeof(RGBColorType));
-  module->colorTable->numEntries = MAX_PAL;
+  MemMove(module->colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
+  module->colorTable->numEntries = 256;
 
   module->foreColorRGB = module->colorTable->entry[module->foreColor];
   module->backColorRGB = module->colorTable->entry[module->backColor];
   module->textColorRGB = module->colorTable->entry[module->textColor];
+
+  for (entry = 0; entry < UILastColorTableEntry; entry++) {
+    UIColorGetTableEntryRGB(entry, &module->uiColor[entry]);
+  }
 
   module->transferMode = winPaint;
 
@@ -1514,6 +1523,16 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
       RctSetRectangle(&dstRect, dstX, dstY, srcRect->extent.x, srcRect->extent.y);
 
       // check limits on dstRect
+      if (dstRect.topLeft.x < 0) {
+        dstRect.extent.x += dstRect.topLeft.x;
+        dstRect.topLeft.x = 0;
+      }
+      if (dstRect.topLeft.y < 0) {
+        dstRect.extent.y += dstRect.topLeft.y;
+        dstRect.topLeft.y = 0;
+      }
+      if (dstRect.extent.x < 0) dstRect.extent.x = 0;
+      if (dstRect.extent.y < 0) dstRect.extent.y = 0;
       if (dstRect.topLeft.x + dstRect.extent.x > dstWidth) {
         dstRect.extent.x = dstWidth - dstRect.topLeft.x;
       }
@@ -2835,7 +2854,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
         // When using this format, the width and height arguments must be specified using the active coordinate system.
         density = module->density;
-        depth = module->depth; // XXX BikeOrDie does not work when using "depth = DEPTH" here
+        depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->depth0" here
         if (density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
           width *= 2;
           height *= 2;
@@ -2953,8 +2972,24 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
           break;
 
         case winPaletteSetToDefault:
+/*
           for (i = 0; i < colorTable->numEntries; i++) {
-            colorTable->entry[i] = defaultPalette[i];
+            colorTable->entry[i] = defaultPalette8[i];
+          }
+*/
+          switch (module->depth) {
+            case 1:
+              MemMove(colorTable->entry, defaultPalette1, 2 * sizeof(RGBColorType));
+              break;
+            case 2:
+              MemMove(colorTable->entry, defaultPalette2, 4 * sizeof(RGBColorType));
+              break;
+            case 4:
+              MemMove(colorTable->entry, defaultPalette4, 16 * sizeof(RGBColorType));
+              break;
+            default:
+              MemMove(colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
+              break;
           }
           //broadcastDisplayChange(module->depth, module->depth);
           err = errNone;
@@ -3029,15 +3064,14 @@ void WinPopDrawState(void) {
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   Coord width, height;
-  //UInt16 rowBytes;
-  BitmapType *bitmapP;
+  UInt16 depth, entry;
   Err err = sysErrParamErr;
 
   switch (operation) {
     case winScreenModeGetDefaults:
     case winScreenModeGet:
-       // For backward compatibility, when operation is winScreenModeGet or winScreenModeGetDefaults,
-       // a single-density width or height is returned, even if the handheld has a double-density display.
+      // For backward compatibility, when operation is winScreenModeGet or winScreenModeGetDefaults,
+      // a single-density width or height is returned, even if the handheld has a double-density display.
       width = module->width;
       height = module->height;
       pointFrom(module->density, &width, &height);
@@ -3049,35 +3083,74 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       break;
 
     case winScreenModeSetToDefaults:
-      break;
-
     case winScreenModeSet:
-      bitmapP = WinGetBitmap(module->displayWindow);
+      if (operation == winScreenModeSetToDefaults) {
+        depth = module->depth;
+      } else {
+        depth = depthP ? *depthP : module->depth;
+      }
 
-      if (depthP) {
-        if (BmpSetBitDepth(bitmapP, *depthP) == errNone) {
-          module->depth = *depthP;
-          err = errNone;
-        } else {
-          debug(DEBUG_ERROR, "Window", "WinScreenMode winScreenModeSet depth %d failed", *depthP);
+      if (depth != module->depth) {
+        switch (depth) {
+          case 1:
+            MemMove(module->colorTable->entry, defaultPalette1, 2 * sizeof(RGBColorType));
+            module->colorTable->numEntries = 2;
+            err = errNone;
+            break;
+          case 2:
+            MemMove(module->colorTable->entry, defaultPalette2, 4 * sizeof(RGBColorType));
+            module->colorTable->numEntries = 4;
+            err = errNone;
+            break;
+          case 4:
+            MemMove(module->colorTable->entry, defaultPalette4, 16 * sizeof(RGBColorType));
+            module->colorTable->numEntries = 16;
+            err = errNone;
+            break;
+          case 15:
+            depth = 16;
+            // fall-through
+          case 8:
+          case 16:
+            MemMove(module->colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
+            module->colorTable->numEntries = 256;
+            err = errNone;
+            break;
+          default:
+            debug(DEBUG_ERROR, "Window", "WinScreenMode winScreenModeSet invalid depth %d", depth);
+            break;
         }
+
+        if (err == errNone) {
+          BmpDelete(module->displayWindow->bitmapP);
+          module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, NULL, &err);
+          module->depth = depth;
+
+          for (entry = 0; entry < UILastColorTableEntry; entry++) {
+            UIColorSetTableEntry(entry, &module->uiColor[entry]);
+          }
+        }
+      } else {
+        debug(DEBUG_TRACE, "Window", "WinScreenMode winScreenModeSet keeping same depth %d", depth);
+        err = errNone;
       }
       break;
 
     case winScreenModeGetSupportedDepths:
       // The position representing a particular bit depth corresponds to the value 2^(bitDepth-1)
       if (depthP) {
-        // XXX 1, 2 and 4 ?
-        *depthP  = 1 << ( 4 - 1);
+        *depthP  = 1 << ( 1 - 1);
+        *depthP |= 1 << ( 2 - 1);
+        *depthP |= 1 << ( 4 - 1);
         *depthP |= 1 << ( 8 - 1);
         *depthP |= 1 << (16 - 1);
-        err = 0;
+        err = errNone;
       }
       break;
 
     case winScreenModeGetSupportsColor:
       if (enableColorP) *enableColorP = true;
-      err = 0;
+      err = errNone;
       break;
 
     default:
@@ -3231,8 +3304,8 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
   switch (module->depth) {
     case 1:
       prev = WinSetDrawMode(winSwap);
-      oldb = WinSetBackColor(0x00);
-      oldf = WinSetForeColor(0xff);
+      oldb = WinSetBackColor(0);
+      oldf = WinSetForeColor(1);
       WinPaintRectangle(&aux, corner);
       WinSetBackColor(oldb);
       WinSetForeColor(oldf);
