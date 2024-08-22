@@ -168,7 +168,7 @@ static Err FrmInitFormInternal(FormType *formP) {
   WinAdjustCoords(&w, &h);
 
   WinScreenGetAttribute(winScreenDensity, &density);
-  WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
+  WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
   formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, NULL, &err);
   formP->window.density = density;
   //dbg_add(0, formP->window.bitmapP);
