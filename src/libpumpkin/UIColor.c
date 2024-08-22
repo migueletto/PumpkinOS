@@ -115,6 +115,7 @@ Err UIColorSetTableEntry(UIColorTableEntries which, const RGBColorType *rgbP) {
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
     module->table[which] = WinRGBToIndex(rgbP);
+    debug(DEBUG_TRACE, "Window", "UIColorSetTableEntry entry %d RGB(%02X,%02X,%02X) -> %d", which, rgbP->r, rgbP->g, rgbP->b, module->table[which]);
   }
 
   return 0;
