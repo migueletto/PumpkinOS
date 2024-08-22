@@ -959,8 +959,11 @@ void encode_FileInfoType(uint32_t fileInfoP, FileInfoType *fileInfo) {
     m68k_write_memory_32(fileInfoP + 0, fileInfo->attributes);
     if (fileInfo->nameP) {
       uint32_t a = m68k_read_memory_32(fileInfoP + 4);
-      for (i = 0; i < fileInfo->nameBufLen; i++) {
+      for (i = 0; i < fileInfo->nameBufLen && fileInfo->nameP[i]; i++) {
         m68k_write_memory_8(a + i, fileInfo->nameP[i]);
+      }
+      if (i < fileInfo->nameBufLen) {
+        m68k_write_memory_8(a + i, 0);
       }
     }
   }
@@ -1885,6 +1888,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       debug(DEBUG_INFO, "EmuPalmOS", "code  segment from 0x%08X to 0x%08X size 0x%04X", codeStart,  codeStart  + codeSize  - 1, codeSize);
       debug(DEBUG_INFO, "EmuPalmOS", "stack segment from 0x%08X to 0x%08X size 0x%04X", stackStart, stackStart + stackSize - 1, stackSize);
       if (dataSize+aboveSize) debug(DEBUG_INFO, "EmuPalmOS", "data  segment from 0x%08X to 0x%08X size 0x%04X", dataStart,  dataStart  + dataSize + aboveSize - 1, dataSize+ aboveSize );
+
+emupalmos_monitor(0x00047DCE + 8, 4);
 
       if (!state->panic) {
         creator = pumpkin_get_app_creator();
