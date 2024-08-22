@@ -3333,14 +3333,11 @@ Err AppInit(void *_param)
   else if (depth & 0x0080)
     depth = 8;
   else if (depth & 0x0008)
-    depth = 2;
+    depth = 4;
   else if (depth & 0x0002)
     depth = 2;
   else
-    return -1;
-
-  if (depth < 8)
-    return -1;
+    depth = 1;
 
   rgb.r = 255; rgb.g = 255; rgb.b = 255;
   c1 = WinRGBToIndex(&rgb);
