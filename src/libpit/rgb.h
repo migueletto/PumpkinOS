@@ -13,4 +13,7 @@ uint32_t r32(uint32_t rgb);
 uint32_t g32(uint32_t rgb);
 uint32_t b32(uint32_t rgb);
 
+uint32_t rgba32(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+uint32_t a32(uint32_t rgba);
+
 uint8_t rgb2gray(uint8_t red, uint8_t green, uint8_t blue);

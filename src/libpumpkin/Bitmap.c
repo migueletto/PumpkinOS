@@ -1,5 +1,7 @@
 #include <PalmOS.h>
 
+#include "ColorTable.h"
+
 #define PALMOS_MODULE "Bitmap"
 
 #include "sys.h"
@@ -12,6 +14,7 @@
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
+#include "palette.h"
 #include "debug.h"
 #include "xalloc.h"
 #include "emupalmosinc.h"
@@ -128,6 +131,12 @@ typedef struct {
 } bmp_surface_t;
 
 extern thread_key_t *bmp_key;
+
+static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
+static void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable);
+static UInt8 rgbToGray1(UInt16 r, UInt16 g, UInt16 b);
+static UInt8 rgbToGray2(UInt16 r, UInt16 g, UInt16 b);
+static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b);
 
 static const UInt8 gray1[2]       = {0x00, 0xe6};
 static const UInt8 gray1values[2] = {0xff, 0x00};
@@ -640,7 +649,7 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
   if (colorTableP) {
     get2b(&v16, (UInt8 *)colorTableP, 0);
     if (v16 != numEntries) {
-      debug(DEBUG_ERROR, "Bitmap", "BmpCreate wrong colorTable numEntries %d for depth %d", colorTableP->numEntries, depth);
+      debug(DEBUG_ERROR, "Bitmap", "BmpCreate wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
     newSize += sizeof(UInt16) + numEntries * 4;
@@ -714,7 +723,7 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
   if (colorTableP) {
     get2b(&v16, (UInt8 *)colorTableP, 0);
     if (v16 != numEntries) {
-      debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 wrong colorTable numEntries %d for depth %d", colorTableP->numEntries, depth);
+      debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
     newSize += sizeof(UInt16) + numEntries * 4;
@@ -758,8 +767,12 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
 
 static uint32_t BmpSurfaceGetPixel(void *data, int x, int y) {
   bmp_surface_t *bsurf = (bmp_surface_t *)data;
-
   return BmpGetPixelValue(bsurf->bitmapP, x, y);
+}
+
+static void BmpSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+  BmpSetPixel(bsurf->bitmapP, x, y, color);
 }
 
 static int BmpSurfaceGetTransparent(void *data, uint32_t *transp) {
@@ -773,66 +786,203 @@ static int BmpSurfaceGetTransparent(void *data, uint32_t *transp) {
   return transparent;
 }
 
+static uint32_t BmpSurfaceColorRgb(void *data, int red, int green, int blue, int alpha) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+  UInt8 depth = BmpGetBitDepth(bsurf->bitmapP);
+  ColorTableType *colorTable;
+  UInt32 transparentValue;
+  Boolean transp;
+  uint32_t color;
+
+  transp = BmpGetTransparentValue(bsurf->bitmapP, &transparentValue);
+
+  switch (depth) {
+    case 1:
+      color = rgbToGray1(red, green, blue);
+      break;
+    case 2:
+      color = rgbToGray2(red, green, blue);
+      break;
+    case 4:
+      color = rgbToGray4(red, green, blue);
+      break;
+    case 8:
+      if (transp && alpha == 0x00) {
+        color = transparentValue;
+      } else {
+        colorTable = BmpGetColortable(bsurf->bitmapP);
+        if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+        color = BmpRGBToIndex(red, green, blue, colorTable);
+      }
+      break;
+    case 16:
+      if (transp && alpha == 0x00) {
+        color = transparentValue;
+      } else {
+        color = rgb565(red, green, blue);
+      }
+      break;
+    case 32:
+      color = rgba32(red, green, blue, alpha);
+      break;
+  }
+
+  return color;
+}
+
+static void BmpSurfaceRgbColor(void *data, uint32_t color, int *red, int *green, int *blue, int *alpha) {
+  bmp_surface_t *bsurf = (bmp_surface_t *)data;
+  UInt8 depth = BmpGetBitDepth(bsurf->bitmapP);
+  ColorTableType *colorTable;
+  UInt32 transparentValue;
+  UInt8 r, g, b;
+  Boolean transp;
+
+  transp = BmpGetTransparentValue(bsurf->bitmapP, &transparentValue);
+
+  switch (depth) {
+    case 1:
+      *red = *green = *blue = gray1values[color & 0x01];
+      *alpha = 0xFF;
+      break;
+    case 2:
+      *red = *green = *blue = gray2values[color & 0x03];
+      *alpha = 0xFF;
+      break;
+    case 4:
+      *red = *green = *blue = gray4values[color & 0x0F];
+      *alpha = 0xFF;
+      break;
+    case 8:
+      colorTable = BmpGetColortable(bsurf->bitmapP);
+      if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+      BmpIndexToRGB(color & 0xFF, &r, &g, &b, colorTable);
+      *red   = r;
+      *green = g;
+      *blue  = b;
+      *alpha = transp && color == transparentValue ? 0x00 : 0xFF;
+      break;
+    case 16:
+      *red   = r565(color);
+      *green = g565(color);
+      *blue  = b565(color);
+      *alpha = transp && color == transparentValue ? 0x00 : 0xFF;
+      break;
+    case 32:
+      *red   = r32(color);
+      *green = g32(color);
+      *blue  = b32(color);
+      *alpha = a32(color);
+      break;
+  }
+}
+
 static void BmpSurfaceDestroy(void *data) {
   bmp_surface_t *bsurf = (bmp_surface_t *)data;
 
   if (bsurf) {
-    MemHandleUnlock(bsurf->h);
-    DmReleaseResource(bsurf->h);
+    if (bsurf->h) MemHandleUnlock(bsurf->h);
+    if (bsurf->h) DmReleaseResource(bsurf->h);
     xfree(bsurf);
   }
 }
 
-surface_t *BmpBitmapCreateSurface(UInt16 id) {
+surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP) {
+  surface_t *surface = NULL;
+  bmp_surface_t *bsurf;
+  ColorTableType *colorTable;
+  RGBColorType rgb;
+  Coord width, height;
+  UInt16 i, numEntries;
+  Int16 encoding;
+  UInt8 depth;
+
+  depth = BmpGetBitDepth(bitmapP);
+  switch (depth) {
+    case  1:
+    case  2:
+    case  4:
+    case  8: encoding = SURFACE_ENCODING_PALETTE; break;
+    case 16: encoding = SURFACE_ENCODING_RGB565;  break;
+    case 32: encoding = SURFACE_ENCODING_ARGB;    break;
+    default:
+      debug(DEBUG_ERROR, "Bitmap", "BmpBitmapCreateSurface unsupported depth %d", depth);
+      encoding = -1;
+      break;
+  }
+
+  if (encoding >= 0) {
+    if ((bsurf = xcalloc(1, sizeof(bmp_surface_t))) != NULL) {
+      if ((surface = xcalloc(1, sizeof(surface_t))) != NULL) {
+        bsurf->bitmapP = bitmapP;
+
+        BmpGetDimensions(bitmapP, &width, &height, NULL);
+        surface->tag = TAG_SURFACE;
+        surface->encoding = encoding;
+        surface->width = width;
+        surface->height = height;
+        surface->getpixel = BmpSurfaceGetPixel;
+        surface->setpixel = BmpSurfaceSetPixel;
+        surface->gettransp = BmpSurfaceGetTransparent;
+        surface->rgb_color = BmpSurfaceRgbColor;
+        surface->color_rgb = BmpSurfaceColorRgb;
+        surface->destroy = BmpSurfaceDestroy;
+        surface->data = bsurf;
+
+        if (encoding == SURFACE_ENCODING_PALETTE) {
+          colorTable = BmpGetColortable(bitmapP);
+
+          if (colorTable) {
+            numEntries = CtbGetNumEntries(colorTable);
+            for (i = 0; i < numEntries; i++) {
+              CtbGetEntry(colorTable, i, &rgb);
+              surface_palette(surface, i, rgb.r, rgb.g, rgb.b);
+            }
+          } else {
+            switch (depth) {
+              case 1:
+                for (i = 0; i < 2; i++) {
+                  surface_palette(surface, i, defaultPalette1[i].r, defaultPalette1[i].g, defaultPalette1[i].b);
+                }
+                break;
+              case 2:
+                for (i = 0; i < 4; i++) {
+                  surface_palette(surface, i, defaultPalette2[i].r, defaultPalette2[i].g, defaultPalette2[i].b);
+                }
+                break;
+              case 4:
+                for (i = 0; i < 16; i++) {
+                  surface_palette(surface, i, defaultPalette4[i].r, defaultPalette4[i].g, defaultPalette4[i].b);
+                }
+                break;
+              case 8:
+                for (i = 0; i < 256; i++) {
+                  surface_palette(surface, i, defaultPalette8[i].r, defaultPalette8[i].g, defaultPalette8[i].b);
+                }
+                break;
+            }
+          }
+        }
+      } else {
+        xfree(bsurf);
+      }
+    }
+  }
+
+  return surface;
+}
+
+surface_t *BmpCreateSurface(UInt16 id) {
   surface_t *surface = NULL;
   bmp_surface_t *bsurf;
   MemHandle h;
   BitmapType *bitmapP;
-  Coord width, height;
-  Int16 encoding;
-  UInt8 depth;
 
   if ((h = DmGetResource(bitmapRsc, id)) != NULL) {
     if ((bitmapP = MemHandleLock(h)) != NULL) {
-      depth = BmpGetBitDepth(bitmapP);
-      switch (depth) {
-        case  8: encoding = SURFACE_ENCODING_PALETTE; break;
-        case 16: encoding = SURFACE_ENCODING_RGB565;  break;
-        case 32: encoding = SURFACE_ENCODING_ARGB;    break;
-        default:
-          debug(DEBUG_ERROR, "Bitmap", "BmpBitmapCreateSurface unsupported depth %d", depth);
-          encoding = -1;
-          break;
-      }
-
-      if (encoding >= 0) {
-        if ((bsurf = xcalloc(1, sizeof(bmp_surface_t))) != NULL) {
-          if ((surface = xcalloc(1, sizeof(surface_t))) != NULL) {
-            bsurf->h = h;
-            bsurf->bitmapP = bitmapP;
-
-            BmpGetDimensions(bitmapP, &width, &height, NULL);
-            surface->tag = TAG_SURFACE;
-            surface->encoding = encoding;
-            surface->width = width;
-            surface->height = height;
-            surface->getpixel = BmpSurfaceGetPixel;
-            surface->gettransp = BmpSurfaceGetTransparent;
-            surface->destroy = BmpSurfaceDestroy;
-            surface->data = bsurf;
-          } else {
-            xfree(bsurf);
-            MemHandleUnlock(h);
-            DmReleaseResource(h);
-          }
-        } else {
-          MemHandleUnlock(h);
-          DmReleaseResource(h);
-        }
-      } else {
-        MemHandleUnlock(h);
-        DmReleaseResource(h);
-      }
+      surface = BmpCreateSurfaceBitmap(bitmapP);
+      bsurf = (bmp_surface_t *)surface->data;
+      bsurf->h = h;
     } else {
       DmReleaseResource(h);
     }
@@ -884,10 +1034,12 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
   UInt16 best_depth, best_density;
   Boolean exact_depth;
   Boolean exact_density;
+  WinHandle display;
+  BitmapType *displayBmp;
   BitmapType *best = NULL;
   Coord width, height;
-  UInt8 version, bitmapDepth;
-  UInt16 bitmapDensity, rowBytes;
+  UInt8 version, bitmapDepth, displayDepth;
+  UInt16 bitmapDensity, displayDensity, rowBytes;
   UInt32 size, offset;
   UInt8 *bmp, *last, *base, *end;
 
@@ -897,6 +1049,11 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
     end = base + pumpkin_heap_size();
     size = MemPtrSize(bitmapP);
     last = size ? (UInt8 *)bitmapP + size : NULL;
+
+    display = WinGetDisplayWindow();
+    displayBmp = WinGetBitmap(display);
+    displayDepth = BmpGetBitDepth(displayBmp);
+    displayDensity = BmpGetDensity(displayBmp);
 
     for (best = NULL, best_depth = 0, best_density = 0, exact_depth = false, exact_density = false; bitmapP;) {
       bmp = (uint8_t *)bitmapP;
@@ -927,7 +1084,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
           break;
         case 1:
           debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", version, width, height, bitmapDepth, kDensityLow);
-          if (bitmapDepth > best_depth && !exact_depth) {
+          if (bitmapDepth > best_depth && bitmapDepth <= displayDepth && !exact_depth) {
             best = bitmapP;
             best_depth = bitmapDepth;
             best_density = kDensityLow;
@@ -940,7 +1097,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
           break;
         case 2:
           debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", version, width, height, bitmapDepth, kDensityLow);
-          if (bitmapDepth > best_depth && !exact_depth) {
+          if (bitmapDepth > best_depth && bitmapDepth <= displayDepth && !exact_depth) {
             best = bitmapP;
             best_depth = bitmapDepth;
             best_density = kDensityLow;
@@ -954,7 +1111,8 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
         case 3:
           bitmapDensity = BmpGetDensity(bitmapP);
           debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", version, width, height, bitmapDepth, bitmapDensity);
-          if (bitmapDepth >= best_depth && bitmapDensity >= best_density && (!exact_density || exact_density)) {
+          if (bitmapDepth >= best_depth && bitmapDensity >= best_density &&
+              bitmapDepth <= displayDepth && bitmapDensity <= displayDensity && (!exact_density || exact_density)) {
             best = bitmapP;
             best_depth = bitmapDepth;
             best_density = bitmapDensity;
@@ -1056,7 +1214,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
         case 3:
           if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
             get4b(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
-            colorTable = addr ? (ColorTableType *)pumpkin_heap_base() + addr : NULL;
+            colorTable = addr ? (ColorTableType *)(pumpkin_heap_base() + addr) : NULL;
           } else {
             colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV3FieldColorTable);
           }
@@ -1261,6 +1419,10 @@ BitmapCompressionType BmpGetCompressionType(const BitmapType *bitmapP) {
   return ct;
 }
 
+Boolean BmpGetNoDither(const BitmapType *bitmapP) {
+  return bitmapP ? BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagNoDither) != 0 : false;
+}
+
 UInt16 BmpGetDensity(const BitmapType *bitmapP) {
   UInt16 d = kDensityLow;
 
@@ -1321,8 +1483,6 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
           r = true;
         }
         break;
-      default:
-        break;
     }
   }
 
@@ -1368,20 +1528,25 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
 
 static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
   Int32 dr, dg, db;
+  UInt16 numEntries;
   UInt32 i, d, dmin, imin;
+  RGBColorType rgb;
 
   dmin = 0xffffffff;
   imin = 0;
+  numEntries = CtbGetNumEntries(colorTable);
 
-  for (i = 0; i < colorTable->numEntries; i++) {
-    if (red == colorTable->entry[i].r && green == colorTable->entry[i].g && blue == colorTable->entry[i].b) {
+  for (i = 0; i < numEntries; i++) {
+    CtbGetEntry(colorTable, i, &rgb);
+
+    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
       return i;
     }
-    dr = (Int32)red - (Int32)colorTable->entry[i].r;
+    dr = (Int32)red - (Int32)rgb.r;
     dr = dr * dr;
-    dg = (Int32)green - (Int32)colorTable->entry[i].g;
+    dg = (Int32)green - (Int32)rgb.g;
     dg = dg * dg;
-    db = (Int32)blue - (Int32)colorTable->entry[i].b;
+    db = (Int32)blue - (Int32)rgb.b;
     db = db * db;
     d = dr + dg + db;
     if (d < dmin) {
@@ -1394,9 +1559,12 @@ static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *c
 }
 
 static void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable) {
-  *red   = colorTable->entry[i].r;
-  *green = colorTable->entry[i].g;
-  *blue  = colorTable->entry[i].b;
+  RGBColorType rgb;
+
+  CtbGetEntry(colorTable, i, &rgb);
+  *red   = rgb.r;
+  *green = rgb.g;
+  *blue  = rgb.b;
 }
 
 IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y) {
@@ -1831,14 +1999,18 @@ static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b) {
 }
 
 static UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
+  RGBColorType rgb;
+
+  CtbGetEntry(srcColorTable, b, &rgb);
+
   switch (depth) {
-    case  1: b = rgbToGray1(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
-    case  2: b = rgbToGray2(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
-    case  4: b = rgbToGray4(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
-    case  8: b = BmpRGBToIndex(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b, dstColorTable); break;
-    case 16: b = rgb565(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
-    case 24: b = rgb24(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
-    case 32: b = rgb32(srcColorTable->entry[b].r, srcColorTable->entry[b].g, srcColorTable->entry[b].b); break;
+    case  1: b = rgbToGray1(rgb.r, rgb.g, rgb.b); break;
+    case  2: b = rgbToGray2(rgb.r, rgb.g, rgb.b); break;
+    case  4: b = rgbToGray4(rgb.r, rgb.g, rgb.b); break;
+    case  8: b = BmpRGBToIndex(rgb.r, rgb.g, rgb.b, dstColorTable); break;
+    case 16: b = rgb565(rgb.r, rgb.g, rgb.b); break;
+    case 24: b = rgb24(rgb.r, rgb.g, rgb.b); break;
+    case 32: b = rgb32(rgb.r, rgb.g, rgb.b); break;
   }
 
   return b;

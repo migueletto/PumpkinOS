@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 
 #include "thread.h"
+#include "palette.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -96,6 +97,17 @@ IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
   }
 
   return 0;
+}
+
+void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
+  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+
+  // always take color from defaultPalette8, regardless of current color depth
+  if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
+    rgbP->r = defaultPalette8[module->table[which]].r;
+    rgbP->g = defaultPalette8[module->table[which]].g;
+    rgbP->b = defaultPalette8[module->table[which]].b;
+  }
 }
 
 void UIColorGetTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {

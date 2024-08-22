@@ -159,7 +159,7 @@ static uint8_t surface_best_color(surface_palette_t *palette, int npalette, int 
   return imin;
 }
 
-// Floyd–Steinberg dithering
+// Floyd-Steinberg dithering
 
 void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h, int mono) {
   uint32_t color, gray[16];

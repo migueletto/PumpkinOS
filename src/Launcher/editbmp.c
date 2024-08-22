@@ -1,5 +1,7 @@
 #include <PalmOS.h>
 
+#include "ColorTable.h"
+
 #include "sys.h"
 #include "mutex.h"
 #include "pumpkin.h"
@@ -73,9 +75,7 @@ static Boolean getBitN(BitmapType *bmp, UInt32 x, UInt32 y, int n, UInt32 *index
       }
       b = BmpGetPixelValue(bmp, x, y);
       *index = b;
-      rgb->r = colorTable->entry[b].r;
-      rgb->g = colorTable->entry[b].g;
-      rgb->b = colorTable->entry[b].b;
+      CtbGetEntry(colorTable, b, rgb);
       transp = BmpGetTransparentValue(bmp, &transparentValue) && transparentValue == b;
       break;
     case 16:
@@ -175,6 +175,7 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
   RectangleType pixel;
   Boolean transp;
   UInt16 depth, color;
+  UInt8 numEntries;
   int x, y;
 
   DmSetDirty(data->handle);
@@ -200,10 +201,9 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
       color = data->color8;
       colorTable = BmpGetColortable(data->bmps[data->index]);
       if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
-      if (color < colorTable->numEntries) {
-        rgb.r = colorTable->entry[color].r;
-        rgb.g = colorTable->entry[color].g;
-        rgb.b = colorTable->entry[color].b;
+      numEntries = CtbGetNumEntries(colorTable);
+      if (color < numEntries) {
+        CtbGetEntry(colorTable, color, &rgb);
       } else {
         rgb.r = rgb.g = rgb.b = 0x00;
       }
@@ -437,9 +437,7 @@ static Boolean paletteGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
             if (colorTable == NULL) {
               colorTable = pumpkin_defaultcolorTable();
             }
-            rgb.r = colorTable->entry[data->color8].r;
-            rgb.g = colorTable->entry[data->color8].g;
-            rgb.b = colorTable->entry[data->color8].b;
+            CtbGetEntry(colorTable, data->color8, &rgb);
             break;
           case 16:
             rgb.r = data->rgb.r;

@@ -326,6 +326,7 @@ Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
+void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -356,12 +357,14 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value);
 BitmapType *BmpGetBestBitmap(BitmapPtr bitmapP, UInt16 density, UInt8 depth);
 void BmpFillData(BitmapType *bitmapP);
 void BmpPrintChain(BitmapType *bitmapP, DmResType type, DmResID resID, char *label);
-surface_t *BmpBitmapCreateSurface(UInt16 id);
+surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP);
+surface_t *BmpCreateSurface(UInt16 id);
 UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 Err BmpSetBitDepth(BitmapType *bitmapP, UInt8 depth);
 UInt32 BmpGetMagic(BitmapType *bitmapP);
 BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
+Boolean BmpGetNoDither(const BitmapType *bitmapP);
 
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);

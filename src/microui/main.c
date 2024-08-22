@@ -1,5 +1,7 @@
 #include <PalmOS.h>
 
+#include "ColorTable.h"
+
 #include "sys.h"
 #include "thread.h"
 #include "pumpkin.h"
@@ -120,18 +122,17 @@ static void setColorRGB(UInt8 r, UInt8 g, UInt8 b, int c) {
 }
 
 static void setColor(UInt16 index, int c, ColorTableType *colorTable) {
+  RGBColorType rgb;
   IndexedColorType color = UIColorGetTableEntryIndex(index);
-  setColorRGB(colorTable->entry[color].r, colorTable->entry[color].g, colorTable->entry[color].b, c);
+  CtbGetEntry(colorTable, color, &rgb);
+  setColorRGB(rgb.r, rgb.g, rgb.b, c);
 }
 
 static mu_Context *StartApplication(void) {
-  FullColorTableType fcolorTable;
   ColorTableType *colorTable;
   UInt32 width, height;
 
-  colorTable = (ColorTableType *)&fcolorTable;
-  MemMove(colorTable->entry, defaultPalette, MAX_PAL * sizeof(RGBColorType));
-  colorTable->numEntries = MAX_PAL;
+  colorTable = pumpkin_defaultcolorTable();
 
   setColor(UIObjectFill, MU_COLOR_WINDOWBG, colorTable);
   setColor(UIObjectForeground, MU_COLOR_TEXT, colorTable);

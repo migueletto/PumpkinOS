@@ -102,6 +102,7 @@ RGBColorType;
 // Color Table
 // -----------------------------------------------
 typedef struct ColorTableType
+#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_COLORTABLES
 {
   // high bits (numEntries > 256) reserved
   UInt16          numEntries;     // number of entries in table
@@ -109,13 +110,8 @@ typedef struct ColorTableType
   //                   starts immediately after numEntries
   RGBColorType entry[0];
 }
+#endif
 ColorTableType;
-
-typedef struct FullColorTableType {
-  UInt16       numEntries;
-  RGBColorType entry[256];
-} FullColorTableType;
-
 
 // get start of color table entries aray given pointer to ColorTableType
 #define ColorTableEntries(ctP)  ((RGBColorType *)((ColorTableType *)(ctP)+1))

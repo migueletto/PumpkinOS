@@ -43,8 +43,16 @@ uint32_t rgb32(uint32_t r, uint32_t g, uint32_t b) {
   return (r << 16) | (g << 8) | b;
 }
 
+uint32_t rgba32(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+  return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+uint32_t a32(uint32_t rgba) {
+  return rgba >> 24;
+}
+
 uint32_t r32(uint32_t rgb) {
-  return rgb >> 16;
+  return (rgb >> 16) & 0xff;
 }
 
 uint32_t g32(uint32_t rgb) {

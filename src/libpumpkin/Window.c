@@ -2,6 +2,8 @@
 
 #include <PalmOS.h>
 
+#include "ColorTable.h"
+
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
@@ -38,7 +40,7 @@ typedef struct {
   WinHandle activeWindow;
   WinHandle drawWindow;
   DrawStateType state[DrawStateStackSize];
-  FullColorTableType fcolorTable;
+  UInt8 fullCcolorTable[2 + 256 * 4];
   ColorTableType *colorTable;
   RGBColorType uiColor[UILastColorTableEntry];
   int numPush;
@@ -68,7 +70,7 @@ static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t widt
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {
   win_module_t *module;
-  UInt16 entry;
+  UInt16 i, entry;
   Err err;
 
   if ((module = xcalloc(1, sizeof(win_module_t))) == NULL) {
@@ -90,39 +92,54 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->backColor565 = 0xffff; // white
   module->textColor565 = 0x0000; // black
 
+  module->colorTable = (ColorTableType *)&module->fullCcolorTable;
+
   switch (depth) {
     case 1:
       module->foreColor = 1; // black
       module->backColor = 0; // white
       module->textColor = 1; // black
+      CtbSetNumEntries(module->colorTable, 2);
+      for (i = 0; i < 2; i++) {
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+      }
       break;
     case 2:
       module->foreColor = 3; // black
       module->backColor = 0; // white
       module->textColor = 3; // black
+      CtbSetNumEntries(module->colorTable, 4);
+      for (i = 0; i < 4; i++) {
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+      }
       break;
     case 4:
       module->foreColor = 15; // black
       module->backColor = 0;  // white
       module->textColor = 15; // black
+      CtbSetNumEntries(module->colorTable, 16);
+      for (i = 0; i < 16; i++) {
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+      }
       break;
    default:
       module->foreColor = 0xff; // black
       module->backColor = 0x00; // white
       module->textColor = 0xff; // black
+      CtbSetNumEntries(module->colorTable, 256);
+      for (i = 0; i < 256; i++) {
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+      }
       break;
   }
 
-  module->colorTable = (ColorTableType *)&module->fcolorTable;
-  MemMove(module->colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
-  module->colorTable->numEntries = 256;
-
-  module->foreColorRGB = module->colorTable->entry[module->foreColor];
-  module->backColorRGB = module->colorTable->entry[module->backColor];
-  module->textColorRGB = module->colorTable->entry[module->textColor];
+  CtbGetEntry(module->colorTable, module->foreColor, &module->foreColorRGB);
+  CtbGetEntry(module->colorTable, module->backColor, &module->backColorRGB);
+  CtbGetEntry(module->colorTable, module->textColor, &module->textColorRGB);
 
   for (entry = 0; entry < UILastColorTableEntry; entry++) {
-    UIColorGetTableEntryRGB(entry, &module->uiColor[entry]);
+    UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+    UIColorSetTableEntry(entry, &module->uiColor[entry]);
   }
 
   module->transferMode = winPaint;
@@ -1640,7 +1657,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
   Coord x1, y1, x2, y2;
   BitmapCompressionType compression;
-  Boolean bitmapTransp, delete, dbl, hlf;
+  Boolean bitmapTransp, dither, delete, dbl, hlf;
 
   if (bitmapP && wh && rect) {
     windowBitmap = WinGetBitmap(wh);
@@ -1659,9 +1676,30 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDensity = BmpGetDensity(best);
       bitmapDepth = BmpGetBitDepth(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
+      dither = !BmpGetNoDither(bitmapP);
 
       displayBitmap = WinGetBitmap(module->displayWindow);
       displayDepth = BmpGetBitDepth(displayBitmap);
+
+      if (bitmapDensity == windowDensity && windowDepth == 1 && bitmapDepth > 1 && dither && mode == winPaint && !text) {
+#if 0
+        debug(DEBUG_TRACE, "Window", "WinBlitBitmap dithering %d bpp bitmap", bitmapDepth);
+        surface_t *src = BmpCreateSurfaceBitmap(best);
+        surface_t *dst = BmpCreateSurfaceBitmap(windowBitmap);
+        dstX = x;
+        dstY = y;
+        if (windowDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+          dstX <<= 1;
+          dstY <<= 1;
+        }
+        surface_dither(dst, dstX, dstY, src, rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y, 1);
+        surface_destroy(dst);
+        surface_destroy(src);
+        if (delete) BmpDelete(best);
+        pumpkin_screen_dirty(wh, dstX, dstY, rect->extent.x, rect->extent.y);
+        return;
+#endif
+      }
 
 #ifndef ANDROID
       if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
@@ -2157,25 +2195,20 @@ IndexedColorType WinGetForeColor(void) {
 IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
+  UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = module->colorTable;
 
   IndexedColorType prev = module->foreColor;
+  numEntries = CtbGetNumEntries(colorTable);
 
-  if (foreColor >= 0 && foreColor < colorTable->numEntries) {
-    module->foreColorRGB = colorTable->entry[foreColor];
-/*
-    module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
-    if (module->depth == 1) {
-      module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
-    } else {
-      module->foreColor = foreColor;
-    }
-*/
+  if (foreColor >= 0 && foreColor < numEntries) {
+    CtbGetEntry(colorTable, foreColor, &module->foreColorRGB);
     setColors(fore, module, foreColor);
+  } else {
+    debug(DEBUG_ERROR, "Window", "WinSetForeColor invalid color %d for depth %d (max %d)", foreColor, module->depth, numEntries-1);
   }
-
 
   return prev;
 }
@@ -2188,25 +2221,20 @@ IndexedColorType WinGetBackColor(void) {
 IndexedColorType WinSetBackColor(IndexedColorType backColor) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
+  UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = module->colorTable;
 
   IndexedColorType prev = module->backColor;
+  numEntries = CtbGetNumEntries(colorTable);
 
-  if (backColor >= 0 && backColor < colorTable->numEntries) {
-    module->backColorRGB = colorTable->entry[backColor];
-/*
-    module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
-    if (module->depth == 1) {
-      module->backColor = (module->backColorRGB.r > 127 && module->backColorRGB.g > 127 && module->backColorRGB.b > 127) ? 0 : 1;
-    } else {
-      module->backColor = WinRGBToIndex(&module->backColorRGB);
-    }
-*/
+  if (backColor >= 0 && backColor < numEntries) {
+    CtbGetEntry(colorTable, backColor, &module->backColorRGB);
     setColors(back, module, backColor);
+  } else {
+    debug(DEBUG_ERROR, "Window", "WinSetBackColor invalid color %d for depth %d (max %d)", backColor, module->depth, numEntries-1);
   }
-
 
   return prev;
 }
@@ -2214,23 +2242,19 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
 IndexedColorType WinSetTextColor(IndexedColorType textColor) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
+  UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = module->colorTable;
 
   IndexedColorType prev = module->textColor;
+  numEntries = CtbGetNumEntries(colorTable);
 
-  if (textColor >= 0 && textColor < colorTable->numEntries) {
-    module->textColorRGB = colorTable->entry[textColor];
-/*
-    module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
-    if (module->depth == 1) {
-      module->textColor = (module->textColorRGB.r > 127 && module->textColorRGB.g > 127 && module->textColorRGB.b > 127) ? 0 : 1;
-    } else {
-      module->textColor = textColor;
-    }
-*/
+  if (textColor >= 0 && textColor < numEntries) {
+    CtbGetEntry(colorTable, textColor, &module->textColorRGB);
     setColors(text, module, textColor);
+  } else {
+    debug(DEBUG_ERROR, "Window", "WinSetTextColor invalid color %d for depth %d (max %d)", textColor, module->depth, numEntries-1);
   }
 
   return prev;
@@ -2252,14 +2276,6 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->foreColorRGB.g = newRgbP->g;
     module->foreColorRGB.b = newRgbP->b;
 
-/*
-    module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
-    if (module->depth == 1) {
-      module->foreColor = (module->foreColorRGB.r > 127 && module->foreColorRGB.g > 127 && module->foreColorRGB.b > 127) ? 0 : 1;
-    } else {
-      module->foreColor = WinRGBToIndex(&module->foreColorRGB);
-    }
-*/
     setColors(fore, module, WinRGBToIndex(&module->foreColorRGB));
   }
 }
@@ -2372,25 +2388,30 @@ void WinSetPatternType(PatternType newPattern) {
 IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
+  UInt16 numEntries;
+  RGBColorType entry;
   uint32_t i, d, dmin, imin;
   int32_t dr, dg, db;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = module->colorTable;
+  numEntries = CtbGetNumEntries(colorTable);
 
   dmin = 0xffffffff;
   imin = 0;
 
-  for (i = 0; i < colorTable->numEntries; i++) {
-    if (rgbP->r == colorTable->entry[i].r && rgbP->g == colorTable->entry[i].g && rgbP->b == colorTable->entry[i].b) {
+  for (i = 0; i < numEntries; i++) {
+    CtbGetEntry(colorTable, i, &entry);
+
+    if (rgbP->r == entry.r && rgbP->g == entry.g && rgbP->b == entry.b) {
       debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d exact (%d)", rgbP->r, rgbP->g, rgbP->b, i);
       return i;
     }
-    dr = (int32_t)rgbP->r - (int32_t)colorTable->entry[i].r;
+    dr = (int32_t)rgbP->r - (int32_t)entry.r;
     dr = dr * dr;
-    dg = (int32_t)rgbP->g - (int32_t)colorTable->entry[i].g;
+    dg = (int32_t)rgbP->g - (int32_t)entry.g;
     dg = dg * dg;
-    db = (int32_t)rgbP->b - (int32_t)colorTable->entry[i].b;
+    db = (int32_t)rgbP->b - (int32_t)entry.b;
     db = db * db;
     d = dr + dg + db;
     if (d < dmin) {
@@ -2398,7 +2419,9 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
       imin = i;
     }
   }
-  debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d -> %d,%d,%d (%d)", rgbP->r, rgbP->g, rgbP->b, colorTable->entry[imin].r, colorTable->entry[imin].g, colorTable->entry[imin].b, imin);
+
+  CtbGetEntry(colorTable, imin, &entry);
+  debug(DEBUG_TRACE, "Window", "WinRGBToIndex %d,%d,%d -> %d,%d,%d (%d)", rgbP->r, rgbP->g, rgbP->b, entry.r, entry.g, entry.b, imin);
 
   return imin;
 }
@@ -2406,15 +2429,17 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
 void WinIndexToRGB(IndexedColorType i, RGBColorType *rgbP) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   ColorTableType *colorTable;
+  RGBColorType entry;
 
   if (rgbP) {
     colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
     if (colorTable == NULL) colorTable = module->colorTable;
 
+    CtbGetEntry(colorTable, i, &entry);
     rgbP->index = i;
-    rgbP->r = colorTable->entry[i].r;
-    rgbP->g = colorTable->entry[i].g;
-    rgbP->b = colorTable->entry[i].b;
+    rgbP->r = entry.r;
+    rgbP->g = entry.g;
+    rgbP->b = entry.b;
   }
 }
 
@@ -2913,6 +2938,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
   WinHandle wh;
   ColorTableType *colorTable;
   UInt16 i, index;
+  UInt16 numEntries;
   Err err = sysErrParamErr;
 
   wh = module->drawWindow;
@@ -2925,20 +2951,22 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
     }
 
     if (colorTable) {
+      numEntries = CtbGetNumEntries(colorTable);
+
       switch (operation) {
         case winPaletteGet:
           if (tableP) {
             if (startIndex == WinUseTableIndexes) {
               for (i = 0; i < paletteEntries; i++) {
                 index = tableP[i].index;
-                if (index < colorTable->numEntries) {
-                  tableP[i] = colorTable->entry[index];
+                if (index < numEntries) {
+                  CtbGetEntry(colorTable, index, &tableP[i]);
                 }
               }
             } else {
               for (i = 0; i < paletteEntries; i++) {
-                if ((startIndex + i) < colorTable->numEntries) {
-                  tableP[i] = colorTable->entry[startIndex + i];
+                if ((startIndex + i) < numEntries) {
+                  CtbGetEntry(colorTable, startIndex + i, &tableP[i]);
                 }
               }
             }
@@ -2955,14 +2983,14 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             if (startIndex == WinUseTableIndexes) {
               for (i = 0; i < paletteEntries; i++) {
                 index = tableP[i].index;
-                if (index < colorTable->numEntries) {
-                  colorTable->entry[index] = tableP[i];
+                if (index < numEntries) {
+                  CtbSetEntry(colorTable, index, &tableP[i]);
                 }
               }
             } else {
               for (i = 0; i < paletteEntries; i++) {
-                if ((startIndex + i) < colorTable->numEntries) {
-                  colorTable->entry[startIndex + i] = tableP[i];
+                if ((startIndex + i) < numEntries) {
+                  CtbSetEntry(colorTable, startIndex + i, &tableP[i]);
                 }
               }
             }
@@ -2972,23 +3000,30 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
           break;
 
         case winPaletteSetToDefault:
-/*
-          for (i = 0; i < colorTable->numEntries; i++) {
-            colorTable->entry[i] = defaultPalette8[i];
-          }
-*/
           switch (module->depth) {
             case 1:
-              MemMove(colorTable->entry, defaultPalette1, 2 * sizeof(RGBColorType));
+              CtbSetNumEntries(colorTable, 2);
+              for (i = 0; i < 2; i++) {
+                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+              }
               break;
             case 2:
-              MemMove(colorTable->entry, defaultPalette2, 4 * sizeof(RGBColorType));
+              CtbSetNumEntries(colorTable, 4);
+              for (i = 0; i < 4; i++) {
+                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+              }
               break;
             case 4:
-              MemMove(colorTable->entry, defaultPalette4, 16 * sizeof(RGBColorType));
+              CtbSetNumEntries(colorTable, 16);
+              for (i = 0; i < 16; i++) {
+                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+              }
               break;
             default:
-              MemMove(colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
+              CtbSetNumEntries(colorTable, 256);
+              for (i = 0; i < 256; i++) {
+                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+              }
               break;
           }
           //broadcastDisplayChange(module->depth, module->depth);
@@ -3064,7 +3099,7 @@ void WinPopDrawState(void) {
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   Coord width, height;
-  UInt16 depth, entry;
+  UInt16 depth, entry, i;
   Err err = sysErrParamErr;
 
   switch (operation) {
@@ -3085,35 +3120,43 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
     case winScreenModeSetToDefaults:
     case winScreenModeSet:
       if (operation == winScreenModeSetToDefaults) {
-        depth = module->depth;
+        depth = module->depth0;
       } else {
         depth = depthP ? *depthP : module->depth;
       }
 
-      if (depth != module->depth) {
+      if (depth != module->depth && depth <= module->depth0) {
         switch (depth) {
           case 1:
-            MemMove(module->colorTable->entry, defaultPalette1, 2 * sizeof(RGBColorType));
-            module->colorTable->numEntries = 2;
+            CtbSetNumEntries(module->colorTable, 2);
+            for (i = 0; i < 2; i++) {
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+            }
             err = errNone;
             break;
           case 2:
-            MemMove(module->colorTable->entry, defaultPalette2, 4 * sizeof(RGBColorType));
-            module->colorTable->numEntries = 4;
+            CtbSetNumEntries(module->colorTable, 4);
+            for (i = 0; i < 4; i++) {
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+            }
             err = errNone;
             break;
           case 4:
-            MemMove(module->colorTable->entry, defaultPalette4, 16 * sizeof(RGBColorType));
-            module->colorTable->numEntries = 16;
+            CtbSetNumEntries(module->colorTable, 16);
+            for (i = 0; i < 16; i++) {
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+            }
             err = errNone;
             break;
-          case 15:
+          case 15: // some apps use 15 instead of 16 (?)
             depth = 16;
             // fall-through
           case 8:
           case 16:
-            MemMove(module->colorTable->entry, defaultPalette8, 256 * sizeof(RGBColorType));
-            module->colorTable->numEntries = 256;
+            CtbSetNumEntries(module->colorTable, 256);
+            for (i = 0; i < 256; i++) {
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+            }
             err = errNone;
             break;
           default:
@@ -3140,10 +3183,10 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       // The position representing a particular bit depth corresponds to the value 2^(bitDepth-1)
       if (depthP) {
         *depthP  = 1 << ( 1 - 1);
-        *depthP |= 1 << ( 2 - 1);
-        *depthP |= 1 << ( 4 - 1);
-        *depthP |= 1 << ( 8 - 1);
-        *depthP |= 1 << (16 - 1);
+        if (module->depth0 >= 2)  *depthP |= 1 << ( 2 - 1); // 0x0002
+        if (module->depth0 >= 4)  *depthP |= 1 << ( 4 - 1); // 0x0008
+        if (module->depth0 >= 8)  *depthP |= 1 << ( 8 - 1); // 0x0080
+        if (module->depth0 >= 16) *depthP |= 1 << (16 - 1); // 0x8000
         err = errNone;
       }
       break;
