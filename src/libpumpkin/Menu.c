@@ -64,7 +64,6 @@ MenuBarType *MenuInit(UInt16 resourceId) {
   Err err;
   Int16 height, i;
 
-  debug(DEBUG_TRACE, "Menu", "MenuInit %d", resourceId);
   if ((menuH = DmGetResource(MenuRscType, resourceId)) != NULL) {
     mbar = MemHandleLock(menuH);
     old = FntSetFont(boldFont);
@@ -92,9 +91,9 @@ MenuBarType *MenuInit(UInt16 resourceId) {
     mbar->menus[0].hidden = 0;
     mbar->curMenu = 0;
     mbar->selectedMenu = -1;
-    //MemHandleUnlock(menuH);
   }
 
+  debug(DEBUG_TRACE, "Menu", "MenuInit %d %p", resourceId, mbar);
   return mbar;
 }
 
