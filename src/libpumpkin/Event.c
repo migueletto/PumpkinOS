@@ -151,7 +151,7 @@ void EvtAddEventToQueue(const EventType *event) {
 
   if (event->eType == penUpEvent && module->insideRepeatingButtonCtl) {
     module->insideRepeatingButtonCtl = false;
-  } else if (event->eType == ctlSelectEvent && event->data.ctlRepeat.pControl->style == repeatingButtonCtl && !module->insideRepeatingButtonCtl) {
+  } else if (event->eType == ctlRepeatEvent && event->data.ctlRepeat.pControl->style == repeatingButtonCtl && !module->insideRepeatingButtonCtl) {
     module->insideRepeatingButtonCtl = true;
     module->repeatingButtonTime = event->data.ctlRepeat.time;
     module->repeatingButtonID = event->data.ctlRepeat.controlID;
