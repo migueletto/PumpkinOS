@@ -24,6 +24,22 @@ EditFormScroll function calls TblReleaseFocus before attempting to scroll the ta
 
 static Boolean TblSaveData(TableType *tableP, UInt16 row, UInt16 col);
 
+static Boolean TblItemClip(TableType *tableP, UInt16 row, UInt16 col) {
+  RectangleType tableBounds, itemBounds, intersection;
+
+  TblGetBounds(tableP, &tableBounds);
+  TblGetItemBounds(tableP, row, col, &itemBounds);
+  RctGetIntersection(&itemBounds, &tableBounds, &intersection);
+
+  if (intersection.extent.x == 0 || intersection.extent.y == 0) {
+    return false;
+  }
+
+  WinSetClip(&intersection);
+
+  return true;
+}
+
 static void TblDrawTableRow(TableType *tableP, UInt16 row) {
   UInt16 column, len, th, tw, w, year, month, day, i;
   UInt32 seconds;
@@ -55,12 +71,13 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
 
   for (column = 0; column < tableP->numColumns; column++, i++) {
     if (!tableP->columnAttrs[column].usable) continue;
+    if (!TblItemClip(tableP, row, column)) continue;
+
     debug(DEBUG_TRACE, "Table", "TblDrawTableRow id %d row %d col %d", tableP->id, row, column);
     cattr = &tableP->columnAttrs[column];
     item = &tableP->items[i];
     old = FntSetFont(item->fontID);
     TblGetItemBounds(tableP, row, column, &rect);
-    WinSetClip(&rect);
     WinSetBackColor(fieldBack);
     WinSetForeColor(objFore);
     WinSetTextColor(fieldText);
@@ -194,9 +211,9 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         break;
     }
     FntSetFont(old);
+    WinResetClip();
   }
 
-  WinResetClip();
   WinSetBackColor(oldb);
   WinSetForeColor(oldf);
   WinSetTextColor(oldt);
@@ -205,27 +222,18 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
 static void TblEraseTableRow(TableType *tableP, UInt16 row) {
   IndexedColorType formFill, oldb;
   RectangleType rect;
-  UInt16 i;
+  UInt16 column;
 
   formFill = UIColorGetTableEntryIndex(UIFormFill);
   oldb = WinSetBackColor(formFill);
 
-  rect.topLeft.x = tableP->bounds.topLeft.x;
-  rect.extent.x = 0;
-  for (i = 0; i < tableP->numColumns; i++) {
-    rect.extent.x += tableP->columnAttrs[i].width;
-    if (i < tableP->numColumns-1) {
-      rect.extent.x += tableP->columnAttrs[i].spacing;
-    }
+  for (column = 0; column < tableP->numColumns; column++) {
+    if (!TblItemClip(tableP, row, column)) continue;
+    TblGetItemBounds(tableP, row, column, &rect);
+    WinEraseRectangle(&rect, 0);
+    WinResetClip();
   }
 
-  rect.topLeft.y = tableP->bounds.topLeft.y;
-  for (i = 0; i < row; i++) {
-    rect.topLeft.y += tableP->rowAttrs[i].height;
-  }
-  rect.extent.y = tableP->rowAttrs[row].height;
-
-  WinEraseRectangle(&rect, 0);
   WinSetBackColor(oldb);
 }
 
@@ -239,6 +247,8 @@ static void TblDrawTableIfInvalid(TableType *tableP, Boolean ifInvalid) {
           TblDrawTableRow(tableP, row);
           tableP->rowAttrs[row].invalid = false;
         }
+      } else {
+        TblEraseTableRow(tableP, row);
       }
     }
   }
@@ -247,6 +257,7 @@ static void TblDrawTableIfInvalid(TableType *tableP, Boolean ifInvalid) {
 void TblDrawTable(TableType *tableP) {
   TblDrawTableIfInvalid(tableP, false);
   tableP->attr.visible = true;
+  tableP->attr.usable = true;
 }
 
 void TblRedrawTable(TableType *tableP) {
@@ -261,6 +272,7 @@ void TblEraseTable(TableType *tableP) {
     tableP->attr.visible = false;
 //debug(1, "XXX", "TblEraseTable selected=false");
     tableP->attr.selected = false;
+    tableP->attr.usable = false;
 
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     oldb = WinSetBackColor(formFill);
@@ -308,14 +320,17 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
 
   switch (eventP->eType) {
     case penDownEvent:
-//debug(1, "XXX", "table %d penDown (%d,%d)", tableP->id, eventP->screenX, eventP->screenY);
+      debug(DEBUG_TRACE, "Table", "table %d penDown (%d,%d) usable=%d visible=%d",
+        tableP->id, eventP->screenX, eventP->screenY, tableP->attr.usable, tableP->attr.visible);
+
       if (tableP->attr.usable && tableP->attr.visible) {
         if (RctPtInRectangle(eventP->screenX, eventP->screenY, &tableP->bounds)) {
-//debug(1, "XXX", "penDownEvent in table");
           row = TblScreenToRow(tableP, eventP->screenY);
           column = TblScreenToColumn(tableP, eventP->screenX);
-          if (tableP->rowAttrs[row].usable && tableP->columnAttrs[column].usable) {
+          debug(DEBUG_TRACE, "Table", "penDownEvent in table row=%d (usable=%d), col=%d (usable=%d)",
+            row, column, tableP->rowAttrs[row].usable, tableP->columnAttrs[column].usable);
 
+          if (tableP->rowAttrs[row].usable && tableP->columnAttrs[column].usable) {
             if (TblGetSelection(tableP, &currentRow, &currentCol)) {
 //debug(1, "XXX", "penDownEvent saveData");
               TblSaveData(tableP, currentRow, currentCol);
@@ -331,14 +346,12 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
             event.data.tblEnter.pTable = tableP;
             event.data.tblEnter.row = row;
             event.data.tblEnter.column = column;
-//debug(1, "XXX", "penDownEvent row=%d col=%d send tblEnterEvent", row, column);
+            debug(DEBUG_TRACE, "Table", "penDownEvent row=%d col=%d send tblEnterEvent", row, column);
             EvtAddEventToQueue(&event);
             handled = true;
-          } else {
-//debug(1, "XXX", "table %d penDown row %d usable %d col %d usable %d", tableP->id, row, tableP->rowAttrs[row].usable, column, tableP->columnAttrs[column].usable);
           }
         } else {
-//debug(1, "XXX", "table %d penDown not in bounds", tableP->id);
+          debug(DEBUG_TRACE, "Table", "table %d penDown not in bounds", tableP->id);
         }
       } else {
 //debug(1, "XXX", "table %d penDown usable=%d visible=%d", tableP->id, tableP->attr.usable, tableP->attr.visible);
@@ -516,12 +529,14 @@ void TblSetItemInt(TableType *tableP, Int16 row, Int16 column, Int16 value) {
 void TblSetItemPtr(TableType *tableP, Int16 row, Int16 column, void *value) {
   if (tableP && row >= 0 && row < tableP->numRows && column >= 0 && column < tableP->numColumns) {
     tableP->items[row*tableP->numColumns + column].ptr = value;
+    debug(DEBUG_TRACE, "Table", "TblSetItemPtr (%d,%d) = %p", row, column, value);
   }
 }
 
 void TblSetItemStyle(TableType *tableP, Int16 row, Int16 column, TableItemStyleType type) {
   if (tableP && row >= 0 && row < tableP->numRows && column >= 0 && column < tableP->numColumns) {
     tableP->items[row*tableP->numColumns + column].itemType = type;
+    debug(DEBUG_TRACE, "Table", "TblSetItemStyle (%d,%d) = %d", row, column, type);
   }
 }
 
@@ -551,10 +566,13 @@ Boolean TblRowUsable(const TableType *tableP, Int16 row) {
 
 void TblSetRowUsable(TableType *tableP, Int16 row, Boolean usable) {
   if (tableP && row >= 0 && row < tableP->numRows) {
+    debug(DEBUG_TRACE, "Table", "TblSetRowUsable (%d) = %d", row, usable);
     if (tableP->attr.visible) {
       if (usable && !tableP->rowAttrs[row].usable) {
+        debug(DEBUG_TRACE, "Table", "TblSetRowUsable (%d) draw now", row);
         TblDrawTableRow(tableP, row);
       } else if (!usable && tableP->rowAttrs[row].usable) {
+        debug(DEBUG_TRACE, "Table", "TblSetRowUsable (%d) erase now", row);
         TblEraseTableRow(tableP, row);
       }
     }
@@ -577,12 +595,14 @@ Int16 TblGetLastUsableRow(const TableType *tableP) {
 void TblSetColumnUsable(TableType *tableP, Int16 column, Boolean usable) {
   if (tableP && column >= 0 && column < tableP->numColumns) {
     tableP->columnAttrs[column].usable = usable;
+    debug(DEBUG_TRACE, "Table", "TblSetColumnUsable (%d) = %d", column, usable);
   }
 }
 
 void TblSetRowSelectable(TableType *tableP, Int16 row, Boolean selectable) {
   if (tableP && row >= 0 && row < tableP->numRows) {
     tableP->rowAttrs[row].selectable = selectable;
+    debug(DEBUG_TRACE, "Table", "TblSetRowSelectable (%d) = %d", row, selectable);
   }
 }
 
@@ -610,6 +630,7 @@ void TblGetBounds(const TableType *tableP, RectangleType *rP) {
 void TblSetBounds(TableType *tableP, const RectangleType *rP) {
   if (tableP && rP) {
     MemMove(&tableP->bounds, rP, sizeof(RectangleType));
+    debug(DEBUG_TRACE, "Table", "TblSetBounds (%d,%d,%d,%d)", rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y);
   }
 }
 
@@ -629,6 +650,7 @@ void TblSetRowHeight(TableType *tableP, Int16 row, Coord height) {
   UInt16 y;
 
   if (tableP && row >= 0 && row < tableP->numRows) {
+    debug(DEBUG_TRACE, "Table", "TblSetRowHeight (%d) = %d", row, height);
     tableP->rowAttrs[row].height = height;
     for (row = 0, y = 0; row < tableP->numRows; row++) {
       if (tableP->rowAttrs[row].usable) {
@@ -639,6 +661,7 @@ void TblSetRowHeight(TableType *tableP, Int16 row, Coord height) {
     if (tableP->attr.visible) {
       if (y < tableP->bounds.extent.y) {
         // table has shrinked, erase bottom
+        debug(DEBUG_TRACE, "Table", "TblSetRowHeight table has shrinked, erase bottom");
         RctSetRectangle(&rect, tableP->bounds.topLeft.x, tableP->bounds.topLeft.y + y, tableP->bounds.extent.x, tableP->bounds.extent.y - y);
         formFill = UIColorGetTableEntryIndex(UIFormFill);
         oldb = WinSetBackColor(formFill);
@@ -646,7 +669,7 @@ void TblSetRowHeight(TableType *tableP, Int16 row, Coord height) {
         WinSetBackColor(oldb);
       }
     }
-    // XXX comentado: TblSetRowHeight nao altera altura da tabela (se alterar, da problema no MemoPad ao mudar categoria para Business (por ex.) e depois de volta para All)
+    // XXX commented: TblSetRowHeight nao altera altura da tabela (se alterar, da problema no MemoPad ao mudar categoria para Business (por ex.) e depois de volta para All)
     //tableP->bounds.extent.y = y;
   }
 }
@@ -664,6 +687,7 @@ Coord TblGetColumnWidth(const TableType *tableP, Int16 column) {
 void TblSetColumnWidth(TableType *tableP, Int16 column, Coord width) {
   if (tableP && column >= 0 && column < tableP->numColumns) {
     tableP->columnAttrs[column].width = width;
+    debug(DEBUG_TRACE, "Table", "TblSetColumnWidth (%d) = %d", column, width);
   }
 }
 
@@ -680,6 +704,7 @@ Coord TblGetColumnSpacing(const TableType *tableP, Int16 column) {
 void TblSetColumnSpacing(TableType *tableP, Int16 column, Coord spacing) {
   if (tableP && column >= 0 && column < tableP->numColumns) {
     tableP->columnAttrs[column].spacing = spacing;
+    debug(DEBUG_TRACE, "Table", "TblSetColumnSpacing (%d) = %d", column, spacing);
   }
 }
 
@@ -728,6 +753,7 @@ UInt16 TblGetRowID(const TableType *tableP, Int16 row) {
 void TblSetRowID(TableType *tableP, Int16 row, UInt16 id) {
   if (tableP && row >= 0 && row < tableP->numRows) {
     tableP->rowAttrs[row].id = id;
+    debug(DEBUG_TRACE, "Table", "TblSetRowID (%d) = %u", row, id);
   }
 }
 
@@ -744,6 +770,7 @@ UIntPtr TblGetRowData(const TableType *tableP, Int16 row) {
 void TblSetRowData(TableType *tableP, Int16 row, UIntPtr data) {
   if (tableP && row >= 0 && row < tableP->numRows) {
     tableP->rowAttrs[row].data = data;
+    debug(DEBUG_TRACE, "Table", "TblSetRowData (%d) = %p", row, data);
   }
 }
 
@@ -760,6 +787,7 @@ Boolean TblRowInvalid(const TableType *tableP, Int16 row) {
 void TblMarkRowInvalid(TableType *tableP, Int16 row) {
   if (tableP && row >= 0 && row < tableP->numRows) {
     tableP->rowAttrs[row].invalid = true;
+    debug(DEBUG_TRACE, "Table", "TblMarkRowInvalid (%d)", row);
   }
 }
 
@@ -767,6 +795,7 @@ void TblMarkTableInvalid(TableType *tableP) {
   UInt16 row;
 
   if (tableP) {
+    debug(DEBUG_TRACE, "Table", "TblMarkTableInvalid");
     for (row = 0; row < tableP->numRows; row++) {
       tableP->rowAttrs[row].invalid = true;
     }
@@ -797,6 +826,8 @@ Boolean TblGetSelection(const TableType *tableP, Int16 *rowP, Int16 *columnP) {
 void TblInsertRow(TableType *tableP, Int16 row) {
   int i, j;
 
+  debug(DEBUG_TRACE, "Table", "TblInsertRow (%d)", row);
+
 //debug(1, "XXX", "TblInsertRow row %d numRows %d", row, tableP->numRows);
   if (tableP && row >= 0 && row < tableP->numRows) {
     if (row < tableP->numRows-1) {
@@ -826,6 +857,8 @@ void TblInsertRow(TableType *tableP, Int16 row) {
 void TblRemoveRow(TableType *tableP, Int16 row) {
   TableRowAttrType aux;
   int i, j, n;
+
+  debug(DEBUG_TRACE, "Table", "TblRemoveRow (%d)", row);
 
 //debug(1, "XXX", "TblRemoveRow row %d numRows %d", row, tableP->numRows);
   if (tableP && row >= 0 && row < tableP->numRows) {
@@ -969,12 +1002,14 @@ void TblSetColumnEditIndicator(TableType *tableP, Int16 column, Boolean editIndi
 
 void TblSetRowStaticHeight(TableType *tableP, Int16 row, Boolean staticHeight) {
   if (tableP && row >= 0 && row < tableP->numRows) {
+    debug(DEBUG_TRACE, "Table", "TblSetRowStaticHeight (%d) = %d", row, staticHeight);
     tableP->rowAttrs[row].staticHeight = staticHeight;
   }
 }
 
 void TblHasScrollBar(TableType *tableP, Boolean hasScrollBar) {
   if (tableP) {
+    debug(DEBUG_TRACE, "Table", "TblHasScrollBar (%d)", hasScrollBar);
     tableP->attr.hasScrollBar = hasScrollBar;
   }
 }
@@ -1017,6 +1052,7 @@ Boolean TblRowMasked(const TableType *tableP, Int16 row) {
 
 void TblSetRowMasked(TableType *tableP, Int16 row, Boolean masked) {
   if (tableP && row >= 0 && row < tableP->numRows) {
+    debug(DEBUG_TRACE, "Table", "TblSetRowMasked (%d) = %d", row, masked);
     tableP->rowAttrs[row].masked = masked;
   }
 }
@@ -1024,6 +1060,7 @@ void TblSetRowMasked(TableType *tableP, Int16 row, Boolean masked) {
 // If true and the item’s row also has a masked attribute of true, the table cell is drawn on the screen but is shaded to obscure the information that it contains.
 void TblSetColumnMasked(TableType *tableP, Int16 column, Boolean masked) {
   if (tableP && column >= 0 && column < tableP->numColumns) {
+    debug(DEBUG_TRACE, "Table", "TblSetColumnMasked (%d) = %d", column, masked);
     tableP->columnAttrs[column].masked = masked;
   }
 }
@@ -1038,6 +1075,7 @@ Int16 TblGetTopRow(const TableType *tableP) {
 
 void TblSetSelection(TableType *tableP, Int16 row, Int16 column) {
   if (tableP && row >= 0 && row < tableP->numRows && column >= 0 && column < tableP->numColumns) {
+    debug(DEBUG_TRACE, "Table", "TblSetSelection (%d,%d)", row, column);
     tableP->currentRow = row;
     tableP->currentColumn = column;
 //debug(1, "XXX", "TblSetSelection selected=true");
