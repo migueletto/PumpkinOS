@@ -2921,6 +2921,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   EventLoop(data);
   FrmCloseAllForms();
 
+  MenuDispose(data->appListMenu);
+
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent, sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,  sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,  sysNotifyNormalPriority);
