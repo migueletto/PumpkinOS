@@ -20,8 +20,8 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
         WinDrawRectangleFrame(simpleFrame, &rect);
         break;
       case selectorTriggerCtl:
-        rect.topLeft.x += 3;
-        rect.extent.x -= 6;
+        rect.topLeft.x += 4;
+        rect.extent.x -= 8;
         WinInvertRect(&rect, 0, isInverted);
         WinDrawGrayRectangleFrame(simpleFrame, &rect);
         break;
@@ -129,13 +129,14 @@ void CtlDrawControl(ControlType *controlP) {
             break;
           case pushButtonCtl:
             if (controlP->attr.frame != noButtonFrame) {
-              WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
+              MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
+              WinDrawRectangleFrame(simpleFrame, &rect);
             }
             break;
           case selectorTriggerCtl:
             MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-            rect.topLeft.x += 3;
-            rect.extent.x -= 6;
+            rect.topLeft.x += 4;
+            rect.extent.x -= 8;
             WinDrawGrayRectangleFrame(simpleFrame, &rect);
             break;
           default:
@@ -230,12 +231,13 @@ void CtlEraseControl(ControlType *controlP) {
           }
           break;
         case pushButtonCtl:
-          WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
+          MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
+          WinDrawRectangleFrame(simpleFrame, &rect);
           break;
         case selectorTriggerCtl:
           MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-          rect.topLeft.x += 3;
-          rect.extent.x -= 6;
+          rect.topLeft.x += 4;
+          rect.extent.x -= 8;
           WinDrawGrayRectangleFrame(simpleFrame, &rect);
           break;
         default:
@@ -512,7 +514,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (RctPtInRectangle(pEvent->screenX, pEvent->screenY, &controlP->bounds)) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent penUp inside control %d", controlP->id);
           if (controlP->style == repeatingButtonCtl) {
-            event.eType = ctlSelectEvent;
+            event.eType = ctlRepeatEvent;
             event.data.ctlRepeat.controlID = controlP->id;
             event.data.ctlRepeat.pControl = controlP;
             event.data.ctlRepeat.time = TimGetTicks();
