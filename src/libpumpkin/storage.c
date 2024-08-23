@@ -2137,7 +2137,7 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
               h->htype |= STO_INFLATED;
               h->useCount = 1;
               debug(DEBUG_TRACE, "STOR", "reading resource %s %d at %p", st, resID, h->buf);
-              storage_name(sto, db->name, STO_FILE_ELEMENT, resID, resType, 0, 0, buf);
+              storage_name(sto, db->name, STO_FILE_ELEMENT, h->d.res.id, h->d.res.type, 0, 0, buf);
               if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
                 if (vfs_read(f, h->buf, h->size) > 0) {
                   h->lockCount = 0;
@@ -2457,6 +2457,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
             h->magic = STO_MAGIC;
             h->htype = STO_TYPE_RES | STO_INFLATED;
             h->owner = pumpkin_get_current();
+            h->d.res.attr |= dmRecAttrDirty;
             h->d.res.type = resType;
             h->d.res.id = resID;
             h->size = size;
@@ -4435,35 +4436,41 @@ Err MemHandleFree(MemHandle hh) {
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   storage_handle_t *handle;
+  DmOpenRef dbRef;
   void *p = NULL;
   Err err = dmErrInvalidParam;
 
   if (h) {
     handle = (storage_handle_t *)h;
     if (handle->lockCount < 14) {
-      if (handle->htype & STO_INFLATED) {
-        switch (handle->htype & ~STO_INFLATED) {
-          case STO_TYPE_MEM:
-            handle->lockCount++;
-            p = handle->buf;
-            err = errNone;
-            break;
-          case STO_TYPE_REC:
-            handle->lockCount++;
-            p = handle->buf;
-            err = errNone;
-            break;
-          case STO_TYPE_RES:
-            handle->lockCount++;
-            p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
-            err = errNone;
-            break;
-          default:
-            debug(DEBUG_ERROR, "STOR", "MemHandleLockEx %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
-            break;
-        }
-      } else {
-        debug(DEBUG_ERROR, "STOR", "MemHandleLockEx %p type %d not inflated", handle, handle->htype);
+      switch (handle->htype & ~STO_INFLATED) {
+        case STO_TYPE_MEM:
+          handle->lockCount++;
+          p = handle->buf;
+          err = errNone;
+          break;
+        case STO_TYPE_REC:
+          if (!(handle->htype & STO_INFLATED)) {
+            DmSearchRecord(h, &dbRef);
+          }
+          handle->lockCount++;
+          p = handle->buf;
+          err = errNone;
+          break;
+        case STO_TYPE_RES:
+          // Apparently some apps (ex: Filez) call MemHandleLock without calling DmGetResource first.
+          // This should not happen (I believe), so test if this is the case here, and call DmSearchResource
+          // to force the resource to be inflated. The same may apply to records (case above).
+          if (!(handle->htype & STO_INFLATED)) {
+            DmSearchResource(0, 0, h, &dbRef);
+          }
+          handle->lockCount++;
+          p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "STOR", "MemHandleLockEx %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
+          break;
       }
     } else {
       debug(DEBUG_ERROR, "STOR", "MemHandleLockEx %p lockCount %d", handle, handle->lockCount);
