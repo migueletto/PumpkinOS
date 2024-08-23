@@ -16,9 +16,14 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
 
     switch (controlP->style) {
       case pushButtonCtl:
-      case selectorTriggerCtl:
         WinInvertRect(&rect, 0, isInverted);
-        WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
+        WinDrawRectangleFrame(simpleFrame, &rect);
+        break;
+      case selectorTriggerCtl:
+        rect.topLeft.x += 3;
+        rect.extent.x -= 6;
+        WinInvertRect(&rect, 0, isInverted);
+        WinDrawGrayRectangleFrame(simpleFrame, &rect);
         break;
       case buttonCtl:
       case repeatingButtonCtl:
@@ -26,7 +31,7 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
           case standardButtonFrame:
           case boldButtonFrame:
             WinInvertRect(&rect, 3, isInverted);
-            WinDrawRectangleFrame(roundFrame, &controlP->bounds);
+            WinDrawRectangleFrame(roundFrame, &rect);
             break;
           case noFrame:
             WinInvertRect(&rect, 0, isInverted);
@@ -128,7 +133,10 @@ void CtlDrawControl(ControlType *controlP) {
             }
             break;
           case selectorTriggerCtl:
-            WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
+            MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
+            rect.topLeft.x += 3;
+            rect.extent.x -= 6;
+            WinDrawGrayRectangleFrame(simpleFrame, &rect);
             break;
           default:
             break;
@@ -197,6 +205,7 @@ void CtlDrawControl(ControlType *controlP) {
 
 void CtlEraseControl(ControlType *controlP) {
   IndexedColorType objFill, oldb, oldf;
+  RectangleType rect;
 
   if (controlP) {
     if (controlP->attr.visible) {
@@ -224,7 +233,10 @@ void CtlEraseControl(ControlType *controlP) {
           WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
           break;
         case selectorTriggerCtl:
-          WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
+          MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
+          rect.topLeft.x += 3;
+          rect.extent.x -= 6;
+          WinDrawGrayRectangleFrame(simpleFrame, &rect);
           break;
         default:
           break;
