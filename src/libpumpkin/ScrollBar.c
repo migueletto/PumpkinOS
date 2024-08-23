@@ -38,7 +38,9 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
     }
 
     if (redraw) {
-      if (bar->attr.visible) {
+      debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar must redraw");
+      if (bar->attr.usable) {
+        debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar usable");
         SclDrawScrollBar(bar);
       }
     }
@@ -58,7 +60,7 @@ void SclDrawScrollBar(ScrollBarType *bar) {
   UInt16 numPages, h, y, ah;
 
   if (bar) {
-    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d (%d,%d,%d,%d)", bar->minValue, bar->value, bar->maxValue, bar->bounds.topLeft.x, bar->bounds.topLeft.y, bar->bounds.extent.x, bar->bounds.extent.y);
+    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d bounds=(%d,%d,%d,%d)", bar->minValue, bar->value, bar->maxValue, bar->bounds.topLeft.x, bar->bounds.topLeft.y, bar->bounds.extent.x, bar->bounds.extent.y);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     oldb = WinSetBackColor(formFill);
     WinEraseRectangle(&bar->bounds, 0);
@@ -140,7 +142,7 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
 
     switch (eventP->eType) {
       case penDownEvent:
-        if (bar->attr.usable && bar->attr.visible) {
+        if (bar->attr.usable) {
           if (RctPtInRectangle(eventP->screenX, eventP->screenY, &bar->bounds)) {
             MemSet(&event, sizeof(EventType), 0);
             event.eType = sclEnterEvent;
