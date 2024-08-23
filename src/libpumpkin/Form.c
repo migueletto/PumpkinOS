@@ -1045,7 +1045,10 @@ static void FrmDeleteFormInternal(FormType *formP) {
     debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal WinDeleteWindow %p", formP->bitsBehindForm);
     WinDeleteWindow(formP->bitsBehindForm, false);
   }
-  MenuDispose(formP->mbar);
+
+  if (formP->mbar) {
+    MenuDispose(formP->mbar);
+  }
 
   pumpkin_destroy_form(formP);
 }
@@ -1847,6 +1850,9 @@ void FrmSetMenu(FormType *formP, UInt16 menuRscID) {
   frm_module_t *module = (frm_module_t *)thread_get(frm_key);
 
   if (formP) {
+    if (formP->mbar) {
+      MenuDispose(formP->mbar);
+    }
     formP->mbar = MenuInit(menuRscID);
     if (formP == module->currentForm) {
       MenuSetActiveMenu(formP->mbar);
@@ -2745,8 +2751,8 @@ static TableType *pumpkin_create_table(uint8_t *p, int *i) {
     c->attr.editing      = (attr & 0x2000) ? 1 : 0;
     c->attr.selected     = (attr & 0x1000) ? 1 : 0;
     c->attr.hasScrollBar = (attr & 0x0800) ? 1 : 0;
-    //c->attr.usable       = (attr & 0x0400) ? 1 : 0;
-    c->attr.usable       = 1; // XXX usable bit is not set ?
+    c->attr.usable       = (attr & 0x0400) ? 1 : 0;
+    //c->attr.usable       = 1; // XXX usable bit is not set ?
     c->attr.reserved     = 0;
     debug(DEBUG_TRACE, "Form", "table attr 0x%04X (visible=%d, editable=%d, usable=%d)", attr, c->attr.visible, c->attr.editable, c->attr.usable);
     c->numColumns = cols;
@@ -2799,7 +2805,8 @@ static TableType *pumpkin_create_table(uint8_t *p, int *i) {
       c->rowAttrs[j].invalid      = (rattr & 0x0004) ? 1 : 0;
       c->rowAttrs[j].staticHeight = (rattr & 0x0002) ? 1 : 0;
       c->rowAttrs[j].selectable   = (rattr & 0x0001) ? 1 : 0;
-      debug(DEBUG_TRACE, "Form",  "table row %d id %d height %d", j, rid, rh);
+      debug(DEBUG_TRACE, "Form",  "table row %d id %d height %d attr 0x%04X (usable=%d, masked=%d, selectable=%d)",
+        j, rid, rh, rattr, c->rowAttrs[j].usable, c->rowAttrs[j].masked, c->rowAttrs[j].selectable);
     }
 
     for (j = 0; j < cols*rows; j++) {
