@@ -489,7 +489,7 @@ static void initPrefs(SystemPreferencesType *prefs) {
   prefs->localSyncRequiresPassword = false;       // User must enter password on Pilot
   prefs->remoteSyncRequiresPassword = false;      // User must enter password on Pilot
   prefs->sysPrefFlags = 0;                        // XXX Miscellaneous system pref flags copied into the global GSysPrefFlags at boot time.
-  prefs->sysBatteryKind = sysBatteryKindAlkaline; // The type of batteries installed. This is copied into the globals GSysbatteryKind at boot time.
+  prefs->sysBatteryKind = sysBatteryKindLiIon;    // The type of batteries installed. This is copied into the globals GSysbatteryKind at boot time.
   prefs->reserved1 = 0;
   prefs->minutesWestOfGMT = 0;                    // XXX minutes west of Greenwich
   prefs->daylightSavings = dsNone;                // XXX Type of daylight savings correction
