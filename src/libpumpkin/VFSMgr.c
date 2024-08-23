@@ -12,9 +12,15 @@
 #define LABEL   "Volume"
 #define VOLREF  1
 
-#define FS_CREATOR  BOOT_CREATOR
-#define FS_TYPE     vfsFilesystemType_EXT2
 #define MEDIA_TYPE  expMediaType_PoserHost
+#define FS_MOUNT    vfsMountClass_POSE
+#define FS_CREATOR  BOOT_CREATOR
+
+#if SYS_OS == 2
+#define FS_TYPE     vfsFilesystemType_NTFS
+#else
+#define FS_TYPE     vfsFilesystemType_EXT2
+#endif
 
 #define MAX_CARD  32
 #define MAX_PATH  256
@@ -544,7 +550,7 @@ Err VFSVolumeInfo(UInt16 volRefNum, VolumeInfoType *volInfoP) {
     volInfoP->attributes = 0;
     volInfoP->fsType = FS_TYPE;
     volInfoP->fsCreator = FS_CREATOR;
-    volInfoP->mountClass = vfsMountClass_SlotDriver;
+    volInfoP->mountClass = FS_MOUNT;
     volInfoP->slotLibRefNum = 0;
     volInfoP->slotRefNum = 0;
     volInfoP->mediaType = MEDIA_TYPE;
