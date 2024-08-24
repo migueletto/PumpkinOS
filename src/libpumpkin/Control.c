@@ -20,8 +20,6 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
         WinDrawRectangleFrame(simpleFrame, &rect);
         break;
       case selectorTriggerCtl:
-        rect.topLeft.x += 4;
-        rect.extent.x -= 8;
         WinInvertRect(&rect, 0, isInverted);
         WinDrawGrayRectangleFrame(simpleFrame, &rect);
         break;
@@ -134,10 +132,7 @@ void CtlDrawControl(ControlType *controlP) {
             }
             break;
           case selectorTriggerCtl:
-            MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-            rect.topLeft.x += 4;
-            rect.extent.x -= 8;
-            WinDrawGrayRectangleFrame(simpleFrame, &rect);
+            WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
             break;
           default:
             break;
@@ -206,7 +201,6 @@ void CtlDrawControl(ControlType *controlP) {
 
 void CtlEraseControl(ControlType *controlP) {
   IndexedColorType objFill, oldb, oldf;
-  RectangleType rect;
 
   if (controlP) {
     if (controlP->attr.visible) {
@@ -231,14 +225,10 @@ void CtlEraseControl(ControlType *controlP) {
           }
           break;
         case pushButtonCtl:
-          MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-          WinDrawRectangleFrame(simpleFrame, &rect);
+          WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
           break;
         case selectorTriggerCtl:
-          MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-          rect.topLeft.x += 4;
-          rect.extent.x -= 8;
-          WinDrawGrayRectangleFrame(simpleFrame, &rect);
+          WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
           break;
         default:
           break;
@@ -382,8 +372,8 @@ const Char *CtlGetLabel(const ControlType *controlP) {
 }
 
 /*
-This function stores the newLabel pointer in the control’s data
-structure. It doesn’t make a copy of the string that is passed in.
+This function stores the newLabel pointer in the control's data
+structure. It doesn't make a copy of the string that is passed in.
 Therefore, if you use CtlSetLabel, you must manage the string
 yourself. You must ensure that it persists for as long as it is being
 displayed (that is, for as long as the control is displayed or until you
@@ -393,7 +383,7 @@ control is freed).
 */
 void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
   Boolean visible;
-  Int16 x;
+  UInt16 oldWidth, newWidth, middle;
 
   if (controlP && newLabel) {
     visible = controlP->attr.visible;
@@ -402,11 +392,16 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
     }
     controlP->text = (char *)newLabel;
     if (controlP->style == popupTriggerCtl || controlP->style == selectorTriggerCtl) {
-      x = controlP->bounds.topLeft.x + controlP->bounds.extent.x;
-      controlP->bounds.extent.x = controlP->text ? FntCharsWidth(controlP->text, StrLen(controlP->text)) : 0;
-      controlP->bounds.extent.x += 2*FntCharWidth('w');
+      // the control expands or contracts to the width of the new label
+      oldWidth = controlP->bounds.extent.x;
+      middle = controlP->bounds.topLeft.x + oldWidth / 2;
+      newWidth = (controlP->text ? FntCharsWidth(controlP->text, StrLen(controlP->text)) : 0) + 4;
+      controlP->bounds.extent.x = newWidth;
+
+      // leftAnchor: used by controls that expand and shrink their width when the label is changed.
+      // If this attribute is set, the left bound of the control is fixed.
       if (!controlP->attr.leftAnchor) {
-        controlP->bounds.topLeft.x = x - controlP->bounds.extent.x;
+        controlP->bounds.topLeft.x = middle - newWidth / 2;
       }
     }
     if (visible) {
