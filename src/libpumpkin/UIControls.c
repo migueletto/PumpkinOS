@@ -272,7 +272,7 @@ static void updateLabel(FormType *frm, UInt16 labelID, char *buf) {
 
   FrmCopyLabel(frm, labelID, buf);
   index = FrmGetObjectIndex(frm, labelID);
-  FrmEraseObject(frm, index, false);
+  FrmEraseObject(frm, index);
   FrmDrawObject(frm, index, false);
 }
 

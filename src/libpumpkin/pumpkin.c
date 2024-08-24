@@ -3666,9 +3666,68 @@ void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Bo
   }
 }
 
+void xpumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
+  DmOpenRef dbRef;
+  MemHandle h;
+  UInt16 currentSize, index;
+  UInt8 *pref;
+
+  if (mutex_lock(mutex) == 0) {
+    if ((dbRef = PrefOpenPreferenceDB(saved)) != NULL) {
+      if ((index = DmFindResource(dbRef, creator, id, NULL)) == 0xFFFF) {
+        h = DmNewResourceEx(dbRef, creator, id, size, p);
+        index = DmFindResource(dbRef, 0, 0, h);
+      }
+      if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
+        currentSize = MemHandleSize(h);
+        if (size != currentSize) {
+          DmResizeResource(h, size);
+        }
+        if ((pref = MemHandleLock(h)) != NULL) {
+          DmWrite(pref, 0, p, size);
+          MemHandleUnlock(h);
+        }
+        DmReleaseResource(h);
+      }
+      DmCloseDatabase(dbRef);
+    }
+    mutex_unlock(mutex);
+  }
+}
+
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved) {
   if (mutex_lock(mutex) == 0) {
     size = AppRegistryGetPreference(pumpkin_module.registry, creator, seq, p, size, saved);
+    mutex_unlock(mutex);
+  }
+
+  return size;
+}
+
+UInt16 xpumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
+  DmOpenRef dbRef;
+  MemHandle h;
+  UInt16 currentSize, index;
+  UInt8 *pref;
+
+  if (mutex_lock(mutex) == 0) {
+    if ((dbRef = PrefOpenPreferenceDB(saved)) != NULL) {
+      if ((index = DmFindResource(dbRef, creator, id, NULL)) == 0xFFFF) {
+        if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
+          if ((pref = MemHandleLock(h)) != NULL) {
+            currentSize = MemHandleSize(h);
+            if (p == NULL || size == 0) {
+              size = currentSize;
+            } else {
+              if (size > currentSize) size = currentSize;
+              MemMove(p, pref, size);
+            }
+            MemHandleUnlock(h);
+          }
+          DmReleaseResource(h);
+        }
+      }
+    }
     mutex_unlock(mutex);
   }
 

@@ -176,7 +176,7 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
             StrPrintF(buf, "%d", date->year);
             FrmCopyLabel(frm, 10102, buf);
             index = FrmGetObjectIndex(frm, 10102);
-            FrmEraseObject(frm, index, false);
+            FrmEraseObject(frm, index);
             FrmDrawObject(frm, index, false);
             drawGrid(&rect, date);
             handled = id != 10118;
