@@ -391,18 +391,29 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
       CtlEraseControl(controlP);
     }
     controlP->text = (char *)newLabel;
-    if (controlP->style == popupTriggerCtl || controlP->style == selectorTriggerCtl) {
+
+    oldWidth = controlP->bounds.extent.x;
+    newWidth = controlP->text ? FntCharsWidth(controlP->text, StrLen(controlP->text)) : 0;
+    if (controlP->style == popupTriggerCtl) newWidth += 2*FntCharWidth('w');
+
+    // leftAnchor: used by controls that expand and shrink their width when the label is changed.
+    // If this attribute is set, the left bound of the control is fixed.
+
+    if (controlP->style == popupTriggerCtl) {
       // the control expands or contracts to the width of the new label
-      oldWidth = controlP->bounds.extent.x;
-      middle = controlP->bounds.topLeft.x + oldWidth / 2;
-      newWidth = (controlP->text ? FntCharsWidth(controlP->text, StrLen(controlP->text)) : 0) + 4;
+      if (!controlP->attr.leftAnchor) {
+        controlP->bounds.topLeft.x = controlP->bounds.topLeft.x + oldWidth - newWidth;
+      }
       controlP->bounds.extent.x = newWidth;
 
-      // leftAnchor: used by controls that expand and shrink their width when the label is changed.
-      // If this attribute is set, the left bound of the control is fixed.
+    } else if (controlP->style == selectorTriggerCtl) {
+      // the control expands or contracts to the width of the new label
+      newWidth += 4; // add a little bit of spacing
       if (!controlP->attr.leftAnchor) {
+        middle = controlP->bounds.topLeft.x + oldWidth / 2;
         controlP->bounds.topLeft.x = middle - newWidth / 2;
       }
+      controlP->bounds.extent.x = newWidth;
     }
     if (visible) {
       CtlDrawControl(controlP);
