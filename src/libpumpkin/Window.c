@@ -494,7 +494,6 @@ void WinGetBounds(WinHandle winH, RectangleType *rP) {
 void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
   win_module_t *module = (win_module_t *)thread_get(win_key);
   BitmapType *bmp, *old;
-  WinHandle prev;
   UInt32 density, depth;
   Coord width, height;
   UInt16 prevCoordSys;
@@ -504,11 +503,6 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
                           rP->topLeft.x != winHandle->windowBounds.topLeft.x || rP->topLeft.y != winHandle->windowBounds.topLeft.y)) {
     MemMove(&winHandle->windowBounds, rP, sizeof(RectangleType));
     WinUnscaleRectangle(&winHandle->windowBounds);
-    //put2b(winHandle->windowBounds.topLeft.x, (uint8_t *)winHandle, 10);
-    //put2b(winHandle->windowBounds.topLeft.y, (uint8_t *)winHandle, 12);
-    //put2b(winHandle->windowBounds.extent.x,  (uint8_t *)winHandle, 14);
-    //put2b(winHandle->windowBounds.extent.y,  (uint8_t *)winHandle, 16);
-
     width = winHandle->windowBounds.extent.x;
     height = winHandle->windowBounds.extent.y;
     prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
@@ -521,9 +515,6 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     if (bmp) {
       old = winHandle->bitmapP;
       winHandle->bitmapP = bmp;
-      prev = WinSetDrawWindow(winHandle);
-      WinPaintBitmap(old, 0, 0);
-      WinSetDrawWindow(prev);
       debug(DEBUG_TRACE, "Window", "WinSetBounds BmpDelete %p", old);
       BmpDelete(old);
     }
