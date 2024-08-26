@@ -448,6 +448,13 @@ int EvtPumpEvents(Int32 timeoutUs) {
 
 void EvtEmptyQueue(void) {
   evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  int i, j;
+
+  for (i = 0; i < module->numEvents; i++) {
+    j = (module->idxOut + i) % MAX_EVENTS;
+    debug(DEBUG_TRACE, "Event", "Event %d/%d: EvtEmptyQueue %s", i+1, module->numEvents, EvtGetEventName(module->events[j].eType));
+  }
+
   module->numEvents = 0;
   module->idxIn = 0;
   module->idxOut = 0;
