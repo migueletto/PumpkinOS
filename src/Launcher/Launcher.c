@@ -876,7 +876,7 @@ static void launcherScanTasks(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "found %d tasks", data->numItems);
 }
 
-static void compat_callback(UInt32 creator, UInt16 index, UInt16 id, void *p, void *_data) {
+static void compat_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *_data) {
   launcher_data_t *data = (launcher_data_t *)_data;
   AppRegistryCompat *c;
   AppRegistrySize *s;
@@ -2385,6 +2385,8 @@ static void deleteApplication(launcher_item_t *item) {
         DmDeleteDatabase(0, dbID);
       }
     }
+    pumpkin_delete_preferences(item->creator, true);
+    pumpkin_delete_preferences(item->creator, false);
   } else {
     FrmCustomAlert(ErrorAlert, "Could not delete application. Is it running?", "", "");
   }

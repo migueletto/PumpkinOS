@@ -114,13 +114,37 @@ void AppRegistryFinish(AppRegistryType *ar) {
   if (ar) {
     if (ar->registry) {
       for (i = 0; i < ar->num; i++) {
-        AppRegistrySave(ar, i);
+        if (ar->registry[i].id != appRegistrySavedPref && ar->registry[i].id != appRegistryUnsavedPref) {
+          AppRegistrySave(ar, i);
+        }
         if (ar->registry[i].data) xfree(ar->registry[i].data);
       }
       xfree(ar->registry);
     }
     mutex_destroy(ar->mutex);
     xfree(ar);
+  }
+}
+
+void AppRegistryDelete(char *regname, UInt16 id) {
+  sys_dir_t *dir;
+  char path[64], name[32], screator[8];
+  int id1, seq, aux;
+
+  if ((dir = sys_opendir(regname)) != NULL) {
+    for (;;) {
+      if (sys_readdir(dir, name, sizeof(name) - 1) == -1) break;
+      screator[4] = 0;
+      if (sys_sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator + 1, screator + 2,
+                     screator + 3, &aux, &id1, &seq) != 7)
+        continue;
+      if (id1 != id) continue;
+
+      debug(DEBUG_INFO, "AppReg", "deleting registry creator '%s' id %d seq %d", screator, id, seq);
+      sys_snprintf(path, sizeof(path) - 1, "%s%s", regname, name);
+      sys_unlink(path);
+    }
+    sys_closedir(dir);
   }
 }
 
@@ -363,7 +387,7 @@ static Int32 compare_entry(void *e1, void *e2, void *otherP) {
   return r;
 }
 
-void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data), UInt32 creator, AppRegistryID id, void *data) {
+void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), UInt32 creator, AppRegistryID id, void *data) {
   AppRegistryNotification *n;
   int i, j, num, index;
 
@@ -381,20 +405,24 @@ void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt1
 
       switch (ar->registry[i].id) {
         case appRegistryCompat:
-          callback(ar->registry[i].creator, index, appRegistryCompat, ar->registry[i].data, data);
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryCompat, ar->registry[i].data, 0, data);
           break;
         case appRegistrySize:
-          callback(ar->registry[i].creator, index, appRegistrySize, ar->registry[i].data, data);
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistrySize, ar->registry[i].data, 0, data);
           break;
         case appRegistryPosition:
-          callback(ar->registry[i].creator, index, appRegistryPosition, ar->registry[i].data, data);
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryPosition, ar->registry[i].data, 0, data);
           break;
         case appRegistryNotification:
           num = ar->registry[i].size / sizeof(AppRegistryNotification);
           n = (AppRegistryNotification *)ar->registry[i].data;
           for (j = 0; j < num; j++) {
-            callback(ar->registry[i].creator, index, appRegistryNotification, &n[j], data);
+            callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryNotification, &n[j], 0, data);
           }
+          break;
+        case appRegistrySavedPref:
+        case appRegistryUnsavedPref:
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, ar->registry[i].id, ar->registry[i].data, ar->registry[i].size, data);
           break;
         default:
           break;

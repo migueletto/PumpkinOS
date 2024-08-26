@@ -468,7 +468,7 @@ void pumpkin_load_plugins(void) {
   }
 }
 
-static void SysNotifyLoadCallback(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data) {
+static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
   AppRegistryNotification *n = (AppRegistryNotification *)p;
   char stype[8], screator[8];
 
@@ -598,6 +598,18 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   return 0;
 }
 
+static void registry_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
+  Boolean saved;
+  char buf[8];
+
+  saved = id == appRegistrySavedPref;
+  if (pumpkin_get_preference(creator, seq, NULL, 0, saved) == 0) {
+    pumpkin_id2s(creator, buf);
+    debug(DEBUG_INFO, PUMPKINOS, "migrate %s preference for creator %s, id %d, size %d bytes", saved ? "saved" : "unsaved", buf, seq, size);
+    pumpkin_set_preference(creator, seq, p, size, saved);
+  }
+}
+
 void pumpkin_deploy_files(char *path) {
   DmOpenRef dbRef;
   LocalID dbID;
@@ -609,6 +621,11 @@ void pumpkin_deploy_files(char *path) {
   PrefInitModule();
   pumpkin_load_fonts();
   DmCloseDatabase(dbRef);
+
+  AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistrySavedPref, NULL);
+  AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistryUnsavedPref, NULL);
+  AppRegistryDelete(REGISTRY_DB, appRegistrySavedPref);
+  AppRegistryDelete(REGISTRY_DB, appRegistryUnsavedPref);
 }
 
 void pumpkin_set_spawner(int handle) {
@@ -3417,11 +3434,11 @@ void pumpkin_set_compat(uint32_t creator, int compat, int code) {
   AppRegistrySet(pumpkin_module.registry, creator, appRegistryCompat, 0, &c);
 }
 
-void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data), void *data) {
+void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), void *data) {
   AppRegistryEnum(pumpkin_module.registry, callback, 0, 0, data);
 }
 
-static void compat_callback(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data) {
+static void compat_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
   AppRegistryCompat *c;
   char buf[256], st[8];
   int fd;
@@ -3659,14 +3676,7 @@ int pumpkin_is_m68k(void) {
   return task ? task->m68k : 0;
 }
 
-void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved) {
-  if (mutex_lock(mutex) == 0) {
-    AppRegistrySetPreference(pumpkin_module.registry, creator, seq, p, size, saved);
-    mutex_unlock(mutex);
-  }
-}
-
-void xpumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
+void pumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
   DmOpenRef dbRef;
   MemHandle h;
   UInt16 currentSize, index;
@@ -3695,16 +3705,7 @@ void xpumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Bo
   }
 }
 
-UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved) {
-  if (mutex_lock(mutex) == 0) {
-    size = AppRegistryGetPreference(pumpkin_module.registry, creator, seq, p, size, saved);
-    mutex_unlock(mutex);
-  }
-
-  return size;
-}
-
-UInt16 xpumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
+UInt16 pumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {
   DmOpenRef dbRef;
   MemHandle h;
   UInt16 currentSize, index;
@@ -3712,7 +3713,7 @@ UInt16 xpumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, 
 
   if (mutex_lock(mutex) == 0) {
     if ((dbRef = PrefOpenPreferenceDB(saved)) != NULL) {
-      if ((index = DmFindResource(dbRef, creator, id, NULL)) == 0xFFFF) {
+      if ((index = DmFindResource(dbRef, creator, id, NULL)) != 0xFFFF) {
         if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
           if ((pref = MemHandleLock(h)) != NULL) {
             currentSize = MemHandleSize(h);
@@ -3723,15 +3724,38 @@ UInt16 xpumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, 
               MemMove(p, pref, size);
             }
             MemHandleUnlock(h);
+          } else {
+            size = 0;
           }
           DmReleaseResource(h);
+        } else {
+          size = 0;
         }
+      } else {
+        size = 0;
       }
+      DmCloseDatabase(dbRef);
     }
     mutex_unlock(mutex);
   }
 
   return size;
+}
+
+void pumpkin_delete_preferences(UInt32 creator, Boolean saved) {
+  DmOpenRef dbRef;
+  UInt16 i, index;
+
+  if (mutex_lock(mutex) == 0) {
+    if ((dbRef = PrefOpenPreferenceDB(saved)) != NULL) {
+      for (i = 0; ; i++) {
+        if ((index = DmFindResourceType(dbRef, creator, i)) == 0xFFFF) break;
+        DmRemoveResource(dbRef, index);
+      }
+      DmCloseDatabase(dbRef);
+    }
+    mutex_unlock(mutex);
+  }
 }
 
 void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wHeight, Coord width, Coord height, char *filename) {

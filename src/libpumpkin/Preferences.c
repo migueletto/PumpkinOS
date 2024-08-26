@@ -685,25 +685,8 @@ int PrefInitModule(void) {
 }
 
 int PrefFinishModule(void) {
-  DmOpenRef dbRef;
-  UInt16 num;
-
   debug(DEBUG_INFO, PALMOS_MODULE, "saving system preferences");
   pumpkin_set_preference(BOOT_CREATOR, 1, &prefs, sizeof(SystemPreferencesType), true);
-
-  if ((dbRef = PrefOpenPreferenceDB(true)) != NULL) {
-    if ((num = DmNumResources(dbRef)) > 0) {
-      debug(DEBUG_ERROR, PALMOS_MODULE, "there are %d items in legacy \"%s\" database", num, SAVED_PREFS);
-    }
-    DmCloseDatabase(dbRef);
-  }
-
-  if ((dbRef = PrefOpenPreferenceDB(false)) != NULL) {
-    if ((num = DmNumResources(dbRef)) > 0) {
-      debug(DEBUG_ERROR, PALMOS_MODULE, "there are %d items in legacy \"%s\" database", num, UNSAVED_PREFS);
-    }
-    DmCloseDatabase(dbRef);
-  }
 
   mutex_destroy(mutex);
   mutex = NULL;
@@ -804,7 +787,6 @@ UInt32 PrefGetPreference(SystemPreferencesChoice choice) {
 }
 
 void PrefSetPreference(SystemPreferencesChoice choice, UInt32 value) {
-
   if (mutex_lock(mutex) == 0) {
   switch (choice) {
     case prefVersion: prefs.version = value; break;

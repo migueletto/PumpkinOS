@@ -188,7 +188,7 @@ void pumpkin_generic_error(char *msg, int code);
 void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height);
 void pumpkin_create_compat(uint32_t creator);
 void pumpkin_set_compat(uint32_t creator, int compat, int code);
-void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data), void *data);
+void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), void *data);
 void pumpkin_compat_log(void);
 
 void pumpkin_set_finish(int finish);
@@ -277,6 +277,7 @@ int pumpkin_alarm_get(LocalID dbID, uint32_t *t, uint32_t *data);
 
 void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
+void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
 
 void pumpkin_set_v10(void);
 void pumpkin_set_m68k(int m68k);

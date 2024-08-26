@@ -44,4 +44,5 @@ void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt1
 Boolean AppRegistryGet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt16 seq, void *p);
 void AppRegistrySetPreference(AppRegistryType *ar, UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 UInt16 AppRegistryGetPreference(AppRegistryType *ar, UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
-void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt16 index, UInt16 id, void *p, void *data), UInt32 creator, AppRegistryID id, void *data);
+void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), UInt32 creator, AppRegistryID id, void *data);
+void AppRegistryDelete(char *regname, UInt16 id);
