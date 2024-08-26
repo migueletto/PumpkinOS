@@ -577,6 +577,7 @@ void TblSetRowUsable(TableType *tableP, Int16 row, Boolean usable) {
       }
     }
     tableP->rowAttrs[row].usable = usable;
+    tableP->attr.usable = usable;
   }
 }
 
