@@ -308,7 +308,7 @@ Boolean FrmDispatchEvent(EventType *eventP) {
   return r;
 }
 
-void FrmEraseObject(FormType *formP, UInt16 objIndex) {
+void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FormObjectType obj;
   RectangleType rect;
   IndexedColorType formFill, oldb;
@@ -324,10 +324,12 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex) {
 
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
+        if (setUsable) obj.field->attr.usable = false;
         FldEraseField(obj.field);
         break;
 
       case frmControlObj:
+        if (setUsable) obj.control->attr.usable = false;
         CtlEraseControl(obj.control);
         break;
 
@@ -337,14 +339,17 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex) {
         break;
 
       case frmLabelObj:
-        if (obj.label->text) {
-          old = FntSetFont(obj.label->fontID);
-          max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
-          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
-          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
-          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
-          FntSetFont(old);
-          erase = true;
+        if (setUsable) obj.label->attr.usable = false;
+        if (formP->attr.visible) {
+          if (obj.label->text) {
+            old = FntSetFont(obj.label->fontID);
+            max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
+            RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
+            WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
+            RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
+            FntSetFont(old);
+            erase = true;
+          }
         }
         break;
 
@@ -361,7 +366,8 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex) {
         break;
 
       case frmGadgetObj:
-        if (obj.gadget->m68k_handler || obj.gadget->handler) {
+        if (setUsable) obj.gadget->attr.usable = false;
+        if (formP->attr.visible && (obj.gadget->handler || obj.gadget->m68k_handler)) {
           formFill = UIColorGetTableEntryIndex(UIFormFill);
           oldb = WinSetBackColor(formFill);
           WinPushDrawState();
@@ -372,20 +378,30 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex) {
           }
           WinPopDrawState();
           WinSetBackColor(oldb);
+          obj.gadget->attr.visible = 0;
         }
         break;
 
       case frmListObj:
-        LstEraseList(obj.list);
+        if (setUsable) obj.list->attr.usable = 0;
+        if (obj.list->attr.visible) {
+          LstEraseList(obj.list);
+        }
         break;
 
       case frmTableObj:
-        TblEraseTable(obj.table);
+        if (setUsable) obj.table->attr.usable = 0;
+        if (obj.table->attr.visible) {
+          TblEraseTable(obj.table);
+        }
         break;
 
       case frmScrollBarObj:
-        MemMove(&rect, &obj.scrollBar->bounds, sizeof(RectangleType));
-        erase = true;
+        if (setUsable) obj.scrollBar->attr.usable = 0;
+        if (obj.scrollBar->attr.visible) {
+          MemMove(&rect, &obj.scrollBar->bounds, sizeof(RectangleType));
+          erase = true;
+        }
         break;
 
       default:
@@ -402,7 +418,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex) {
   }
 }
 
-void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean show) {
+void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FormObjectType obj;
   IndexedColorType formTitle, formFrame, formFill, objFill, fieldText, oldb, oldt;
   WinDrawOperation mode;
@@ -425,61 +441,97 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean show) {
 
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
-        FldDrawField(obj.field);
+        if (setUsable) obj.field->attr.usable = 1;
+        if (obj.field->attr.usable) {
+          FldDrawField(obj.field);
+        }
         break;
       case frmControlObj:
-        CtlDrawControl(obj.control);
+        if (setUsable) obj.control->attr.usable = 1;
+        if (obj.control->attr.usable) {
+          CtlDrawControl(obj.control);
+        }
         break;
       case frmLabelObj:
-        old = FntSetFont(obj.label->fontID);
-        oldb = WinSetBackColor(objFill);
-        oldt = WinSetTextColor(fieldText);
-        max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
-        RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
-        WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
-        rect.extent.y = FntCharHeight()*totalLines;
-        obj.label->extent.x = max;
-        obj.label->extent.y = rect.extent.y;
-        WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
-        WinSetBackColor(oldb);
-        WinSetTextColor(oldt);
-        FntSetFont(old);
+        if (setUsable) obj.label->attr.usable = 1;
+        if (obj.label->attr.usable) {
+          old = FntSetFont(obj.label->fontID);
+          oldb = WinSetBackColor(objFill);
+          oldt = WinSetTextColor(fieldText);
+          max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
+          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
+          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
+          rect.extent.y = FntCharHeight()*totalLines;
+          obj.label->extent.x = max;
+          obj.label->extent.y = rect.extent.y;
+          WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
+          WinSetBackColor(oldb);
+          WinSetTextColor(oldt);
+          FntSetFont(old);
+        }
         break;
       case frmGadgetObj:
-        if (obj.gadget->m68k_handler || obj.gadget->handler) {
-          oldb = WinSetBackColor(formFill);
-          WinPushDrawState();
-          if (obj.gadget->m68k_handler) {
-            CallGadgetHandler(obj.gadget->m68k_handler, (FormGadgetTypeInCallback *)obj.gadget, formGadgetDrawCmd, NULL);
+        if (setUsable) obj.gadget->attr.usable = 1;
+        if (obj.gadget->attr.usable) {
+          if (obj.gadget->m68k_handler || obj.gadget->handler) {
+            oldb = WinSetBackColor(formFill);
+            WinPushDrawState();
+            if (obj.gadget->m68k_handler) {
+              CallGadgetHandler(obj.gadget->m68k_handler, (FormGadgetTypeInCallback *)obj.gadget, formGadgetDrawCmd, NULL);
+            } else {
+              obj.gadget->handler((FormGadgetTypeInCallback *)obj.gadget, formGadgetDrawCmd, NULL);
+            }
+            WinPopDrawState();
+            WinSetBackColor(oldb);
+            obj.gadget->attr.visible = 1;
           } else {
-            obj.gadget->handler((FormGadgetTypeInCallback *)obj.gadget, formGadgetDrawCmd, NULL);
           }
-          WinPopDrawState();
-          WinSetBackColor(oldb);
         }
         break;
       case frmListObj:
-        // Lists are more complex because there are two types: normal Lists (usable)
-        // and popup Lists (normaly not usable).
         formVisible = formP->attr.visible;
         objUsable = obj.list->attr.usable;
-        draw = (!formVisible && objUsable) || (formVisible && show);
+        draw = (!formVisible && objUsable) || (formVisible && setUsable);
+/*
+2024-08-14 00:30:18.236620 I 31096 Plucker  XXX: drawObject list 3242, formVisible 0, visible 0, usable 0, setUsable 1
+2024-08-14 00:30:18.236622 I 31096 Plucker  XXX: drawObject draw!
+
+2024-08-14 00:43:17.487624 I 31953 Plucker  XXX: drawObject list 3242, formVisible 0, visible 0, usable 1, setUsable 0
+2024-08-14 00:43:17.487626 I 31953 Plucker  XXX: drawObject draw!
+
+2024-08-14 00:34:11.389664 I 31312 ChemTabl XXX: drawObject list 1505, formVisible 1, visible 0, usable 0, setUsable 1
+2024-08-14 00:34:11.389666 I 31312 ChemTabl XXX: drawObject draw!
+
+2024-08-14 00:35:12.018367 I 31416 eReader  XXX: drawObject list 1503, formVisible 0, visible 0, usable 1, setUsable 0
+2024-08-14 00:35:12.018377 I 31416 eReader  XXX: drawObject draw!
+*/
+
+        debug(DEBUG_TRACE, "List", "drawObject list %d, formVisible %d, visible %d, usable %d, setUsable %d",
+          obj.list->id, formP->attr.visible, obj.list->attr.visible, obj.list->attr.usable, setUsable);
+        if (setUsable && formVisible) obj.list->attr.usable = 1;
         if (draw) {
+          debug(DEBUG_TRACE, "List", "drawObject draw!");
           LstDrawList(obj.list);
         }
         break;
       case frmTableObj:
-        TblDrawTable(obj.table);
+        if (setUsable) obj.table->attr.usable = 1;
+        if (obj.table->attr.usable) {
+          TblDrawTable(obj.table);
+        }
         break;
       case frmBitmapObj:
-        if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
-          if ((bitmapP = MemHandleLock(h)) != NULL) {
-            mode = WinSetDrawMode(winPaint);
-            WinPaintBitmap(bitmapP, obj.bitmap->pos.x, obj.bitmap->pos.y);
-            WinSetDrawMode(mode);
-            MemHandleUnlock(h);
+        if (setUsable) obj.bitmap->attr.usable = 1;
+        if (obj.bitmap->attr.usable) {
+          if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
+            if ((bitmapP = MemHandleLock(h)) != NULL) {
+              mode = WinSetDrawMode(winPaint);
+              WinPaintBitmap(bitmapP, obj.bitmap->pos.x, obj.bitmap->pos.y);
+              WinSetDrawMode(mode);
+              MemHandleUnlock(h);
+            }
+            DmReleaseResource(h);
           }
-          DmReleaseResource(h);
         }
         break;
       case frmLineObj:
@@ -545,7 +597,10 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean show) {
         FntSetFont(old);
         break;
       case frmScrollBarObj:
-        SclDrawScrollBar(obj.scrollBar);
+        if (setUsable) obj.scrollBar->attr.usable = 1;
+        if (obj.scrollBar->attr.usable) {
+          SclDrawScrollBar(obj.scrollBar);
+        }
         break;
       default:
         debug(DEBUG_ERROR, "Form", "FrmDrawObject type %d not supported", formP->objects[objIndex].objectType);
@@ -561,8 +616,8 @@ void FrmSetUsable(FormType *formP, UInt16 objIndex, Boolean usable) {
     obj = formP->objects[objIndex].object;
 
     switch (formP->objects[objIndex].objectType) {
-      case frmFieldObj:     FldSetUsable(obj.field, usable);     break;
-      case frmControlObj:   CtlSetUsable(obj.control, usable);   break;
+      case frmFieldObj:     obj.field->attr.usable     = usable; break;
+      case frmControlObj:   obj.control->attr.usable   = usable; break;
       case frmLabelObj:     obj.label->attr.usable     = usable; break;
       case frmListObj:      obj.list->attr.usable      = usable; break;
       case frmTableObj:     obj.table->attr.usable     = usable; break;
@@ -1132,11 +1187,8 @@ void FrmDrawForm(FormType *formP) {
         // Since all controls were erased by FrmDrawEmptyDialog above, the visible status
         // must be set here, otherwise the inversion routine would produce garbled pixels.
         FrmSetVisible(formP, objIndex, false);
-        FrmDrawObject(formP, objIndex, false);
-        FrmSetVisible(formP, objIndex, true);
-      } else {
-        FrmDrawObject(formP, objIndex, false);
       }
+      FrmDrawObject(formP, objIndex, false);
     }
     formP->attr.visible = 1;
 
@@ -1150,7 +1202,6 @@ void FrmDrawForm(FormType *formP) {
 
 void FrmEraseForm(FormType *formP) {
   RectangleType rect;
-  UInt16 objIndex;
 
   if (formP) {
     debug(DEBUG_TRACE, "Form", "FrmEraseForm %d", formP->formId);
@@ -1162,10 +1213,6 @@ void FrmEraseForm(FormType *formP) {
       rect.extent.y += 4;
     }
     WinRestoreRectangle(formP->bitsBehindForm, &rect);
-
-    for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
-      FrmSetVisible(formP, objIndex, false);
-    }
 
     formP->attr.visible = 0;
   }
@@ -1337,8 +1384,7 @@ void FrmSetObjectPtr(const FormType *formP, UInt16 objIndex, void *p) {
 void FrmHideObject(FormType *formP, UInt16 objIndex) {
   if (formP && objIndex < formP->numObjects) {
     debug(DEBUG_TRACE, "Form", "FrmHideObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
-    FrmEraseObject(formP, objIndex);
-    FrmSetUsable(formP, objIndex, false);
+    FrmEraseObject(formP, objIndex, true);
   }
 }
 
@@ -1346,7 +1392,6 @@ void FrmShowObject(FormType *formP, UInt16 objIndex) {
   if (formP && objIndex < formP->numObjects) {
     debug(DEBUG_TRACE, "Form", "FrmShowObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
     FrmDrawObject(formP, objIndex, true);
-    FrmSetUsable(formP, objIndex, true);
   }
 }
 
@@ -1389,7 +1434,7 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
         if (formP->attr.visible) {
-          FrmEraseObject(formP, formP->objects[i].object.title->objIndex);
+          FrmEraseObject(formP, formP->objects[i].object.title->objIndex, false);
         }
         formP->objects[i].object.title->text = newTitle;
         if (formP->attr.visible) {
@@ -1409,7 +1454,7 @@ void FrmCopyTitle(FormType *formP, const Char *newTitle) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmCopyTitle %d \"%s\"", formP->formId, newTitle);
         if (formP->attr.visible) {
-          FrmEraseObject(formP, formP->objects[i].object.title->objIndex);
+          FrmEraseObject(formP, formP->objects[i].object.title->objIndex, false);
         }
         StrCopy(formP->objects[i].object.title->text, newTitle);
         if (formP->attr.visible) {
@@ -1940,7 +1985,7 @@ const Char *FrmGetLabel(const FormType *formP, UInt16 labelID) {
   return s;
 }
 
-// This function redraws the label if the form’s usable attribute and the label's visible attribute are set.
+// This function redraws the label if the form's usable attribute and the label's visible attribute are set.
 // This function redraws the label but does not erase the old one first.
 // If the new label is shorter than the old one, the end of the old label will still be visible.
 

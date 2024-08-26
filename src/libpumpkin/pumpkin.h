@@ -374,7 +374,7 @@ void FrmSetUsable(FormType *formP, UInt16 objIndex, Boolean usable);
 Boolean FrmGetUsable(FormType *formP, UInt16 objIndex);
 void FrmSetObjectPtr(const FormType *formP, UInt16 objIndex, void *p);
 void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean show);
-void FrmEraseObject(FormType *formP, UInt16 objIndex);
+void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable);
 UInt16 FrmGrfGetState(void);
 void FrmGrfSetState(UInt16 state);
 UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
