@@ -1509,7 +1509,10 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
     FrmEraseForm(formP);
     MenuSetActiveMenu(NULL);
     FrmSetActiveForm(previous);
-    EvtEmptyQueue();
+
+    // changed from EvtEmptyQueue() to EvtFlushPenQueue() here, otherwise apps may hang
+    // (for example: FreeJong)
+    EvtFlushPenQueue();
   }
 
   return buttonID;
