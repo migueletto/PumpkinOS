@@ -636,9 +636,9 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
     case  2: numEntries = 4;   rowBytes = (width + 3) / 4; break;
     case  4: numEntries = 16;  rowBytes = (width + 1) / 2; break;
     case  8: numEntries = 256; rowBytes = width; break;
-    case 16: numEntries = 0;   rowBytes = width * 2; break;
-    case 24: numEntries = 0;   rowBytes = width * 3; break;
-    case 32: numEntries = 0;   rowBytes = width * 4; break;
+    case 16: numEntries = 256; rowBytes = width * 2; break;
+    case 24: numEntries = 256; rowBytes = width * 3; break;
+    case 32: numEntries = 256; rowBytes = width * 4; break;
     default:
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate invalid depth %d", depth);
       return NULL;
@@ -701,9 +701,9 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
     case  2: numEntries = 4;   if (rowBytes == 0) rowBytes = (width + 3) / 4; break;
     case  4: numEntries = 16;  if (rowBytes == 0) rowBytes = (width + 1) / 2; break;
     case  8: numEntries = 256; if (rowBytes == 0) rowBytes = width; break;
-    case 16: numEntries = 0;   if (rowBytes == 0) rowBytes = width * 2; break;
-    case 24: numEntries = 0;   if (rowBytes == 0) rowBytes = width * 3; break;
-    case 32: numEntries = 0;   if (rowBytes == 0) rowBytes = width * 4; break;
+    case 16: numEntries = 256; if (rowBytes == 0) rowBytes = width * 2; break;
+    case 24: numEntries = 256; if (rowBytes == 0) rowBytes = width * 3; break;
+    case 32: numEntries = 256; if (rowBytes == 0) rowBytes = width * 4; break;
     default:
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 invalid depth %d", depth);
       return NULL;
