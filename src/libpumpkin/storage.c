@@ -898,7 +898,7 @@ static const char *errorMessage(Err err) {
 
 #define StoCheckErr(err) \
   sto->lastErr = err; \
-  if (err) debug(DEBUG_ERROR, "STOR", "%s: error %s (0x%04X)", __FUNCTION__, errorMessage(err), err);
+  if (err && err != dmErrResourceNotFound) debug(DEBUG_ERROR, "STOR", "%s: error %s (0x%04X)", __FUNCTION__, errorMessage(err), err);
 
 static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
   storage_db_t *db = NULL;
