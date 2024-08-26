@@ -2952,12 +2952,14 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
                 index = tableP[i].index;
                 if (index < numEntries) {
                   CtbGetEntry(colorTable, index, &tableP[i]);
+                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
                 }
               }
             } else {
               for (i = 0; i < paletteEntries; i++) {
                 if ((startIndex + i) < numEntries) {
                   CtbGetEntry(colorTable, startIndex + i, &tableP[i]);
+                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
                 }
               }
             }
@@ -2975,12 +2977,14 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
               for (i = 0; i < paletteEntries; i++) {
                 index = tableP[i].index;
                 if (index < numEntries) {
+                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
                   CtbSetEntry(colorTable, index, &tableP[i]);
                 }
               }
             } else {
               for (i = 0; i < paletteEntries; i++) {
                 if ((startIndex + i) < numEntries) {
+                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
                   CtbSetEntry(colorTable, startIndex + i, &tableP[i]);
                 }
               }
@@ -3013,6 +3017,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             default:
               CtbSetNumEntries(colorTable, 256);
               for (i = 0; i < 256; i++) {
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSetToDefault %d = (%02X,%02X,%02X)", i, defaultPalette8[i].r, defaultPalette8[i].g, defaultPalette8[i].b);
                 CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette8[i]);
               }
               break;
