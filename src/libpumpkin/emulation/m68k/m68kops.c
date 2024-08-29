@@ -1,4 +1,6 @@
 #include "m68kcpu.h"
+#include "sys.h"
+#include "debug.h"
 
 extern void m68040_fpu_op0(m68k_state_t *m68k_state);
 extern void m68040_fpu_op1(m68k_state_t *m68k_state);
@@ -33166,7 +33168,7 @@ static void m68k_op_tas_8_al(m68k_state_t *m68k_state)
 static void m68k_op_trap(m68k_state_t *m68k_state)
 {
 	/* Trap#n stacks exception frame type 0 */
-	if ((REG_IR & 0xf) == 0x0f) {
+	if ((REG_IR & 0xf) == 0x0f && m68ki_cpu.trapf) {
 		uint16_t trap = m68k_read_memory_16(REG_PC);
 		REG_PC += 2;
 		uint32_t r = palmos_systrap(trap);

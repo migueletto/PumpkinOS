@@ -550,11 +550,11 @@ typedef uint32 uint64;
 #endif /* M68K_ILLG_HAS_CALLBACK */
 
 #if M68K_INSTRUCTION_HOOK
-	#if M68K_INSTRUCTION_HOOK == OPT_SPECIFY_HANDLER
-		#define m68ki_instr_hook(pc) M68K_INSTRUCTION_CALLBACK(pc)
-	#else
+//	#if M68K_INSTRUCTION_HOOK == OPT_SPECIFY_HANDLER
+//		#define m68ki_instr_hook(pc) M68K_INSTRUCTION_CALLBACK(pc)
+//	#else
 		#define m68ki_instr_hook(pc) CALLBACK_INSTR_HOOK(pc)
-	#endif
+//	#endif
 #else
 	#define m68ki_instr_hook(pc)
 #endif /* M68K_INSTRUCTION_HOOK */
@@ -1007,7 +1007,9 @@ typedef struct
 	int  (*illg_instr_callback)(int);                 /* Called when an illegal instruction is encountered, allows handling */
 	void (*pc_changed_callback)(unsigned int new_pc); /* Called when the PC changes by a large amount */
 	void (*set_fc_callback)(unsigned int new_fc);     /* Called when the CPU function code changes */
-	void (*instr_hook_callback)(unsigned int pc);     /* Called every instruction cycle prior to execution */
+	int (*instr_hook_callback)(unsigned int pc);      /* Called every instruction cycle prior to execution */
+
+  int trapf;
 
 } m68ki_cpu_core;
 
@@ -2206,7 +2208,7 @@ static inline void m68ki_check_interrupts(void)
 
 
 extern uint32_t palmos_systrap(uint16_t trap);
-extern int cpu_instr_callback(int pc);
+//extern int cpu_instr_callback(int pc);
 
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */

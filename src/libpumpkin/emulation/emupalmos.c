@@ -19,8 +19,8 @@
 #include "debug.h"
 #include "xalloc.h"
 
-#include "m68k.h"
-#include "m68kcpu.h"
+#include "m68k/m68k.h"
+#include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"
 #include "emupalmos.h"
 #include "trapnames.h"
@@ -246,22 +246,33 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
   return 1;
 }
 
-unsigned int cpu_read_byte(unsigned int address) {
-  uint8_t *ram = pumpkin_heap_base();
+uint8_t cpu_read_byte(uint32_t address) {
+  emu_state_t *state = thread_get(emu_key);
+  uint8_t *ram;
   uint32_t value;
+
+  if (state->read_byte) return state->read_byte(address);
+
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 8 bits from register 0x%08X", address);
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
+    ram = pumpkin_heap_base();
     value = READ_BYTE(ram, address);
   }
+
   return value;
 }
 
-unsigned int cpu_read_word(unsigned int address) {
+uint16_t cpu_read_word(uint32_t address) {
+  emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
+  uint8_t *ram;
   uint32_t value;
+
+  if (state->read_word) return state->read_word(address);
+
   if ((address & 1) == 0 && address >= size && address < (size + TRAPS_SIZE)) {
     debug(DEBUG_TRACE, "EmuPalmOS", "returning RTS for address 0x%08X", address);
     return 0x4E75; // RTS
@@ -270,17 +281,22 @@ unsigned int cpu_read_word(unsigned int address) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
     value = 0;
   } else {
-    uint8_t *ram = pumpkin_heap_base();
+    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 2, 1)) return 0;
     value = READ_WORD(ram, address);
   }
+
   return value;
 }
 
-unsigned int cpu_read_long(unsigned int address) {
+uint32_t cpu_read_long(uint32_t address) {
+  emu_state_t *state = thread_get(emu_key);
   uint32_t value;
+  uint8_t *ram;
+
+  if (state->read_long) return state->read_long(address);
+
   if (address >= 0xFFFFF000) {
-    emu_state_t *state = thread_get(emu_key);
     switch (address) {
       case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
         WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
@@ -293,19 +309,24 @@ unsigned int cpu_read_long(unsigned int address) {
         break;
     }
   } else {
-    uint8_t *ram = pumpkin_heap_base();
+    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     value = READ_LONG(ram, address);
   }
+
   return value;
 }
 
-void cpu_write_byte(unsigned int address, unsigned int value) {
+void cpu_write_byte(uint32_t address, uint8_t value) {
+  emu_state_t *state = thread_get(emu_key);
+  uint8_t *ram;
+
+  if (state->write_byte) return state->write_byte(address, value);
+
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
-    emu_state_t *state = thread_get(emu_key);
-    uint8_t *ram = pumpkin_heap_base();
+    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 1, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
@@ -318,12 +339,16 @@ void cpu_write_byte(unsigned int address, unsigned int value) {
   }
 }
 
-void cpu_write_word(unsigned int address, unsigned int value) {
+void cpu_write_word(uint32_t address, uint16_t value) {
+  emu_state_t *state = thread_get(emu_key);
+  uint8_t *ram;
+
+  if (state->write_word) return state->write_word(address, value);
+
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
-    emu_state_t *state = thread_get(emu_key);
-    uint8_t *ram = pumpkin_heap_base();
+    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 2, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
@@ -336,12 +361,16 @@ void cpu_write_word(unsigned int address, unsigned int value) {
   }
 }
 
-void cpu_write_long(unsigned int address, unsigned int value) {
+void cpu_write_long(uint32_t address, uint32_t value) {
+  emu_state_t *state = thread_get(emu_key);
+  uint8_t *ram;
+
+  if (state->write_long) return state->write_long(address, value);
+
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
-    emu_state_t *state = thread_get(emu_key);
-    uint8_t *ram = pumpkin_heap_base();
+    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 4, 0)) return;
     WRITE_LONG(ram, address, value);
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
@@ -1147,6 +1176,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_get_context(&old_cpu);
 
     MemSet(&aux_cpu, sizeof(m68ki_cpu_core), 0);
+    aux_cpu.trapf = 1;
     m68k_set_context(&aux_cpu);
     m68k_init();
     m68k_set_cpu_type(M68K_CPU_TYPE_68020);
@@ -1457,7 +1487,7 @@ static void print_regs(void) {
 }
 */
 
-int cpu_instr_callback(int pc) {
+static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
@@ -1580,6 +1610,40 @@ static void palmos_systrap_init(emu_state_t *state) {
 static void palmos_systrap_finish(emu_state_t *state) {
   MemHandleUnlock(state->hNative);
   MemHandleFree(state->hNative);
+}
+
+emu_state_t *emupalmos_install(void) {
+  emu_state_t *oldState, *state;
+
+  state = emupalmos_new();
+  oldState = thread_get(emu_key);
+  thread_set(emu_key, state);
+
+  return oldState;
+}
+
+void emupalmos_deinstall(emu_state_t *oldState) {
+  emu_state_t *state = thread_get(emu_key);
+  thread_set(emu_key, oldState);
+  palmos_systrap_finish(state);
+  emupalmos_destroy(state);
+}
+
+void emupalmos_memory_hooks(
+  uint8_t (*read_byte)(uint32_t address),
+  uint16_t (*read_word)(uint32_t address),
+  uint32_t (*read_long)(uint32_t address),
+  void (*write_byte)(uint32_t address, uint8_t value),
+  void (*write_word)(uint32_t address, uint16_t value),
+  void (*write_long)(uint32_t address, uint32_t value)) {
+
+  emu_state_t *state = thread_get(emu_key);
+  state->read_byte = read_byte;
+  state->read_word = read_word;
+  state->read_long = read_long;
+  state->write_byte = write_byte;
+  state->write_word = write_word;
+  state->write_long = write_long;
 }
 
 static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
@@ -1875,6 +1939,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       state->sysAppInfoStart = sysAppInfoStart;
 
       MemSet(&main_cpu, sizeof(m68ki_cpu_core), 0);
+      main_cpu.trapf = 1;
       m68k_set_context(&main_cpu);
       m68k_init();
       m68k_set_cpu_type(M68K_CPU_TYPE_68020);
@@ -1882,14 +1947,13 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       m68k_set_reg(M68K_REG_PC, pc);
       m68k_set_reg(M68K_REG_SP, a7);
       m68k_set_reg(M68K_REG_A5, a5);
+      m68k_set_instr_hook_callback(cpu_instr_callback);
 
       palmos_systrap_init(state);
 
       debug(DEBUG_INFO, "EmuPalmOS", "code  segment from 0x%08X to 0x%08X size 0x%04X", codeStart,  codeStart  + codeSize  - 1, codeSize);
       debug(DEBUG_INFO, "EmuPalmOS", "stack segment from 0x%08X to 0x%08X size 0x%04X", stackStart, stackStart + stackSize - 1, stackSize);
       if (dataSize+aboveSize) debug(DEBUG_INFO, "EmuPalmOS", "data  segment from 0x%08X to 0x%08X size 0x%04X", dataStart,  dataStart  + dataSize + aboveSize - 1, dataSize+ aboveSize );
-
-emupalmos_monitor(0x00047DCE + 8, 4);
 
       if (!state->panic) {
         creator = pumpkin_get_app_creator();

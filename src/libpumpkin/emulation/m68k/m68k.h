@@ -103,7 +103,8 @@ enum
 	M68K_CPU_TYPE_68EC040,
 	M68K_CPU_TYPE_68LC040,
 	M68K_CPU_TYPE_68040,
-	M68K_CPU_TYPE_SCC68070
+	M68K_CPU_TYPE_SCC68070,
+  M68K_CPU_TYPE_DBVZ
 };
 
 /* Registers used by m68k_get_reg() and m68k_set_reg() */
@@ -176,28 +177,28 @@ typedef enum
  */
 
 /* Read from anywhere */
-unsigned int  m68k_read_memory_8(unsigned int address);
-unsigned int  m68k_read_memory_16(unsigned int address);
-unsigned int  m68k_read_memory_32(unsigned int address);
+uint8_t  m68k_read_memory_8(uint32_t address);
+uint16_t  m68k_read_memory_16(uint32_t address);
+uint32_t  m68k_read_memory_32(uint32_t address);
 
 /* Read data immediately following the PC */
-unsigned int  m68k_read_immediate_16(unsigned int address);
-unsigned int  m68k_read_immediate_32(unsigned int address);
+uint16_t  m68k_read_immediate_16(uint32_t address);
+uint32_t  m68k_read_immediate_32(uint32_t address);
 
 /* Read data relative to the PC */
-unsigned int  m68k_read_pcrelative_8(unsigned int address);
-unsigned int  m68k_read_pcrelative_16(unsigned int address);
-unsigned int  m68k_read_pcrelative_32(unsigned int address);
+uint8_t  m68k_read_pcrelative_8(uint32_t address);
+uint16_t  m68k_read_pcrelative_16(uint32_t address);
+uint32_t  m68k_read_pcrelative_32(uint32_t address);
 
 /* Memory access for the disassembler */
-unsigned int m68k_read_disassembler_8  (unsigned int address);
-unsigned int m68k_read_disassembler_16 (unsigned int address);
-unsigned int m68k_read_disassembler_32 (unsigned int address);
+uint8_t m68k_read_disassembler_8  (uint32_t address);
+uint16_t m68k_read_disassembler_16 (uint32_t address);
+uint32_t m68k_read_disassembler_32 (uint32_t address);
 
 /* Write to anywhere */
-void m68k_write_memory_8(unsigned int address, unsigned int value);
-void m68k_write_memory_16(unsigned int address, unsigned int value);
-void m68k_write_memory_32(unsigned int address, unsigned int value);
+void m68k_write_memory_8(uint32_t address, uint8_t value);
+void m68k_write_memory_16(uint32_t address, uint16_t value);
+void m68k_write_memory_32(uint32_t address, uint32_t value);
 
 /* Special call to simulate undocumented 68k behavior when move.l with a
  * predecrement destination mode is executed.
@@ -206,7 +207,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value);
  *
  * Enable this functionality with M68K_SIMULATE_PD_WRITES in m68kconf.h.
  */
-void m68k_write_memory_32_pd(unsigned int address, unsigned int value);
+void m68k_write_memory_32_pd(uint32_t address, uint32_t value);
 
 
 
@@ -291,7 +292,7 @@ void m68k_set_fc_callback(void  (*callback)(unsigned int new_fc));
  * instruction cycle.
  * Default behavior: do nothing.
  */
-void m68k_set_instr_hook_callback(void  (*callback)(unsigned int pc));
+void m68k_set_instr_hook_callback(int  (*callback)(unsigned int pc));
 
 
 

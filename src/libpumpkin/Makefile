@@ -21,7 +21,7 @@ DARMOBJS=emulation/darm/armv7.o emulation/darm/armv7-tbl.o emulation/darm/darm.o
 
 EMUOBJS=emulation/emupalmos.o emulation/omtrap.o emulation/pinstrap.o emulation/hdtrap.o emulation/serialtrap.o emulation/fstrap.o emulation/intltrap.o \
         emulation/flpemtrap.o emulation/flptrap.o emulation/accessortrap.o emulation/netlibtrap.o emulation/gpdlibtrap.o emulation/systrap.o \
-        emulation/trapnames.o emulation/m68kcpu.o emulation/m68kdasm.o emulation/softfloat/softfloat.o emulation/m68kops.o emulation/disasm.o \
+        emulation/trapnames.o emulation/m68k/m68kcpu.o emulation/m68k/m68kdasm.o emulation/softfloat/softfloat.o emulation/m68k/m68kops.o emulation/disasm.o \
         $(ARMOBJS) $(DARMOBJS)
 
 ifeq ($(OSNAME),Android)

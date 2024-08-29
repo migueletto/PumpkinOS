@@ -80,19 +80,25 @@ typedef struct {
   uint32_t stackp;
   uint32_t stack[256];
   uint32_t stackt[256];
+  uint8_t (*read_byte)(uint32_t address);
+  uint16_t (*read_word)(uint32_t address);
+  uint32_t (*read_long)(uint32_t address);
+  void (*write_byte)(uint32_t address, uint8_t value);
+  void (*write_word)(uint32_t address, uint16_t value);
+  void (*write_long)(uint32_t address, uint32_t value);
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);
 
 uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData);
 
-unsigned int cpu_read_byte(unsigned int address);
-unsigned int cpu_read_word(unsigned int address);
-unsigned int cpu_read_long(unsigned int address);
-void cpu_write_byte(unsigned int address, unsigned int value);
-void cpu_write_word(unsigned int address, unsigned int value);
-void cpu_write_long(unsigned int address, unsigned int value);
-int cpu_instr_callback(int pc);
+uint8_t cpu_read_byte(uint32_t address);
+uint16_t cpu_read_word(uint32_t address);
+uint32_t cpu_read_long(uint32_t address);
+void cpu_write_byte(uint32_t address, uint8_t value);
+void cpu_write_word(uint32_t address, uint16_t value);
+void cpu_write_long(uint32_t address, uint32_t value);
+//int cpu_instr_callback(int pc);
 
 void decode_rgb(uint32_t rgbP, RGBColorType *rgb);
 void encode_rgb(uint32_t rgbP, RGBColorType *rgb);
@@ -139,5 +145,15 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
 uint32_t emupalmos_trap_out(void *address);
 
 void emupalmos_debug(int on);
+
+emu_state_t *emupalmos_install(void);
+void emupalmos_deinstall(emu_state_t *oldState);
+void emupalmos_memory_hooks(
+  uint8_t (*read_byte)(uint32_t address),
+  uint16_t (*read_word)(uint32_t address),
+  uint32_t (*read_long)(uint32_t address),
+  void (*write_byte)(uint32_t address, uint8_t value),
+  void (*write_word)(uint32_t address, uint16_t value),
+  void (*write_long)(uint32_t address, uint32_t value));
 
 #endif

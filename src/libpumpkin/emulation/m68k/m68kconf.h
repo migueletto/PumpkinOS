@@ -161,7 +161,7 @@
  * instruction.
  */
 #define M68K_INSTRUCTION_HOOK       OPT_SPECIFY_HANDLER
-#define M68K_INSTRUCTION_CALLBACK(pc) cpu_instr_callback(pc)
+//#define M68K_INSTRUCTION_CALLBACK(pc) cpu_instr_callback(pc)
 
 
 /* If ON, the CPU will emulate the 4-byte prefetch queue of a real 68000 */
@@ -204,6 +204,7 @@
 #define m68k_read_memory_16(A) cpu_read_word(A)
 #define m68k_read_memory_32(A) cpu_read_long(A)
 
+#define m68k_read_disassembler_8(A)  cpu_read_byte(A)
 #define m68k_read_disassembler_16(A) cpu_read_word(A)
 #define m68k_read_disassembler_32(A) cpu_read_long(A)
 

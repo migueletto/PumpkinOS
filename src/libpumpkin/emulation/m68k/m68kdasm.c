@@ -3022,7 +3022,12 @@ static void d68000_tas(void)
 
 static void d68000_trap(void)
 {
-	sys_sprintf(g_dasm_str, "trap    #$%x", g_cpu_ir&0xf);
+  if ((g_cpu_ir&0xf) == 0xf) {
+    uint16_t trap = read_imm_16();
+    sys_sprintf(g_dasm_str, "trap    #$%x (0x%04X)", g_cpu_ir&0xf, trap);
+  } else {
+	  sys_sprintf(g_dasm_str, "trap    #$%x", g_cpu_ir&0xf);
+  }
 }
 
 static void d68020_trapcc_0(void)
@@ -3756,6 +3761,10 @@ unsigned int m68k_disassemble(char* str_buff, unsigned int pc, unsigned int cpu_
 			g_cpu_type = TYPE_68040;
 			g_address_mask = 0xffffffff;
 			break;
+    case M68K_CPU_TYPE_DBVZ:
+      g_cpu_type = TYPE_68000;
+      g_address_mask = 0xffffffff;
+      break;
 		default:
 			return 0;
 	}

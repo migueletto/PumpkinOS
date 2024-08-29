@@ -40,6 +40,7 @@
 
 #include "m68kcpu.h"
 #include "m68kops.h"
+#include "debug.h"
 
 extern void m68040_fpu_op0(m68k_state_t *m68k_state);
 extern void m68040_fpu_op1(m68k_state_t *m68k_state);
@@ -591,9 +592,10 @@ static void default_set_fc_callback(unsigned int new_fc)
 }
 
 /* Called every instruction cycle prior to execution */
-static void default_instr_hook_callback(unsigned int pc)
+int default_instr_hook_callback(unsigned int pc)
 {
 	(void)pc;
+  return 0;
 }
 
 
@@ -661,7 +663,8 @@ unsigned int m68k_get_reg(void* context, m68k_register_t regnum)
 		case M68K_REG_CPU_TYPE:
 			switch(cpu->cpu_type)
 			{
-				case CPU_TYPE_000:		return (unsigned int)M68K_CPU_TYPE_68000;
+				//case CPU_TYPE_000:		return (unsigned int)M68K_CPU_TYPE_68000;
+        case CPU_TYPE_000:    return CPU_ADDRESS_MASK == 0xffffffff ? (uint32_t)M68K_CPU_TYPE_DBVZ : (uint32_t)M68K_CPU_TYPE_68000;
 				case CPU_TYPE_010:		return (unsigned int)M68K_CPU_TYPE_68010;
 				case CPU_TYPE_EC020:	return (unsigned int)M68K_CPU_TYPE_68EC020;
 				case CPU_TYPE_020:		return (unsigned int)M68K_CPU_TYPE_68020;
@@ -779,7 +782,7 @@ void m68k_set_fc_callback(void  (*callback)(unsigned int new_fc))
 	CALLBACK_SET_FC = callback ? callback : default_set_fc_callback;
 }
 
-void m68k_set_instr_hook_callback(void  (*callback)(unsigned int pc))
+void m68k_set_instr_hook_callback(int  (*callback)(unsigned int pc))
 {
   M68K_GET_STATE;
 	CALLBACK_INSTR_HOOK = callback ? callback : default_instr_hook_callback;
@@ -948,6 +951,22 @@ void m68k_set_cpu_type(unsigned int cpu_type)
 			m68ki_cpu.cyc_reset        = 518;
 			HAS_PMMU	       = 1;
 			return;
+    case M68K_CPU_TYPE_DBVZ:
+      M68K_CPU_TYPE    = CPU_TYPE_000;
+      CPU_ADDRESS_MASK = 0xffffffff;
+      CPU_SR_MASK      = 0xa71f; /* T1 -- S  -- -- I2 I1 I0 -- -- -- X  N  Z  V  C  */
+      CYC_INSTRUCTION  = m68ki_cycles[0];
+      CYC_EXCEPTION    = m68ki_exception_cycle_table[0];
+      CYC_BCC_NOTAKE_B = -2;
+      CYC_BCC_NOTAKE_W = 2;
+      CYC_DBCC_F_NOEXP = -2;
+      CYC_DBCC_F_EXP   = 2;
+      CYC_SCC_R_TRUE   = 2;
+      CYC_MOVEM_W      = 2;
+      CYC_MOVEM_L      = 3;
+      CYC_SHIFT        = 1;
+      CYC_RESET        = 132;
+      return;
 	}
 }
 
