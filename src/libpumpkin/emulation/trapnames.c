@@ -2,6 +2,7 @@
 #include <VFSMgr.h>
 
 #include "sys.h"
+#include "bytes.h"
 #include "pumpkin.h"
 #ifdef ARMEMU
 #include "armemu.h"
@@ -1193,6 +1194,148 @@ static const trap_t traps[] = {
   { 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
+static char *intl_traps[] = {
+  "Init",
+  "TxtByteAttr",
+  "TxtCharAttr",
+  "TxtCharXAttr",
+  "TxtCharSize",
+  "TxtGetPreviousChar",
+  "TxtGetNextChar",
+  "TxtGetChar",
+  "TxtSetNextChar",
+  "TxtCharBounds",
+  "TxtPrepFindString",
+  "TxtFindString",
+  "TxtReplaceStr",
+  "TxtWordBounds",
+  "TxtCharEncoding",
+  "TxtStrEncoding",
+  "TxtEncodingName",
+  "TxtMaxEncoding",
+  "TxtTransliterate",
+  "TxtCharIsValid",
+  "TxtCompare",
+  "TxtCaselessCompare",
+  "TxtCharWidth",
+  "TxtGetTruncationOffset",
+  "IntlGetRoutineAddress",
+  "IntlHandleEvent",
+  "TxtParamString",
+  "TxtConvertEncodingV35",
+  "TxtConvertEncoding",
+  "IntlSetRoutineAddress",
+  "TxtGetWordWrapOffset",
+  "TxtNameToEncoding",
+  "IntlStrictChecks"
+};
+
+static char *om_traps[] = {
+  "Init",
+  "OpenOverlayDatabase",
+  "LocaleToOverlayDBName",
+  "OverlayDBNameToLocale",
+  "GetCurrentLocale",
+  "GetIndexedLocale",
+  "GetSystemLocale",
+  "SetSystemLocale",
+  "GetRoutineAddress",
+  "GetNextSystemLocale"
+};
+
+static char *hd_traps[] = {
+  "BmpGetNextBitmapAnyDensity",
+  "BmpGetVersion",
+  "BmpGetCompressionType",
+  "BmpGetDensity",
+  "BmpSetDensity",
+  "BmpGetTransparentValue",
+  "BmpSetTransparentValue",
+  "BmpCreateBitmapV3",
+  "WinSetCoordinateSystem",
+  "WinGetCoordinateSystem",
+  "WinScalePoint",
+  "WinUnscalePoint",
+  "WinScaleRectangle",
+  "WinUnscaleRectangle",
+  "WinScreenGetAttribute",
+  "WinPaintTiledBitmap",
+  "WinGetSupportedDensity",
+  "EvtGetPenNative",
+  "WinScaleCoord",
+  "WinUnscaleCoord",
+  "WinPaintRoundedRectangleFrame",
+  "WinSetScalingMode",
+  "WinGetScalingMode"
+};
+
+static char *file_traps[] = {
+  "Init",
+  "CustomControl",
+  "FileCreate",
+  "FileOpen",
+  "FileClose",
+  "FileReadData",
+  "FileRead",
+  "FileWrite",
+  "FileDelete",
+  "FileRename",
+  "FileSeek",
+  "FileEOF",
+  "FileTell",
+  "FileResize",
+  "FileGetAttributes",
+  "FileSetAttributes",
+  "FileGetDate",
+  "FileSetDate",
+  "FileSize",
+  "DirCreate",
+  "DirEntryEnumerate",
+  "GetDefaultDirectory",
+  "RegisterDefaultDirectory",
+  "UnregisterDefaultDirectory",
+  "VolumeFormat",
+  "VolumeMount",
+  "VolumeUnmount",
+  "VolumeEnumerate",
+  "VolumeInfo",
+  "VolumeGetLabel",
+  "VolumeSetLabel",
+  "VolumeSize",
+  "InstallFSLib",
+  "RemoveFSLib",
+  "ImportDatabaseFromFile",
+  "ExportDatabaseToFile",
+  "FileDBGetResource",
+  "FileDBInfo",
+  "FileDBGetRecord",
+  "ImportDatabaseFromFileCustom",
+  "ExportDatabaseToFileCustom",
+  "Private1"
+};
+
+static char *tsm_traps[] = {
+  "GetFepMode",
+  "SetFepMode",
+  "HandleEvent",
+  "Init",
+  "DrawMode",
+  "GetSystemFep",
+  "SetSystemFep",
+  "GetCurrentFep",
+  "SetCurrentFep",
+  "GetSystemFepCreator",
+  "SetSystemFepCreator",
+  "GetCurrentFepCreator",
+  "SetCurrentFepCreator",
+  "FepHandleEvent",
+  "FepMapEvent",
+  "FepTerminate",
+  "FepReset",
+  "FepCommitAction",
+  "FepOptionsList"
+};
+
 void allTrapsInit(void) {
   int i;
 
@@ -1225,10 +1368,6 @@ void allTrapsInit(void) {
     allTraps[traps[i].trap].arg15 = traps[i].arg15;
     allTraps[traps[i].trap].arg16 = traps[i].arg16;
   }
-}
-
-char *getTrapName(uint16_t trap) {
-  return allTraps[trap].name;
 }
 
 static void getp(uint32_t addr, char *a, char *buf) {
@@ -1500,6 +1639,18 @@ static int getret(char *rType, char *buf) {
   return ret;
 }
 
+static char *spaces(uint32_t n) {
+  static char buf[256];
+  uint32_t i;
+
+  for (i = 0; i < n && i < 256; i++) {
+    buf[i] = ' ';
+  }
+  buf[i] = 0;
+
+  return buf;
+}
+
 void trapHook(uint32_t pc, emu_state_t *state) {
   uint16_t trap, idx, instruction;
   uint32_t sp, d;
@@ -1510,6 +1661,7 @@ void trapHook(uint32_t pc, emu_state_t *state) {
   if (state->stackp && pc == state->stack[state->stackp-1]) {
     state->stackp--;
     trap = state->stackt[state->stackp];
+
     if (allTraps[trap].name) {
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
@@ -1524,22 +1676,23 @@ void trapHook(uint32_t pc, emu_state_t *state) {
         ret = getret(allTraps[trap].rType, buf);
       }
       if (ret) {
-        debug(DEBUG_TRACE, "Trap", "return %s%s : %s", allTraps[trap].name, line, buf);
+        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s : %s", state->stackp, spaces(state->stackp), allTraps[trap].name, line, buf);
       } else {
-        debug(DEBUG_TRACE, "Trap", "return %s%s", allTraps[trap].name, line);
+        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s", state->stackp, spaces(state->stackp), allTraps[trap].name, line);
       }
     } else {
-      debug(DEBUG_TRACE, "Trap", "return unknown 0x%04X", trap);
+      debug(DEBUG_TRACE, "Trap", "[%d] %sreturn unknown 0x%04X", state->stackp, spaces(state->stackp), trap);
     }
   }
 
   instruction = m68k_read_memory_16(pc);
 
   if (instruction == 0x4E4F) {
-    if (state->stackp == 0 ||
-        state->stackt[state->stackp-1] == sysTrapSysAppLaunch ||
-        state->stackt[state->stackp-1] == sysTrapFrmDispatchEvent ||
-        state->stackt[state->stackp-1] == sysTrapFrmHandleEvent) {
+    if (debug_getsyslevel("Trap") == DEBUG_TRACE /*&&
+        (state->stackp == 0 ||
+         state->stackt[state->stackp-1] == sysTrapSysAppLaunch ||
+         state->stackt[state->stackp-1] == sysTrapFrmDispatchEvent ||
+         state->stackt[state->stackp-1] == sysTrapFrmHandleEvent)*/) {
 
       trap = m68k_read_memory_16(pc + 2);
       sp = m68k_get_reg(NULL, M68K_REG_SP);
@@ -1550,10 +1703,60 @@ void trapHook(uint32_t pc, emu_state_t *state) {
       if (allTraps[trap].name) {
         isoutput = 0;
         doargs();
-        debug(DEBUG_TRACE, "Trap", "%s%s", allTraps[trap].name, line);
+        debug(DEBUG_TRACE, "Trap", "[%d] %s%s%s", state->stackp-1, spaces(state->stackp-1), allTraps[trap].name, line);
       } else {
-        debug(DEBUG_TRACE, "Trap", "unknown 0x%04X", trap);
+        debug(DEBUG_TRACE, "Trap", "[%d] %sunknown 0x%04X", state->stackp-1, spaces(state->stackp-1), trap);
       }
     }
   }
+}
+
+char *trapName(uint16_t trap, uint16_t *selector, int follow) {
+  char *name = "unknown";
+  uint32_t d2;
+
+  *selector = 0xFFFF;
+
+  switch (trap) {
+    case sysTrapIntlDispatch:
+      d2 = m68k_get_reg(NULL, M68K_REG_D2);
+      if (d2 < intlMaxSelector) {
+        name = follow ? intl_traps[d2] : allTraps[trap].name;
+        *selector = d2;
+      }
+      break;
+    case sysTrapOmDispatch:
+      d2 = m68k_get_reg(NULL, M68K_REG_D2);
+      if (d2 < omMaxSelector) {
+        name = follow ? om_traps[d2] : allTraps[trap].name;
+        *selector = d2;
+      }
+      break;
+    case sysTrapHighDensityDispatch:
+      d2 = m68k_get_reg(NULL, M68K_REG_D2);
+      if (d2 < HDSelectorInvalid) {
+        name = follow ? hd_traps[d2] : allTraps[trap].name;
+        *selector = d2;
+      }
+      break;
+    case sysTrapFileSystemDispatch:
+      d2 = m68k_get_reg(NULL, M68K_REG_D2);
+      if (d2 < vfsMaxSelector) {
+        name = follow ? file_traps[d2] : allTraps[trap].name;
+        *selector = d2;
+      }
+      break;
+    case sysTrapTsmDispatch:
+      d2 = m68k_get_reg(NULL, M68K_REG_D2);
+      if (d2 < tsmMaxSelector) {
+        name = follow ? tsm_traps[d2] : allTraps[trap].name;
+        *selector = d2;
+      }
+      break;
+    default:
+      if (allTraps[trap].name) name = allTraps[trap].name;
+      break;
+  }
+
+  return name;
 }

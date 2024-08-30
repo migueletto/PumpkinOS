@@ -166,11 +166,12 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
   char name[64], argument[64], selector[64], buf[256], *s;
   uint8_t *ram = pumpkin_heap_base();
   uint32_t size = pumpkin_heap_size();
+  uint16_t sl;
 
   if (address > size-4) {
     m68k_pulse_halt();
 
-    s = getTrapName(trap);
+    s = trapName(trap, &sl, 0);
     if (s) {
       sys_snprintf(name, sizeof(name)-1, "%s", s);
     } else {
@@ -1127,6 +1128,8 @@ void encode_locale(uint32_t localeP, LmLocaleType *locale) {
   }
 }
 
+static int cpu_instr_callback(unsigned int pc);
+
 // unsigned long Call68KFuncType(const void *emulStateP, unsigned long trapOrFunction, const void *argsOnStackP, unsigned long argsSizeAndwantA0)
 static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint32_t argsOnStackP, uint32_t argsSizeAndwantA0) {
   uint8_t *ram = pumpkin_heap_base();
@@ -1185,6 +1188,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_set_reg(M68K_REG_SP, sp);
     m68k_set_reg(M68K_REG_A4, a4);
     m68k_set_reg(M68K_REG_A5, a5);
+    m68k_set_instr_hook_callback(cpu_instr_callback);
 
     m68k_state = m68k_get_state();
     for (; !emupalmos_finished() && !thread_must_end();) {
@@ -1491,7 +1495,7 @@ static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = thread_get(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
-  uint16_t trap;
+  uint16_t trap, selector;
   char buf[128], buf2[128], *s;
   int i;
 
@@ -1499,7 +1503,7 @@ static int cpu_instr_callback(unsigned int pc) {
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
     trap = (pc - size) >> 2;
-    if ((s = getTrapName(trap)) != NULL) {
+    if ((s = trapName(trap, &selector, 0)) != NULL) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct call to trap %s (pc 0x%08X)", s, pc);
       uint32_t a7 = m68k_get_reg(NULL, M68K_REG_A7);
       m68k_set_reg(M68K_REG_A7, a7+4);

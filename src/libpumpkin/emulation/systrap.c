@@ -58,7 +58,7 @@ static int palmos_systrap_gen(uint16_t trap) {
 
 uint32_t palmos_systrap(uint16_t trap) {
   uint32_t sp;
-  uint16_t idx;
+  uint16_t idx, selector;
   char buf[256], buf2[8];
   char *s;
   Err err;
@@ -67,7 +67,7 @@ uint32_t palmos_systrap(uint16_t trap) {
 
   // MathLib seems to use trap numbers like 0x0306 instead of 0xA306.
   trap = (trap & 0x0FFF) | 0xA000;
-  s = getTrapName(trap);
+  s = trapName(trap, &selector, 0);
   debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X begin (%s)", trap, s ? s : "unknown");
 
   if (palmos_systrap_gen(trap)) {
@@ -240,8 +240,9 @@ uint32_t palmos_systrap(uint16_t trap) {
       // Err SysSetTrapAddress(UInt16 trapNum, void *procP)
       uint16_t trapNum = ARG16;
       uint32_t procP = ARG32;
+      uint16_t selector;
       emupalmos_trap_in(procP, trap, 1);
-      char *s = getTrapName(trapNum);
+      char *s = trapName(trapNum, &selector, 0);
       Err res = sysErrParamErr;
       debug(DEBUG_INFO, "EmuPalmOS", "SysSetTrapAddress(0x%04X [ %s ], 0x%08X): %d", trapNum, s ? s : "unknown", procP, res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -251,7 +252,8 @@ uint32_t palmos_systrap(uint16_t trap) {
       // void *SysGetTrapAddress(UInt16 trapNum)
       uint16_t trapNum = ARG16;
       uint32_t a = 0;
-      char *s = getTrapName(trapNum);
+      uint16_t selector;
+      char *s = trapName(trapNum, &selector, 0);
       if (s) {
         a = pumpkin_heap_size() + (trapNum << 2);
       }
@@ -2805,11 +2807,9 @@ uint32_t palmos_systrap(uint16_t trap) {
           }
           emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
         }
-      } else if (getTrapName(trap)) {
-        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", getTrapName(trap));
-        emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       } else {
-        sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown", trap);
+        uint16_t selector;
+        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", trapName(trap, &selector, 0));
         emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       }
       break;

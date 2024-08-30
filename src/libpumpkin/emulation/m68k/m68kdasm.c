@@ -3020,14 +3020,23 @@ static void d68000_tas(void)
 	sys_sprintf(g_dasm_str, "tas     %s", get_ea_mode_str_8(g_cpu_ir));
 }
 
+extern char *trapName(uint16_t trap, uint16_t *selector, int follow);
+
 static void d68000_trap(void)
 {
-  if ((g_cpu_ir&0xf) == 0xf) {
-    uint16_t trap = read_imm_16();
-    sys_sprintf(g_dasm_str, "trap    #$%x (0x%04X)", g_cpu_ir&0xf, trap);
-  } else {
-	  sys_sprintf(g_dasm_str, "trap    #$%x", g_cpu_ir&0xf);
-  }
+   if ((g_cpu_ir&0xf) == 0xf) {
+     uint16_t trap = read_imm_16();
+     uint16_t selector;
+     char *name = trapName(trap, &selector, 0);
+     if (selector != 0xffff) {
+       char *sname = trapName(trap, &selector, 1);
+       sys_sprintf(g_dasm_str, "trap    #$%x (0x%04X, %s, %d, %s)", g_cpu_ir&0xf, trap, name, selector, sname);
+     } else {
+       sys_sprintf(g_dasm_str, "trap    #$%x (0x%04X, %s)", g_cpu_ir&0xf, trap, name);
+     }
+   } else {
+     sys_sprintf(g_dasm_str, "trap    #$%x", g_cpu_ir&0xf);
+   }
 }
 
 static void d68020_trapcc_0(void)
