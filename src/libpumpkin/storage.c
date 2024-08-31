@@ -3887,7 +3887,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
 
     if (DmCreateDatabaseEx(name, creator, type, attr, uniqueIDSeed, true) == errNone) {
       if ((dbID = DmFindDatabase(0, name)) != 0) {
-        DmSetDatabaseInfo(0, dbID, NULL, NULL, NULL, &creationDate, &modificationDate, &lastBackupDate, NULL, NULL, NULL, NULL, NULL);
+        DmSetDatabaseInfo(0, dbID, NULL, NULL, &version, &creationDate, &modificationDate, &lastBackupDate, NULL, NULL, NULL, NULL, NULL);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
           db = (storage_db_t *)(sto->base + dbID);
           if (numRecs > 0) {
