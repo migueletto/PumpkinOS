@@ -13,6 +13,11 @@
 
 #define PALMOS_MODULE "DateTime"
 
+typedef struct {
+  DateTimeType date;
+  Boolean selected;
+} sel_date_t;
+
 static const char *wday[7] = { "S", "M", "T", "W", "T", "F", "S" };
 
 static void drawDay(RectangleType *rect, Int16 i, char *buf, Boolean selected) {
@@ -84,7 +89,7 @@ static Boolean DayGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   FormType *frm;
   EventType *event;
   RectangleType rect;
-  DateTimeType *date;
+  sel_date_t *data;
   Int16 i, cellx, celly, col, row, index, ndays, dow;
 
   if (cmd == formGadgetDeleteCmd) return true;
@@ -92,11 +97,11 @@ static Boolean DayGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   frm = FrmGetActiveForm();
   index = FrmGetObjectIndex(frm, 10120); // gadget
   FrmGetObjectBounds(frm, index, &rect);
-  date = FrmGetGadgetData(frm, index);
+  data = FrmGetGadgetData(frm, index);
 
   switch (cmd) {
     case formGadgetDrawCmd:
-      drawGrid(&rect, date);
+      drawGrid(&rect, &data->date);
       break;
 
     case formGadgetEraseCmd:
@@ -113,13 +118,14 @@ static Boolean DayGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
           row = (event->screenY - rect.topLeft.y) / celly;
           debug(DEBUG_TRACE, PALMOS_MODULE, "SelDay grid select (%d,%d) col=%d row=%d", event->screenX, event->screenY, col, row);
           if (col >= 0 && row > 0) {
-            ndays = DaysInMonth(date->month, date->year);
-            dow = DayOfWeek(date->month, 1, date->year);
+            ndays = DaysInMonth(data->date.month, data->date.year);
+            dow = DayOfWeek(data->date.month, 1, data->date.year);
             i = row * NCOLS + col;
             if (i >= NCOLS+dow && i < ndays+NCOLS+dow) {
               debug(DEBUG_TRACE, PALMOS_MODULE, "SelDay grid select i=%d", i);
-              date->day = i-NCOLS-dow+1;
-              drawGrid(&rect, date);
+              data->date.day = i-NCOLS-dow+1;
+              data->selected = true;
+              drawGrid(&rect, &data->date);
             }
           }
         }
@@ -132,8 +138,9 @@ static Boolean DayGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
 
 static Boolean SelectDayHandleEvent(EventType *eventP) {
   FormType *frm;
-  DateTimeType *date;
+  sel_date_t *data;
   RectangleType rect;
+  EventType ev;
   UInt16 index, id, ndays;
   char buf[8];
   Boolean handled = false;
@@ -150,13 +157,13 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
       frm = FrmGetActiveForm();
       index = FrmGetObjectIndex(frm, 10120);
       FrmGetObjectBounds(frm, index, &rect);
-      date = FrmGetGadgetData(frm, index);
+      data = FrmGetGadgetData(frm, index);
 
       if (id >= 1 && id <= 12) {
-        date->month = id;
-        ndays = DaysInMonth(date->month, date->year);
-        if (date->day > ndays) date->day = ndays;
-        drawGrid(&rect, date);
+        data->date.month = id;
+        ndays = DaysInMonth(data->date.month, data->date.year);
+        if (data->date.day > ndays) data->date.day = ndays;
+        drawGrid(&rect, &data->date);
         handled = true;
       } else {
         switch (id) {
@@ -165,26 +172,51 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
             // XXX not implemented
             break;
           case 10118: // today
-            TimSecondsToDateTime(TimGetSeconds(), date);
+            TimSecondsToDateTime(TimGetSeconds(), &data->date);
             // fall through
           case 10103:
           case 10104:
-            if (id == 10103) date->year--;
-            else if (id == 10104) date->year++;
-            ndays = DaysInMonth(date->month, date->year);
-            if (date->day > ndays) date->day = ndays;
-            StrPrintF(buf, "%d", date->year);
+          case 0:
+            if (id == 10103) data->date.year--;
+            else if (id == 10104) data->date.year++;
+            ndays = DaysInMonth(data->date.month, data->date.year);
+            if (data->date.day > ndays) data->date.day = ndays;
+            StrPrintF(buf, "%d", data->date.year);
             FrmCopyLabel(frm, 10102, buf);
             index = FrmGetObjectIndex(frm, 10102);
             FrmEraseObject(frm, index, false);
             FrmDrawObject(frm, index, false);
-            drawGrid(&rect, date);
-            handled = id != 10118;
+            drawGrid(&rect, &data->date);
+            handled = id != 0 && id != 10118;
             break;
           default:
             break;
         }
       }
+      break;
+
+    case frmGadgetEnterEvent:
+      // intercept the gadget event and call FrmHandleEvent directly
+      frm = FrmGetActiveForm();
+      FrmHandleEvent(frm, eventP);
+      index = FrmGetObjectIndex(frm, 10120);
+      data = FrmGetGadgetData(frm, index);
+      // check if a day was selected
+      if (data->selected) {
+        // if a day was selected, simulate a ctlSelect event on a dummy button,
+        // so that the dialog will be closed by FrmDoDialog.
+        MemSet(&ev, sizeof(EventType), 0);
+        ev.eType = ctlSelectEvent;
+        index = FrmGetObjectIndex(frm, 10118); // the control must be real control
+        ev.data.ctlSelect.pControl = FrmGetObjectPtr(frm, index);;
+        ev.data.ctlSelect.controlID = 0;       // but the controlID is not
+        EvtAddEventToQueue(&ev);
+        // XXX there must be a better way to close the dialog
+        // when a gadget is clicked, other than simulating a click
+        // on a non-existent button. The way it is now, the dialog
+        // will exit with a button id of 0.
+      }
+      handled = true;
       break;
 
     default:
@@ -197,16 +229,18 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
 Boolean SelectDay(const SelectDayType selectDayBy, Int16 *month, Int16 *day, Int16 *year, const Char *title) {
   FormType *frm, *previous;
   ControlType *ctl;
-  DateTimeType date;
-  UInt16 index;
+  sel_date_t data;
+  UInt16 index, button;
   char buf[16];
   Boolean r = false;
 
   if (month == NULL || day == NULL || year == NULL) return false;
   if (*month < 1 || *month > 12) return false;
-  date.year = *year;
-  date.month = *month;
-  date.day = *day;
+
+  data.selected = false;
+  data.date.year = *year;
+  data.date.month = *month;
+  data.date.day = *day;
 
   frm = FrmInitForm(10100);
   if (title) FrmSetTitle(frm, (char *)title);
@@ -247,12 +281,17 @@ Boolean SelectDay(const SelectDayType selectDayBy, Int16 *month, Int16 *day, Int
   CtlSetValue(ctl, 1);
 
   index = FrmGetObjectIndex(frm, 10120);
-  FrmSetGadgetData(frm, index, &date);
+  FrmSetGadgetData(frm, index, &data);
   FrmSetGadgetHandler(frm, index, DayGridGadgetCallback);
   FrmSetEventHandler(frm, SelectDayHandleEvent);
 
   previous = FrmGetActiveForm();
-  if (FrmDoDialog(frm) == 10101) { // "OK" button
+  button = FrmDoDialog(frm);
+
+  if (button == 10101 || button == 10118 || data.selected) { // "OK" or "Today" buttons
+    *year = data.date.year;
+    *month = data.date.month;
+    *day = data.date.day;
     r = true;
   }
   FrmDeleteForm(frm);
