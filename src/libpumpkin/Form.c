@@ -3007,7 +3007,6 @@ static FormGadgetType *pumpkin_create_gadget(uint8_t *p, int *i) {
   *i += get2b(&h, p, *i);
   *i += get4b(&dummy32, p, *i);
   *i += get4b(&dummy32, p, *i);
-  debug(DEBUG_TRACE, "Form",  "gadget id %d at (%d,%d,%d,%d)", id, x, y, w, h);
 
   if ((c = pumpkin_heap_alloc(sizeof(FormGadgetType), "Gadget")) != NULL) {
     c->id = id;
@@ -3015,11 +3014,11 @@ static FormGadgetType *pumpkin_create_gadget(uint8_t *p, int *i) {
     c->attr.extended = (attr & 0x4000) ? 1 : 0;
     c->attr.visible  = (attr & 0x2000) ? 1 : 0;
     c->attr.reserved = 0;
-    c->attr.usable = 1;
     c->rect.topLeft.x = x;
     c->rect.topLeft.y = y;
     c->rect.extent.x = w;
     c->rect.extent.y = h;
+    debug(DEBUG_TRACE, "Form",  "gadget id %d at (%d,%d,%d,%d) usable %d", id, x, y, w, h, c->attr.usable);
   }
 
   return c;
