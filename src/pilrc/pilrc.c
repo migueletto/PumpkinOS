@@ -1299,10 +1299,12 @@ WGetId(char *szErr)
 	  WarningLine("ID conflicts with reserved ID range (0-10007 only)");
     }
   }
+/*
   else if (w >= idPalmOSReservedMin)
   {
     WarningLine("ID conflicts with reserved ID range (0-9999 only)");
   }
+*/
 
   return w;
 }
