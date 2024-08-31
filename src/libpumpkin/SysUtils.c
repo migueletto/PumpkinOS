@@ -16,6 +16,7 @@ typedef struct {
   Int32 other;
   CmpFuncPPtr comparFP;
   void *otherP;
+  UInt32 comparF68k;
 } sysu_module_t;
 
 extern thread_key_t *sysu_key;
@@ -195,6 +196,20 @@ Boolean SysBinarySearch(void const *baseP, UInt16 numOfElements, Int16 width, Se
   }
 
   return found;
+}
+
+static int compare68k(const void *e1, const void *e2) {
+  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  return CallCompareFunction(module->comparF68k, (void *)e1, (void *)e2, module->other);
+}
+
+void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF, Int32 other) {
+  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+
+  module->comparF68k = comparF;
+  module->other = other;
+  sys_qsort(baseP, numOfElements, width, compare68k);
+  module->comparF68k = 0;
 }
 
 static int compare(const void *e1, const void *e2) {

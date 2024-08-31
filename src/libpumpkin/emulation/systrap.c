@@ -286,10 +286,10 @@ uint32_t palmos_systrap(uint16_t trap) {
       int16_t width = ARG16;
       uint32_t comparF = ARG32;
       int32_t other = ARG32;
-      emupalmos_trap_in(baseP, trap, 0);
+      uint8_t *base = emupalmos_trap_in(baseP, trap, 0);
       emupalmos_trap_in(comparF, trap, 3);
-      debug(DEBUG_TRACE, "EmuPalmOS", "SysQSort(0x%08X, %d, %d, 0x%08X, %d) native 0x%08X", baseP, numOfElements, width, comparF, other, state->SysQSort_addr);
-      r = state->SysQSort_addr;
+      SysQSort68k(base, numOfElements, width, comparF, other);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysQSort68k(0x%08X, %d, %d, 0x%08X, %d)", baseP, numOfElements, width, comparF, other);
       }
       break;
     case sysTrapSysBinarySearch: {
