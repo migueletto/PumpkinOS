@@ -12,7 +12,6 @@
 #include "bytes.h"
 #include "pumpkin.h"
 //#include "dbg.h"
-#include "palette.h"
 #include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -43,6 +42,10 @@ typedef struct {
   UInt8 fullCcolorTable[2 + 256 * 4];
   ColorTableType *colorTable;
   RGBColorType uiColor[UILastColorTableEntry];
+  RGBColorType defaultPalette1[2];
+  RGBColorType defaultPalette2[4];
+  RGBColorType defaultPalette4[16];
+  RGBColorType defaultPalette8[256];
   int numPush;
 } win_module_t;
 
@@ -66,6 +69,23 @@ static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t widt
   put2b(width,  (uint8_t *)wh, 14);
   put2b(height, (uint8_t *)wh, 16);
   put4b(addr,   (uint8_t *)wh, 28);
+}
+
+static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
+  ColorTableType *colorTableP;
+  MemHandle h;
+  UInt16 i;
+
+  MemSet(rgb, sizeof(RGBColorType) * n, 0);
+  if ((h = DmGetResource(colorTableRsc, id)) != NULL) {
+    if ((colorTableP = MemHandleLock(h)) != NULL) {
+      for (i = 0; i < n; i++) {
+        CtbGetEntry(colorTableP, i, &rgb[i]);
+      }
+      MemHandleUnlock(h);
+    }
+    DmReleaseResource(h);
+  }
 }
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {
@@ -94,6 +114,11 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
 
   module->colorTable = (ColorTableType *)&module->fullCcolorTable;
 
+  WinFillPalette(10001, module->defaultPalette1, 2);
+  WinFillPalette(10002, module->defaultPalette2, 4);
+  WinFillPalette(10004, module->defaultPalette4, 16);
+  WinFillPalette(10008, module->defaultPalette8, 256);
+
   switch (depth) {
     case 1:
       module->foreColor = 1; // black
@@ -101,7 +126,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       module->textColor = 1; // black
       CtbSetNumEntries(module->colorTable, 2);
       for (i = 0; i < 2; i++) {
-        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette1[i]);
       }
       break;
     case 2:
@@ -110,7 +135,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       module->textColor = 3; // black
       CtbSetNumEntries(module->colorTable, 4);
       for (i = 0; i < 4; i++) {
-        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette2[i]);
       }
       break;
     case 4:
@@ -119,7 +144,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       module->textColor = 15; // black
       CtbSetNumEntries(module->colorTable, 16);
       for (i = 0; i < 16; i++) {
-        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette4[i]);
       }
       break;
    default:
@@ -128,7 +153,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       module->textColor = 0xff; // black
       CtbSetNumEntries(module->colorTable, 256);
       for (i = 0; i < 256; i++) {
-        CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+        CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette8[i]);
       }
       break;
   }
@@ -194,6 +219,17 @@ int WinFinishModule(Boolean deleteDisplay) {
   }
 
   return 0;
+}
+
+RGBColorType *WinGetPalette(UInt16 n) {
+  win_module_t *module = (win_module_t *)thread_get(win_key);
+
+  switch (n) {
+    case 1:  return module->defaultPalette1; break;
+    case 2:  return module->defaultPalette2; break;
+    case 4:  return module->defaultPalette4; break;
+    default: return module->defaultPalette8; break;
+  }
 }
 
 static void pointTo(UInt16 density, Coord *x, Coord *y) {
@@ -2999,26 +3035,27 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             case 1:
               CtbSetNumEntries(colorTable, 2);
               for (i = 0; i < 2; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette1[i]);
               }
               break;
             case 2:
               CtbSetNumEntries(colorTable, 4);
               for (i = 0; i < 4; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette2[i]);
               }
               break;
             case 4:
               CtbSetNumEntries(colorTable, 16);
               for (i = 0; i < 16; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette4[i]);
               }
               break;
             default:
               CtbSetNumEntries(colorTable, 256);
               for (i = 0; i < 256; i++) {
-                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSetToDefault %d = (%02X,%02X,%02X)", i, defaultPalette8[i].r, defaultPalette8[i].g, defaultPalette8[i].b);
-                CtbSetEntry(colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSetToDefault %d = (%02X,%02X,%02X)", i,
+                  module->defaultPalette8[i].r, module->defaultPalette8[i].g, module->defaultPalette8[i].b);
+                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette8[i]);
               }
               break;
           }
@@ -3126,21 +3163,21 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           case 1:
             CtbSetNumEntries(module->colorTable, 2);
             for (i = 0; i < 2; i++) {
-              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette1[i]);
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette1[i]);
             }
             err = errNone;
             break;
           case 2:
             CtbSetNumEntries(module->colorTable, 4);
             for (i = 0; i < 4; i++) {
-              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette2[i]);
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette2[i]);
             }
             err = errNone;
             break;
           case 4:
             CtbSetNumEntries(module->colorTable, 16);
             for (i = 0; i < 16; i++) {
-              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette4[i]);
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette4[i]);
             }
             err = errNone;
             break;
@@ -3151,7 +3188,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           case 16:
             CtbSetNumEntries(module->colorTable, 256);
             for (i = 0; i < 256; i++) {
-              CtbSetEntry(module->colorTable, i, (RGBColorType *)&defaultPalette8[i]);
+              CtbSetEntry(module->colorTable, i, (RGBColorType *)&module->defaultPalette8[i]);
             }
             err = errNone;
             break;

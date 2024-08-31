@@ -14,7 +14,6 @@
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
-#include "palette.h"
 #include "debug.h"
 #include "xalloc.h"
 #include "emupalmosinc.h"
@@ -891,7 +890,7 @@ surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP) {
   surface_t *surface = NULL;
   bmp_surface_t *bsurf;
   ColorTableType *colorTable;
-  RGBColorType rgb;
+  RGBColorType rgb, *palette;
   Coord width, height;
   UInt16 i, numEntries;
   Int16 encoding;
@@ -939,25 +938,26 @@ surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP) {
               surface_palette(surface, i, rgb.r, rgb.g, rgb.b);
             }
           } else {
+            palette = WinGetPalette(depth);
             switch (depth) {
               case 1:
                 for (i = 0; i < 2; i++) {
-                  surface_palette(surface, i, defaultPalette1[i].r, defaultPalette1[i].g, defaultPalette1[i].b);
+                  surface_palette(surface, i, palette[i].r, palette[i].g, palette[i].b);
                 }
                 break;
               case 2:
                 for (i = 0; i < 4; i++) {
-                  surface_palette(surface, i, defaultPalette2[i].r, defaultPalette2[i].g, defaultPalette2[i].b);
+                  surface_palette(surface, i, palette[i].r, palette[i].g, palette[i].b);
                 }
                 break;
               case 4:
                 for (i = 0; i < 16; i++) {
-                  surface_palette(surface, i, defaultPalette4[i].r, defaultPalette4[i].g, defaultPalette4[i].b);
+                  surface_palette(surface, i, palette[i].r, palette[i].g, palette[i].b);
                 }
                 break;
               case 8:
                 for (i = 0; i < 256; i++) {
-                  surface_palette(surface, i, defaultPalette8[i].r, defaultPalette8[i].g, defaultPalette8[i].b);
+                  surface_palette(surface, i, palette[i].r, palette[i].g, palette[i].b);
                 }
                 break;
             }

@@ -328,6 +328,7 @@ UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
+RGBColorType *WinGetPalette(UInt16 n);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
