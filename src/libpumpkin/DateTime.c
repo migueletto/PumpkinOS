@@ -271,11 +271,19 @@ void DateDaysToDate(UInt32 days, DateType *dateP) {
 
     for (year = 0, count = 0; year < 128; year++) {
       for (month = 1; month <= 12; month++) {
-        d = daysinmonth(year, month);
+        d = daysinmonth(year+YEAR0, month);
         if (count + d >= days) {
           dateP->year = year;
           dateP->month = month;
           dateP->day = days - count + 1;
+          if (count + d == days) {
+            dateP->month++;
+            dateP->day = 1;
+            if (dateP->month == 13) {
+              dateP->year++;
+              dateP->month = 1;
+            }
+          }
           debug(DEBUG_TRACE, PALMOS_MODULE, "DateDaysToDate %u = %04d-%02d-%02d ", days, dateP->year+YEAR0, dateP->month, dateP->day);
           return;
         }
@@ -290,12 +298,12 @@ UInt32 DateToDays(DateType date) {
 
   for (year = 0, days = 0; year < date.year; year++) {
     for (month = 1; month <= 12; month++) {
-      days += daysinmonth(year, month);
+      days += daysinmonth(year+YEAR0, month);
     }
   }
 
   for (month = 1; month < date.month; month++) {
-    days += daysinmonth(year, month);
+    days += daysinmonth(year+YEAR0, month);
   }
 
   days += date.day - 1;
