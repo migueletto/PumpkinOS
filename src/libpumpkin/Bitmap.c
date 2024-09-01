@@ -183,22 +183,29 @@ UInt8 BmpGetVersion(const BitmapType *bitmapP) {
 
 Boolean BmpLittleEndian(const BitmapType *bitmapP) {
   UInt8 version;
-  Boolean le = 0;
+  Boolean le = false;
 
   if (bitmapP) {
     get1(&version, (UInt8 *)bitmapP, BitmapFieldVersion);
-    le = version & 0x80 ? true : false;
+    le = (version & 0x80) == 0x80;
   }
 
   return le;
 }
 
+#define get2(a,p,i) le ? get2l(a, p, i) : get2b(a, p, i)
+#define get4(a,p,i) le ? get4l(a, p, i) : get4b(a, p, i)
+#define put2(a,p,i) { if (le) put2l(a, p, i); else put2b(a, p, i); }
+#define put4(a,p,i) { if (le) put4l(a, p, i); else put4b(a, p, i); }
+
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 v8, version;
   UInt16 v16;
+  Boolean le;
 
   if (bmp) {
     version = BmpGetVersion(bmp);
+    le = BmpLittleEndian(bmp);
 
     switch (version) {
       case 0:
@@ -210,9 +217,9 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
             case BitmapFieldHeight:
             case BitmapFieldRowBytes:
               if (set) {
-                put2b(value, (UInt8 *)bmp, selector);
+                put2(value, (UInt8 *)bmp, selector);
               } else {
-                get2b(&v16, (UInt8 *)bmp, selector);
+                get2(&v16, (UInt8 *)bmp, selector);
                 value = v16;
               }
               break;
@@ -237,7 +244,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
               }
               break;
             case BitmapFieldFlags:
-              get2b(&v16, (UInt8 *)bmp, selector);
+              get2(&v16, (UInt8 *)bmp, selector);
               if (set) {
                 if (flagSelector != BitmapFlagAll) switch (flagSelector) {
                   case BitmapFlagCompressed:         v16 &= 0x7FFF; v16 |= value ? 0x8000 : 0x0000; value = v16; break;
@@ -249,7 +256,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
                   case BitmapFlagIndirectColorTable: v16 &= 0xFDFF; v16 |= value ? 0x0200 : 0x0000; value = v16; break;
                   case BitmapFlagNoDither:           v16 &= 0xFEFF; v16 |= value ? 0x0100 : 0x0000; value = v16; break;
                 }
-                put2b(value, (UInt8 *)bmp, selector);
+                put2(value, (UInt8 *)bmp, selector);
               } else {
                 if (flagSelector != BitmapFlagAll) switch (flagSelector) {
                   case BitmapFlagCompressed:         value = (v16 & 0x8000) ? 1 : 0; break;
@@ -315,9 +322,11 @@ UInt32 BmpV0GetSetField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSele
 UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 version;
   UInt16 v16;
+  Boolean le;
 
   if (bmp) {
     version = BmpGetVersion(bmp);
+    le = BmpLittleEndian(bmp);
 
     if (version == 1) {
       switch (selector) {
@@ -331,9 +340,9 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
           break;
         case BitmapV1FieldNextDepthOffset:
           if (set) {
-            put2b(value, (UInt8 *)bmp, selector);
+            put2(value, (UInt8 *)bmp, selector);
           } else {
-            get2b(&v16, (UInt8 *)bmp, selector);
+            get2(&v16, (UInt8 *)bmp, selector);
             value = v16;
           }
           break;
@@ -357,9 +366,11 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
 UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 v8, version;
   UInt16 v16;
+  Boolean le;
 
   if (bmp) {
     version = BmpGetVersion(bmp);
+    le = BmpLittleEndian(bmp);
 
     if (version == 2) {
         switch (selector) {
@@ -373,9 +384,9 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
             break;
           case BitmapV2FieldNextDepthOffset:
             if (set) {
-              put2b(value, (UInt8 *)bmp, selector);
+              put2(value, (UInt8 *)bmp, selector);
             } else {
-              get2b(&v16, (UInt8 *)bmp, selector);
+              get2(&v16, (UInt8 *)bmp, selector);
               value = v16;
             }
             break;
@@ -409,9 +420,11 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   UInt8 v8, version;
   UInt16 v16;
   UInt32 v32;
+  Boolean le;
 
   if (bmp) {
     version = BmpGetVersion(bmp);
+    le = BmpLittleEndian(bmp);
 
     if (version == 3) {
         switch (selector) {
@@ -436,18 +449,18 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             break;
           case BitmapV3FieldDensity:
             if (set) {
-              put2b(value, (UInt8 *)bmp, selector);
+              put2(value, (UInt8 *)bmp, selector);
             } else {
-              get2b(&v16, (UInt8 *)bmp, selector);
+              get2(&v16, (UInt8 *)bmp, selector);
               value = v16;
             }
             break;
           case BitmapV3FieldTransparentValue:
           case BitmapV3FieldNextBitmapOffset:
             if (set) {
-              put4b(value, (UInt8 *)bmp, selector);
+              put4(value, (UInt8 *)bmp, selector);
             } else {
-              get4b(&v32, (UInt8 *)bmp, selector);
+              get4(&v32, (UInt8 *)bmp, selector);
               value = v32;
             }
             break;
@@ -475,10 +488,11 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
   UInt16 rowBytes, numEntries, i;
   UInt8 version, depth;
   UInt8 *ram, *bitmapColorTable;
-  Boolean hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
+  Boolean le, hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
 
   if (bitmapP && bitsP) {
     version = BmpGetVersion(bitmapP);
+    le = BmpLittleEndian(bitmapP);
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
     isDirectColor = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagDirectColor);
     indirectColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirectColorTable);
@@ -504,13 +518,13 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           bitmapColorTable = (UInt8 *)bitmapP + BitmapV2FieldColorTable;
           if (isDirectColor) {
             // BitmapDirectInfoType.transparentColor
-            get4b(&transparentValue, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
+            get4(&transparentValue, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
           }
           break;
         case 3:
           if (indirectColorTable) {
             colorTableSize = 4; // pointer to color table
-            get4b(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
+            get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
             bitmapColorTable = addr ? ram + addr : NULL;
           } else {
             numEntries = BmpV3GetField(newBmp, BitmapV3FieldColorTable);
@@ -522,7 +536,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     }
 
     if (colorTableP) {
-      get2b(&numEntries, (UInt8 *)colorTableP, 0);
+      get2(&numEntries, (UInt8 *)colorTableP, 0);
       bitmapColorTable = (UInt8 *)colorTableP;
       hasColorTable = 1;
       indirectColorTable = 1;
@@ -602,7 +616,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           // direct color table: numEntries followed by entries
           index += put2b(numEntries, (UInt8 *)newBmp, index);
           for (i = 0; i < numEntries; i++) {
-            get4b(&entry, bitmapColorTable, 2 + i * 4);
+            get4(&entry, bitmapColorTable, 2 + i * 4);
             index += put4b(entry, (UInt8 *)newBmp, index);
           }
         }
@@ -1155,8 +1169,11 @@ Err BmpCompress(BitmapType *bitmapP, BitmapCompressionType compType) {
 void *BmpGetBits(BitmapType *bitmapP) {
   UInt32 headerSize, addr;
   void *bits = NULL;
+  Boolean le;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
+
     switch (BmpGetVersion(bitmapP)) {
       case 0:
         headerSize = BitmapV0HeaderSize;
@@ -1172,7 +1189,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
           headerSize += 8;
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
-          get4b(&addr, (UInt8 *)bitmapP, headerSize);
+          get4(&addr, (UInt8 *)bitmapP, headerSize);
           bits = addr ? pumpkin_heap_base() + addr : NULL;
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
@@ -1186,7 +1203,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
           headerSize += BmpColortableSize(bitmapP);
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
-          get4b(&addr, (UInt8 *)bitmapP, headerSize);
+          get4(&addr, (UInt8 *)bitmapP, headerSize);
           bits = addr ? pumpkin_heap_base() + addr : NULL;
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
@@ -1201,9 +1218,12 @@ void *BmpGetBits(BitmapType *bitmapP) {
 ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   ColorTableType *colorTable = NULL;
   UInt32 addr;
+  Boolean le;
 
   if (bitmapP) {
     if (BmpGetCommonFlag(bitmapP, BitmapFlagHasColorTable)) {
+      le = BmpLittleEndian(bitmapP);
+
       switch (BmpGetVersion(bitmapP)) {
         case 1:
           colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV1FieldColorTable);
@@ -1213,7 +1233,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
           break;
         case 3:
           if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
-            get4b(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
+            get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
             colorTable = addr ? (ColorTableType *)(pumpkin_heap_base() + addr) : NULL;
           } else {
             colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV3FieldColorTable);
@@ -1246,10 +1266,11 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
   UInt32 v32, headerSize = 0, dataSize = 0;
   UInt16 rowBytes, v16;
   UInt8 *bits;
-  Boolean compressed;
+  Boolean le, compressed;
   Coord width, height;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
     bits = BmpGetBits((BitmapType *)bitmapP);
     compressed = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagCompressed);
@@ -1259,14 +1280,14 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
       case 0:
         headerSize = BitmapV0HeaderSize;
         if (compressed) {
-          get2b(&v16, bits, 0);
+          get2(&v16, bits, 0);
           dataSize = v16;
         }
         break;
       case 1:
         headerSize = BitmapV1HeaderSize + BmpColortableSize(bitmapP);
         if (compressed) {
-          get2b(&v16, bits, 0);
+          get2(&v16, bits, 0);
           dataSize = v16;
         }
         break;
@@ -1276,7 +1297,7 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
           headerSize += 8;
         }
         if (compressed) {
-          get2b(&v16, bits, 0);
+          get2(&v16, bits, 0);
           dataSize = v16;
         }
         break;
@@ -1288,7 +1309,7 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
           headerSize += BmpColortableSize(bitmapP);
         }
         if (compressed) {
-          get4b(&v32, bits, 0);
+          get4(&v32, bits, 0);
           dataSize = v32;
         }
         break;
@@ -1302,10 +1323,12 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
 UInt16 BmpColortableSize(const BitmapType *bitmapP) {
   ColorTableType *colorTable;
   UInt16 numEntries, size = 0;
+  Boolean le;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
     if ((colorTable = BmpGetColortable((BitmapType *)bitmapP)) != NULL) {
-      get2b(&numEntries, (UInt8 *)colorTable, 0);
+      get2(&numEntries, (UInt8 *)colorTable, 0);
       size = sizeof(UInt16) + numEntries * 4;
     }
   }
@@ -1456,10 +1479,13 @@ Err BmpSetDensity(BitmapType *bitmapP, UInt16 density) {
 Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentValueP) {
   Boolean hasTransparentValue, r = false;
   UInt16 colorTableSize;
+  Boolean le;
 
   if (transparentValueP) *transparentValueP = 0;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
+
     switch (BmpGetVersion(bitmapP)) {
       case 2:
         if (BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasTransparency)) {
@@ -1467,7 +1493,7 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
             hasTransparentValue = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagDirectColor);
             if (hasTransparentValue) {
               colorTableSize =  BmpColortableSize(bitmapP);
-              get4b(transparentValueP, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
+              get4(transparentValueP, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
             } else {
               *transparentValueP = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldTransparentIndex);
             }
@@ -1492,8 +1518,11 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
 void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   Boolean hasTransparentValue;
   UInt16 colorTableSize;
+  Boolean le;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
+
     switch (BmpGetVersion(bitmapP)) {
       case 2:
         if (transparentValue == kTransparencyNone) {
@@ -1504,7 +1533,7 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
           BmpSetCommonFlag(bitmapP, BitmapFlagHasTransparency, 1);
           if (hasTransparentValue) {
             colorTableSize =  BmpColortableSize(bitmapP);
-            put4b(transparentValue, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
+            put4(transparentValue, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
           } else {
             BmpV2SetField(bitmapP, BitmapV2FieldTransparentIndex, transparentValue);
           }
@@ -1621,8 +1650,10 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
   UInt16 w, rowBytes;
   UInt32 offset;
   UInt32 value = 0;
+  Boolean le;
 
   if (bitmapP) {
+    le = BmpLittleEndian(bitmapP);
     bits = BmpGetBits(bitmapP);
     BmpGetDimensions(bitmapP, NULL, NULL, &rowBytes);
 
@@ -1649,7 +1680,7 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
         break;
       case 16:
         offset = y * rowBytes + x*2;
-        get2b(&w, bits, offset);
+        get2(&w, bits, offset);
         value = w;
         break;
       case 24:
@@ -1731,10 +1762,11 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
   UInt8 *bits, b, red, green, blue, gray;
   UInt16 rowBytes, rgb;
   Coord width, height, i, j, k;
-  Boolean transp;
+  Boolean le, transp;
 
   if (bitmapP && surface && w > 0 && h > 0) {
 //debug(1, "XXX", "BmpDraw sx=%d sy=%d w=%d h=%d x=%d y=%d", sx, sy, w, h, x, y);
+    le = BmpLittleEndian(bitmapP);
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
 
   if (sx < width && sy < height) {
@@ -1840,7 +1872,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
 //debug(1, "XXX", "BmpDraw depth=16 rb=%d offset=%d", rowBytes, offset);
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 2) {
-                get2b(&rgb, bits, offset + k);
+                get2(&rgb, bits, offset + k);
                 if (!useTransp || !transp || rgb != transparentValue) {
                   red   = r565(rgb);
                   green = g565(rgb);
@@ -2367,7 +2399,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 }
 
-#define BmpSetBit16p(offset, dataSize, b) if (offset+1 < dataSize) put2b(b, bits, offset)
+#define BmpSetBit16p(offset, dataSize, b) if (offset+1 < dataSize) put2(b, bits, offset)
 
 #define BmpSetBit16(offset, dataSize, b, dbl) \
   BmpSetBit16p(offset, dataSize, b); \
@@ -2382,7 +2414,9 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
   UInt8 *bits;
   UInt16 rowBytes, old, fg, bg;
   UInt32 offset, dataSize;
+  Boolean le;
 
+  le = BmpLittleEndian(dst);
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
@@ -2412,7 +2446,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
 */
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
-      get2b(&old, bits, offset);
+      get2(&old, bits, offset);
       rgb.r = r565(b);
       rgb.g = g565(b);
       rgb.b = b565(b);
@@ -2440,7 +2474,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      get2b(&old, bits, offset);
+      get2(&old, bits, offset);
       WinSetBackColorRGB(NULL, &rgb);
       WinSetForeColorRGB(NULL, &aux);
       bg = rgb565(rgb.r, rgb.g, rgb.b);
@@ -2683,7 +2717,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
   UInt32 srcTransparentValue, dstTransparentValue;
   UInt16 srcRowBytes, dstRowBytes, aux;
   Coord srcWidth, srcHeight, dstWidth, dstHeight;
-  Boolean srcTransp, dstTransp, isSrcDefault, isDstDefault;
+  Boolean le, srcTransp, dstTransp, isSrcDefault, isDstDefault;
 
   BmpGetDimensions(src, &srcWidth, &srcHeight, &srcRowBytes);
   BmpGetDimensions(dst, &dstWidth, &dstHeight, &dstRowBytes);
@@ -2707,6 +2741,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     srcDepth = BmpGetBitDepth(src);
     dstDepth = BmpGetBitDepth(dst);
     bits = BmpGetBits(src);
+    le = BmpLittleEndian(src);
 
     switch (srcDepth) {
       case 1:
@@ -2733,7 +2768,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         }
         break;
       case 16:
-        get2b(&aux, bits, sy * srcRowBytes + sx*2);
+        get2(&aux, bits, sy * srcRowBytes + sx*2);
         srcPixel = aux;
         dstPixel = (dstDepth == 16) ? srcPixel : BmpConvertFrom16Bits(srcPixel, dstDepth, dstColorTable);
         break;
