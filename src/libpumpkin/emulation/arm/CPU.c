@@ -1840,18 +1840,30 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 	cpu->curInstrPC = fetchPc = pc = cpu->regs[REG_NO_PC];
 //debug(1, "XXX", "cpuPrvCycleArm pc=0x%08X", pc);
 	
+  if (fetchPc >= 0x04000000) {
+    // native ARM syscall emulation: the address identifies which syscall is being called,
+    // no matter which instruction is contained in that address.
+    uint32_t group, function;
+    group = (fetchPc & 0x00F00000) >> 20;
+    function = fetchPc & 0xFFFF;
+    debug(DEBUG_TRACE, "ARM", "native syscall group %d function 0x%04X", group, function);
+    cpu->regs[0] = emupalmos_arm_syscall(group, function, cpu->regs[0], cpu->regs[1], cpu->regs[2], cpu->regs[3]);
+		cpu->regs[REG_NO_PC] = cpu->regs[REG_NO_LR]; // return from subroutine
+    return;
+  }
+
 	//FCSE
 	if (fetchPc < 0x02000000UL)
 		fetchPc |= cpu->pid;
 	
 	ok = icacheFetch(cpu->ic, fetchPc, 4, privileged, &fsr, &instr);
-//debug(1, "XXX", "cpuPrvCycleArm ok=%d", ok);
 	if (!ok) {
-debug(1, "XXX", "cpuPrvCycleArm pc=0x%08X mem error", pc);
+    debug(DEBUG_ERROR, "ARM", "cpuPrvCycleArm pc=0x%08X mem error", pc);
 		cpuPrvHandleMemErr(cpu, pc, 4, 0, 1, fsr);
 	} else {
-    //disasm(pc, instr);
-
+    if (debug_getsyslevel("ARM") == DEBUG_TRACE) {
+      disasm(pc, instr);
+    }
 		cpu->regs[REG_NO_PC] += 4;
 		cpuPrvExecInstr(cpu, instr, 0, privileged, 0);
 	}

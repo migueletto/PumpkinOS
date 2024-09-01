@@ -1407,8 +1407,12 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
 uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData) {
   emu_state_t *state = thread_get(emu_key);
   uint8_t *stack, *call68KAddr, *returnAddr;
-  uint32_t stackAddr, callAddr, retAddr;
+  uint32_t stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
+
+  // the ARM syscall master table: four 32-bits addresses,
+  // each pointing to a syscall function table
+  sysAddr = (uint8_t *)state->systable - ram;
 
   returnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
   retAddr = returnAddr - ram;
@@ -1419,6 +1423,7 @@ uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData) {
   stack = pumpkin_heap_alloc(stackSize, "stack");
   stackAddr = stack - ram;
 
+  armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
   armSetReg(state->arm, 15, nativeFunc);  // PC
   armSetReg(state->arm, 14, retAddr);     // LR
   armSetReg(state->arm, 13, stackAddr + stackSize); // SP
@@ -1546,10 +1551,31 @@ static emu_state_t *emupalmos_new(void) {
   emu_state_t *state;
 
   if ((state = xcalloc(1, sizeof(emu_state_t))) != NULL) {
+#ifdef ARMEMU
     uint8_t *ram = pumpkin_heap_base();
     uint32_t size = pumpkin_heap_size();
-#ifdef ARMEMU
+    uint32_t *dalFunctions, *bootFunctions, *uiFunctions;
+    uint32_t i;
+
     state->arm = armInit(ram, size);
+
+    // fill the ARM syscall tables for DAL, BOOT and UI functions
+    state->systable = pumpkin_heap_alloc(16, "sysTable");
+    dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFuntions");
+    bootFunctions = pumpkin_heap_alloc(0x1000, "bootFuntions");
+    uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFuntions");
+    state->systable[1] = (uint8_t *)dalFunctions  - ram;
+    state->systable[2] = (uint8_t *)bootFunctions - ram;
+    state->systable[3] = (uint8_t *)uiFunctions   - ram;
+
+    // each syscall is identified by a special address of the form 0x04G0NNNN,
+    // where G is the group (1, 2, or 3) and NNNN is the function "number" (multiple of 4).
+    // if the PC reaches such address, emupalmos_arm_syscall will be called.
+    for (i = 0; i < 0x1000 / 4; i++) {
+      dalFunctions[i]  = 0x04000000 | 0x00100000 | (i << 2); // group 1: DAL
+      bootFunctions[i] = 0x04000000 | 0x00200000 | (i << 2); // group 2: BOOT
+      uiFunctions[i]   = 0x04000000 | 0x00300000 | (i << 2); // group 3: UI
+    }
 #endif
   }
 
@@ -1559,7 +1585,12 @@ static emu_state_t *emupalmos_new(void) {
 static void emupalmos_destroy(emu_state_t *state) {
   if (state) {
 #ifdef ARMEMU
+    uint8_t *ram = pumpkin_heap_base();
     armFinish(state->arm);
+    pumpkin_heap_free(ram + state->systable[1], "dalFunctions");
+    pumpkin_heap_free(ram + state->systable[2], "bootFunctions");
+    pumpkin_heap_free(ram + state->systable[3], "uiFunctions");
+    pumpkin_heap_free(state->systable, "sysTable");
 #endif
     xfree(state);
   }
@@ -1576,6 +1607,53 @@ int emupalmos_init(void) {
   debug_on = debug_getsyslevel("M68K") == DEBUG_TRACE;
 
   return 0;
+}
+
+uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3) {
+  uint8_t *ram = pumpkin_heap_base();
+  uint8_t *p;
+  MemHandle h;
+
+  switch (group) {
+    case 1: // DAL
+      r0 = 0;
+      break;
+    case 2: // BOOT
+      switch (function) {
+        case 0x210:
+          debug(DEBUG_TRACE, "ARM", "DmQueryRecord(0x%08X, %u)", r0, r1);
+          h = DmQueryRecord((DmOpenRef)(ram + r0), r1);
+          r0 = h ? (uint8_t *)h - ram : 0;
+          break;
+        case 0x4DC:
+          debug(DEBUG_TRACE, "ARM", "MemHandleFree(0x%08X)", r0);
+          r0 = MemHandleFree((MemHandle)(ram + r0));
+          break;
+        case 0x4E4:
+          debug(DEBUG_TRACE, "ARM", "MemHandleLock(0x%08X)", r0);
+          p = MemHandleLock((MemHandle)(ram + r0));
+          r0 = p ? (uint8_t *)p - ram : 0;
+          break;
+        case 0x508:
+          debug(DEBUG_TRACE, "ARM", "MemHandleUnlock(0x%08X)", r0);
+          r0 = MemHandleUnlock((MemHandle)(ram + r0));
+          break;
+        case 0xB18:
+          debug(DEBUG_TRACE, "ARM", "WinDrawChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
+          WinDrawChars((char *)(ram + r0), r1, r2, r3);
+          break;
+      }
+      break;
+    case 3: // UI
+      r0 = 0;
+      break;
+    default:
+      debug(DEBUG_ERROR, "ARM", "invalid group %u", group);
+      r0 = 0;
+      break;
+  }
+
+  return r0;
 }
 
 static void palmos_systrap_init(emu_state_t *state) {

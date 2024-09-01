@@ -9,5 +9,5 @@ void disasm(uint32_t addr, uint32_t op) {
 
   darm_armv7_disasm(&darm, op);
   darm_str(&darm, &str);
-  debug(DEBUG_INFO, "ARM", "0x%08X: 0x%08X %s", addr, op, str.total);
+  debug(DEBUG_TRACE, "ARM", "0x%08X: 0x%08X %s", addr, op, str.total);
 }

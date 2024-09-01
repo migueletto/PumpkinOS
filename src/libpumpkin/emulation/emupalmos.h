@@ -66,6 +66,7 @@ typedef struct {
   uint32_t sysAppInfoStart;
 #ifdef ARMEMU
   arm_emu_t *arm;
+  uint32_t *systable;
 #endif
   m68k_state_t m68k_state;
   char *panic;
