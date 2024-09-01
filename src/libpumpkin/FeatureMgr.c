@@ -115,6 +115,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSystem %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
       }
@@ -126,6 +127,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSerialMgr %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
       }
@@ -137,6 +139,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCExpansionMgr %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
       }
@@ -148,6 +151,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCVFSMgr %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
       }
@@ -160,6 +164,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
             err = errNone;
             break;
           default:
+            debug(DEBUG_ERROR, "Feature", "FtrGet pinCreator %d not defined", featureNum);
             err = ftrErrNoSuchFeature;
             break;
         }
@@ -232,21 +237,21 @@ Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
 }
 
 Err FtrGetByIndex(UInt16 index, Boolean romTable, UInt32 *creatorP, UInt16 *numP, UInt32 *valueP) {
-  debug(DEBUG_ERROR, "PALMOS", "FtrGetByIndex not implemented");
+  debug(DEBUG_ERROR, "Feature", "FtrGetByIndex not implemented");
   return sysErrParamErr;
 }
 
 Err FtrPtrNew(UInt32 creator, UInt16 featureNum, UInt32 size, void **newPtrP) {
-  debug(DEBUG_ERROR, "PALMOS", "FtrPtrNew not implemented");
+  debug(DEBUG_ERROR, "Feature", "FtrPtrNew not implemented");
   return sysErrParamErr;
 }
 
 Err FtrPtrFree(UInt32 creator, UInt16 featureNum) {
-  debug(DEBUG_ERROR, "PALMOS", "FtrPtrFree not implemented");
+  debug(DEBUG_ERROR, "Feature", "FtrPtrFree not implemented");
   return sysErrParamErr;
 }
 
 Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPtrP) {
-  debug(DEBUG_ERROR, "PALMOS", "FtrPtrResize not implemented");
+  debug(DEBUG_ERROR, "Feature", "FtrPtrResize not implemented");
   return sysErrParamErr;
 }
