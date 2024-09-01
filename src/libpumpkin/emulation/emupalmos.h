@@ -91,7 +91,7 @@ typedef struct {
 
 emu_state_t *m68k_get_emu_state(void);
 
-uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData);
+uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData);
 
 uint8_t cpu_read_byte(uint32_t address);
 uint16_t cpu_read_word(uint32_t address);

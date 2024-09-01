@@ -216,7 +216,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t userDataP = ARG32;
       emupalmos_trap_in(nativeFuncP, trap, 0);
       emupalmos_trap_in(userDataP, trap, 1);
-      UInt32 res = arm_native_call(nativeFuncP, userDataP);
+      UInt32 res = arm_native_call(nativeFuncP, 0, userDataP);
       debug(DEBUG_TRACE, "EmuPalmOS", "PceNativeCall(0x%08X, 0x%08X): %d", nativeFuncP, userDataP, res);
       m68k_set_reg(M68K_REG_A0, res);
       m68k_set_reg(M68K_REG_D0, res);

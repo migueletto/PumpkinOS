@@ -1404,11 +1404,21 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
 }
 
 #ifdef ARMEMU
-uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData) {
+uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   emu_state_t *state = thread_get(emu_key);
   uint8_t *stack, *call68KAddr, *returnAddr;
   uint32_t stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
+
+  // r9 = x
+  // [x] = y
+  // [y + 2052] = sysAddr + 16
+
+  // LDR r9, [r9]
+  // LDR r9, [r9, #2052]
+  // [r9 + 2052] = sysAddr + 16
+  // r9 = sysAddr + 16
+  // LDR r12, [r9, #-8]
 
   // the ARM syscall master table: four 32-bits addresses,
   // each pointing to a syscall function table
@@ -1423,11 +1433,17 @@ uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData) {
   stack = pumpkin_heap_alloc(stackSize, "stack");
   stackAddr = stack - ram;
 
-  armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
-  armSetReg(state->arm, 15, nativeFunc);  // PC
-  armSetReg(state->arm, 14, retAddr);     // LR
+  if (data) {
+    armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
+    put4l(sysAddr, ram, sysAddr + 16);
+    put4l(sysAddr + 16, ram, sysAddr + 2052);
+  } else {
+    armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
+  }
+  armSetReg(state->arm, 15, code);    // PC
+  armSetReg(state->arm, 14, retAddr); // LR
   armSetReg(state->arm, 13, stackAddr + stackSize); // SP
-  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X begin", nativeFunc, userData, stackAddr + stackSize);
+  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X begin", code, userData, stackAddr + stackSize);
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
@@ -1443,7 +1459,7 @@ uint32_t arm_native_call(uint32_t nativeFunc, uint32_t userData) {
   pumpkin_heap_free(call68KAddr, "call68kAddr");
   pumpkin_heap_free(stack, "stack");
 
-  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) end", nativeFunc, userData);
+  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
   return armGetReg(state->arm, 0);
 }
 #endif
@@ -1560,7 +1576,7 @@ static emu_state_t *emupalmos_new(void) {
     state->arm = armInit(ram, size);
 
     // fill the ARM syscall tables for DAL, BOOT and UI functions
-    state->systable = pumpkin_heap_alloc(16, "sysTable");
+    state->systable = pumpkin_heap_alloc(4096, "sysTable");
     dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFuntions");
     bootFunctions = pumpkin_heap_alloc(0x1000, "bootFuntions");
     uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFuntions");
@@ -1609,9 +1625,13 @@ int emupalmos_init(void) {
   return 0;
 }
 
+#define strArg(a) (a ? ((char *)(ram + a)) : "")
+
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3) {
   uint8_t *ram = pumpkin_heap_base();
   uint8_t *p;
+  char st[8], st2[8];
+  UInt32 value;
   MemHandle h;
 
   switch (group) {
@@ -1625,6 +1645,31 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           h = DmQueryRecord((DmOpenRef)(ram + r0), r1);
           r0 = h ? (uint8_t *)h - ram : 0;
           break;
+        case 0x318:
+          // Err ExgGetDefaultApplication(UInt32 *creatorIDP, UInt16 id, const Char *dataTypeP)
+          debug(DEBUG_TRACE, "ARM", "ExgGetDefaultApplication(0x%08X, 0x%04X, \"%s\") not implemented", r0, r1, strArg(r2));
+          r0 = 0xffff;
+          break;
+        case 0x348:
+          // Err ExgRegisterDatatype(UInt32 creatorID, UInt16 id, const Char *dataTypesP, const Char *descriptionsP, UInt16 flags)
+          pumpkin_id2s(r0, st);
+          debug(DEBUG_TRACE, "ARM", "ExgRegisterDatatype('%s', 0x%04X, 0x%08X, 0x%08X, ___) not implemented", st, r1, strArg(r2), strArg(r3));
+          r0 = 0xffff;
+          break;
+        case 0x354:
+          // Err ExgSetDefaultApplication(UInt32 creatorID, UInt16 id, const Char *dataTypeP)
+          pumpkin_id2s(r0, st);
+          debug(DEBUG_TRACE, "ARM", "ExgSetDefaultApplication('%s', 0x%04X, \"%s\") not implemented", st, r1, strArg(r2));
+          r0 = 0xffff;
+          break;
+        case 0x424:
+          pumpkin_id2s(r0, st);
+          debug(DEBUG_TRACE, "ARM", "FtrGet('%s', %u, 0x%08X)", st, r1, r2);
+          r0 = FtrGet(r0, r1, &value);
+          if (r0 == 0 && r2) {
+            put4l(value, ram, r2);
+          }
+          break;
         case 0x4DC:
           debug(DEBUG_TRACE, "ARM", "MemHandleFree(0x%08X)", r0);
           r0 = MemHandleFree((MemHandle)(ram + r0));
@@ -1637,6 +1682,12 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x508:
           debug(DEBUG_TRACE, "ARM", "MemHandleUnlock(0x%08X)", r0);
           r0 = MemHandleUnlock((MemHandle)(ram + r0));
+          break;
+        case 0x880:
+          pumpkin_id2s(r0, st);
+          pumpkin_id2s(r1, st2);
+          debug(DEBUG_TRACE, "ARM", "SysLoadModule('%s', '%s', %d) not implemented", st, st2, r2);
+          r0 = 0;
           break;
         case 0xB18:
           debug(DEBUG_TRACE, "ARM", "WinDrawChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
@@ -1753,8 +1804,8 @@ static void freeParamBlock(uint16_t launchCode, void *param, uint8_t *p, uint8_t
 }
 
 uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
-  MemHandle hCode0, hCode1, hCodeN, hData0, hData, hStack, hSysAppInfo;
-  uint8_t *code0, *code1, *data0, *data, *stack, *sysAppInfo, *paramBlock;
+  MemHandle hAmdc0, hAmdd0, hCode0, hCode1, hCodeN, hData0, hData, hStack, hSysAppInfo;
+  uint8_t *amdc0, *amdd0, *code0, *code1, *data0, *data, *stack, *sysAppInfo, *paramBlock;
   uint32_t pc, a5, a7, st;
   uint32_t sysAppInfoStart, stackStart, codeStart, codeSize, dataStart, data0Size, dataSize, aboveSize;
   uint8_t *p8, *start, b;
@@ -1766,6 +1817,57 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   emu_state_t *oldState, *state;
 
   ram = pumpkin_heap_base();
+
+#ifdef ARMEMU
+  // amdc 0 segment
+  hAmdc0 = DmGet1Resource('amdc', 0);
+  amdc0 = hAmdc0 ? MemHandleLock(hAmdc0) : NULL;
+
+  // amdd 0 segment
+  hAmdd0 = DmGet1Resource('amdd', 0);
+  amdd0 = hAmdd0 ? MemHandleLock(hAmdd0) : NULL;
+
+  if (amdc0 && amdd0) {
+    state = emupalmos_new();
+    oldState = thread_get(emu_key);
+    thread_set(emu_key, state);
+
+    paramBlock = getParamBlock(launchCode, param, ram);
+    paramBlockStart = paramBlock ? paramBlock - ram : 0;
+
+    hSysAppInfo = MemHandleNew(sizeof(SysAppInfoType));
+    sysAppInfo = MemHandleLock(hSysAppInfo);
+    MemSet(sysAppInfo, MemHandleSize(hSysAppInfo), 0);
+    sysAppInfoStart = sysAppInfo - ram;
+    put2l(launchCode, sysAppInfo, 0);
+    put4l(paramBlockStart, sysAppInfo, 2); // cmdPBP
+    put2l(flags | sysAppLaunchFlagNewGlobals | sysAppLaunchFlagDataRelocated, sysAppInfo, 6); // launch flags
+    put4l((uint8_t *)hAmdc0 - ram, sysAppInfo, 12); // codeH
+
+    state->sysAppInfoStart = sysAppInfoStart;
+    palmos_systrap_init(state);
+
+    creator = pumpkin_get_app_creator();
+    pumpkin_set_compat(creator, appCompatOk, 0);
+    emupalmos_finish(0);
+
+    arm_native_call(amdc0 - ram, amdd0 - ram, 0);
+
+    MemHandleUnlock(hSysAppInfo);
+    MemHandleFree(hSysAppInfo);
+
+    thread_set(emu_key, oldState);
+    palmos_systrap_finish(state);
+    emupalmos_destroy(state);
+
+    MemHandleUnlock(hAmdd0);
+    DmReleaseResource(hAmdd0);
+    MemHandleUnlock(hAmdc0);
+    DmReleaseResource(hAmdc0);
+
+    return 0;
+  }
+#endif
 
   // code 0 segment
   hCode0 = DmGet1Resource('code', 0);
