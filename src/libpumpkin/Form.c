@@ -429,7 +429,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FontID old;
   UInt16 totalLines, max, graffitiState;
   Int16 x, y, tw, th;
-  Boolean formVisible, objUsable, draw;
+  Boolean formVisible;
 
   if (formP && objIndex < formP->numObjects) {
     obj = formP->objects[objIndex].object;
@@ -490,8 +490,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmListObj:
         formVisible = formP->attr.visible;
-        objUsable = obj.list->attr.usable;
-        draw = (!formVisible && objUsable) || (formVisible && setUsable);
 /*
 2024-08-14 00:30:18.236620 I 31096 Plucker  XXX: drawObject list 3242, formVisible 0, visible 0, usable 0, setUsable 1
 2024-08-14 00:30:18.236622 I 31096 Plucker  XXX: drawObject draw!
@@ -509,7 +507,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         debug(DEBUG_TRACE, "List", "drawObject list %d, formVisible %d, visible %d, usable %d, setUsable %d",
           obj.list->id, formP->attr.visible, obj.list->attr.visible, obj.list->attr.usable, setUsable);
         if (setUsable && formVisible) obj.list->attr.usable = 1;
-        if (draw) {
+        if (!obj.list->bitsBehind && obj.list->attr.usable) {
           debug(DEBUG_TRACE, "List", "drawObject draw!");
           LstDrawList(obj.list);
         }
