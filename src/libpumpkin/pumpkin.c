@@ -121,6 +121,7 @@ typedef struct {
   uint32_t alarm_time;
   uint32_t alarm_data;
   uint32_t eventKeyMask;
+  uint64_t lastMotion;
   texture_t *texture;
   LocalID dbID;
   UInt32 creator;
@@ -2344,7 +2345,12 @@ int pumpkin_sys_event(void) {
               if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
                 if (x >= tx && x < tx + pumpkin_module.tasks[i].width &&
                     y >= ty && y < ty + pumpkin_module.tasks[i].height) {
-                  pumpkin_forward_msg(i, MSG_MOTION, x - tx, y - ty, 0);
+                  // try not to flood the task with penMove events
+                  if ((pumpkin_module.tasks[i].penX != (x - tx) || pumpkin_module.tasks[i].penY != (y - ty)) &&
+                      (now - pumpkin_module.tasks[i].lastMotion) > 10000) {
+                    pumpkin_forward_msg(i, MSG_MOTION, x - tx, y - ty, 0);
+                    pumpkin_module.tasks[i].lastMotion = now;
+                  }
                   pumpkin_module.tasks[i].penX = x - tx;
                   pumpkin_module.tasks[i].penY = y - ty;
                 }

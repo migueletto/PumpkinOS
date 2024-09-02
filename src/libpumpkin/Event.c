@@ -23,6 +23,7 @@ typedef struct {
   int penDown;
   Coord screenX, screenY;
   Int32 needNullTickCount;
+  Int32 lastPenMove;
   Boolean insideRepeatingButtonCtl;
   UInt32 repeatingButtonTime;
   UInt16 repeatingButtonID;
@@ -301,7 +302,16 @@ int EvtPumpEvents(Int32 timeoutUs) {
       module->screenX = key;
       module->screenY = mods;
       adjustCoords(&module->screenX, &module->screenY);
-      if (!module->penDown && !module->penMove) ev = 0;
+      if (!module->penDown && !module->penMove) {
+        ev = 0;
+      } else {
+        ticks = TimGetTicks();
+        if (module->lastPenMove == 0 || (ticks - module->lastPenMove) > 0) {
+          module->lastPenMove = ticks;
+        } else {
+          ev = 0;
+        }
+      }
 
 /*
     } else if (ev == MSG_NOTIFY) {
@@ -430,6 +440,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
       event.eType = penMoveEvent;
       event.screenX = module->screenX;
       event.screenY = module->screenY;
+      event.penDown = module->penDown;
       EvtAddEventToQueue(&event);
       r = 1;
       break;
