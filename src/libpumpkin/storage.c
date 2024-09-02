@@ -1036,6 +1036,8 @@ Err DmGetNextDatabaseByTypeCreator(Boolean newSearch, DmSearchStatePtr stateInfo
   storage_db_t *db;
   Err err = dmErrCantFind;
 
+  if (dbIDP) *dbIDP = 0;
+
   if (stateInfoP) {
     if (newSearch) {
       stateInfoP->p = sto->list;
