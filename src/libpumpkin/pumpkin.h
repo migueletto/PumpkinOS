@@ -243,7 +243,6 @@ int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(i
 int pumpkin_script_obj_boolean(int pe, script_ref_t obj, char *name, int value);
 int pumpkin_script_obj_iconst(int pe, script_ref_t obj, char *name, int value);
 int pumpkin_script_obj_sconst(int pe, script_ref_t obj, char *name, char *value);
-int pumpkin_script_obj_function(int pe, script_ref_t obj, char *name, int (*f)(int pe));
 char *pumpkin_script_call(int pe, char *function, char *s);
 int pumpkin_script_run_string(int pe, char *s);
 int pumpkin_script_run_file(int pe, char *s);
