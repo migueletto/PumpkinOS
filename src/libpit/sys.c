@@ -2997,10 +2997,17 @@ void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
   return memcpy(dest, src, n);
 }
 
+void *sys_memmove(void *dest, const void *src, sys_size_t n) {
+  return memmove(dest, src, n);
+}
+
 void *sys_memset(void *s, int c, sys_size_t n) {
   return memset(s, c, n);
 }
 
+int sys_abs(int x) {
+  return abs(x);
+}
 double sys_floor(double x) {
   return floor(x);
 }
