@@ -311,6 +311,8 @@ uint32_t sys_strlen(const char *s);
 
 char *sys_strchr(const char *s, int c);
 
+char *sys_strrchr(const char *s, int c);
+
 char *sys_strstr(const char *haystack, const char *needle);
 
 int sys_strcmp(const char *s1, const char *s2);

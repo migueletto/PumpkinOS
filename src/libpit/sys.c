@@ -2949,6 +2949,10 @@ char *sys_strchr(const char *s, int c) {
   return strchr(s, c);
 }
 
+char *sys_strrchr(const char *s, int c) {
+  return strrchr(s, c);
+}
+
 char *sys_strstr(const char *haystack, const char *needle) {
   return strstr(haystack, needle);
 }
