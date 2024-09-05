@@ -183,6 +183,19 @@ Err VFSFileClose(FileRef fileRef) {
   return err;
 }
 
+char *VFSFileGets(FileRef fileRef, UInt32 numBytes, char *bufP) {
+  vfs_file_t *f;
+
+  if (fileRef && vfs_type(fileRef) == VFS_FILE) {
+    f = (vfs_file_t *)fileRef;
+    if (bufP) {
+      bufP = vfs_gets(f, bufP, numBytes);
+    }
+  }
+
+  return bufP;
+}
+
 Err VFSFileRead(FileRef fileRef, UInt32 numBytes, void *bufP, UInt32 *numBytesReadP) {
   vfs_file_t *f;
   int nread;
@@ -684,6 +697,44 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
     cwd += StrLen(module->card) - 1;
     StrNCopy(path, cwd, max-1);;
     err = errNone;
+  }
+
+  return err;
+}
+
+Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...) {
+  sys_va_list ap;
+  char buf[1024];
+  Int32 r;
+
+  sys_va_start(ap, format);
+  r = sys_vsnprintf(buf, sizeof(buf), format, ap);
+  sys_va_end(ap);
+
+  return r;
+}
+
+Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributesP) {
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  int type;
+  Err err = vfsErrBadName;
+
+  if (volRefNum != VOLREF) {
+    return vfsErrVolumeBadRef;
+  }
+
+  if (pathNameP && pathNameP[0] && attributesP) {
+    buildpath(module, module->path, (char *)pathNameP);
+    debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileType \"%s\" -> \"%s\"", pathNameP, module->path);
+    type = vfs_checktype(module->session, module->path);
+
+    if (type == VFS_FILE) {
+      *attributesP = 0;
+      err = errNone;
+    } else if (type == VFS_DIR) {
+      *attributesP = vfsFileAttrDirectory;
+      err = errNone;
+    }
   }
 
   return err;
