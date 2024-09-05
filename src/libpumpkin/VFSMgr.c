@@ -712,9 +712,8 @@ Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
     return vfsErrVolumeBadRef;
   }
 
-  if (path && realPath && max) {
+  if (path && realPath) {
     buildpath(module, module->path, path);
-    MemSet(realPath, max, 0);
 
     if ((cwd = vfs_cwd(module->session)) != NULL) {
       if ((s = vfs_abspath(cwd, module->path)) != NULL) {
