@@ -1,4 +1,4 @@
-OSNAME    = Pumpkin
+OSNAME    = PumpkinOS
 PCC       = m68k-palmos-gcc
 PILRC     = $(TOOLS)/pilrc
 PRCDUILD  = $(TOOLS)/prcbuild
