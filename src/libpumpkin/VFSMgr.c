@@ -702,6 +702,35 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
   return err;
 }
 
+Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  char *cwd, *s;
+  Int32 len;
+  Err err = sysErrParamErr;
+
+  if (volRefNum != VOLREF) {
+    return vfsErrVolumeBadRef;
+  }
+
+  if (path && realPath && max) {
+    buildpath(module, module->path, path);
+    MemSet(realPath, max, 0);
+
+    if ((cwd = vfs_cwd(module->session)) != NULL) {
+      if ((s = vfs_abspath(cwd, module->path)) != NULL) {
+        len = StrLen(module->card);
+        if (StrNCompare(s, module->card, len) == 0) {
+          MemMove(realPath, s + len - 1, max - 1);
+          err = errNone;
+        }
+        xfree(s);
+      }
+    }
+  }
+
+  return err;
+}
+
 Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...) {
   sys_va_list ap;
   char buf[1024];

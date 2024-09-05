@@ -475,6 +475,8 @@ Err VFSFileDBGetRecord(FileRef ref, UInt16 recIndex, MemHandle *recHP,
 									UInt8 *recAttrP, UInt32 *uniqueIDP)
 		VFSMGR_TRAP(vfsTrapFileDBGetRecord);
 
+Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max);
+
 char *VFSFileGets(FileRef fileRef, UInt32 numBytes, char *bufP);
 
 Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...);
