@@ -3766,9 +3766,7 @@ void pumpkin_delete_preferences(UInt32 creator, Boolean saved) {
 
 void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wHeight, Coord width, Coord height, char *filename) {
   surface_t *surface;
-  RectangleType rect;
-  WinHandle wh, old;
-  BitmapType *winBmp;
+  UInt16 oldDensity;
   char *card, buf[256];
 
   if (width == 0 || height == 0) {
@@ -3779,22 +3777,17 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     wHeight = height;
   }
   debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d bitmap as %s", width, height, filename);
-  if ((surface = surface_create(wWidth*2, wHeight*2, SURFACE_ENCODING_ARGB)) != NULL) {
-    wh = WinCreateOffscreenWindow(wWidth, wHeight, nativeFormat, NULL);
-    old = WinSetDrawWindow(wh);
-    RctSetRectangle(&rect, 0, 0, wWidth, wHeight);
-    WinEraseRectangle(&rect, 0);
-    WinPaintBitmap(bmp, (wWidth - width)/2, 0);
-    WinSetDrawWindow(old);
-    winBmp = WinGetBitmap(wh);
-    BmpDrawSurface(winBmp, 0, 0, wWidth*2, wHeight*2, surface, 0, 0, false);
+  if ((surface = surface_create(wWidth, wHeight, SURFACE_ENCODING_ARGB)) != NULL) {
+    oldDensity = BmpGetDensity(bmp);
+    BmpSetDensity(bmp, kDensityLow);
+    BmpDrawSurface(bmp, 0, 0, wWidth, wHeight, surface, 0, 0, false);
+    BmpSetDensity(bmp, oldDensity);
 
     card = VFS_CARD;
     if (card[0] == '/') card++;
     sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, filename);
     surface_save(surface, buf, 0);
 
-    WinDeleteWindow(wh, false);
     surface_destroy(surface);
   }
 }
