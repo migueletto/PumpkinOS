@@ -367,6 +367,7 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
 Boolean BmpGetNoDither(const BitmapType *bitmapP);
 
+Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);
 void FrmSetFormBounds(const FormType *formP, RectangleType *rP);

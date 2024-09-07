@@ -104,6 +104,17 @@ static void FrmCenterForm(FormType *formP) {
   }
 }
 
+Boolean FrmGetCenterDialogs(void) {
+  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  Boolean center = false;
+
+  if (module) {
+    center = module->centerDialogs;
+  }
+
+  return center;
+}
+
 void FrmCenterDialogs(Boolean center) {
   frm_module_t *module = (frm_module_t *)thread_get(frm_key);
 
