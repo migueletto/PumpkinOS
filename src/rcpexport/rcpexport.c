@@ -230,7 +230,7 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
         FrmCenterDialogs(false);
         form = FrmInitForm(resID);
         FrmCenterDialogs(center);
-        StrPrintF(buf, "FORM ID %d AT (%d %d %d %d)\n", resID, form->window.windowBounds.topLeft.x, form->window.windowBounds.topLeft.y, form->window.windowBounds.extent.x, form->window.windowBounds.extent.x);
+        StrPrintF(buf, "FORM ID %d AT (%d %d %d %d)\n", resID, form->window.windowBounds.topLeft.x, form->window.windowBounds.topLeft.y, form->window.windowBounds.extent.x, form->window.windowBounds.extent.y);
         emit(fileRef, buf);
         if (form->window.frameType.word == 0) {
           StrCopy(buf, "  NOFRAME\n");
