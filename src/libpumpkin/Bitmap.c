@@ -170,11 +170,32 @@ int BmpFinishModule(void) {
   return 0;
 }
 
+static UInt8 emptySlot[BitmapV1HeaderSize] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static Boolean isEmptySlot(BitmapType *bitmapP) {
+  UInt8 *bmp = (UInt8 *)bitmapP;
+  UInt32 i;
+
+  for (i = 0; i < BitmapV1HeaderSize; i++) {
+    if (bmp[i] != emptySlot[i]) return false;
+  }
+
+  return true;
+}
+
+static BitmapType *skipEmptySlot(BitmapType *bitmapP) {
+  return isEmptySlot(bitmapP) ? (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize) : bitmapP;
+}
+
 UInt8 BmpGetVersion(const BitmapType *bitmapP) {
   UInt8 version = 0;
+  BitmapType *bmp;
 
   if (bitmapP) {
-    get1(&version, (UInt8 *)bitmapP, BitmapFieldVersion);
+    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    get1(&version, (UInt8 *)bmp, BitmapFieldVersion);
     version &= 0x7F;
   }
 
@@ -183,10 +204,12 @@ UInt8 BmpGetVersion(const BitmapType *bitmapP) {
 
 Boolean BmpLittleEndian(const BitmapType *bitmapP) {
   UInt8 version;
+  BitmapType *bmp;
   Boolean le = false;
 
   if (bitmapP) {
-    get1(&version, (UInt8 *)bitmapP, BitmapFieldVersion);
+    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    get1(&version, (UInt8 *)bmp, BitmapFieldVersion);
     le = (version & 0x80) == 0x80;
   }
 
@@ -204,6 +227,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
   Boolean le;
 
   if (bmp) {
+    bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -290,6 +314,7 @@ UInt32 BmpV0GetSetField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSele
   UInt8 version;
 
   if (bmp) {
+    bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
 
     if (version == 0) {
@@ -325,6 +350,7 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
+    bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -369,6 +395,7 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
+    bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -423,6 +450,7 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
+    bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -491,6 +519,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
   Boolean le, hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
 
   if (bitmapP && bitsP) {
+    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
     version = BmpGetVersion(bitmapP);
     le = BmpLittleEndian(bitmapP);
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
@@ -910,7 +939,9 @@ surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP) {
   Int16 encoding;
   UInt8 depth;
 
+  bitmapP = skipEmptySlot(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
+
   switch (depth) {
     case  1:
     case  2:
@@ -1012,25 +1043,6 @@ Err BmpDelete(BitmapType *bitmapP) {
   }
 
   return errNone;
-}
-
-static UInt8 emptySlot[BitmapV1HeaderSize] = {
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-static Boolean isEmptySlot(BitmapType *bitmapP) {
-  UInt8 *bmp = (UInt8 *)bitmapP;
-  UInt32 i;
-
-  for (i = 0; i < BitmapV1HeaderSize; i++) {
-    if (bmp[i] != emptySlot[i]) return false;
-  }
-
-  return true;
-}
-
-static BitmapType *skipEmptySlot(BitmapType *bitmapP) {
-  return isEmptySlot(bitmapP) ? (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize) : bitmapP;
 }
 
 void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {
@@ -1172,6 +1184,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
   Boolean le;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot(bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -1221,6 +1234,8 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   Boolean le;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot(bitmapP);
+
     if (BmpGetCommonFlag(bitmapP, BitmapFlagHasColorTable)) {
       le = BmpLittleEndian(bitmapP);
 
@@ -1270,6 +1285,7 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
   Coord width, height;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
     le = BmpLittleEndian(bitmapP);
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
     bits = BmpGetBits((BitmapType *)bitmapP);
@@ -1390,6 +1406,8 @@ BitmapType *BmpGetNextBitmapAnyDensity(BitmapType *bitmapP) {
   UInt32 offset;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot(bitmapP);
+
     switch (BmpGetVersion(bitmapP)) {
       case 0:
         bitmapP = NULL;
@@ -1484,6 +1502,7 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
   if (transparentValueP) *transparentValueP = 0;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -1521,6 +1540,7 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   Boolean le;
 
   if (bitmapP) {
+    bitmapP = skipEmptySlot(bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -1760,7 +1780,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
   UInt32 offset, transparentValue, c;
   Int32 offsetb;
   UInt8 *bits, b, red, green, blue, gray;
-  UInt16 rowBytes, rgb;
+  UInt16 depth, rowBytes, rgb;
   Coord width, height, i, j, k;
   Boolean le, transp;
 
@@ -1796,8 +1816,9 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
       if (w > 0 && h > 0) {
 //debug(1, "XXX", "BmpDraw w h ok");
         transp = BmpGetTransparentValue(bitmapP, &transparentValue);
+        depth = BmpGetBitDepth(bitmapP);
 
-        switch (BmpGetBitDepth(bitmapP)) {
+        switch (depth) {
           case 1:
             offset = sy * rowBytes + sx / 8;
             for (i = 0; i < h; i++, offset += rowBytes) {
