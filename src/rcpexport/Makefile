@@ -3,7 +3,7 @@ include ../commonp.mak
 
 PROGRAM=rcpexport
 PRC=$(VFS)/app_install/$(PROGRAM).prc
-OBJS=rcpexp.o
+OBJS=rcpexport.o
 
 CUSTOMPFLAGS=-I$(SRC)/Command
 

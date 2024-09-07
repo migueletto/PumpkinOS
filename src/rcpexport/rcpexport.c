@@ -2,17 +2,10 @@
 #include <VFSMgr.h>
 
 #include "sys.h"
-#include "rcpexport.h"
-#include "script.h"
-#include "thread.h"
-#include "mutex.h"
 #include "rgb.h"
 #include "bytes.h"
-#include "AppRegistry.h"
-#include "storage.h"
 #include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 static void emitn(FileRef fileRef, char *buf, int len) {
   VFSFileWrite(fileRef, len, buf, NULL);
@@ -129,19 +122,31 @@ static void emitFont(FileRef fileRef, char *buf, FormObjectType *obj) {
   emit(fileRef, buf);
 }
 
+static void saveData(MemHandle h, void *p, char *type, UInt16 resID, FileRef fileRef) {
+  char buf[256], name[64];
+  FileRef fileRef2;
+  UInt32 size;
+
+  debug(DEBUG_ERROR, "RCP", "unknown resource type %s id %d", type, resID);
+  StrPrintF(name, "%s_%d.dat", type, resID);
+  StrPrintF(buf, "DATA \"%s\" ID %d \"%s\"\n\n", type, resID, name);
+  emit(fileRef, buf);
+  size = MemHandleSize(h);
+  VFSFileCreate(1, name);
+  VFSFileOpen(1, name, vfsModeWrite, &fileRef2);
+  emitn(fileRef2, p, size);
+  VFSFileClose(fileRef2);
+}
+
 static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRef) {
   char buf[256], attr[64];
-  char st[8], name[64];
+  char st[8], st2[8], name[64];
   AlertTemplateType *alert;
-  BitmapType *bitmap, *next;
-  BitmapTypeV0 *bitmapV0;
-  BitmapTypeV1 *bitmapV1;
-  BitmapTypeV2 *bitmapV2;
-  BitmapTypeV3 *bitmapV3;
+  BitmapType *bitmap;
   Coord width, height;
   UInt32 depth, density, transparentValue;
   UInt8 red, green, blue;
-  Boolean transp;
+  Boolean center, transp;
   FontType *font;
   FontTypeV2 *font2;
   MenuBarType *menuBar;
@@ -149,8 +154,10 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
   FormType *form;
   FormObjectType obj;
   SliderControlType *slider;
-  UInt16 *u16, d, i, j, k, max;
-  UInt32 *u32, size;
+  UInt16 version;
+  UInt16 *u16, d, i, j, k, num, max, featNum;
+  UInt32 *u32, size, creator, featVal;
+  UInt8 *u8;
   char *prefix, *str;
   FileRef fileRef2;
   void *p;
@@ -161,18 +168,18 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
 
     switch (resType) {
       case alertRscType:
-/*
-ALERT ID <AlertResrouceId.n>
-  [HELPID <HelpId.n>]
-  [DEFAULTBUTTON <ButtonIdx.n>]
-  [INFORMATION] [CONFIRMATION] [WARNING] [ERROR]
-  [LOCALE <LocaleName.s>]
-BEGIN
-  TITLE <Title.s>
-  MESSAGE <Message.ss>
-  BUTTONS <Button.s> ... <Button.s>
-END
-*/
+        /*
+        ALERT ID <AlertResrouceId.n>
+          [HELPID <HelpId.n>]
+          [DEFAULTBUTTON <ButtonIdx.n>]
+          [INFORMATION] [CONFIRMATION] [WARNING] [ERROR]
+          [LOCALE <LocaleName.s>]
+        BEGIN
+          TITLE <Title.s>
+          MESSAGE <Message.ss>
+          BUTTONS <Button.s> ... <Button.s>
+        END
+        */
         alert = (AlertTemplateType *)p;
         StrPrintF(buf, "ALERT ID %d", resID);
         emit(fileRef, buf);
@@ -205,22 +212,24 @@ END
         emit(fileRef, "\nEND\n\n");
         break;
       case formRscType:
-/*
-FORM ID <FormResourceId.n> AT (<Left.p> <Top.p> <Width.p> <Height.p>)
-  [FRAME] [NOFRAME]
-  [MODAL]
-  [SAVEBEHIND] [NOSAVEBEHIND]
-  [USABLE]
-  [HELPID <HelpId.n>]
-  [DEFAULTBTNID <BtnId.n>]
-  [MENUID <MenuId.n>]
-  [LOCALE <LocaleName.s>]
-BEGIN
-  <OBJECTS>
-END
-*/
-        //form = (FormType *)p;
+        /*
+        FORM ID <FormResourceId.n> AT (<Left.p> <Top.p> <Width.p> <Height.p>)
+          [FRAME] [NOFRAME]
+          [MODAL]
+          [SAVEBEHIND] [NOSAVEBEHIND]
+          [USABLE]
+          [HELPID <HelpId.n>]
+          [DEFAULTBTNID <BtnId.n>]
+          [MENUID <MenuId.n>]
+          [LOCALE <LocaleName.s>]
+        BEGIN
+          <OBJECTS>
+        END
+        */
+        center = FrmGetCenterDialogs();
+        FrmCenterDialogs(false);
         form = FrmInitForm(resID);
+        FrmCenterDialogs(center);
         StrPrintF(buf, "FORM ID %d AT (%d %d %d %d)\n", resID, form->window.windowBounds.topLeft.x, form->window.windowBounds.topLeft.y, form->window.windowBounds.extent.x, form->window.windowBounds.extent.x);
         emit(fileRef, buf);
         if (form->window.frameType.word == 0) {
@@ -454,21 +463,21 @@ END
         FrmDeleteForm(form);
         break;
       case MenuRscType:
-/*
-MENU ID <MenuResourceId.n>
-[LOCALE <LocaleName.s>]
-BEGIN
-  <PULLDOWNS>
-END
+        /*
+        MENU ID <MenuResourceId.n>
+        [LOCALE <LocaleName.s>]
+        BEGIN
+          <PULLDOWNS>
+        END
 
-PULLDOWN <PullDownTitle.s>
-BEGIN
-  <MENUITEMS>
-END
+        PULLDOWN <PullDownTitle.s>
+        BEGIN
+          <MENUITEMS>
+        END
 
-MENUITEM <MenuItem.s> ID <MenuItemId.n> [AccelChar.c]
-MENUITEM SEPARATOR [ID <MenuItemId.n>]
-*/
+        MENUITEM <MenuItem.s> ID <MenuItemId.n> [AccelChar.c]
+        MENUITEM SEPARATOR [ID <MenuItemId.n>]
+        */
         menuBar = (MenuBarType *)p;
         StrPrintF(buf, "MENU ID %d\nBEGIN\n", resID);
         emit(fileRef, buf);
@@ -500,14 +509,14 @@ MENUITEM SEPARATOR [ID <MenuItemId.n>]
         emit(fileRef, buf);
         break;
       case fontRscType:
-/*
-FONT ID <FontResourceId.n> 
-[LOCALE <LocaleName.s>] FONTID <FontId.n> <FontFileName.s>
+        /*
+        FONT ID <FontResourceId.n> 
+        [LOCALE <LocaleName.s>] FONTID <FontId.n> <FontFileName.s>
 
-fontType 36864
-ascent 5
-descent 1
-*/
+        fontType 36864
+        ascent 5
+        descent 1
+        */
         font = (FontType *)p;
         if (font->v == 1) {
           StrPrintF(name, "fontv1_%d.txt", resID);
@@ -535,13 +544,13 @@ descent 1
         }
         break;
       case fontExtRscType:
-/*
-FONTFAMILY ID <ResId.n> FONTID <FontId.n> [LOCALE <LocaleName.s>]
-BEGIN
-    FONT <FontFileName.s> DENSITY <Density.n>
-    ...
-END
-*/
+        /*
+        FONTFAMILY ID <ResId.n> FONTID <FontId.n> [LOCALE <LocaleName.s>]
+        BEGIN
+            FONT <FontFileName.s> DENSITY <Density.n>
+            ...
+        END
+        */
         font2 = (FontTypeV2 *)p;
         if (font2->v == 2) {
           StrPrintF(buf, "FONTFAMILY ID %d FONTID %d\nBEGIN\n", resID, 128 + (resID % 10));
@@ -574,24 +583,29 @@ END
           emit(fileRef, buf);
         }
         break;
+      case iconType:
       case bitmapRsc:
-/*
-BITMAP [<ResType.s>] ID <ResId.n> [LOCALE <Locale.s>]
-  [<BitmapCompression>...]
-BEGIN
-  BITMAP <Filename.s> BPP <Depth.n> [<BitmapAttribute>...] [DENSITY <Density.n>]
-  ...
-END
+        /*
+        BITMAP [<ResType.s>] ID <ResId.n> [LOCALE <Locale.s>]
+          [<BitmapCompression>...]
+        BEGIN
+          BITMAP <Filename.s> BPP <Depth.n> [<BitmapAttribute>...] [DENSITY <Density.n>]
+          ...
+        END
 
-[NOCOMPRESS] [COMPRESS] [FORCECOMPRESS]
-[COMPRESSSCANLINE] [COMPRESSRLE] [COMPRESSPACKBITS] [COMPRESSBEST]
-[NOCOLORTABLE] [COLORTABLE] [BITMAPPALETTE <Filename.s>]
-[TRANSPARENT <R.n> <G.n> <B.n>] [TRANSPARENTINDEX <Index.n>]
-*/
-        StrPrintF(buf, "BITMAP ID %d\nBEGIN\n", resID);
+        [NOCOMPRESS] [COMPRESS] [FORCECOMPRESS]
+        [COMPRESSSCANLINE] [COMPRESSRLE] [COMPRESSPACKBITS] [COMPRESSBEST]
+        [NOCOLORTABLE] [COLORTABLE] [BITMAPPALETTE <Filename.s>]
+        [TRANSPARENT <R.n> <G.n> <B.n>] [TRANSPARENTINDEX <Index.n>]
+        */
+if (resID == 5516) {
+debug(1, "XXX", "here");
+}
+        StrPrintF(buf, "%s ID %d\nBEGIN\n", resType == iconType ? "ICON" : "BITMAP", resID);
         emit(fileRef, buf);
 
         for (bitmap = (BitmapType *)p; bitmap;) {
+          version = BmpGetVersion(bitmap);
           BmpGetDimensions(bitmap, &width, &height, NULL);
           density = BmpGetDensity(bitmap);
           depth = BmpGetBitDepth(bitmap);
@@ -613,47 +627,39 @@ END
               break;
           }
 
-          switch (bitmap->version) {
+          switch (version) {
             case 0:
               StrPrintF(buf, "  BITMAP \"%s\" BPP %d DENSITY 72\n", name, 1);
               emit(fileRef, buf);
-              bitmapV0 = (BitmapTypeV0 *)bitmap;
-              next = bitmapV0->next;
-              bitmapV0->next = NULL;
               pumpkin_save_bitmap(bitmap, density, 0, 0, width, height, name);
-              bitmap = next;
+              bitmap = BmpGetNextBitmapAnyDensity(bitmap);
               break;
             case 1:
-              StrPrintF(buf, "  BITMAP \"%s\" BPP %d DENSITY 72\n", name, depth);
-              emit(fileRef, buf);
-              bitmapV1 = (BitmapTypeV1 *)bitmap;
-              next = bitmapV1->next;
-              bitmapV1->next = NULL;
-              pumpkin_save_bitmap(bitmap, density, 0, 0, width, height, name);
-              bitmap = next;
+              if (depth != 0xff) {
+                StrPrintF(buf, "  BITMAP \"%s\" BPP %d DENSITY 72\n", name, depth);
+                emit(fileRef, buf);
+                pumpkin_save_bitmap(bitmap, density, 0, 0, width, height, name);
+                bitmap = BmpGetNextBitmapAnyDensity(bitmap);
+              } else {
+                bitmap = (BitmapType *)(((UInt8 *)bitmap) + 16);
+              }
               break;
             case 2:
               StrPrintF(buf, "  BITMAP \"%s\" BPP %d %sDENSITY 72\n", name, depth, attr);
               emit(fileRef, buf);
-              bitmapV2 = (BitmapTypeV2 *)bitmap;
-              bitmapV2->flags.hasTransparency = 0;
-              next = bitmapV2->next;
-              bitmapV2->next = NULL;
+              BmpSetTransparentValue(bitmap, kTransparencyNone);
               pumpkin_save_bitmap(bitmap, density, 0, 0, width, height, name);
-              bitmap = next;
+              bitmap = BmpGetNextBitmapAnyDensity(bitmap);
               break;
             case 3:
               StrPrintF(buf, "  BITMAP \"%s\" BPP %d %sDENSITY %d\n", name, depth, attr, density);
               emit(fileRef, buf);
-              bitmapV3 = (BitmapTypeV3 *)bitmap;
-              bitmapV3->flags.hasTransparency = 0;
-              next = bitmapV3->next;
-              bitmapV3->next = NULL;
+              BmpSetTransparentValue(bitmap, kTransparencyNone);
               pumpkin_save_bitmap(bitmap, density, 0, 0, width, height, name);
-              bitmap = next;
+              bitmap = BmpGetNextBitmapAnyDensity(bitmap);
               break;
             default:
-              debug(DEBUG_ERROR, "RCP", "invalid bitmap version %d", bitmap->version);
+              debug(DEBUG_ERROR, "RCP", "invalid bitmap version %d", version);
               bitmap = NULL;
           }
         }
@@ -716,54 +722,132 @@ END
         emitnl(fileRef);
         emitnl(fileRef);
         break;
+      case colorTableRsc:
+        // PALETTETABLE ID 10008
+        // BEGIN
+        //   0x00 0xff 0xff 0xff
+        //   0x01 0xff 0xcc 0xff
+        //   ...
+        // END
+        StrPrintF(buf, "PALETTETABLE ID %d\nBEGIN\n", resID);
+        emit(fileRef, buf);
+        get2b(&d, p, 0);
+        u8 = ((UInt8 *)p) + 2;
+        for (i = 0; i < d; i++) {
+          StrPrintF(buf, "  0x%02X 0x%02X 0x%02X 0x%02X\n", u8[0], u8[1], u8[2], u8[3]);
+          emit(fileRef, buf);
+          u8 += 4;
+        }
+        StrCopy(buf, "END\n\n");
+        emit(fileRef, buf);
+        break;
+      case verRsc:
+        StrPrintF(buf, "VERSION ");
+        emit(fileRef, buf);
+        emitstr(fileRef, (char *)p);
+        emitnl(fileRef);
+        emitnl(fileRef);
+        break;
+      case 'APPL':
+        get4b(&creator, p, 0);
+        pumpkin_id2s(creator, st2);
+        StrPrintF(buf, "APPLICATION ID %d \"%s\"\n\n", resID, st2);
+        emit(fileRef, buf);
+        break;
+      case ainRsc:
+        StrPrintF(buf, "APPLICATIONICONNAME ID %d ", resID);
+        emit(fileRef, buf);
+        emitstr(fileRef, (char *)p);
+        emitnl(fileRef);
+        emitnl(fileRef);
+        break;
+      case appInfoStringsRsc:
+        StrPrintF(buf, "CATEGORIES ID %d\n", resID);
+        emit(fileRef, buf);
+        str = (char *)p;
+        for (j = 0; j < 16; j++) {
+          emit(fileRef, "  ");
+          emitstr(fileRef, str);
+          emitnl(fileRef);
+          str += StrLen(str) + 1;
+        }
+        emitnl(fileRef);
+        // what about the remainder of the tAIS resource ?
+        // Address Book stores some strings after the 16 categories.
+        break;
+      case defaultCategoryRscType:
+        StrPrintF(buf, "LAUNCHERCATEGORY ID %d \"%s\"\n\n", resID, (char *)p);
+        emit(fileRef, buf);
+        break;
+      case sysResTFeatures:
+        i = get2b(&num, p, 0);
+        for (j = 0; j < num; j++) {
+          i += get4b(&creator, p, i);
+          i += get2b(&d, p, i);
+          for (k = 0; k < d; k++) {
+            i += get2b(&featNum, p, i);
+            i += get4b(&featVal, p, i);
+            pumpkin_id2s(creator, st2);
+            StrPrintF(buf, "// feature creator '%s', number %d, value 0x%08X\n", st2, featNum, featVal);
+            emit(fileRef, buf);
+          }
+        }
+        saveData(h, p, st, resID, fileRef);
+        break;
+      case sysResTAppCode:
+      case sysResTAppGData:
+      case sysResTAppPrefs:
+      case sysRsrcTypeDlib:
+      case 'rloc':
+        // ignore
+        break;
       default:
-        debug(DEBUG_ERROR, "RCP", "unknown resource type %s", st);
+        // DATA "locs" ID 10000 "locs.dat"
+        debug(DEBUG_ERROR, "RCP", "unknown resource type %s id %d", st, resID);
+        saveData(h, p, st, resID, fileRef);
         break;
     }
     MemHandleUnlock(h);
   }
 }
 
-static void exportType(FileRef fileRef, DmOpenRef dbRef, DmResType resType) {
-  UInt16 typeIndex, index;
-  DmResID resID;
-  MemHandle h;
-
-  for (typeIndex = 0; typeIndex < 0x8000; typeIndex++) {
-    if ((index = DmFindResourceType(dbRef, resType, typeIndex)) == 0xffff) break;
-    if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
-      if (DmResourceType(h, &resType, &resID) == errNone) {
-        export(h, resType, resID, fileRef);
-      }
-      DmReleaseResource(h);
-    }
-  }
-}
-
-int rcp_export(char *prc, char *rcp) {
+static int rcp_export(char *prc, char *rcp) {
   LocalID dbID;
   DmOpenRef dbRef;
   FileRef fileRef;
+  DmResType resType;
+  DmResID resID;
+  MemHandle h;
+  UInt16 num, index;
   int r = -1;
 
   if ((dbID = DmFindDatabase(0, prc)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
       VFSFileCreate(1, rcp);
       VFSFileOpen(1, rcp, vfsModeWrite, &fileRef);
-      exportType(fileRef, dbRef, formRscType);
-      exportType(fileRef, dbRef, MenuRscType);
-      exportType(fileRef, dbRef, alertRscType);
-      exportType(fileRef, dbRef, bitmapRsc);
-      exportType(fileRef, dbRef, fontRscType);
-      exportType(fileRef, dbRef, fontExtRscType);
-      exportType(fileRef, dbRef, strRsc);
-      exportType(fileRef, dbRef, strListRscType);
-      exportType(fileRef, dbRef, constantRscType);
-      exportType(fileRef, dbRef, wrdListRscType);
+      num = DmNumResources(dbRef);
+      for (index = 0; index < num; index++) {
+        if (DmResourceInfo(dbRef, index, &resType, &resID, NULL) == errNone) {
+          if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
+            export(h, resType, resID, fileRef);
+            DmReleaseResource(h);
+          }
+        }
+      }
       VFSFileClose(fileRef);
       DmCloseDatabase(dbRef);
       r = 0;
     }
+  }
+
+  return r;
+}
+
+int CommandMain(int argc, char *argv[]) {
+  int r = -1;
+
+  if (argc == 2) {
+    r = rcp_export(argv[0], argv[1]);
   }
 
   return r;
