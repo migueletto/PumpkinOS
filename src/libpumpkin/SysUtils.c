@@ -112,6 +112,37 @@ Int16 SysRandom(Int32 newSeed) {
 0000140   W   a   n   i   n   g  sp   c   r   e   s   c   e   n   t nul
 */
 
+Char **SysStringArray(UInt16 resID, UInt16 *numStrings) {
+  MemHandle h;
+  char *prefix, *str, **array = NULL;
+  UInt16 len;
+  UInt8 *p;
+  int i, j;
+
+  if (numStrings) {
+    if ((h = DmGetResource(strListRscType, resID)) != NULL) {
+      if ((p = MemHandleLock(h)) != NULL) {
+        i = 0;
+        i += pumpkin_getstr(&prefix, p, i);
+        i += get2b(numStrings, p, i);
+        if ((array = MemPtrNew(*numStrings * sizeof(char *))) != NULL) {
+          for (j = 0; j < *numStrings; j++) {
+            i += pumpkin_getstr(&str, p, i);
+            len = StrLen(prefix) + StrLen(str) + 1;
+            if ((array[j] = MemPtrNew(len)) != NULL) {
+              StrPrintF(array[j], "%s%s", prefix, str);
+            }
+          }
+        }
+        MemHandleUnlock(h);
+      }
+      DmReleaseResource(h);
+    }
+  }
+
+  return array;
+}
+
 Char *SysStringByIndex(UInt16 resID, UInt16 index, Char *strP, UInt16 maxLen) {
   MemHandle h;
   char *prefix, *str;

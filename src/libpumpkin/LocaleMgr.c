@@ -1,19 +1,19 @@
 #include <PalmOS.h>
 
+#include "pumpkin.h"
 #include "bytes.h"
 #include "debug.h"
 
+// each word is 2 bytes, 10 words per locale
+#define numCols 10
+#define numLocales(h) (MemHandleSize(h) / (numCols * 2))
+
 UInt16 LmGetNumLocales(void) {
   MemHandle h;
-  UInt8 *p;
-  UInt16 i, num = 0;
+  UInt16 num = 0;
 
-  if ((h = DmGetResource('locs', 10000)) != NULL) {
-    if ((p = MemHandleLock(h)) != NULL) {
-      i  = get2b(&num, p, 0); // version ???
-      i += get2b(&num, p, i); // number of locales
-      MemHandleUnlock(h);
-    }
+  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
+    num = numLocales(h);
     DmReleaseResource(h);
   }
 
@@ -22,8 +22,7 @@ UInt16 LmGetNumLocales(void) {
 
 Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
   MemHandle h;
-  UInt8 *p;
-  UInt16 i, num;
+  UInt16 i, num, *p;
   Int16 tz;
   Err err = errNone;
 
@@ -31,19 +30,15 @@ Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL) {
+  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
-      i  = get2b(&num, p, 0); // version ???
-      i += get2b(&num, p, i); // number of locales
-      p = &p[i];
-
+      num = numLocales(h);
       for (i = *ioLocaleIndex; i < num; i++) {
-        get2b((uint16_t *)&tz, &p[26], 0);
+        tz = (Int16)p[i * numCols + 6];
         if (tz == timeZone) {
           *ioLocaleIndex = i;
           break;
         }
-        p += 64;
       }
       if (i == num) {
         err = lmErrBadLocaleIndex;
@@ -62,27 +57,22 @@ Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
 
 Err LmLocaleToIndex(const LmLocaleType *iLocale, UInt16 *oLocaleIndex) {
   MemHandle h;
-  UInt8 *p;
-  UInt16 i, num;
+  UInt16 i, num, *p;
   Err err = errNone;
 
   if (iLocale == NULL || oLocaleIndex == NULL) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL) {
+  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
-      i  = get2b(&num, p, 0); // version ???
-      i += get2b(&num, p, i); // number of locales
-      p = &p[i];
-
+      num = numLocales(h);
       for (i = 0; i < num; i++) {
-        if ((iLocale->language == lmAnyLanguage || iLocale->language == p[0]) &&
-            (iLocale->country == lmAnyCountry || iLocale->country == p[1])) {
+        if ((iLocale->language == lmAnyLanguage || iLocale->language == p[i * numCols + 1]) &&
+            (iLocale->country == lmAnyCountry || iLocale->country == p[i * numCols + 0])) {
           *oLocaleIndex = i;
           break;
         }
-        p += 64;
       }
       if (i == num) {
         err = lmErrBadLocaleIndex;
@@ -121,36 +111,31 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
   TimeFormatType *tf;
   NumberFormatType *nf;
   MeasurementSystemType *ms;
-  UInt8 *p, *value8;
-  UInt16 i, num;
+  UInt8 *value8;
+  UInt16 *value16, num, *p;
   Err err = errNone;
 
   if (oValue == NULL) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource('locs', 10000)) != NULL) {
+  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
-      i  = get2b(&num, p, 0); // version ???
-      i += get2b(&num, p, i); // number of locales
-      p = &p[i];
-
+      num = numLocales(h);
       if (iLocaleIndex < num) {
-        p = &p[iLocaleIndex * 64];
-
         switch (iChoice) {
           case lmChoiceLocale:
             if (iValueSize >= sizeof(LmLocaleType)) {
               locale = (LmLocaleType *)oValue;
-              locale->language = p[0];
-              locale->country = p[1];
+              locale->country  = p[iLocaleIndex * numCols + 0];
+              locale->language = p[iLocaleIndex * numCols + 1];
             } else {
               err = lmErrSettingDataOverflow;
             }
             break;
           case lmChoiceCountryName:
             if (iValueSize >= kMaxCountryNameLen+1) {
-              MemMove(oValue, &p[2], kMaxCountryNameLen+1);
+              MemMove(oValue, PrefCountryName(iLocaleIndex), kMaxCountryNameLen+1);
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -158,7 +143,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceDateFormat:
             if (iValueSize >= sizeof(DateFormatType)) {
               df = (DateFormatType *)oValue;
-              *df = p[22];
+              *df = p[iLocaleIndex * numCols + 2];
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -166,7 +151,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceLongDateFormat:
             if (iValueSize >= sizeof(DateFormatType)) {
               df = (DateFormatType *)oValue;
-              *df = p[23];
+              *df = p[iLocaleIndex * numCols + 3];
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -174,7 +159,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceTimeFormat:
             if (iValueSize >= sizeof(TimeFormatType)) {
               tf = (TimeFormatType *)oValue;
-              *tf = p[24];
+              *tf = p[iLocaleIndex * numCols + 4];
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -182,14 +167,15 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceWeekStartDay:
             if (iValueSize >= 1) {
               value8 = (UInt8 *)oValue;
-              *value8 = p[25];
+              *value8 = p[iLocaleIndex * numCols + 5];
             } else {
               err = lmErrSettingDataOverflow;
             }
             break;
           case lmChoiceTimeZone:
             if (iValueSize >= 2) {
-              get2b(oValue, &p[26], 0);
+              value16 = (UInt16 *)oValue;
+              *value16 = p[iLocaleIndex * numCols + 6];
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -197,28 +183,28 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceNumberFormat:
             if (iValueSize >= sizeof(NumberFormatType)) {
               nf = (NumberFormatType *)oValue;
-              *nf = p[28];
+              *nf = p[iLocaleIndex * numCols + 7];
             } else {
               err = lmErrSettingDataOverflow;
             }
             break;
           case lmChoiceCurrencyName:
             if (iValueSize >= kMaxCurrencyNameLen+1) {
-              MemMove(oValue, &p[30], kMaxCurrencyNameLen+1);
+              SysStringByIndex(21000, iLocaleIndex, (char *)oValue, kMaxCurrencyNameLen+1);
             } else {
               err = lmErrSettingDataOverflow;
             }
             break;
           case lmChoiceCurrencySymbol:
             if (iValueSize >= kMaxCurrencySymbolLen+1) {
-              MemMove(oValue, &p[50], kMaxCurrencySymbolLen+1);
+              SysStringByIndex(19000, iLocaleIndex, (char *)oValue, kMaxCurrencySymbolLen+1);
             } else {
               err = lmErrSettingDataOverflow;
             }
             break;
           case lmChoiceUniqueCurrencySymbol:
             if (iValueSize >= kMaxCurrencySymbolLen+1) {
-              MemMove(oValue, &p[56], kMaxCurrencySymbolLen+1);
+              SysStringByIndex(20000, iLocaleIndex, (char *)oValue, kMaxCurrencySymbolLen+1);
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -226,7 +212,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceCurrencyDecimalPlaces:
             if (iValueSize >= 1) {
               value8 = (UInt8 *)oValue;
-              *value8 = p[62];
+              *value8 = p[iLocaleIndex * numCols + 8];
             } else {
               err = lmErrSettingDataOverflow;
             }
@@ -234,7 +220,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
           case lmChoiceMeasurementSystem:
             if (iValueSize >= sizeof(MeasurementSystemType)) {
               ms = (MeasurementSystemType *)oValue;
-              *ms = p[63];
+              *ms = p[iLocaleIndex * numCols + 9];
             } else {
               err = lmErrSettingDataOverflow;
             }

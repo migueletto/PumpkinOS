@@ -1471,4 +1471,154 @@ END
 DATA "tAIB" ID 10000 "tAIB.10000"
 DATA "tAIB" ID 10001 "tAIB.10001"
 
-DATA "locs" ID 10000 "locs.dat"
+// Country codes
+STRINGTABLE ID 15000 ""
+  "AU" "AT" "BE" "BR" "CA" "DK" "FI" "FR" "DE" "HK"
+  "IS" "IE" "IT" "JP" "LU" "MX" "NL" "NZ" "NO" "ES"
+  "SE" "CH" "GB" "US" "IN" "ID" "KR" "MY" "CN" "PH"
+  "SG" "TH" "TW" "AD" "AE" "AF" "AG" "AI" "AL" "AM"
+  "AN" "AO" "AQ" "AR" "AS" "AW" "AZ" "BA" "BB" "BD"
+  "BF" "BG" "BH" "BI" "BJ" "BM" "BN" "BO" "BS" "BT"
+  "BV" "BW" "BY" "BZ" "CC" "CD" "CF" "CG" "CI" "CK"
+  "CL" "CM" "CO" "CR" "CU" "CV" "CX" "CY" "CZ" "DJ"
+  "DM" "DO" "DZ" "EC" "EE" "EG" "EH" "ER" "ET" "FJ"
+  "FK" "FM" "FO" "FX" "GA" "GD" "GE" "GF" "GH" "GI"
+  "GL" "GM" "GN" "GP" "GQ" "GR" "GS" "GT" "GU" "GW"
+  "GY" "HM" "HN" "HR" "HT" "HU" "IL" "IO" "IQ" "IR"
+  "JM" "JO" "KE" "KG" "KH" "KI" "KM" "KN" "KP" "KW"
+  "KY" "KK" "LA" "LB" "LC" "LI" "LK" "LR" "LS" "LT"
+  "LV" "LY" "MA" "MC" "MD" "MG" "MH" "MK" "ML" "MM"
+  "MN" "MO" "MP" "MQ" "MR" "MS" "MT" "MU" "MV" "MW"
+  "MZ" "NA" "NC" "NE" "NF" "NG" "NI" "NP" "NR" "NU"
+  "OM" "PA" "PE" "PF" "PG" "PK" "PL" "PM" "PN" "PR"
+  "PT" "PW" "PY" "QA" "RE" "RO" "RU" "RW" "SA" "SB"
+  "SC" "SD" "SH" "SI" "SJ" "SK" "SL" "SM" "SN" "SO"
+  "SR" "ST" "SV" "SY" "SZ" "TC" "TD" "TF" "TG" "TJ"
+  "TK" "TM" "TN" "TO" "TP" "TR" "TT" "TV" "TZ" "UA"
+  "UG" "UM" "UY" "UZ" "VA" "VC" "VE" "VG" "VI" "VN"
+  "VU" "WF" "WS" "YE" "YT" "YU" "ZA" "ZM" "ZW"
+
+// Country names
+STRINGTABLE ID 16000 ""
+  "Australia" "Austria" "Belgium" "Brazil" "Canada" "Denmark" "Finland" "France" "Germany" "Hong Kong"
+  "Iceland" "Ireland" "Italy" "Japan" "Luxembourg" "Mexico" "Netherlands" "New Zealand" "Norway" "Spain"
+  "Sweden" "Switzerland" "United Kingdom" "United States" "India" "Indonesia" "Republic of Korea" "Malaysia" "China" "Philippines"
+  "Singapore" "Thailand" "Taiwan" "Andorra" "United Arab Emirates" "Afghanistan" "Antigua and Barbuda" "Anguilla" "Albania" "Armenia"
+  "Netherlands Antilles" "Angola" "Antarctica" "Argentina" "American Samoa" "Aruba" "Azerbaijan" "Bosnia and Herzegovina" "Barbados" "Bangladesh"
+  "Burkina Faso" "Bulgaria" "Bahrain" "Burundi" "Benin" "Bermuda" "Brunei Darussalam" "Bolivia" "Bahamas" "Bhutan"
+  "Bouvet Island" "Botswana" "Belarus" "Belize" "Cocos Islands" "Democratic Republic of the Congo" "Central African Republic" "Congo" "Ivory Coast" "Cook Islands"
+  "Chile" "Cameroon" "Columbia" "Costa Rica" "Cuba" "Cape Verde" "Christmas Island" "Cyprus" "Czech Republic" "Djibouti"
+  "Dominica" "Dominican Republic" "Algeria" "Ecuador" "Estonia" "Egypt" "Western Sahara" "Eritrea" "Ethiopia" "Fiji"
+  "Falkland Islands" "Micronesia" "Faeroe Islands" "Metropolitan France" "Gabon" "Grenada" "Georgia" "French Guiana" "Ghana" "Gibraltar"
+  "Greenland" "Gambia" "Guinea" "Guadeloupe" "Equatorial Guinea" "Greece" "South Georgia and the South Sandwich Islands" "Guatemala" "Guam" "GuineaBisseu"
+  "Guyana" "Heard and McDonald Islands" "Honduras" "Croatia" "Haiti" "Hungary" "Israel" "British Indian Ocean Territory" "Iraq" "Iran"
+  "Jamaica" "Jordan" "Kenya" "Kyrgyzstan" "Cambodia" "Kiribati" "Comoros" "StKitts and Nevis" "Democratic Peoples Republic of Korea" "Kuwait"
+  "Cayman Islands" "Kazakhstan" "Laos" "Lebanon" "StLucia" "Liechtenstein" "SriLanka" "Liberia" "Lesotho" "Lithuania"
+  "Latvia" "Libya" "Morrocco" "Monaco" "Moldova" "Madagascar" "Marshall Islands" "Macedonia" "Mali" "Myanmar"
+  "Mongolia" "Macau" "Northern Mariana Islands" "Martinique" "Mauritania" "Montserrat" "Malta" "Mauritius" "Maldives" "Malawi"
+  "Mozambique" "Namibia" "NewCaledonia" "Niger" "Norfolk Island" "Nigeria" "Nicaragua" "Nepal" "Nauru" "Niue"
+  "Oman" "Panama" "Peru" "French Polynesia" "Papua New Guinea" "Pakistan" "Poland" "St Pierre and Miquelon" "Pitcairn" "Puerto Rico"
+  "Portugal" "Palau" "Paraguay" "Qatar" "Reunion" "Romania" "Russian Federation" "Rwanda" "Saudi Arabia" "Solomon Islands"
+  "Seychelles" "Sudan" "StHelena" "Slovenia" "Svalbard and JanMayen Islands" "Slovakia" "Sierra Leone" "SanMarino" "Senegal" "Somalia"
+  "Suriname" "Sao Tome and Principe" "El Salvador" "Syran Arab Republic" "Swaziland" "Turks and Caicos Islands" "Chad" "French Southern Territories" "Togo" "Tajikistan"
+  "Tokelau" "Turkmenistan" "Tunisia" "Tonga" "EastTimor" "Turkey" "Trinidad and Tobago" "Tuvalu" "Tanzania" "Ukraine"
+  "Uganda" "United States Minor Outlying Islands" "Uruguay" "Uzbekistan" "HolySee" "StVincent and the Grenadines" "Venezuela" "British Virgin Islands" "US Virgin Islands" "VietNam"
+  "Vanuatu" "Wallis and Futuna Islands" "Samoa" "Yemen" "Mayotte" "Yugoslavia" "South Africa" "Zambia" "Zimbabwe"
+
+// Language codes
+STRINGTABLE ID 17000 ""
+  "EN" "FR" "DE" "IT" "ES" "UTF8" "JA" "NL" "AA" "AB"
+  "AF" "AM" "AR" "AS" "AY" "AZ" "BA" "BE" "BG" "BH"
+  "BI" "BN" "BO" "BR" "CA" "CO" "CS" "CY" "DA" "DZ"
+  "EL" "EO" "ET" "EU" "FA" "FI" "FJ" "FO" "FY" "GA"
+  "GD" "GL" "GN" "GU" "HA" "HI" "HR" "HU" "HY" "IA"
+  "IE" "IK" "IN" "IS" "IW" "JI" "JW" "KA" "KK" "KL"
+  "KM" "KN" "KO" "KS" "KU" "KY" "LA" "LN" "LO" "LT"
+  "LV" "MG" "MI" "MK" "ML" "MN" "MO" "MR" "MS" "MT"
+  "MY" "NA" "NE" "NO" "OC" "OM" "OR" "PA" "PL" "PS"
+  "PT" "QU" "RM" "RN" "RO" "RU" "RW" "SA" "SD" "SG"
+  "SH" "SI" "SK" "SL" "SM" "SN" "SO" "SQ" "SR" "SS"
+  "ST" "SU" "SV" "SW" "TA" "TE" "TG" "TH" "TI" "TK"
+  "TL" "TN" "TO" "TR" "TS" "TT" "TW" "UK" "UR" "UZ"
+  "VI" "VO" "WO" "XH" "YO" "ZH" "ZU"
+
+// Language names
+STRINGTABLE ID 18000 ""
+  "English" "French" "German" "Italian" "Spanish" "UTF8" "Japanese" "Dutch" "Afar" "Abkhazian"
+  "Afrikaans" "Amharic" "Arabic" "Assamese" "Aymara" "Azerbaijani" "Bashkir" "Byelorussian" "Bulgarian" "Bihari"
+  "Bislama" "Bengali" "Tibetan" "Breton" "Catalan" "Corsican" "Czech" "Welsh" "Danish" "Bhutani"
+  "Greek" "Esperanto" "Estonian" "Basque" "Persian" "Finnish" "Fiji" "Faroese" "Frisian" "Irish"
+  "Scots Gaelic" "Galician" "Guarani" "Gujarati" "Hausa" "Hindi" "Croatian" "Hungarian" "Armenian" "Interlingua"
+  "Interlingue" "Inupiak" "Indonesian" "Icelandic" "Hebrew" "Yiddish" "Javanese" "Georgian" "Kazakh" "Greenlandic"
+  "Cambodian" "Kannada" "Korean" "Kashmiri" "Kurdish" "Kirghiz" "Latin" "Lingala" "Laothian" "Lithuanian"
+  "Latvian" "Malagasy" "Maori" "Macedonian" "Malayalam" "Mongolian" "Moldavian" "Marathi" "Malay" "Maltese"
+  "Burmese" "Nauru" "Nepali" "Norwegian" "Occitan" "Afan" "Oriya" "Punjabi" "Polish" "Pashto"
+  "Portuguese" "Quechua" "Rhaeto Romance" "Kurundi" "Romanian" "Russian" "Kinyarwanda" "Sanskrit" "Sindhi" "Sangho"
+  "Serbo Croatian" "Singhalese" "Slovak" "Slovenian" "Samoan" "Shona" "Somali" "Albanian" "Serbian" "Siswati"
+  "Sesotho" "Sudanese" "Swedish" "Swahili" "Tamil" "Telugu" "Tajik" "Thai" "Tigrinya" "Turkmen"
+  "Tagalog" "Setswana" "Tonga" "Turkish" "Tsonga" "Tatar" "Twi" "Ukrainian" "Urdu" "Uzbek"
+  "Vietnamese" "Volapuk" "Wolof" "Xhosa" "Yoruba" "Chinese" "Zulu"
+
+// Locale currency symbols
+STRINGTABLE ID 19000 ""
+  "$" "AS" "BF" "R$" "$" "kr" "Mk" "F" "DM" "$"
+  "kr" "IR\xa3" "L." "\xa5" "F" "$" "F" "$" "kr" "Pts"
+  "kr" "SFr." "\xa3" "$" "Rs" "Rp" "KRW" "RM" "RMB" "P"
+  "$" "BHT" "NT$"
+
+// Locale unique currency symbols
+STRINGTABLE ID 20000 ""
+  "AU$" "S" "BF" "R$" "$CN" "DKK" "Mk" "FRF" "DM" "HK$"
+  "ISK" "IR\xa3" "L." "\xa5" "Flux" "MXP" "NLG" "$NZ" "NOK" "Pts"
+  "SEK" "CHF" "\xa3" "$US" "Rs" "Rp" "KRW" "RM" "RMB" "P"
+  "$" "BHT" "NT$"
+
+// Locale currency names
+STRINGTABLE ID 21000 ""
+  "Australian Dollar" "Schilling" "Franc" "Cruzeiro" "Canadian Dollar" "Krone" "Markka" "Franc" "Deutsche Mark" "HK Dollar"
+  "Icelandic Krona" "Punt" "Italian Lira" "Yen" "Luxembourg Franc" "Peso" "Guilder" "New Zealand Dollar" "Norwegian Krone" "Peseta"
+  "Swedish Krona" "Swiss Franc" "Pound" "US Dollar" "Indian Rupees" "Indonesian Rupiah" "Korean Won" "Malaysian Ringgit" "Renminbi" "Philippines Peso"
+  "Singapore Dollar" "Thai Baht" "New Taiwan Dollar"
+
+// Locale numeric fields
+WORDLIST ID 22000
+BEGIN
+// DF: DateFormat, LDF: LongDateFormat, TF: TimeFormat
+// Week: WeekStartDay, TZ: TimeZone, NF: NumberFormat
+// CurD: CurrencyDecimalPlaces, Meas: MeasurementSystem
+
+// Ctry Lang DF LDF TF Week   TZ NF CurD Meas
+      0    0  1   8  1    0  600  0    2    1
+      1    2  2   9  2    1   60  1    2    1
+      2    1  1   8  2    1   60  1    2    1
+      3   90  1   8  2    0 -180  1    2    1
+      4    0  1   7  1    1 -300  0    2    1
+      5   28  3   9  2    1   60  1    2    1
+      6   35  2   9  2    1  120  2    2    1
+      7    1  1   8  2    1   60  2    2    1
+      8    2  2   9  2    1   60  1    2    1
+      9  135  1   8  2    0  480  0    2    1
+     10   53  2   9  2    1    0  1    2    1
+     11    0  1   8  2    0    0  0    2    1
+     12    3  1   8  5    1   60  1    0    1
+     13    6  4  13  2    0  540  0    0    1
+     14    1  1   8  2    1   60  2    2    1
+     15    4  1   8  2    1 -360  0    2    1
+     16    7  2   8  2    1   60  1    2    1
+     17    0  1   8  1    0  720  0    2    1
+     18   83  2   9  2    1   60  2    2    1
+     19    4  1   8  2    1   60  1    0    1
+     20  112  6   8  2    1   60  2    2    1
+     21    2  2   9  8    1   60  4    2    1
+     22    0  1   8  2    0    0  0    2    1
+     23    0  0   7  1    0 -480  0    2    0
+     24   45  1   8  2    1  330  0    2    1
+     25   52  1   8  2    1  420  0    2    1
+     26   62  4  13  1    0  540  0    0    1
+     27   78  1   8  2    1  480  1    2    1
+     28  135  1   8  2    0  480  0    2    1
+     29  120  0   7  1    1  480  0    2    1
+     30   78  1   8  2    1  480  0    2    1
+     31  117  1   8  2    1  420  1    2    1
+     32  135  0   7  1    0  480  1    2    1
+END

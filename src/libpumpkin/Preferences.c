@@ -20,404 +20,18 @@
 static mutex_t *mutex;
 static SystemPreferencesType prefs;
 
-typedef struct {
-  char *descr;
-  UInt16 code;
-  char *name;
-} locale_map_t;
-
-#define NUM_COUNTRIES 239
-
-static locale_map_t countries[NUM_COUNTRIES] = {
-  { "AU", 0, "Australia" },
-  { "AT", 1, "Austria" },
-  { "BE", 2, "Belgium" },
-  { "BR", 3, "Brazil" },
-  { "CA", 4, "Canada" },
-  { "DK", 5, "Denmark" },
-  { "FI", 6, "Finland" },
-  { "FR", 7, "France" },
-  { "DE", 8, "Germany" },
-  { "HK", 9, "Hong Kong" },
-  { "IS", 10, "Iceland" },
-  { "IE", 11, "Ireland" },
-  { "IT", 12, "Italy" },
-  { "JP", 13, "Japan" },
-  { "LU", 14, "Luxembourg" },
-  { "MX", 15, "Mexico" },
-  { "NL", 16, "Netherlands" },
-  { "NZ", 17, "New Zealand" },
-  { "NO", 18, "Norway" },
-  { "ES", 19, "Spain" },
-  { "SE", 20, "Sweden" },
-  { "CH", 21, "Switzerland" },
-  { "GB", 22, "United Kingdom" },
-  { "US", 23, "United States" },
-  { "IN", 24, "India" },
-  { "ID", 25, "Indonesia" },
-  { "KR", 26, "Republic of Korea" },
-  { "MY", 27, "Malaysia" },
-  { "CN", 28, "China" },
-  { "PH", 29, "Philippines" },
-  { "SG", 30, "Singapore" },
-  { "TH", 31, "Thailand" },
-  { "TW", 32, "Taiwan" },
-  { "AD", 33, "Andorra" },
-  { "AE", 34, "United Arab Emirates" },
-  { "AF", 35, "Afghanistan" },
-  { "AG", 36, "Antigua and Barbuda" },
-  { "AI", 37, "Anguilla" },
-  { "AL", 38, "Albania" },
-  { "AM", 39, "Armenia" },
-  { "AN", 40, "Netherlands Antilles" },
-  { "AO", 41, "Angola" },
-  { "AQ", 42, "Antarctica" },
-  { "AR", 43, "Argentina" },
-  { "AS", 44, "American Samoa" },
-  { "AW", 45, "Aruba" },
-  { "AZ", 46, "Azerbaijan" },
-  { "BA", 47, "Bosnia and Herzegovina" },
-  { "BB", 48, "Barbados" },
-  { "BD", 49, "Bangladesh" },
-  { "BF", 50, "Burkina Faso" },
-  { "BG", 51, "Bulgaria" },
-  { "BH", 52, "Bahrain" },
-  { "BI", 53, "Burundi" },
-  { "BJ", 54, "Benin" },
-  { "BM", 55, "Bermuda" },
-  { "BN", 56, "Brunei Darussalam" },
-  { "BO", 57, "Bolivia" },
-  { "BS", 58, "Bahamas" },
-  { "BT", 59, "Bhutan" },
-  { "BV", 60, "Bouvet Island" },
-  { "BW", 61, "Botswana" },
-  { "BY", 62, "Belarus" },
-  { "BZ", 63, "Belize" },
-  { "CC", 64, "Cocos Islands" },
-  { "CD", 65, "Democratic Republic of the Congo" },
-  { "CF", 66, "Central African Republic" },
-  { "CG", 67, "Congo" },
-  { "CI", 68, "Ivory Coast" },
-  { "CK", 69, "Cook Islands" },
-  { "CL", 70, "Chile" },
-  { "CM", 71, "Cameroon" },
-  { "CO", 72, "Columbia" },
-  { "CR", 73, "Costa Rica" },
-  { "CU", 74, "Cuba" },
-  { "CV", 75, "Cape Verde" },
-  { "CX", 76, "Christmas Island" },
-  { "CY", 77, "Cyprus" },
-  { "CZ", 78, "Czech Republic" },
-  { "DJ", 79, "Djibouti" },
-  { "DM", 80, "Dominica" },
-  { "DO", 81, "Dominican Republic" },
-  { "DZ", 82, "Algeria" },
-  { "EC", 83, "Ecuador" },
-  { "EE", 84, "Estonia" },
-  { "EG", 85, "Egypt" },
-  { "EH", 86, "Western Sahara" },
-  { "ER", 87, "Eritrea" },
-  { "ET", 88, "Ethiopia" },
-  { "FJ", 89, "Fiji" },
-  { "FK", 90, "Falkland Islands" },
-  { "FM", 91, "Micronesia" },
-  { "FO", 92, "Faeroe Islands" },
-  { "FX", 93, "Metropolitan France" },
-  { "GA", 94, "Gabon" },
-  { "GD", 95, "Grenada" },
-  { "GE", 96, "Georgia" },
-  { "GF", 97, "French Guiana" },
-  { "GH", 98, "Ghana" },
-  { "GI", 99, "Gibraltar" },
-  { "GL", 100, "Greenland" },
-  { "GM", 101, "Gambia" },
-  { "GN", 102, "Guinea" },
-  { "GP", 103, "Guadeloupe" },
-  { "GQ", 104, "Equatorial Guinea" },
-  { "GR", 105, "Greece" },
-  { "GS", 106, "South Georgia and the South Sandwich Islands" },
-  { "GT", 107, "Guatemala" },
-  { "GU", 108, "Guam" },
-  { "GW", 109, "GuineaBisseu" },
-  { "GY", 110, "Guyana" },
-  { "HM", 111, "Heard and McDonald Islands" },
-  { "HN", 112, "Honduras" },
-  { "HR", 113, "Croatia" },
-  { "HT", 114, "Haiti" },
-  { "HU", 115, "Hungary" },
-  { "IL", 116, "Israel" },
-  { "IO", 117, "British Indian Ocean Territory" },
-  { "IQ", 118, "Iraq" },
-  { "IR", 119, "Iran" },
-  { "JM", 120, "Jamaica" },
-  { "JO", 121, "Jordan" },
-  { "KE", 122, "Kenya" },
-  { "KG", 123, "Kyrgyzstan" },
-  { "KH", 124, "Cambodia" },
-  { "KI", 125, "Kiribati" },
-  { "KM", 126, "Comoros" },
-  { "KN", 127, "StKitts and Nevis" },
-  { "KP", 128, "Democratic Peoples Republic of Korea" },
-  { "KW", 129, "Kuwait" },
-  { "KY", 130, "Cayman Islands" },
-  { "KK", 131, "Kazakhstan" },
-  { "LA", 132, "Laos" },
-  { "LB", 133, "Lebanon" },
-  { "LC", 134, "StLucia" },
-  { "LI", 135, "Liechtenstein" },
-  { "LK", 136, "SriLanka" },
-  { "LR", 137, "Liberia" },
-  { "LS", 138, "Lesotho" },
-  { "LT", 139, "Lithuania" },
-  { "LV", 140, "Latvia" },
-  { "LY", 141, "Libya" },
-  { "MA", 142, "Morrocco" },
-  { "MC", 143, "Monaco" },
-  { "MD", 144, "Moldova" },
-  { "MG", 145, "Madagascar" },
-  { "MH", 146, "Marshall Islands" },
-  { "MK", 147, "Macedonia" },
-  { "ML", 148, "Mali" },
-  { "MM", 149, "Myanmar" },
-  { "MN", 150, "Mongolia" },
-  { "MO", 151, "Macau" },
-  { "MP", 152, "Northern Mariana Islands" },
-  { "MQ", 153, "Martinique" },
-  { "MR", 154, "Mauritania" },
-  { "MS", 155, "Montserrat" },
-  { "MT", 156, "Malta" },
-  { "MU", 157, "Mauritius" },
-  { "MV", 158, "Maldives" },
-  { "MW", 159, "Malawi" },
-  { "MZ", 160, "Mozambique" },
-  { "NA", 161, "Namibia" },
-  { "NC", 162, "NewCaledonia" },
-  { "NE", 163, "Niger" },
-  { "NF", 164, "Norfolk Island" },
-  { "NG", 165, "Nigeria" },
-  { "NI", 166, "Nicaragua" },
-  { "NP", 167, "Nepal" },
-  { "NR", 168, "Nauru" },
-  { "NU", 169, "Niue" },
-  { "OM", 170, "Oman" },
-  { "PA", 171, "Panama" },
-  { "PE", 172, "Peru" },
-  { "PF", 173, "French Polynesia" },
-  { "PG", 174, "Papua New Guinea" },
-  { "PK", 175, "Pakistan" },
-  { "PL", 176, "Poland" },
-  { "PM", 177, "St Pierre and Miquelon" },
-  { "PN", 178, "Pitcairn" },
-  { "PR", 179, "Puerto Rico" },
-  { "PT", 180, "Portugal" },
-  { "PW", 181, "Palau" },
-  { "PY", 182, "Paraguay" },
-  { "QA", 183, "Qatar" },
-  { "RE", 184, "Reunion" },
-  { "RO", 185, "Romania" },
-  { "RU", 186, "Russian Federation" },
-  { "RW", 187, "Rwanda" },
-  { "SA", 188, "Saudi Arabia" },
-  { "SB", 189, "Solomon Islands" },
-  { "SC", 190, "Seychelles" },
-  { "SD", 191, "Sudan" },
-  { "SH", 192, "StHelena" },
-  { "SI", 193, "Slovenia" },
-  { "SJ", 194, "Svalbard and JanMayen Islands" },
-  { "SK", 195, "Slovakia" },
-  { "SL", 196, "Sierra Leone" },
-  { "SM", 197, "SanMarino" },
-  { "SN", 198, "Senegal" },
-  { "SO", 199, "Somalia" },
-  { "SR", 200, "Suriname" },
-  { "ST", 201, "Sao Tome and Principe" },
-  { "SV", 202, "El Salvador" },
-  { "SY", 203, "Syran Arab Republic" },
-  { "SZ", 204, "Swaziland" },
-  { "TC", 205, "Turks and Caicos Islands" },
-  { "TD", 206, "Chad" },
-  { "TF", 207, "French Southern Territories" },
-  { "TG", 208, "Togo" },
-  { "TJ", 209, "Tajikistan" },
-  { "TK", 210, "Tokelau" },
-  { "TM", 211, "Turkmenistan" },
-  { "TN", 212, "Tunisia" },
-  { "TO", 213, "Tonga" },
-  { "TP", 214, "EastTimor" },
-  { "TR", 215, "Turkey" },
-  { "TT", 216, "Trinidad and Tobago" },
-  { "TV", 217, "Tuvalu" },
-  { "TZ", 218, "Tanzania" },
-  { "UA", 219, "Ukraine" },
-  { "UG", 220, "Uganda" },
-  { "UM", 221, "United States Minor Outlying Islands" },
-  { "UY", 222, "Uruguay" },
-  { "UZ", 223, "Uzbekistan" },
-  { "VA", 224, "HolySee" },
-  { "VC", 225, "StVincent and the Grenadines" },
-  { "VE", 226, "Venezuela" },
-  { "VG", 227, "British Virgin Islands" },
-  { "VI", 228, "US Virgin Islands" },
-  { "VN", 229, "VietNam" },
-  { "VU", 230, "Vanuatu" },
-  { "WF", 231, "Wallis and Futuna Islands" },
-  { "WS", 232, "Samoa" },
-  { "YE", 233, "Yemen" },
-  { "YT", 234, "Mayotte" },
-  { "YU", 235, "Yugoslavia" },
-  { "ZA", 236, "South Africa" },
-  { "ZM", 237, "Zambia" },
-  { "ZW", 238, "Zimbabwe" }
-};
-
-#define NUM_LANGUAGES 137
-
-static locale_map_t languages[NUM_LANGUAGES] = {
-  { "EN", 0, "English" },
-  { "FR", 1, "French" },
-  { "DE", 2, "German" },
-  { "IT", 3, "Italian" },
-  { "ES", 4, "Spanish" },
-  { "UTF8", 5, "UTF8" }, // was "Unused"
-  { "JA", 6, "Japanese" },
-  { "NL", 7, "Dutch" },
-  { "AA", 8, "Afar" },
-  { "AB", 9, "Abkhazian" },
-  { "AF", 10, "Afrikaans" },
-  { "AM", 11, "Amharic" },
-  { "AR", 12, "Arabic" },
-  { "AS", 13, "Assamese" },
-  { "AY", 14, "Aymara" },
-  { "AZ", 15, "Azerbaijani" },
-  { "BA", 16, "Bashkir" },
-  { "BE", 17, "Byelorussian" },
-  { "BG", 18, "Bulgarian" },
-  { "BH", 19, "Bihari" },
-  { "BI", 20, "Bislama" },
-  { "BN", 21, "Bengali" },
-  { "BO", 22, "Tibetan" },
-  { "BR", 23, "Breton" },
-  { "CA", 24, "Catalan" },
-  { "CO", 25, "Corsican" },
-  { "CS", 26, "Czech" },
-  { "CY", 27, "Welsh" },
-  { "DA", 28, "Danish" },
-  { "DZ", 29, "Bhutani" },
-  { "EL", 30, "Greek" },
-  { "EO", 31, "Esperanto" },
-  { "ET", 32, "Estonian" },
-  { "EU", 33, "Basque" },
-  { "FA", 34, "Persian" },
-  { "FI", 35, "Finnish" },
-  { "FJ", 36, "Fiji" },
-  { "FO", 37, "Faroese" },
-  { "FY", 38, "Frisian" },
-  { "GA", 39, "Irish" },
-  { "GD", 40, "Scots Gaelic" },
-  { "GL", 41, "Galician" },
-  { "GN", 42, "Guarani" },
-  { "GU", 43, "Gujarati" },
-  { "HA", 44, "Hausa" },
-  { "HI", 45, "Hindi" },
-  { "HR", 46, "Croatian" },
-  { "HU", 47, "Hungarian" },
-  { "HY", 48, "Armenian" },
-  { "IA", 49, "Interlingua" },
-  { "IE", 50, "Interlingue" },
-  { "IK", 51, "Inupiak" },
-  { "IN", 52, "Indonesian" },
-  { "IS", 53, "Icelandic" },
-  { "IW", 54, "Hebrew" },
-  { "JI", 55, "Yiddish" },
-  { "JW", 56, "Javanese" },
-  { "KA", 57, "Georgian" },
-  { "KK", 58, "Kazakh" },
-  { "KL", 59, "Greenlandic" },
-  { "KM", 60, "Cambodian" },
-  { "KN", 61, "Kannada" },
-  { "KO", 62, "Korean" },
-  { "KS", 63, "Kashmiri" },
-  { "KU", 64, "Kurdish" },
-  { "KY", 65, "Kirghiz" },
-  { "LA", 66, "Latin" },
-  { "LN", 67, "Lingala" },
-  { "LO", 68, "Laothian" },
-  { "LT", 69, "Lithuanian" },
-  { "LV", 70, "Latvian" },
-  { "MG", 71, "Malagasy" },
-  { "MI", 72, "Maori" },
-  { "MK", 73, "Macedonian" },
-  { "ML", 74, "Malayalam" },
-  { "MN", 75, "Mongolian" },
-  { "MO", 76, "Moldavian" },
-  { "MR", 77, "Marathi" },
-  { "MS", 78, "Malay" },
-  { "MT", 79, "Maltese" },
-  { "MY", 80, "Burmese" },
-  { "NA", 81, "Nauru" },
-  { "NE", 82, "Nepali" },
-  { "NO", 83, "Norwegian" },
-  { "OC", 84, "Occitan" },
-  { "OM", 85, "Afan" },
-  { "OR", 86, "Oriya" },
-  { "PA", 87, "Punjabi" },
-  { "PL", 88, "Polish" },
-  { "PS", 89, "Pashto" },
-  { "PT", 90, "Portuguese" },
-  { "QU", 91, "Quechua" },
-  { "RM", 92, "Rhaeto Romance" },
-  { "RN", 93, "Kurundi" },
-  { "RO", 94, "Romanian" },
-  { "RU", 95, "Russian" },
-  { "RW", 96, "Kinyarwanda" },
-  { "SA", 97, "Sanskrit" },
-  { "SD", 98, "Sindhi" },
-  { "SG", 99, "Sangho" },
-  { "SH", 100, "Serbo Croatian" },
-  { "SI", 101, "Singhalese" },
-  { "SK", 102, "Slovak" },
-  { "SL", 103, "Slovenian" },
-  { "SM", 104, "Samoan" },
-  { "SN", 105, "Shona" },
-  { "SO", 106, "Somali" },
-  { "SQ", 107, "Albanian" },
-  { "SR", 108, "Serbian" },
-  { "SS", 109, "Siswati" },
-  { "ST", 110, "Sesotho" },
-  { "SU", 111, "Sudanese" },
-  { "SV", 112, "Swedish" },
-  { "SW", 113, "Swahili" },
-  { "TA", 114, "Tamil" },
-  { "TE", 115, "Telugu" },
-  { "TG", 116, "Tajik" },
-  { "TH", 117, "Thai" },
-  { "TI", 118, "Tigrinya" },
-  { "TK", 119, "Turkmen" },
-  { "TL", 120, "Tagalog" },
-  { "TN", 121, "Setswana" },
-  { "TO", 122, "Tonga" },
-  { "TR", 123, "Turkish" },
-  { "TS", 124, "Tsonga" },
-  { "TT", 125, "Tatar" },
-  { "TW", 126, "Twi" },
-  { "UK", 127, "Ukrainian" },
-  { "UR", 128, "Urdu" },
-  { "UZ", 129, "Uzbek" },
-  { "VI", 130, "Vietnamese" },
-  { "VO", 131, "Volapuk" },
-  { "WO", 132, "Wolof" },
-  { "XH", 133, "Xhosa" },
-  { "YO", 134, "Yoruba" },
-  { "ZH", 135, "Chinese" },
-  { "ZU", 136, "Zulu" }
-};
+static char **countryCodes = NULL;
+static char **countryNames = NULL;
+static char **languageCodes = NULL;
+static char **languageNames = NULL;
+static UInt16 numCountries = 0, numLanguages = 0;
 
 static Int16 mapCountry(char *country) {
-  UInt16 i;
+  Int16 i;
 
-  for (i = 0; i < NUM_COUNTRIES; i++) {
-    if (StrNCaselessCompare(country, countries[i].descr, 2) == 0) {
-      return countries[i].code;
+  for (i = 0; i < numCountries; i++) {
+    if (StrNCaselessCompare(country, countryCodes[i], 2) == 0) {
+      return i;
     }
   }
 
@@ -425,11 +39,11 @@ static Int16 mapCountry(char *country) {
 }
 
 static Int16 mapLanguage(char *language) {
-  UInt16 i;
+  Int16 i;
 
-  for (i = 0; i < NUM_LANGUAGES; i++) {
-    if (StrNCaselessCompare(language, languages[i].descr, 2) == 0) {
-      return languages[i].code;
+  for (i = 0; i < numLanguages; i++) {
+    if (StrNCaselessCompare(language, languageCodes[i], 2) == 0) {
+      return i;
     }
   }
 
@@ -665,6 +279,11 @@ int PrefInitModule(void) {
   size = sizeof(SystemPreferencesType);
   MemSet(&prefs, size, 0);
 
+  countryCodes = SysStringArray(15000, &numCountries);
+  countryNames = SysStringArray(16000, &numCountries);
+  languageCodes = SysStringArray(17000, &numLanguages);
+  languageNames = SysStringArray(18000, &numLanguages);
+
   if (pumpkin_get_preference(BOOT_CREATOR, 1, &prefs, size, true) == 0) {
     debug(DEBUG_INFO, PALMOS_MODULE, "initializing system preferences");
     initPrefs(&prefs);
@@ -684,9 +303,25 @@ int PrefInitModule(void) {
   return 0;
 }
 
+static void freeArray(char **array, UInt16 num) {
+  UInt16 i;
+
+  if (array) {
+    for (i = 0; i < num; i++) {
+      if (array[i]) MemPtrFree(array[i]);
+    }
+    MemPtrFree(array);
+  }
+}
+
 int PrefFinishModule(void) {
   debug(DEBUG_INFO, PALMOS_MODULE, "saving system preferences");
   pumpkin_set_preference(BOOT_CREATOR, 1, &prefs, sizeof(SystemPreferencesType), true);
+
+  freeArray(countryCodes, numCountries);
+  freeArray(countryNames, numCountries);
+  freeArray(languageCodes, numLanguages);
+  freeArray(languageNames, numLanguages);
 
   mutex_destroy(mutex);
   mutex = NULL;
@@ -936,9 +571,9 @@ DmOpenRef PrefOpenPreferenceDBV10(void) {
 }
 
 char *PrefCountryName(UInt32 i) {
-  return i < NUM_COUNTRIES ? countries[i].name : NULL;
+  return i < numCountries ? countryNames[i] : NULL;
 }
 
 char *PrefLanguageName(UInt32 i) {
-  return i < NUM_LANGUAGES ? languages[i].name : NULL;
+  return i < numLanguages ? languageNames[i] : NULL;
 }
