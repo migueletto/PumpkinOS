@@ -796,18 +796,11 @@ BEGIN
   BITMAP "graffiti_144.bmp" BPP 8 DENSITY 144
 END
 
-/*
-BITMAP ID 32501
-BEGIN
-  BITMAP "taskbar_72.bmp"  BPP 8 DENSITY 72
-  BITMAP "taskbar_144.bmp" BPP 8 DENSITY 144
-END
-*/
 
 BITMAP ID 32501
 BEGIN
-  //BITMAP "taskbar_low.bmp"  BPP 8 DENSITY 72
-  BITMAP "taskbar_high.bmp" BPP 24 DENSITY 144
+  BITMAP "taskbar_low.bmp"  BPP 16 DENSITY 72
+  BITMAP "taskbar_high.bmp" BPP 16 DENSITY 144
 END
 
 BITMAP ID 32502
