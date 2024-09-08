@@ -802,7 +802,8 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
           emit(fileRef, "  CountryName: ");
           emitstr(fileRef, (char *)&u8[2]);
           emitnl(fileRef);
-          emit(fileRef, "  Language: ");
+          StrPrintF(buf, "  Language: %u ", u8[0]);
+          emit(fileRef, buf);
           emitstr(fileRef, PrefLanguageName(u8[0]));
           emitnl(fileRef);
           DateToAscii(12, 31, 1995, u8[22], name);
@@ -827,6 +828,9 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
           emitnl(fileRef);
           emit(fileRef, "  CurrencySymbol: ");
           emitstr(fileRef, (char *)&u8[50]);
+          emitnl(fileRef);
+          emit(fileRef, "  UniqueCurrencySymbol: ");
+          emitstr(fileRef, (char *)&u8[56]);
           emitnl(fileRef);
           StrPrintF(buf, "  CurrencyDecimalPlaces: %u\n", u8[62]);
           emit(fileRef, buf);
