@@ -158,7 +158,7 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
   UInt16 *u16, d, i, j, k, num, max, featNum;
   UInt32 *u32, size, creator, featVal;
   UInt8 *u8;
-  char *prefix, *str;
+  char *prefix, *str, ts, ds;
   FileRef fileRef2;
   void *p;
 
@@ -598,9 +598,6 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
         [NOCOLORTABLE] [COLORTABLE] [BITMAPPALETTE <Filename.s>]
         [TRANSPARENT <R.n> <G.n> <B.n>] [TRANSPARENTINDEX <Index.n>]
         */
-if (resID == 5516) {
-debug(1, "XXX", "here");
-}
         StrPrintF(buf, "%s ID %d\nBEGIN\n", resType == iconType ? "ICON" : "BITMAP", resID);
         emit(fileRef, buf);
 
@@ -794,6 +791,53 @@ debug(1, "XXX", "here");
         }
         saveData(h, p, st, resID, fileRef);
         break;
+      case 'locs':
+        get2b(&num, p, 2);
+        u8 = p;
+        u8 += 4;
+        emit(fileRef, "/*\n");
+        for (j = 0; j < num; j++) {
+          StrPrintF(buf, "  Country: %u\n", u8[1]);
+          emit(fileRef, buf);
+          emit(fileRef, "  CountryName: ");
+          emitstr(fileRef, (char *)&u8[2]);
+          emitnl(fileRef);
+          emit(fileRef, "  Language: ");
+          emitstr(fileRef, PrefLanguageName(u8[0]));
+          emitnl(fileRef);
+          DateToAscii(12, 31, 1995, u8[22], name);
+          StrPrintF(buf, "  DateFormat: %u \"%s\"\n", u8[22], name);
+          emit(fileRef, buf);
+          DateToAscii(12, 31, 1995, u8[23], name);
+          StrPrintF(buf, "  LongDateFormat: %u \"%s\"\n", u8[23], name);
+          emit(fileRef, buf);
+          TimeToAscii(17, 45, u8[24], name);
+          StrPrintF(buf, "  TimeFormat: %u \"%s\"\n", u8[24], name);
+          emit(fileRef, buf);
+          StrPrintF(buf, "  WeekStartDay: %u\n", u8[25]);
+          emit(fileRef, buf);
+          get2b(&d, u8, 26);
+          StrPrintF(buf, "  TimeZone: %d\n", (Int16)d);
+          emit(fileRef, buf);
+          LocGetNumberSeparators(u8[28], &ts, &ds);
+          StrPrintF(buf, "  NumberFormat: %u \"10%c000%c50\"\n", u8[28], ts, ds);
+          emit(fileRef, buf);
+          emit(fileRef, "  CurrencyName: ");
+          emitstr(fileRef, (char *)&u8[30]);
+          emitnl(fileRef);
+          emit(fileRef, "  CurrencySymbol: ");
+          emitstr(fileRef, (char *)&u8[50]);
+          emitnl(fileRef);
+          StrPrintF(buf, "  CurrencyDecimalPlaces: %u\n", u8[62]);
+          emit(fileRef, buf);
+          StrPrintF(buf, "  MeasurementSystem: %s\n", u8[63] == 0 ? "English" : "Metric");
+          emit(fileRef, buf);
+          emitnl(fileRef);
+          u8 += 64;
+        }
+        emit(fileRef, "*/\n\n");
+        saveData(h, p, st, resID, fileRef);
+        break;
       case sysResTAppCode:
       case sysResTAppGData:
       case sysResTAppPrefs:
@@ -802,7 +846,6 @@ debug(1, "XXX", "here");
         // ignore
         break;
       default:
-        // DATA "locs" ID 10000 "locs.dat"
         debug(DEBUG_ERROR, "RCP", "unknown resource type %s id %d", st, resID);
         saveData(h, p, st, resID, fileRef);
         break;
