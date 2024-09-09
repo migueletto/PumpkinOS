@@ -2,6 +2,7 @@
 #include <PalmCompatibility.h>
 #include <GPDLib.h>
 #include <GPSLib.h>
+#include <CPMLib.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -261,6 +262,8 @@ Err SysLibLoad(UInt32 libType, UInt32 libCreator, UInt16 *refNumP) {
     *refNumP = GPDLibRefNum;
   } else if (libType == sysFileTLibrary && libCreator == gpsLibCreator) {
     *refNumP = GPSLibRefNum;
+  } else if (libType == sysFileTLibrary && libCreator == cpmCreator) {
+    *refNumP = CpmLibRefNum;
   } else {
     *refNumP = 0;
   }
@@ -280,6 +283,8 @@ Err SysLibFind(const Char *nameP, UInt16 *refNumP) {
     *refNumP = GPDLibRefNum;
   } else if (nameP && !StrCompare(nameP, gpsLibName)) {
     *refNumP = GPSLibRefNum;
+  } else if (nameP && !StrCompare(nameP, CpmLibName)) {
+    *refNumP = CpmLibRefNum;
   } else {
     *refNumP = 0;
   }

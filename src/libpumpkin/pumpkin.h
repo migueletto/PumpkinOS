@@ -30,6 +30,9 @@ extern "C" {
 
 #define GPSLibRefNum (MAX_SYSLIBS+3)
 
+#define CpmLibRefNum (MAX_SYSLIBS+4)
+#define CpmLibName   "CPM Library"
+
 #define BUTTONS_HEIGHT 64
 
 #define MSG_KEY     1
