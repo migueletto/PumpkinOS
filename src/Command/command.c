@@ -1656,6 +1656,18 @@ static int command_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t
   return 0;
 }
 
+static int command_pterm_scroll(uint8_t row1, uint8_t row2, int16_t dir, void *_data) {
+  command_internal_data_t *idata = command_get_data();
+  RectangleType rect, vacated;
+
+  if (row1 < idata->nrows && row2 <= idata->nrows && row2 >= row1) {
+    RctSetRectangle(&rect, 0, row1 * idata->fheight, idata->ncols * idata->fwidth, (row2 - row1) * idata->fheight);
+    WinScrollRectangle(&rect, dir < 0 ? winUp : winDown, idata->fheight, &vacated);
+  }
+
+  return 0;
+}
+
 static int command_function_cmain(int pe, void *data) {
   int (*cmain)(int argc, char *argv[]) = data;
   char *argv[MAX_ARGC], *arg;
@@ -1763,6 +1775,7 @@ static Err StartApplication(void *param) {
   idata->t = pterm_init(idata->ncols, idata->nrows, 1);
   idata->cb.draw = command_pterm_draw;
   idata->cb.erase = command_pterm_erase;
+  idata->cb.scroll = command_pterm_scroll;
   idata->cb.data = data;
   pterm_callback(idata->t, &idata->cb);
 

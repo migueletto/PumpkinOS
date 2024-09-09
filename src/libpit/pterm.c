@@ -405,12 +405,17 @@ static void term_scroll_up(pterm_t *t, int row0, int row1) {
   }
 
   if (t->cb) {
-    for (row = row0, i = row0 * t->cols; row < row1-1; row++) {
-      for (col = 0; col < t->cols; col++, i++) {
-        if (t->rgb) {
-          t->cb->draw(col, row, t->char_buffer[i], t->rgb_fg_buffer[i], t->rgb_bg_buffer[i], t->attr_buffer[i], t->cb->data);
-        } else {
-          t->cb->draw(col, row, t->char_buffer[i], FG(t->color_buffer[i]), BG(t->color_buffer[i]), t->attr_buffer[i], t->cb->data);
+    if (t->cb->scroll) {
+      t->cb->scroll(row0, row1, -1, t->cb->data);
+      row = row1 - 1;
+    } else {
+      for (row = row0, i = row0 * t->cols; row < row1-1; row++) {
+        for (col = 0; col < t->cols; col++, i++) {
+          if (t->rgb) {
+            t->cb->draw(col, row, t->char_buffer[i], t->rgb_fg_buffer[i], t->rgb_bg_buffer[i], t->attr_buffer[i], t->cb->data);
+          } else {
+            t->cb->draw(col, row, t->char_buffer[i], FG(t->color_buffer[i]), BG(t->color_buffer[i]), t->attr_buffer[i], t->cb->data);
+          }
         }
       }
     }
@@ -441,12 +446,24 @@ static void term_scroll_down(pterm_t *t, int row0, int row1) {
   }
 
   if (t->cb) {
-    for (row = row0+1, i = (row0+1) * t->cols; row < row1; row++) {
-      for (col = 0; col < t->cols; col++, i++) {
-        t->cb->draw(col, row, t->char_buffer[i], FG(t->color_buffer[i]), BG(t->color_buffer[i]), t->attr_buffer[i], t->cb->data);
+    if (t->cb->scroll) {
+      t->cb->scroll(row0, row1, 1, t->cb->data);
+    } else {
+      for (row = row0+1, i = (row0+1) * t->cols; row < row1; row++) {
+        for (col = 0; col < t->cols; col++, i++) {
+          if (t->rgb) {
+            t->cb->draw(col, row, t->char_buffer[i], t->rgb_fg_buffer[i], t->rgb_bg_buffer[i], t->attr_buffer[i], t->cb->data);
+          } else {
+            t->cb->draw(col, row, t->char_buffer[i], FG(t->color_buffer[i]), BG(t->color_buffer[i]), t->attr_buffer[i], t->cb->data);
+          }
+        }
       }
     }
-    t->cb->erase(0, row0, t->cols, row0+1, BG(t->color), t->attr, t->cb->data);
+    if (t->rgb) {
+      t->cb->erase(0, row0, t->cols, row0+1, t->rgb_bg, t->attr, t->cb->data);
+    } else {
+      t->cb->erase(0, row0, t->cols, row0+1, BG(t->color), t->attr, t->cb->data);
+    }
   }
 }
 

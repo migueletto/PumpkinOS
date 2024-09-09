@@ -10,6 +10,7 @@ typedef struct pterm_t pterm_t;
 typedef struct {
   int (*draw)(uint8_t col, uint8_t row, uint8_t code, uint32_t fg, uint32_t bg, uint8_t attr, void *data);
   int (*erase)(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t row2, uint32_t bg, uint8_t attr, void *data);
+  int (*scroll)(uint8_t row1, uint8_t row2, int16_t dir, void *data);
   void (*reply)(char *buf, int n, void *data);
   void *data;
 } pterm_callback_t;
