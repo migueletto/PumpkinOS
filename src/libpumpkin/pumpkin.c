@@ -99,6 +99,7 @@ typedef struct {
 typedef struct {
   launch_request_t request;
   texture_t *texture;
+  uint32_t taskId;
   int index, width, height, x, y;
   UInt32 creator;
 } launch_data_t;
@@ -106,6 +107,7 @@ typedef struct {
 typedef struct {
   int task_index;
   int active;
+  int removed;
   int paused;
   int reserved;
   script_ref_t obj;
@@ -1103,7 +1105,7 @@ void pumpkin_calibrate(int restore) {
   }
 }
 
-static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, int height, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   LocalID dbID;
@@ -1160,7 +1162,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   color = screen->surface->color_rgb(screen->surface->data, 255, 255, 255, 255);
   surface_rectangle(screen->surface, 0, 0, width-1, height-1, 1, color);
 
-  pumpkin_module.tasks[i].taskId = pumpkin_module.nextTaskId++;
+  pumpkin_module.tasks[i].taskId = taskId;
   pumpkin_module.tasks[i].task_index = i;
   pumpkin_module.tasks[i].active = 1;
   pumpkin_module.tasks[i].reserved = 0;
@@ -1232,11 +1234,7 @@ static int pumpkin_local_init(int i, texture_t *texture, char *name, int width, 
   SelTimeInitModule();
   SysFatalAlertInit();
 
-  if (pumpkin_module.wm) {
-    wman_add(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, pumpkin_module.tasks[i].texture, x, y, width, height);
-    pumpkin_module.render = 1;
-  }
-
+  pumpkin_module.render = 1;
   mutex_unlock(mutex);
 
   if (pumpkin_module.wp->average) {
@@ -1274,14 +1272,13 @@ static int pumpkin_local_finish(UInt32 creator) {
         AppRegistrySet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p);
       }
     }
-    wman_remove(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId, 1);
-    pumpkin_module.render = 1;
   }
 
   SysFatalAlertFinish();
 
   pumpkin_module.tasks[task->task_index].task_index = 0;
   pumpkin_module.tasks[task->task_index].active = 0;
+  pumpkin_module.tasks[task->task_index].removed = 1;
   pumpkin_module.tasks[task->task_index].screen_ptr = 0;
 
   for (i = 0; i < pumpkin_module.num_tasks; i++) {
@@ -1378,7 +1375,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, texture, name, width, height, pumpkin_module.border, pumpkin_module.border) == 0) {
+  if (pumpkin_local_init(0, 1, texture, name, width, height, pumpkin_module.border, pumpkin_module.border) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -1419,7 +1416,7 @@ static int pumpkin_launch_action(void *arg) {
   }
   thread_set_name(name);
 
-  if (pumpkin_local_init(data->index, data->texture, data->request.name, data->width, data->height, data->x, data->y) == 0) {
+  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->request.name, data->width, data->height, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -1513,7 +1510,7 @@ int pumpkin_launch(launch_request_t *request) {
             break;
           }
         }
-      } else {
+      } else if (!pumpkin_module.tasks[i].removed) {
         if (pumpkin_module.tasks[i].texture) {
           pumpkin_module.wp->destroy_texture(pumpkin_module.w, pumpkin_module.tasks[i].texture);
           pumpkin_module.tasks[i].texture = NULL;
@@ -1601,8 +1598,10 @@ int pumpkin_launch(launch_request_t *request) {
       }
 
       data->index = index;
+      data->taskId = pumpkin_module.nextTaskId++;
       xmemcpy(&data->request, request, sizeof(launch_request_t));
       data->texture = pumpkin_module.wp->create_texture(pumpkin_module.w, data->width, data->height);
+      wman_add(pumpkin_module.wm, data->taskId, data->texture, data->x, data->y, data->width, data->height);
       debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\" with launchCode %d", request->name, request->code);
       r = thread_begin(TAG_APP, pumpkin_launch_action, data);
       if (r == -1) {
@@ -2212,6 +2211,13 @@ int pumpkin_sys_event(void) {
 
     if ((now - pumpkin_module.lastUpdate) > 50000) {
       if (pumpkin_module.num_tasks > 0) {
+        for (j = 0; j < MAX_TASKS; j++) {
+          if (pumpkin_module.tasks[j].removed) {
+            wman_remove(pumpkin_module.wm, pumpkin_module.tasks[j].taskId, 1);
+            pumpkin_module.tasks[j].removed = 0;
+            pumpkin_module.render = 1;
+          }
+        }
         for (j = 0; j < pumpkin_module.num_tasks; j++) {
           i = pumpkin_module.task_order[j];
           if (draw_task(i, &x, &y, &w, &h) && pumpkin_module.wm) {

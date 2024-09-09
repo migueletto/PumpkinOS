@@ -552,7 +552,7 @@ int wman_remove(wman_t *wm, int id, int remove) {
     } else {
       found = 0;
       for (i = 0; i < wm->n-1; i++) {
-        if (found != -1) {
+        if (found) {
           wm->area[i] = wm->area[i+1];
         } else if (wm->area[i].id == id) {
           aux = wm->area[i];
