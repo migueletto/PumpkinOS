@@ -3,6 +3,7 @@
 
 #include "pumpkin.h"
 #include "HashPlugin.h"
+#include "CipherPlugin.h"
 #include "md5.h"
 #include "sha1.h"
 #include "debug.h"
@@ -171,6 +172,21 @@ Err CPMLibReleaseKeyInfo(UInt16 refnum, APKeyInfoType *keyInfoP) {
   return cpmErrUnimplemented;
 }
 
+static UInt32 getProvider(UInt32 type, UInt32 providerID, provider_id_t *ids) {
+  UInt32 i;
+
+  ids->count = 0;
+  pumpkin_enum_plugins(type, callback, ids);
+
+  for (i = 0; i < ids->count; i++) {
+    if (ids->id[i] == providerID) {
+      break;
+    }
+  }
+
+  return i < ids->count ? i : -1;
+}
+
 Err CPMLibHashInit(UInt16 refnum, APHashInfoType *hashInfoP) {
   provider_id_t ids;
   HashPluginType *hashPlugin;
@@ -178,15 +194,7 @@ Err CPMLibHashInit(UInt16 refnum, APHashInfoType *hashInfoP) {
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && hashInfoP) {
-    ids.count = 0;
-    pumpkin_enum_plugins(hashPluginType, callback, &ids);
-    for (i = 0; i < ids.count; i++) {
-      if (ids.id[i] == hashInfoP->providerContext.providerID) {
-        break;
-      }
-    }
-
-    if (i < ids.count) {
+    if ((i = getProvider(hashPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
       if ((hashPlugin = (HashPluginType *)ids.main[i](NULL)) != NULL) {
         hashInfoP->providerContext.localContext = hashPlugin->init(hashInfoP->type);
         if (hashInfoP->providerContext.localContext) {
@@ -209,15 +217,7 @@ Err CPMLibHashUpdate(UInt16 refnum, APHashInfoType *hashInfoP, UInt8 *bufIn, UIn
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && hashInfoP && bufIn) {
-    ids.count = 0;
-    pumpkin_enum_plugins(hashPluginType, callback, &ids);
-    for (i = 0; i < ids.count; i++) {
-      if (ids.id[i] == hashInfoP->providerContext.providerID) {
-        break;
-      }
-    }
-
-    if (i < ids.count) {
+    if ((i = getProvider(hashPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
       if ((hashPlugin = (HashPluginType *)ids.main[i](NULL)) != NULL) {
         hashPlugin->update(hashInfoP->providerContext.localContext, bufIn, bufInLen);
         err = errNone;
@@ -237,15 +237,7 @@ Err CPMLibHashFinal(UInt16 refnum, APHashInfoType *hashInfoP, UInt8 *bufIn, UInt
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && hashInfoP && bufOut && bufOutLenP) {
-    ids.count = 0;
-    pumpkin_enum_plugins(hashPluginType, callback, &ids);
-    for (i = 0; i < ids.count; i++) {
-      if (ids.id[i] == hashInfoP->providerContext.providerID) {
-        break;
-      }
-    }
-
-    if (i < ids.count) {
+    if ((i = getProvider(hashPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
       if ((hashPlugin = (HashPluginType *)ids.main[i](NULL)) != NULL) {
         if (*bufOutLenP < hashInfoP->length) {
           *bufOutLenP = hashInfoP->length;
@@ -321,13 +313,40 @@ Err CPMLibReleaseHashInfo(UInt16 refnum, APHashInfoType *hashInfoP) {
 }
 
 Err CPMLibEncryptInit(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP) {
-  debug(DEBUG_ERROR, "CPM", "CPMLibEncryptInit not implemented");
-  return cpmErrUnimplemented;
+  provider_id_t ids;
+  CipherPluginType *cipherPlugin;
+  UInt32 i;
+  Err err = cpmErrParamErr;
+
+  if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP) {
+    if ((i = getProvider(cipherPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
+      if ((cipherPlugin = (CipherPluginType *)ids.main[i](NULL)) != NULL) {
+        if (cipherPlugin->init(keyInfoP, cipherInfoP) == 0) {
+          err = errNone;
+        }
+      }
+    }
+  }
+
+  return err;
 }
 
 Err CPMLibEncryptUpdate(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, UInt8 *bufIn, UInt32 bufInLen, UInt8 *bufOut, UInt32 *bufOutLenP) {
-  debug(DEBUG_ERROR, "CPM", "CPMLibEncryptUpdate not implemented");
-  return cpmErrUnimplemented;
+  provider_id_t ids;
+  CipherPluginType *cipherPlugin;
+  UInt32 i;
+  Err err = cpmErrParamErr;
+
+  if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP) {
+    if ((i = getProvider(cipherPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
+      if ((cipherPlugin = (CipherPluginType *)ids.main[i](NULL)) != NULL) {
+        cipherPlugin->update(keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
+        err = errNone;
+      }
+    }
+  }
+
+  return err;
 }
 
 Err CPMLibEncryptFinal(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, UInt8 *bufIn, UInt32 bufInLen, UInt8 *bufOut, UInt32 *bufOutLenP) {
