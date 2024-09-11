@@ -1,12 +1,12 @@
 include ../common.mak
 include ../commonp.mak
 
-PROGRAM=InternalHashPlugin
+PROGRAM=InternalCryptoPlugin
 PRC=$(VFS)/app_install/$(PROGRAM).prc
-OBJS=InternalHashPlugin.o
+OBJS=InternalCryptoPlugin.o
 
 $(PROGRAM).prc: $(DLIB)
-	$(PRCDUILD) -f $(PROGRAM).prc -t plgi -c intH -n $(PROGRAM) *.bin
+	$(PRCDUILD) -f $(PROGRAM).prc -t plgi -c iCrp -n $(PROGRAM) *.bin
 	cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(PROGRAM).dlib

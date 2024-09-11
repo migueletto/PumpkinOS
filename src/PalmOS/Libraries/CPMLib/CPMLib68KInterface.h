@@ -152,5 +152,7 @@ Err CPMLibImportVerifyInfo(UInt16 refnum, UInt8 encoding, UInt8 *importDataP, UI
 Err CPMLibExportVerifyInfo(UInt16 refnum, APVerifyInfoType *verifyInfoP, UInt8 encoding, UInt8 *exportDataP, UInt32 *dataLenP)  SYS_TRAP(cpmLibTrapExportVerifyInfo);
 Err CPMLibReleaseVerifyInfo(UInt16 refnum, APVerifyInfoType *verifyInfoP)  SYS_TRAP(cpmLibTrapReleaseVerifyInfo);
 
+void CPMLibTest(void);
+
 #endif /* TRAPS_ONLY */
 #endif /* _CPMLIB_68K_INTERFACE_H */

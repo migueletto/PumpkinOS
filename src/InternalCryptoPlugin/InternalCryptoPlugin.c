@@ -3,14 +3,14 @@
 
 #include "sys.h"
 #include "pumpkin.h"
-#include "HashPlugin.h"
+#include "CryptoPlugin.h"
 #include "sha1.h"
 #include "md5.h"
 #include "debug.h"
 
-#define pluginId 'intH'
+#define pluginId 'iCrp'
 
-static HashPluginType plugin;
+static CryptoPluginType plugin;
 
 typedef struct {
   UInt32 type;
@@ -20,7 +20,7 @@ typedef struct {
   } ctx;
 } internal_hash_ctx_t;
 
-static void *hashInit(UInt32 type) {
+static void *hash_init(UInt32 type) {
   internal_hash_ctx_t *ctx = NULL;
 
   switch (type) {
@@ -41,7 +41,7 @@ static void *hashInit(UInt32 type) {
   return ctx;
 }
 
-static uint32_t hashSize(void *_ctx) {
+static uint32_t hash_size(void *_ctx) {
   internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
   UInt32 size = 0;
 
@@ -55,7 +55,7 @@ static uint32_t hashSize(void *_ctx) {
   return size;
 }
 
-static void hashUpdate(void *_ctx, UInt8 *input, UInt32 len) {
+static void hash_update(void *_ctx, UInt8 *input, UInt32 len) {
   internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
 
   if (ctx && input) {
@@ -70,7 +70,7 @@ static void hashUpdate(void *_ctx, UInt8 *input, UInt32 len) {
   }
 }
 
-static void hashFinalize(void *_ctx, UInt8 *hash) {
+static void hash_finalize(void *_ctx, UInt8 *hash) {
   internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
 
   if (ctx && hash) {
@@ -86,24 +86,26 @@ static void hashFinalize(void *_ctx, UInt8 *hash) {
   }
 }
 
-static void hashFree(void *ctx) {
+static void hash_free(void *ctx) {
   if (ctx) {
     MemPtrFree(ctx);
   }
 }
 
 static void *PluginMain(void *p) {
-  plugin.init = hashInit;
-  plugin.size = hashSize;
-  plugin.update = hashUpdate;
-  plugin.finalize = hashFinalize;
-  plugin.free = hashFree;
+  MemSet(&plugin, sizeof(CryptoPluginType), 0);
+
+  plugin.hash_init = hash_init;
+  plugin.hash_size = hash_size;
+  plugin.hash_update = hash_update;
+  plugin.hash_finalize = hash_finalize;
+  plugin.hash_free = hash_free;
 
   return &plugin;
 }
 
 pluginMainF PluginInit(UInt32 *type, UInt32 *id) {
-  *type = hashPluginType;
+  *type = cryptoPluginType;
   *id   = pluginId;
 
   return PluginMain;
