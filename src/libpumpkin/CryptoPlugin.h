@@ -1,18 +1,22 @@
 #define cryptoPluginType 'cryp'
 
 typedef struct {
-  void *(*hash_init)(UInt32 type);
-  uint32_t (*hash_size)(void *ctx);
-  void (*hash_update)(void *ctx, UInt8 *input, UInt32 len);
-  void (*hash_finalize)(void *ctx, UInt8 *hash);
-  void (*hash_free)(void *ctx);
+  const char *(*info)(UInt32 *flags);
 
-  void *(*cipher_init)(APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, Boolean encrypt);
-  void (*cipher_update)(void *ctx, APKeyInfoType *keyInfoP, UInt8 *input, UInt32 inputLen, UInt8 *output, UInt32 *outputLen);
+  Boolean (*hash_init)(APHashInfoType *hashInfoP);
+  void (*hash_update)(APHashInfoType *hashInfoP, UInt8 *input, UInt32 len);
+  void (*hash_finalize)(APHashInfoType *hashInfoP, UInt8 *hash);
+  void (*hash_free)(APHashInfoType *hashInfoP);
+
+  Boolean (*cipher_init)(APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, Boolean encrypt);
+  Boolean (*cipher_update)(void *ctx, APKeyInfoType *keyInfoP, UInt8 *input, UInt32 inputLen, UInt8 *output, UInt32 *outputLen);
   void (*cipher_free)(void *ctx);
 
-  void *(*key_generate)(APKeyInfoType *keyInfoP, UInt8 *data);
-  void (*key_export)(void *ctx, UInt8 *data, UInt32 *len);
-  void (*key_release)(void *ctx);
+  Boolean (*key_generate)(APKeyInfoType *keyInfoP, UInt8 *data);
+  Boolean (*key_export)(APKeyInfoType *keyInfoP, UInt8 encoding, UInt8 *data, UInt32 *len);
+  Boolean (*key_import)(APKeyInfoType *keyInfoP, UInt8 encoding, UInt8 *data, UInt32 len);
+  void (*key_release)(APKeyInfoType *keyInfoP);
+
+  Boolean (*random_get)(UInt8 *data, UInt32 len);
 } CryptoPluginType;
 

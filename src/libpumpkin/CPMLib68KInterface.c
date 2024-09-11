@@ -25,15 +25,11 @@ static void callback(pumpkin_plugin_t *plugin, void *data) {
 }
 
 Err CPMLibOpen(UInt16 refnum, UInt16 *numProviders) {
-  provider_id_t ids;
+  UInt32 providerIDs[MAX_PROVIDERS];
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && numProviders) {
-    ids.count = 0;
-    pumpkin_enum_plugins(cryptoPluginType, callback, &ids);
-    *numProviders = ids.count;
-    debug(DEBUG_TRACE, "CPM", "CPMLibOpen found %d provider(s)", *numProviders);
-    err = errNone;
+    err = CPMLibEnumerateProviders(refnum, providerIDs, numProviders);
   }
 
   return err;
@@ -74,21 +70,20 @@ Err CPMLibSetDebugLevel(UInt16 refnum, UInt8 debugLevel) {
 
 Err CPMLibEnumerateProviders(UInt16 refnum, UInt32 providerIDs[], UInt16 *numProviders) {
   provider_id_t ids;
-  UInt32 i;
-  char buf[8];
+  CryptoPluginType *cryptoPlugin;
+  UInt32 i, count;
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && providerIDs && numProviders) {
     ids.count = 0;
     pumpkin_enum_plugins(cryptoPluginType, callback, &ids);
 
-    for (i = 0; i < ids.count; i++) {
-      providerIDs[i] = ids.id[i];
-      pumpkin_id2s(providerIDs[i], buf);
-      debug(DEBUG_TRACE, "CPM", "CPMLibEnumerateProviders found provider '%s'", buf);
+    for (i = 0, count = 0; i < ids.count && count < MAX_PROVIDERS; i++) {
+      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->info) {
+        providerIDs[count++] = ids.id[i];
+      }
     }
-    *numProviders = ids.count;
-
+    *numProviders = count;
     err = errNone;
   }
 
@@ -97,8 +92,9 @@ Err CPMLibEnumerateProviders(UInt16 refnum, UInt32 providerIDs[], UInt16 *numPro
 
 Err CPMLibGetProviderInfo(UInt16 refnum, UInt32 providerID, APProviderInfoType *providerInfoP) {
   provider_id_t ids;
-  UInt32 i;
-  char buf[8];
+  CryptoPluginType *cryptoPlugin;
+  UInt32 i, flags;
+  const char *name;
   Err err = cpmErrParamErr;
 
   if (refnum == CpmLibRefNum && providerInfoP) {
@@ -107,21 +103,15 @@ Err CPMLibGetProviderInfo(UInt16 refnum, UInt32 providerID, APProviderInfoType *
 
     for (i = 0; i < ids.count; i++) {
       if (ids.id[i] == providerID) {
-        pumpkin_id2s(providerID, providerInfoP->name);
-        providerInfoP->name[4] = 0;
-        providerInfoP->other[0] = 0;
-        providerInfoP->flags = APF_MP | APF_HASH;
-        pumpkin_id2s(providerID, buf);
-
-        switch (ids.type[i]) {
-          case cryptoPluginType:
-            providerInfoP->flags |= APF_HASH;
-            debug(DEBUG_TRACE, "CPM", "CPMLibGetProviderInfo hash provider '%s'", buf);
-            break;
+        if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->info) {
+          name = cryptoPlugin->info(&flags);
+          StrNCopy(providerInfoP->name, name, 32);
+          providerInfoP->other[0] = 0;
+          providerInfoP->flags = flags;
+          providerInfoP->numAlgorithms = 1; // XXX what number must be set here ?
+          providerInfoP->bHardware = false;
+          err = errNone;
         }
-        providerInfoP->numAlgorithms = 1; // XXX what number must be set here ?
-        providerInfoP->bHardware = false;
-        err = errNone;
         break;
       }
     }
@@ -139,21 +129,14 @@ Err CPMLibSetDefaultProvider(UInt16 refnum, UInt32 providerID) {
   return cpmErrUnimplemented;
 }
 
-Err CPMLibGenerateRandomBytes(UInt16 refnum, UInt8 *bufferP, UInt32 *bufLenP) {
-  debug(DEBUG_ERROR, "CPM", "CPMLibGenerateRandomBytes not implemented");
-  return cpmErrUnimplemented;
-}
-
-Err CPMLibAddRandomSeed(UInt16 refnum, UInt8 *seedDataP, UInt32 dataLen) {
-  debug(DEBUG_ERROR, "CPM", "CPMLibAddRandomSeed not implemented");
-  return cpmErrUnimplemented;
-}
-
 static UInt32 getProvider(UInt32 type, UInt32 providerID, provider_id_t *ids) {
   UInt32 i;
 
   ids->count = 0;
   pumpkin_enum_plugins(type, callback, ids);
+
+  // if providerID is zero, return the first provider (if any)
+  if (providerID == 0) return ids->count > 0 ? 0 : -1;
 
   for (i = 0; i < ids->count; i++) {
     if (ids->id[i] == providerID) {
@@ -162,6 +145,31 @@ static UInt32 getProvider(UInt32 type, UInt32 providerID, provider_id_t *ids) {
   }
 
   return i < ids->count ? i : -1;
+}
+
+Err CPMLibGenerateRandomBytes(UInt16 refnum, UInt8 *bufferP, UInt32 *bufLenP) {
+  provider_id_t ids;
+  CryptoPluginType *cryptoPlugin;
+  UInt32 i;
+  Err err = cpmErrParamErr;
+
+  if (refnum == CpmLibRefNum && bufferP && bufLenP) {
+    // XXX use the first provider
+    if ((i = getProvider(cryptoPluginType, 0, &ids)) != -1) {
+      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->random_get) {
+        if (cryptoPlugin->random_get(bufferP, *bufLenP)) {
+          err = errNone;
+        }
+      }
+    }
+  }
+
+  return err;
+}
+
+Err CPMLibAddRandomSeed(UInt16 refnum, UInt8 *seedDataP, UInt32 dataLen) {
+  debug(DEBUG_ERROR, "CPM", "CPMLibAddRandomSeed not cpmErrUnsupported");
+  return cpmErrUnsupported;
 }
 
 Err CPMLibGenerateKey(UInt16 refnum, UInt8 *keyDataP, UInt32 dataLen, APKeyInfoType *keyInfoP) {
@@ -173,8 +181,7 @@ Err CPMLibGenerateKey(UInt16 refnum, UInt8 *keyDataP, UInt32 dataLen, APKeyInfoT
   if (refnum == CpmLibRefNum && keyInfoP) {
     if ((i = getProvider(cryptoPluginType, keyInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_generate) {
-        keyInfoP->providerContext.localContext = cryptoPlugin->key_generate(keyInfoP, NULL);
-        if (keyInfoP->providerContext.localContext) {
+        if (cryptoPlugin->key_generate(keyInfoP, NULL)) {
           err = errNone;
         }
       }
@@ -190,12 +197,10 @@ Err CPMLibImportKeyInfo(UInt16 refnum, UInt8 encoding, UInt8 *importDataP, UInt3
   UInt32 i;
   Err err = cpmErrParamErr;
 
-  if (refnum == CpmLibRefNum && keyInfoP && importDataP && dataLen && encoding == IMPORT_EXPORT_TYPE_RAW) {
+  if (refnum == CpmLibRefNum && keyInfoP && importDataP) {
     if ((i = getProvider(cryptoPluginType, keyInfoP->providerContext.providerID, &ids)) != -1) {
-      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_generate) {
-        keyInfoP->length = dataLen;
-        keyInfoP->providerContext.localContext = cryptoPlugin->key_generate(keyInfoP, importDataP);
-        if (keyInfoP->providerContext.localContext) {
+      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_import) {
+        if (cryptoPlugin->key_import(keyInfoP, encoding, importDataP, dataLen)) {
           err = errNone;
         }
       }
@@ -211,11 +216,12 @@ Err CPMLibExportKeyInfo(UInt16 refnum, APKeyInfoType *keyInfoP, UInt8 encoding, 
   UInt32 i;
   Err err = cpmErrParamErr;
 
-  if (refnum == CpmLibRefNum && keyInfoP && dataLenP && encoding == IMPORT_EXPORT_TYPE_RAW) {
+  if (refnum == CpmLibRefNum && keyInfoP && dataLenP && keyInfoP->exportable) {
     if ((i = getProvider(cryptoPluginType, keyInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_export) {
-        cryptoPlugin->key_export(keyInfoP->providerContext.localContext, exportDataP, dataLenP);
-        err = errNone;
+        if (cryptoPlugin->key_export(keyInfoP, encoding, exportDataP, dataLenP)) {
+          err = errNone;
+        }
       }
     }
   }
@@ -232,7 +238,7 @@ Err CPMLibReleaseKeyInfo(UInt16 refnum, APKeyInfoType *keyInfoP) {
   if (refnum == CpmLibRefNum && keyInfoP) {
     if ((i = getProvider(cryptoPluginType, keyInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_release) {
-        cryptoPlugin->key_release(keyInfoP->providerContext.localContext);
+        cryptoPlugin->key_release(keyInfoP);
         err = errNone;
       }
     }
@@ -249,10 +255,8 @@ Err CPMLibHashInit(UInt16 refnum, APHashInfoType *hashInfoP) {
 
   if (refnum == CpmLibRefNum && hashInfoP) {
     if ((i = getProvider(cryptoPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
-      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->hash_init && cryptoPlugin->hash_size) {
-        hashInfoP->providerContext.localContext = cryptoPlugin->hash_init(hashInfoP->type);
-        if (hashInfoP->providerContext.localContext) {
-          hashInfoP->length = cryptoPlugin->hash_size(hashInfoP->providerContext.localContext);
+      if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->hash_init) {
+        if (cryptoPlugin->hash_init(hashInfoP)) {
           err = errNone;
         }
       }
@@ -273,7 +277,7 @@ Err CPMLibHashUpdate(UInt16 refnum, APHashInfoType *hashInfoP, UInt8 *bufIn, UIn
   if (refnum == CpmLibRefNum && hashInfoP && bufIn) {
     if ((i = getProvider(cryptoPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->hash_update) {
-        cryptoPlugin->hash_update(hashInfoP->providerContext.localContext, bufIn, bufInLen);
+        cryptoPlugin->hash_update(hashInfoP, bufIn, bufInLen);
         err = errNone;
       }
     } else {
@@ -298,9 +302,9 @@ Err CPMLibHashFinal(UInt16 refnum, APHashInfoType *hashInfoP, UInt8 *bufIn, UInt
           err = cpmErrBufTooSmall;
         } else {
           if (bufIn) {
-            cryptoPlugin->hash_update(hashInfoP->providerContext.localContext, bufIn, bufInLen);
+            cryptoPlugin->hash_update(hashInfoP, bufIn, bufInLen);
           }
-          cryptoPlugin->hash_finalize(hashInfoP->providerContext.localContext, bufOut);
+          cryptoPlugin->hash_finalize(hashInfoP, bufOut);
           *bufOutLenP = hashInfoP->length;
           err = errNone;
         }
@@ -346,8 +350,7 @@ Err CPMLibReleaseHashInfo(UInt16 refnum, APHashInfoType *hashInfoP) {
   if (refnum == CpmLibRefNum && hashInfoP) {
     if ((i = getProvider(cryptoPluginType, hashInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->hash_free) {
-        cryptoPlugin->hash_free(hashInfoP->providerContext.localContext);
-        hashInfoP->providerContext.localContext = NULL;
+        cryptoPlugin->hash_free(hashInfoP);
         err = errNone;
       }
     } else {
@@ -367,8 +370,7 @@ static Err CPMLibEncryptDecryptInit(UInt16 refnum, APKeyInfoType *keyInfoP, APCi
   if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_init) {
-        cipherInfoP->providerContext.localContext = cryptoPlugin->cipher_init(keyInfoP, cipherInfoP, encrypt);
-        if (cipherInfoP->providerContext.localContext) {
+        if (cryptoPlugin->cipher_init(keyInfoP, cipherInfoP, encrypt)) {
           err = errNone;
         }
       }
@@ -391,8 +393,9 @@ Err CPMLibEncryptUpdate(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType
   if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP && bufIn && bufOut && bufOutLenP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_update) {
-        cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
-        err = errNone;
+        if (cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
+          err = errNone;
+        }
       }
     }
   }
@@ -409,8 +412,9 @@ Err CPMLibEncryptFinal(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType 
   if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP && bufIn && bufOut && bufOutLenP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_update) {
-        cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
-        err = errNone;
+        if (cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
+          err = errNone;
+        }
       }
     }
   }
@@ -423,6 +427,7 @@ Err CPMLibEncrypt(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType *ciph
 
   if ((err = CPMLibEncryptInit(refnum, keyInfoP, cipherInfoP)) == errNone) {
     err = CPMLibEncryptFinal(refnum, keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
+    CPMLibReleaseCipherInfo(refnum, cipherInfoP);
   }
 
   return err;
@@ -441,7 +446,14 @@ Err CPMLibDecryptFinal(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType 
 }
 
 Err CPMLibDecrypt(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, UInt8 *bufIn, UInt32 bufInLen, UInt8 *bufOut, UInt32 *bufOutLenP) {
-  return CPMLibEncrypt(refnum, keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
+  Err err;
+
+  if ((err = CPMLibDecryptInit(refnum, keyInfoP, cipherInfoP)) == errNone) {
+    err = CPMLibDecryptFinal(refnum, keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
+    CPMLibReleaseCipherInfo(refnum, cipherInfoP);
+  }
+
+  return err;
 }
 
 Err CPMLibImportCipherInfo(UInt16 refnum, UInt8 encoding, UInt8 *importDataP, UInt32 dataLen, APCipherInfoType *cipherInfoP) {
@@ -507,54 +519,83 @@ Err CPMLibReleaseVerifyInfo(UInt16 refnum, APVerifyInfoType *verifyInfoP) {
   return cpmErrUnimplemented;
 }
 
+#define KEY_SIZE   32   // 256 bits
+#define PLAIN_SIZE 64
+
 void CPMLibTest(void) {
   UInt16 refnum, numProviders;
+  APProviderInfoType providerInfo;
   APKeyInfoType keyInfo;
   APCipherInfoType cipherInfo;
-  UInt8 key[64];
-  char plain[64];
-  char decrypted[64];
-  UInt8 encrypted[64];
-  UInt32 len;
+  UInt32 providerIDs[MAX_PROVIDERS];
+  char buf[8];
+  char plain[PLAIN_SIZE];
+  char decrypted[PLAIN_SIZE];
+  UInt8 encrypted[PLAIN_SIZE];
+  UInt32 i, len, providerID;
 
   if (SysLibFind(CpmLibName, &refnum) != errNone) return;
   if (SysLibLoad(sysFileTLibrary, cpmCreator, &refnum) != errNone) return;
   if (CPMLibOpen(refnum, &numProviders) != errNone) return;
 
-  MemMove(key, "01234567890123456789012345678901", 32);
-  MemSet(&keyInfo, sizeof(APKeyInfoType), 0);
-  keyInfo.providerContext.providerID = 's2nC';
-  if (CPMLibImportKeyInfo(refnum, IMPORT_EXPORT_TYPE_RAW, key, 32, &keyInfo) == errNone) {
-    MemSet(&cipherInfo, sizeof(APCipherInfoType), 0);
-    cipherInfo.providerContext.providerID = 's2nC';
-    cipherInfo.type = apSymmetricTypeRijndael;
+  providerID = 0;
 
-    if (CPMLibEncryptInit(refnum, &keyInfo, &cipherInfo) == errNone) {
-      MemSet(plain, 64, 0);
-      StrCopy(plain, "Some plain text to be encrypted for testing.");
-      len = StrLen(plain);
-      debug(DEBUG_INFO, "CPM", "plaintext: %d [%s]", len, plain);
-      MemSet(encrypted, 64, 0);
-      if (CPMLibEncryptFinal(refnum, &keyInfo, &cipherInfo, (UInt8 *)plain, len, encrypted, &len) == errNone) {
-        debug(DEBUG_INFO, "CPM", "encrypted: %d", len);
-        debug_bytes(DEBUG_INFO, "CPM", encrypted, len);
+  if (CPMLibEnumerateProviders(refnum, providerIDs, &numProviders) == errNone) {
+    debug(DEBUG_INFO, "CPM", "found %d provider(s)", numProviders);
+    for (i = 0; i < numProviders; i++) {
+      if (CPMLibGetProviderInfo(refnum, providerIDs[i], &providerInfo) == errNone) {
+        pumpkin_id2s(providerIDs[i], buf);
+        debug(DEBUG_INFO, "CPM", "provider %d: id '%s', name \"%s\", flags 0x%08X", i+1, buf, providerInfo.name, providerInfo.flags);
+        if (providerID == 0 && (providerInfo.flags & APF_CIPHER)) {
+          debug(DEBUG_INFO, "CPM", "will use provider id '%s' for encryption", buf);
+          providerID = providerIDs[i];
+        }
       }
-      CPMLibReleaseCipherInfo(refnum, &cipherInfo);
     }
+  }
 
+  if (providerID == 0) {
+    debug(DEBUG_ERROR, "CPM", "no provider available for encryption");
+    return;
+  }
+
+  MemSet(&keyInfo, sizeof(APKeyInfoType), 0);
+  keyInfo.providerContext.providerID = providerID;
+  keyInfo.length = KEY_SIZE;
+
+  if (CPMLibGenerateKey(refnum, NULL, 0, &keyInfo) == errNone) {
     MemSet(&cipherInfo, sizeof(APCipherInfoType), 0);
-    cipherInfo.providerContext.providerID = 's2nC';
+    cipherInfo.providerContext.providerID = providerID;
     cipherInfo.type = apSymmetricTypeRijndael;
 
-    if (CPMLibDecryptInit(refnum, &keyInfo, &cipherInfo) == errNone) {
-      MemSet(decrypted, 64, 0);
-      if (CPMLibDecryptFinal(refnum, &keyInfo, &cipherInfo, encrypted, len, (UInt8 *)decrypted, &len) == errNone) {
-        debug(DEBUG_INFO, "CPM", "decrypted: %d [%s]", len, decrypted);
+    MemSet(plain, PLAIN_SIZE, 0);
+    MemSet(encrypted, PLAIN_SIZE, 0);
+    MemSet(decrypted, PLAIN_SIZE, 0);
+    StrCopy(plain, "Some plain text to be encrypted for testing.");
+    len = PLAIN_SIZE;
+    debug(DEBUG_INFO, "CPM", "plain text: %d bytes, length %d bytes [%s]", len, StrLen(plain), plain);
+
+    if (CPMLibEncrypt(refnum, &keyInfo, &cipherInfo, (UInt8 *)plain, len, encrypted, &len) == errNone) {
+      debug(DEBUG_INFO, "CPM", "encrypted: %d bytes", len);
+      debug_bytes(DEBUG_INFO, "CPM", encrypted, len);
+
+      if (CPMLibDecrypt(refnum, &keyInfo, &cipherInfo, encrypted, len, (UInt8 *)decrypted, &len) == errNone) {
+        debug(DEBUG_INFO, "CPM", "decrypted: %d bytes, length %d bytes [%s]", len, StrLen(decrypted), decrypted);
+        if (!StrCompare(plain, decrypted)) {
+          debug(DEBUG_INFO, "CPM", "decrypted text matches plain text");
+        } else {
+          debug(DEBUG_ERROR, "CPM", "decrypted text does not match plain text");
+        }
+      } else {
+        debug(DEBUG_ERROR, "CPM", "encryption failed");
       }
-      CPMLibReleaseCipherInfo(refnum, &cipherInfo);
+    } else {
+      debug(DEBUG_ERROR, "CPM", "encryption failed");
     }
 
     CPMLibReleaseKeyInfo(refnum, &keyInfo);
+  } else {
+    debug(DEBUG_ERROR, "CPM", "inport key failed");
   }
 
   CPMLibClose(refnum);

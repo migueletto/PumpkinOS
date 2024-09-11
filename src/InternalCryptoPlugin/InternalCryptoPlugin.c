@@ -20,43 +20,38 @@ typedef struct {
   } ctx;
 } internal_hash_ctx_t;
 
-static void *hash_init(UInt32 type) {
-  internal_hash_ctx_t *ctx = NULL;
+static Boolean hash_init(APHashInfoType *hashInfoP) {
+  internal_hash_ctx_t *ctx;
+  Boolean r = false;
 
-  switch (type) {
+  switch (hashInfoP->type) {
     case apHashTypeUnspecified:
       // fall-through
     case apHashTypeSHA1:
-      ctx = MemPtrNew(sizeof(internal_hash_ctx_t));
-      ctx->type = type;
-      SHA1Init(&ctx->ctx.sha1);
+      if ((ctx = MemPtrNew(sizeof(internal_hash_ctx_t))) != NULL) {
+        ctx->type = hashInfoP->type;
+        SHA1Init(&ctx->ctx.sha1);
+        hashInfoP->providerContext.localContext = ctx;
+        hashInfoP->length = SHA1_HASH_LEN;
+        r = true;
+      }
       break;
     case apHashTypeMD5:
-      ctx = MemPtrNew(sizeof(internal_hash_ctx_t));
-      ctx->type = type;
-      md5Init(&ctx->ctx.md5);
+      if ((ctx = MemPtrNew(sizeof(internal_hash_ctx_t))) != NULL) {
+        ctx->type = hashInfoP->type;
+        md5Init(&ctx->ctx.md5);
+        hashInfoP->providerContext.localContext = ctx;
+        hashInfoP->length = MD5_HASH_LEN;
+        r = true;
+      }
       break;
   }
 
-  return ctx;
+  return r;
 }
 
-static uint32_t hash_size(void *_ctx) {
-  internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
-  UInt32 size = 0;
-
-  if (ctx) {
-    switch (ctx->type) {
-      case apHashTypeSHA1: size = SHA1_HASH_LEN; break;
-      case apHashTypeMD5:  size = MD5_HASH_LEN; break;
-    }
-  }
-
-  return size;
-}
-
-static void hash_update(void *_ctx, UInt8 *input, UInt32 len) {
-  internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
+static void hash_update(APHashInfoType *hashInfoP, UInt8 *input, UInt32 len) {
+  internal_hash_ctx_t *ctx = hashInfoP ? (internal_hash_ctx_t *)hashInfoP->providerContext.localContext : NULL;
 
   if (ctx && input) {
     switch (ctx->type) {
@@ -70,8 +65,8 @@ static void hash_update(void *_ctx, UInt8 *input, UInt32 len) {
   }
 }
 
-static void hash_finalize(void *_ctx, UInt8 *hash) {
-  internal_hash_ctx_t *ctx = (internal_hash_ctx_t *)_ctx;
+static void hash_finalize(APHashInfoType *hashInfoP, UInt8 *hash) {
+  internal_hash_ctx_t *ctx = hashInfoP ? (internal_hash_ctx_t *)hashInfoP->providerContext.localContext : NULL;
 
   if (ctx && hash) {
     switch (ctx->type) {
@@ -86,17 +81,27 @@ static void hash_finalize(void *_ctx, UInt8 *hash) {
   }
 }
 
-static void hash_free(void *ctx) {
+static void hash_free(APHashInfoType *hashInfoP) {
+  internal_hash_ctx_t *ctx = hashInfoP ? (internal_hash_ctx_t *)hashInfoP->providerContext.localContext : NULL;
+
   if (ctx) {
     MemPtrFree(ctx);
+    hashInfoP->providerContext.localContext = NULL;
+    hashInfoP->length = 0;
   }
+}
+
+static const char *info(UInt32 *flags) {
+  *flags = APF_MP | APF_HASH;
+  return "PumpkinOS internal provider";
 }
 
 static void *PluginMain(void *p) {
   MemSet(&plugin, sizeof(CryptoPluginType), 0);
 
+  plugin.info = info;
+
   plugin.hash_init = hash_init;
-  plugin.hash_size = hash_size;
   plugin.hash_update = hash_update;
   plugin.hash_finalize = hash_finalize;
   plugin.hash_free = hash_free;
