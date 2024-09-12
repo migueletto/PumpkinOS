@@ -379,13 +379,16 @@ static int StoWriteIndex(storage_t *sto, storage_db_t *db) {
 
 static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
+  char stype[8], screator[8];
   vfs_file_t *f;
   int n, r = -1;
 
   storage_name(sto, db->name, STO_FILE_HEADER, 0, 0, 0, 0, buf);
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-      db->ftype, db->type, db->creator, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    pumpkin_id2s(db->type, stype);
+    pumpkin_id2s(db->creator, screator);
+    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      db->ftype, stype, screator, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
     n = sys_strlen(buf);
     if (vfs_write(f, (uint8_t *)buf, n) == n) {
       r = 0;
@@ -400,6 +403,7 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
 
 static int StoReadHeader(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
+  char stype[8], screator[8];
   vfs_file_t *f;
   int r = -1;
 
@@ -407,7 +411,12 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
     xmemset(buf, 0, sizeof(buf));
     if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-      if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      if (sys_sscanf(buf, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+               &db->ftype, stype, screator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
+        pumpkin_s2id(&db->type, stype);
+        pumpkin_s2id(&db->creator, screator);
+        r = 0;
+      } if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
                &db->ftype, &db->type, &db->creator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
         r = 0;
       } else {
