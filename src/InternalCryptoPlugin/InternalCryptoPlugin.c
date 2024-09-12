@@ -93,7 +93,7 @@ static void hash_free(APHashInfoType *hashInfoP) {
 
 static const char *info(UInt32 *flags) {
   *flags = APF_MP | APF_HASH;
-  return "PumpkinOS internal provider";
+  return "Internal provider";
 }
 
 static void *PluginMain(void *p) {
