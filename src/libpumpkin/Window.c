@@ -3297,8 +3297,8 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
         if (!isLineBreak(c) && hasSpace) {
           span = lastSpaceOffset - start;
         } else {
-          // XXX fica uma caracter a mais no fim da linha. com -1 resolve, mas da crash com ENTER
-          span = i /*- 1*/ - start;
+          span = i - start;
+          if (!isLineBreak(c)) span--;
         }
         if ((y + th) <= bounds->extent.y) {
           if (draw) WinDrawChars(&text[start], span, bounds->topLeft.x, bounds->topLeft.y + y);
