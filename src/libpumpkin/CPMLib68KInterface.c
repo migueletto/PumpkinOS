@@ -323,6 +323,7 @@ Err CPMLibHash(UInt16 refnum, APHashEnum type, APHashInfoType *hashInfoP, UInt8 
   if (hashInfoP && bufIn && bufOut) {
     hashInfoP->type = type;
     if ((err = CPMLibHashInit(refnum, hashInfoP)) == errNone) {
+      *bufOutLenP = hashInfoP->length;
       err = CPMLibHashFinal(refnum, hashInfoP, bufIn, bufInLen, bufOut, bufOutLenP);
       CPMLibReleaseHashInfo(refnum, hashInfoP);
     }
