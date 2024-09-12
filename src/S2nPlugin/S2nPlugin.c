@@ -53,21 +53,21 @@ static Boolean hash_init(APHashInfoType *hashInfoP) {
     case apHashTypeSHA512: alg = S2N_TLS_HASH_SHA512; length = 64; break;
     case apHashTypeMD5:    alg = S2N_TLS_HASH_MD5;    length = 16; break;
     default: alg = -1; break;
+  }
 
-    if (alg != -1) {
-      if ((ctx = MemPtrNew(sizeof(hash_ctx_t))) != NULL) {
-        ctx->type = hashInfoP->type;
-        if (s2n_hash_new(&ctx->state) == S2N_SUCCESS) {
-          if (s2n_hash_init(&ctx->state, alg) == S2N_SUCCESS) {
-            hashInfoP->providerContext.localContext = ctx;
-            hashInfoP->length = length;
-            r = true;
-          } else {
-            MemPtrFree(ctx);
-          }
+  if (alg != -1) {
+    if ((ctx = MemPtrNew(sizeof(hash_ctx_t))) != NULL) {
+      ctx->type = hashInfoP->type;
+      if (s2n_hash_new(&ctx->state) == S2N_SUCCESS) {
+        if (s2n_hash_init(&ctx->state, alg) == S2N_SUCCESS) {
+          hashInfoP->providerContext.localContext = ctx;
+          hashInfoP->length = length;
+          r = true;
         } else {
           MemPtrFree(ctx);
         }
+      } else {
+        MemPtrFree(ctx);
       }
     }
   }
@@ -389,6 +389,7 @@ static Boolean cipher_init(APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfo
             }
             if (ok) {
               cipherInfoP->providerContext.localContext = ctx;
+              r = true;
             } else {
               debug(DEBUG_ERROR, "s2n", "cipher set key failed");
               s2n_session_key_free(&ctx->key);
@@ -503,7 +504,7 @@ static void cipher_free(void *_ctx) {
 
 static const char *info(UInt32 *flags) {
   *flags = APF_MP | APF_HASH | APF_CIPHER;
-  return "PumpkinOS-s2n bridge";
+  return "s2n bridge";
 }
 
 static void *PluginMain(void *p) {
