@@ -416,7 +416,7 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
         pumpkin_s2id(&db->type, stype);
         pumpkin_s2id(&db->creator, screator);
         r = 0;
-      } if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      } else if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
                &db->ftype, &db->type, &db->creator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
         r = 0;
       } else {
