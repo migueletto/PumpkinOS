@@ -40,7 +40,6 @@ Char *StrNCat(Char *dst, const Char *src, Int16 n) {
     n -= len;
     if (n > 0) {
       sys_strncat(dst, src, n);
-      dst[n-1] = 0;
     }
   }
   return dst;
