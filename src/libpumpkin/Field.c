@@ -396,6 +396,20 @@ static UInt16 pos2offset(FieldType *fldP, UInt16 x, UInt16 y) {
   return offset;
 }
 
+static Boolean deleteSelection(FieldType *fldP) {
+  Boolean r = false;
+
+  if (fldP->selFirstPos < fldP->selLastPos) {
+    FldDelete(fldP, fldP->selFirstPos, fldP->selLastPos);
+    FldSetInsertionPoint(fldP, fldP->selFirstPos);
+    FldSetSelection(fldP, 0, 0);
+    FldGrabFocusEx(fldP, true);
+    r = true;
+  }
+
+  return r;
+}
+
 Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
   fld_module_t *module = (fld_module_t *)thread_get(fld_key);
   EventType event;
@@ -411,12 +425,7 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
         if (fldP->attr.usable && fldP->attr.editable && fldP->attr.hasFocus && !(eventP->data.keyDown.modifiers & commandKeyMask)) {
           switch (eventP->data.keyDown.chr) {
             case '\b':
-              if (fldP->selFirstPos < fldP->selLastPos) {
-                FldDelete(fldP, fldP->selFirstPos, fldP->selLastPos);
-                FldSetInsertionPoint(fldP, fldP->selFirstPos);
-                FldSetSelection(fldP, 0, 0);
-                FldGrabFocusEx(fldP, true);
-              } else {
+              if (!deleteSelection(fldP)) {
                 offset = FldGetInsPtPosition(fldP);
                 if (offset > 0) {
                   FldDelete(fldP, offset-1, offset);
@@ -429,12 +438,14 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
             case '\n':
               debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent NL");
               if (!fldP->attr.singleLine) {
+                deleteSelection(fldP);
                 c = eventP->data.keyDown.chr;
                 FldInsert(fldP, &c, 1);
               }
               break;
             default:
               if (eventP->data.keyDown.chr >= 32) {
+                deleteSelection(fldP);
                 c = eventP->data.keyDown.chr;
                 debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent key %d", c);
                 FldInsert(fldP, &c, 1);
