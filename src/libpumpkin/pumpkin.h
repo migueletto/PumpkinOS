@@ -93,9 +93,6 @@ extern "C" {
 #define sysNotifyMediumPriority  0x80
 #define sysNotifyMinimumPriority 0xFF
 
-#define PasswordForm  17000
-#define passwordFld   17000
-
 #define BITMAP_MAGIC 'Bitm'
 
 #define PUMPKINOS "PumpkinOS"
@@ -383,7 +380,6 @@ UInt16 FrmGrfGetState(void);
 void FrmGrfSetState(UInt16 state);
 UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
 void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh);
-char *FrmAskPassword(UInt16 maxLength);
 void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible);
 Boolean FrmGetVisible(FormType *formP, UInt16 objIndex);
 
@@ -399,7 +395,6 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value);
 FieldType *FldGetActiveField(void);
 void FldSetActiveField(FieldType *fldP);
 void FldBlinkCursor(void);
-void FldSetPassword(FieldType *fldP, Boolean password);
 void FldReplaceText(FieldType *fldP, char *s, Boolean focus);
 IndexedColorType WinGetForeColor(void);
 IndexedColorType WinGetBackColor(void);

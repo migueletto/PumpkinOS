@@ -1751,38 +1751,6 @@ void FrmHelp(UInt16 helpMsgId) {
   }
 }
 
-char *FrmAskPassword(UInt16 maxLength) {
-  FormType *formP;
-  FieldType *fldP;
-  MemHandle h;
-  UInt16 index, len;
-  char *s, *password = NULL;
-
-  if ((formP = FrmInitForm(PasswordForm)) != NULL) {
-    index = FrmGetObjectIndex(formP, passwordFld);
-    fldP = (FieldType *)FrmGetObjectPtr(formP, index);
-    FldSetPassword(fldP, true);
-    h = MemHandleNew(maxLength);
-    FldSetTextHandle(fldP, h);
-    FldGrabFocus(fldP);
-    FrmDoDialog(formP);
-    FldSetTextHandle(fldP, NULL);
-    FrmDeleteForm(formP);
-    if ((s = MemHandleLock(h)) != NULL) {
-      len = StrLen(s);
-      if (len > 0) {
-        password = MemPtrNew(len+1);
-        MemMove(password, s, len);
-        MemSet(s, maxLength, 0);
-      }
-      MemHandleUnlock(h);
-    }
-    MemHandleFree(h);
-  }
-
-  return password;
-}
-
 Boolean FrmVisible(const FormType *formP) {
   return formP ? formP->attr.visible : false;
 }
