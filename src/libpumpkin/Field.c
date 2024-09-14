@@ -148,11 +148,25 @@ static Int16 FldCharsWidth(FieldType *fldP, char *chars, Int16 len) {
   return width;
 }
 
+static void FldDrawLine(FieldType *fldP, char *s, UInt16 len, UInt16 y) {
+  UInt16 x, k;
+
+  if (fldP->password) {
+    x = fldP->rect.topLeft.x+1;
+    for (k = 0; k < len; k++) {
+      WinPaintChar(CHAR_PASSWORD, x, fldP->rect.topLeft.y+y);
+      x += FntCharWidth(CHAR_PASSWORD);
+    }
+  } else {
+    WinPaintChars(s, len, fldP->rect.topLeft.x+1, fldP->rect.topLeft.y+y);
+  }
+}
+
 void FldDrawField(FieldType *fldP) {
-  RectangleType rect, hrect;
+  RectangleType rect, hrect, aux;
   IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt;
   WinDrawOperation prev;
-  UInt16 start, len, th, x, y, j, k;
+  UInt16 start, len, th, x, y, j;
   Int16 nBefore, nHigh;
   FontID old;
 
@@ -171,18 +185,14 @@ void FldDrawField(FieldType *fldP) {
 
     MemMove(&rect, &fldP->rect, sizeof(RectangleType));
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldDrawField field %d at %d,%d (editable %d, underlined %d)", fldP->id, rect.topLeft.x, rect.topLeft.y, fldP->attr.editable, fldP->attr.underlined);
-    WinEraseRectangle(&rect, 0);
-/*
-    // debug: paint field background with orange
-    WinSetForeColor(0x7C);
-    WinPaintRectangle(&fldP->rect, 0);
-    WinSetForeColor(fieldLine);
-*/
 
+    // for each line of text
     for (j = 0, y = 0; y+th-1 < rect.extent.y; j++, y += th) {
       if (fldP->attr.editable && fldP->attr.underlined) {
         WinDrawLine(rect.topLeft.x, rect.topLeft.y+y+th-1, rect.topLeft.x+rect.extent.x-1, rect.topLeft.y+y+th-1);
       }
+      RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y, rect.extent.x, th-1);
+
       if (fldP->text && j < fldP->numUsedLines && (fldP->top + j) < fldP->totalLines) {
         start = fldP->lines[fldP->top + j].start;
         len = fldP->lines[fldP->top + j].length;
@@ -197,17 +207,28 @@ void FldDrawField(FieldType *fldP) {
           WinEraseRectangle(&hrect, 0);
           WinSetBackColor(fieldBack);
         }
+
+        // draw line of text, except the LAST line of pixels, using winPaint
+        WinSetClip(&aux);
+        FldDrawLine(fldP, &fldP->text[start], len, y);
+        WinResetClip();
+
+        // draw the LAST line of pixels, using winOverlay, so that letters like "j" and "g"
+        // are drawn on top of the gray line
+        RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y+th-1, rect.extent.x, 1);
+        WinSetClip(&aux);
         prev = WinSetDrawMode(winOverlay);
-        if (fldP->password) {
-          x = rect.topLeft.x+1;
-          for (k = 0; k < len; k++) {
-            WinPaintChar(CHAR_PASSWORD, x, rect.topLeft.y+y);
-            x += FntCharWidth(CHAR_PASSWORD);
-          }
-        } else {
-          WinPaintChars(&fldP->text[start], len, rect.topLeft.x+1, rect.topLeft.y+y);
-        }
+        FldDrawLine(fldP, &fldP->text[start], len, y);
         WinSetDrawMode(prev);
+        WinResetClip();
+
+        // erase the remainder of the Field width
+        x = len ? FldCharsWidth(fldP, &fldP->text[start], len) : 0;
+        RctSetRectangle(&aux, rect.topLeft.x+1 + x, rect.topLeft.y+y, rect.extent.x - x, th-1);
+        WinEraseRectangle(&aux, 0);
+      } else {
+        // erase the entire Field width
+        WinEraseRectangle(&aux, 0);
       }
     }
 
