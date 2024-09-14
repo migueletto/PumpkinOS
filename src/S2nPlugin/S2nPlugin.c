@@ -418,8 +418,8 @@ static Boolean cipher_init(APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfo
   return r;
 }
 
-static Boolean cipher_update(void *_ctx, APKeyInfoType *keyInfoP, UInt8 *input, UInt32 inputLen, UInt8 *output, UInt32 *outputLen) {
-  cipher_ctx_t *ctx = (cipher_ctx_t *)_ctx;
+static Boolean cipher_update(APKeyInfoType *keyInfoP, APCipherInfoType *cipherInfoP, UInt8 *input, UInt32 inputLen, UInt8 *output, UInt32 *outputLen) {
+  cipher_ctx_t *ctx = cipherInfoP ? (cipher_ctx_t *)cipherInfoP->providerContext.localContext : NULL;
   key_ctx_t *key_ctx;
   Int32 r;
   struct s2n_blob in, out;
@@ -490,8 +490,8 @@ static Boolean cipher_update(void *_ctx, APKeyInfoType *keyInfoP, UInt8 *input, 
   return ret;
 }
 
-static void cipher_free(void *_ctx) {
-  cipher_ctx_t *ctx = (cipher_ctx_t *)_ctx;
+static void cipher_free(APCipherInfoType *cipherInfoP) {
+  cipher_ctx_t *ctx = cipherInfoP ? (cipher_ctx_t *)cipherInfoP->providerContext.localContext : NULL;
 
   if (ctx) {
     s2n_session_key_free(&ctx->key);
@@ -499,6 +499,7 @@ static void cipher_free(void *_ctx) {
     s2n_free(&ctx->in);
     s2n_free(&ctx->out);
     MemPtrFree(ctx);
+    cipherInfoP->providerContext.localContext = NULL;
   }
 }
 

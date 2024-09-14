@@ -220,7 +220,8 @@ Err CPMLibExportKeyInfo(UInt16 refnum, APKeyInfoType *keyInfoP, UInt8 encoding, 
     if ((i = getProvider(cryptoPluginType, keyInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->key_export) {
         if (cryptoPlugin->key_export(keyInfoP, encoding, exportDataP, dataLenP)) {
-          err = errNone;
+          // if exportDataP is NULL, the caller expects error cpmErrBufTooSmall and the length to be returned in dataLenP
+          err = exportDataP == NULL ? cpmErrBufTooSmall : errNone;
         }
       }
     }
@@ -394,7 +395,7 @@ Err CPMLibEncryptUpdate(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType
   if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP && bufIn && bufOut && bufOutLenP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_update) {
-        if (cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
+        if (cryptoPlugin->cipher_update(keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
           err = errNone;
         }
       }
@@ -413,7 +414,7 @@ Err CPMLibEncryptFinal(UInt16 refnum, APKeyInfoType *keyInfoP, APCipherInfoType 
   if (refnum == CpmLibRefNum && keyInfoP && cipherInfoP && bufIn && bufOut && bufOutLenP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_update) {
-        if (cryptoPlugin->cipher_update(cipherInfoP->providerContext.localContext, keyInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
+        if (cryptoPlugin->cipher_update(keyInfoP, cipherInfoP, bufIn, bufInLen, bufOut, bufOutLenP)) {
           err = errNone;
         }
       }
@@ -476,7 +477,7 @@ Err CPMLibReleaseCipherInfo(UInt16 refnum, APCipherInfoType *cipherInfoP) {
   if (refnum == CpmLibRefNum && cipherInfoP) {
     if ((i = getProvider(cryptoPluginType, cipherInfoP->providerContext.providerID, &ids)) != -1) {
       if ((cryptoPlugin = (CryptoPluginType *)ids.main[i](NULL)) != NULL && cryptoPlugin->cipher_free) {
-        cryptoPlugin->cipher_free(cipherInfoP->providerContext.localContext);
+        cryptoPlugin->cipher_free(cipherInfoP);
         err = errNone;
       }
     }
