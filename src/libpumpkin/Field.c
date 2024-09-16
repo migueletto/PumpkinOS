@@ -134,6 +134,118 @@ void FldSetActiveField(FieldType *fldP) {
   }
 }
 
+void FldRenderField(FieldType *fldP, Boolean draw) {
+  IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt, oldBack, back;
+  WinDrawOperation prev;
+  RectangleType clip, aux;
+  UInt16 th, tw, row, col, bottom, x, y, i;
+  FontID old;
+  char c;
+
+  IN;
+  if (fldP) {
+    old = FntSetFont(fldP->fontID);
+    th = FntCharHeight();
+    bottom = fldP->top + fldP->rect.extent.y / th;
+    fldP->numUsedLines = 0;
+    row = col = 0;
+    x = y = 0;
+
+    if (draw) {
+      fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
+      fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
+      fieldText = UIColorGetTableEntryIndex(UIFieldText);
+      fieldBackHigh = UIColorGetTableEntryIndex(UIFieldTextHighlightBackground);
+      oldb = WinSetBackColor(fieldBack);
+      oldf = WinSetForeColor(fieldLine);
+      oldt = WinSetTextColor(fieldText);
+    }
+
+    for (i = 0; i < fldP->textLen; i++) {
+      if (row == fldP->insPtYPos && col == fldP->insPtXPos) {
+        fldP->pos = i;
+        if (draw) {
+          InsPtSetHeight(th - 2);
+          InsPtSetLocation(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+        }
+      }
+
+      c = fldP->text[i];
+      tw = FntCharWidth(c);
+
+      if (c == '\n') {
+        if (draw) {
+          RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th - 1);
+          WinEraseRectangle(&aux, 0);
+        }
+        x = 0;
+        y += th;
+        col = 0;
+        row++;
+        if (row >= fldP->top && row < bottom) fldP->numUsedLines++;
+      } else {
+        if (x + tw >= fldP->rect.extent.x) {
+          x = 0;
+          y += th;
+          col = 0;
+          row++;
+          if (row >= fldP->top && row < bottom) fldP->numUsedLines++;
+        }
+        if (draw && row >= fldP->top && row < bottom) {
+          if (fldP->attr.editable && fldP->attr.underlined) {
+            WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
+                        fldP->rect.topLeft.x + x + tw - 1, fldP->rect.topLeft.y + y + th - 1);
+          }
+          back = (fldP->selFirstPos <= i && i < fldP->selLastPos) ? fieldBackHigh : fieldBack;
+          oldBack = WinSetBackColor(back);
+          RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
+          WinSetClip(&clip);
+          WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+          WinSetBackColor(oldBack);
+          RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1, tw, 1);
+          WinSetClip(&clip);
+          prev = WinSetDrawMode(winOverlay);
+          WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+          WinSetDrawMode(prev);
+          WinResetClip();
+        }
+        col++;
+        x += tw;
+      }
+    }
+    fldP->totalLines = row;
+
+    if (draw) {
+      RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th - 1);
+      WinEraseRectangle(&aux, 0);
+      if (fldP->attr.editable && fldP->attr.underlined) {
+        WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
+                    fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
+      }
+      y += th;
+      row++;
+      for (; row < bottom; row++) {
+        RctSetRectangle(&aux, fldP->rect.topLeft.x, fldP->rect.topLeft.y + y, fldP->rect.extent.x, th - 1);
+        WinEraseRectangle(&aux, 0);
+        if (fldP->attr.editable && fldP->attr.underlined) {
+          WinDrawLine(fldP->rect.topLeft.x, fldP->rect.topLeft.y + y + th - 1,
+                      fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
+        }
+        y += th;
+      }
+
+      WinSetBackColor(oldb);
+      WinSetForeColor(oldf);
+      WinSetTextColor(oldt);
+      InsPtEnable(fldP->attr.hasFocus && (fldP->textLen == 0 || (fldP->insPtYPos >= fldP->top && fldP->insPtYPos < bottom)));
+      fldP->attr.visible = 1;
+    }
+
+    FntSetFont(old);
+  }
+  OUTV;
+}
+
 static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt16 y, IndexedColorType normal, IndexedColorType highlight, Boolean checkHighlight) {
   IndexedColorType prev, back;
   UInt16 i, x;
@@ -154,6 +266,9 @@ void FldDrawField(FieldType *fldP) {
   WinDrawOperation prev;
   UInt16 start, len, th, x, y, j;
   FontID old;
+
+  FldRenderField(fldP, true);
+  return;
 
   IN;
   if (fldP) {
