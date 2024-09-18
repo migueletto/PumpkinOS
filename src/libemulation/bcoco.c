@@ -487,7 +487,7 @@ static int coco_set_window(computer_t *c, window_provider_t *wp, int fullscreen)
   width = SCREEN_WIDTH;
   height = SCREEN_HEIGHT;
 
-  coco->w = wp->create(ENC_RGBA, &width, &height, 2, 2, 0, fullscreen, 0, NULL);
+  coco->w = wp->create(ENC_RGBA, &width, &height, 2, 2, 0, fullscreen, 0, NULL, NULL);
   if (coco->w) {
     coco->screen = coco->wp->create_texture(coco->w, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (!fullscreen) {

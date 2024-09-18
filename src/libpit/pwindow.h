@@ -58,7 +58,7 @@ typedef void *window_t;
 typedef struct texture_t texture_t;
 
 typedef struct {
-  window_t *(*create)(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, void *data);
+  window_t *(*create)(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data);
   int (*event)(window_t *window, int wait, int remove, int *key, int *mods, int *buttons);
   int (*destroy)(window_t *window);
   int (*erase)(window_t *window, uint32_t bg);

@@ -16,6 +16,8 @@
 #define SDL_BUTTON1   1
 #define SDL_BUTTON2   2
 
+#define MAX_DRIVER 128
+
 struct texture_t {
   SDL_Texture *t;
   int width, height;
@@ -30,9 +32,10 @@ typedef struct {
 } libsdl_keymap_t;
 
 typedef struct {
-  int width, height, xfactor, yfactor, fullscreen, software, spixel;
+  int width, height, xfactor, yfactor, rotate, fullscreen, software, spixel;
   int x, y, buttons, mods, other;
   uint32_t format;
+  char driver[MAX_DRIVER];
   SDL_Window *window;
   SDL_Renderer *renderer;
   SDL_Texture *background;
@@ -623,7 +626,7 @@ static int libsdl_event(libsdl_window_t *window, int wait, int remove, int *ekey
 static int libsdl_video_setup(libsdl_window_t *window) {
   SDL_RendererInfo info;
   uint16_t index;
-  uint32_t i, c, w, h;
+  uint32_t n, i, c, w, h;
 
   w = window->width;
   h = window->height;
@@ -636,6 +639,25 @@ static int libsdl_video_setup(libsdl_window_t *window) {
     h *= window->yfactor;
   }
 
+  i = -1;
+
+  if (window->driver[0]) {
+    if ((n = SDL_GetNumRenderDrivers()) != -1) {
+      for (i = 0; i < n; i++) {
+        if (SDL_GetRenderDriverInfo(i, &info) == 0) {
+          if (!sys_strcmp(info.name, window->driver)) {
+            debug(DEBUG_INFO, "SDL", "requested driver \"%s\" found", window->driver);
+            break;
+          }
+        }
+      }
+      if (i == n) {
+        debug(DEBUG_ERROR, "SDL", "requested driver \"%s\" not found, using default", window->driver);
+        i = -1;
+      }
+    }
+  }
+
   debug(DEBUG_INFO, "SDL", "creating window (%d x %d) fullscreen %d", w, h, window->fullscreen);
   window->window = SDL_CreateWindow("", c, c, w, h, window->fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
   if (window->window == NULL) {
@@ -645,7 +667,7 @@ static int libsdl_video_setup(libsdl_window_t *window) {
 
   debug(DEBUG_INFO, "SDL", "creating renderer");
   // index of the rendering driver to initialize, or -1 to initialize the first one supporting the requested flags.
-  window->renderer = SDL_CreateRenderer(window->window, -1, window->software ? SDL_RENDERER_SOFTWARE : 0);
+  window->renderer = SDL_CreateRenderer(window->window, i, window->software ? SDL_RENDERER_SOFTWARE : 0);
   if (window->renderer == NULL) {
     SDL_DestroyWindow(window->window);
     window->window = NULL;
@@ -695,7 +717,9 @@ static int libsdl_video_close(libsdl_window_t *window) {
   return 0;
 }
 
-static window_t *libsdl_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, void *data) {
+static window_t *libsdl_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate,
+     int fullscreen, int software, char *driver, void *data) {
+
   libsdl_window_t *window;
   SDL_Rect rect;
   uint32_t format, spixel;
@@ -746,12 +770,14 @@ static window_t *libsdl_window_create(int encoding, int *width, int *height, int
   if ((window = xcalloc(1, sizeof(libsdl_window_t))) != NULL) {
     window->width = *width;
     window->height = *height;
+    window->xfactor = xfactor;
+    window->yfactor = yfactor;
     window->fullscreen = fullscreen;
     window->software = software;
     window->format = format;
     window->spixel = spixel;
-    window->xfactor = xfactor;
-    window->yfactor = yfactor;
+    window->rotate = rotate;
+    sys_strncpy(window->driver, driver, MAX_DRIVER);
 
     if (libsdl_video_setup(window) == 0) {
       debug(DEBUG_INFO, "SDL", "window created");
@@ -914,6 +940,7 @@ static int libsdl_window_draw_texture_rect(window_t *_window, texture_t *texture
     dst.w = w * window->xfactor;
     dst.h = h * window->yfactor;
 
+    //r = SDL_RenderCopyEx(window->renderer, texture->t, &src, &dst, 0, NULL, SDL_FLIP_NONE);
     r = SDL_RenderCopy(window->renderer, texture->t, &src, &dst);
 
     if (r != 0)  {
@@ -927,17 +954,19 @@ static int libsdl_window_draw_texture_rect(window_t *_window, texture_t *texture
 
 static int libsdl_window_draw_texture(window_t *_window, texture_t *texture, int x, int y) {
   libsdl_window_t *window;
-  SDL_Rect rect;
+  SDL_Rect dst;
   int r = -1;
 
   window = (libsdl_window_t *)_window;
 
   if (window && texture) {
-    rect.x = x * window->xfactor;
-    rect.y = y * window->yfactor;
-    rect.w = texture->width * window->xfactor;
-    rect.h = texture->height * window->yfactor;
-    r = SDL_RenderCopy(window->renderer, texture->t, NULL, &rect);
+    dst.x = x * window->xfactor;
+    dst.y = y * window->yfactor;
+    dst.w = texture->width  * window->xfactor;
+    dst.h = texture->height * window->yfactor;
+
+    //r = SDL_RenderCopyEx(window->renderer, texture->t, NULL, &dst, 90, &center, SDL_FLIP_NONE);
+    r = SDL_RenderCopy(window->renderer, texture->t, NULL, &dst);
 
     if (r != 0)  {
       debug(DEBUG_ERROR, "SDL", "SDL_RenderCopy failed");
@@ -1077,17 +1106,37 @@ static int libsdl_calib(int pe) {
   return 0;
 }
 
+static int set_video_driver(char *video_driver) {
+#ifdef SDL_HINT_VIDEODRIVER
+  debug(DEBUG_INFO, "SDL", "hint video driver \"%s\"", video_driver);
+  SDL_SetHint(SDL_HINT_VIDEODRIVER, video_driver);
+#else
+  debug(DEBUG_INFO, "SDL", "setenv video driver \"%s\"", video_driver);
+  SDL_setenv("SDL_VIDEODRIVER", video_driver, 1);
+#endif
+  return 1;
+}
+
 int liblsdl2_load(void) {
   SDL_version version;
+  int set = 0;
 
   SDL_VERSION(&version);
   debug(DEBUG_INFO, "SDL", "version %d.%d.%d", version.major, version.minor, version.patch);
+
+  if (!SDL_getenv("SDL_VIDEODRIVER") && SDL_getenv("WAYLAND_DISPLAY") != NULL) {
+    set = set_video_driver("wayland");
+  }
 
   libsdl_init_audio();
 
   if (libsdl_init_video() != 0) {
     SDL_Quit();
     return -1;
+  }
+
+  if (set) {
+    set_video_driver(NULL);
   }
 
   xmemset(&window_provider, 0, sizeof(window_provider));

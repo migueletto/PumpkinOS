@@ -493,7 +493,7 @@ static int cpm3_set_window(computer_t *c, window_provider_t *wp, int fullscreen)
   cpm3->wp = wp;
   width = SCREEN_WIDTH;
   height = SCREEN_HEIGHT;
-  cpm3->w = wp->create(ENC_RGBA, &width, &height, 2, 4, 0, fullscreen, 0, NULL);
+  cpm3->w = wp->create(ENC_RGBA, &width, &height, 2, 4, 0, fullscreen, 0, NULL, NULL);
   if (cpm3->w) {
     cpm3->screen = cpm3->wp->create_texture(cpm3->w, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (!fullscreen) {

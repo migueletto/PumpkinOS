@@ -3,17 +3,18 @@
 #include "sys.h"
 #include "script.h"
 #include "thread.h"
-#include "mutex.h"
 #include "media.h"
 #include "pumpkin.h"
 #include "secure.h"
-#include "dbg.h"
 #include "debug.h"
-#include "xalloc.h"
+
+#define MAX_STR 64
 
 typedef struct {
-  int width, height, depth, mono, fullscreen, dia, single;
-  char launcher[256];
+  int width, height, depth, mono, xfactor, yfactor, rotate;
+  int software, fullscreen, fullrefresh, dia, single;
+  char launcher[MAX_STR];
+  char driver[MAX_STR];
   window_provider_t *wp;
   audio_provider_t *ap;
   window_t *w;
@@ -30,7 +31,7 @@ static void EventLoop(libos_t *data) {
   int r;
 
   debug(DEBUG_INFO, PUMPKINOS, "starting launcher");
-  xmemset(&request, 0, sizeof(request));
+  sys_memset(&request, 0, sizeof(request));
   sys_strncpy(request.name, data->launcher, dmDBNameLength-1);
   request.code = sysAppLaunchCmdNormalLaunch;
   request.opendb = 1;
@@ -62,7 +63,7 @@ static void EventLoop(libos_t *data) {
         } else {
           debug(DEBUG_ERROR, PUMPKINOS, "invalid client request size %d", len);
         }
-        xfree(buf);
+        sys_free(buf);
       }
     }
 
@@ -78,11 +79,13 @@ static int libos_action(void *arg) {
 
   if (data->wp) {
     debug(DEBUG_INFO, PUMPKINOS, "creating window");
+
     encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
     height = data->dia ? ((data->height - BUTTONS_HEIGHT) * 2) / 3 : data->height;
-    if ((data->w = data->wp->create(encoding, &data->width, &data->height, 1, 1, 0, data->fullscreen, 0, data->wp->data)) == NULL) {
+    if ((data->w = data->wp->create(encoding, &data->width, &data->height, data->xfactor, data->yfactor, data->rotate,
+          data->fullscreen, data->software, data->driver, data->wp->data)) == NULL) {
       thread_end(PUMPKINOS, thread_get_handle());
-      xfree(data);
+      sys_free(data);
       return 0;
     }
     pumpkin_set_window(data->w, data->width, height, data->height);
@@ -112,6 +115,7 @@ static int libos_action(void *arg) {
   }
 
   pumpkin_set_spawner(thread_get_handle());
+  pumpkin_set_fullrefresh(data->fullrefresh);
 
   debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
   pumpkin_deploy_files("/app_install");
@@ -127,78 +131,136 @@ static int libos_action(void *arg) {
   }
   //dbg_finish();
 
-  xfree(data);
+  sys_free(data);
   thread_end(PUMPKINOS, thread_get_handle());
   sys_set_finish(0);
 
   return 0;
 }
 
-#ifndef ANDROID
-static
-#endif
-int libos_start_direct(window_provider_t *wp, secure_provider_t *secure, int width, int height, int depth, int fullscreen, int dia, int single, char *launcher) {
+typedef enum {
+  PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DEPTH, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
+  PARAM_FULLSCREEN, PARAM_DIA, PARAM_SINGLE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
+  PARAM_DRIVER, PARAM_LAUNCHER
+} param_id_t;
+
+typedef struct {
+  param_id_t id;
+  int type;
+  char *name;
+} param_t;
+
+static param_t params[] = {
+  { PARAM_WIDTH,       SCRIPT_ARG_INTEGER, "width"       },
+  { PARAM_HEIGHT,      SCRIPT_ARG_INTEGER, "height"      },
+  { PARAM_DEPTH,       SCRIPT_ARG_INTEGER, "depth"       },
+  { PARAM_XFACTOR,     SCRIPT_ARG_INTEGER, "xfactor"     },
+  { PARAM_YFACTOR,     SCRIPT_ARG_INTEGER, "yfactor"     },
+  { PARAM_ROTATE,      SCRIPT_ARG_INTEGER, "rotate"      },
+  { PARAM_FULLSCREEN,  SCRIPT_ARG_BOOLEAN, "fullscreen"  },
+  { PARAM_DIA,         SCRIPT_ARG_BOOLEAN, "dia"         },
+  { PARAM_SINGLE,      SCRIPT_ARG_BOOLEAN, "single"      },
+  { PARAM_SOFTWARE,    SCRIPT_ARG_BOOLEAN, "software"    },
+  { PARAM_FULLREFRESH, SCRIPT_ARG_BOOLEAN, "fullrefresh" },
+  { PARAM_DRIVER,      SCRIPT_ARG_LSTRING, "driver"      },
+  { PARAM_LAUNCHER,    SCRIPT_ARG_LSTRING, "launcher"    },
+  { 0, 0, NULL }
+};
+
+static int libos_start(int pe) {
+  script_int_t width, height, depth;
+  script_arg_t k, v;
+  script_ref_t obj;
   libos_t *data;
-  int mono, r = -1;
+  char *launcher = NULL;
+  int fullscreen, dia, single;
+  int i, r = -1;
 
-  if (dia) {
-    width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-    height = (width * 3 ) / 2 + BUTTONS_HEIGHT;
-  } else if (single) {
-    width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-    height = width;
-  }
+  if ((data = sys_calloc(1, sizeof(libos_t))) != NULL) {
+    data->wp = script_get_pointer(pe, WINDOW_PROVIDER);
+    data->secure = script_get_pointer(pe, SECURE_PROVIDER);
 
-  if (depth < 16) {
-    mono = depth;
-    depth = 16;
-  } else {
-    mono = 0;
-  }
+    if (script_get_object(pe, 0, &obj) == 0) {
+      // using new style parameters
 
-  if (width > 0 && height > 0 && (depth == 16 || depth == 32)) {
-    if ((data = xcalloc(1, sizeof(libos_t))) != NULL) {
-      data->wp = wp;
-      data->secure = secure;
+      // set some default values
+      data->width = 1024;
+      data->height = 680;
+      data->depth = 16;
+      data->xfactor = 1;
+      data->yfactor = 1;
+      sys_strncpy(data->launcher, "Launcher", MAX_STR);
+
+      for (i = 0; params[i].id; i++) {
+        k.type = SCRIPT_ARG_STRING;
+        k.value.s = params[i].name;
+
+        if (script_object_get(pe, obj, &k, &v) == 0) {
+          if (v.type == params[i].type) {
+            switch (params[i].id) {
+              case PARAM_WIDTH:       data->width       = v.value.i; break;
+              case PARAM_HEIGHT:      data->height      = v.value.i; break;
+              case PARAM_DEPTH:       data->depth       = v.value.i; break;
+              case PARAM_XFACTOR:     data->xfactor     = v.value.i; break;
+              case PARAM_YFACTOR:     data->yfactor     = v.value.i; break;
+              case PARAM_ROTATE:      data->rotate      = v.value.i; break;
+              case PARAM_FULLSCREEN:  data->fullscreen  = v.value.i; break;
+              case PARAM_DIA:         data->dia         = v.value.i; break;
+              case PARAM_SINGLE:      data->single      = v.value.i; break;
+              case PARAM_SOFTWARE:    data->software    = v.value.i; break;
+              case PARAM_FULLREFRESH: data->fullrefresh = v.value.i; break;
+              case PARAM_DRIVER:
+                sys_strncpy(data->driver, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
+                break;
+              case PARAM_LAUNCHER:
+                sys_strncpy(data->launcher, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
+                break;
+            }
+          } else if (v.type != SCRIPT_ARG_NULL) {
+            debug(DEBUG_ERROR, PUMPKINOS, "invalid parameter type '%c' for %s", v.type, params[i].name);
+          }
+        }
+      }
+
+    } else if (script_get_integer(pe, 0, &width) == 0 &&
+               script_get_integer(pe, 1, &height) == 0 &&
+               script_get_integer(pe, 2, &depth) == 0 &&
+               script_get_boolean(pe, 3, &fullscreen) == 0 &&
+               script_get_boolean(pe, 4, &dia) == 0 &&
+               script_get_boolean(pe, 5, &single) == 0 &&
+               script_get_string(pe,  6, &launcher) == 0) {
+
+      // using old style parameters
       data->width = width;
       data->height = height;
       data->depth = depth;
-      data->mono = mono;
       data->fullscreen = fullscreen;
       data->dia = dia;
       data->single = single;
-      sys_strncpy(data->launcher, launcher, 256);
+      sys_strncpy(data->launcher, launcher, MAX_STR);
+    }
 
+    if (data->dia) {
+      data->width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
+      data->height = (data->width * 3 ) / 2 + BUTTONS_HEIGHT;
+    } else if (data->single) {
+      data->width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
+      data->height = data->width;
+    }
+
+    if (data->depth < 16) {
+      data->mono = data->depth;
+      data->depth = 16;
+    } else {
+      data->mono = 0;
+    }
+
+    if (data->width > 0 && data->height > 0 && (data->depth == 16 || data->depth == 32)) {
       // Calling in the same thread. As a result, the script engine will remain locked.
       // This could be a problem only if an application calls the engine, which is unlikely.
-      libos_action(data);
+      r = libos_action(data);
     }
   }
-
-  return r;
-}
-
-static int libos_start(int pe) {
-  char *launcher = NULL;
-  script_int_t width, height, depth;
-  secure_provider_t *secure;
-  window_provider_t *wp;
-  int fullscreen, dia, single, r = -1;
-
-  if (script_get_integer(pe, 0, &width) == 0 &&
-      script_get_integer(pe, 1, &height) == 0 &&
-      script_get_integer(pe, 2, &depth) == 0 &&
-      script_get_boolean(pe, 3, &fullscreen) == 0 &&
-      script_get_boolean(pe, 4, &dia) == 0 &&
-      script_get_boolean(pe, 5, &single) == 0 &&
-      script_get_string(pe,  6, &launcher) == 0) {
-
-    wp = script_get_pointer(pe, WINDOW_PROVIDER);
-    secure = script_get_pointer(pe, SECURE_PROVIDER);
-    r = libos_start_direct(wp, secure, width, height, depth, fullscreen, dia, single, launcher);
-  }
-
-  if (launcher) xfree(launcher);
 
   return r;
 }
@@ -243,9 +305,9 @@ static int libos_serial(int pe) {
     }
   }
 
-  if (host) xfree(host);
-  if (screator) xfree(screator);
-  if (descr) xfree(descr);
+  if (host) sys_free(host);
+  if (screator) sys_free(screator);
+  if (descr) sys_free(descr);
 
   return r;
 }

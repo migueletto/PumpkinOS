@@ -409,7 +409,6 @@ int wman_update(wman_t *wm, int id, int x, int y, int w, int h) {
 
   if (wm && wm->n) {
     if (wm->area[wm->n-1].id == id) {
-//debug(1, "XXX", "wman_update top: %d,%d,%d,%d", x, y, w, h);
       i = wm->n-1;
       wman_draw(wm, i, x, y, w, h, wm->area[wm->n-1].r.x + x, wm->area[wm->n-1].r.y + y);
       res = 0;
@@ -603,7 +602,7 @@ int wman_clicked(wman_t *wm, int x, int y, int *tx, int *ty) {
 }
 
 int wman_xy(wman_t *wm, int id, int *x, int *y) {
-  int i, r = -1;;
+  int i, r = -1;
 
   if (wm && x && y) {
     for (i = 0; i < wm->n; i++) {
@@ -614,6 +613,20 @@ int wman_xy(wman_t *wm, int id, int *x, int *y) {
         break;
       }
     }
+  }
+
+  return r;
+}
+
+int wman_draw_all(wman_t *wm) {
+  int i, r = -1;
+
+  if (wm) {
+    for (i = 0; i < wm->n; i++) {
+      draw_border(wm, i, i == wm->n-1);
+      wm->wp->draw_texture_rect(wm->w, wm->area[i].t, 0, 0, wm->area[i].r.width, wm->area[i].r.height, wm->area[i].r.x, wm->area[i].r.y);
+    }
+    r = 0;
   }
 
   return r;

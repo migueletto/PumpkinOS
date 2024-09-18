@@ -64,7 +64,7 @@ heap_t *heap_init(uint32_t size, void *_wp) {
   width = WIDTH;
   height = HEIGHT;
   heap->wp = _wp;
-  heap->w = heap->wp->create(ENC_RGBA, &width, &height, 2, 2, 0, 0, 0, heap->wp->data);
+  heap->w = heap->wp->create(ENC_RGBA, &width, &height, 2, 2, 0, 0, 0, NULL, heap->wp->data);
   heap->t = heap->wp->create_texture(heap->w, width, height);
   heap->surface = surface_create(width, height, SURFACE_ENCODING_ARGB);
   heap->t0 = sys_get_clock();

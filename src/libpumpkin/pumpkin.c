@@ -198,6 +198,7 @@ typedef struct {
   int encoding;
   int width, height, full_height;
   int depth, mono, border;
+  int fullrefresh;
   int dragging;
   int lastX, lastY;
   int current_task;
@@ -734,6 +735,10 @@ void pumpkin_set_mono(int mono) {
   pumpkin_module.mono = mono;
 }
 
+void pumpkin_set_fullrefresh(int fullrefresh) {
+  pumpkin_module.fullrefresh = fullrefresh;
+}
+
 int pumpkin_dia_enabled(void) {
   return pumpkin_module.dia ? 1 : 0;
 }
@@ -962,7 +967,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
         pilotMain(code, param, flags);
 
-        if (code != sysAppLaunchCmdNormalLaunch || pumpkin_module.dia) {
+        if (code != sysAppLaunchCmdNormalLaunch || pumpkin_module.dia || pumpkin_module.single) {
           task->dbID = oldDbID;
           task->creator = oldCreator;
         }
@@ -1383,6 +1388,7 @@ int pumpkin_launcher(char *name, int width, int height) {
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
+      wman_add(pumpkin_module.wm, 0, texture, 0, 0, width, height);
       MemSet(&request, sizeof(launch_request_t), 0);
 #ifdef ANDROID
       pumpkin_set_compat(creator, appCompatOk, 0);
@@ -2211,20 +2217,36 @@ int pumpkin_sys_event(void) {
 
     if ((now - pumpkin_module.lastUpdate) > 50000) {
       if (pumpkin_module.num_tasks > 0) {
+        if (pumpkin_module.fullrefresh) {
+          wman_clear(pumpkin_module.wm);
+        }
+
         for (j = 0; j < MAX_TASKS; j++) {
           if (pumpkin_module.tasks[j].removed) {
             wman_remove(pumpkin_module.wm, pumpkin_module.tasks[j].taskId, 1);
             pumpkin_module.tasks[j].removed = 0;
             pumpkin_module.render = 1;
           }
-        }
-        for (j = 0; j < pumpkin_module.num_tasks; j++) {
-          i = pumpkin_module.task_order[j];
-          if (draw_task(i, &x, &y, &w, &h) && pumpkin_module.wm) {
-            wman_update(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, x, y, w, h);
-            pumpkin_module.render = 1;
+        } 
+
+        if (pumpkin_module.fullrefresh) {
+          for (j = 0; j < pumpkin_module.num_tasks; j++) {
+            i = pumpkin_module.task_order[j];
+            draw_task(i, &x, &y, &w, &h);
+          }
+          wman_draw_all(pumpkin_module.wm);
+          pumpkin_module.render = 1;
+
+        } else {
+          for (j = 0; j < pumpkin_module.num_tasks; j++) {
+            i = pumpkin_module.task_order[j];
+            if (draw_task(i, &x, &y, &w, &h) && pumpkin_module.wm) {
+              wman_update(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, x, y, w, h);
+              pumpkin_module.render = 1;
+            }
           }
         }
+
         if (pumpkin_module.dragged) {
           for (j = 0; j < pumpkin_module.num_tasks; j++) {
             i = pumpkin_module.task_order[j];
@@ -2563,13 +2585,19 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
   now = sys_get_clock();
 
   if ((now - pumpkin_module.lastUpdate) > 50000) {
-    if (draw_task(0, &x, &y, &w, &h)) {
-      wman_update(pumpkin_module.wm, pumpkin_module.tasks[0].taskId, x, y, w, h);
+    if (pumpkin_module.fullrefresh) {
+      draw_task(0, &x, &y, &w, &h);
+      wman_update(pumpkin_module.wm, 0, 0, 0, pumpkin_module.tasks[0].width, pumpkin_module.tasks[0].height);
+      pumpkin_module.render = 1;
+    } else if (draw_task(0, &x, &y, &w, &h)) {
+      wman_update(pumpkin_module.wm, 0, x, y, w, h);
       pumpkin_module.render = 1;
     }
+
     if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
       pumpkin_module.render = 1;
     }
+
     if (pumpkin_module.render) {
       if (pumpkin_module.wp->render) {
         pumpkin_module.wp->render(pumpkin_module.w);

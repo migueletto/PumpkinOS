@@ -46,7 +46,7 @@ int dbg_init(window_provider_t *_wp, int encoding) {
   wp = _wp;
   width = WIDTH;
   height = HEIGHT;
-  w = wp->create(encoding, &width, &height, 1, 1, 0, 0, 0, wp->data);
+  w = wp->create(encoding, &width, &height, 1, 1, 0, 0, 0, NULL, wp->data);
   xmemset(&dbg, 0, sizeof(dbg_t));
 //debug(1, "XXX", "dbg_init %p %d %p", wp, encoding, w);
 

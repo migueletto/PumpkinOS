@@ -12,4 +12,5 @@ int wman_remove(wman_t *wm, int id, int remove);
 int wman_clicked(wman_t *wm, int x, int y, int *tx, int *ty);
 int wman_xy(wman_t *wm, int id, int *x, int *y);
 void wman_clear(wman_t *wm);
+int wman_draw_all(wman_t *wm);
 int wman_finish(wman_t *wm);

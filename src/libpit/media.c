@@ -327,7 +327,7 @@ int media_loop(int ptr, media_frame_t *frame, void *_wp, void *_ap) {
           if (!node->w && node->wp) {
             width = frame->meta.av.v.width;
             height = frame->meta.av.v.height;
-            node->w = node->wp->create(frame->meta.av.v.encoding, &width, &height, 1, 1, 0, 0, 0, node->wp->data);
+            node->w = node->wp->create(frame->meta.av.v.encoding, &width, &height, 1, 1, 0, 0, 0, NULL, node->wp->data);
             node->t = node->w ? node->wp->create_texture(node->w, width, height) : NULL;
           }
           if (node->t) {

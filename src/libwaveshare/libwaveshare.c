@@ -37,7 +37,7 @@ struct texture_t {
 static window_provider_t wp;
 static libwaveshare_t ws;
 
-static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, void *data) {
+static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   window_t *w = NULL;
 
   if ((ws.tft_spi = ws.spip->open(ws.tft_cs, ws.spi_speed, ws.spip->data)) != NULL &&

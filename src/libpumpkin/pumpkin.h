@@ -160,6 +160,7 @@ void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t
 void pumpkin_set_mono(int mono);
 int pumpkin_get_encoding(void);
 int pumpkin_get_current(void);
+void pumpkin_set_fullrefresh(int fullrefresh);
 
 void pumpkin_set_secure(void *secure);
 int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data);

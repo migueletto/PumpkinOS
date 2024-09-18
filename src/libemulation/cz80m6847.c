@@ -568,7 +568,7 @@ static int cz80m6847_set_window(computer_t *c, window_provider_t *wp, int fullsc
   width = SCREEN_WIDTH;
   height = SCREEN_HEIGHT;
 
-  cz80m6847->w = wp->create(ENC_RGBA, &width, &height, 2, 2, 0, fullscreen, 0, NULL);
+  cz80m6847->w = wp->create(ENC_RGBA, &width, &height, 2, 2, 0, fullscreen, 0, NULL, NULL);
   if (cz80m6847->w) {
     cz80m6847->screen = cz80m6847->wp->create_texture(cz80m6847->w, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (!fullscreen) {

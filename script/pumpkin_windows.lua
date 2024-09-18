@@ -10,4 +10,10 @@ pit.mount("./vfs/", "/")
 
 pumpkin = pit.loadlib("libos")
 pumpkin.init()
-pumpkin.start(1024, 768, 16, false, false, false, "Launcher")
+
+pumpkin.start {
+  width  = 1024,
+  height = 768,
+  depth  = 16,
+  launcher = "Launcher"
+}
