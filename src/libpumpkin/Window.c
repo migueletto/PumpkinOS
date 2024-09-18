@@ -3281,7 +3281,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
   if (maxWidth) *maxWidth = 0;
 
   if (text && len && bounds) {
-    debug(DEBUG_TRACE, "Window", "WinDrawCharBox: text \"%.*s\"", len, text);
+    debug(DEBUG_TRACE, "Window", "WinDrawCharBox: text \"%.*s\" (draw %d)", len, text, draw);
 
     for (i = 0; i < len && (!lineInfo || total < maxLines);) {
       c = text[i];
