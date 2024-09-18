@@ -136,7 +136,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw) {
   UInt16 th, tw, row, col, bottom, x, y, i;
   Boolean posFound, insPtEnable;
   FontID old;
-  char c;
+  UInt8 c;
 
   IN;
   if (fldP) {
