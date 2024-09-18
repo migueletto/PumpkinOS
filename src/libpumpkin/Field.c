@@ -142,7 +142,7 @@ static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt
   for (i = 0; i < len; i++) {
     back = checkHighlight && (fldP->selFirstPos <= start+i && start+i < fldP->selLastPos) ? highlight : normal;
     prev = WinSetBackColor(back);
-    WinPaintChar(s[i], x, fldP->rect.topLeft.y+y);
+    WinPaintChar((UInt8)s[i], x, fldP->rect.topLeft.y+y);
     WinSetBackColor(prev);
     x += FntCharWidth(s[i]);
   }
