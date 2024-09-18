@@ -274,7 +274,7 @@ static int input_event(fb_t *fb, uint32_t us, int *x, int *y, int *button, int *
   return ev;
 }
 
-static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, void *data) {
+static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   fb_t *fb = (fb_t *)data;
   struct fb_var_screeninfo vinfo;
   struct fb_fix_screeninfo finfo;
