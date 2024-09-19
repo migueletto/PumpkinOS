@@ -1746,8 +1746,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
           WinUnscaleRectangle(&srcRect);
 //debug(1, "XXX", "WinBlitBitmap fastcopy coord standard unscale");
         }
-        WinCopyBitmap(best, wh, &srcRect, x, y);
-        WinSetCoordinateSystem(coordSys);
 
         if (wh == module->activeWindow && wh != module->displayWindow) {
           displayDensity = BmpGetDensity(displayBitmap);
@@ -1755,6 +1753,9 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
             WinCopyBitmap(best, module->displayWindow, &srcRect, x, y);
           }
         }
+
+        WinCopyBitmap(best, wh, &srcRect, x, y);
+        WinSetCoordinateSystem(coordSys);
 
         if (delete) BmpDelete(best);
         return;
