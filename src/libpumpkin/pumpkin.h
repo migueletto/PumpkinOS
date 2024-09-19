@@ -216,6 +216,8 @@ ColorTableType *pumpkin_defaultcolorTable(void);
 
 void pumpkin_set_data(void *data);
 void *pumpkin_get_data(void);
+void pumpkin_set_subdata(void *data);
+void *pumpkin_get_subdata(void);
 
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
@@ -504,13 +506,15 @@ void pumpkin_debug_init(void);
 void pumpkin_debug_check(void);
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
-int pumpkin_script_appenv(int pe);
+int pumpkin_script_init_env(int pe);
+int pumpkin_script_finish_env(void);
 
 void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
        void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 char pumpkin_getchar(void);
 void pumpkin_putchar(char c);
 void pumpkin_puts(char *s);
+uint32_t pumpkin_printf(const char *format, ...);
 uint32_t pumpkin_gets(char *buf, uint32_t max);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 

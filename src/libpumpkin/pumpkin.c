@@ -139,6 +139,7 @@ typedef struct {
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
   void *data;
+  void *subdata;
   char (*getchar)(void *iodata);
   void (*putchar)(void *iodata, char c);
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
@@ -1368,6 +1369,16 @@ void pumpkin_set_data(void *data) {
 void *pumpkin_get_data(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task->data;
+}
+
+void pumpkin_set_subdata(void *subdata) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  task->subdata = subdata;
+}
+
+void *pumpkin_get_subdata(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task->subdata;
 }
 
 // called directly by libos if DIA or single app mode
@@ -3397,17 +3408,17 @@ char *pumpkin_script_call(int pe, char *function, char *s) {
       arg.value.l.s = (char *)s;
       arg.value.l.n = sys_strlen(s);
 
-      debug(DEBUG_INFO, PUMPKINOS, "calling function \'%s\'", function);
+      debug(DEBUG_INFO, PUMPKINOS, "calling function %s(\"%s\")", function, s);
       if (script_call_args(pe, f.value.r, &ret, 1, &arg) == 0) {
         val = pumpkin_script_ret(pe, &ret);
       } else {
         debug(DEBUG_ERROR, PUMPKINOS, "function call error");
       }
     } else {
-      debug(DEBUG_ERROR, PUMPKINOS, "attempt to call non function \'%s\'", function);
+      debug(DEBUG_ERROR, PUMPKINOS, "attempt to call non function \"%s\"", function);
     }
   } else {
-    debug(DEBUG_ERROR, PUMPKINOS, "function \'%s\' not found", function);
+    debug(DEBUG_ERROR, PUMPKINOS, "function \"%s\" not found", function);
   }
 
   return val;
@@ -4617,6 +4628,21 @@ void pumpkin_puts(char *s) {
     }
     pumpkin_putchar(s[i]);
   }
+}
+
+uint32_t pumpkin_printf(const char *format, ...) {
+  sys_va_list ap;
+  char buf[512];
+  uint32_t n = 0;
+
+  if (format) {
+    sys_va_start(ap, format);
+    n = sys_vsnprintf(buf, sizeof(buf), format, ap);
+    sys_va_end(ap);
+    pumpkin_puts(buf);
+  }
+
+  return n;
 }
 
 uint32_t pumpkin_gets(char *buf, uint32_t max) {

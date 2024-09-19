@@ -38,7 +38,7 @@ typedef struct {
 } script_data_t;
 
 static Boolean ScriptFormHandleEvent(EventPtr event) {
-  script_data_t *data = pumpkin_get_data();
+  script_data_t *data = pumpkin_get_subdata();
   Boolean handled = false;
 
   switch (event->eType) {
@@ -63,7 +63,7 @@ static Boolean ScriptFormHandleEvent(EventPtr event) {
 }
 
 static int app_script_ui_event(int pe) {
-  script_data_t *data = pumpkin_get_data();
+  script_data_t *data = pumpkin_get_subdata();
   script_int_t wait;
   EventType event;
   Err err;
@@ -547,7 +547,7 @@ static int app_script_ui_form(int pe) {
 }
 
 static int app_script_ui_show(int pe) {
-  script_data_t *data = pumpkin_get_data();
+  script_data_t *data = pumpkin_get_subdata();
   script_int_t ptr;
   app_form_t *form;
   int r = -1;
@@ -1140,109 +1140,126 @@ static int app_script_ui_about(int pe) {
   return r;
 }
 
-int pumpkin_script_appenv(int pe) {
-  int obj;
+int pumpkin_script_init_env(int pe) {
+  script_data_t *data;
+  int obj, r = -1;
 
-  if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
-    pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);
-    pumpkin_script_obj_function(pe, obj, "width",    app_script_screen_width);
-    pumpkin_script_obj_function(pe, obj, "height",   app_script_screen_height);
-    pumpkin_script_obj_function(pe, obj, "setpixel", app_script_setpixel);
-    pumpkin_script_obj_function(pe, obj, "clear",    app_script_clear);
-    pumpkin_script_obj_function(pe, obj, "draw",     app_script_draw_text);
-    pumpkin_script_obj_function(pe, obj, "line",     app_script_draw_line);
-    pumpkin_script_obj_function(pe, obj, "rect",     app_script_draw_rect);
-    pumpkin_script_obj_function(pe, obj, "circle",   app_script_draw_circle);
-    pumpkin_script_obj_function(pe, obj, "fill",     app_script_fill);
+  if ((data = xcalloc(1, sizeof(script_data_t))) != NULL) {
+    data->pe = pe;
+    pumpkin_set_subdata(data);
+
+    if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);
+      pumpkin_script_obj_function(pe, obj, "width",    app_script_screen_width);
+      pumpkin_script_obj_function(pe, obj, "height",   app_script_screen_height);
+      pumpkin_script_obj_function(pe, obj, "setpixel", app_script_setpixel);
+      pumpkin_script_obj_function(pe, obj, "clear",    app_script_clear);
+      pumpkin_script_obj_function(pe, obj, "draw",     app_script_draw_text);
+      pumpkin_script_obj_function(pe, obj, "line",     app_script_draw_line);
+      pumpkin_script_obj_function(pe, obj, "rect",     app_script_draw_rect);
+      pumpkin_script_obj_function(pe, obj, "circle",   app_script_draw_circle);
+      pumpkin_script_obj_function(pe, obj, "fill",     app_script_fill);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "db")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "open",     app_script_open_db);
+      pumpkin_script_obj_function(pe, obj, "close",    app_script_close_db);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "rsrc")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "get",      app_script_get_resource);
+      pumpkin_script_obj_function(pe, obj, "get1",     app_script_get1_resource);
+      pumpkin_script_obj_function(pe, obj, "release",  app_script_release_resource);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "bitmap")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "draw",     app_script_bitmap_draw);
+      pumpkin_script_obj_function(pe, obj, "width",    app_script_bitmap_width);
+      pumpkin_script_obj_function(pe, obj, "height",   app_script_bitmap_height);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "ui")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "event",    app_script_ui_event);
+      pumpkin_script_obj_function(pe, obj, "menu",     app_script_ui_menu);
+      pumpkin_script_obj_function(pe, obj, "form",     app_script_ui_form);
+      pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
+      pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
+      pumpkin_script_obj_function(pe, obj, "gettext",  app_script_ui_gettext);
+      pumpkin_script_obj_function(pe, obj, "settext",  app_script_ui_settext);
+      pumpkin_script_obj_function(pe, obj, "getvalue", app_script_ui_getvalue);
+      pumpkin_script_obj_function(pe, obj, "setvalue", app_script_ui_setvalue);
+      pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
+      pumpkin_script_obj_function(pe, obj, "setbounds", app_script_ui_setbounds);
+      pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
+      pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
+      pumpkin_script_obj_function(pe, obj, "rbutton",  app_script_ui_rbutton);
+      pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
+      pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
+      pumpkin_script_obj_function(pe, obj, "slider",   app_script_ui_slider);
+      pumpkin_script_obj_function(pe, obj, "fslider",  app_script_ui_fslider);
+      pumpkin_script_obj_function(pe, obj, "selector", app_script_ui_selector);
+      pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
+      pumpkin_script_obj_function(pe, obj, "list",     app_script_ui_list);
+      pumpkin_script_obj_function(pe, obj, "popup",    app_script_ui_popup);
+      pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
+      pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "event")) != -1) {
+      pumpkin_script_obj_iconst(pe, obj, "nilEvent",  nilEvent);
+      pumpkin_script_obj_iconst(pe, obj, "keyDown",   keyDownEvent);
+      pumpkin_script_obj_iconst(pe, obj, "penDown",   penDownEvent);
+      pumpkin_script_obj_iconst(pe, obj, "penMove",   penMoveEvent);
+      pumpkin_script_obj_iconst(pe, obj, "menuEvent", menuEvent);
+      pumpkin_script_obj_iconst(pe, obj, "ctlSelect", ctlSelectEvent);
+      pumpkin_script_obj_iconst(pe, obj, "appStop",   appStopEvent);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "alert")) != -1) {
+      pumpkin_script_obj_iconst(pe, obj, "info",   10024);
+      pumpkin_script_obj_iconst(pe, obj, "warn",   10031);
+      pumpkin_script_obj_iconst(pe, obj, "error",  10021);
+    }
+
+    if ((obj = pumpkin_script_create_obj(pe, "font")) != -1) {
+      pumpkin_script_obj_iconst(pe, obj, "std",       stdFont);
+      pumpkin_script_obj_iconst(pe, obj, "bold",      boldFont);
+      pumpkin_script_obj_iconst(pe, obj, "large",     largeFont);
+      pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
+      pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
+      pumpkin_script_obj_iconst(pe, obj, "symbol11",  symbol11Font);
+      pumpkin_script_obj_iconst(pe, obj, "symbol7",   symbol7Font);
+      pumpkin_script_obj_iconst(pe, obj, "led",       ledFont);
+      pumpkin_script_obj_iconst(pe, obj, "largeBold", largeBoldFont);
+    }
+
+    r = 0;
   }
 
-  if ((obj = pumpkin_script_create_obj(pe, "db")) != -1) {
-    pumpkin_script_obj_function(pe, obj, "open",     app_script_open_db);
-    pumpkin_script_obj_function(pe, obj, "close",    app_script_close_db);
+  return r;
+}
+
+int pumpkin_script_finish_env(void) {
+  script_data_t *data;
+  int r = -1;
+
+  if ((data = pumpkin_get_subdata()) != NULL) {
+    pumpkin_set_subdata(NULL);
+    xfree(data);
+    r = 0;
   }
 
-  if ((obj = pumpkin_script_create_obj(pe, "rsrc")) != -1) {
-    pumpkin_script_obj_function(pe, obj, "get",      app_script_get_resource);
-    pumpkin_script_obj_function(pe, obj, "get1",     app_script_get1_resource);
-    pumpkin_script_obj_function(pe, obj, "release",  app_script_release_resource);
-  }
-
-  if ((obj = pumpkin_script_create_obj(pe, "bitmap")) != -1) {
-    pumpkin_script_obj_function(pe, obj, "draw",     app_script_bitmap_draw);
-    pumpkin_script_obj_function(pe, obj, "width",    app_script_bitmap_width);
-    pumpkin_script_obj_function(pe, obj, "height",   app_script_bitmap_height);
-  }
-
-  if ((obj = pumpkin_script_create_obj(pe, "ui")) != -1) {
-    pumpkin_script_obj_function(pe, obj, "event",    app_script_ui_event);
-    pumpkin_script_obj_function(pe, obj, "menu",     app_script_ui_menu);
-    pumpkin_script_obj_function(pe, obj, "form",     app_script_ui_form);
-    pumpkin_script_obj_function(pe, obj, "show",     app_script_ui_show);
-    pumpkin_script_obj_function(pe, obj, "title",    app_script_ui_title);
-    pumpkin_script_obj_function(pe, obj, "gettext",  app_script_ui_gettext);
-    pumpkin_script_obj_function(pe, obj, "settext",  app_script_ui_settext);
-    pumpkin_script_obj_function(pe, obj, "getvalue", app_script_ui_getvalue);
-    pumpkin_script_obj_function(pe, obj, "setvalue", app_script_ui_setvalue);
-    pumpkin_script_obj_function(pe, obj, "bounds",   app_script_ui_bounds);
-    pumpkin_script_obj_function(pe, obj, "setbounds", app_script_ui_setbounds);
-    pumpkin_script_obj_function(pe, obj, "label",    app_script_ui_label);
-    pumpkin_script_obj_function(pe, obj, "button",   app_script_ui_button);
-    pumpkin_script_obj_function(pe, obj, "rbutton",  app_script_ui_rbutton);
-    pumpkin_script_obj_function(pe, obj, "pushbutton", app_script_ui_pushbutton);
-    pumpkin_script_obj_function(pe, obj, "checkbox", app_script_ui_checkbox);
-    pumpkin_script_obj_function(pe, obj, "slider",   app_script_ui_slider);
-    pumpkin_script_obj_function(pe, obj, "fslider",  app_script_ui_fslider);
-    pumpkin_script_obj_function(pe, obj, "selector", app_script_ui_selector);
-    pumpkin_script_obj_function(pe, obj, "field",    app_script_ui_field);
-    pumpkin_script_obj_function(pe, obj, "list",     app_script_ui_list);
-    pumpkin_script_obj_function(pe, obj, "popup",    app_script_ui_popup);
-    pumpkin_script_obj_function(pe, obj, "alert",    app_script_ui_alert);
-    pumpkin_script_obj_function(pe, obj, "about",    app_script_ui_about);
-  }
-
-  if ((obj = pumpkin_script_create_obj(pe, "event")) != -1) {
-    pumpkin_script_obj_iconst(pe, obj, "nilEvent",  nilEvent);
-    pumpkin_script_obj_iconst(pe, obj, "keyDown",   keyDownEvent);
-    pumpkin_script_obj_iconst(pe, obj, "penDown",   penDownEvent);
-    pumpkin_script_obj_iconst(pe, obj, "penMove",   penMoveEvent);
-    pumpkin_script_obj_iconst(pe, obj, "menuEvent", menuEvent);
-    pumpkin_script_obj_iconst(pe, obj, "ctlSelect", ctlSelectEvent);
-    pumpkin_script_obj_iconst(pe, obj, "appStop",   appStopEvent);
-  }
-
-  if ((obj = pumpkin_script_create_obj(pe, "alert")) != -1) {
-    pumpkin_script_obj_iconst(pe, obj, "info",   10024);
-    pumpkin_script_obj_iconst(pe, obj, "warn",   10031);
-    pumpkin_script_obj_iconst(pe, obj, "error",  10021);
-  }
-
-  if ((obj = pumpkin_script_create_obj(pe, "font")) != -1) {
-    pumpkin_script_obj_iconst(pe, obj, "std",       stdFont);
-    pumpkin_script_obj_iconst(pe, obj, "bold",      boldFont);
-    pumpkin_script_obj_iconst(pe, obj, "large",     largeFont);
-    pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
-    pumpkin_script_obj_iconst(pe, obj, "symbol",    symbolFont);
-    pumpkin_script_obj_iconst(pe, obj, "symbol11",  symbol11Font);
-    pumpkin_script_obj_iconst(pe, obj, "symbol7",   symbol7Font);
-    pumpkin_script_obj_iconst(pe, obj, "led",       ledFont);
-    pumpkin_script_obj_iconst(pe, obj, "largeBold", largeBoldFont);
-  }
-
-  return 0;
+  return r;
 }
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags) {
-  script_data_t data;
   MemHandle h;
   UInt16 id;
   char msg[256];
   int pe;
 
   if ((pe = pumpkin_script_create()) > 0) {
-    pumpkin_script_appenv(pe);
-    MemSet(&data, sizeof(data), 0);
-    data.pe = pe;
-    pumpkin_set_data(&data);
+    pumpkin_script_init_env(pe);
 
     for (id = 1; id < 32768; id++) {
       if ((h = DmGet1Resource(pumpkin_script_engine_id(), id)) == NULL) break;
@@ -1257,6 +1274,7 @@ uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags) {
       }
     }
 
+    pumpkin_script_finish_env();
     pumpkin_script_destroy(pe);
   }
 
