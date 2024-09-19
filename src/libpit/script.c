@@ -257,8 +257,11 @@ static int script_dup_string(script_arg_t *arg) {
   int r = 0;
 
   if (arg->type == SCRIPT_ARG_STRING) {
-    arg->value.s = xstrdup(arg->value.s);
-    if (arg->value.s == NULL) r = -1;
+    if (arg->value.s) {
+      arg->value.s = xstrdup(arg->value.s);
+    } else {
+      r = -1;
+    }
   } else if (arg->type == SCRIPT_ARG_LSTRING) {
     s = arg->value.l.s;
     arg->value.l.s = xmalloc(arg->value.l.n);
