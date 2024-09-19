@@ -435,7 +435,7 @@ static void launcherScanApps(launcher_data_t *data) {
   UInt16 cardNo, attr;
   Coord bw, bh;
   DmOpenRef dbRef;
-  MemHandle iconRes, defaultIconRes;
+  MemHandle iconRes;
   RectangleType rect;
   BitmapType *iconBmp;
   WinHandle old;
@@ -445,7 +445,6 @@ static void launcherScanApps(launcher_data_t *data) {
 
   data->cellWidth = APP_CELL_WIDTH;
   data->cellHeight = APP_CELL_HEIGHT;
-  defaultIconRes = DmGetResource(iconType, 10000);
 
   for (newSearch = true, i = 0; i < MAX_ITEMS; newSearch = false) {
     if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTApplication, 0, false, &cardNo, &data->item[i].dbID) != errNone) {
@@ -459,7 +458,9 @@ static void launcherScanApps(launcher_data_t *data) {
         data->item[i].rsrc = true;
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           iconRes = DmGet1Resource(iconType, 1000);
-          if (iconRes == NULL) iconRes = defaultIconRes;
+          if (iconRes == NULL) {
+            iconRes = DmGetResource(iconType, 10000);
+          }
           if (iconRes != NULL) {
             if ((iconBmp = MemHandleLock(iconRes)) != NULL) {
               BmpGetDimensions(iconBmp, &bw, &bh, NULL);
@@ -490,7 +491,6 @@ static void launcherScanApps(launcher_data_t *data) {
       }
     }
   }
-  DmReleaseResource(defaultIconRes);
 
   data->numItems = i;
   SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemName, 0);
