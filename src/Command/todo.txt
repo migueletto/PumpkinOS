@@ -1,3 +1,0 @@
-Todo:
-- cd .. (currently VFSDirEntryEnumerate does not returns "." or "..")
-- arbitrary colors on pterm
