@@ -33,8 +33,8 @@
 #define APP_CELL_WIDTH   50
 #define APP_CELL_HEIGHT  35
 
-#define BLACK   0x00,0x00,0x00
-#define WHITE   0xFF,0xFF,0xFF
+#define BLACK   1
+#define WHITE   0
 
 #define BATTERY_WIDTH 40
 
@@ -62,8 +62,9 @@ typedef struct {
   Boolean rsrc, dir, m68k, uptodate;
   char name[dmDBNameLength];
   char *info;
-  BitmapType *iconBmp;
   WinHandle iconWh;
+  WinHandle invIconWh;
+  UInt16 bmpHeight;
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
 } launcher_item_t;
 
@@ -125,20 +126,14 @@ static void OpenErrorDialog(char *name, Err err) {
   ErrorDialog(buf, err, 0);
 }
 
-static void setTextColor(UInt8 red, UInt8 green, UInt8 blue) {
-  RGBColorType rgb;
-  rgb.r = red;
-  rgb.g = green;
-  rgb.b = blue;
-  WinSetTextColorRGB(&rgb, NULL);
+static void setTextColor(UInt16 black) {
+  IndexedColorType c = UIColorGetTableEntryIndex(black ? UIFieldText : UIObjectSelectedForeground);
+  WinSetTextColor(c);
 }
 
-static void setBackColor(UInt8 red, UInt8 green, UInt8 blue) {
-  RGBColorType rgb;
-  rgb.r = red;
-  rgb.g = green;
-  rgb.b = blue;
-  WinSetBackColorRGB(&rgb, NULL);
+static void setBackColor(UInt16 black) {
+  IndexedColorType c = UIColorGetTableEntryIndex(black ? UIFormFrame : UIFormFill);
+  WinSetBackColor(c);
 }
 
 static void updateCounts(launcher_item_t *item) {
@@ -424,8 +419,8 @@ static void launcherResetItems(launcher_data_t *data) {
   int i;
 
   for (i = 0; i < data->numItems; i++) {
-    if (data->item[i].iconBmp) BmpDelete(data->item[i].iconBmp);
     if (data->item[i].iconWh) WinDeleteWindow(data->item[i].iconWh, false);
+    if (data->item[i].invIconWh) WinDeleteWindow(data->item[i].invIconWh, false);
     if (data->item[i].info) xfree(data->item[i].info);
   }
 
@@ -436,11 +431,11 @@ static void launcherResetItems(launcher_data_t *data) {
 static void launcherScanApps(launcher_data_t *data) {
   DmSearchStateType stateInfo;
   Boolean newSearch;
-  UInt16 cardNo, attr;
   UInt32 creator;
+  UInt16 cardNo, attr;
   Coord bw, bh;
   DmOpenRef dbRef;
-  MemHandle iconRes;
+  MemHandle iconRes, defaultIconRes;
   RectangleType rect;
   BitmapType *iconBmp;
   WinHandle old;
@@ -450,6 +445,7 @@ static void launcherScanApps(launcher_data_t *data) {
 
   data->cellWidth = APP_CELL_WIDTH;
   data->cellHeight = APP_CELL_HEIGHT;
+  defaultIconRes = DmGetResource(iconType, 10000);
 
   for (newSearch = true, i = 0; i < MAX_ITEMS; newSearch = false) {
     if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTApplication, 0, false, &cardNo, &data->item[i].dbID) != errNone) {
@@ -463,18 +459,27 @@ static void launcherScanApps(launcher_data_t *data) {
         data->item[i].rsrc = true;
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           iconRes = DmGet1Resource(iconType, 1000);
-          if (iconRes == NULL) {
-            iconRes = DmGetResource(iconType, 10000);
-          }
+          if (iconRes == NULL) iconRes = defaultIconRes;
           if (iconRes != NULL) {
             if ((iconBmp = MemHandleLock(iconRes)) != NULL) {
-              data->item[i].iconWh = WinCreateOffscreenWindow(data->cellWidth, data->cellHeight, nativeFormat, NULL);
               BmpGetDimensions(iconBmp, &bw, &bh, NULL);
+              data->item[i].bmpHeight = bh < 22 ? bh : 22; // max allowed icon height
+              RctSetRectangle(&rect, 0, 0, data->cellWidth, bh);
+
+              data->item[i].iconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
               old = WinSetDrawWindow(data->item[i].iconWh);
-              RctSetRectangle(&rect, 0, 0, data->cellWidth, data->cellHeight);
               WinEraseRectangle(&rect, 0);
-              WinPaintBitmap(iconBmp, (data->cellWidth - bw)/2, 0);
+              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
               WinSetDrawWindow(old);
+
+              data->item[i].invIconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
+              old = WinSetDrawWindow(data->item[i].invIconWh);
+              setBackColor(BLACK);
+              WinEraseRectangle(&rect, 0);
+              setBackColor(WHITE);
+              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
+              WinSetDrawWindow(old);
+
               MemHandleUnlock(iconRes);
             }
             DmReleaseResource(iconRes);
@@ -485,6 +490,7 @@ static void launcherScanApps(launcher_data_t *data) {
       }
     }
   }
+  DmReleaseResource(defaultIconRes);
 
   data->numItems = i;
   SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemName, 0);
@@ -984,7 +990,7 @@ static void refresh(FormPtr frm, launcher_data_t *data) {
   FormGadgetTypeInCallback *gad;
   ScrollBarType *scl;
   UInt16 objIndex;
-  Int16 cols, rows, num;
+  Int16 cols, rows, totalRows;
 
   data->topItem = 0;
   objIndex = FrmGetObjectIndex(frm, iconsGad);
@@ -992,13 +998,14 @@ static void refresh(FormPtr frm, launcher_data_t *data) {
   ItemsGadgetCallback(gad, formGadgetDrawCmd, NULL);
 
   rows = data->gadRect.extent.y / data->cellHeight;
+  if (data->mode != launcher_app) rows--;
   cols = data->gadRect.extent.x / data->cellWidth;
-  num = (data->numItems + cols - 1) / cols;
+  totalRows = (data->numItems + cols - 1) / cols;
 
   objIndex = FrmGetObjectIndex(frm, iconsScl);
-  if (num > rows) {
+  if (totalRows > rows) {
     scl = (ScrollBarType *)FrmGetObjectPtr(frm, objIndex);
-    SclSetScrollBar(scl, 0, 0, num - rows, (num - rows) >= rows ? rows-1 : num - rows - 1);
+    SclSetScrollBar(scl, 0, 0, totalRows - rows, (totalRows - rows) >= rows ? rows - 1 : totalRows - rows);
     FrmShowObject(frm, objIndex);
   } else {
     FrmHideObject(frm, objIndex);
@@ -1026,14 +1033,21 @@ static void printApp(launcher_data_t *data, launcher_item_t *item, int x, int y,
   int len, nameWidth;
   char buf[dmDBNameLength];
 
+  RctSetRectangle(&rect, x, y, data->cellWidth, data->cellHeight);
+  setBackColor(inverted ? BLACK : WHITE);
+  WinEraseRectangle(&rect, 0);
+  setBackColor(WHITE);
+
   if (item->iconWh) {
-    RctSetRectangle(&rect, 0, 0, data->cellWidth, data->cellHeight);
-    WinCopyRectangle(item->iconWh, WinGetDrawWindow(), &rect, x, y, winPaint);
-    WinCopyRectangle(item->iconWh, WinGetDisplayWindow(), &rect, x, y, winPaint);
+    RctSetRectangle(&rect, 0, 0, data->cellWidth, item->bmpHeight);
+    WinCopyRectangle(inverted && item->invIconWh ? item->invIconWh : item->iconWh, WinGetDrawWindow(), &rect, x, y, winPaint);
+    WinCopyRectangle(inverted && item->invIconWh ? item->invIconWh : item->iconWh, WinGetDisplayWindow(), &rect, x, y, winPaint);
   }
 
   len = adjustName(buf, dmDBNameLength, item->name, &nameWidth, data->cellWidth-2);
+  setTextColor(inverted ? WHITE : BLACK);
   WinPaintChars(buf, len, x + (data->cellWidth - nameWidth) / 2, y + data->cellHeight - FntCharHeight() - 4);
+  setTextColor(BLACK);
 }
 
 static void firstColumn(launcher_data_t *data, int x, int y, Boolean inverted) {
@@ -1164,7 +1178,7 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
-  if (!pumpkin_dia_enabled()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
@@ -1179,7 +1193,7 @@ static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Name", item ? item->name : NULL, x, y, 28 * FntCharWidth('a'), false, inverted);
-  if (!pumpkin_dia_enabled()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
     x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
@@ -1222,7 +1236,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
   UInt16 bmpId;
   int dia;
 
-  dia = pumpkin_dia_enabled();
+  dia = pumpkin_dia_enabled() || pumpkin_is_single();
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
   if (item) sys_snprintf(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
@@ -1286,7 +1300,7 @@ static void printResource(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printColumn(data, item, "ID", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
   if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
-  if (!pumpkin_dia_enabled()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
     x = spaceColumn(data, x, y, 10);
     x = printColumn(data, item, "Contents", item ? (item->info ? item->info : "Unknown") : NULL, x, y, data->cellWidth - (x - data->x[0]), false, inverted);
   }
@@ -1699,7 +1713,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printResource(data, &data->item[i], x, y, true);
               } else {
                 printResource(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled()) {
+                if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
                   editResource(data, &data->item[i]);
                 }
               }
@@ -1720,7 +1734,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printRecord(data, &data->item[i], x, y, true);
               } else {
                 printRecord(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled()) {
+                if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
                   editRecord(data, &data->item[i]);
                 }
               }
@@ -2518,7 +2532,7 @@ static void resize(FormType *frm, launcher_data_t *data) {
   RectangleType rect;
   ScrollBarType *scl;
   UInt32 swidth, sheight;
-  UInt16 objIndex, rows, cols, num;
+  UInt16 objIndex, rows, cols, totalRows;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
   wh = FrmGetWindowHandle(frm);
@@ -2544,10 +2558,11 @@ static void resize(FormType *frm, launcher_data_t *data) {
   objIndex = FrmGetObjectIndex(frm, iconsScl);
   scl = (ScrollBarType *)FrmGetObjectPtr(frm, objIndex);
   rows = rect.extent.y / data->cellHeight;
+  if (data->mode != launcher_app) rows--;
   cols = rect.extent.x / data->cellWidth;
-  num = (data->numItems + cols - 1) / cols;
-  if (num > rows) {
-    SclSetScrollBar(scl, 0, 0, num - rows, (num - rows) >= rows ? rows-1 : num - rows - 1);
+  totalRows = (data->numItems + cols - 1) / cols;
+  if (totalRows > rows) {
+    SclSetScrollBar(scl, 0, 0, totalRows - rows, (totalRows - rows) >= rows ? rows - 1 : totalRows - rows);
   }
   rect.topLeft.x = swidth - data->sclRect.extent.x;
   rect.topLeft.y = data->sclRect.topLeft.y;
@@ -2555,9 +2570,7 @@ static void resize(FormType *frm, launcher_data_t *data) {
   rect.extent.y = data->sclRect.extent.y + (sheight - 160);
   FrmSetObjectBounds(frm, objIndex, &rect);
 
-  if (num <= rows) {
-    FrmHideObject(frm, objIndex);
-  }
+  FrmSetUsable(frm, objIndex, totalRows > rows);
 }
 
 static Boolean MainFormHandleEvent(EventPtr event) {
@@ -2631,24 +2644,9 @@ static Boolean MainFormHandleEvent(EventPtr event) {
             FrmCustomAlert(ErrorAlert, "An app has crashed and was terminated.", "", "");
             // fall through
           case vchrAppFinished:
+          case vchrRefreshState:
             if (data->mode == launcher_task) {
               MenuEvent(taskCmd, data);
-            }
-            handled = true;
-            break;
-          case vchrRefreshState:
-            switch (data->mode) {
-              case launcher_task:
-                MenuEvent(taskCmd, data);
-                break;
-              case launcher_app:
-                MenuEvent(appCmd, data);
-                break;
-              case launcher_app_small:
-                MenuEvent(appSmallCmd, data);
-                break;
-              default:
-                break;
             }
             handled = true;
             break;
@@ -2851,7 +2849,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       return 0;
   }
 
-  if (pumpkin_dia_enabled()) {
+  if (pumpkin_dia_enabled() || pumpkin_is_single()) {
     pumpkin_set_spawner(thread_get_handle());
     pumpkin_dia_kbd();
   }

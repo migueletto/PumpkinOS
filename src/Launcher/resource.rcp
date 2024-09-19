@@ -7,7 +7,7 @@ MENUID MainForm
 BEGIN
   TITLE "Pumpkin"
   GADGET    ID iconsGad     0 15 153 145
-  SCROLLBAR ID iconsScl   153 15   7 145
+  SCROLLBAR ID iconsScl   153 15   7 145 NONUSABLE
   BUTTON "Filter\x18" filterCtl 80 1 AUTO 10
 END
 
