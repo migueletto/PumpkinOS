@@ -5,9 +5,7 @@ PROGRAM=rcpexport
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 OBJS=rcpexport.o
 
-CUSTOMPFLAGS=-I$(SRC)/Command
-
-$(PROGRAM).prc: $(DLIB)
+$(PROGRAM).prc: $(DLIB) res
 	$(PRCDUILD) -f $(PROGRAM).prc -t CmdE -c RcpE -n $(PROGRAM) *.bin
 	cp $(PROGRAM).prc $(PRC)
 
@@ -17,5 +15,8 @@ $(DLIB): $(PROGRAM).dlib
 $(PROGRAM).dlib: $(OBJS)
 	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit -lm
 
+res: resource.rcp
+	$(PILRC) resource.rcp; touch res
+
 clean:
-	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) *.bin
+	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) res *.bin
