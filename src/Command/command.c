@@ -250,51 +250,66 @@ static void command_script(command_internal_data_t *idata, char *s) {
   script_arg_t value;
   char *argv[8], *val = NULL;
   char buf[MAXCMD];
-  int argc, i, j;
+  int argc, i, j, paren, quote;
 
   if (s && s[0]) {
-    // split the command line into argv, argv[0] is the first word
-    argc = pit_findargs(s, argv, 8, NULL, NULL);
-
-    if (argc > 0) {
-      if (script_global_get(idata->pe, argv[0], &value) == 0) {
-        // check if argv[0] is a function name
-        if (value.type == SCRIPT_ARG_FUNCTION) {
-          // yes, build a proper function call
-          StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
-          for (j = 1; j < argc; j++) {
-            if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
-            if (j > 1) StrCat(buf, ",");
-            if (argv[j][0] != '\"') StrCat(buf, "\"");
-            StrCat(buf, argv[j]);
-            if (argv[j][0] != '\"') StrCat(buf, "\"");
-          }
-          StrCat(buf, ")");
-          s = buf;
-
-          // evaluate the expression
-          val = pumpkin_script_call(idata->pe, "command_eval", s);
-
-        } else if (value.type == SCRIPT_ARG_NULL) {
-          // not found, evaluate the expression
-          val = pumpkin_script_call(idata->pe, "command_eval", s);
-        }
-      } else {
-        // evaluate the expression
-        val = pumpkin_script_call(idata->pe, "command_eval", s);
-      }
-  
-      if (val) {
-        if (val[0]) {
-          command_puts(idata, val);
-          command_putc(idata, '\r');
-          command_putc(idata, '\n');
-        }
-        xfree(val);
+    paren = quote = 0;
+    for (i = 0; s[i]; i++) {
+      if (s[i] == '(') {
+        if (!quote) paren = 1;
+      } else if (s[i] == '"' || s[i] == '\'') {
+        quote = 1;
       }
     }
-    for (i = 0; i < argc; i++) {
-      if (argv[i]) xfree(argv[i]);
+
+    if (paren) {
+      // the command may be a direct lua script, instead of a pseudo command
+      val = pumpkin_script_call(idata->pe, "command_eval", s);
+    } else {
+      // split the command line into argv, argv[0] is the first word
+      argc = pit_findargs(s, argv, 8, NULL, NULL);
+
+      if (argc > 0) {
+        if (script_global_get(idata->pe, argv[0], &value) == 0) {
+          // check if argv[0] is a function name
+          if (value.type == SCRIPT_ARG_FUNCTION) {
+            // yes, build a proper function call
+            StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
+            for (j = 1; j < argc; j++) {
+              if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
+              if (j > 1) StrCat(buf, ",");
+              if (argv[j][0] != '\"') StrCat(buf, "\"");
+              StrCat(buf, argv[j]);
+              if (argv[j][0] != '\"') StrCat(buf, "\"");
+            }
+            StrCat(buf, ")");
+            s = buf;
+
+            // evaluate the expression
+            val = pumpkin_script_call(idata->pe, "command_eval", s);
+
+          } else if (value.type == SCRIPT_ARG_NULL) {
+            // not found, evaluate the expression
+            val = pumpkin_script_call(idata->pe, "command_eval", s);
+          }
+        } else {
+          // evaluate the expression
+          val = pumpkin_script_call(idata->pe, "command_eval", s);
+        }
+  
+        if (val) {
+          if (val[0]) {
+            command_puts(idata, val);
+            command_putc(idata, '\r');
+            command_putc(idata, '\n');
+          }
+          xfree(val);
+        }
+
+        for (i = 0; i < argc; i++) {
+          if (argv[i]) xfree(argv[i]);
+        }
+      }
     }
   }
 }
@@ -1144,7 +1159,7 @@ static int command_script_print(int pe) {
   crlf = false;
 
   for (i = 0;; i++) {
-    if (script_get_value(pe, i, SCRIPT_ARG_ANY, &arg) != 0) break;
+    if (script_get_named_value(pe, i, SCRIPT_ARG_ANY, NULL, NULL, NULL, 1, &arg) != 0) break;
     s = value_tostring(pe, &arg);
     if (s) {
       command_puts(idata, s);
@@ -1785,6 +1800,7 @@ static Err StartApplication(void *param) {
   pterm_setbg(idata->t, color);
 
   if ((idata->pe = pumpkin_script_create()) > 0) {
+    pumpkin_script_init_env(idata->pe);
     script_loadlib(idata->pe, "libshell");
     script_loadlib(idata->pe, "liboshell");
 
@@ -1848,6 +1864,7 @@ static void StopApplication(void) {
 
   FrmCloseAllForms();
   PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
+  pumpkin_script_finish_env();
   pumpkin_script_destroy(idata->pe);
   xfree(idata);
   xfree(data);
