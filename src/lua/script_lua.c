@@ -338,7 +338,6 @@ int ext_script_get_value(script_priv_t *priv, int i, int type, script_arg_t *arg
   }
 
   if (lua_isnone(priv->L, i+1)) {
-    get_context(priv, i, type);
     return -1;
   }
 
