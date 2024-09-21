@@ -21,6 +21,7 @@ end
 function ls(dir, f)
   if not dir then dir = "." end
   local t = nil
+  local sorted = nil
   local d = opendir(dir)
   if d then
     while true do
@@ -30,13 +31,23 @@ function ls(dir, f)
         if not t then t = {} end
         f(t, e)
       else
+        if not sorted then sorted = {} end
+        table.insert(sorted, e)
+      end
+    end
+    closedir(d)
+    if sorted then
+      table.sort(sorted,
+        function(e1, e2)
+          return string.lower(e1.name) < string.lower(e2.name)
+        end)
+      for k,e in pairs(sorted) do
         local dt, dr
         if e.directory then dt = "d"  else dt = " "  end
         if e.readOnly  then dr = "r " else dr = "w " end
         print(dt .. dr .. e.name)
       end
     end
-    closedir(d)
   end
   return t
 end
@@ -44,6 +55,7 @@ end
 function lsdb(dbtype, creator, pattern)
   local d = opendb(dbtype, creator)
   local t = nil
+  local sorted = nil
   if d then
     while true do
       local e = readdb(d)
@@ -61,10 +73,20 @@ function lsdb(dbtype, creator, pattern)
         ok = true
       end
       if ok then
-        print(e.type .. " " .. e.creator .. " " .. e.name)
+        if not sorted then sorted = {} end
+        table.insert(sorted, e)
       end
     end
     closedb(d)
+    if sorted then
+      table.sort(sorted,
+        function(e1, e2)
+          return string.lower(e1.name) < string.lower(e2.name)
+        end)
+      for k,e in pairs(sorted) do
+        print(e.type .. " " .. e.creator .. " " .. e.name)
+      end
+    end
   end
   return t
 end
