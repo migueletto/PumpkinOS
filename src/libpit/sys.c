@@ -2965,6 +2965,10 @@ double sys_atof(const char *nptr) {
   return atof(nptr);
 }
 
+long sys_strtol(const char *nptr, char **endptr, int base) {
+  return strtol(nptr, endptr, base);
+}
+
 unsigned long int sys_strtoul(const char *nptr, char **endptr, int base) {
   return strtoul(nptr, endptr, base);
 }

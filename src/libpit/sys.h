@@ -331,6 +331,8 @@ int sys_atoi(const char *nptr);
 
 double sys_atof(const char *nptr);
 
+long sys_strtol(const char *nptr, char **endptr, int base);
+
 unsigned long int sys_strtoul(const char *nptr, char **endptr, int base);
 
 int sys_memcmp(const void *s1, const void *s2, sys_size_t n) ;
