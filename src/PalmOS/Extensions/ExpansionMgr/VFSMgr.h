@@ -479,9 +479,15 @@ Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max);
 
 char *VFSFileGets(FileRef fileRef, UInt32 numBytes, char *bufP);
 
+Int32 VFSFileVPrintF(FileRef fileRef, const char *format, sys_va_list);
+
 Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...);
 
 Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributesP);
+
+Err VFSFileTruncate(FileRef fileRef, Int32 offset);
+
+char *VFSTmpName(void);
 
 #ifdef __cplusplus
 }

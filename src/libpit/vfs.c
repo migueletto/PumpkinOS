@@ -34,6 +34,7 @@ struct vfs_file_t {
   int (*write)(struct vfs_fpriv_t *f, uint8_t *buf, uint32_t len);
   int (*close)(struct vfs_fpriv_t *f);
   uint32_t (*seek)(vfs_fpriv_t *f, uint32_t pos, int fromend);
+  int (*truncate)(vfs_fpriv_t *f, uint32_t offset);
   vfs_ent_t *(*fstat)(vfs_fpriv_t *fpriv);
   char buf[MAX_BUF];
 };
@@ -537,6 +538,7 @@ vfs_file_t *vfs_open(vfs_session_t *session, char *path, int mode) {
   vfile->write = mount->callback.write;
   vfile->close = mount->callback.close;
   vfile->seek  = mount->callback.seek;
+  vfile->truncate  = mount->callback.truncate;
   vfile->fstat = mount->callback.fstat;
   mutex_unlock(mutex);
 
@@ -634,6 +636,14 @@ int vfs_close(vfs_file_t *f) {
 uint32_t vfs_seek(vfs_file_t *f, uint32_t pos, int fromend) {
   if (f) {
     return f->seek ? f->seek(f->fpriv, pos, fromend) : -1;
+  }
+
+  return -1;
+}
+
+int vfs_truncate(vfs_file_t *f, uint32_t offset) {
+  if (f) {
+    return f->truncate ? f->truncate(f->fpriv, offset) : -1;
   }
 
   return -1;

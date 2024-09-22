@@ -79,6 +79,8 @@ typedef struct {
   int (*statfs)(char *path, uint64_t *total, uint64_t *free, void *data);
 
   void *(*loadlib)(char *path, int *first_load, void *data);
+
+  int (*truncate)(vfs_fpriv_t *f, uint32_t offset);
 } vfs_callback_t;
 
 int vfs_map(char *label, char *path, void *data, vfs_callback_t *callback, int raw);
@@ -120,6 +122,8 @@ int vfs_write(vfs_file_t *f, uint8_t *buf, uint32_t len);
 int vfs_close(vfs_file_t *f);
 
 uint32_t vfs_seek(vfs_file_t *f, uint32_t pos, int fromend);
+
+int vfs_truncate(vfs_file_t *f, uint32_t offset);
 
 void vfs_rewind(vfs_file_t *f);
 

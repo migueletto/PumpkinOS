@@ -1186,6 +1186,31 @@ int64_t sys_seek(int fd, int64_t offset, sys_seek_t whence) {
   return r;
 }
 
+int sys_truncate(int fd, int64_t offset) {
+  int64_t r = -1;
+
+#ifdef WINDOWS
+  fd_t *f;
+
+  if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
+    return -1;
+  }
+
+  if (f->type == FD_FILE) {
+    if (sys_seek(fd, offset, SYS_SEEK_SET) != -1) {
+      r = SetEndOfFile(f->handle) ? 0 : -1;
+    }
+  }
+
+  ptr_unlock(fd, TAG_FD);
+
+#else
+  r = ftruncate(fd, offset);
+#endif
+
+  return r;
+}
+
 int sys_pipe(int *fd) {
 #ifdef WINDOWS
   HANDLE r, w;

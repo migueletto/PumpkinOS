@@ -36,6 +36,7 @@ static int vfs_local_read(vfs_fpriv_t *fpriv, uint8_t *buf, uint32_t len);
 static int vfs_local_write(vfs_fpriv_t *fpriv, uint8_t *buf, uint32_t len);
 static int vfs_local_close(vfs_fpriv_t *fpriv);
 static uint32_t vfs_local_seek(vfs_fpriv_t *fpriv, uint32_t pos, int fromend);
+static int vfs_local_truncate(vfs_fpriv_t *fpriv, uint32_t offset);
 static vfs_ent_t *vfs_local_fstat(vfs_fpriv_t *fpriv);
 static vfs_ent_t *vfs_local_stat(char *path, void *data, vfs_ent_t *ent);
 
@@ -65,7 +66,8 @@ static vfs_callback_t local_callback = {
   vfs_local_unlink,
   vfs_local_mkdir,
   vfs_local_statfs,
-  vfs_local_loadlib
+  vfs_local_loadlib,
+  vfs_local_truncate
 };
 
 int vfs_local_mount(char *local, char *path) {
@@ -338,6 +340,16 @@ static uint32_t vfs_local_seek(vfs_fpriv_t *fpriv, uint32_t pos, int fromend) {
 
   if (fpriv && fpriv->fd) {
     r = sys_seek(fpriv->fd, pos, whence);
+  }
+
+  return r;
+}
+
+static int vfs_local_truncate(vfs_fpriv_t *fpriv, uint32_t offset) {
+  int r = -1;
+
+  if (fpriv && fpriv->fd) {
+    r = sys_truncate(fpriv->fd, offset);
   }
 
   return r;

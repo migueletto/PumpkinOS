@@ -32,6 +32,7 @@ typedef struct {
   char card[MAX_CARD];
   char path[MAX_PATH];
   char path2[MAX_PATH];
+  char tmpname[MAX_PATH];
 } vfs_module_t;
 
 extern thread_key_t *vfs_key;
@@ -89,8 +90,13 @@ int VFSFinishModule(void) {
   return 0;
 }
 
+#define return_err(err) \
+  pumpkin_set_lasterr(err); \
+  if (err) debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
+  return err
+
 Err VFSInit(void) {
-  return errNone;
+  return_err(errNone);
 }
 
 char *VFSGetMount(void) {
@@ -104,7 +110,7 @@ Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (pathNameP && pathNameP[0]) {
@@ -115,7 +121,7 @@ Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRef *fileRefP) {
@@ -126,7 +132,7 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (pathNameP && pathNameP[0]) {
@@ -156,7 +162,7 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileClose(FileRef fileRef) {
@@ -180,7 +186,7 @@ Err VFSFileClose(FileRef fileRef) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 char *VFSFileGets(FileRef fileRef, UInt32 numBytes, char *bufP) {
@@ -212,7 +218,7 @@ Err VFSFileRead(FileRef fileRef, UInt32 numBytes, void *bufP, UInt32 *numBytesRe
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileReadData(FileRef fileRef, UInt32 numBytes, void *bufBaseP, UInt32 offset, UInt32 *numBytesReadP) {
@@ -235,7 +241,7 @@ Err VFSFileWrite(FileRef fileRef, UInt32 numBytes, const void *dataP, UInt32 *nu
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
@@ -243,7 +249,7 @@ Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (pathNameP && pathNameP[0]) {
@@ -253,7 +259,7 @@ Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileRename(UInt16 volRefNum, const Char *pathNameP, const Char *newNameP) {
@@ -261,7 +267,7 @@ Err VFSFileRename(UInt16 volRefNum, const Char *pathNameP, const Char *newNameP)
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (pathNameP && pathNameP[0] && newNameP && newNameP[0]) {
@@ -272,7 +278,7 @@ Err VFSFileRename(UInt16 volRefNum, const Char *pathNameP, const Char *newNameP)
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileSeek(FileRef fileRef, FileOrigin origin, Int32 offset) {
@@ -286,14 +292,28 @@ Err VFSFileSeek(FileRef fileRef, FileOrigin origin, Int32 offset) {
       case vfsOriginBeginning: fromend =  0; break;
       case vfsOriginCurrent:   fromend = -1; break;
       case vfsOriginEnd:       fromend =  1; break;
-      default: return sysErrParamErr;
+      default: return_err(sysErrParamErr);
     }
     if (vfs_seek(f, offset, fromend) != -1) {
       err = VFSFileEOF(fileRef) ? vfsErrFileEOF : errNone;
     }
   }
 
-  return err;
+  return_err(err);
+}
+
+Err VFSFileTruncate(FileRef fileRef, Int32 offset) {
+  vfs_file_t *f;
+  Err err = vfsErrFileBadRef;
+
+  if (fileRef && vfs_type(fileRef) == VFS_FILE) {
+    f = (vfs_file_t *)fileRef;
+    if (vfs_truncate(f, offset) != -1) {
+      err = errNone;
+    }
+  }
+
+  return_err(err);
 }
 
 Err VFSFileEOF(FileRef fileRef) {
@@ -308,7 +328,7 @@ Err VFSFileEOF(FileRef fileRef) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileTell(FileRef fileRef, UInt32 *filePosP) {
@@ -325,7 +345,7 @@ Err VFSFileTell(FileRef fileRef, UInt32 *filePosP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileSize(FileRef fileRef, UInt32 *fileSizeP) {
@@ -343,7 +363,7 @@ Err VFSFileSize(FileRef fileRef, UInt32 *fileSizeP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileResize(FileRef fileRef, UInt32 newSize) {
@@ -357,7 +377,7 @@ Err VFSFileResize(FileRef fileRef, UInt32 newSize) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileGetAttributes(FileRef fileRef, UInt32 *attributesP) {
@@ -384,12 +404,12 @@ Err VFSFileGetAttributes(FileRef fileRef, UInt32 *attributesP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileSetAttributes(FileRef fileRef, UInt32 attributes) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileSetAttributes not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSFileGetDate(FileRef fileRef, UInt16 whichDate, UInt32 *dateP) {
@@ -410,7 +430,7 @@ Err VFSFileGetDate(FileRef fileRef, UInt16 whichDate, UInt32 *dateP) {
             case vfsFileDateCreated:  *dateP = dt + ent->ctime; break;
             case vfsFileDateModified: *dateP = dt + ent->mtime; break;
             case vfsFileDateAccessed: *dateP = dt + ent->atime; break;
-            default: return sysErrParamErr;
+            default: return_err(sysErrParamErr);
           }
         }
         err = errNone;
@@ -422,19 +442,19 @@ Err VFSFileGetDate(FileRef fileRef, UInt16 whichDate, UInt32 *dateP) {
           case vfsFileDateCreated:  *dateP = dt; break; // XXX
           case vfsFileDateModified: *dateP = dt; break; // XXX
           case vfsFileDateAccessed: *dateP = dt; break; // XXX
-          default: return sysErrParamErr;
+          default: return_err(sysErrParamErr);
         }
       }
       err = errNone;
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSFileSetDate(FileRef fileRef, UInt16 whichDate, UInt32 date) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileSetDate not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
@@ -442,7 +462,7 @@ Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (dirNameP && dirNameP[0]) {
@@ -453,7 +473,7 @@ Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType *infoP) {
@@ -486,7 +506,7 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
           if (infoP->nameP && infoP->nameBufLen) {
             StrNCopy(infoP->nameP, ent->name, infoP->nameBufLen);
           }
-          err = 0;
+          err = errNone;
         }
       } else {
         if (dirEntryIteratorP) *dirEntryIteratorP = vfsIteratorStop;
@@ -498,7 +518,7 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
     }
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *pathStr, UInt16 *bufLenP) {
@@ -507,7 +527,7 @@ Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *path
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetDefaultDirectory not implemented");
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (fileTypeStr && pathStr && bufLenP) {
@@ -516,29 +536,29 @@ Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *path
     err = errNone;
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSRegisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType, const Char *pathStr) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSRegisterDefaultDirectory not implemented");
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSUnregisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSUnregisterDefaultDirectory not implemented");
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSVolumeFormat(UInt8 flags, UInt16 fsLibRefNum, VFSAnyMountParamPtr vfsMountParamP) {
-  return vfsErrNoFileSystem;
+  return_err(vfsErrNoFileSystem);
 }
 
 Err VFSVolumeMount(UInt8 flags, UInt16 fsLibRefNum, VFSAnyMountParamPtr vfsMountParamP) {
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSVolumeUnmount(UInt16 volRefNum) {
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
@@ -550,12 +570,12 @@ Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
     err = errNone;
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSVolumeInfo(UInt16 volRefNum, VolumeInfoType *volInfoP) {
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (volInfoP) {
@@ -569,23 +589,23 @@ Err VFSVolumeInfo(UInt16 volRefNum, VolumeInfoType *volInfoP) {
     volInfoP->mediaType = MEDIA_TYPE;
   }
 
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSVolumeGetLabel(UInt16 volRefNum, Char *labelP, UInt16 bufLen) {
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (labelP && bufLen) {
     MemMove(labelP, LABEL, bufLen);
   }
 
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSVolumeSetLabel(UInt16 volRefNum, const Char *labelP) {
-  return vfsErrBadName;
+  return_err(vfsErrBadName);
 }
 
 Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
@@ -594,7 +614,7 @@ Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
   Err err = vfsErrFileBadRef;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   buildpath(module, module->path, "");
@@ -604,24 +624,24 @@ Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
     err = errNone;
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSInstallFSLib(UInt32 creator, UInt16 *fsLibRefNumP) {
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSRemoveFSLib(UInt16 fsLibRefNum) {
-  return errNone;
+  return_err(errNone);
 }
 
 Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *resHP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBGetResource not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSExportDatabaseToFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP) {
-  return vfsErrBadName;
+  return_err(vfsErrBadName);
 }
 
 Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID) {
@@ -630,7 +650,7 @@ Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 card
 
 Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSImportDatabaseFromFileCustom not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSImportDatabaseFromFile(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP) {
@@ -639,7 +659,7 @@ Err VFSImportDatabaseFromFile(UInt16 volRefNum, const Char *pathNameP, UInt16 *c
 
 Err VFSFileDBGetRecord(FileRef ref, UInt16 recIndex, MemHandle *recHP, UInt8 *recAttrP, UInt32 *uniqueIDP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBGetRecord not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSFileDBInfo(FileRef ref, Char *nameP,
@@ -649,7 +669,7 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
           MemHandle *sortInfoHP, UInt32 *typeP,
           UInt32 *creatorP, UInt16 *numRecordsP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBInfo not implemented");
-  return sysErrParamErr;
+  return_err(sysErrParamErr);
 }
 
 Err VFSChangeDir(UInt16 volRefNum, char *path) {
@@ -680,7 +700,7 @@ Err VFSChangeDir(UInt16 volRefNum, char *path) {
     xfree(old);
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
@@ -689,7 +709,7 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
   Err err = sysErrParamErr;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (path) {
@@ -699,7 +719,7 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
     err = errNone;
   }
 
-  return err;
+  return_err(err);
 }
 
 Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
@@ -709,7 +729,7 @@ Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
   Err err = sysErrParamErr;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (path && realPath) {
@@ -727,17 +747,30 @@ Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
     }
   }
 
-  return err;
+  return_err(err);
+}
+
+Int32 VFSFileVPrintF(FileRef fileRef, const char *format, sys_va_list ap) {
+  UInt32 numBytesWritten;
+  char buf[1024];
+  Int32 r;
+
+  r = sys_vsnprintf(buf, sizeof(buf), format, ap);
+  VFSFileWrite(fileRef, StrLen(buf), buf, &numBytesWritten);
+
+  return r;
 }
 
 Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...) {
   sys_va_list ap;
+  UInt32 numBytesWritten;
   char buf[1024];
   Int32 r;
 
   sys_va_start(ap, format);
   r = sys_vsnprintf(buf, sizeof(buf), format, ap);
   sys_va_end(ap);
+  VFSFileWrite(fileRef, StrLen(buf), buf, &numBytesWritten);
 
   return r;
 }
@@ -748,7 +781,7 @@ Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributes
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
+    return_err(vfsErrVolumeBadRef);
   }
 
   if (pathNameP && pathNameP[0] && attributesP) {
@@ -765,5 +798,10 @@ Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributes
     }
   }
 
-  return err;
+  return_err(err);
+}
+
+char *VFSTmpName(void) {
+  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  return module->tmpname;
 }

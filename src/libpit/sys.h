@@ -177,6 +177,8 @@ int sys_write(int fd, uint8_t *buf, int len);
 
 int64_t sys_seek(int fd, int64_t offset, sys_seek_t whence);
 
+int sys_truncate(int fd, int64_t offset);
+
 int sys_pipe(int *fd);
 
 int sys_peek(int fd);
