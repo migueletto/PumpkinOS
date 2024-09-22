@@ -109,37 +109,6 @@ typedef struct {
 
 static void StoDecodeResource(storage_handle_t *res);
 
-static const char *errorCodes[] = {
-  "dmErrMemError",
-  "dmErrIndexOutOfRange",
-  "dmErrInvalidParam",
-  "dmErrReadOnly",
-  "dmErrDatabaseOpen",
-  "dmErrCantOpen",
-  "dmErrCantFind",
-  "dmErrRecordInWrongCard",
-  "dmErrCorruptDatabase",
-  "dmErrRecordDeleted",
-  "dmErrRecordArchived",
-  "dmErrNotRecordDB",
-  "dmErrNotResourceDB",
-  "dmErrROMBased",
-  "dmErrRecordBusy",
-  "dmErrResourceNotFound",
-  "dmErrNoOpenDatabase",
-  "dmErrInvalidCategory",
-  "dmErrNotValidRecord",
-  "dmErrWriteOutOfBounds",
-  "dmErrSeekFailed",
-  "dmErrAlreadyOpenForWrites",
-  "dmErrOpenedByAnotherTask",
-  "dmErrUniqueIDNotFound",
-  "dmErrAlreadyExists",
-  "dmErrInvalidDatabaseName",
-  "dmErrDatabaseProtected",
-  "dmErrDatabaseNotProtected"
-};
-
 extern thread_key_t *sto_key;
 
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
@@ -890,24 +859,10 @@ Err DmInit(void) {
   return errNone;
 }
 
-static const char *errorMessage(Err err) {
-  switch (err) {
-    case memErrInvalidParam:
-      return "memErrInvalidParam";
-    case memErrChunkLocked:
-      return "memErrChunkLocked";
-    default:
-      if (err >= dmErrMemError && err <= dmErrDatabaseNotProtected) {
-        return errorCodes[err - dmErrorClass - 1];
-      }
-  }
-
-  return "unknown";
-}
-
 #define StoCheckErr(err) \
-  sto->lastErr = err; \
-  if (err && err != dmErrResourceNotFound) debug(DEBUG_ERROR, "STOR", "%s: error %s (0x%04X)", __FUNCTION__, errorMessage(err), err);
+  pumpkin_set_lasterr(err); \
+  if (sto) sto->lastErr = err; \
+  if (err && err != dmErrResourceNotFound) debug(DEBUG_ERROR, "STOR", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err));
 
 static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
   storage_db_t *db = NULL;
@@ -1840,7 +1795,7 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
 
 UInt16 DmNumDatabases(UInt16 cardNo) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
-  sto->lastErr = errNone;
+  StoCheckErr(errNone);
 
   return sto->num_storage;
 }
@@ -2019,7 +1974,7 @@ DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
     }
   }
 
-  sto->lastErr = errNone;
+  StoCheckErr(errNone);
   return dbRef;
 }
 
@@ -4580,7 +4535,7 @@ Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
   xmemcpy(dstP, sP, numBytes);
-  if (sto) sto->lastErr = errNone;
+  StoCheckErr(errNone);
   return errNone;
 }
 
@@ -4588,7 +4543,7 @@ Err MemSet(void *dstP, Int32 numBytes, UInt8 value) {
   storage_t *sto = (storage_t *)thread_get(sto_key);
   if (dstP == NULL) ErrFatalDisplayEx("MemSet NULL", 1);
   xmemset(dstP, value, numBytes);
-  if (sto) sto->lastErr = errNone;
+  StoCheckErr(errNone);
   return errNone;
 }
 
@@ -4597,7 +4552,7 @@ Int16 MemCmp(const void *s1, const void *s2, Int32 numBytes) {
   Int16 r;
   if (s1 == NULL || s2 == NULL) ErrFatalDisplayEx("MemCmp NULL", 1);
   r = s1 && s2 ? sys_memcmp(s1, s2, numBytes) : -1;
-  sto->lastErr = errNone;
+  StoCheckErr(errNone);
   return r;
 }
 

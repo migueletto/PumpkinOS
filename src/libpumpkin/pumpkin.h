@@ -191,6 +191,9 @@ void pumpkin_create_compat(uint32_t creator);
 void pumpkin_set_compat(uint32_t creator, int compat, int code);
 void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), void *data);
 void pumpkin_compat_log(void);
+void pumpkin_set_lasterr(Err err);
+Err pumpkin_get_lasterr(void);
+const char *pumpkin_error_msg(Err err);
 
 void pumpkin_set_finish(int finish);
 int pumpkin_must_finish(void);
@@ -513,7 +516,9 @@ void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, 
        void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 char pumpkin_getchar(void);
 void pumpkin_putchar(char c);
+void pumpkin_write(char *s, uint32_t len);
 void pumpkin_puts(char *s);
+uint32_t pumpkin_vprintf(const char *format, sys_va_list ap);
 uint32_t pumpkin_printf(const char *format, ...);
 uint32_t pumpkin_gets(char *buf, uint32_t max);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);

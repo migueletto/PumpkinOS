@@ -135,6 +135,7 @@ typedef struct {
   int num_syslibs;
   uint32_t taskId;
   void *exception;
+  Err lastErr;
   heap_t *heap;
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
@@ -4619,10 +4620,10 @@ void pumpkin_putchar(char c) {
   }
 }
 
-void pumpkin_puts(char *s) {
+void pumpkin_write(char *s, uint32_t len) {
   uint32_t i;
 
-  for (i = 0; s[i]; i++) {
+  for (i = 0; i < len; i++) {
     if (s[i] == '\n' && (i == 0 || s[i-1] != '\r')) {
       pumpkin_putchar('\r');
     }
@@ -4630,16 +4631,33 @@ void pumpkin_puts(char *s) {
   }
 }
 
+void pumpkin_puts(char *s) {
+  pumpkin_write(s, sys_strlen(s));
+}
+
+uint32_t pumpkin_vprintf(const char *format, sys_va_list ap) {
+  char *buf;
+  uint32_t n = 0;
+
+  if (format) {
+    if ((buf = sys_malloc(16384)) != NULL) {
+      n = sys_vsnprintf(buf, 16384, format, ap);
+      pumpkin_puts(buf);
+      sys_free(buf);
+    }
+  }
+
+  return n;
+}
+
 uint32_t pumpkin_printf(const char *format, ...) {
   sys_va_list ap;
-  char buf[512];
   uint32_t n = 0;
 
   if (format) {
     sys_va_start(ap, format);
-    n = sys_vsnprintf(buf, sizeof(buf), format, ap);
+    n = pumpkin_vprintf(format, ap);
     sys_va_end(ap);
-    pumpkin_puts(buf);
   }
 
   return n;
@@ -4704,4 +4722,99 @@ void pumpkin_sound_finish(void) {
     heap_finish(task->heap);
     xfree(task);
   }
+}
+
+void pumpkin_set_lasterr(Err err) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  if (task) task->lastErr = err;
+}
+
+Err pumpkin_get_lasterr(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->lastErr : 0;
+}
+
+static const char *memErrorMsg[] = {
+  "memErrChunkLocked",
+  "memErrNotEnoughSpace",
+  "memErrInvalidParam",
+  "memErrChunkNotLocked",
+  "memErrCardNotPresent",
+  "memErrNoCardHeader",
+  "memErrInvalidStoreHeader",
+  "memErrRAMOnlyCard",
+  "memErrWriteProtect",
+  "memErrNoRAMOnCard",
+  "memErrNoStore",
+  "memErrROMOnlyCard"
+};
+
+static const char *dmErrorMsg[] = {
+  "dmErrMemError",
+  "dmErrIndexOutOfRange",
+  "dmErrInvalidParam",
+  "dmErrReadOnly",
+  "dmErrDatabaseOpen",
+  "dmErrCantOpen",
+  "dmErrCantFind",
+  "dmErrRecordInWrongCard",
+  "dmErrCorruptDatabase",
+  "dmErrRecordDeleted",
+  "dmErrRecordArchived",
+  "dmErrNotRecordDB",
+  "dmErrNotResourceDB",
+  "dmErrROMBased",
+  "dmErrRecordBusy",
+  "dmErrResourceNotFound",
+  "dmErrNoOpenDatabase",
+  "dmErrInvalidCategory",
+  "dmErrNotValidRecord",
+  "dmErrWriteOutOfBounds",
+  "dmErrSeekFailed",
+  "dmErrAlreadyOpenForWrites",
+  "dmErrOpenedByAnotherTask",
+  "dmErrUniqueIDNotFound",
+  "dmErrAlreadyExists",
+  "dmErrInvalidDatabaseName",
+  "dmErrDatabaseProtected",
+  "dmErrDatabaseNotProtected"
+};
+
+static const char *vfsErrorMsg[] = {
+  "vfsErrBufferOverflow",
+  "vfsErrFileGeneric",
+  "vfsErrFileBadRef",
+  "vfsErrFileStillOpen",
+  "vfsErrFilePermissionDenied",
+  "vfsErrFileAlreadyExists",
+  "vfsErrFileEOF",
+  "vfsErrFileNotFound",
+  "vfsErrVolumeBadRef",
+  "vfsErrVolumeStillMounted",
+  "vfsErrNoFileSystem",
+  "vfsErrBadData",
+  "vfsErrDirNotEmpty",
+  "vfsErrBadName",
+  "vfsErrVolumeFull",
+  "vfsErrUnimplemented",
+  "vfsErrNotADirectory",
+  "vfsErrIsADirectory",
+  "vfsErrDirectoryNotFound",
+  "vfsErrNameShortened"
+};
+
+const char *pumpkin_error_msg(Err err) {
+  const char *s;
+
+  if (err > dmErrorClass && err <= dmErrDatabaseNotProtected) {
+    s = dmErrorMsg[err - dmErrorClass - 1];
+  } else if (err > memErrorClass && err <= memErrROMOnlyCard) {
+    s = memErrorMsg[err - memErrorClass - 1];
+  } else if (err > vfsErrorClass && err <= vfsErrNameShortened) {
+    s = vfsErrorMsg[err - vfsErrorClass - 1];
+  } else {
+    s = "unknown";
+  }
+
+  return s;
 }
