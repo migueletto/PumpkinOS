@@ -104,14 +104,17 @@ struct command_internal_data_t {
   Boolean moved, selected, down;
   SndStreamRef sound;
   command_prefs_t prefs;
+  FileRef in, out;
 };
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
 static const RGBColorType defaultBackground = { 0, 0x13, 0x32, 0x65 };
 static const RGBColorType defaultHighlight  = { 0, 0xFF, 0xFF, 0x80 };
 
+static int command_script_tid(int pe);
 static int command_script_cls(int pe);
 static int command_script_print(int pe);
+static int command_script_gets(int pe);
 static int command_script_cd(int pe);
 static int command_script_opendb(int pe);
 static int command_script_readdb(int pe);
@@ -132,10 +135,14 @@ static int command_script_exit(int pe);
 static int command_script_pit(int pe);
 static int command_script_play(int pe);
 static int command_script_crash(int pe);
+static int command_script_setin(int pe);
+static int command_script_setout(int pe);
 
 static const command_builtin_t builtinCommands[] = {
+  { "tid",      command_script_tid      },
   { "cls",      command_script_cls      },
   { "print",    command_script_print    },
+  { "gets",     command_script_gets     },
   { "cd",       command_script_cd       },
   { "opendb",   command_script_opendb   },
   { "readdb",   command_script_readdb   },
@@ -156,6 +163,8 @@ static const command_builtin_t builtinCommands[] = {
   { "pit",      command_script_pit      },
   { "play",     command_script_play     },
   { "crash",    command_script_crash    },
+  { "setin",    command_script_setin    },
+  { "setout",   command_script_setout   },
   { NULL, NULL }
 };
 
@@ -246,70 +255,18 @@ static void check_prefix(char *path, char *buf, int n) {
   }
 }
 
-static void command_script(command_internal_data_t *idata, char *s) {
-  script_arg_t value;
-  char *argv[8], *val = NULL;
-  char buf[MAXCMD];
-  int argc, i, j, paren, quote;
+static void command_execute(command_internal_data_t *idata, char *s) {
+  char *val;
 
   if (s && s[0]) {
-    paren = quote = 0;
-    for (i = 0; s[i]; i++) {
-      if (s[i] == '(') {
-        if (!quote) paren = 1;
-      } else if (s[i] == '"' || s[i] == '\'') {
-        quote = 1;
+    val = pumpkin_script_call(idata->pe, "command_eval", s);
+    if (val) {
+      if (val[0]) {
+        command_puts(idata, val);
+        command_putc(idata, '\r');
+        command_putc(idata, '\n');
       }
-    }
-
-    if (paren) {
-      // the command may be a direct lua script, instead of a pseudo command
-      val = pumpkin_script_call(idata->pe, "command_eval", s);
-    } else {
-      // split the command line into argv, argv[0] is the first word
-      argc = pit_findargs(s, argv, 8, NULL, NULL);
-
-      if (argc > 0) {
-        if (script_global_get(idata->pe, argv[0], &value) == 0) {
-          // check if argv[0] is a function name
-          if (value.type == SCRIPT_ARG_FUNCTION) {
-            // yes, build a proper function call
-            StrNPrintF(buf, sizeof(buf)-1, "%s(", argv[0]);
-            for (j = 1; j < argc; j++) {
-              if ((MAXCMD - StrLen(buf)) <= StrLen(argv[j] + 5)) break;
-              if (j > 1) StrCat(buf, ",");
-              if (argv[j][0] != '\"') StrCat(buf, "\"");
-              StrCat(buf, argv[j]);
-              if (argv[j][0] != '\"') StrCat(buf, "\"");
-            }
-            StrCat(buf, ")");
-            s = buf;
-
-            // evaluate the expression
-            val = pumpkin_script_call(idata->pe, "command_eval", s);
-
-          } else if (value.type == SCRIPT_ARG_NULL) {
-            // not found, evaluate the expression
-            val = pumpkin_script_call(idata->pe, "command_eval", s);
-          }
-        } else {
-          // evaluate the expression
-          val = pumpkin_script_call(idata->pe, "command_eval", s);
-        }
-  
-        if (val) {
-          if (val[0]) {
-            command_puts(idata, val);
-            command_putc(idata, '\r');
-            command_putc(idata, '\n');
-          }
-          xfree(val);
-        }
-
-        for (i = 0; i < argc; i++) {
-          if (argv[i]) xfree(argv[i]);
-        }
-      }
+      xfree(val);
     }
   }
 }
@@ -364,7 +321,7 @@ static void command_expand(command_internal_data_t *idata) {
       }
 
       // open the directory
-      if (VFSFileOpen(1, buf, vfsModeRead, &f) == errNone) {
+      if (VFSFileOpen(idata->volume, buf, vfsModeRead, &f) == errNone) {
         for (op = vfsIteratorStart;;) {
           // read the next entry in the directory
           MemSet(buf, sizeof(buf), 0);
@@ -434,7 +391,7 @@ static void command_key(command_internal_data_t *idata, UInt8 c, Boolean expand)
         idata->cmd[idata->cmdIndex] = 0;
         idata->cmdIndex = 0;
         if (idata->cmd[0]) {
-          command_script(idata, idata->cmd);
+          command_execute(idata, idata->cmd);
         }
         command_prompt(idata);
         break;
@@ -1092,6 +1049,10 @@ static int command_script_kill(int pe) {
   return 0;
 }
 
+static int command_script_tid(int pe) {
+  return script_push_integer(pe, pumpkin_get_taskid());
+}
+
 static int command_script_cls(int pe) {
   command_internal_data_t *idata = command_get_data();
   pterm_cls(idata->t);
@@ -1159,11 +1120,11 @@ static int command_script_print(int pe) {
   crlf = false;
 
   for (i = 0;; i++) {
+    if (i > 0) command_putc(idata, '\t');
     if (script_get_named_value(pe, i, SCRIPT_ARG_ANY, NULL, NULL, NULL, 1, &arg) != 0) break;
     s = value_tostring(pe, &arg);
     if (s) {
       command_puts(idata, s);
-      command_putc(idata, '\t');
       xfree(s);
       crlf = true;
     }
@@ -1175,6 +1136,17 @@ static int command_script_print(int pe) {
   }
 
   return 0;
+}
+
+static int command_script_gets(int pe) {
+  char buf[256];
+  int r = -1;
+
+  if (pumpkin_gets(buf, sizeof(buf)) > 0 && buf[0]) {
+    r = script_push_string(pe, buf);
+  }
+
+  return r;
 }
 
 static int command_script_launch(int pe) {
@@ -1232,8 +1204,8 @@ static int command_script_cd(int pe) {
     dir = xstrdup("/");
   }
 
-  if (VFSChangeDir(1, dir) == errNone) {
-    VFSCurrentDir(1, idata->cwd, MAXCMD);
+  if (VFSChangeDir(idata->volume, dir) == errNone) {
+    VFSCurrentDir(idata->volume, idata->cwd, MAXCMD);
   } else {
     command_puts(idata, "Invalid directory\r\n");
   }
@@ -1460,7 +1432,7 @@ static int command_script_exit(int pe) {
 
   event.eType = appStopEvent;
   EvtAddEventToQueue(&event);
-  
+
   return 0;
 }
 
@@ -1565,7 +1537,7 @@ static int command_script_play(int pe) {
   int r = -1;
 
   if (script_get_string(pe, 0, &name) == 0) {
-    if (VFSFileOpen(1, name, vfsModeRead, &fileRef) == errNone) {
+    if (VFSFileOpen(idata->volume, name, vfsModeRead, &fileRef) == errNone) {
       if (idata->sound) {
         SndStreamDelete(idata->sound);
         idata->sound = 0;
@@ -1617,6 +1589,78 @@ static int command_script_crash(int pe) {
   if (script_get_integer(pe, 0, &fatal) == 0) {
     pumpkin_test_exception(fatal);
   }
+
+  return 0;
+}
+
+static char command_fgetchar(void *data) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+  UInt32 nread;
+  UInt8 b;
+  char c = 0;
+
+  if (idata->in) {
+    if (VFSFileEOF(idata->in)) {
+      VFSFileClose(idata->in);
+      idata->in = NULL;
+    } else if (VFSFileRead(idata->in, 1, &b, &nread) == errNone && nread == 1) {
+      c = (char)b;
+    }
+  }
+
+  return c;
+}
+
+static int command_script_setin(int pe) {
+  command_internal_data_t *idata = command_get_data();
+  char *fname = NULL;
+
+  if (idata->in) {
+    VFSFileClose(idata->in);
+    idata->in = NULL;
+  }
+  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
+
+  if (script_get_string(pe, 0, &fname) == 0) {
+    if (VFSFileOpen(idata->volume, fname, vfsModeRead, &idata->in) == errNone) {
+      pumpkin_setio(command_fgetchar, command_putchar, command_setcolor, idata);
+    }
+  }
+
+  if (fname) xfree(fname);
+
+  return 0;
+}
+
+static void command_fputchar(void *data, char c) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+  UInt32 nwritten;
+  UInt8 b;
+
+  if (idata->out) {
+    b = (UInt8)c;
+    if (VFSFileWrite(idata->out, 1, &b, &nwritten) == errNone && nwritten == 1) {
+    }
+  }
+}
+
+static int command_script_setout(int pe) {
+  command_internal_data_t *idata = command_get_data();
+  char *fname = NULL;
+
+  if (idata->out) {
+    VFSFileClose(idata->out);
+    idata->out = NULL;
+  }
+  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
+
+  if (script_get_string(pe, 0, &fname) == 0) {
+    if (VFSFileOpen(idata->volume, fname, vfsModeWrite, &idata->out) == errNone) {
+      pumpkin_setio(command_getchar, command_fputchar, command_setcolor, idata);
+    }
+  }
+
+  if (fname) xfree(fname);
 
   return 0;
 }
@@ -1773,8 +1817,8 @@ static Err StartApplication(void *param) {
   VFSVolumeEnumerate(&idata->volume, &iterator);
 
   idata->wait = SysTicksPerSecond() / 2;
-  VFSChangeDir(1, "/");
-  VFSCurrentDir(1, idata->cwd, MAXCMD);
+  VFSChangeDir(idata->volume, "/");
+  VFSCurrentDir(idata->volume, idata->cwd, MAXCMD);
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
   WinScreenGetAttribute(winScreenDensity, &density);
