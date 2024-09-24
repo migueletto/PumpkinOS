@@ -2982,6 +2982,18 @@ char *sys_strstr(const char *haystack, const char *needle) {
   return strstr(haystack, needle);
 }
 
+char *sys_strpbrk(const char *s, const char *accept) {
+  int i, j;
+
+  for (i = 0; s[i]; i++) {
+    for (j = 0; accept[j]; j++) {
+      if (s[i] == accept[j]) return (char *)&s[i];
+    }
+  }
+
+  return NULL;
+}
+
 int sys_atoi(const char *nptr) {
   return atoi(nptr);
 }

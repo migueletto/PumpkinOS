@@ -317,6 +317,8 @@ char *sys_strrchr(const char *s, int c);
 
 char *sys_strstr(const char *haystack, const char *needle);
 
+char *sys_strpbrk(const char *s, const char *accept);
+
 int sys_strcmp(const char *s1, const char *s2);
 
 int sys_strncmp(const char *s1, const char *s2, sys_size_t n);
