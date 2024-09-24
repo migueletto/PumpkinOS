@@ -104,6 +104,8 @@ struct command_internal_data_t {
   Boolean moved, selected, down;
   SndStreamRef sound;
   command_prefs_t prefs;
+  int (*getchar)(void *iodata);
+  void (*putchar)(void *iodata, char c);
   FileRef in, out;
 };
 
@@ -135,8 +137,7 @@ static int command_script_exit(int pe);
 static int command_script_pit(int pe);
 static int command_script_play(int pe);
 static int command_script_crash(int pe);
-static int command_script_setin(int pe);
-static int command_script_setout(int pe);
+static int command_script_setio(int pe);
 
 static const command_builtin_t builtinCommands[] = {
   { "tid",      command_script_tid      },
@@ -163,8 +164,7 @@ static const command_builtin_t builtinCommands[] = {
   { "pit",      command_script_pit      },
   { "play",     command_script_play     },
   { "crash",    command_script_crash    },
-  { "setin",    command_script_setin    },
-  { "setout",   command_script_setout   },
+  { "setio",    command_script_setio    },
   { NULL, NULL }
 };
 
@@ -183,9 +183,9 @@ static void command_puts(command_internal_data_t *idata, char *s) {
     n = StrLen(s);
     for (i = 0, prev = 0; i < n; prev = s[i], i++) {
       if (s[i] == '\n' && prev != '\r') {
-        command_putc(idata, '\r');
+        idata->putchar(idata, '\r');
       }
-      command_putc(idata, s[i]);
+      idata->putchar(idata, s[i]);
     }
   }
 }
@@ -211,11 +211,11 @@ static void command_setcolor(void *data, uint32_t fg, uint32_t bg) {
   pterm_setbg(idata->t, bg);
 }
 
-static char command_getchar(void *data) {
+static int command_getchar(void *data) {
   command_internal_data_t *idata = (command_internal_data_t *)data;
   EventType event;
   Err err;
-  char c = 0;
+  int c = -1;
 
   for (; !thread_must_end();) {
     EvtGetEvent(&event, idata->wait);
@@ -977,8 +977,10 @@ static int command_script_file(int pe, int run) {
           }
         } else {
           command_puts(idata, buf);
-          command_putc(idata, '\r');
-          command_putc(idata, '\n');
+          if (buf[n-1] != '\n') {
+            command_putc(idata, '\r');
+            command_putc(idata, '\n');
+          }
         }
       }
       MemPtrFree(buf);
@@ -1120,10 +1122,10 @@ static int command_script_print(int pe) {
   crlf = false;
 
   for (i = 0;; i++) {
-    if (i > 0) command_putc(idata, '\t');
     if (script_get_named_value(pe, i, SCRIPT_ARG_ANY, NULL, NULL, NULL, 1, &arg) != 0) break;
     s = value_tostring(pe, &arg);
     if (s) {
+      if (i > 0) idata->putchar(idata, '\t');
       command_puts(idata, s);
       xfree(s);
       crlf = true;
@@ -1131,18 +1133,19 @@ static int command_script_print(int pe) {
   }
 
   if (crlf) {
-    command_putc(idata, '\r');
-    command_putc(idata, '\n');
+    idata->putchar(idata, '\r');
+    idata->putchar(idata, '\n');
   }
 
   return 0;
 }
 
 static int command_script_gets(int pe) {
+  command_internal_data_t *idata = command_get_data();
   char buf[256];
   int r = -1;
 
-  if (pumpkin_gets(buf, sizeof(buf)) > 0 && buf[0]) {
+  if (pumpkin_gets(buf, sizeof(buf), (void *)idata->getchar == (void *)pumpkin_getchar) > 0 && buf[0]) {
     r = script_push_string(pe, buf);
   }
 
@@ -1593,43 +1596,23 @@ static int command_script_crash(int pe) {
   return 0;
 }
 
-static char command_fgetchar(void *data) {
+static int command_fgetchar(void *data) {
   command_internal_data_t *idata = (command_internal_data_t *)data;
   UInt32 nread;
   UInt8 b;
-  char c = 0;
+  int c = -1;
 
   if (idata->in) {
     if (VFSFileEOF(idata->in)) {
       VFSFileClose(idata->in);
       idata->in = NULL;
     } else if (VFSFileRead(idata->in, 1, &b, &nread) == errNone && nread == 1) {
-      c = (char)b;
+      c = (int)b;
+    } else {
     }
   }
 
   return c;
-}
-
-static int command_script_setin(int pe) {
-  command_internal_data_t *idata = command_get_data();
-  char *fname = NULL;
-
-  if (idata->in) {
-    VFSFileClose(idata->in);
-    idata->in = NULL;
-  }
-  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
-
-  if (script_get_string(pe, 0, &fname) == 0) {
-    if (VFSFileOpen(idata->volume, fname, vfsModeRead, &idata->in) == errNone) {
-      pumpkin_setio(command_fgetchar, command_putchar, command_setcolor, idata);
-    }
-  }
-
-  if (fname) xfree(fname);
-
-  return 0;
 }
 
 static void command_fputchar(void *data, char c) {
@@ -1640,27 +1623,71 @@ static void command_fputchar(void *data, char c) {
   if (idata->out) {
     b = (UInt8)c;
     if (VFSFileWrite(idata->out, 1, &b, &nwritten) == errNone && nwritten == 1) {
+    } else {
     }
   }
 }
 
-static int command_script_setout(int pe) {
+static int command_script_setio(int pe) {
   command_internal_data_t *idata = command_get_data();
-  char *fname = NULL;
+  Boolean hasInput, hasOutput;
+  char *iname = NULL;
+  char *oname = NULL;
+  Err err;
 
+  hasInput  = script_opt_string(pe, 0, &iname) == 0 && iname && iname[0];
+  hasOutput = script_opt_string(pe, 1, &oname) == 0 && oname && oname[0];
+
+  if (idata->in) {
+    debug(DEBUG_TRACE, "Command", "setio: closing old input");
+    VFSFileClose(idata->in);
+    idata->getchar = command_getchar;
+    idata->in = NULL;
+  }
   if (idata->out) {
+    debug(DEBUG_TRACE, "Command", "setio: closing old output");
     VFSFileClose(idata->out);
+    idata->putchar = command_putchar;
     idata->out = NULL;
   }
-  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
+  pumpkin_setio(idata->getchar, idata->putchar, command_setcolor, idata);
 
-  if (script_get_string(pe, 0, &fname) == 0) {
-    if (VFSFileOpen(idata->volume, fname, vfsModeWrite, &idata->out) == errNone) {
-      pumpkin_setio(command_getchar, command_fputchar, command_setcolor, idata);
+  if (hasInput) {
+    debug(DEBUG_TRACE, "Command", "setio: input \"%s\"", iname);
+    err = VFSFileOpen(idata->volume, iname, vfsModeRead, &idata->in);
+    if (err != errNone) {
+      debug(DEBUG_TRACE, "Command", "setio: create input \"%s\"", iname);
+      VFSFileCreate(idata->volume, iname);
+      err = VFSFileOpen(idata->volume, iname, vfsModeRead, &idata->in);
     }
+    if (err == errNone) {
+      debug(DEBUG_TRACE, "Command", "setio: set fgetchar");
+      idata->getchar = command_fgetchar;
+    }
+  } else {
+    debug(DEBUG_TRACE, "Command", "setio: no input");
   }
 
-  if (fname) xfree(fname);
+  if (hasOutput) {
+    debug(DEBUG_TRACE, "Command", "setio: output \"%s\"", oname);
+    err = VFSFileOpen(idata->volume, oname, vfsModeRead, &idata->out);
+    if (err != errNone) {
+    debug(DEBUG_TRACE, "Command", "setio: create output \"%s\"", oname);
+      VFSFileCreate(idata->volume, oname);
+      err = VFSFileOpen(idata->volume, oname, vfsModeWrite, &idata->out);
+    }
+    if (err == errNone) {
+      debug(DEBUG_TRACE, "Command", "setio: set fputchar");
+      idata->putchar = command_fputchar;
+    }
+  } else {
+    debug(DEBUG_TRACE, "Command", "setio: no output");
+  }
+
+  pumpkin_setio(idata->getchar, idata->putchar, command_setcolor, idata);
+
+  if (iname) xfree(iname);
+  if (oname) xfree(oname);
 
   return 0;
 }
@@ -1803,6 +1830,9 @@ static Err StartApplication(void *param) {
   idata = xcalloc(1, sizeof(command_internal_data_t));
   data->idata = idata;
   pumpkin_set_data(data);
+
+  idata->getchar = command_getchar;
+  idata->putchar = command_putchar;
 
   prefsSize = sizeof(command_prefs_t);
   if (PrefGetAppPreferences(AppID, 1, &idata->prefs, &prefsSize, true) == noPreferenceFound) {

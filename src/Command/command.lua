@@ -18,37 +18,40 @@ function command_eval(cmd)
   return r
 end
 
-function chain(list)
-  if list and type(list) == "table" then
-    local n = #list
-    local input = nil
-    local output = nil
-    setin(nil)
-    setout(nil)
-    for i = 1,n do
-      local current = list[i]
-      local next = list[i+1]
-      if current then
-        if type(current) == "function" then
-          if next and type(next) == "function" then
-            output = string.format("tmp%d_%d", tid(), i)
-          else
-            output = nil
-          end
-          setout(output)
-          current()
-          if input then
-            setin(nil)
-            rm(input)
-          end
-          input = output
-          setin(input)
-          output = nil
-          setout(output)
-        end
-      end
+function aa()
+  print("abcd")
+  print("efg")
+  print("hijk")
+end
+
+function bb(len)
+  while true do
+    local line = gets()
+    if not line then break end
+    if string.len(line) >= len then
+      print(line)
     end
   end
+end
+
+function cc()
+  while true do
+    local line = gets()
+    if not line then break end
+    print(string.upper(line))
+  end
+end
+
+function chain()
+  setio(nil, "tmp1")
+  aa()
+  setio("tmp1", "tmp2")
+  bb(4)
+  setio("tmp2", "saida")
+  cc()
+  setio(nil, nil)
+  rm("tmp1")
+  rm("tmp2")
 end
 
 function ls(dir, f)
