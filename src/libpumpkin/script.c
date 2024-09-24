@@ -1140,6 +1140,18 @@ static int app_script_ui_about(int pe) {
   return r;
 }
 
+static int app_script_sys_debug(int pe) {
+  char *msg = NULL;
+
+  if (script_get_string(pe, 0, &msg) == 0) {
+    debug(DEBUG_INFO, "SCRIPT", "debug: %s", msg);
+  }
+
+  if (msg) xfree(msg);
+
+  return 0;
+}
+
 int pumpkin_script_init_env(int pe) {
   script_data_t *data;
   int obj, r = -1;
@@ -1147,6 +1159,10 @@ int pumpkin_script_init_env(int pe) {
   if ((data = xcalloc(1, sizeof(script_data_t))) != NULL) {
     data->pe = pe;
     pumpkin_set_subdata(data);
+
+    if ((obj = pumpkin_script_create_obj(pe, "sys")) != -1) {
+      pumpkin_script_obj_function(pe, obj, "debug",    app_script_sys_debug);
+    }
 
     if ((obj = pumpkin_script_create_obj(pe, "screen")) != -1) {
       pumpkin_script_obj_function(pe, obj, "rgb",      app_script_screen_rgb);
