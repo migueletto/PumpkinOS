@@ -92,7 +92,7 @@ int VFSFinishModule(void) {
 
 #define return_err(err) \
   pumpkin_set_lasterr(err); \
-  if (err) debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
+  if (err && err != vfsErrFileEOF && err != vfsErrFileNotFound) debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
   return err
 
 Err VFSInit(void) {

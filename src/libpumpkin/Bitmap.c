@@ -2854,8 +2854,6 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
     }
     //dbg_update(dst);
-  } else {
-//debug(1, "XXX", "BmpCopyBit out");
   }
 }
 
