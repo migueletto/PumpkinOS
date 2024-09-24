@@ -512,15 +512,15 @@ uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
 int pumpkin_script_init_env(int pe);
 int pumpkin_script_finish_env(void);
 
-void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
+void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
        void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
-char pumpkin_getchar(void);
+int pumpkin_getchar(void);
 void pumpkin_putchar(char c);
 void pumpkin_write(char *s, uint32_t len);
 void pumpkin_puts(char *s);
 uint32_t pumpkin_vprintf(const char *format, sys_va_list ap);
 uint32_t pumpkin_printf(const char *format, ...);
-uint32_t pumpkin_gets(char *buf, uint32_t max);
+int32_t pumpkin_gets(char *buf, uint32_t max, int echo);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 
 void pumpkin_sound_init(void);

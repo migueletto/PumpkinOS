@@ -141,7 +141,7 @@ typedef struct {
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
   void *data;
   void *subdata;
-  char (*getchar)(void *iodata);
+  int (*getchar)(void *iodata);
   void (*putchar)(void *iodata, char c);
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
@@ -4597,7 +4597,7 @@ void SysNotifyBroadcastQueued(void) {
   }
 }
 
-void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
+void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   task->getchar = getchar;
@@ -4606,7 +4606,7 @@ void pumpkin_setio(char (*getchar)(void *iodata), void (*putchar)(void *iodata, 
   task->iodata = iodata;
 }
 
-char pumpkin_getchar(void) {
+int pumpkin_getchar(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   return task->getchar ? task->getchar(task->iodata) : 0;
@@ -4663,27 +4663,29 @@ uint32_t pumpkin_printf(const char *format, ...) {
   return n;
 }
 
-uint32_t pumpkin_gets(char *buf, uint32_t max) {
+int32_t pumpkin_gets(char *buf, uint32_t max, int echo) {
   uint32_t i = 0;
-  char c;
+  int c;
 
   if (buf && max > 0) {
     for (; i < max-1;) {
       c = pumpkin_getchar();
-      if (c == 0) break;
+      if (c == -1 && i == 0) return -1;
+      if (c <= 0) break;
+      if (c == '\r') continue;
       if (c == '\n') {
-        pumpkin_putchar('\r');
-        pumpkin_putchar('\n');
+        if (echo) pumpkin_putchar('\r');
+        if (echo) pumpkin_putchar('\n');
         break;
       }
       if (c == '\b') {
         if (i > 0) {
-          pumpkin_putchar('\b');
+          if (echo) pumpkin_putchar('\b');
           i--;
         }
         continue;
       }
-      pumpkin_putchar(c);
+      if (echo) pumpkin_putchar(c);
       buf[i++] = c;
     }
     buf[i] = 0;
