@@ -452,7 +452,7 @@ static void launcherScanApps(launcher_data_t *data) {
     }
     if (DmDatabaseInfo(cardNo, data->item[i].dbID, data->item[i].name, &attr, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator) == errNone) {
       if (StrCompare(data->item[i].name, AppName) && (attr & dmHdrAttrResDB)) {
-        debug(DEBUG_INFO, "Launcher", "found app \"%s\"", data->item[i].name);
+        debug(DEBUG_TRACE, "Launcher", "found app \"%s\"", data->item[i].name);
         data->item[i].type = sysFileTApplication;
         data->item[i].creator = creator;
         data->item[i].rsrc = true;
