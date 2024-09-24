@@ -1840,6 +1840,9 @@ void FrmCloseAllForms(void) {
   module->currentForm = NULL;
   MenuSetActiveMenu(NULL);
   module->list = NULL;
+
+  WinSetActiveWindow(WinGetDisplayWindow());
+  WinSetDrawWindow(WinGetDisplayWindow());
 }
 
 // Send a frmSaveEvent to all open forms.
