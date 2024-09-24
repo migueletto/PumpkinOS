@@ -7,6 +7,7 @@
 struct PLIBC_FILE {
   FileRef fileRef;
   char unget;
+  int stdin_error;
 };
 
 static PLIBC_FILE plibc_fstdin  = { NULL, 0 };
@@ -112,11 +113,26 @@ int plibc_remove(const char *pathname) {
 }
 
 sys_size_t plibc_fread(void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream) {
-  sys_size_t n = 0;
+  char *s;
+  int c;
+  sys_size_t i, n = 0;
   UInt32 numBytesRead;
 
-  if (ptr && stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream->fileRef) {
+  if (ptr && stream && stream != plibc_stdout && stream != plibc_stderr) {
+    if (stream == plibc_stdin) {
+       n = size * nmemb;
+       s = (char *)ptr;
+       for (i = 0; i < n; i++) {
+         c = pumpkin_getchar();
+         if (c == -1) {
+           stream->stdin_error = 1;
+           break;
+         }
+         stream->stdin_error = 0;
+         s[i] = c;
+       }
+       n = i;
+    } else if (stream->fileRef) {
       if (VFSFileRead(stream->fileRef, size * nmemb, ptr, &numBytesRead) == errNone) {
         n = numBytesRead / size;
       }
@@ -186,15 +202,15 @@ long plibc_ftell(PLIBC_FILE *stream) {
   return filePos;
 }
 
-void plibc_rewind(PLIBC_FILE *stream) {
-  plibc_fseek(stream, 0, PLIBC_SEEK_SET);
-}
-
 int plibc_feof(PLIBC_FILE *stream) {
-  int r = 0;
+  int r = 1;
 
-  if (stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr && stream->fileRef) {
-    r = VFSFileEOF(stream->fileRef) == vfsErrFileEOF;
+  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
+    if (stream == plibc_stdin) {
+      r = stream->stdin_error;
+    } else if (stream->fileRef) {
+      r = VFSFileEOF(stream->fileRef) == vfsErrFileEOF;
+    }
   }
 
   return r;
@@ -205,17 +221,13 @@ int plibc_fflush(PLIBC_FILE *stream) {
 }
 
 int plibc_fputc(int c, PLIBC_FILE *stream) {
+  uint8_t b;
   int r = PLIBC_EOF;
-  char ch;
 
-  if (stream && stream != plibc_stdin) {
-    if (stream == plibc_stdout || stream == plibc_stderr) {
-      pumpkin_putchar(c);
-      r = c;
-    } else {
-      ch = c;
-      plibc_fwrite(&ch, 1, 1, stream);
-      r = c;
+  if (stream) {
+    b = (uint8_t)c;
+    if (plibc_fwrite(&b, 1, 1, stream) == 1) {
+      r = (int)b;
     }
   }
 
@@ -223,75 +235,16 @@ int plibc_fputc(int c, PLIBC_FILE *stream) {
 }
 
 int plibc_fputs(const char *s, PLIBC_FILE *stream) {
-  int r = PLIBC_EOF;
+  int len, r = PLIBC_EOF;
 
-  if (s && stream && stream != plibc_stdin) {
-    if (stream == plibc_stdout || stream == plibc_stderr) {
-      pumpkin_puts((char *)s);
-      r = 0;
-    } else {
-      plibc_fwrite(s, sys_strlen(s), 1, stream);
+  if (s && stream) {
+    len = sys_strlen(s);
+    if (plibc_fwrite(s, 1, len, stream) == len) {
       r = 0;
     }
   }
 
   return r;
-}
-
-int plibc_putchar(int c) {
-  pumpkin_putchar(c);
-  return c;
-}
-
-int plibc_puts(const char *s) {
-  int i;
-
-  for (i = 0; s[i]; i++) {
-    plibc_putchar((uint8_t)s[i]);
-  }
-
-  return i;
-}
-
-int plibc_fgetc(PLIBC_FILE *stream) {
-  int c = PLIBC_EOF;
-  char ch;
-
-  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream->unget) {
-      c = stream->unget;
-      stream->unget = 0;
-    } else {
-      if (stream == plibc_stdin) {
-        c = plibc_getchar();
-      } else {
-        if (plibc_fread(&ch, 1, 1, stream) == 1) {
-          c = ch;
-        }
-      }
-    }
-  }
-
-  return c;
-}
-
-char *plibc_fgets(char *s, int size, PLIBC_FILE *stream) {
-  char *r = NULL;
-
-  if (s && size > 0 && stream && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream == plibc_stdin) {
-      pumpkin_gets(s, size);
-      r = s;
-    } else if (stream->fileRef) {
-      r = VFSFileGets(stream->fileRef, size, s);
-    }
-  }
-
-  return r;
-}
-
-int plibc_getchar(void) {
-  return pumpkin_getchar();
 }
 
 int plibc_ungetc(int c, PLIBC_FILE *stream) {
@@ -305,17 +258,57 @@ int plibc_ungetc(int c, PLIBC_FILE *stream) {
   return r;
 }
 
+int plibc_fgetc(PLIBC_FILE *stream) {
+  int c = PLIBC_EOF;
+  char ch;
+
+  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
+    if (stream->unget) {
+      c = stream->unget;
+      stream->unget = 0;
+    } else {
+      if (plibc_fread(&ch, 1, 1, stream) == 1) {
+        c = ch;
+      }
+    }
+  }
+
+  return c;
+}
+
+char *plibc_fgets(char *s, int size, PLIBC_FILE *stream) {
+  char *r = NULL;
+
+  if (s && size > 0 && stream && stream != plibc_stdout && stream != plibc_stderr) {
+    if (stream == plibc_stdin) {
+      pumpkin_gets(s, size, 1);
+      r = s;
+    } else if (stream->fileRef) {
+      r = VFSFileGets(stream->fileRef, size, s);
+    }
+  }
+
+  return r;
+}
+
 int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...) {
+ sys_va_list ap;
+  int r;
+
+  sys_va_start(ap, format);
+  r = plibc_vfprintf(stream, format, ap);
+  sys_va_end(ap);
+
+  return r;
+}
+
+int plibc_printf(const char *format, ...) {
   sys_va_list ap;
   int r = 0;
 
-  if (stream && stream != plibc_stdin && format) {
+  if (format) {
     sys_va_start(ap, format);
-    if (stream == plibc_stdout || stream == plibc_stderr) {
-      r = pumpkin_vprintf(format, ap);
-    } else {
-      r = VFSFileVPrintF(stream->fileRef, format, ap);
-    }
+    r = plibc_vprintf(format, ap);
     sys_va_end(ap);
   }
 
@@ -336,75 +329,14 @@ int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap) {
   return r;
 }
 
-int plibc_printf(const char *format, ...) {
-  sys_va_list ap;
+int plibc_vprintf(const char *format, sys_va_list ap) {
   int r = 0;
 
   if (format) {
-    sys_va_start(ap, format);
     r = pumpkin_vprintf(format, ap);
-    sys_va_end(ap);
   }
 
   return r;
-}
-
-int plibc_sprintf(char *str, const char *format, ...) {
-  sys_va_list ap;
-  int r = 0;
-
-  if (format) {
-    sys_va_start(ap, format);
-    r = sys_vsprintf(str, format, ap);
-    sys_va_end(ap);
-  }
-
-  return r;
-}
-
-int plibc_snprintf(char *str, sys_size_t size, const char *format, ...) {
-  sys_va_list ap;
-  int r = 0;
-
-  if (format) {
-    sys_va_start(ap, format);
-    r = sys_vsnprintf(str, size, format, ap);
-    sys_va_end(ap);
-  }
-
-  return r;
-}
-
-int plibc_isspace(int c) {
-  switch (c) {
-    case ' ':
-    case '\f':
-    case '\n':
-    case '\r':
-    case '\t':
-    case '\v': return 1;
-  }
-  return 0;
-}
-
-int plibc_isdigit(int c) {
-  return c >= '0' && c <= '9';
-}
-
-int plibc_isprint(int c) {
-  return plibc_isspace(c) || (c >= 32 && c <= 255);
-}
-
-char *plibc_strpbrk(const char *s, const char *accept) {
-  int i, j;
-
-  for (i = 0; s[i]; i++) {
-    for (j = 0; accept[j]; j++) {
-      if (s[i] == accept[j]) return (char *)&s[i];
-    }
-  }
-
-  return NULL;
 }
 
 int plibc_errno(void) {

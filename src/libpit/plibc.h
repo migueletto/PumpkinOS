@@ -18,7 +18,6 @@ sys_size_t plibc_fwrite(const void *ptr, sys_size_t size, sys_size_t nmemb, PLIB
 int plibc_fseek(PLIBC_FILE *stream, long offset, int whence);
 int plibc_ftruncate(PLIBC_FILE *stream, long offset);
 long plibc_ftell(PLIBC_FILE *stream);
-void plibc_rewind(PLIBC_FILE *stream);
 int plibc_feof(PLIBC_FILE *stream);
 int plibc_fflush(PLIBC_FILE *stream);
 int plibc_rename(const char *oldpath, const char *newpath);
@@ -27,33 +26,33 @@ char *plibc_tmpnam(void);
 int plibc_errno(void);
 const char *plibc_strerror(int err);
 
-#define plibc_putc plibc_fputc
-
 int plibc_fputc(int c, PLIBC_FILE *stream);
 int plibc_fputs(const char *s, PLIBC_FILE *stream);
-int plibc_putchar(int c);
-int plibc_puts(const char *s);
-
-#define plibc_getc plibc_fgetc
 
 int plibc_fgetc(PLIBC_FILE *stream);
-char *plibc_fgets(char *s, int size, PLIBC_FILE *stream);
-int plibc_getchar(void);
 int plibc_ungetc(int c, PLIBC_FILE *stream);
+char *plibc_fgets(char *s, int size, PLIBC_FILE *stream);
+
+#define plibc_putchar(c) plibc_fputc(c, plibc_stdout)
+#define plibc_putc plibc_fputc
+#define plibc_puts(s) plibc_fputs(s, plibc_stdout)
+#define plibc_getc plibc_fgetc
+#define plibc_getchar() plibc_fgetc(plibc_stdin)
 
 int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...);
 int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap);
 int plibc_printf(const char *format, ...);
+int plibc_vprintf(const char *format, sys_va_list ap);
 int plibc_sprintf(char *str, const char *format, ...);
 int plibc_snprintf(char *str, sys_size_t size, const char *format, ...);
-
-char *plibc_strpbrk(const char *s, const char *accept);
 
 int plibc_isspace(int c);
 int plibc_isdigit(int c);
 int plibc_isprint(int c);
 
 void plibc_error(const char *filename, const char *function, int lineNo, char *msg);
+
+#define plibc_rewind(stream) (void)plibc_fseek(stream, 0, PLIBC_SEEK_SET)
 
 #define plibc_assert(expr) if (!(expr)) plibc_error(__FILE__, __FUNCTION__, __LINE__, #expr);
 #define plibc_abort() plibc_error(__FILE__, __FUNCTION__, __LINE__, "abort");
@@ -75,6 +74,7 @@ void plibc_error(const char *filename, const char *function, int lineNo, char *m
 #define plibc_strchr      sys_strchr
 #define plibc_strrchr     sys_strrchr
 #define plibc_strstr      sys_strstr
+#define plibc_strpbrk     sys_strpbrk
 #define plibc_strcmp      sys_strcmp
 #define plibc_strncmp     sys_strncmp
 #define plibc_strcasecmp  sys_strcasecmp
@@ -86,7 +86,6 @@ void plibc_error(const char *filename, const char *function, int lineNo, char *m
 
 #define plibc_vsprintf    sys_vsprintf
 #define plibc_vsnprintf   sys_vsnprintf
-#define plibc_vprintf     pumpkin_vprintf
 #define plibc_sscanf      sys_sscanf
 
 #define plibc_tolower     sys_tolower
