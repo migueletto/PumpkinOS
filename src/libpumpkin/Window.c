@@ -1925,9 +1925,16 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
     if ((best = BmpGetBestBitmap(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap))) != NULL) {
       BmpGetDimensions(best, &w, &h, NULL);
       bitmapDensity = BmpGetDensity(best);
+      if (bitmapDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+        w >>= 1;
+        h >>= 1;
+      } else if (bitmapDensity == kDensityLow && module->coordSys == kCoordinatesDouble) {
+        w <<= 1;
+        h <<= 1;
+      }
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
-      if (bitmapDensity == kDensityLow) WinScaleRectangle(&rect);
+      //if (bitmapDensity == kDensityLow) WinScaleRectangle(&rect);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
     }
   }
