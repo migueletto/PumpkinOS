@@ -893,8 +893,8 @@ static int rcp_export(char *prc, char *rcp) {
 int CommandMain(int argc, char *argv[]) {
   int r = -1;
 
-  if (argc == 2) {
-    r = rcp_export(argv[0], argv[1]);
+  if (argc == 3) {
+    r = rcp_export(argv[1], argv[2]);
   }
 
   return r;

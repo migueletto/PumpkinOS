@@ -1759,14 +1759,15 @@ static int command_function_cmain(int pe, void *data) {
   char *argv[MAX_ARGC], *arg;
   int argc, i;
 
-  for (argc = 0; argc < MAX_ARGC; argc++) {
-    if (script_opt_string(pe, argc, &arg) != 0) break;
+  argv[0] = "cmd";
+  for (argc = 1; argc < MAX_ARGC; argc++) {
+    if (script_opt_string(pe, argc-1, &arg) != 0) break;
     argv[argc] = arg;
   }
 
   cmain(argc, argv);
 
-  for (i = 0; i < argc; i++) {
+  for (i = 1; i < argc; i++) {
     if (argv[i]) xfree(argv[i]);
   }
 

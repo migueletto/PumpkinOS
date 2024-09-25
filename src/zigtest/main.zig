@@ -17,8 +17,8 @@ export fn CommandMain(c_argc: c_int, c_argv: [*][*]u8) c_int {
         i += 1;
     }
 
-    if (argc > 0) {
-      _ = c.FrmCustomAlert(10024, argv[0], "", "");
+    if (argc > 1) {
+      _ = c.FrmCustomAlert(10024, argv[1], "", "");
     }
 
     return 0;
