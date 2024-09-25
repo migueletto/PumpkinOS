@@ -339,6 +339,8 @@ long sys_strtol(const char *nptr, char **endptr, int base);
 
 unsigned long int sys_strtoul(const char *nptr, char **endptr, int base);
 
+double sys_strtod(const char *nptr, char **endptr);
+
 int sys_memcmp(const void *s1, const void *s2, sys_size_t n) ;
 
 void *sys_memmove(void *dest, const void *src, sys_size_t n);
@@ -355,7 +357,13 @@ double sys_ceil(double x);
 
 double sys_fabs(double x);
 
+double sys_log(double x);
+
+double sys_exp(double x);
+
 double sys_sqrt(double x);
+
+double sys_pow(double x, double y);
 
 double sys_sin(double x);
 
@@ -364,6 +372,14 @@ double sys_cos(double x);
 double sys_atan2(double y, double x);
 
 double sys_pi(void);
+
+double sys_modf(double x, double *iptr);
+
+int sys_isnan(double x);
+
+int sys_isinf(double x);
+
+int sys_signbit(double x);
 
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *));
 

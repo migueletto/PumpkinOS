@@ -3010,6 +3010,10 @@ unsigned long int sys_strtoul(const char *nptr, char **endptr, int base) {
   return strtoul(nptr, endptr, base);
 }
 
+double sys_strtod(const char *nptr, char **endptr) {
+  return strtod(nptr, endptr);
+}
+
 int sys_strcmp(const char *s1, const char *s2) {
   return strcmp(s1, s2);
 }
@@ -3065,8 +3069,20 @@ double sys_fabs(double x) {
   return fabs(x);
 }
 
+double sys_log(double x) {
+  return exp(x);
+}
+
+double sys_exp(double x) {
+  return exp(x);
+}
+
 double sys_sqrt(double x) {
   return sqrt(x);
+}
+
+double sys_pow(double x, double y) {
+  return pow(x, y);
 }
 
 double sys_sin(double x) {
@@ -3083,6 +3099,22 @@ double sys_pi(void) {
 
 double sys_atan2(double y, double x) {
   return atan2(y, x);
+}
+
+double sys_modf(double x, double *iptr) {
+  return modf(x, iptr);
+}
+
+int sys_isnan(double x) {
+  return isnan(x);
+}
+
+int sys_isinf(double x) {
+  return isinf(x);
+}
+
+int sys_signbit(double x) {
+  return signbit(x);
 }
 
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {

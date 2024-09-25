@@ -46,8 +46,16 @@ int plibc_vprintf(const char *format, sys_va_list ap);
 int plibc_sprintf(char *str, const char *format, ...);
 int plibc_snprintf(char *str, sys_size_t size, const char *format, ...);
 
+int plibc_iscntrl(int c);
 int plibc_isspace(int c);
+int plibc_isgraph(int c);
+int plibc_ispunct(int c);
+int plibc_islower(int c);
+int plibc_isupper(int c);
+int plibc_isalpha(int c);
 int plibc_isdigit(int c);
+int plibc_isalnum(int c);
+int plibc_isxdigit(int c);
 int plibc_isprint(int c);
 
 void plibc_error(const char *filename, const char *function, int lineNo, char *msg);
@@ -83,6 +91,7 @@ void plibc_error(const char *filename, const char *function, int lineNo, char *m
 #define plibc_strncat     sys_strncat
 #define plibc_strtol      sys_strtol
 #define plibc_strtoul     sys_strtoul
+#define plibc_strtod      sys_strtod
 
 #define plibc_vsprintf    sys_vsprintf
 #define plibc_vsnprintf   sys_vsnprintf
