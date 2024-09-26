@@ -1,1 +1,2 @@
 HEX "CmdN" ID 1000 "rcpexport" 0x00
+HEX "CmdS" ID 1000 0x01

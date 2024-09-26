@@ -1,6 +1,7 @@
 #define commandExternalType 'CmdE'
 
 #define commandNameType 'CmdN'
+#define commandSafeType 'CmdS'
 
 typedef struct {
   char *name;

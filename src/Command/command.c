@@ -38,6 +38,7 @@
 #define TAG_DB   "cmd_db"
 #define TAG_RSRC "cmd_rsrc"
 
+#define MAX_EXTERNAL_CMDS 64
 #define MAXCMD 512
 
 #define SCREEN_PEN_DOWN 1
@@ -86,6 +87,14 @@ typedef struct {
   UInt32 sampleSize;
 } command_play_t;
 
+typedef struct {
+  mutex_t *mutex;
+  LocalID dbID;
+  int (*cmain)(int argc, char *argv[]);
+  char name[dmDBNameLength];
+  void *lib;
+} command_ext_t;
+
 struct command_internal_data_t {
   int pe;
   Int32 wait;
@@ -107,6 +116,7 @@ struct command_internal_data_t {
   int (*getchar)(void *iodata);
   void (*putchar)(void *iodata, char c);
   FileRef in, out;
+  command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
 };
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
@@ -1755,20 +1765,57 @@ static int command_pterm_scroll(uint8_t row1, uint8_t row2, int16_t dir, void *_
 }
 
 static int command_function_cmain(int pe, void *data) {
-  int (*cmain)(int argc, char *argv[]) = data;
+  command_ext_t *cmd = (command_ext_t *)data;
+  DmOpenRef dbRef;
+  Boolean firstLoad;
+  int (*cmain)(int argc, char *argv[]);
   char *argv[MAX_ARGC], *arg;
-  int argc, i;
+  void *lib;
+  int argc, r, i;
 
-  argv[0] = "cmd";
-  for (argc = 1; argc < MAX_ARGC; argc++) {
-    if (script_opt_string(pe, argc-1, &arg) != 0) break;
-    argv[argc] = arg;
-  }
+  if (cmd) {
+    argv[0] = cmd->name;
+    for (argc = 1; argc < MAX_ARGC; argc++) {
+      if (script_opt_string(pe, argc-1, &arg) != 0) break;
+      argv[argc] = arg;
+    }
 
-  cmain(argc, argv);
+    dbRef = NULL;
+    lib = NULL;
+    cmain = NULL;
 
-  for (i = 1; i < argc; i++) {
-    if (argv[i]) xfree(argv[i]);
+    if (cmd->cmain == NULL) {
+      if ((dbRef = DmOpenDatabase(0, cmd->dbID, dmModeReadOnly)) != NULL) {
+        if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
+          debug(DEBUG_TRACE, "Command", "unsafe command '%s' loaded", cmd->name);
+          cmain = sys_lib_defsymbol(lib, "CommandMain", 1);
+        }
+      }
+    } else {
+      debug(DEBUG_TRACE, "Command", "safe command '%s' already loaded", cmd->name);
+      cmain = cmd->cmain;
+    }
+
+    if (cmain) {
+      if (lib == NULL || mutex_lock(cmd->mutex) == 0) {
+        r = cmain(argc, argv);
+        debug(DEBUG_TRACE, "Command", "command '%s' returned %d", cmd->name, r);
+        if (lib != NULL) mutex_unlock(cmd->mutex);
+      }
+    }
+
+    if (lib) {
+      debug(DEBUG_TRACE, "Command", "unsafe command '%s' unloaded", cmd->name);
+      sys_lib_close(lib);
+    }
+
+    if (dbRef) {
+      DmCloseDatabase(dbRef);
+    }
+
+    for (i = 1; i < argc; i++) {
+      if (argv[i]) xfree(argv[i]);
+    }
   }
 
   return 0;
@@ -1776,39 +1823,60 @@ static int command_function_cmain(int pe, void *data) {
 
 static void command_load_external_commands(command_internal_data_t *idata) {
   DmSearchStateType stateInfo;
-  UInt16 cardNo;
   LocalID dbID;
   DmOpenRef dbRef;
   MemHandle h;
-  Boolean newSearch, firstLoad;
-  char name[dmDBNameLength], *s, *commandName;
+  Boolean safe, newSearch, firstLoad;
+  char name[dmDBNameLength], *s;
   int (*commandMain)(int argc, char *argv[]);
+  int i;
   void *lib;
 
-  for (newSearch = true;; newSearch = false) {
-    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, commandExternalType, 0, false, &cardNo, &dbID) != errNone) break;
+  for (newSearch = true, i = 0; i < MAX_EXTERNAL_CMDS; newSearch = false) {
+    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, commandExternalType, 0, false, NULL, &dbID) != errNone) break;
 
-    if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
-      if ((dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadOnly)) != NULL) {
+    if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
         if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
-          debug(DEBUG_INFO, "Command", "external command '%s' loaded (first %d)", name, firstLoad ? 1 : 0);
           commandMain = sys_lib_defsymbol(lib, "CommandMain", 1);
+          safe = false;
           if (commandMain) {
-            commandName = name;
+            StrNCopy(idata->ext_commands[i].name, name, dmDBNameLength);
             if ((h = DmGet1Resource(commandNameType, 1000)) != NULL) {
               if ((s = MemHandleLock(h)) != NULL) {
-                commandName = s;
+                StrNCopy(idata->ext_commands[i].name, s, dmDBNameLength);
+                MemHandleUnlock(h);
               }
-            }
-            pumpkin_script_global_function_data(idata->pe, commandName, command_function_cmain, commandMain);
-            if (h) {
-              MemHandleUnlock(h);
               DmReleaseResource(h);
             }
+            if ((h = DmGet1Resource(commandSafeType, 1000)) != NULL) {
+              if ((s = MemHandleLock(h)) != NULL) {
+                safe = s[0] != 0; 
+                MemHandleUnlock(h);
+              }
+              DmReleaseResource(h);
+            }
+            idata->ext_commands[i].dbID = dbID; 
+            if (safe) {
+              debug(DEBUG_INFO, "Command", "safe command '%s' loaded", name);
+              idata->ext_commands[i].cmain = commandMain;
+              idata->ext_commands[i].mutex = NULL;
+              idata->ext_commands[i].lib = lib;
+            } else {
+              debug(DEBUG_INFO, "Command", "unsafe command '%s' will be loaded on demand", name);
+              idata->ext_commands[i].cmain = NULL; 
+              idata->ext_commands[i].mutex = mutex_create(name); 
+              idata->ext_commands[i].lib = NULL;
+            }
+            pumpkin_script_global_function_data(idata->pe, name, command_function_cmain, &idata->ext_commands[i++]);
+
           } else {
             debug(DEBUG_ERROR, "Command", "CommandMain not found in dlib");
           }
-          // sys_lib_close is not being called
+
+          if (!safe) {
+            sys_lib_close(lib);
+          }
         }
         DmCloseDatabase(dbRef);
       }
@@ -1936,11 +2004,23 @@ static void EventLoop() {
 static void StopApplication(void) {
   command_data_t *data = pumpkin_get_data();
   command_internal_data_t *idata = data->idata;
+  int i;
 
   FrmCloseAllForms();
   PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
   pumpkin_script_finish_env();
   pumpkin_script_destroy(idata->pe);
+
+  for (i = 0; i < MAX_EXTERNAL_CMDS; i++) {
+    if (idata->ext_commands[i].lib) {
+      debug(DEBUG_INFO, "Command", "external command '%s' unloaded", idata->ext_commands[i].name);
+      sys_lib_close(idata->ext_commands[i].lib);
+    }
+    if (idata->ext_commands[i].mutex) {
+      mutex_destroy(idata->ext_commands[i].mutex);
+    }
+  }
+
   xfree(idata);
   xfree(data);
 }
