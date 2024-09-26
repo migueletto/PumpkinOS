@@ -305,6 +305,8 @@ void *sys_realloc(void *ptr, sys_size_t size);
 
 char *sys_strdup(const char *s);
 
+char *sys_strndup(const char *s, sys_size_t n);
+
 char *sys_strcpy(char *dest, const char *src);
 
 char *sys_strncpy(char *dest, const char *src, sys_size_t n);

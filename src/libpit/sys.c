@@ -2958,6 +2958,10 @@ char *sys_strdup(const char *s) {
   return strdup(s);
 }
 
+char *sys_strndup(const char *s, sys_size_t n) {
+  return strndup(s, n);
+}
+
 char *sys_strcpy(char *dest, const char *src) {
   return strcpy(dest, src);
 }

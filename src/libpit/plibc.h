@@ -47,6 +47,7 @@ int plibc_sprintf(char *str, const char *format, ...);
 int plibc_snprintf(char *str, sys_size_t size, const char *format, ...);
 
 int plibc_iscntrl(int c);
+int plibc_isblank(int c);
 int plibc_isspace(int c);
 int plibc_isgraph(int c);
 int plibc_ispunct(int c);
@@ -76,6 +77,7 @@ void plibc_error(const char *filename, const char *function, int lineNo, char *m
 #define plibc_memset      sys_memset
 
 #define plibc_strdup      sys_strdup
+#define plibc_strndup     sys_strndup
 #define plibc_strcpy      sys_strcpy
 #define plibc_strncpy     sys_strncpy
 #define plibc_strlen      sys_strlen

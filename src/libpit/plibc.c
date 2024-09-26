@@ -31,6 +31,10 @@ int plibc_iscntrl(int c) {
   return c < 32;
 }
 
+int plibc_isblank(int c) {
+  return c == ' ' || c == '\t';
+}
+
 int plibc_isspace(int c) {
   switch (c) {
     case ' ':
