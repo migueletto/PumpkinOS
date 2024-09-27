@@ -149,6 +149,7 @@ sys_size_t plibc_fwrite(const void *ptr, sys_size_t size, sys_size_t nmemb, PLIB
   if (ptr && stream && stream != plibc_stdin) {
     if (stream == plibc_stdout || stream == plibc_stderr) {
       pumpkin_write((char *)ptr, size * nmemb);
+      n = size * nmemb;
     } else if (stream->fileRef) {
       if (VFSFileWrite(stream->fileRef, size * nmemb, ptr, &numBytesWritten) == errNone) {
         n = numBytesWritten / size;
