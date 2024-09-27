@@ -1858,17 +1858,18 @@ static void command_load_external_commands(command_internal_data_t *idata) {
             }
             idata->ext_commands[i].dbID = dbID; 
             if (safe) {
-              debug(DEBUG_INFO, "Command", "safe command '%s' loaded", name);
+              debug(DEBUG_INFO, "Command", "safe command '%s' loaded", idata->ext_commands[i].name);
               idata->ext_commands[i].cmain = commandMain;
               idata->ext_commands[i].mutex = NULL;
               idata->ext_commands[i].lib = lib;
             } else {
-              debug(DEBUG_INFO, "Command", "unsafe command '%s' will be loaded on demand", name);
+              debug(DEBUG_INFO, "Command", "unsafe command '%s' will be loaded on demand", idata->ext_commands[i].name);
               idata->ext_commands[i].cmain = NULL; 
-              idata->ext_commands[i].mutex = mutex_create(name); 
+              idata->ext_commands[i].mutex = mutex_create(idata->ext_commands[i].name); 
               idata->ext_commands[i].lib = NULL;
             }
-            pumpkin_script_global_function_data(idata->pe, name, command_function_cmain, &idata->ext_commands[i++]);
+            pumpkin_script_global_function_data(idata->pe, idata->ext_commands[i].name, command_function_cmain, &idata->ext_commands[i]);
+            i++;
 
           } else {
             debug(DEBUG_ERROR, "Command", "CommandMain not found in dlib");
