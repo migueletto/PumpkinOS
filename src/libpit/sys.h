@@ -96,9 +96,11 @@ typedef struct {
 
 #if UINTPTR_MAX == 0xffffffff
 typedef uint32_t sys_size_t;
+typedef int32_t sys_ssize_t;
 typedef int32_t sys_ptrdiff_t;
 #elif UINTPTR_MAX == 0xffffffffffffffff
 typedef uint64_t sys_size_t;
+typedef int64_t sys_ssize_t;
 typedef int64_t sys_ptrdiff_t;
 #else
 #error "Word size not known"
