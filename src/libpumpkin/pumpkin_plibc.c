@@ -5,71 +5,352 @@
 #include "plibc.h"
 
 struct PLIBC_FILE {
-  FileRef fileRef;
+  int fd;
   char unget;
-  int stdin_error;
 };
 
-static PLIBC_FILE plibc_fstdin  = { NULL, 0 };
-static PLIBC_FILE plibc_fstdout = { NULL, 0 };
-static PLIBC_FILE plibc_fstderr = { NULL, 0 };
+#define MAX_FDS  256
+#define FD_FILE  1
 
-PLIBC_FILE *plibc_stdin  = &plibc_fstdin;
-PLIBC_FILE *plibc_stdout = &plibc_fstdout;
-PLIBC_FILE *plibc_stderr = &plibc_fstderr;
-
-PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
-  PLIBC_FILE *stream = NULL;
-  FileOrigin origin;
-  UInt16 openMode;
+typedef struct {
   FileRef fileRef;
-  Err err;
+  int stdin_error;
+} fd_t;
+
+static uint32_t dummy0 = 0;
+static uint32_t dummy1 = 0;
+static uint32_t dummy2 = 0;
+
+static const FileRef stdinFileRef  = &dummy0;
+static const FileRef stdoutFileRef = &dummy1;
+static const FileRef stderrFileRef = &dummy2;
+
+PLIBC_FILE *plibc_stdin = NULL;
+PLIBC_FILE *plibc_stdout = NULL;
+PLIBC_FILE *plibc_stderr = NULL;
+
+int plibc_init(void) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+
+  plibc_finish();
+
+  table[0] = plibc_calloc(1, sizeof(fd_t));
+  table[0]->fileRef = stdinFileRef;
+  plibc_stdin = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stdin->fd = 0;
+
+  table[1] = plibc_calloc(1, sizeof(fd_t));
+  table[1]->fileRef = stdoutFileRef;
+  plibc_stdout = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stdout->fd = 1;
+
+  table[2] = plibc_calloc(1, sizeof(fd_t));
+  table[2]->fileRef = stderrFileRef;
+  plibc_stderr = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stderr->fd = 2;
+
+  return 0;
+}
+
+int plibc_finish(void) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  int fd;
+
+  for (fd = 0; fd < MAX_FDS; fd++) {
+    if (table[fd]) {
+      plibc_free(table[fd]);
+      table[fd] = NULL;
+    }
+  }
+
+  plibc_free(plibc_stdin);
+  plibc_free(plibc_stdout);
+  plibc_free(plibc_stderr);
+
+  return 0;
+}
+
+int plibc_setfd(int fd, void *fileRef) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
   int r = -1;
 
-  if (pathname && mode) {
-    switch (mode[0]) {
-      case 'r':
-        origin = vfsOriginBeginning;
-        openMode = vfsModeRead;
-        if (mode[1] == '+') openMode |= vfsModeWrite;
-        r = 0;
-        break;
-      case 'w':
-        openMode = 0;
-        origin = vfsOriginBeginning;
-        openMode = vfsModeWrite;
-        if (mode[1] == '+') {
-          openMode |= vfsModeRead;
-        }
-        r = 0;
-        break;
-      case 'a':
-        origin = vfsOriginEnd;
-        openMode = vfsModeWrite;
-        if (mode[1] == '+') openMode |= vfsModeRead;
-        r = 0;
-        break;
-      default:
-        break;
-    }
+  switch (fd) {
+    case 0:
+      table[0]->fileRef = fileRef ? (FileRef)fileRef : stdinFileRef;
+      table[0]->stdin_error = 0;
+      r = 0;
+      break;
+    case 1:
+      table[1]->fileRef = fileRef ? (FileRef)fileRef : stdoutFileRef;
+      r = 0;
+      break;
+    case 2:
+      table[2]->fileRef = fileRef ? (FileRef)fileRef : stderrFileRef;
+      r = 0;
+      break;
+  }
 
-    if (r == 0 && mode[0] != 'r' && (openMode & vfsModeWrite)) {
+  return r;
+}
+
+int plibc_isatty(int fd) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  int r = 0;
+
+  if (fd >= 0 && fd < MAX_FDS && table[fd]) {
+    r = table[fd]->fileRef == stdinFileRef || table[fd]->fileRef == stdoutFileRef || table[fd]->fileRef == stderrFileRef;
+  }
+
+  return r;
+}
+
+int plibc_open(const char *pathname, int flags) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  FileOrigin origin;
+  FileRef fileRef;
+  UInt16 openMode;
+  fd_t *f;
+  Err err;
+  int fd;
+
+  switch (flags & PLIBC_ACCMODE) {
+    case PLIBC_RDONLY: openMode = vfsModeRead; break;
+    case PLIBC_WRONLY: openMode = vfsModeWrite; break;
+    case PLIBC_RDWR:   openMode = vfsModeRead | vfsModeWrite; break;
+    default:
+      return -1;
+  }
+
+  for (fd = 0; fd < MAX_FDS; fd++) {
+    if (table[fd] == NULL) break;
+  }
+
+  if (fd < MAX_FDS) {
+    if (flags & PLIBC_CREAT) {
       if (VFSFileOpen(1, pathname, vfsModeRead, &fileRef) != errNone) {
-        r = VFSFileCreate(1, pathname) == errNone ? 0 : -1;
+        VFSFileCreate(1, pathname) == errNone ? 0 : -1;
       } else {
         VFSFileClose(fileRef);
       }
     }
 
-    if (r == 0 && VFSFileOpen(1, pathname, openMode, &fileRef) == errNone) {
+    if (flags & PLIBC_TRUNC) {
+    }
+
+    if ((openMode & vfsModeWrite) && (flags & PLIBC_APPEND)) {
+      origin = vfsOriginEnd;
+    } else {
+      origin = vfsOriginBeginning;
+    }
+
+    if (VFSFileOpen(1, pathname, openMode, &fileRef) == errNone) {
       if ((err = VFSFileSeek(fileRef, origin, 0)) == errNone || err == vfsErrFileEOF) {
-        if ((stream = sys_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
-          stream->fileRef = fileRef;
+        if ((f = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+          f->fileRef = fileRef;
+          table[fd] = f;
         } else {
           VFSFileClose(fileRef);
+          fd = -1;
         }
       } else {
         VFSFileClose(fileRef);
+        fd = -1;
+      }
+    }
+  } else {
+    fd = -1;
+  }
+
+  return fd;
+}
+
+int plibc_close(int fd) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  int i, r = -1;
+
+  if (fd >= 0 && fd < MAX_FDS && table[fd]) {
+    for (i = 0; i < MAX_FDS; i++) {
+      if (i != fd && table[i] && table[i]->fileRef == table[fd]->fileRef) break;
+    }
+    if (i == MAX_FDS) {
+      // it is the only fd pointing to this fileRef
+      if (table[fd]->fileRef != stdinFileRef && table[fd]->fileRef != stdoutFileRef && table[fd]->fileRef != stderrFileRef) {
+        VFSFileClose(table[fd]->fileRef);
+      }
+    }
+    plibc_free(table[fd]);
+    table[fd] = NULL;
+    r = 0;
+  }
+
+  return r;
+}
+
+sys_ssize_t plibc_read(int fd, void *buf, sys_size_t count) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  sys_size_t i;
+  UInt32 numBytesRead;
+  char *s;
+  int c;
+  sys_ssize_t r = -1;
+
+  if (fd >= 0 && fd < MAX_FDS && buf && table[fd] && table[fd]->fileRef) {
+    if (table[fd]->fileRef == stdinFileRef) {
+       s = (char *)buf;
+       for (i = 0; i < count; i++) {
+         c = pumpkin_getchar();
+         if (c == -1) {
+           table[fd]->stdin_error = 1;
+           break;
+         } 
+         table[fd]->stdin_error = 0;
+         s[i] = c;
+       }
+       r = i;
+    } else {
+      if (VFSFileRead(table[fd]->fileRef, count, buf, &numBytesRead) == errNone) {
+        r = numBytesRead;
+      }
+    }
+  }
+
+  return r;
+}
+
+sys_ssize_t plibc_write(int fd, void *buf, sys_size_t count) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  UInt32 numBytesWritten;
+  sys_ssize_t r = -1;
+  
+  if (fd >= 0 && fd < MAX_FDS && buf && table[fd] && table[fd]->fileRef) {
+    if (table[fd]->fileRef == stdoutFileRef || table[fd]->fileRef == stderrFileRef) {
+       pumpkin_write((char *)buf, count);
+       r = count;
+    } else { 
+      if (VFSFileWrite(table[fd]->fileRef, count, buf, &numBytesWritten) == errNone) {
+        r = numBytesWritten; 
+      }
+    }
+  }
+
+  return r;
+}
+
+sys_ssize_t plibc_lseek(int fd, sys_ssize_t offset, int whence) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  FileOrigin origin;
+  UInt32 pos;
+  sys_ssize_t r = -1;
+
+  if (fd >= 0 && fd < MAX_FDS && table[fd] && table[fd]->fileRef) {
+    switch (whence) {
+      case PLIBC_SEEK_SET: origin = vfsOriginBeginning; break;
+      case PLIBC_SEEK_CUR: origin = vfsOriginCurrent; break;
+      case PLIBC_SEEK_END: origin = vfsOriginEnd; break;
+      default: return -1;
+    }
+  
+    if (VFSFileSeek(table[fd]->fileRef, origin, offset) == errNone) {
+      if (VFSFileTell(table[fd]->fileRef, &pos) == errNone) {
+        r = pos;
+      }
+    }
+  }
+
+  return r;
+}
+
+int plibc_dup(int oldfd) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  int fd = -1;
+
+  if (oldfd >= 0 && oldfd < MAX_FDS && table[oldfd]) {
+    for (fd = 0; fd < MAX_FDS; fd++) {
+      if (table[fd] == NULL) break;
+    }
+
+    if (fd < MAX_FDS) {
+      if ((table[fd] = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+        table[fd]->fileRef = table[oldfd]->fileRef;
+      } else {
+        fd = -1;
+      }
+    } else {
+      fd = -1;
+    }
+  }
+
+  return fd;
+}
+
+int plibc_dup2(int oldfd, int newfd) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+
+  if (oldfd >= 0 && oldfd < MAX_FDS && newfd >= 0 && newfd < MAX_FDS && table[oldfd]) {
+    plibc_close(newfd);
+
+    if ((table[newfd] = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+      table[newfd]->fileRef = table[oldfd]->fileRef;
+    } else {
+      newfd = -1;
+    }
+  } else {
+    newfd = -1;
+  }
+
+  return newfd;
+}
+
+PLIBC_FILE *plibc_fdopen(int fd, const char *mode) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  PLIBC_FILE *stream = NULL;
+
+  // XXX mode is ignored
+
+  if (fd >= 0 && fd < MAX_FDS && table[fd] && table[fd]->fileRef) {
+    if ((stream = plibc_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
+      stream->fd = fd;
+    }
+  }
+
+  return stream;
+}
+
+int plibc_fileno(PLIBC_FILE *stream) {
+  int fd = -1;
+
+  if (stream) {
+    fd = stream->fd;
+  }
+
+  return fd;
+}
+
+PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
+  PLIBC_FILE *stream = NULL;
+  int flags;
+
+  if (pathname && mode) {
+    switch (mode[0]) {
+      case 'r':
+        flags = (mode[1] == '+') ? PLIBC_RDWR : PLIBC_RDONLY;
+        break;
+      case 'w':
+        flags = (mode[1] == '+') ? PLIBC_RDWR : PLIBC_WRONLY;
+        flags |= PLIBC_CREAT | PLIBC_TRUNC;
+        break;
+      case 'a':
+        flags = (mode[1] == '+') ? PLIBC_RDWR : PLIBC_WRONLY;
+        flags |= PLIBC_CREAT | PLIBC_APPEND;
+        break;
+      default:
+        return NULL;
+    }
+
+    if ((stream = plibc_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
+      if ((stream->fd = plibc_open(pathname, flags)) == -1) {
+        plibc_free(stream);
+        stream = NULL;
       }
     }
   }
@@ -80,8 +361,8 @@ PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
 int plibc_fclose(PLIBC_FILE *stream) {
   int r = -1;
 
-  if (stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr) {
-    VFSFileClose(stream->fileRef);
+  if (stream) {
+    r = plibc_close(stream->fd);
     sys_free(stream);
   }
 
@@ -113,79 +394,48 @@ int plibc_remove(const char *pathname) {
 }
 
 sys_size_t plibc_fread(void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream) {
-  char *s;
-  int c;
-  sys_size_t i, n = 0;
-  UInt32 numBytesRead;
+  sys_ssize_t n;
+  sys_size_t r = 0;
 
-  if (ptr && stream && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream == plibc_stdin) {
-       n = size * nmemb;
-       s = (char *)ptr;
-       for (i = 0; i < n; i++) {
-         c = pumpkin_getchar();
-         if (c == -1) {
-           stream->stdin_error = 1;
-           break;
-         }
-         stream->stdin_error = 0;
-         s[i] = c;
-       }
-       n = i;
-    } else if (stream->fileRef) {
-      if (VFSFileRead(stream->fileRef, size * nmemb, ptr, &numBytesRead) == errNone) {
-        n = numBytesRead / size;
-      }
-    }
-  }
-
-  return n;
-}
-
-sys_size_t plibc_fwrite(const void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream) {
-  sys_size_t n = 0;
-  UInt32 numBytesWritten;
-
-  if (ptr && stream && stream != plibc_stdin) {
-    if (stream == plibc_stdout || stream == plibc_stderr) {
-      pumpkin_write((char *)ptr, size * nmemb);
-      n = size * nmemb;
-    } else if (stream->fileRef) {
-      if (VFSFileWrite(stream->fileRef, size * nmemb, ptr, &numBytesWritten) == errNone) {
-        n = numBytesWritten / size;
-      }
-    }
-  }
-
-  return n;
-}
-
-int plibc_fseek(PLIBC_FILE *stream, long offset, int whence) {
-  FileOrigin origin;
-  int r = -1;
-
-  if (stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr && stream->fileRef) {
-    switch (whence) {
-      case PLIBC_SEEK_SET: origin = vfsOriginBeginning; r = 0; break;
-      case PLIBC_SEEK_CUR: origin = vfsOriginCurrent; r = 0; break;
-      case PLIBC_SEEK_END: origin = vfsOriginEnd; r = 0; break;
-    }
-
-    if (r == 0) {
-      if (VFSFileSeek(stream->fileRef, origin, offset) != errNone) {
-        r = -1;
-      }
+  if (ptr && stream) {
+    if ((n = plibc_read(stream->fd, ptr, size * nmemb)) != -1) {
+      r = n / size;
     }
   }
 
   return r;
 }
 
-int plibc_ftruncate(PLIBC_FILE *stream, long offset) {
+sys_size_t plibc_fwrite(const void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream) {
+  sys_ssize_t n;
+  sys_size_t r = 0;
+  
+  if (ptr && stream) { 
+    if ((n = plibc_write(stream->fd, (void *)ptr, size * nmemb)) != -1) {
+      r = n / size;
+    } 
+  }
+
+  return r; 
+}
+
+int plibc_fseek(PLIBC_FILE *stream, long offset, int whence) {
   int r = -1;
 
-  if (stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr && stream->fileRef) {
-    if (VFSFileTruncate(stream->fileRef, offset) == errNone) {
+  if (stream) {
+    r = plibc_lseek(stream->fd, offset, whence) == -1 ? -1 : 0;
+  }
+
+  return r;
+}
+
+int plibc_ftruncate(PLIBC_FILE *stream, long offset) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  int r = -1;
+
+  if (stream && table[stream->fd] &&
+      table[stream->fd]->fileRef != stdinFileRef && table[stream->fd]->fileRef != stdoutFileRef && table[stream->fd]->fileRef != stderrFileRef) {
+    if (VFSFileTruncate(table[stream->fd]->fileRef, offset) == errNone) {
       r = 0;
     }
   }
@@ -194,23 +444,29 @@ int plibc_ftruncate(PLIBC_FILE *stream, long offset) {
 }
 
 long plibc_ftell(PLIBC_FILE *stream) {
-  UInt32 filePos = 0;
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  UInt32 pos;
+  long r = -1;
 
-  if (stream && stream != plibc_stdin && stream != plibc_stdout && stream != plibc_stderr && stream->fileRef) {
-    VFSFileTell(stream->fileRef, &filePos);
+  if (stream && table[stream->fd] &&
+      table[stream->fd]->fileRef != stdinFileRef && table[stream->fd]->fileRef != stdoutFileRef && table[stream->fd]->fileRef != stderrFileRef) {
+    if (VFSFileTell(table[stream->fd]->fileRef, &pos) == errNone) {
+      r = pos;
+    }
   }
 
-  return filePos;
+  return r;
 }
 
 int plibc_feof(PLIBC_FILE *stream) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
   int r = 1;
 
-  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream == plibc_stdin) {
-      r = stream->stdin_error;
-    } else if (stream->fileRef) {
-      r = VFSFileEOF(stream->fileRef) == vfsErrFileEOF;
+  if (stream && table[stream->fd]) {
+    if (table[stream->fd]->fileRef == stdinFileRef) {
+      r = table[stream->fd]->stdin_error;
+    } else if (table[stream->fd]->fileRef != stdoutFileRef && table[stream->fd]->fileRef != stderrFileRef) {
+      r = VFSFileEOF(table[stream->fd]->fileRef) == vfsErrFileEOF;
     }
   }
 
@@ -251,7 +507,7 @@ int plibc_fputs(const char *s, PLIBC_FILE *stream) {
 int plibc_ungetc(int c, PLIBC_FILE *stream) {
   int r = PLIBC_EOF;
 
-  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
+  if (stream) {
     stream->unget = c;
     r = c;
   }
@@ -263,7 +519,7 @@ int plibc_fgetc(PLIBC_FILE *stream) {
   int c = PLIBC_EOF;
   char ch;
 
-  if (stream && stream != plibc_stdout && stream != plibc_stderr) {
+  if (stream) {
     if (stream->unget) {
       c = stream->unget;
       stream->unget = 0;
@@ -278,14 +534,15 @@ int plibc_fgetc(PLIBC_FILE *stream) {
 }
 
 char *plibc_fgets(char *s, int size, PLIBC_FILE *stream) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
   char *r = NULL;
 
-  if (s && size > 0 && stream && stream != plibc_stdout && stream != plibc_stderr) {
-    if (stream == plibc_stdin) {
+  if (s && size > 0 && stream && table[stream->fd]) {
+    if (table[stream->fd]->fileRef == stdinFileRef) {
       pumpkin_gets(s, size, 1);
       r = s;
-    } else if (stream->fileRef) {
-      r = VFSFileGets(stream->fileRef, size, s);
+    } else {
+      r = VFSFileGets(table[stream->fd]->fileRef, size, s);
     }
   }
 
@@ -317,13 +574,14 @@ int plibc_printf(const char *format, ...) {
 }
 
 int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
   int r = 0;
 
-  if (stream && stream != plibc_stdin && format) {
-    if (stream == plibc_stdout || stream == plibc_stderr) {
+  if (stream && format && table[stream->fd]) {
+    if (table[stream->fd]->fileRef == stdoutFileRef || table[stream->fd]->fileRef == stderrFileRef) {
       r = pumpkin_vprintf(format, ap);
     } else {
-      r = VFSFileVPrintF(stream->fileRef, format, ap);
+      r = VFSFileVPrintF(table[stream->fd]->fileRef, format, ap);
     }
   }
 

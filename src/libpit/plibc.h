@@ -3,6 +3,14 @@
 
 #define PLIBC_EOF -1
 
+#define PLIBC_ACCMODE 03
+#define PLIBC_RDONLY  00
+#define PLIBC_WRONLY  01
+#define PLIBC_RDWR    02
+#define PLIBC_CREAT   0100
+#define PLIBC_TRUNC   01000
+#define PLIBC_APPEND  02000
+
 typedef struct PLIBC_FILE PLIBC_FILE;
 
 extern PLIBC_FILE *plibc_stdin;
@@ -10,6 +18,19 @@ extern PLIBC_FILE *plibc_stdout;
 extern PLIBC_FILE *plibc_stderr;
 
 enum { PLIBC_SEEK_SET, PLIBC_SEEK_CUR, PLIBC_SEEK_END };
+
+int plibc_init(void);
+int plibc_finish(void);
+int plibc_setfd(int fd, void *fileRef);
+int plibc_open(const char *pathname, int flags);
+int plibc_close(int fd);
+sys_ssize_t plibc_read(int fd, void *buf, sys_size_t count);
+sys_ssize_t plibc_write(int fd, void *buf, sys_size_t count);
+sys_ssize_t plibc_lseek(int fd, sys_ssize_t offset, int whence);
+int plibc_dup(int oldfd);
+int plibc_dup2(int oldfd, int newfd);
+PLIBC_FILE *plibc_fdopen(int fd, const char *mode);
+int plibc_fileno(PLIBC_FILE *stream);
 
 PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode);
 int plibc_fclose(PLIBC_FILE *stream);

@@ -145,6 +145,7 @@ typedef struct {
   void (*putchar)(void *iodata, char c);
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
+  void *table;
 } pumpkin_task_t;
 
 typedef struct {
@@ -1222,6 +1223,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
 
   UicInitModule();
   BmpInitModule(DEFAULT_DENSITY);
+  BmpSetLittleEndian16(false);
   WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, DEFAULT_DEPTH, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
@@ -1336,6 +1338,10 @@ static int pumpkin_local_finish(UInt32 creator) {
   if (pumpkin_module.tasks[task->task_index].bootRef) {
     DmCloseDatabase(pumpkin_module.tasks[task->task_index].bootRef);
     pumpkin_module.tasks[task->task_index].bootRef = NULL;
+  }
+
+  if (task->table) {
+    xfree(task->table);
   }
 
   for (i = 0; i < pumpkin_module.num_tasks; i++) {
@@ -4595,6 +4601,16 @@ void SysNotifyBroadcastQueued(void) {
     task->num_notifs = 0;
     debug(DEBUG_INFO, PUMPKINOS, "flush notification queue end");
   }
+}
+
+void *pumpkin_gettable(uint32_t n) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task->table == NULL) {
+    task->table = xcalloc(n, sizeof(void *));
+  }
+
+  return task->table;
 }
 
 void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {

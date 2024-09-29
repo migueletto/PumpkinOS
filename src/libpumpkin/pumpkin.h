@@ -347,11 +347,14 @@ int EvtPumpEvents(Int32 timeoutUs);
 void EvtGetEventUs(EventType *event, Int32 timeoutUs);
 void EvtPrintEvent(char *op, EventType *event);
 void EvtReturnPenMove(Boolean penMove);
+void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown);
 
 #define ErrFatalDisplayEx(msg, finish) ErrDisplayFileLineMsgEx(__FILE__, __FUNCTION__, (UInt16) __LINE__, msg, finish)
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);
 void SysFatalAlertFinish(void);
 
+void BmpSetLittleEndian16(Boolean le16);
+Boolean BmpGetLittleEndian16(void);
 BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr);
 void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc);
@@ -512,6 +515,7 @@ uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
 int pumpkin_script_init_env(int pe);
 int pumpkin_script_finish_env(void);
 
+void *pumpkin_gettable(uint32_t n);
 void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
        void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 int pumpkin_getchar(void);
