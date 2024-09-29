@@ -621,15 +621,19 @@ void EvtCopyEvent(const EventType *source, EventType *dest) {
   }
 }
 
-void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
+void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
   int x, y;
   uint32_t keyMask, buttonMask;
 
   pumpkin_status(&x, &y, &keyMask, NULL, &buttonMask, NULL);
   *pScreenX = x;
   *pScreenY = y;
-  adjustCoords(pScreenX, pScreenY);
   *pPenDown = (buttonMask & 1) ? true : false;
+}
+
+void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
+  EvtGetPenEx(pScreenX, pScreenY, pPenDown);
+  adjustCoords(pScreenX, pScreenY);
 }
 
 Boolean EvtSetNullEventTick(UInt32 tick) {
