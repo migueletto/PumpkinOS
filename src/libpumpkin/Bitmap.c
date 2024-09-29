@@ -121,6 +121,7 @@ typedef enum {
 
 typedef struct {
   UInt16 density;
+  Boolean le16;
 } bmp_module_t;
 
 typedef struct {
@@ -147,6 +148,10 @@ static const UInt8 gray2values[4] = {0xff, 0xaa, 0x55, 0x00};
 static const UInt8 gray4[16]       = {0x00, 0xe0, 0xdf, 0x19, 0xde, 0xdd, 0x32, 0xdc, 0xdb, 0xa5, 0xda, 0xd9, 0xbe, 0xd8, 0xd7, 0xe6};
 static const UInt8 gray4values[16] = {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
 
+static UInt8 emptySlot[BitmapV1HeaderSize] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 int BmpInitModule(UInt16 density) {
   bmp_module_t *module;
 
@@ -170,9 +175,15 @@ int BmpFinishModule(void) {
   return 0;
 }
 
-static UInt8 emptySlot[BitmapV1HeaderSize] = {
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
+void BmpSetLittleEndian16(Boolean le16) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
+  module->le16 = le16;
+}
+
+Boolean BmpGetLittleEndian16(void) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
+  return module->le16;
+}
 
 static Boolean isEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;
@@ -220,6 +231,9 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
 #define get4(a,p,i) le ? get4l(a, p, i) : get4b(a, p, i)
 #define put2(a,p,i) { if (le) put2l(a, p, i); else put2b(a, p, i); }
 #define put4(a,p,i) { if (le) put4l(a, p, i); else put4b(a, p, i); }
+
+#define get2_16(a,p,i) (le || module->le16) ? get2l(a, p, i) : get2b(a, p, i)
+#define put2_16(a,p,i) { if (le || module->le16) put2l(a, p, i); else put2b(a, p, i); }
 
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 v8, version;
@@ -1666,6 +1680,7 @@ IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y) {
 }
 
 UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   UInt8 b, *bits;
   UInt16 w, rowBytes;
   UInt32 offset;
@@ -1700,7 +1715,7 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
         break;
       case 16:
         offset = y * rowBytes + x*2;
-        get2(&w, bits, offset);
+        get2_16(&w, bits, offset);
         value = w;
         break;
       case 24:
@@ -1776,6 +1791,7 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
 }
 
 void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   ColorTableType *colorTable;
   UInt32 offset, transparentValue, c;
   Int32 offsetb;
@@ -1893,7 +1909,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
 //debug(1, "XXX", "BmpDraw depth=16 rb=%d offset=%d", rowBytes, offset);
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 2) {
-                get2(&rgb, bits, offset + k);
+                get2_16(&rgb, bits, offset + k);
                 if (!useTransp || !transp || rgb != transparentValue) {
                   red   = r565(rgb);
                   green = g565(rgb);
@@ -2420,7 +2436,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 }
 
-#define BmpSetBit16p(offset, dataSize, b) if (offset+1 < dataSize) put2(b, bits, offset)
+#define BmpSetBit16p(offset, dataSize, b) if (offset+1 < dataSize) put2_16(b, bits, offset)
 
 #define BmpSetBit16(offset, dataSize, b, dbl) \
   BmpSetBit16p(offset, dataSize, b); \
@@ -2431,6 +2447,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 
 static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   RGBColorType rgb, aux;
   UInt8 *bits;
   UInt16 rowBytes, old, fg, bg;
@@ -2467,7 +2484,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
 */
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
-      get2(&old, bits, offset);
+      get2_16(&old, bits, offset);
       rgb.r = r565(b);
       rgb.g = g565(b);
       rgb.b = b565(b);
@@ -2495,7 +2512,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      get2(&old, bits, offset);
+      get2_16(&old, bits, offset);
       WinSetBackColorRGB(NULL, &rgb);
       WinSetForeColorRGB(NULL, &aux);
       bg = rgb565(rgb.r, rgb.g, rgb.b);
@@ -2732,6 +2749,7 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value) {
 }
 
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
+  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   ColorTableType *srcColorTable, *dstColorTable, *colorTable;
   UInt8 srcDepth, dstDepth, *bits;
   UInt32 srcPixel, dstPixel, offset;
@@ -2789,7 +2807,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         }
         break;
       case 16:
-        get2(&aux, bits, sy * srcRowBytes + sx*2);
+        get2_16(&aux, bits, sy * srcRowBytes + sx*2);
         srcPixel = aux;
         dstPixel = (dstDepth == 16) ? srcPixel : BmpConvertFrom16Bits(srcPixel, dstDepth, dstColorTable);
         break;
