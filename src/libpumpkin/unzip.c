@@ -158,21 +158,24 @@ static void writeFile(char *filename, void *data, sys_size_t bytes) {
   if (!i || filename[i-1] == '/')
     return; // empty filename or directory entry
 
-  if (VFSFileOpen(1, filename, vfsModeRead, &f) != errNone) {
-    debug(DEBUG_TRACE, "unzip", "create file \"%s\"", filename);
+  if (VFSFileOpen(1, filename, vfsModeRead, &f) == errNone) {
+    debug(DEBUG_TRACE, "unzip", "delete existing file \"%s\"", filename);
+    VFSFileClose(f);
+    VFSFileDelete(1, filename);
+  }
 
-    if (VFSFileCreate(1, filename) == errNone) {
+  debug(DEBUG_TRACE, "unzip", "create file \"%s\"", filename);
+  if (VFSFileCreate(1, filename) == errNone) {
+    if (bytes > 0) {
       if (VFSFileOpen(1, filename, vfsModeWrite, &f) == errNone && f != NULL) {
         VFSFileWrite(f, bytes, data, &numBytesWritten);
         VFSFileClose(f);
       } else {
         debug(DEBUG_ERROR, "unzip", "couldn't open \"%s\" for writing", filename);
       }
-    } else {
-      debug(DEBUG_ERROR, "unzip", "couldn't create file \"%s\"", filename);
     }
   } else {
-    VFSFileClose(f);
+    debug(DEBUG_ERROR, "unzip", "couldn't create file \"%s\"", filename);
   }
 }
 
@@ -184,8 +187,13 @@ static int processFile(JZFile *zip) {
   UInt8 *data;
 
   MemSet(filename, sizeof(filename), 0);
-  StrNCopy(filename, z->dir, sizeof(filename) - 1);
+  StrNCopy(filename, z->dir, sizeof(filename) - 2);
   len = StrLen(filename);
+  if (len > 0 && filename[len-1] != '/') {
+    filename[len-1] = '/';
+    filename[len] = 0;
+    len++;
+  }
   name = filename + len;
 
   if (jzReadLocalFileHeader(zip, &header, name, sizeof(filename) - len - 1)) {
@@ -198,7 +206,7 @@ static int processFile(JZFile *zip) {
     return -1;
   }
 
-  debug(DEBUG_TRACE, "unzip", "entry \"%s\", %d (%d) bytes", name, header.compressedSize, header.uncompressedSize);
+  debug(DEBUG_TRACE, "unzip", "entry \"%s\", %d (%d) bytes", filename, header.compressedSize, header.uncompressedSize);
 
   if (jzReadData(zip, &header, data) != Z_OK) {
     debug(DEBUG_ERROR, "unzip", "couldn't read file data");
