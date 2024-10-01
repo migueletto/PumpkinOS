@@ -1,4 +1,6 @@
 #define DOSBOX_LIBRETRO "PALM/Programs/Libretro"
 #define DOSBOX_HOME     DOSBOX_LIBRETRO "/dosbox"
 
-UInt32 DOSBoxMain(void);
+#define dosboxLaunchCmd sysAppLaunchCmdCustomBase
+
+UInt32 DOSBoxMain(Boolean sameTask);
