@@ -512,11 +512,12 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
   UInt32 creator;
   Coord bw, bh;
   DmOpenRef dbRef;
-  MemHandle iconRes;
+  MemHandle nameRes, iconRes;
   RectangleType rect;
   BitmapType *iconBmp;
   WinHandle oldw;
   FontID old;
+  char *s;
   int i;
 
   launcherResetItems(data);
@@ -538,6 +539,13 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
         data->item[i].creator = creator;
         data->item[i].rsrc = true;
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
+          if ((nameRes = DmGet1Resource(ainRsc, 1000)) != NULL) {
+            if ((s = MemHandleLock(nameRes)) != NULL) {
+              StrNCopy(data->item[i].name, s, dmDBNameLength-1);
+              MemHandleUnlock(nameRes);
+            }
+            DmReleaseResource(nameRes);
+          }
           iconRes = DmGet1Resource(iconType, 1001);
           if (iconRes == NULL) {
             iconRes = DmGetResource(iconType, 10001);
