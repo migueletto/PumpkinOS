@@ -234,8 +234,9 @@ Err VFSFileWrite(FileRef fileRef, UInt32 numBytes, const void *dataP, UInt32 *nu
 
   if (fileRef && vfs_type(fileRef) == VFS_FILE) {
     f = (vfs_file_t *)fileRef;
-    if (numBytes && dataP) {
-      if ((nwritten = vfs_write(f, (uint8_t *)dataP, numBytes)) >= 0) {
+    if (dataP) {
+      nwritten = numBytes ? vfs_write(f, (uint8_t *)dataP, numBytes) : 0;
+      if (nwritten >= 0) {
         if (numBytesWrittenP) *numBytesWrittenP = nwritten;
         err = errNone;
       }
