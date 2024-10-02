@@ -294,8 +294,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
     }
 
     if (ev == MSG_KEYDOWN || ev == MSG_KEYUP) {
-      // XXX is this correct ?
-      continue;
+      if (key != WINDOW_KEY_SHIFT && key != WINDOW_KEY_CTRL && key != WINDOW_KEY_LALT) continue;
     }
 
     if (ev == MSG_MOTION) {
@@ -354,6 +353,18 @@ int EvtPumpEvents(Int32 timeoutUs) {
   //event->tapCount = ???; // XXX
 
   switch (ev) {
+    case MSG_KEYDOWN:
+    case MSG_KEYUP:
+      switch (key) {
+        case WINDOW_KEY_SHIFT: event.data.keyDown.modifiers |= shiftKeyMask; break;
+        case WINDOW_KEY_CTRL:  event.data.keyDown.modifiers |= controlKeyMask; break;
+        case WINDOW_KEY_LALT:  event.data.keyDown.modifiers |= optionKeyMask; break;
+      }
+      if (event.data.keyDown.modifiers) {
+        event.eType = ev == MSG_KEYDOWN ? modKeyDownEvent : modKeyUpEvent;
+        EvtAddEventToQueue(&event);
+      }
+      break;
     case MSG_KEY:
       switch (key) {
         case WINDOW_KEY_F1:
@@ -413,9 +424,9 @@ int EvtPumpEvents(Int32 timeoutUs) {
       event.screenX = module->screenX;
       event.screenY = module->screenY;
 
-      if ((buttons & 0x01)) {
+      if ((buttons & 0x03)) {
         module->penDown = 1;
-        event.eType = penDownEvent;
+        event.eType = (buttons == 1) ? penDownEvent : penDownRightEvent;
         event.penDown = true;
         EvtAddEventToQueue(&event);
         r = 1;
@@ -621,18 +632,19 @@ void EvtCopyEvent(const EventType *source, EventType *dest) {
   }
 }
 
-void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
+void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *pRight) {
   int x, y;
-  uint32_t keyMask, buttonMask;
+  uint32_t buttonMask;
 
-  pumpkin_status(&x, &y, &keyMask, NULL, &buttonMask, NULL);
+  pumpkin_status(&x, &y, NULL, NULL, &buttonMask, NULL);
   *pScreenX = x;
   *pScreenY = y;
-  *pPenDown = (buttonMask & 1) ? true : false;
+  *pPenDown = (buttonMask & 3) ? true : false;
+  if (pRight) *pRight = (buttonMask & 2) ? true : false;
 }
 
 void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
-  EvtGetPenEx(pScreenX, pScreenY, pPenDown);
+  EvtGetPenEx(pScreenX, pScreenY, pPenDown, NULL);
   adjustCoords(pScreenX, pScreenY);
 }
 

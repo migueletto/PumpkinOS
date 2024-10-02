@@ -202,6 +202,7 @@ int pumpkin_get_battery(void);
 int pumpkin_is_launched(void);
 int pumpkin_pause(int pause);
 int pumpkin_is_paused(void);
+int pumpkin_pendown_right(int active);
 int pumpkin_sys_event(void);
 int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec);
 void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3);
@@ -347,7 +348,7 @@ int EvtPumpEvents(Int32 timeoutUs);
 void EvtGetEventUs(EventType *event, Int32 timeoutUs);
 void EvtPrintEvent(char *op, EventType *event);
 void EvtReturnPenMove(Boolean penMove);
-void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown);
+void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *pRight);
 
 #define ErrFatalDisplayEx(msg, finish) ErrDisplayFileLineMsgEx(__FILE__, __FUNCTION__, (UInt16) __LINE__, msg, finish)
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);

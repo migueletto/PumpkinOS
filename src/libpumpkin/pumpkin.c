@@ -117,6 +117,7 @@ typedef struct {
   int new_width, new_height;
   int handle;
   int penX, penY, buttons;
+  int penRight;
   int v10;
   int m68k;
   char name[dmDBNameLength];
@@ -2214,6 +2215,20 @@ static int pumpkin_reset_key(int key) {
   return key;
 }
 
+int pumpkin_pendown_right(int active) {
+  int r = -1;
+
+  if (mutex_lock(mutex) == 0) {
+    if (pumpkin_module.current_task != -1) {
+      pumpkin_module.tasks[pumpkin_module.current_task].penRight = active;
+      r = 0;
+    }
+    mutex_unlock(mutex);
+  }
+
+  return r;
+}
+
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
@@ -2332,11 +2347,9 @@ int pumpkin_sys_event(void) {
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
         }
 
-        pumpkin_module.buttonMask |= arg1;
-
         i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
 
-        if (arg1 == 2) {
+        if (arg1 == 2 && (!pumpkin_module.tasks[i].penRight || (pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
           if (i != -1) {
             if (pumpkin_module.tasks[i].width < pumpkin_module.width) {
               pumpkin_module.dragging = i;
@@ -2346,7 +2359,8 @@ int pumpkin_sys_event(void) {
           } else {
             pumpkin_module.current_task = -1;
           }
-        } else if (arg1 == 1) {
+        } else if (arg1 == 1 || (arg1 == 2 && pumpkin_module.tasks[i].penRight && !(pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
+          pumpkin_module.buttonMask |= arg1;
           pumpkin_module.dragging = -1;
           if (i != -1 && i == pumpkin_module.current_task) {
             if (pumpkin_module.dia || pumpkin_module.single) {
@@ -2354,7 +2368,7 @@ int pumpkin_sys_event(void) {
               pumpkin_module.tasks[i].penX = tx;
               pumpkin_module.tasks[i].penY = ty;
             }
-            pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 1);
+            pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, arg1);
           }
         }
         break;
@@ -2367,7 +2381,7 @@ int pumpkin_sys_event(void) {
         pumpkin_module.buttonMask &= ~arg1;
         pumpkin_module.dragging = -1;
 
-        if (arg1 == 1) {
+        if (arg1 == 1 || (arg1 == 2 && pumpkin_module.tasks[i].penRight && !(pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
           i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
           if (i != -1  && i == pumpkin_module.current_task) {
             pumpkin_module.tasks[i].penX = tx;

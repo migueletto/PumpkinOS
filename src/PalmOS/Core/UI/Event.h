@@ -88,6 +88,9 @@ typedef enum {
 
 	winDisplayChangedEvent	= 0x4101,	// defined below for compatibility
 	appRaiseEvent = 0x4102,
+	penDownRightEvent = 0x4103,
+	modKeyDownEvent = 0x4104,
+	modKeyUpEvent = 0x4105,
 
 	// BGT, 06/24/2003 Clarify the range reserved for licensees
 	firstLicenseeEvent	= 0x5000,
