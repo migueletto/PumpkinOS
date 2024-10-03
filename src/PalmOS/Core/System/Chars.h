@@ -337,6 +337,12 @@
 #define	vchrAlphaSmartMax			0x20FF
 
 
+#define	vchrNativeInsert	0x3000
+#define	vchrNativeDelete	0x3001
+#define	vchrNativeHome		0x3002
+#define	vchrNativeEnd			0x3003
+#define	vchrNativePgUp		0x3004
+#define	vchrNativePgDown	0x3005
 
 
 // Old names for some of the characters.

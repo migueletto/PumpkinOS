@@ -32,6 +32,7 @@ extern "C" {
 #define WINDOW_KEY_HOME       0x87
 #define WINDOW_KEY_END        0x88
 #define WINDOW_KEY_INS        0x89
+#define WINDOW_KEY_DEL        0x8A
 
 #define WINDOW_KEY_F1         0x91
 #define WINDOW_KEY_F2         0x92

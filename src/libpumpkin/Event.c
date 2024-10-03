@@ -240,6 +240,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
   int32_t wait;
   uint64_t t0, t, dt;
   UInt32 ticks;
+  int native;
   int ev, key, mods, buttons, forever, r = 0;
 
   t0 = sys_get_clock();
@@ -366,6 +367,8 @@ int EvtPumpEvents(Int32 timeoutUs) {
       }
       break;
     case MSG_KEY:
+      native = pumpkin_get_native_keys();
+
       switch (key) {
         case WINDOW_KEY_F1:
           key = vchrHard1;
@@ -384,7 +387,31 @@ int EvtPumpEvents(Int32 timeoutUs) {
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F5:
-          key = vchrMenu;
+          if (native) {
+            key = vchrHard5;
+          } else {
+            key = vchrMenu;
+          }
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_F6:
+          key = vchrHard6;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_F7:
+          key = vchrHard7;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_F8:
+          key = vchrHard8;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_F9:
+          key = vchrHard9;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_F10:
+          key = vchrHard10;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_UP:
@@ -399,14 +426,40 @@ int EvtPumpEvents(Int32 timeoutUs) {
         case WINDOW_KEY_RIGHT:
           key = vchrRockerRight;
           break;
+        case WINDOW_KEY_INS:
+          key = vchrNativeInsert;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_DEL:
+          key = vchrNativeDelete;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_HOME:
+          if (native) {
+            key = vchrNativeHome;
+            event.data.keyDown.modifiers |= commandKeyMask;
+          } else {
+            debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents keyDownEvent vchrLaunch");
+            EvtEnqueueKey(vchrLaunch, 0, commandKeyMask);
+            return 1;
+          }
+          break;
+        case WINDOW_KEY_END:
+          key = vchrNativeEnd;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_PGUP:
+          key = vchrNativePgUp;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_PGDOWN:
+          key = vchrNativePgDown;
+          event.data.keyDown.modifiers |= commandKeyMask;
+          break;
         case WINDOW_KEY_CUSTOM:
           key = mods;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
-        case WINDOW_KEY_HOME:
-          debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents keyDownEvent vchrLaunch");
-          EvtEnqueueKey(vchrLaunch, 0, commandKeyMask);
-          return 1;
       }
 
       event.eType = keyDownEvent;

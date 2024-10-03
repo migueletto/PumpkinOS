@@ -118,6 +118,7 @@ typedef struct {
   int handle;
   int penX, penY, buttons;
   int penRight;
+  int nativeKeys;
   int v10;
   int m68k;
   char name[dmDBNameLength];
@@ -2227,6 +2228,18 @@ int pumpkin_pendown_right(int active) {
   }
 
   return r;
+}
+
+void pumpkin_set_native_keys(int active) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  task->nativeKeys = active;
+}
+
+int pumpkin_get_native_keys(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  return task->nativeKeys;
 }
 
 int pumpkin_sys_event(void) {
