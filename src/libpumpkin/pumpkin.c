@@ -119,6 +119,7 @@ typedef struct {
   int penX, penY, buttons;
   int penRight;
   int nativeKeys;
+  int cursor;
   int v10;
   int m68k;
   char name[dmDBNameLength];
@@ -204,6 +205,7 @@ typedef struct {
   int width, height, full_height;
   int depth, mono, border;
   int fullrefresh;
+  int cursor;
   int dragging;
   int lastX, lastY;
   int current_task;
@@ -578,6 +580,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.bt = bt;
   pumpkin_module.gps_parse_line = gps_parse_line;
   pumpkin_module.current_task = -1;
+  pumpkin_module.cursor = 1;
   pumpkin_module.dragging = -1;
   pumpkin_module.nextTaskId = 1;
   pumpkin_module.battery = 100;
@@ -1186,6 +1189,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFF;
   sys_strncpy(pumpkin_module.tasks[i].name, name, dmDBNameLength-1);
   pumpkin_module.tasks[i].num_notifs = 0;
+  pumpkin_module.tasks[i].cursor = 1;
 
   pumpkin_module.task_order[pumpkin_module.num_tasks] = i;
   pumpkin_module.current_task = i;
@@ -2242,11 +2246,25 @@ int pumpkin_get_native_keys(void) {
   return task->nativeKeys;
 }
 
+int pumpkin_set_cursor(int active) {
+  int r = -1;
+
+  if (mutex_lock(mutex) == 0) {
+    if (pumpkin_module.current_task != -1) {
+      pumpkin_module.tasks[pumpkin_module.current_task].cursor = active;
+      r = 0;
+    }
+    mutex_unlock(mutex);
+  }
+
+  return r;
+}
+
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
   int i, j, x, y, tx, ty, ev, tmp;
-  int paused, wait, r = -1;
+  int cursor, paused, wait, r = -1;
 
   for (;;) {
     if (thread_must_end()) return -1;
@@ -2362,7 +2380,7 @@ int pumpkin_sys_event(void) {
 
         i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
 
-        if (arg1 == 2 && (!pumpkin_module.tasks[i].penRight || (pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
+        if (arg1 == 2 && ((i != -1 && !pumpkin_module.tasks[i].penRight) || (pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
           if (i != -1) {
             if (pumpkin_module.tasks[i].width < pumpkin_module.width) {
               pumpkin_module.dragging = i;
@@ -2372,7 +2390,7 @@ int pumpkin_sys_event(void) {
           } else {
             pumpkin_module.current_task = -1;
           }
-        } else if (arg1 == 1 || (arg1 == 2 && pumpkin_module.tasks[i].penRight && !(pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
+        } else if (arg1 == 1 || (arg1 == 2 && i != -1 && pumpkin_module.tasks[i].penRight && !(pumpkin_module.modMask & WINDOW_MOD_CTRL))) {
           pumpkin_module.buttonMask |= arg1;
           pumpkin_module.dragging = -1;
           if (i != -1 && i == pumpkin_module.current_task) {
@@ -2413,11 +2431,14 @@ int pumpkin_sys_event(void) {
           pumpkin_module.dragged = 1;
 
         } else {
+          cursor = 1;
+
           if (i != -1 && pumpkin_module.tasks[i].active) {
             if (!pumpkin_module.dia || !dia_stroke(pumpkin_module.dia, x, y)) {
               if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
                 if (x >= tx && x < tx + pumpkin_module.tasks[i].width &&
                     y >= ty && y < ty + pumpkin_module.tasks[i].height) {
+                  cursor = pumpkin_module.tasks[i].cursor;
                   // try not to flood the task with penMove events
                   if ((pumpkin_module.tasks[i].penX != (x - tx) || pumpkin_module.tasks[i].penY != (y - ty)) &&
                       (now - pumpkin_module.tasks[i].lastMotion) > 10000) {
@@ -2432,6 +2453,10 @@ int pumpkin_sys_event(void) {
           }
         }
 
+        if (cursor != pumpkin_module.cursor) {
+          pumpkin_module.cursor = cursor;
+          if (pumpkin_module.wp->show_cursor) pumpkin_module.wp->show_cursor(pumpkin_module.w, cursor);
+        }
         pumpkin_module.lastX = x;
         pumpkin_module.lastY = y;
         break;

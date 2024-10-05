@@ -270,7 +270,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, void *data) {
+static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   win_window_t *window;
   HINSTANCE hInstance;
   BITMAPV5HEADER bmh;
@@ -550,6 +550,10 @@ static void window_status(window_t *_window, int *x, int *y, int *buttons) {
   *buttons = window->buttons;
 }
 
+static void window_show_cursor(window_t *window, int show) {
+  ShowCursor(show ? TRUE : FALSE);
+}
+
 static int audio_mixer_init(void) {
   return 0;
 }
@@ -766,6 +770,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.draw_texture_rect = window_draw_texture_rect;
   wp.event2 = window_event2;
   wp.status = window_status;
+  wp.show_cursor = window_show_cursor;
   wp.data = hInstance;
 
   ap.create = audio_create;

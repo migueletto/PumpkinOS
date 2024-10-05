@@ -613,6 +613,11 @@ static int libsdl_event(libsdl_window_t *window, int wait, int remove, int *ekey
   return r;
 }
 
+static int libsdl_window_show_cursor(window_t *window, int show) {
+  SDL_ShowCursor(show ? SDL_ENABLE : SDL_DISABLE);
+  return 0;
+}
+
 /*
   SDL_CreateWindow():
   a) Fullscreen window at the current desktop resolution: flags=SDL_WINDOW_FULLSCREEN_DESKTOP, ignores width and height parameters.
@@ -1157,6 +1162,7 @@ int liblsdl2_load(void) {
   window_provider.update = libsdl_window_update;
   window_provider.draw_texture_rect = libsdl_window_draw_texture_rect;
   window_provider.update_texture_rect = libsdl_window_update_texture_rect;
+  window_provider.show_cursor = libsdl_window_show_cursor;
 
   xmemset(&audio_provider, 0, sizeof(audio_provider));
   audio_provider.mixer_init = libsdl_mixer_init;

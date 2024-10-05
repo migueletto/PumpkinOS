@@ -78,6 +78,7 @@ typedef struct {
   int (*update_texture_rect)(window_t *_window, texture_t *texture, uint8_t *src, int tx, int ty, int w, int h);
   int (*move)(window_t *window, int x, int y, int w, int h, int dx, int dy);
   int (*average)(window_t *window, int *x, int *y, int ms);
+  int (*show_cursor)(window_t *window, int show);
   void *data;
 } window_provider_t;
 

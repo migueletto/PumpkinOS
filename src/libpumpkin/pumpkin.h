@@ -205,6 +205,7 @@ int pumpkin_is_paused(void);
 int pumpkin_pendown_right(int active);
 void pumpkin_set_native_keys(int active);
 int pumpkin_get_native_keys(void);
+int pumpkin_set_cursor(int active);
 int pumpkin_sys_event(void);
 int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec);
 void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3);
