@@ -202,7 +202,6 @@ int pumpkin_get_battery(void);
 int pumpkin_is_launched(void);
 int pumpkin_pause(int pause);
 int pumpkin_is_paused(void);
-int pumpkin_pendown_right(int active);
 void pumpkin_set_native_keys(int active);
 int pumpkin_get_native_keys(void);
 int pumpkin_set_cursor(int active);

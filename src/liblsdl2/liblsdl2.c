@@ -614,7 +614,7 @@ static int libsdl_event(libsdl_window_t *window, int wait, int remove, int *ekey
 }
 
 static int libsdl_window_show_cursor(window_t *window, int show) {
-  SDL_ShowCursor(show ? SDL_ENABLE : SDL_DISABLE);
+  SDL_SetRelativeMouseMode(show ? SDL_FALSE : SDL_TRUE);
   return 0;
 }
 

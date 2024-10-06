@@ -28,8 +28,8 @@ struct wman_t {
   window_provider_t *wp;
   window_t *w;
   texture_t *background;
-  texture_t *hborder, *hsborder;
-  texture_t *vborder, *vsborder;
+  texture_t *hborder, *hsborder, *hs0border, *hs1border;
+  texture_t *vborder, *vsborder, *vs0border, *vs1border;
   rect_t r;
   int border, n;
   wman_area_t area[MAX_AREAS];
@@ -223,10 +223,33 @@ int wman_set_border(wman_t *wm, int depth, int size, uint8_t rsel, uint8_t gsel,
 
   if (wm) {
     wm->border = size;
-    wm->hsborder = solid_texture(wm, depth, wm->r.width, size, rsel, gsel, bsel);
-    wm->hborder  = solid_texture(wm, depth, wm->r.width, size, r, g, b);
-    wm->vsborder = solid_texture(wm, depth, size, wm->r.height, rsel, gsel, bsel);
-    wm->vborder  = solid_texture(wm, depth, size, wm->r.height, r, g, b);
+    wm->hs0border = solid_texture(wm, depth, wm->r.width, size, rsel, gsel, bsel);
+    wm->hs1border = solid_texture(wm, depth, wm->r.width, size, bsel, gsel, rsel);
+    wm->hsborder  = wm->hs0border;
+    wm->hborder   = solid_texture(wm, depth, wm->r.width, size, r, g, b);
+
+    wm->vs0border = solid_texture(wm, depth, size, wm->r.height, rsel, gsel, bsel);
+    wm->vs1border = solid_texture(wm, depth, size, wm->r.height, bsel, gsel, rsel);
+    wm->vborder   = solid_texture(wm, depth, size, wm->r.height, r, g, b);
+    wm->vsborder  = wm->vs0border;
+
+    res = 0;
+  }
+
+  return res;
+}
+
+int wman_choose_border(wman_t *wm, int i) {
+  int res = -1;
+
+  if (wm) {
+    if (i == 0) {
+      wm->hsborder = wm->hs0border;
+      wm->vsborder = wm->vs0border;
+    } else {
+      wm->hsborder = wm->hs1border;
+      wm->vsborder = wm->vs1border;
+    }
     res = 0;
   }
 
@@ -638,9 +661,11 @@ int wman_finish(wman_t *wm) {
   if (wm) {
     if (wm->background) wm->wp->destroy_texture(wm->w, wm->background);
     if (wm->hborder)    wm->wp->destroy_texture(wm->w, wm->hborder);
-    if (wm->hsborder)   wm->wp->destroy_texture(wm->w, wm->hsborder);
+    if (wm->hs0border)  wm->wp->destroy_texture(wm->w, wm->hs0border);
+    if (wm->hs1border)  wm->wp->destroy_texture(wm->w, wm->hs1border);
     if (wm->vborder)    wm->wp->destroy_texture(wm->w, wm->vborder);
-    if (wm->vsborder)   wm->wp->destroy_texture(wm->w, wm->vsborder);
+    if (wm->vs0border)  wm->wp->destroy_texture(wm->w, wm->vs0border);
+    if (wm->vs1border)  wm->wp->destroy_texture(wm->w, wm->vs1border);
     xfree(wm);
     r = 0;
   }
