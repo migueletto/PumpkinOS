@@ -1194,7 +1194,7 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
@@ -1209,7 +1209,7 @@ static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Name", item ? item->name : NULL, x, y, 28 * FntCharWidth('a'), false, inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
     x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->numRecs);
@@ -1252,7 +1252,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
   UInt16 bmpId;
   int dia;
 
-  dia = pumpkin_dia_enabled() || pumpkin_is_single();
+  dia = pumpkin_dia_enabled() || pumpkin_single_enabled();
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
   if (item) sys_snprintf(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
@@ -1316,7 +1316,7 @@ static void printResource(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printColumn(data, item, "ID", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
   if (item) sys_snprintf(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
+  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
     x = spaceColumn(data, x, y, 10);
     x = printColumn(data, item, "Contents", item ? (item->info ? item->info : "Unknown") : NULL, x, y, data->cellWidth - (x - data->x[0]), false, inverted);
   }
@@ -1729,7 +1729,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printResource(data, &data->item[i], x, y, true);
               } else {
                 printResource(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
+                if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
                   editResource(data, &data->item[i]);
                 }
               }
@@ -1750,7 +1750,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printRecord(data, &data->item[i], x, y, true);
               } else {
                 printRecord(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled() && !pumpkin_is_single()) {
+                if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
                   editRecord(data, &data->item[i]);
                 }
               }
@@ -2865,7 +2865,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       return 0;
   }
 
-  if (pumpkin_dia_enabled() || pumpkin_is_single()) {
+  if (pumpkin_dia_enabled() || pumpkin_single_enabled()) {
     pumpkin_set_spawner(thread_get_handle());
     pumpkin_dia_kbd();
   }
