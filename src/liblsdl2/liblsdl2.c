@@ -1113,10 +1113,10 @@ static int libsdl_calib(int pe) {
 
 static int set_video_driver(char *video_driver) {
 #ifdef SDL_HINT_VIDEODRIVER
-  debug(DEBUG_INFO, "SDL", "hint video driver \"%s\"", video_driver);
+  if (video_driver) debug(DEBUG_INFO, "SDL", "hint video driver \"%s\"", video_driver);
   SDL_SetHint(SDL_HINT_VIDEODRIVER, video_driver);
 #else
-  debug(DEBUG_INFO, "SDL", "setenv video driver \"%s\"", video_driver);
+  if (video_driver) debug(DEBUG_INFO, "SDL", "setenv video driver \"%s\"", video_driver);
   SDL_setenv("SDL_VIDEODRIVER", video_driver, 1);
 #endif
   return 1;
