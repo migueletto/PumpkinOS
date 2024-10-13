@@ -2,7 +2,8 @@ typedef struct wman_t wman_t;
 
 wman_t *wman_init(window_provider_t *wp, window_t *w, int width, int height);
 int wman_set_background(wman_t *wm, int depth, uint8_t r, uint8_t g, uint8_t b);
-int wman_set_border(wman_t *wm, int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b);
+int wman_set_image_background(wman_t *wm, int depth, void *image);
+int wman_set_border(wman_t *wm, int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t rlck, uint8_t glck, uint8_t blck, uint8_t r, uint8_t g, uint8_t b);
 int wman_choose_border(wman_t *wm, int i);
 int wman_add(wman_t *wm, int id, texture_t *t, int x, int y, int w, int h);
 int wman_texture(wman_t *wm, int id, texture_t *t, int w, int h);

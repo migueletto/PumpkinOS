@@ -97,6 +97,10 @@ static int libos_action(void *arg) {
     }
   }
 
+  debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
+  pumpkin_deploy_files("/app_install");
+  pumpkin_load_plugins();
+
   pumpkin_set_secure(data->secure);
   pumpkin_set_mono(data->mono);
 
@@ -105,21 +109,11 @@ static int libos_action(void *arg) {
   } else if (data->single) {
     pumpkin_set_single(data->depth);
   } else {
-    if (data->mono) {
-      pumpkin_set_background(data->depth, 0xFF, 0xFF, 0xFF);
-      pumpkin_set_border(data->depth, 4, 0x90, 0x90, 0x90, 0xD0, 0xD0, 0xD0);
-    } else {
-      pumpkin_set_background(data->depth, 0x58, 0x8C, 0xB4);
-      pumpkin_set_border(data->depth, 4, 0xA0, 0xC0, 0xFF, 0xA0, 0xA0, 0xA0);
-    }
+    pumpkin_set_depth(data->depth);
   }
 
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
-
-  debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
-  pumpkin_deploy_files("/app_install");
-  pumpkin_load_plugins();
 
   if (data->dia || data->single) {
     debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->launcher);

@@ -32,6 +32,7 @@ struct wman_t {
   texture_t *vborder, *vsborder, *vs0border, *vs1border;
   rect_t r;
   int border, n;
+  void *bg;
   wman_area_t area[MAX_AREAS];
 };
 
@@ -179,38 +180,70 @@ static texture_t *solid_texture(wman_t *wm, int depth, int width, int height, ui
   uint32_t i, n;
   uint32_t *b32;
   uint16_t *b16;
-  uint8_t *bg;
 
   if (wm->w) {
-    t = wm->wp->create_texture(wm->w, width, height);
-    n = width * height;
+    if ((t = wm->wp->create_texture(wm->w, width, height)) != NULL) {
+      n = width * height;
 
-    switch (depth) {
-      case 16:
-        b16 = xcalloc(1, n * 2);
-        for (i = 0; i < n; i++) {
-          b16[i] = rgb565(r, g, b);
-        }
-        bg = (uint8_t *)b16;
-        break;
-      case 32:
-        b32 = xcalloc(1, n * 4);
-        for (i = 0; i < n; i++) {
-          b32[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
-        }
-        bg = (uint8_t *)b32;
-        break;
+      switch (depth) {
+        case 16:
+          b16 = xcalloc(1, n * 2);
+          for (i = 0; i < n; i++) {
+            b16[i] = rgb565(r, g, b);
+          }
+          wm->bg = (uint8_t *)b16;
+          break;
+        case 32:
+          b32 = xcalloc(1, n * 4);
+          for (i = 0; i < n; i++) {
+            b32[i] = rgba32(r, g, b, 0xFF);
+          }
+          wm->bg = (uint8_t *)b32;
+          break;
+        default:
+          wm->bg = NULL;
+          break;
+      }
+  
+      if (wm->bg) {
+        wm->wp->update_texture(wm->w, t, wm->bg);
+      }
     }
-    wm->wp->update_texture(wm->w, t, bg);
   }
 
   return t;
+}
+
+int wman_set_image_background(wman_t *wm, int depth, void *image) {
+  uint32_t n;
+  int res = -1;
+
+  if (wm->w && wm->background && wm->bg && image) {
+    switch (depth) {
+      case 16:
+        n = wm->r.width * wm->r.height * 2;
+        sys_memcpy(wm->bg, image, n);
+        break;
+      case 32:
+        n = wm->r.width * wm->r.height * 4;
+        sys_memcpy(wm->bg, image, n);
+        break;
+    }
+
+    wm->wp->update_texture(wm->w, wm->background, wm->bg);
+    res = 0;
+  }
+
+  return res;
 }
 
 int wman_set_background(wman_t *wm, int depth, uint8_t r, uint8_t g, uint8_t b) {
   int res = -1;
 
   if (wm) {
+    if (wm->background) wm->wp->destroy_texture(wm->w, wm->background);
+    if (wm->bg) xfree(wm->bg);
+    wm->bg = NULL;
     wm->background = solid_texture(wm, depth, wm->r.width, wm->r.height, r, g, b);
     res = 0;
   }
@@ -218,20 +251,30 @@ int wman_set_background(wman_t *wm, int depth, uint8_t r, uint8_t g, uint8_t b) 
   return res;
 }
 
-int wman_set_border(wman_t *wm, int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b) {
-  int res = -1;
+int wman_set_border(wman_t *wm, int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t rlck, uint8_t glck, uint8_t blck, uint8_t r, uint8_t g, uint8_t b) {
+  int sel0, res = -1;
 
   if (wm) {
     wm->border = size;
+
+    sel0 = wm->hsborder == wm->hs0border;
+    if (wm->hs0border) wm->wp->destroy_texture(wm->w, wm->hs0border);
+    if (wm->hs1border) wm->wp->destroy_texture(wm->w, wm->hs1border);
+    if (wm->hborder)   wm->wp->destroy_texture(wm->w, wm->hborder);
+    if (wm->vs0border) wm->wp->destroy_texture(wm->w, wm->vs0border);
+    if (wm->vs1border) wm->wp->destroy_texture(wm->w, wm->vs1border);
+    if (wm->vborder)   wm->wp->destroy_texture(wm->w, wm->vborder);
+
     wm->hs0border = solid_texture(wm, depth, wm->r.width, size, rsel, gsel, bsel);
-    wm->hs1border = solid_texture(wm, depth, wm->r.width, size, bsel, gsel, rsel);
-    wm->hsborder  = wm->hs0border;
+    wm->hs1border = solid_texture(wm, depth, wm->r.width, size, rlck, glck, blck);
     wm->hborder   = solid_texture(wm, depth, wm->r.width, size, r, g, b);
 
     wm->vs0border = solid_texture(wm, depth, size, wm->r.height, rsel, gsel, bsel);
-    wm->vs1border = solid_texture(wm, depth, size, wm->r.height, bsel, gsel, rsel);
+    wm->vs1border = solid_texture(wm, depth, size, wm->r.height, rlck, glck, blck);
     wm->vborder   = solid_texture(wm, depth, size, wm->r.height, r, g, b);
-    wm->vsborder  = wm->vs0border;
+
+    wm->hsborder  = sel0 ? wm->hs0border : wm->hs1border;
+    wm->vsborder  = sel0 ? wm->vs0border : wm->vs1border;
 
     res = 0;
   }
@@ -484,7 +527,21 @@ static void check_rect(wman_t *wm, rect_t *r) {
   rect_t b, rr;
   int i;
 
-  wman_draw(wm, WMAN_BACK, r->x, r->y, r->width, r->height, r->x, r->y);
+  if (r->x < 0) {
+    r->width += r->x;
+    r->x = 0;
+  } else if (r->x + r->width >= wm->r.width) {
+    r->width = wm->r.width - r->x;
+  }
+  if (r->y < 0) {
+    r->height += r->y;
+    r->y = 0;
+  } else if (r->y + r->height >= wm->r.height) {
+    r->height = wm->r.height - r->y;
+  }
+  if (r->width > 0 && r->height > 0) {
+    wman_draw(wm, WMAN_BACK, r->x, r->y, r->width, r->height, r->x, r->y);
+  }
 
   for (i = 0; i < wm->n-1; i++) {
     if (intersection(r, &wm->area[i].r, &rr)) {
@@ -522,7 +579,6 @@ int wman_move(wman_t *wm, int id, int dx, int dy) {
   if (wm && wm->n > 0 && wm->area[wm->n-1].id == id && (dx != 0 || dy != 0)) {
     i = wm->n-1;
 
-//wm->wp->move = NULL;
     if (wm->wp->move) {
 //debug(1, "XXX", "move %d,%d,%d,%d %d,%d", wm->area[i].r.x - wm->border, wm->area[i].r.y - wm->border, wm->area[i].r.width + 2*wm->border, wm->area[i].r.height + 2*wm->border, dx, dy);
       wm->wp->move(wm->w, wm->area[i].r.x - wm->border, wm->area[i].r.y - wm->border, wm->area[i].r.width + 2*wm->border, wm->area[i].r.height + 2*wm->border, dx, dy);
@@ -666,6 +722,7 @@ int wman_finish(wman_t *wm) {
     if (wm->vborder)    wm->wp->destroy_texture(wm->w, wm->vborder);
     if (wm->vs0border)  wm->wp->destroy_texture(wm->w, wm->vs0border);
     if (wm->vs1border)  wm->wp->destroy_texture(wm->w, wm->vs1border);
+    if (wm->bg) xfree(wm->bg);
     xfree(wm);
     r = 0;
   }

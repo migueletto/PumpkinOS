@@ -83,6 +83,8 @@
 
 #define SCREEN_DB "ScreenDB"
 
+#define BORDER_SIZE 4
+
 typedef struct {
   uint16_t refNum;
   uint32_t type;
@@ -118,7 +120,7 @@ typedef struct {
   int handle;
   int penX, penY, buttons;
   int nativeKeys;
-  int cursor;
+  int lockable;
   int v10;
   int m68k;
   char name[dmDBNameLength];
@@ -202,9 +204,9 @@ typedef struct {
   int spawner;
   int encoding;
   int width, height, full_height;
-  int depth, mono, border;
+  int depth, mono;
   int fullrefresh;
-  int cursor;
+  int locked;
   int dragging;
   int lastX, lastY;
   int current_task;
@@ -212,6 +214,7 @@ typedef struct {
   uint32_t buttonMask;
   uint32_t modMask;
   uint64_t extKeyMask[2];
+  uint32_t lockKey, lockModifiers;
   int64_t lastUpdate;
   int num_used;
   int task_order[MAX_TASKS];
@@ -221,6 +224,7 @@ typedef struct {
   dia_t *dia;
   wman_t *wm;
   int dragged, render;
+  int refresh;
   pumpkin_serial_t serial[MAX_SERIAL];
   int num_serial;
   char clipboardAux[cbdMaxTextLength*2];
@@ -234,6 +238,7 @@ typedef struct {
   event_t events[MAX_EVENTS];
   int nev, iev, oev;
   calibration_t calibration;
+  surface_t *background;
 } pumpkin_module_t;
 
 typedef union {
@@ -256,6 +261,17 @@ static const int systemFonts[] = {
   mono6x10Font, mono8x14Font, mono16x16Font, mono8x16Font,
   -1
 };
+
+static const RGBColorType monoBackground        = { 0, 0xFF, 0xFF, 0xFF };
+static const RGBColorType colorBackground       = { 0, 0x50, 0x80, 0xB0 };
+
+static const RGBColorType monoSelectedBorder    = { 0, 0x90, 0x90, 0x90 };
+static const RGBColorType monoUnselectedBorder  = { 0, 0xD0, 0xD0, 0xD0 };
+static const RGBColorType monoLockedBorder      = { 0, 0xF0, 0xC0, 0x80 };
+
+static const RGBColorType colorSelectedBorder   = { 0, 0xA0, 0xC0, 0xF0 };
+static const RGBColorType colorUnselectedBorder = { 0, 0xA0, 0xA0, 0xA0 };
+static const RGBColorType colorLockedBorder     = { 0, 0xF0, 0xC0, 0x80 };
 
 static mutex_t *mutex;
 static pumpkin_module_t pumpkin_module;
@@ -579,7 +595,6 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.bt = bt;
   pumpkin_module.gps_parse_line = gps_parse_line;
   pumpkin_module.current_task = -1;
-  pumpkin_module.cursor = 1;
   pumpkin_module.dragging = -1;
   pumpkin_module.nextTaskId = 1;
   pumpkin_module.battery = 100;
@@ -624,6 +639,7 @@ static void registry_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 i
 void pumpkin_deploy_files(char *path) {
   DmOpenRef dbRef;
   LocalID dbID;
+  PumpkinPreferencesType prefs;
 
   StoDeployFiles(path, pumpkin_module.registry);
 
@@ -632,6 +648,27 @@ void pumpkin_deploy_files(char *path) {
   PrefInitModule();
   pumpkin_load_fonts();
   DmCloseDatabase(dbRef);
+
+  if (pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true) == 0) {
+    MemSet(&prefs, sizeof(PumpkinPreferencesType), 0);
+    prefs.version = PUMPKINOS_PREFS_VERSION;
+    prefs.value[pLockKey] = WINDOW_KEY_F10;
+    prefs.value[pLockModifiers] = WINDOW_MOD_SHIFT;
+    prefs.value[pBorderWidth] = BORDER_SIZE;
+    prefs.value[pBackgroundImage] = 0;
+    prefs.color[pMonoBackground] = monoBackground;
+    prefs.color[pMonoSelectedBorder] = monoSelectedBorder;
+    prefs.color[pMonoUnselectedBorder] = monoUnselectedBorder;
+    prefs.color[pMonoLockedBorder] = monoLockedBorder;
+    prefs.color[pColorBackground] = colorBackground;
+    prefs.color[pColorSelectedBorder] = colorSelectedBorder;
+    prefs.color[pColorUnselectedBorder] = colorUnselectedBorder;
+    prefs.color[pColorLockedBorder] = colorLockedBorder;
+    pumpkin_set_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
+  }
+
+  pumpkin_module.lockKey = prefs.value[pLockKey];
+  pumpkin_module.lockModifiers = prefs.value[pLockModifiers];
 
   AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistrySavedPref, NULL);
   AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistryUnsavedPref, NULL);
@@ -702,40 +739,126 @@ void pumpkin_http_abort(int handle) {
 }
 
 int pumpkin_set_single(int depth) {
-  pumpkin_set_encoding(depth);
   pumpkin_module.depth = depth;
+  pumpkin_set_encoding(depth);
   pumpkin_module.single = 1;
 
   return 0;
 }
 
-int pumpkin_is_single(void) {
+int pumpkin_single_enabled(void) {
   return pumpkin_module.single;
 }
 
 int pumpkin_set_dia(int depth) {
+  pumpkin_module.depth = depth;
   pumpkin_set_encoding(depth);
   pumpkin_module.dia = dia_init(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.encoding, depth, DEFAULT_DENSITY == kDensityDouble);
-  pumpkin_module.depth = depth;
 
   return pumpkin_module.dia ? 0 : -1;
 }
 
-int pumpkin_is_dia(void) {
+int pumpkin_dia_enabled(void) {
   return pumpkin_module.dia ? 1 : 0;
 }
 
-void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b) {
-  pumpkin_module.depth = depth;
-  pumpkin_set_encoding(depth);
-  wman_set_background(pumpkin_module.wm, depth, r, g, b);
+static void pumpkin_image_background(RGBColorType *rgb, UInt16 id, UInt16 mode) {
+  LocalID dbID;
+  DmOpenRef dbRef;
+  BitmapType *bmp;
+  MemHandle h;
+  Coord width, height;
+  UInt32 x, y, color;
+
+  if ((dbID = DmFindDatabase(0, "Background")) != 0) {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+      if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
+        if ((bmp = MemHandleLock(h)) != NULL) {
+          if (pumpkin_module.background == NULL) {
+            pumpkin_module.background = surface_create(pumpkin_module.width, pumpkin_module.height, pumpkin_module.encoding);
+          }
+          if (pumpkin_module.background != NULL) {
+            color = surface_color_rgb(pumpkin_module.encoding, NULL, 0, rgb->r, rgb->g, rgb->b, 0xFF);
+            surface_rectangle(pumpkin_module.background, 0, 0, pumpkin_module.width-1, pumpkin_module.height-1, 1, color);
+            BmpGetDimensions(bmp, &width, &height, NULL);
+
+            switch (mode) {
+              case 0: // top left
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, 0, true);
+                break;
+              case 1: // top right
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, 0, true);
+                break;
+              case 2: // bottom left
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, pumpkin_module.height - height, true);
+                break;
+              case 3: // bottom right
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, pumpkin_module.height - height, true);
+                break;
+              case 4: // center
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, (pumpkin_module.width - width) / 2, (pumpkin_module.height - height) / 2, true);
+                break;
+              case 5: // tiled
+                for (y = 0; y < pumpkin_module.height; y += height) {
+                  for (x = 0; x < pumpkin_module.width; x += width) {
+                    BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, x, y, true);
+                  }
+                }
+                break;
+            }
+          }
+          MemHandleUnlock(h);
+        }
+        DmReleaseResource(h);
+      }
+      DmCloseDatabase(dbRef);
+    }
+  }
 }
 
-void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b) {
-  pumpkin_module.depth = depth;
-  pumpkin_module.border = size;
-  pumpkin_set_encoding(depth);
-  wman_set_border(pumpkin_module.wm, depth, size, rsel, gsel, bsel, r, g, b);
+void pumpkin_set_depth(int depth) {
+  PumpkinPreferencesType prefs;
+
+  if (depth > 0) {
+    pumpkin_module.depth = depth;
+    pumpkin_set_encoding(depth);
+  }
+  pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
+
+  if (pumpkin_module.mono) {
+    wman_set_border(pumpkin_module.wm, pumpkin_module.depth, prefs.value[pBorderWidth],
+      prefs.color[pMonoSelectedBorder].r,   prefs.color[pMonoSelectedBorder].g,   prefs.color[pMonoSelectedBorder].b,
+      prefs.color[pMonoLockedBorder].r,     prefs.color[pMonoLockedBorder].g,     prefs.color[pMonoLockedBorder].b,
+      prefs.color[pMonoUnselectedBorder].r, prefs.color[pMonoUnselectedBorder].g, prefs.color[pMonoUnselectedBorder].b);
+
+    wman_set_background(pumpkin_module.wm, pumpkin_module.depth,
+      prefs.color[pMonoBackground].r, prefs.color[pMonoBackground].g, prefs.color[pMonoBackground].b);
+
+  } else {
+    wman_set_border(pumpkin_module.wm, pumpkin_module.depth, prefs.value[pBorderWidth],
+      prefs.color[pColorSelectedBorder].r,   prefs.color[pColorSelectedBorder].g,   prefs.color[pColorSelectedBorder].b,
+      prefs.color[pColorLockedBorder].r,     prefs.color[pColorLockedBorder].g,     prefs.color[pColorLockedBorder].b,
+      prefs.color[pColorUnselectedBorder].r, prefs.color[pColorUnselectedBorder].g, prefs.color[pColorUnselectedBorder].b);
+
+    wman_set_background(pumpkin_module.wm, pumpkin_module.depth,
+      prefs.color[pColorBackground].r, prefs.color[pColorBackground].g, prefs.color[pColorBackground].b);
+  }
+}
+
+void pumpkin_refresh_desktop(void) {
+  PumpkinPreferencesType prefs;
+
+  if (mutex_lock(mutex) == 0) {
+    pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
+    if (prefs.value[pBackgroundImage] & 0xFFFF) {
+      pumpkin_image_background(&prefs.color[pColorBackground], prefs.value[pBackgroundImage] & 0xFFFF, prefs.value[pBackgroundImage] >> 16);
+    } else if (pumpkin_module.background) {
+      surface_destroy(pumpkin_module.background);
+      pumpkin_module.background = NULL;
+    }
+    pumpkin_module.refresh = 1;
+    mutex_unlock(mutex);
+  }
 }
 
 void pumpkin_set_mono(int mono) {
@@ -744,10 +867,6 @@ void pumpkin_set_mono(int mono) {
 
 void pumpkin_set_fullrefresh(int fullrefresh) {
   pumpkin_module.fullrefresh = fullrefresh;
-}
-
-int pumpkin_dia_enabled(void) {
-  return pumpkin_module.dia ? 1 : 0;
 }
 
 int pumpkin_dia_get_trigger(void) {
@@ -870,6 +989,10 @@ int pumpkin_global_finish(void) {
 
   pumpkin_unload_fonts();
   PrefFinishModule();
+
+  if (pumpkin_module.background) {
+    surface_destroy(pumpkin_module.background);
+  }
 
   if (pumpkin_module.wm) {
     wman_finish(pumpkin_module.wm);
@@ -1120,6 +1243,7 @@ void pumpkin_calibrate(int restore) {
 static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
+  PumpkinPreferencesType prefs;
   LocalID dbID;
   UInt32 language;
   UInt16 size;
@@ -1188,7 +1312,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFF;
   sys_strncpy(pumpkin_module.tasks[i].name, name, dmDBNameLength-1);
   pumpkin_module.tasks[i].num_notifs = 0;
-  pumpkin_module.tasks[i].cursor = 1;
+  pumpkin_module.tasks[i].lockable = 0;
 
   pumpkin_module.task_order[pumpkin_module.num_tasks] = i;
   pumpkin_module.current_task = i;
@@ -1228,7 +1352,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
 
   UicInitModule();
   BmpInitModule(DEFAULT_DENSITY);
-  BmpSetLittleEndian16(false);
   WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, DEFAULT_DEPTH, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
@@ -1247,6 +1370,17 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   SndInitModule(pumpkin_module.ap);
   SelTimeInitModule();
   SysFatalAlertInit();
+
+  if (i == 0) {
+    pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
+    if (prefs.value[pBackgroundImage] & 0xFFFF) {
+      pumpkin_image_background(&prefs.color[pColorBackground], prefs.value[pBackgroundImage] & 0xFFFF, prefs.value[pBackgroundImage] >> 16);
+    } else if (pumpkin_module.background) {
+      surface_destroy(pumpkin_module.background);
+      pumpkin_module.background = NULL;
+    }
+    pumpkin_module.refresh = 1;
+  }
 
   pumpkin_module.render = 1;
   mutex_unlock(mutex);
@@ -1360,7 +1494,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   if (pumpkin_module.wp->show_cursor) pumpkin_module.wp->show_cursor(pumpkin_module.w, 1);
   wman_choose_border(pumpkin_module.wm, 0);
-  pumpkin_module.cursor = 1;
+  pumpkin_module.locked = 0;
 
   thread_set(task_key, NULL);
   xfree(task);
@@ -1407,7 +1541,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 1, texture, name, width, height, pumpkin_module.border, pumpkin_module.border) == 0) {
+  if (pumpkin_local_init(0, 1, texture, name, width, height, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2231,16 +2365,22 @@ void pumpkin_set_native_keys(int active) {
 
 int pumpkin_get_native_keys(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int locked = 0;
 
-  return task->nativeKeys;
+  if (mutex_lock(mutex) == 0) {
+    locked = pumpkin_module.locked;
+    mutex_unlock(mutex);
+  }
+
+  return task->nativeKeys && locked;
 }
 
-int pumpkin_set_cursor(int active) {
+int pumpkin_set_lockable(int lockable) {
   int r = -1;
 
   if (mutex_lock(mutex) == 0) {
     if (pumpkin_module.current_task != -1) {
-      pumpkin_module.tasks[pumpkin_module.current_task].cursor = active;
+      pumpkin_module.tasks[pumpkin_module.current_task].lockable = lockable;
       r = 0;
     }
     mutex_unlock(mutex);
@@ -2252,8 +2392,9 @@ int pumpkin_set_cursor(int active) {
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
-  int i, j, x, y, tx, ty, ev, tmp;
+  int i, j, x, y, tx, ty, ev, tmp, len;
   int paused, wait, r = -1;
+  void *bits;
 
   for (;;) {
     if (thread_must_end()) return -1;
@@ -2270,7 +2411,16 @@ int pumpkin_sys_event(void) {
 
     if ((now - pumpkin_module.lastUpdate) > 50000) {
       if (pumpkin_module.num_tasks > 0) {
-        if (pumpkin_module.fullrefresh) {
+        if (pumpkin_module.refresh) {
+          if (pumpkin_module.background) {
+            bits = surface_buffer(pumpkin_module.background, &len);
+            wman_set_image_background(pumpkin_module.wm, pumpkin_module.depth, bits);
+          } else {
+            pumpkin_set_depth(0);
+          }
+        }
+
+        if (pumpkin_module.fullrefresh || pumpkin_module.refresh) {
           wman_clear(pumpkin_module.wm);
         }
 
@@ -2282,7 +2432,7 @@ int pumpkin_sys_event(void) {
           }
         } 
 
-        if (pumpkin_module.fullrefresh) {
+        if (pumpkin_module.fullrefresh || pumpkin_module.refresh) {
           for (j = 0; j < pumpkin_module.num_tasks; j++) {
             i = pumpkin_module.task_order[j];
             draw_task(i, &x, &y, &w, &h);
@@ -2299,6 +2449,7 @@ int pumpkin_sys_event(void) {
             }
           }
         }
+        pumpkin_module.refresh = 0;
 
         if (pumpkin_module.dragged) {
           for (j = 0; j < pumpkin_module.num_tasks; j++) {
@@ -2336,12 +2487,19 @@ int pumpkin_sys_event(void) {
     switch (ev) {
       case WINDOW_KEYDOWN:
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
-          if (pumpkin_module.cursor == 0 && arg1 == WINDOW_KEY_F10 && (pumpkin_module.modMask & WINDOW_MOD_SHIFT)) {
-            if (pumpkin_module.wp->show_cursor) pumpkin_module.wp->show_cursor(pumpkin_module.w, 1);
-            wman_choose_border(pumpkin_module.wm, 0);
-            wman_raise(pumpkin_module.wm, pumpkin_module.tasks[i].taskId);
-            pumpkin_module.cursor = 1;
-            pumpkin_module.render = 1;
+          if (arg1 == pumpkin_module.lockKey && (pumpkin_module.modMask & pumpkin_module.lockModifiers)) {
+            if (pumpkin_module.locked) {
+              if (pumpkin_module.wp->show_cursor) pumpkin_module.wp->show_cursor(pumpkin_module.w, 1);
+              wman_choose_border(pumpkin_module.wm, 0);
+              wman_raise(pumpkin_module.wm, pumpkin_module.tasks[i].taskId);
+              pumpkin_module.locked = 0;
+              pumpkin_module.render = 1;
+            } else if (pumpkin_module.tasks[i].lockable) {
+              wman_choose_border(pumpkin_module.wm, 1);
+              wman_raise(pumpkin_module.wm, pumpkin_module.tasks[i].taskId);
+              pumpkin_module.locked = 1;
+              pumpkin_module.render = 1;
+            }
           }
           pumpkin_forward_msg(i, MSG_KEYDOWN, arg1, 0, 0);
         }
@@ -2374,7 +2532,7 @@ int pumpkin_sys_event(void) {
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
         }
 
-        if (i != -1 && pumpkin_module.cursor == 0) {
+        if (i != -1 && pumpkin_module.locked) {
           pumpkin_module.buttonMask |= arg1;
           pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, arg1);
         } else {
@@ -2390,23 +2548,15 @@ int pumpkin_sys_event(void) {
               pumpkin_module.current_task = -1;
             }
           } else if (arg1 == 1) {
-            if (pumpkin_module.tasks[i].cursor == 0) {
-              if (pumpkin_module.wp->show_cursor) pumpkin_module.wp->show_cursor(pumpkin_module.w, 0);
-              wman_choose_border(pumpkin_module.wm, 1);
-              wman_raise(pumpkin_module.wm, pumpkin_module.tasks[i].taskId);
-              pumpkin_module.cursor = 0;
-              pumpkin_module.render = 1;
-            } else {
-              pumpkin_module.buttonMask |= arg1;
-              pumpkin_module.dragging = -1;
-              if (i != -1 && i == pumpkin_module.current_task) {
-                if (pumpkin_module.dia || pumpkin_module.single) {
-                  pumpkin_forward_msg(i, MSG_MOTION, tx, ty, 0);
-                  pumpkin_module.tasks[i].penX = tx;
-                  pumpkin_module.tasks[i].penY = ty;
-                }
-                pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, arg1);
+            pumpkin_module.buttonMask |= arg1;
+            pumpkin_module.dragging = -1;
+            if (i != -1 && i == pumpkin_module.current_task) {
+              if (pumpkin_module.dia || pumpkin_module.single) {
+                pumpkin_forward_msg(i, MSG_MOTION, tx, ty, 0);
+                pumpkin_module.tasks[i].penX = tx;
+                pumpkin_module.tasks[i].penY = ty;
               }
+              pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, arg1);
             }
           }
         }
@@ -2417,7 +2567,7 @@ int pumpkin_sys_event(void) {
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
         }
 
-        if (i != -1 && pumpkin_module.cursor == 0) {
+        if (i != -1 && pumpkin_module.locked) {
           pumpkin_module.buttonMask &= ~arg1;
           pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
         } else {
@@ -2444,42 +2594,38 @@ int pumpkin_sys_event(void) {
           pumpkin_module.tasks[pumpkin_module.dragging].dy += y - pumpkin_module.lastY;
           pumpkin_module.dragged = 1;
 
-        } else if (i != -1) {
-          if (pumpkin_module.tasks[i].active) {
-            if (pumpkin_module.cursor == 0) {
-              if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
-                x -= tx;
-                y -= ty;
-                if (x < 0) x = 0; else if (x >= pumpkin_module.tasks[i].width) x = pumpkin_module.tasks[i].width - 1;
-                if (y < 0) y = 0; else if (y >= pumpkin_module.tasks[i].height) y = pumpkin_module.tasks[i].height - 1;
-                if (pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) {
+        } else if (i != -1 && pumpkin_module.tasks[i].active) {
+          if (pumpkin_module.locked) {
+            if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
+              x -= tx;
+              y -= ty;
+              if (x < 0) x = 0; else if (x >= pumpkin_module.tasks[i].width) x = pumpkin_module.tasks[i].width - 1;
+              if (y < 0) y = 0; else if (y >= pumpkin_module.tasks[i].height) y = pumpkin_module.tasks[i].height - 1;
+              if (pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) {
+                pumpkin_forward_msg(i, MSG_MOTION, x, y, 0);
+              }
+              pumpkin_module.tasks[i].penX = x;
+              pumpkin_module.tasks[i].penY = y;
+              x += tx;
+              y += ty;
+            }
+
+          } else if (!pumpkin_module.dia || !dia_stroke(pumpkin_module.dia, x, y)) {
+            if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
+              x -= tx;
+              y -= ty;
+              if (x >= 0 && x < pumpkin_module.tasks[i].width && y >= 0 && y < pumpkin_module.tasks[i].height) {
+                // try not to flood the task with penMove events
+                if ((pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) &&
+                    (now - pumpkin_module.tasks[i].lastMotion) > 5000) {
                   pumpkin_forward_msg(i, MSG_MOTION, x, y, 0);
+                  pumpkin_module.tasks[i].lastMotion = now;
                 }
                 pumpkin_module.tasks[i].penX = x;
                 pumpkin_module.tasks[i].penY = y;
-                x += tx;
-                y += ty;
               }
-
-            } else if (!pumpkin_module.dia || !dia_stroke(pumpkin_module.dia, x, y)) {
-              if (pumpkin_module.tasks[i].cursor) {
-                if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
-                  x -= tx;
-                  y -= ty;
-                  if (x >= 0 && x < pumpkin_module.tasks[i].width && y >= 0 && y < pumpkin_module.tasks[i].height) {
-                    // try not to flood the task with penMove events
-                    if ((pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) &&
-                        (now - pumpkin_module.tasks[i].lastMotion) > 5000) {
-                      pumpkin_forward_msg(i, MSG_MOTION, x, y, 0);
-                      pumpkin_module.tasks[i].lastMotion = now;
-                    }
-                    pumpkin_module.tasks[i].penX = x;
-                    pumpkin_module.tasks[i].penY = y;
-                  }
-                  x += tx;
-                  y += ty;
-                }
-              }
+              x += tx;
+              y += ty;
             }
           }
         }
@@ -3907,7 +4053,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     wWidth = width;
     wHeight = height;
   }
-  debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d bitmap as %s", width, height, filename);
+
   if ((surface = surface_create(wWidth, wHeight, SURFACE_ENCODING_ARGB)) != NULL) {
     oldDensity = BmpGetDensity(bmp);
     BmpSetDensity(bmp, kDensityLow);
@@ -3917,6 +4063,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     card = VFS_CARD;
     if (card[0] == '/') card++;
     sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, filename);
+    debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d bitmap as %s", width, height, buf);
     surface_save(surface, buf, 0);
 
     surface_destroy(surface);
@@ -3924,13 +4071,13 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
 }
 
 void LongToRGB(UInt32 c, RGBColorType *rgb) {
-  rgb->r = (c & 0xff0000) >> 16;
-  rgb->g = (c & 0x00ff00) >> 8;
-  rgb->b = (c & 0x0000ff);
+  rgb->r = r32(c);
+  rgb->g = g32(c);
+  rgb->b = b32(c);
 }
 
 UInt32 RGBToLong(RGBColorType *rgb) {
-  return (((UInt32)rgb->r) << 16) | (((UInt32)rgb->g) << 8) | ((UInt32)rgb->b);
+  return rgba32(rgb->r, rgb->g, rgb->b, 0xFF);
 }
 
 static int pumpkin_httpd_string(int pe) {

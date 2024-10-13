@@ -14,6 +14,10 @@ extern "C" {
 #define BOOT_CREATOR  'BOOT'
 #define BOOT_NAME     "BOOT"
 
+#define PALMOS_PREFS_ID     1
+#define PUMPKINOS_PREFS_ID  2
+#define PUMPKINOS_PREFS_VERSION 1
+
 #define APP_SCREEN_WIDTH  320
 #define APP_SCREEN_HEIGHT 320
 
@@ -100,6 +104,20 @@ extern "C" {
 #define minValue(a,b) (a) < (b) ? (a) : (b)
 #define maxValue(a,b) (a) > (b) ? (a) : (b)
 
+#define pLockKey               0
+#define pLockModifiers         1
+#define pBorderWidth           2
+#define pBackgroundImage       3
+
+#define pMonoBackground        0
+#define pMonoSelectedBorder    1
+#define pMonoUnselectedBorder  2
+#define pMonoLockedBorder      3
+#define pColorBackground       4
+#define pColorSelectedBorder   5
+#define pColorUnselectedBorder 6
+#define pColorLockedBorder     7
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
@@ -123,6 +141,12 @@ typedef struct {
   UInt32 id;
   pluginMainF pluginMain;
 } pumpkin_plugin_t;
+
+typedef struct {
+  UInt32 version;
+  UInt32 value[64];
+  RGBColorType color[32];
+} PumpkinPreferencesType;
 
 typedef struct pumpkin_httpd_t pumpkin_httpd_t;
 
@@ -150,11 +174,12 @@ int pumpkin_get_spawner(void);
 void pumpkin_set_window(window_t *w, int width, int height, int full_height);
 void pumpkin_get_window(int *width, int *height);
 int pumpkin_set_single(int depth);
-int pumpkin_is_single(void);
+int pumpkin_single_enabled(void);
 int pumpkin_set_dia(int depth);
-int pumpkin_is_dia(void);
 void pumpkin_set_display(int ptr, int width, int height);
 void pumpkin_set_input(int num, int width, int height);
+void pumpkin_set_depth(int depth);
+void pumpkin_refresh_desktop(void);
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b);
 void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b);
 void pumpkin_set_mono(int mono);
@@ -204,7 +229,7 @@ int pumpkin_pause(int pause);
 int pumpkin_is_paused(void);
 void pumpkin_set_native_keys(int active);
 int pumpkin_get_native_keys(void);
-int pumpkin_set_cursor(int active);
+int pumpkin_set_lockable(int lockable);
 int pumpkin_sys_event(void);
 int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec);
 void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3);
@@ -356,8 +381,9 @@ void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *p
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);
 void SysFatalAlertFinish(void);
 
-void BmpSetLittleEndian16(Boolean le16);
-Boolean BmpGetLittleEndian16(void);
+Boolean BmpLittleEndian(const BitmapType *bitmapP);
+Boolean BmpGetLittleEndianBits(const BitmapType *bitmapP);
+void BmpSetLittleEndianBits(const BitmapType *bitmapP, Boolean le);
 BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, Boolean checkAddr);
 void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc);
@@ -394,6 +420,7 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
 void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh);
 void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible);
 Boolean FrmGetVisible(FormType *formP, UInt16 objIndex);
+void FrmSetColorTrigger(FormType *formP, UInt16 id, RGBColorType *rgb, Boolean draw);
 
 void pumpkin_fix_popups(FormType *form);
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize);
