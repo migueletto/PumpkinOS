@@ -1965,7 +1965,7 @@ DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
   storage_db_t *db;
   DmOpenType *dbRef = NULL;
 
-  dbRef = dbP ? (DmOpenType *)dbP : (DmOpenType *)thread_get(sto_key);
+  dbRef = dbP ? (DmOpenType *)dbP : sto->dbRef;
   if (dbRef) {
     for (dbRef = dbRef->next; dbRef; dbRef = dbRef->next) {
       if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
