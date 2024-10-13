@@ -192,15 +192,12 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     case WM_MOUSEMOVE:
       window = (win_window_t *)GetProp(hwnd, WINDOW_PROP);
-      if (window->down) {
-        debug(DEBUG_TRACE, "Windows", "drag %d %d", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-        ev.ev = WINDOW_MOTION;
-        ev.arg1 = GET_X_LPARAM(lParam);
-        ev.arg2 = GET_Y_LPARAM(lParam);
-        window->x = ev.arg1;
-        window->y = ev.arg2;
-        putEvent(window, &ev);
-      }
+      ev.ev = WINDOW_MOTION;
+      ev.arg1 = GET_X_LPARAM(lParam);
+      ev.arg2 = GET_Y_LPARAM(lParam);
+      window->x = ev.arg1;
+      window->y = ev.arg2;
+      putEvent(window, &ev);
       return 0;
 
     case WM_LBUTTONDOWN:
@@ -550,8 +547,9 @@ static void window_status(window_t *_window, int *x, int *y, int *buttons) {
   *buttons = window->buttons;
 }
 
-static void window_show_cursor(window_t *window, int show) {
+static int window_show_cursor(window_t *window, int show) {
   ShowCursor(show ? TRUE : FALSE);
+  return 0;
 }
 
 static int audio_mixer_init(void) {
