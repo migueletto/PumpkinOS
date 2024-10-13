@@ -284,10 +284,10 @@ int PrefInitModule(void) {
   languageCodes = SysStringArray(17000, &numLanguages);
   languageNames = SysStringArray(18000, &numLanguages);
 
-  if (pumpkin_get_preference(BOOT_CREATOR, 1, &prefs, size, true) == 0) {
+  if (pumpkin_get_preference(BOOT_CREATOR, PALMOS_PREFS_ID, &prefs, size, true) == 0) {
     debug(DEBUG_INFO, PALMOS_MODULE, "initializing system preferences");
     initPrefs(&prefs);
-    pumpkin_set_preference(BOOT_CREATOR, 1, &prefs, size, true);
+    pumpkin_set_preference(BOOT_CREATOR, PALMOS_PREFS_ID, &prefs, size, true);
   } else {
     debug(DEBUG_INFO, PALMOS_MODULE, "loading system preferences");
   }
@@ -316,7 +316,7 @@ static void freeArray(char **array, UInt16 num) {
 
 int PrefFinishModule(void) {
   debug(DEBUG_INFO, PALMOS_MODULE, "saving system preferences");
-  pumpkin_set_preference(BOOT_CREATOR, 1, &prefs, sizeof(SystemPreferencesType), true);
+  pumpkin_set_preference(BOOT_CREATOR, PALMOS_PREFS_ID, &prefs, sizeof(SystemPreferencesType), true);
 
   freeArray(countryCodes, numCountries);
   freeArray(countryNames, numCountries);

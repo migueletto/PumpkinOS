@@ -1,28 +1,47 @@
 #define generalForm        1000
-#define formatsForm        1100
-#define datetimeForm       1200
+#define datetimeForm       1100
+#define formatsForm        1200
+#define desktopForm        1300
+#define imageForm          1400
 
-#define panelTrigger       1003
-#define panelList          1004
+#define panelTrigger       1001
+#define panelList          1002
 
-#define setTimeZoneTrigger 1002
-#define setTimeTrigger     1007
-#define setDateTrigger     1009
-#define daylightTrigger    1012
-#define daylightList       1013
+#define setTimeZoneTrigger 1101
+#define setTimeTrigger     1102
+#define setDateTrigger     1103
+#define daylightTrigger    1104
+#define daylightList       1105
 
-#define weekStartTrigger   1204
-#define weekStartList      1206
-#define dateFormatTrigger  1215
-#define dateFormatList     1216
-#define timeFormatTrigger  1222
-#define timeFormatList     1223
-#define presetTrigger      1226
-#define presetList         1227
-#define numbersTrigger     1230
-#define numbersList        1231
-#define ldateFormatTrigger 1241
-#define ldateFormatList    1242
+#define weekStartTrigger   1201
+#define weekStartList      1202
+#define dateFormatTrigger  1203
+#define dateFormatList     1204
+#define timeFormatTrigger  1205
+#define timeFormatList     1206
+#define presetTrigger      1207
+#define presetList         1208
+#define numbersTrigger     1209
+#define numbersList        1210
+#define ldateFormatTrigger 1211
+#define ldateFormatList    1212
+
+#define border1Ctl         1301
+#define border2Ctl         1302
+#define border4Ctl         1303
+#define selBorderCtl       1304
+#define unselBorderCtl     1305
+#define lockedBorderCtl    1306
+#define backgroundCtl      1307
+#define imageCtl           1308
+
+#define okBtn              1401
+#define imageTrigger       1402
+#define imageList          1403
+#define imageGad           1404
+#define positionTrigger    1405
+#define positionList       1406
+#define positionGad        1407
 
 #define MainMenu           1000
 
