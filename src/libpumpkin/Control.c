@@ -9,6 +9,8 @@
 
 static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
   RectangleType rect;
+  RGBColorType rgb, old;
+  int red, green, blue;
 
   if (controlP && controlP->attr.visible) {
     debug(DEBUG_TRACE, "Control", "CtlInvertControl style %d control %d", controlP->style, controlP->id);
@@ -21,6 +23,25 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
         break;
       case selectorTriggerCtl:
         WinInvertRect(&rect, 0, isInverted);
+        WinDrawGrayRectangleFrame(simpleFrame, &rect);
+        break;
+      case colorTriggerCtl:
+        if (controlP->text && controlP->text[0] == '#') {
+          if (sys_sscanf(controlP->text, "#%02X%02X%02X", &red, &green, &blue) == 3) {
+            if (isInverted) {
+              rgb.r = red;
+              rgb.g = green;
+              rgb.b = blue;
+            } else {
+              rgb.r = red / 2;
+              rgb.g = green / 2;
+              rgb.b = blue / 2;
+            }
+            WinSetBackColorRGB(&rgb, &old);
+            WinEraseRectangle(&controlP->bounds, 0);
+            WinSetBackColorRGB(&old, NULL);
+          }
+        }
         WinDrawGrayRectangleFrame(simpleFrame, &rect);
         break;
       case buttonCtl:
@@ -49,11 +70,13 @@ void CtlDrawControl(ControlType *controlP) {
   WinDrawOperation mode;
   PatternType oldPattern;
   IndexedColorType objFill, objFore, oldb, oldf, oldt;
+  RGBColorType rgb;
   RectangleType rect;
   Coord bw, bh;
   UInt16 rb, coordSys;
   FontID old;
   Boolean wasVisible;
+  int red, green, blue;
   Int16 tw, th, x, y;
 
   if (controlP) {
@@ -73,6 +96,7 @@ void CtlDrawControl(ControlType *controlP) {
       case pushButtonCtl:
       case repeatingButtonCtl:
       case selectorTriggerCtl:
+      case colorTriggerCtl:
         if (controlP->attr.graphical) {
           debug(DEBUG_TRACE, "Control", "GraphicControl id=%d, bitmapID=%d, selectedBitmapID=%d, selected=%d", controlP->id, controlP->bitmapID, controlP->selectedBitmapID, controlP->attr.on);
           if ((h = DmGetResource(bitmapRsc, (controlP->attr.on && controlP->selectedBitmapID) ? controlP->selectedBitmapID : controlP->bitmapID)) != NULL) {
@@ -98,7 +122,7 @@ void CtlDrawControl(ControlType *controlP) {
             }
             DmReleaseResource(h);
           }
-        } else {
+        } else if (controlP->style != colorTriggerCtl) {
           if (controlP->text && controlP->text[0]) {
             old = FntSetFont(controlP->font);
             tw = FntCharsWidth(controlP->text, StrLen(controlP->text));
@@ -107,6 +131,17 @@ void CtlDrawControl(ControlType *controlP) {
             y = controlP->bounds.topLeft.y + (controlP->bounds.extent.y - th) / 2;
             WinDrawChars(controlP->text, StrLen(controlP->text), x, y);
             FntSetFont(old);
+          }
+        } else {
+          if (controlP->text && controlP->text[0] == '#') {
+            if (sys_sscanf(controlP->text, "#%02X%02X%02X", &red, &green, &blue) == 3) {
+              rgb.r = red;
+              rgb.g = green;
+              rgb.b = blue;
+              WinSetBackColorRGB(&rgb, NULL);
+              WinEraseRectangle(&controlP->bounds, 0);
+              WinSetBackColor(objFill);
+            }
           }
         }
 
@@ -132,6 +167,7 @@ void CtlDrawControl(ControlType *controlP) {
             }
             break;
           case selectorTriggerCtl:
+          case colorTriggerCtl:
             WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
             break;
           default:
@@ -159,10 +195,16 @@ void CtlDrawControl(ControlType *controlP) {
           WinSetTextColor(objFore);
           WinEraseRectangle(&controlP->bounds, 0); // XXX it is not erasing all of it
           old = FntSetFont(controlP->font);
-          x = controlP->bounds.topLeft.x + 2*FntCharWidth('w');
+          x = controlP->bounds.topLeft.x + 10;
           WinDrawChars(controlP->text, StrLen(controlP->text), x, controlP->bounds.topLeft.y);
-          FntSetFont(symbol7Font);
-          WinDrawChar(2, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y+2);
+
+          if ((h = DmGetResource(bitmapRsc, 32201)) != NULL) {
+            if ((bmp = MemHandleLock(h)) != NULL) {
+              WinDrawBitmap(bmp, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y + FntCharHeight() / 2 - 2);
+              MemHandleUnlock(h);
+            }
+            DmReleaseResource(h);
+          }
           FntSetFont(old);
         }
         break;
@@ -228,6 +270,7 @@ void CtlEraseControl(ControlType *controlP) {
           WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
           break;
         case selectorTriggerCtl:
+        case colorTriggerCtl:
           WinDrawGrayRectangleFrame(simpleFrame, &controlP->bounds);
           break;
         default:

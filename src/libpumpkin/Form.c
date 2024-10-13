@@ -309,11 +309,13 @@ static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP) {
 
 Boolean FrmDispatchEvent(EventType *eventP) {
   FormType *formP = FrmGetActiveForm();
-  Boolean r;
+  Boolean r = false;
 
-  r = FrmDispatchEventInternal(formP, eventP);
-  if (!r && formP) {
-    r = FrmHandleEvent(formP, eventP);
+  if (formP) {
+    r = FrmDispatchEventInternal(formP, eventP);
+    if (!r && formP) {
+      r = FrmHandleEvent(formP, eventP);
+    }
   }
 
   return r;
@@ -696,6 +698,22 @@ Boolean FrmGetVisible(FormType *formP, UInt16 objIndex) {
   }
 
   return visible;
+}
+
+void FrmSetColorTrigger(FormType *formP, UInt16 id, RGBColorType *rgb, Boolean draw) {
+  ControlType *ctl;
+  UInt16 index;
+  char *label, buf[16];
+
+  index = FrmGetObjectIndex(formP, id);
+  ctl = (ControlType *)FrmGetObjectPtr(formP, index);
+  label = (char *)CtlGetLabel(ctl);
+  StrNPrintF(buf, sizeof(buf)-1, "#%02X%02X%02X", rgb->r, rgb->g, rgb->b);
+  StrNCopy(label, buf, 7);
+
+  if (draw) {
+    FrmDrawObject(formP, index, false);
+  }
 }
 
 static void FrmReleaseFocus(FormType *formP) {
@@ -2603,6 +2621,9 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
       c->text = &c->buf[0];
       c->len = len;
       xmemcpy(c->text, text, len);
+      if (StrCompare(c->text, "#000000") == 0) {
+        c->style = colorTriggerCtl;
+      }
       debug(DEBUG_TRACE, "Form", "control id %d font %d style %d attr 0x%04X text \"%s\" at (%d,%d,%d,%d)", id, font, style, attr, text ? text : "", x, y, w, h);
     }
   }

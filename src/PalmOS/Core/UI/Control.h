@@ -41,7 +41,7 @@ ControlAttrType;
 
 enum controlStyles {buttonCtl, pushButtonCtl, checkboxCtl, popupTriggerCtl,
 						  selectorTriggerCtl, repeatingButtonCtl, sliderCtl,
-						  feedbackSliderCtl };
+						  feedbackSliderCtl, colorTriggerCtl };
 typedef enum controlStyles ControlStyleType;
 
 enum buttonFrames {noButtonFrame, standardButtonFrame, boldButtonFrame,
