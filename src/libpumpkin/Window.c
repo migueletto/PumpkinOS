@@ -1684,12 +1684,13 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
   Coord x1, y1, x2, y2;
   BitmapCompressionType compression;
-  Boolean bitmapTransp, dither, delete, dbl, hlf;
+  Boolean windowEndianness, bitmapEndianness, bitmapTransp, dither, delete, dbl, hlf;
 
   if (bitmapP && wh && rect) {
     windowBitmap = WinGetBitmap(wh);
     windowDensity = BmpGetDensity(windowBitmap);
     windowDepth = BmpGetBitDepth(windowBitmap);
+    windowEndianness = BmpGetLittleEndianBits(windowBitmap);
 
     if ((best = bitmapP) != NULL) {
       compression = BmpGetCompressionType(best);
@@ -1702,6 +1703,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
       bitmapDensity = BmpGetDensity(best);
       bitmapDepth = BmpGetBitDepth(best);
+      bitmapEndianness = BmpGetLittleEndianBits(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
       dither = !BmpGetNoDither(bitmapP);
 
@@ -1729,7 +1731,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
 
 #ifndef ANDROID
-      if (bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
+      if (bitmapEndianness == windowEndianness && bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
         // it is possible to use fast copy
         RctCopyRectangle(rect, &srcRect);
         coordSys = module->coordSys;

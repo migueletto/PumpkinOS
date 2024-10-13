@@ -75,7 +75,8 @@ typedef struct BitmapFlagsType
 	UInt16	directColor:1;					// direct color bitmap
 	UInt16	indirectColorTable:1;		// if true, color table pointer follows BitmapType structure
 	UInt16	noDither:1;						// if true, blitter does not dither
-	UInt16 	reserved:8;
+	UInt16	littleEndian:1;						// if true, pixel data is little endian
+	UInt16 	reserved:7;
 }
 #endif
 BitmapFlagsType;

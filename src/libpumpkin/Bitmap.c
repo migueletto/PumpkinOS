@@ -26,7 +26,8 @@ typedef enum {
   BitmapFlagForScreen,
   BitmapFlagDirectColor,
   BitmapFlagIndirectColorTable,
-  BitmapFlagNoDither
+  BitmapFlagNoDither,
+  BitmapFlagLittleEndian
 } BitmapFlagSelector;
 
 #define BitmapFlagAll 0xFFFF
@@ -121,7 +122,6 @@ typedef enum {
 
 typedef struct {
   UInt16 density;
-  Boolean le16;
 } bmp_module_t;
 
 typedef struct {
@@ -175,16 +175,6 @@ int BmpFinishModule(void) {
   return 0;
 }
 
-void BmpSetLittleEndian16(Boolean le16) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
-  module->le16 = le16;
-}
-
-Boolean BmpGetLittleEndian16(void) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
-  return module->le16;
-}
-
 static Boolean isEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;
   UInt32 i;
@@ -232,8 +222,11 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
 #define put2(a,p,i) { if (le) put2l(a, p, i); else put2b(a, p, i); }
 #define put4(a,p,i) { if (le) put4l(a, p, i); else put4b(a, p, i); }
 
-#define get2_16(a,p,i) (le || module->le16) ? get2l(a, p, i) : get2b(a, p, i)
-#define put2_16(a,p,i) { if (le || module->le16) put2l(a, p, i); else put2b(a, p, i); }
+#define get2_16(a,p,i) (le || leBits) ? get2l(a, p, i) : get2b(a, p, i)
+#define put2_16(a,p,i) { if (le || leBits) put2l(a, p, i); else put2b(a, p, i); }
+
+#define get4_32(a,p,i) (le || leBits) ? get4l(a, p, i) : get4b(a, p, i)
+#define put4_32(a,p,i) { if (le || leBits) put4l(a, p, i); else put4b(a, p, i); }
 
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 v8, version;
@@ -293,6 +286,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
                   case BitmapFlagDirectColor:        v16 &= 0xFBFF; v16 |= value ? 0x0400 : 0x0000; value = v16; break;
                   case BitmapFlagIndirectColorTable: v16 &= 0xFDFF; v16 |= value ? 0x0200 : 0x0000; value = v16; break;
                   case BitmapFlagNoDither:           v16 &= 0xFEFF; v16 |= value ? 0x0100 : 0x0000; value = v16; break;
+                  case BitmapFlagLittleEndian:       v16 &= 0xFF7F; v16 |= value ? 0x0080 : 0x0000; value = v16; break;
                 }
                 put2(value, (UInt8 *)bmp, selector);
               } else {
@@ -305,6 +299,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
                   case BitmapFlagDirectColor:        value = (v16 & 0x0400) ? 1 : 0; break;
                   case BitmapFlagIndirectColorTable: value = (v16 & 0x0200) ? 1 : 0; break;
                   case BitmapFlagNoDither:           value = (v16 & 0x0100) ? 1 : 0; break;
+                  case BitmapFlagLittleEndian:       value = (v16 & 0x0080) ? 1 : 0; break;
                 } else {
                   value = v16;
                 }
@@ -322,6 +317,14 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
   }
 
   return value;
+}
+
+Boolean BmpGetLittleEndianBits(const BitmapType *bitmapP) {
+  return BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagLittleEndian);
+}
+
+void BmpSetLittleEndianBits(const BitmapType *bitmapP, Boolean le) {
+  BmpSetCommonFlag((BitmapType *)bitmapP, BitmapFlagLittleEndian, le);
 }
 
 UInt32 BmpV0GetSetField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
@@ -1680,15 +1683,15 @@ IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y) {
 }
 
 UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   UInt8 b, *bits;
   UInt16 w, rowBytes;
   UInt32 offset;
   UInt32 value = 0;
-  Boolean le;
+  Boolean le, leBits;
 
   if (bitmapP) {
     le = BmpLittleEndian(bitmapP);
+    leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
     bits = BmpGetBits(bitmapP);
     BmpGetDimensions(bitmapP, NULL, NULL, &rowBytes);
 
@@ -1724,7 +1727,7 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
         break;
       case 32:
         offset = y * rowBytes + x*4;
-        get4l(&value, bits, offset);
+        get4_32(&value, bits, offset);
         break;
     }
   }
@@ -1770,17 +1773,24 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
         bits = BmpGetBits(bitmapP);
         offset = y * rowBytes + x*3;
         rgbP->r = bits[offset];
-        rgbP->g = bits[offset+1];
-        rgbP->b = bits[offset+2];
+        rgbP->g = bits[offset + 1];
+        rgbP->b = bits[offset + 2];
         break;
       case 32:
         BmpGetDimensions(bitmapP, NULL, NULL, &rowBytes);
         bits = BmpGetBits(bitmapP);
         offset = y * rowBytes + x*4;
-        // little-endian: B G R A
-        rgbP->b = bits[offset];
-        rgbP->g = bits[offset+1];
-        rgbP->g = bits[offset+2];
+        if (BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian)) {
+          // little-endian: B G R A
+          rgbP->r = bits[offset + 2];
+          rgbP->g = bits[offset + 1];
+          rgbP->b = bits[offset];
+        } else {
+          // big-endian: A R G B
+          rgbP->r = bits[offset + 1];
+          rgbP->g = bits[offset + 2];
+          rgbP->b = bits[offset + 3];
+        }
         break;
     }
 
@@ -1791,26 +1801,23 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
 }
 
 void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   ColorTableType *colorTable;
   UInt32 offset, transparentValue, c;
   Int32 offsetb;
-  UInt8 *bits, b, red, green, blue, gray;
+  UInt8 *bits, b, alpha, red, green, blue, gray;
   UInt16 depth, rowBytes, rgb;
   Coord width, height, i, j, k;
-  Boolean le, transp;
+  Boolean le, leBits, transp;
 
   if (bitmapP && surface && w > 0 && h > 0) {
-//debug(1, "XXX", "BmpDraw sx=%d sy=%d w=%d h=%d x=%d y=%d", sx, sy, w, h, x, y);
     le = BmpLittleEndian(bitmapP);
+    leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
 
   if (sx < width && sy < height) {
-//debug(1, "XXX", "BmpDraw coords ok");
     bits = BmpGetBits(bitmapP);
 
     if (bits) {
-//debug(1, "XXX", "BmpDraw bits ok");
       if (sx < 0) {
         w += sx;
         x -= sx;
@@ -1827,10 +1834,8 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
       if ((sy + h) >= height) {
         h = height - sy;
       }
-//debug(1, "XXX", "BmpDraw adjust sx=%d sy=%d w=%d h=%d x=%d y=%d", sx, sy, w, h, x, y);
 
       if (w > 0 && h > 0) {
-//debug(1, "XXX", "BmpDraw w h ok");
         transp = BmpGetTransparentValue(bitmapP, &transparentValue);
         depth = BmpGetBitDepth(bitmapP);
 
@@ -1906,7 +1911,8 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             break;
           case 16:
             offset = sy * rowBytes + sx*2;
-//debug(1, "XXX", "BmpDraw depth=16 rb=%d offset=%d", rowBytes, offset);
+            // XXX transparentValue is 24-bits RGB, but pixel values are 16-bits 565, so convert transparentValue to 16-bits
+            transparentValue = rgb565(r32(transparentValue), g32(transparentValue), b32(transparentValue));
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 2) {
                 get2_16(&rgb, bits, offset + k);
@@ -1924,9 +1930,9 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             offset = sy * rowBytes + sx*3;
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 3) {
-                red   = bits[offset];
-                green = bits[offset+1];
-                blue  = bits[offset+2];
+                red   = bits[offset + k];
+                green = bits[offset + k + 1];
+                blue  = bits[offset + k + 2];
                 if (!useTransp || !transp || rgb24(red, green, blue) != transparentValue) {
                   c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
                   surface->setpixel(surface->data, x+j, y+i, c);
@@ -1938,14 +1944,21 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             offset = sy * rowBytes + sx*4;
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 4) {
-                // little-endian: B G R A
-                blue  = bits[offset];
-                green = bits[offset+1];
-                red   = bits[offset+2];
-                if (!useTransp || !transp || rgb32(red, green, blue) != transparentValue) {
-                  c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                  surface->setpixel(surface->data, x+j, y+i, c);
+                if (BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian)) {
+                  // little-endian: B G R A
+                  alpha = bits[offset + k + 3];
+                  red   = bits[offset + k + 2];
+                  green = bits[offset + k + 1];
+                  blue  = bits[offset + k];
+                } else {
+                  // big-endian: A R G B
+                  alpha = bits[offset + k];
+                  red   = bits[offset + k + 1];
+                  green = bits[offset + k + 2];
+                  blue  = bits[offset + k + 3];
                 }
+                c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, useTransp ? alpha : 0xff);
+                surface->setpixel(surface->data, x+j, y+i, c);
               }
             }
             break;
@@ -1975,7 +1988,7 @@ static UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTab
       b = b ? 0x000000 : 0xFFFFFF;
       break;
     case 32:
-      b = b ? 0x000000 : 0xFFFFFF;
+      b = b ? 0xFF000000 : 0xFFFFFFFF;
       break;
   }
 
@@ -2020,7 +2033,7 @@ static UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTa
       b = rgb24(gray2values[b], gray2values[b], gray2values[b]);
       break;
     case 32:
-      b = rgb32(gray2values[b], gray2values[b], gray2values[b]);
+      b = rgba32(gray2values[b], gray2values[b], gray2values[b], 0xff);
       break;
   }
 
@@ -2046,7 +2059,7 @@ static UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTa
       b = rgb24(gray4values[b], gray4values[b], gray4values[b]);
       break;
     case 32:
-      b = rgb32(gray4values[b], gray4values[b], gray4values[b]);
+      b = rgba32(gray4values[b], gray4values[b], gray4values[b], 0xff);
       break;
   }
 
@@ -2079,7 +2092,7 @@ static UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boole
     case  8: b = BmpRGBToIndex(rgb.r, rgb.g, rgb.b, dstColorTable); break;
     case 16: b = rgb565(rgb.r, rgb.g, rgb.b); break;
     case 24: b = rgb24(rgb.r, rgb.g, rgb.b); break;
-    case 32: b = rgb32(rgb.r, rgb.g, rgb.b); break;
+    case 32: b = rgba32(rgb.r, rgb.g, rgb.b, 0xff); break;
   }
 
   return b;
@@ -2092,7 +2105,7 @@ static UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstCol
     case  4: b = rgbToGray4(r565(b), g565(b), b565(b)); break;
     case  8: b = BmpRGBToIndex(r565(b), g565(b), b565(b), dstColorTable); break;
     case 24: b = rgb24(r565(b), g565(b), b565(b)); break;
-    case 32: b = rgb32(r565(b), g565(b), b565(b)); break;
+    case 32: b = rgba32(r565(b), g565(b), b565(b), 0xff); break;
   }
 
   return b;
@@ -2105,7 +2118,7 @@ UInt32 BmpConvertFrom24Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable
     case  4: b = rgbToGray4(r24(b), g24(b), b24(b)); break;
     case  8: b = BmpRGBToIndex(r24(b), g24(b), b24(b), dstColorTable); break;
     case 16: b = rgb565(r24(b), g24(b), b24(b)); break;
-    case 32: b = rgb32(r24(b), g24(b), b24(b)); break;
+    case 32: b = rgba32(r24(b), g24(b), b24(b), 0xff); break;
   }
 
   return b;
@@ -2447,14 +2460,14 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 
 static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   RGBColorType rgb, aux;
   UInt8 *bits;
   UInt16 rowBytes, old, fg, bg;
   UInt32 offset, dataSize;
-  Boolean le;
+  Boolean le, leBits;
 
   le = BmpLittleEndian(dst);
+  leBits = BmpGetCommonFlag(dst, BitmapFlagLittleEndian);
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
@@ -2749,14 +2762,13 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value) {
 }
 
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
   ColorTableType *srcColorTable, *dstColorTable, *colorTable;
   UInt8 srcDepth, dstDepth, *bits;
   UInt32 srcPixel, dstPixel, offset;
   UInt32 srcTransparentValue, dstTransparentValue;
   UInt16 srcRowBytes, dstRowBytes, aux;
   Coord srcWidth, srcHeight, dstWidth, dstHeight;
-  Boolean le, srcTransp, dstTransp, isSrcDefault, isDstDefault;
+  Boolean le, leBits, srcTransp, dstTransp, isSrcDefault, isDstDefault;
 
   BmpGetDimensions(src, &srcWidth, &srcHeight, &srcRowBytes);
   BmpGetDimensions(dst, &dstWidth, &dstHeight, &dstRowBytes);
@@ -2781,6 +2793,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     dstDepth = BmpGetBitDepth(dst);
     bits = BmpGetBits(src);
     le = BmpLittleEndian(src);
+    leBits = BmpGetCommonFlag(src, BitmapFlagLittleEndian);
 
     switch (srcDepth) {
       case 1:
@@ -2817,7 +2830,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         dstPixel = (dstDepth == 24) ? srcPixel : BmpConvertFrom24Bits(srcPixel, dstDepth, dstColorTable);
         break;
       case 32:
-        get4l(&srcPixel, bits, sy * srcRowBytes + sx*4);
+        get4_32(&srcPixel, bits, sy * srcRowBytes + sx*4);
         dstPixel = (dstDepth == 32) ? srcPixel : BmpConvertFrom32Bits(srcPixel, dstDepth, dstColorTable);
         break;
     }
