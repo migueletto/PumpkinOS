@@ -1,12 +1,7 @@
 #include <PalmOS.h>
 
-#include "sys.h"
-#include "thread.h"
-#include "pwindow.h"
-#include "vfs.h"
 #include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 #define NCOLS 18
 
@@ -60,7 +55,7 @@ static UInt16 getSliderColor(FormType *frm, UInt16 controlID, char *buf, UInt16 
   UInt16 minValue, maxValue, value, color = 0;
 
   if (getSliderValues(frm, controlID, &minValue, &maxValue, &value)) {
-    color = maxValue > minValue ? (255 * (value - minValue)) / (maxValue - minValue) : 0;
+    color = maxValue > minValue ? (value - minValue) * (maxValue - minValue + 1) : 0;
     if (buf) StrNPrintF(buf, max, "%02d", value);
   }
 
@@ -75,7 +70,7 @@ static void setSliderColor(FormType *frm, UInt16 controlID, UInt16 labelID, UInt
   if ((index = FrmGetObjectIndex(frm, controlID)) != frmInvalidObjectId) {
     if ((ctl = (ControlType *)FrmGetObjectPtr(frm, index)) != NULL) {
       CtlGetSliderValues(ctl, &minValue, &maxValue, NULL, NULL);
-      value = minValue + (color * (maxValue - minValue)) / 255;
+      value = minValue + color / (maxValue - minValue + 1);
       CtlSetSliderValues(ctl, NULL, NULL, NULL, &value);
       StrNPrintF(buf, sizeof(buf)-1, "%02d", value);
       FrmCopyLabel(frm, labelID, buf);
