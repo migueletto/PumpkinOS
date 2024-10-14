@@ -16,8 +16,6 @@ typedef struct {
   MenuBarType *currentMenu;
 } menu_module_t;
 
-extern thread_key_t *menu_key;
-
 int MenuInitModule(void) {
   menu_module_t *module;
 
@@ -25,7 +23,7 @@ int MenuInitModule(void) {
     return -1;
   }
 
-  thread_set(menu_key, module);
+  pumpkin_set_local_storage(menu_key, module);
 
   return 0;
 }
@@ -35,9 +33,9 @@ void *MenuReinitModule(void *module) {
 
   if (module) {
     MenuFinishModule();
-    thread_set(menu_key, module);
+    pumpkin_set_local_storage(menu_key, module);
   } else {
-    old = (menu_module_t *)thread_get(menu_key);
+    old = (menu_module_t *)pumpkin_get_local_storage(menu_key);
     MenuInitModule();
   }
 
@@ -45,7 +43,7 @@ void *MenuReinitModule(void *module) {
 }
 
 int MenuFinishModule(void) {
-  menu_module_t *module = (menu_module_t *)thread_get(menu_key);
+  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
 
   if (module) {
     xfree(module);
@@ -98,12 +96,12 @@ MenuBarType *MenuInit(UInt16 resourceId) {
 }
 
 MenuBarType *MenuGetActiveMenu(void) {
-  menu_module_t *module = (menu_module_t *)thread_get(menu_key);
+  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
   return module->currentMenu;
 }
 
 MenuBarType *MenuSetActiveMenu(MenuBarType *menuP) {
-  menu_module_t *module = (menu_module_t *)thread_get(menu_key);
+  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
 
   debug(DEBUG_TRACE, "Menu", "MenuSetActiveMenu %p", menuP);
   MenuBarType *prev = module->currentMenu;

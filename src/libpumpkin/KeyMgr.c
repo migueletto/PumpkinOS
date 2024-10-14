@@ -16,8 +16,6 @@ typedef struct {
   UInt32 keyMask;
 } key_module_t;
 
-extern thread_key_t *key_key;
-
 int KeyInitModule(void) {
   key_module_t *module;
 
@@ -30,13 +28,13 @@ int KeyInitModule(void) {
   module->doubleTapDelay = 10;
   module->queueAhead = false;
   module->keyMask = 0xFFFFFFFF;
-  thread_set(key_key, module);
+  pumpkin_set_local_storage(key_key, module);
 
   return 0;
 }
 
 int KeyFinishModule(void) {
-  key_module_t *module = (key_module_t *)thread_get(key_key);
+  key_module_t *module = (key_module_t *)pumpkin_get_local_storage(key_key);
 
   if (module) {
     xfree(module);
@@ -57,7 +55,7 @@ UInt32 KeyCurrentState(void) {
 }
 
 Err KeyRates(Boolean set, UInt16 *initDelayP, UInt16 *periodP, UInt16 *doubleTapDelayP, Boolean *queueAheadP) {
-  key_module_t *module = (key_module_t *)thread_get(key_key);
+  key_module_t *module = (key_module_t *)pumpkin_get_local_storage(key_key);
 
   if (set) {
     debug(DEBUG_INFO, "KeyMgr", "KeyRates set %d,%d,%d,%d", initDelayP ? *initDelayP : 0, periodP ? *periodP : 0, doubleTapDelayP ? *doubleTapDelayP : 0, queueAheadP ? *queueAheadP : 0);
@@ -80,7 +78,7 @@ Err KeyRates(Boolean set, UInt16 *initDelayP, UInt16 *periodP, UInt16 *doubleTap
 // Returns the old key Mask.
 
 UInt32 KeySetMask(UInt32 keyMask) {
-  key_module_t *module = (key_module_t *)thread_get(key_key);
+  key_module_t *module = (key_module_t *)pumpkin_get_local_storage(key_key);
   UInt32 old;
 
   debug(DEBUG_INFO, "KeyMgr", "KeySetMask 0x%08X", keyMask);

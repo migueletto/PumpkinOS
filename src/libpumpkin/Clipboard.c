@@ -10,8 +10,6 @@
 
 #define PALMOS_MODULE "Clipboard"
 
-extern thread_key_t *clp_key;
-
 typedef struct {
   MemHandle textHandle;
   char text[cbdMaxTextLength*2];
@@ -24,13 +22,13 @@ int ClpInitModule(void) {
     return -1;
   }
 
-  thread_set(clp_key, module);
+  pumpkin_set_local_storage(clp_key, module);
 
   return 0;
 }
 
 int ClpFinishModule(void) {
-  clp_module_t *module = (clp_module_t *)thread_get(clp_key);
+  clp_module_t *module = (clp_module_t *)pumpkin_get_local_storage(clp_key);
 
   if (module) {
     if (module->textHandle) {
@@ -135,7 +133,7 @@ static UInt16 ClipboardToUTF8(UInt8 *dst, UInt8 *src, UInt16 length) {
 // WARNING! You can’t add null-terminated strings to the clipboard.
 
 void ClipboardAddItem(const ClipboardFormatType format, const void *ptr, UInt16 length) {
-  clp_module_t *module = (clp_module_t *)thread_get(clp_key);
+  clp_module_t *module = (clp_module_t *)pumpkin_get_local_storage(clp_key);
 
   switch (format) {
     case clipboardText:
@@ -162,7 +160,7 @@ void ClipboardAddItem(const ClipboardFormatType format, const void *ptr, UInt16 
 }
 
 Err ClipboardAppendItem(const ClipboardFormatType format, const void *ptr, UInt16 length) {
-  clp_module_t *module = (clp_module_t *)thread_get(clp_key);
+  clp_module_t *module = (clp_module_t *)pumpkin_get_local_storage(clp_key);
   Err err = memErrNotEnoughSpace;
 
   switch (format) {
@@ -198,7 +196,7 @@ Err ClipboardAppendItem(const ClipboardFormatType format, const void *ptr, UInt1
 // bytes of the string you’ve retrieved.
 
 MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length) {
-  clp_module_t *module = (clp_module_t *)thread_get(clp_key);
+  clp_module_t *module = (clp_module_t *)pumpkin_get_local_storage(clp_key);
   MemHandle h = NULL;
   char *s;
   int len;

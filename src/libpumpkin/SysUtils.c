@@ -19,8 +19,6 @@ typedef struct {
   UInt32 comparF68k;
 } sysu_module_t;
 
-extern thread_key_t *sysu_key;
-
 int SysUInitModule(void) {
   sysu_module_t *module;
 
@@ -28,13 +26,13 @@ int SysUInitModule(void) {
     return -1;
   }
 
-  thread_set(sysu_key, module);
+  pumpkin_set_local_storage(sysu_key, module);
 
   return 0;
 }
 
 int SysUFinishModule(void) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
 
   if (module) {
     xfree(module);
@@ -230,12 +228,12 @@ Boolean SysBinarySearch(void const *baseP, UInt16 numOfElements, Int16 width, Se
 }
 
 static int compare68k(const void *e1, const void *e2) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
   return CallCompareFunction(module->comparF68k, (void *)e1, (void *)e2, module->other);
 }
 
 void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF, Int32 other) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
 
   module->comparF68k = comparF;
   module->other = other;
@@ -244,12 +242,12 @@ void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF,
 }
 
 static int compare(const void *e1, const void *e2) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
   return module->comparF((void *)e1, (void *)e2, module->other);
 }
 
 void SysQSort(void *baseP, UInt16 numOfElements, Int16 width, CmpFuncPtr comparF, Int32 other) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
 
   module->comparF = comparF;
   module->other = other;
@@ -258,12 +256,12 @@ void SysQSort(void *baseP, UInt16 numOfElements, Int16 width, CmpFuncPtr comparF
 }
 
 static int compareP(const void *e1, const void *e2) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
   return module->comparFP((void *)e1, (void *)e2, module->otherP);
 }
 
 void SysQSortP(void *baseP, UInt32 numOfElements, Int32 width, CmpFuncPPtr comparFP, void *otherP) {
-  sysu_module_t *module = (sysu_module_t *)thread_get(sysu_key);
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
 
   module->comparFP = comparFP;
   module->otherP = otherP;

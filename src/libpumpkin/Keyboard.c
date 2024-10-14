@@ -28,8 +28,6 @@ typedef struct {
   UInt16 graffitiState;
 } kbd_module_t;
 
-extern thread_key_t *kbd_key;
-
 static UInt8 alpha_lower[] = {
   'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
   'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'',
@@ -68,13 +66,13 @@ int KeyboardInitModule(void) {
   module->kbd = kbdAlpha;
   module->upper = false;
   module->bitmapBase = 32000;
-  thread_set(kbd_key, module);
+  pumpkin_set_local_storage(kbd_key, module);
 
   return 0;
 }
 
 int KeyboardFinishModule(void) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
 
   if (module) {
     xfree(module);
@@ -99,7 +97,7 @@ static void DrawKeyFrame(Coord x1, Coord y1, Coord x2, Coord y2, Boolean last) {
 }
 
 static UInt16 DrawChar(Char *label, UInt8 code, UInt16 bitmapID, UInt16 tw, UInt16 th, Coord x, Coord y, Boolean first, Boolean last) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   RectangleType rect;
   MemHandle h;
   BitmapType *bmp;
@@ -150,7 +148,7 @@ static UInt16 DrawChar(Char *label, UInt8 code, UInt16 bitmapID, UInt16 tw, UInt
 }
 
 static void DrawAlphaKeyboard(UInt8 *keys, UInt16 tw, UInt16 th, RectangleType *rect) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   UInt16 i;
   Coord x, y;
 
@@ -206,7 +204,7 @@ static void DrawAlphaKeyboard(UInt8 *keys, UInt16 tw, UInt16 th, RectangleType *
 }
 
 static void DrawNumberKeyboard(UInt16 tw, UInt16 th, RectangleType *rect) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   Coord x, y, x0, y0;
 
   x0 = rect->topLeft.x + 6;
@@ -304,7 +302,7 @@ static void DrawKeyboard(KeyboardType kbd, Boolean upper, UInt16 tw, UInt16 th, 
 }
 
 static Boolean SysKeyboardGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   RectangleType rect;
   FormType *formP;
   UInt16 kbdGadgetIndex;
@@ -330,7 +328,7 @@ static Boolean SysKeyboardGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 c
 }
 
 static void KbdSetType(KeyboardType kbd) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   FormType *formP;
   RectangleType rect;
   UInt16 objIndex;
@@ -348,7 +346,7 @@ static void KbdSetType(KeyboardType kbd) {
 }
 
 static Boolean SysKeyboardHandleEvent(EventType *eventP) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   FormType *formP;
   FieldType *kbdFldP;
   UInt16 kbdFieldIndex, i, pos;
@@ -443,7 +441,7 @@ static Boolean SysKeyboardHandleEvent(EventType *eventP) {
 }
 
 void SysKeyboardDialog(KeyboardType kbd) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   FormType *formP, *kbdFormP, *previous;
   FieldType *fldP, *kbdFldP;
   ControlType *typeControlP;
@@ -576,12 +574,12 @@ Boolean KbdHandleEvent(KeyboardStatus *ks, EventType * pEvent) {
 }
 
 UInt16 KbdGrfGetState(void) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   return module->graffitiState;
 }
 
 void KbdGrfSetState(UInt16 state) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   FormType *formP;
   UInt16 objIndex, numObjects;
 
@@ -615,7 +613,7 @@ void KbdGrfSetState(UInt16 state) {
 }
 
 Err KbdDrawKeyboard(KeyboardType kbd, Boolean upper, WinHandle wh, RectangleType *bounds) {
-  kbd_module_t *module = (kbd_module_t *)thread_get(kbd_key);
+  kbd_module_t *module = (kbd_module_t *)pumpkin_get_local_storage(kbd_key);
   WinHandle prev;
   BitmapType *bmp;
   RectangleType rect;

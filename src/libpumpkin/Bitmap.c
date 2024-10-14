@@ -121,16 +121,10 @@ typedef enum {
 #define BmpV3SetField(bmp, selector, value) BmpV3GetSetField(bmp, selector, 0, value, true)
 
 typedef struct {
-  UInt16 density;
-} bmp_module_t;
-
-typedef struct {
   UInt16 encoding;
   MemHandle h;
   BitmapType *bitmapP;
 } bmp_surface_t;
-
-extern thread_key_t *bmp_key;
 
 static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
 static void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable);
@@ -151,29 +145,6 @@ static const UInt8 gray4values[16] = {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 
 static UInt8 emptySlot[BitmapV1HeaderSize] = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-
-int BmpInitModule(UInt16 density) {
-  bmp_module_t *module;
-
-  if ((module = xcalloc(1, sizeof(bmp_module_t))) == NULL) {
-    return -1;
-  }
-
-  thread_set(bmp_key, module);
-  module->density = density;
-
-  return 0;
-}
-
-int BmpFinishModule(void) {
-  bmp_module_t *module = (bmp_module_t *)thread_get(bmp_key);
-
-  if (module) {
-    xfree(module);
-  }
-
-  return 0;
-}
 
 static Boolean isEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;

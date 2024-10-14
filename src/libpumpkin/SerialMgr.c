@@ -27,8 +27,6 @@ typedef struct {
   WakeupHandlerProcPtr wakeUpProc[MAX_SERIAL];
 } srm_module_t;
 
-extern thread_key_t *srm_key;
-
 int SrmInitModule(void) {
   srm_module_t *module;
   int id;
@@ -42,13 +40,13 @@ int SrmInitModule(void) {
     module->buf[id] = module->buffer[id];
   }
 
-  thread_set(srm_key, module);
+  pumpkin_set_local_storage(srm_key, module);
 
   return 0;
 }
 
 int SrmFinishModule(void) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
 
   if (module) {
     xfree(module);
@@ -62,7 +60,7 @@ Err SerialMgrInstall(void) {
 }
 
 static int SrmCheckPortId(UInt16 portId, Boolean invalidate) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id, r = -1;
 
   if (portId) {
@@ -79,7 +77,7 @@ static int SrmCheckPortId(UInt16 portId, Boolean invalidate) {
 }
 
 static Err SrmOpenInternal(UInt32 port, UInt32 baud, UInt16 *newPortIdP, Boolean background) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   uint32_t id;
   int portId;
 
@@ -189,7 +187,7 @@ Err SrmOpenBackground(UInt32 port, UInt32 baud, UInt16 *newPortIdP) {
 // Closes a serial port and makes it available to other applications,
 // regardless of whether the port is a foreground or background port.
 Err SrmClose(UInt16 portId) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
   Err err = serErrBadPort;
 
@@ -422,7 +420,7 @@ Err SrmSendFlush(UInt16 portId) {
 }
 
 static int SrmGetByte(int id, uint8_t *b, int64_t us) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int nread, r;
 
   if (module->bufPtr[id] == module->bufLen[id]) {
@@ -495,7 +493,7 @@ UInt32 SrmReceive(UInt16 portId, void *rcvBufP, UInt32 count, Int32 timeout, Err
 }
 
 static void SrmShiftBuffer(int id) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   uint32_t len, i;
 
   if (module->bufLen[id] && module->bufPtr[id]) {
@@ -509,7 +507,7 @@ static void SrmShiftBuffer(int id) {
 }
 
 Err SrmReceiveWait(UInt16 portId, UInt32 bytes, Int32 timeout) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   uint32_t us;
   int id, nread, r;
 
@@ -553,7 +551,7 @@ Err SrmReceiveWait(UInt16 portId, UInt32 bytes, Int32 timeout) {
 }
 
 Err SrmReceiveCheck(UInt16 portId, UInt32 *numBytesP) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {
@@ -566,7 +564,7 @@ Err SrmReceiveCheck(UInt16 portId, UInt32 *numBytesP) {
 }
 
 Err SrmReceiveFlush(UInt16 portId, Int32 timeout) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {
@@ -580,7 +578,7 @@ Err SrmReceiveFlush(UInt16 portId, Int32 timeout) {
 }
 
 Err SrmSetReceiveBuffer(UInt16 portId, void *bufP, UInt16 bufSize) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
   Err err = serErrBadPort;
 
@@ -600,7 +598,7 @@ Err SrmSetReceiveBuffer(UInt16 portId, void *bufP, UInt16 bufSize) {
 }
 
 Err SrmReceiveWindowOpen(UInt16 portId, UInt8 **bufPP, UInt32 *sizeP) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {
@@ -617,7 +615,7 @@ Err SrmReceiveWindowOpen(UInt16 portId, UInt8 **bufPP, UInt32 *sizeP) {
 }
 
 Err SrmReceiveWindowClose(UInt16 portId, UInt32 bytesPulled) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {
@@ -636,7 +634,7 @@ Err SrmReceiveWindowClose(UInt16 portId, UInt32 bytesPulled) {
 }
 
 Err SrmSetWakeupHandler(UInt16 portId, WakeupHandlerProcPtr procP, UInt32 refCon) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {
@@ -651,7 +649,7 @@ Err SrmSetWakeupHandler(UInt16 portId, WakeupHandlerProcPtr procP, UInt32 refCon
 }
 
 Err SrmPrimeWakeupHandler(UInt16 portId, UInt16 minBytes) {
-  srm_module_t *module = (srm_module_t *)thread_get(srm_key);
+  srm_module_t *module = (srm_module_t *)pumpkin_get_local_storage(srm_key);
   int id;
 
   if ((id = SrmCheckPortId(portId, 0)) == -1) {

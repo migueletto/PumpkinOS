@@ -22,8 +22,6 @@ typedef struct {
   UInt32 numFeatures;
 } ftr_module_t;
 
-extern thread_key_t *ftr_key;
-
 int FtrInitModule(void) {
   ftr_module_t *module;
 
@@ -31,13 +29,13 @@ int FtrInitModule(void) {
     return -1;
   }
 
-  thread_set(ftr_key, module);
+  pumpkin_set_local_storage(ftr_key, module);
 
   return 0;
 }
 
 int FtrFinishModule(void) {
-  ftr_module_t *module = (ftr_module_t *)thread_get(ftr_key);
+  ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
 
   if (module) {
     xfree(module);
@@ -51,7 +49,7 @@ Err FtrInit(void) {
 }
 
 Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
-  ftr_module_t *module = (ftr_module_t *)thread_get(ftr_key);
+  ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Err err = ftrErrNoSuchFeature;
 
@@ -190,7 +188,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
 // next system reset or until you explicitly undefine the feature with FtrUnregister.
 
 Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
-  ftr_module_t *module = (ftr_module_t *)thread_get(ftr_key);
+  ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Err err = memErrNotEnoughSpace;
 
@@ -214,7 +212,7 @@ Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
 }
 
 Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
-  ftr_module_t *module = (ftr_module_t *)thread_get(ftr_key);
+  ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Err err = ftrErrNoSuchFeature;
 

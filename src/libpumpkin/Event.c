@@ -31,8 +31,6 @@ typedef struct {
   Boolean penMove;
 } evt_module_t;
 
-extern thread_key_t *evt_key;
-
 #define lastRegularEvent attnIndicatorSelectEvent
 
 static char *eventName[] = {
@@ -85,13 +83,13 @@ int EvtInitModule(void) {
     return -1;
   }
 
-  thread_set(evt_key, module);
+  pumpkin_set_local_storage(evt_key, module);
 
   return 0;
 }
 
 int EvtFinishModule(void) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
 
   if (module) {
     xfree(module);
@@ -101,7 +99,7 @@ int EvtFinishModule(void) {
 }
 
 void EvtReturnPenMove(Boolean penMove) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   module->penMove = penMove;
 }
 
@@ -148,7 +146,7 @@ void EvtPrintEvent(char *op, EventType *event) {
 }
 
 void EvtAddEventToQueue(const EventType *event) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
 
   if (event->eType == penUpEvent && module->insideRepeatingButtonCtl) {
     module->insideRepeatingButtonCtl = false;
@@ -170,7 +168,7 @@ void EvtAddEventToQueue(const EventType *event) {
 }
 
 void EvtAddUniqueEventToQueue(const EventType *eventP, UInt32 id, Boolean inPlace) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   int i, j;
 
   if (id == 0) {
@@ -229,7 +227,7 @@ static void adjustCoords(Coord *x, Coord *y) {
 }
 
 int EvtPumpEvents(Int32 timeoutUs) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   EventType event;
   //notify_broadcast_t *nb;
   //SysNotifyProcPtr f;
@@ -522,7 +520,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
 }
 
 void EvtEmptyQueue(void) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   int i, j;
 
   for (i = 0; i < module->numEvents; i++) {
@@ -536,7 +534,7 @@ void EvtEmptyQueue(void) {
 }
 
 Err EvtFlushPenQueue(void) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   int i, j, k;
 
   for (i = 0, k = 0; i < module->numEvents; i++) {
@@ -565,7 +563,7 @@ Err EvtFlushPenQueue(void) {
 
 // Return true if a low-level system event (such as a pen or key event) is available.
 Boolean EvtSysEventAvail(Boolean ignorePenUps) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   int i, j;
 
   for (;;) {
@@ -596,7 +594,7 @@ Boolean EvtSysEventAvail(Boolean ignorePenUps) {
 }
 
 Boolean EvtEventAvail(void) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
 
   for (;;) {
     if (EvtPumpEvents(0) != 1) break;
@@ -607,7 +605,7 @@ Boolean EvtEventAvail(void) {
 
 // timeout: time in us to wait before an event is returned (evtWaitForever means wait indefinitely).
 void EvtGetEventUs(EventType *event, Int32 timeoutUs) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
 
   MemSet(event, sizeof(EventType), 0);
   EvtPumpEvents(0);
@@ -702,7 +700,7 @@ void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
 }
 
 Boolean EvtSetNullEventTick(UInt32 tick) {
-  evt_module_t *module = (evt_module_t *)thread_get(evt_key);
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   Boolean r = false;
 
   if (module->needNullTickCount == 0 || module->needNullTickCount > tick || module->needNullTickCount <= TimGetTicks()) {

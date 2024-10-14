@@ -41,8 +41,6 @@ typedef struct {
   gps_parse_line_f parse_line;
 } gps_module_t;
 
-extern thread_key_t *gps_key;
-
 int GPSInitModule(gps_parse_line_f parse_line, bt_provider_t *bt) {
   gps_module_t *module;
 
@@ -55,13 +53,13 @@ int GPSInitModule(gps_parse_line_f parse_line, bt_provider_t *bt) {
   module->numSats = NUM_SATS;
   module->ptr = -1;
   module->handle = -1;
-  thread_set(gps_key, module);
+  pumpkin_set_local_storage(gps_key, module);
 
   return 0;
 }
 
 int GPSFinishModule(void) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
 
   if (module) {
     xfree(module);
@@ -172,7 +170,7 @@ static void gpslib_destructor(void *p) {
 }
 
 Err GPSOpen(const UInt16 refNum) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   io_addr_t addr;
   priv_ptr_t *priv_ptr;
   gps_priv_t *priv;
@@ -244,7 +242,7 @@ Err GPSOpen(const UInt16 refNum) {
 }
 
 Err GPSClose(const UInt16 refNum) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
 
   if (module->ptr != -1) {
     ptr_free(module->ptr, TAG_GPSPRIV);
@@ -257,13 +255,13 @@ Err GPSClose(const UInt16 refNum) {
 }
 
 UInt8 GPSGetMaxSatellites(const UInt16 refNum) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
 
   return module->numSats;
 }
 
 Err GPSGetStatus(const UInt16 refNum, GPSStatusDataType *status) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   gps_priv_t *priv;
   Err err = gpsErrNotOpen;
 
@@ -281,7 +279,7 @@ Err GPSGetStatus(const UInt16 refNum, GPSStatusDataType *status) {
 }
 
 Err GPSGetPosition(const UInt16 refNum, GPSPositionDataType *position) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   gps_priv_t *priv;
   Err err = gpsErrNotOpen;
 
@@ -300,7 +298,7 @@ Err GPSGetPosition(const UInt16 refNum, GPSPositionDataType *position) {
 }
 
 Err GPSGetTime(const UInt16 refNum, GPSTimeDataType *time) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   gps_priv_t *priv;
   Err err = gpsErrNotOpen;
 
@@ -318,7 +316,7 @@ Err GPSGetTime(const UInt16 refNum, GPSTimeDataType *time) {
 }
 
 Err GPSGetVelocity(const UInt16 refNum, GPSVelocityDataType *velocity) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   gps_priv_t *priv;
   Err err = gpsErrNotOpen;
 
@@ -336,7 +334,7 @@ Err GPSGetVelocity(const UInt16 refNum, GPSVelocityDataType *velocity) {
 }
 
 Err GPSGetPVT(const UInt16 refNum, GPSPVTDataType *pvt) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   gps_priv_t *priv;
   Err err = gpsErrNotOpen;
 
@@ -364,7 +362,7 @@ Err GPSGetPVT(const UInt16 refNum, GPSPVTDataType *pvt) {
   float       elevation;  // elevation (radians)
 */
 Err GPSGetSatellites(const UInt16 refNum, GPSSatDataType *sat) {
-  gps_module_t *module = (gps_module_t *)thread_get(gps_key);
+  gps_module_t *module = (gps_module_t *)pumpkin_get_local_storage(gps_key);
   int i;
 
   if (sat) {

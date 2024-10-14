@@ -21,8 +21,6 @@ typedef struct {
   UInt32 last;
 } sys_module_t;
 
-extern thread_key_t *sys_key;
-
 int SysInitModule(void) {
   sys_module_t *module;
 
@@ -34,13 +32,13 @@ int SysInitModule(void) {
     StrCopy(module->serialNumber, "12345");
     module->t0 = sys_get_clock();
   }
-  thread_set(sys_key, module);
+  pumpkin_set_local_storage(sys_key, module);
 
   return 0;
 }
 
 int SysFinishModule(void) {
-  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
 
   if (module) {
     if (module->serialNumber) MemPtrFree(module->serialNumber);
@@ -123,7 +121,7 @@ void SysUILaunch(void) {
 }
 
 Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
-  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   char name[dmDBNameLength];
   EventType event;
 
@@ -143,7 +141,7 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
 }
 
 int SysUIAppSwitchCont(launch_request_t *request) {
-  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   int r = 0;
 
   if (module->request.name[0]) {
@@ -233,7 +231,7 @@ Char *SysGetOSVersionString(void) {
 }
 
 Err SysGetROMToken(UInt16 cardNo, UInt32 token, UInt8 **dataP, UInt16 *sizeP) {
-  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   Err err = -1;
 
   if (token == sysROMTokenSnum) {
@@ -528,6 +526,6 @@ UInt16 SysBatteryInfoV20(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalTh
 
 // Return the tick count since the last reset.
 UInt32 TimGetTicks(void) {
-  sys_module_t *module = (sys_module_t *)thread_get(sys_key);
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   return ((uint64_t)sys_get_clock() - module->t0) / 10000; // XXX 100 ticks per second
 }

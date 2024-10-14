@@ -27,8 +27,6 @@ typedef struct {
   Boolean centerDialogs;
 } frm_module_t;
 
-extern thread_key_t *frm_key;
-
 static const char *frmObjType[] = {
   "frmFieldObj",
   "frmControlObj",
@@ -53,7 +51,7 @@ int FrmInitModule(void) {
     return -1;
   }
 
-  thread_set(frm_key, module);
+  pumpkin_set_local_storage(frm_key, module);
 
   return 0;
 }
@@ -63,9 +61,9 @@ void *FrmReinitModule(void *module) {
 
   if (module) {
     FrmFinishModule();
-    thread_set(frm_key, module);
+    pumpkin_set_local_storage(frm_key, module);
   } else {
-    old = (frm_module_t *)thread_get(frm_key);
+    old = (frm_module_t *)pumpkin_get_local_storage(frm_key);
     FrmInitModule();
   }
 
@@ -73,7 +71,7 @@ void *FrmReinitModule(void *module) {
 }
 
 int FrmFinishModule(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
 
   if (module) {
     xfree(module);
@@ -105,7 +103,7 @@ static void FrmCenterForm(FormType *formP) {
 }
 
 Boolean FrmGetCenterDialogs(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   Boolean center = false;
 
   if (module) {
@@ -116,7 +114,7 @@ Boolean FrmGetCenterDialogs(void) {
 }
 
 void FrmCenterDialogs(Boolean center) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
 
   if (module) {
     module->centerDialogs = center;
@@ -124,7 +122,7 @@ void FrmCenterDialogs(Boolean center) {
 }
 
 void FrmGotoForm(UInt16 formId) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   EventType event;
 
   debug(DEBUG_TRACE, "Form", "FrmGotoForm %d", formId);
@@ -151,7 +149,7 @@ void FrmGotoForm(UInt16 formId) {
 }
 
 static Err FrmInitFormInternal(FormType *formP) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   //RectangleType rect;
   FormList *p;
   Coord width, height, xmargin, ymargin, w, h;
@@ -208,7 +206,7 @@ static Err FrmInitFormInternal(FormType *formP) {
 }
 
 FormType *FrmInitForm(UInt16 rscID) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormType *formP = NULL;
   MemHandle h;
   UInt16 size;
@@ -242,7 +240,7 @@ FormType *FrmInitForm(UInt16 rscID) {
 // Set the active form. All input (key and pen) is directed to the active form and all drawing occurs there.
 
 void FrmSetActiveForm(FormType *formP) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   WinHandle wh;
   EventType event;
 
@@ -269,7 +267,7 @@ void FrmSetActiveForm(FormType *formP) {
 }
 
 FormType *FrmGetActiveForm(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   return module->currentForm;
 }
 
@@ -798,7 +796,7 @@ Boolean FrmTrackPenUp(UInt32 x, UInt32 y) {
 // handler and then, if the event was not handled, to this function.
 
 Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   EventType event;
   RectangleType rect;
   FormObjectType obj;
@@ -1094,7 +1092,7 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
 }
 
 static void FrmDeleteFormInternal(FormType *formP) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
 
   debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d", formP->formId);
 
@@ -1127,7 +1125,7 @@ static void FrmDeleteFormInternal(FormType *formP) {
 // This function does not modify the display.
 
 void FrmDeleteForm(FormType *formP) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormList *p, *q;
 
   if (formP) {
@@ -1246,7 +1244,7 @@ void FrmEraseForm(FormType *formP) {
 }
 
 UInt16 FrmGetActiveFormID(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   return module->currentForm ? module->currentForm->formId : 0;
 }
 
@@ -1321,7 +1319,7 @@ UInt16 FrmGetFormId(const FormType *formP) {
 }
 
 FormType *FrmGetFormPtr(UInt16 formId) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormList *p;
 
   for (p = module->list; p; p = p->next) {
@@ -1334,7 +1332,7 @@ FormType *FrmGetFormPtr(UInt16 formId) {
 }
 
 FormType *FrmGetFirstForm(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   return module->list ? module->list->formP : NULL;
 }
 
@@ -1610,7 +1608,7 @@ UInt16 FrmDoDialog(FormType *formP) {
   10007: stop
 */
 static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormType *previous, *formP;
   RectangleType rect;
   UInt16 bitmapID, len, tw, th, x;
@@ -1791,7 +1789,7 @@ void FrmPopupForm(UInt16 formId) {
 }
 
 void FrmReturnToForm(UInt16 formId) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormList *p;
 
   // Erase and delete the currently active form and make the specified form the active form.
@@ -1834,7 +1832,7 @@ void FrmUpdateForm(UInt16 formId, UInt16 updateCode) {
 }
 
 void FrmCloseAllForms(void) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormList *p, *q;
   EventType event;
 
@@ -1891,7 +1889,7 @@ Boolean FrmPointInTitle(const FormType *formP, Coord x, Coord y) {
 }
 
 void FrmSetMenu(FormType *formP, UInt16 menuRscID) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
 
   if (formP) {
     if (formP->mbar) {
@@ -2323,7 +2321,7 @@ Err FrmAddSpaceForObject(FormType **formPP, MemPtr *objectPP, FormObjectKind obj
 }
 
 FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coord width, Coord height, Boolean modal, UInt16 defaultButton, UInt16 helpRscID, UInt16 menuRscID) {
-  frm_module_t *module = (frm_module_t *)thread_get(frm_key);
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormTitleType *title;
   FormType *formP;
   int len;

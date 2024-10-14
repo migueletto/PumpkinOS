@@ -21,8 +21,6 @@ typedef struct {
   Int16 x, y, height;
 } inspt_module_t;
 
-extern thread_key_t *ins_key;
-
 int InsPtInitModule(void) {
   inspt_module_t *module;
 
@@ -31,13 +29,13 @@ int InsPtInitModule(void) {
   }
 
   module->tps = SysTicksPerSecond();
-  thread_set(ins_key, module);
+  pumpkin_set_local_storage(ins_key, module);
 
   return 0;
 }
 
 int InsPtFinishModule(void) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   if (module) {
     xfree(module);
@@ -47,7 +45,7 @@ int InsPtFinishModule(void) {
 }
 
 static void drawCursor(Boolean on) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
   IndexedColorType oldf;
 
   if (module->height > 0) {
@@ -68,7 +66,7 @@ void InsPtInitialize(void) {
 // This function should be called only by the Field functions.
 
 void InsPtSetLocation(const Int16 x, const Int16 y) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   if (module->enabled && module->on) {
     debug(DEBUG_TRACE, "Field", "InsPtSetLocation (%d,%d) erase caret", x, y);
@@ -83,7 +81,7 @@ void InsPtSetLocation(const Int16 x, const Int16 y) {
 // This function is called by the Field functions. An application would not normally call this function.
 
 void InsPtGetLocation(Int16 *x, Int16 *y) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   if (x) *x = module->x;
   if (y) *x = module->y;
@@ -95,7 +93,7 @@ void InsPtGetLocation(Int16 *x, Int16 *y) {
 // The sysNotifyInsPtEnableEvent is broadcast at the start of InsPtEnable.
 
 void InsPtEnable(Boolean enableIt) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   module->enabled = enableIt;
 //debug(1, "XXX", "InsPtEnable %d", module->enabled);
@@ -109,7 +107,7 @@ void InsPtEnable(Boolean enableIt) {
 // Return true if the insertion point is enabled or false if the insertion point is disabled.
 
 Boolean InsPtEnabled(void) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   return module->enabled;
 }
@@ -119,7 +117,7 @@ Boolean InsPtEnabled(void) {
 // If the insertion point is visible when its height is changed, it’s erased and redrawn with its new height.
 
 void InsPtSetHeight(const Int16 height) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   if (module->enabled && module->on) {
     debug(DEBUG_TRACE, "Field", "InsSetheight %d erase caret", height);
@@ -132,7 +130,7 @@ void InsPtSetHeight(const Int16 height) {
 // Returns the height of the insertion point, in pixels.
 
 Int16 InsPtGetHeight(void) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   return module->height;
 }
@@ -140,7 +138,7 @@ Int16 InsPtGetHeight(void) {
 // system use only
 
 void InsPtCheckBlink(void) {
-  inspt_module_t *module = (inspt_module_t *)thread_get(ins_key);
+  inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
   UInt32 t;
 
   if (module->enabled) {

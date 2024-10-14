@@ -109,8 +109,6 @@ typedef struct {
 
 static void StoDecodeResource(storage_handle_t *res);
 
-extern thread_key_t *sto_key;
-
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
   void **q;
   char st[8];
@@ -155,7 +153,7 @@ void StoPtrFree(void *p) {
 }
 
 static storage_handle_t *StoPtrRecoverHandle(void *p) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
   void **q;
 
@@ -731,7 +729,7 @@ int StoInit(char *path, mutex_t *mutex) {
         }
         vfs_closedir(dir);
         if (sto) {
-          thread_set(sto_key, sto);
+          pumpkin_set_local_storage(sto_key, sto);
           r = 0;
         }
       } else {
@@ -747,7 +745,7 @@ int StoInit(char *path, mutex_t *mutex) {
 }
 
 int StoRefresh(void) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   vfs_dir_t *dir;
   vfs_ent_t *ent;
   storage_db_t *db, *old, *oldList;
@@ -791,7 +789,7 @@ int StoRefresh(void) {
 }
 
 int StoFinish(void) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   DmOpenType *dbRef;
   storage_db_t *db;
   int r = -1;
@@ -804,7 +802,7 @@ int StoFinish(void) {
       }
     }
     vfs_close_session(sto->session);
-    thread_set(sto_key, NULL);
+    pumpkin_set_local_storage(sto_key, NULL);
     xfree(sto);
     r = 0;
   }
@@ -892,7 +890,7 @@ static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
 }
 
 Err DmOpenDatabaseInfo(DmOpenRef dbP, LocalID *dbIDP, UInt16 *openCountP, UInt16 *modeP, UInt16 *cardNoP, Boolean *resDBP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   Err err = dmErrInvalidParam;
@@ -918,7 +916,7 @@ Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP,
      LocalID *sortInfoIDP, UInt32 *typeP,
      UInt32 *creatorP) {
 
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Err err = dmErrInvalidParam;
 
@@ -949,7 +947,7 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
     LocalID *sortInfoIDP, UInt32 *typeP,
     UInt32 *creatorP) {
 
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   char buf1[VFS_PATH], buf2[VFS_PATH];
   Err err = dmErrInvalidParam;
@@ -996,7 +994,7 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
 }
 
 Err DmGetNextDatabaseByTypeCreator(Boolean newSearch, DmSearchStatePtr stateInfoP, UInt32 type, UInt32 creator, Boolean onlyLatestVers, UInt16 *cardNoP, LocalID *dbIDP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Err err = dmErrCantFind;
 
@@ -1024,7 +1022,7 @@ Err DmGetNextDatabaseByTypeCreator(Boolean newSearch, DmSearchStatePtr stateInfo
 }
 
 LocalID DmGetDatabase(UInt16 cardNo, UInt16 index) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   UInt16 i;
   storage_db_t *db;
   LocalID dbID = 0;
@@ -1046,7 +1044,7 @@ LocalID DmGetDatabase(UInt16 cardNo, UInt16 index) {
 }
 
 LocalID DmFindDatabase(UInt16 cardNo, const Char *nameP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   LocalID dbID = 0;
   Err err = dmErrCantFind;
@@ -1069,7 +1067,7 @@ LocalID DmFindDatabase(UInt16 cardNo, const Char *nameP) {
 }
 
 static MemHandle DmQueryRecordEx(DmOpenRef dbP, UInt16 index, Boolean setBusy) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   vfs_file_t *f;
   DmOpenType *dbRef;
@@ -1131,7 +1129,7 @@ MemHandle DmGetRecord(DmOpenRef dbP, UInt16 index) {
 }
 
 Err DmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   vfs_file_t *f;
@@ -1178,7 +1176,7 @@ Err DmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
 }
 
 Err DmDatabaseSize(UInt16 cardNo, LocalID dbID, UInt32 *numRecordsP, UInt32 *totalBytesP, UInt32 *dataBytesP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   uint32_t i, n;
@@ -1203,7 +1201,7 @@ Err DmDatabaseSize(UInt16 cardNo, LocalID dbID, UInt32 *numRecordsP, UInt32 *tot
 }
 
 Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 attr, UInt32 uniqueIDSeed, Boolean overwrite) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db, *existing = NULL;
   SysNotifyParamType notify;
   SysNotifyDBCreatedType dbCreated;
@@ -1525,7 +1523,7 @@ static int StoMapContents(storage_t *sto, storage_db_t *db) {
 }
 
 DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Boolean ok;
   DmOpenType *first, *dbRef = NULL;
@@ -1577,7 +1575,7 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
 }
 
 Err DmCloseDatabase(DmOpenRef dbP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -1704,7 +1702,7 @@ Err DmCloseDatabase(DmOpenRef dbP) {
 }
 
 Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   vfs_dir_t *dir;
   vfs_ent_t *ent;
@@ -1794,14 +1792,14 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
 }
 
 UInt16 DmNumDatabases(UInt16 cardNo) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   StoCheckErr(errNone);
 
   return sto->num_storage;
 }
 
 Err DmDatabaseProtect(UInt16 cardNo, LocalID dbID, Boolean protect) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Err err = dmErrInvalidParam;
 
@@ -1827,7 +1825,7 @@ Err DmDatabaseProtect(UInt16 cardNo, LocalID dbID, Boolean protect) {
 }
 
 UInt16 DmNumRecords(DmOpenRef dbP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   UInt16 numRecs = 0;
@@ -1852,7 +1850,7 @@ UInt16 DmNumRecords(DmOpenRef dbP) {
 }
 
 Err DmRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueIDP, LocalID *chunkIDP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -1887,7 +1885,7 @@ Err DmRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueIDP, 
 }
 
 Err DmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueIDP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -1924,7 +1922,7 @@ Err DmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueID
 }
 
 DmOpenRef DmOpenDatabaseByTypeCreator(UInt32 type, UInt32 creator, UInt16 mode) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   DmSearchStateType stateInfo;
   UInt16 cardNo;
   LocalID dbID;
@@ -1947,7 +1945,7 @@ DmOpenRef DmOpenDBNoOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode) {
 }
 
 DmOpenRef DmNextOpenDatabase(DmOpenRef currentP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   DmOpenType *dbRef = NULL;
 
   if (currentP) {
@@ -1961,7 +1959,7 @@ DmOpenRef DmNextOpenDatabase(DmOpenRef currentP) {
 }
 
 DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef = NULL;
 
@@ -1979,7 +1977,7 @@ DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
 }
 
 static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnly) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   vfs_file_t *f;
@@ -2065,7 +2063,7 @@ MemHandle DmGet1Resource(DmResType type, DmResID resID) {
 
 // Search all open resource databases for a resource by type and ID, or by pointer if it is non-NULL.
 UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   vfs_file_t *f;
@@ -2148,7 +2146,7 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
 }
 
 UInt16 DmSearchRecord(MemHandle recH, DmOpenRef *dbPP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   vfs_file_t *f;
@@ -2216,7 +2214,7 @@ UInt16 DmSearchRecord(MemHandle recH, DmOpenRef *dbPP) {
 }
 
 MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   vfs_file_t *f;
@@ -2294,7 +2292,7 @@ Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID) {
 }
 
 Err DmReleaseResource(MemHandle resourceH) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   char st[8];
   Err err = dmErrIndexOutOfRange;
@@ -2352,7 +2350,7 @@ Err DmReleaseResource(MemHandle resourceH) {
 }
 
 MemHandle DmResizeResource(MemHandle resourceH, UInt32 newSize) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   storage_db_t *db;
   void *newBuf, *old;
@@ -2405,7 +2403,7 @@ MemHandle DmResizeResource(MemHandle resourceH, UInt32 newSize) {
 }
 
 MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   char buf[VFS_PATH];
@@ -2454,7 +2452,7 @@ MemHandle DmNewResource(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 
 }
 
 Err DmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID resID) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -2497,7 +2495,7 @@ Err DmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID r
 }
 
 Err DmRemoveResource(DmOpenRef dbP, UInt16 index) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -2538,7 +2536,7 @@ Err DmRemoveResource(DmOpenRef dbP, UInt16 index) {
 }
 
 LocalID DmGetAppInfoID(DmOpenRef dbP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   LocalID appInfo = 0;
@@ -2558,7 +2556,7 @@ LocalID DmGetAppInfoID(DmOpenRef dbP) {
 }
 
 UInt16 DmNumRecordsInCategory(DmOpenRef dbP, UInt16 category) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -2588,7 +2586,7 @@ UInt16 DmNumRecordsInCategory(DmOpenRef dbP, UInt16 category) {
 }
 
 MemHandle DmQueryNextInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 category) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *ha, *h = NULL;
   DmOpenType *dbRef;
@@ -2653,7 +2651,7 @@ MemHandle DmQueryNextInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 category) 
 }
 
 static UInt16 DmFindSortPositionBinary(storage_db_t *db, MemHandle appInfoH, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other, UInt16 start, UInt16 end, UInt16 level) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   SortRecordInfoType recInfo, *recInfoP;
   vfs_file_t *f;
@@ -2726,7 +2724,7 @@ static UInt16 DmFindSortPositionBinary(storage_db_t *db, MemHandle appInfoH, voi
 // Note that the return value may be one greater Than the number of records.
 
 UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   MemHandle appInfoH;
@@ -2758,7 +2756,7 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
 }
 
 UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordInfo, UInt32 compar, Int16 other) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   MemHandle appInfoH;
@@ -2815,7 +2813,7 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
 }
 
 UInt16 DmPositionInCategory(DmOpenRef dbP, UInt16 index, UInt16 category) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -2846,7 +2844,7 @@ UInt16 DmPositionInCategory(DmOpenRef dbP, UInt16 index, UInt16 category) {
 }
 
 MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   void *p;
@@ -2898,7 +2896,7 @@ MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
 // becomes "to-1" after the move is complete.
 
 Err DmMoveRecord(DmOpenRef dbP, UInt16 from, UInt16 to) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   storage_handle_t *h;
@@ -2957,7 +2955,7 @@ Err DmMoveRecord(DmOpenRef dbP, UInt16 from, UInt16 to) {
 // entry from the database header, but simply sets the localChunkID of the record entry to NULL.
 
 Err DmDeleteRecord(DmOpenRef dbP, UInt16 index) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3023,7 +3021,7 @@ Err DmDeleteRecord(DmOpenRef dbP, UInt16 index) {
 // used for newly-created records that have just been deleted or records that have never been sync’ed.
 
 Err DmRemoveRecord(DmOpenRef dbP, UInt16 index) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3067,7 +3065,7 @@ Err DmRemoveRecord(DmOpenRef dbP, UInt16 index) {
 }
 
 MemHandle DmNewHandle(DmOpenRef dbP, UInt32 size) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   DmOpenType *dbRef;
 
   if (dbP) {
@@ -3081,7 +3079,7 @@ MemHandle DmNewHandle(DmOpenRef dbP, UInt32 size) {
 }
 
 Err DmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3114,7 +3112,7 @@ Err DmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
 }
 
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h = NULL;
   DmOpenType *dbRef;
@@ -3196,7 +3194,7 @@ MemHandle DmNewRecord(DmOpenRef dbP, UInt16 *atP, UInt32 size) {
 // If oldHP is not NULL, the new record replaces an existing record at index *atP and the handle of the old record is returned in *oldHP.
 
 Err DmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h, *old;
   DmOpenType *dbRef;
@@ -3295,7 +3293,7 @@ Err DmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP)
 // Unlike DmDeleteRecord, this routine removes its entry in the database header but it does not delete the actual record.
 
 Err DmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *old;
   DmOpenType *dbRef;
@@ -3362,7 +3360,7 @@ Err DmDetachResource(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
 }
 
 Err DmSet(void *recordP, UInt32 offset, UInt32 bytes, UInt8 value) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   uint16_t *attr;
   uint8_t *r, *b;
@@ -3423,7 +3421,7 @@ Err DmSetDirty(MemHandle handle) {
 }
 
 Err DmWriteOrCheck(void *recordP, UInt32 offset, const void *srcP, UInt32 bytes, Boolean onlyCheck) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   uint16_t *attr;
   uint8_t *r, *b;
@@ -3488,7 +3486,7 @@ Err DmWrite(void *recordP, UInt32 offset, const void *srcP, UInt32 bytes) {
 }
 
 Err DmStrCopy(void *recordP, UInt32 offset, const Char *srcP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   Err err = dmErrNotValidRecord;
 
   if (srcP) {
@@ -3500,7 +3498,7 @@ Err DmStrCopy(void *recordP, UInt32 offset, const Char *srcP) {
 }
 
 Err DmResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *resIDP, LocalID *chunkLocalIDP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3527,7 +3525,7 @@ Err DmSetResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID 
 }
 
 UInt16 DmNumResources(DmOpenRef dbP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   UInt16 numRecs = 0;
@@ -3551,7 +3549,7 @@ UInt16 DmNumResources(DmOpenRef dbP) {
 }
 
 void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   storage_handle_t *h;
@@ -3588,7 +3586,7 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
 }
 
 UInt16 DmFindResource(DmOpenRef dbP, DmResType resType, DmResID resID, MemHandle resH) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3630,7 +3628,7 @@ UInt16 DmFindResource(DmOpenRef dbP, DmResType resType, DmResID resID, MemHandle
 }
 
 UInt16 DmFindResourceType(DmOpenRef dbP, DmResType resType, UInt16 typeIndex) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3663,7 +3661,7 @@ UInt16 DmFindResourceType(DmOpenRef dbP, DmResType resType, UInt16 typeIndex) {
 }
 
 Err DmGetLastErr(void) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   return sto->lastErr;
 }
 
@@ -3705,7 +3703,7 @@ Err DmMoveCategory(DmOpenRef dbP, UInt16 toCategory, UInt16 fromCategory, Boolea
 // numRecs=1, index=0, offset=1, direction=-1: dmErrSeekFailed
 
 Err DmSeekRecordInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 offset, Int16 direction, UInt16 category) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h;
   DmOpenType *dbRef;
@@ -3802,7 +3800,7 @@ static Boolean StoValidTypeCreator(UInt8 *buf) {
 }
 
 Err DmCreateDatabaseFromImage(MemPtr bufferP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   char name[dmDBNameLength], st[8];
   UInt16 j, attr, version, numRecs, index, appInfoSize, sortInfoSize;
@@ -3953,7 +3951,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
 }
 
 int StoDeleteFile(char *name) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   return StoVfsUnlink(sto->session, name);
 }
 
@@ -4002,7 +4000,7 @@ static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
 }
 
 int StoDeployFile(char *path, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   vfs_file_t *f;
   LocalID dbID;
   UInt32 type, creator;
@@ -4055,7 +4053,7 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
 }
 
 int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   LocalID dbID;
   UInt32 type, creator;
   char name[dmDBNameLength], stype[8], screator[8];
@@ -4098,7 +4096,7 @@ int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
 }
 
 int StoDeployFiles(char *path, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   vfs_dir_t *dir;
   vfs_ent_t *ent;
   char *ext, buf[VFS_PATH];
@@ -4144,7 +4142,7 @@ int StoDeployFiles(char *path, AppRegistryType *ar) {
 }
 
 void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h2, *handle = NULL;
   void *p = NULL;
   Err err = dmErrInvalidParam;
@@ -4305,7 +4303,7 @@ Err MemInit(void) {
 }
 
 MemHandle MemHandleNew(UInt32 size) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
   Err err = dmErrInvalidParam;
 
@@ -4326,7 +4324,7 @@ MemHandle MemHandleNew(UInt32 size) {
 }
 
 Err MemHandleFree(MemHandle hh) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   char st[8];
   Err err = dmErrInvalidParam;
@@ -4374,7 +4372,7 @@ Err MemHandleFree(MemHandle hh) {
 }
 
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   DmOpenRef dbRef;
   void *p = NULL;
@@ -4426,7 +4424,7 @@ MemPtr MemHandleLock(MemHandle h) {
 }
 
 Err MemHandleUnlock(MemHandle h) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   Err err = dmErrInvalidParam;
 
@@ -4456,7 +4454,7 @@ Err MemHandleUnlock(MemHandle h) {
 }
 
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   Err err = dmErrInvalidParam;
 
@@ -4472,7 +4470,7 @@ Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount) {
 }
 
 MemPtr MemPtrNew(UInt32 size) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   MemHandle h;
   MemPtr p = NULL;
   Err err = memErrInvalidParam;
@@ -4493,7 +4491,7 @@ MemPtr MemGluePtrNew(UInt32 size) {
 }
 
 Err MemChunkFree(MemPtr chunkDataP) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   char st[8];
   Err err = memErrInvalidParam;
@@ -4532,7 +4530,7 @@ Err MemChunkFree(MemPtr chunkDataP) {
 }
 
 Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
   xmemcpy(dstP, sP, numBytes);
   StoCheckErr(errNone);
@@ -4540,7 +4538,7 @@ Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
 }
 
 Err MemSet(void *dstP, Int32 numBytes, UInt8 value) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   if (dstP == NULL) ErrFatalDisplayEx("MemSet NULL", 1);
   xmemset(dstP, value, numBytes);
   StoCheckErr(errNone);
@@ -4548,7 +4546,7 @@ Err MemSet(void *dstP, Int32 numBytes, UInt8 value) {
 }
 
 Int16 MemCmp(const void *s1, const void *s2, Int32 numBytes) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   Int16 r;
   if (s1 == NULL || s2 == NULL) ErrFatalDisplayEx("MemCmp NULL", 1);
   r = s1 && s2 ? sys_memcmp(s1, s2, numBytes) : -1;
@@ -4620,7 +4618,7 @@ MemPtr MemChunkNew(UInt16 heapID, UInt32 size, UInt16 attr) {
 
 // Recover the handle of a movable chunk, given a pointer to its data.
 MemHandle MemPtrRecoverHandle(MemPtr p) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
   Err err = memErrInvalidParam;
 
@@ -4706,7 +4704,7 @@ Err MemPtrSetOwner(MemPtr p, UInt16 owner) {
 }
 
 static Err MemResize(MemHandle h, UInt32 newSize) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   Err err = memErrInvalidParam;
 
@@ -4772,7 +4770,7 @@ Err MemPtrResetLock(MemPtr p) {
 }
 
 Err MemPtrUnlock(MemPtr p) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   MemHandle h;
   Err err = memErrInvalidParam;
 
@@ -4790,7 +4788,7 @@ UInt16 MemHandleFlags(MemHandle h) {
 }
 
 UInt32 MemHandleSize(MemHandle h) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   UInt32 size = 0;
   Err err = memErrInvalidParam;
@@ -4820,7 +4818,7 @@ UInt16 MemHandleOwner(MemHandle hh) {
 }
 
 UInt16 MemHandleLockCount(MemHandle h) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   UInt16 count = 0;
   Err err = memErrInvalidParam;
@@ -4848,7 +4846,7 @@ UInt16 MemHandleCardNo(MemHandle h) {
 }
 
 LocalID MemHandleToLocalID(MemHandle h) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   LocalID id = 0;
   Err err = memErrInvalidParam;
@@ -4906,7 +4904,7 @@ Err MemHandleResetLock(MemHandle h) {
 // so it is getting a MemPtr and casting to MemHandle, which will obviously not work here.
 // I am hoping that anyone that calls MemLocalIDToGlobal() assumes the returned value is a MemHandle.
 MemPtr MemLocalIDToGlobal(LocalID local, UInt16 cardNo) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
   Err err = memErrInvalidParam;
 
@@ -4927,7 +4925,7 @@ LocalIDKind MemLocalIDKind(LocalID local) {
 // If the local ID references a movable chunk and that chunk is not
 // locked, this function returns 0 to indicate an error.
 MemPtr MemLocalIDToPtr(LocalID local, UInt16 cardNo) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   uint8_t *p = NULL;
   Err err = memErrInvalidParam;
@@ -4950,7 +4948,7 @@ MemPtr MemLocalIDToPtr(LocalID local, UInt16 cardNo) {
 // If the local ID references a movable chunk handle, this routine
 // automatically locks the chunk before returning.
 MemPtr MemLocalIDToLockedPtr(LocalID local, UInt16 cardNo) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
   uint8_t *p = NULL;
   Err err = memErrInvalidParam;
@@ -4969,7 +4967,7 @@ MemPtr MemLocalIDToLockedPtr(LocalID local, UInt16 cardNo) {
 }
 
 MemHandle MemLocalIDToHandle(LocalID local) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
   Err err = memErrInvalidParam;
 
@@ -5025,7 +5023,7 @@ Err MemCardInfo(UInt16 cardNo, Char *cardNameP, Char *manufNameP, UInt16 *versio
 }
 
 Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   Err err = dmErrInvalidParam;
@@ -5050,7 +5048,7 @@ Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence) {
 }
 
 Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   Err err = dmErrInvalidParam;
@@ -5075,7 +5073,7 @@ Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size) {
 }
 
 Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   Err err = dmErrInvalidParam;
@@ -5100,7 +5098,7 @@ Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size) {
 }
 
 static int StoCompareHandle(const void *e1, const void *e2) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h1, *h2;
   SortRecordInfoType r1, r2;
   UInt8 *b1, *b2;
@@ -5178,7 +5176,7 @@ static int StoCompareHandle(const void *e1, const void *e2) {
 }
 
 static Err StoSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 other) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
   UInt32 i;
@@ -5262,7 +5260,7 @@ typedef struct {
 */
 
 static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCount, MemHandle *dbIDs, Boolean lookupName, Boolean m68k) {
-  storage_t *sto = (storage_t *)thread_get(sto_key);
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   SysDBListItemType *list, *p;
   UInt16 size, count, sizeofSysDBListItemType;

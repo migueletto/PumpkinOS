@@ -27,8 +27,6 @@ typedef struct {
   UInt16 defAmp;
 } snd_module_t;
 
-extern thread_key_t *snd_key;
-
 typedef struct {
   char *tag;
   SndStreamBufferCallback func;
@@ -65,13 +63,13 @@ int SndInitModule(audio_provider_t *ap) {
   }
 
   module->ap = ap;
-  thread_set(snd_key, module);
+  pumpkin_set_local_storage(snd_key, module);
 
   return 0;
 }
 
 int SndFinishModule(void) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
   if (module) {
     xfree(module);
@@ -85,7 +83,7 @@ Err SndInit(void) {
 }
 
 void SndSetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *defAmpP) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
   if (alarmAmpP) module->alarmAmp = *alarmAmpP;
   if (sysAmpP) module->sysAmp = *sysAmpP;
@@ -93,7 +91,7 @@ void SndSetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *defAmpP) {
 }
 
 void SndGetDefaultVolume(UInt16 *alarmAmpP, UInt16 *sysAmpP, UInt16 *masterAmpP) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
   if (alarmAmpP) *alarmAmpP = module->alarmAmp;
   if (sysAmpP) *sysAmpP = module->sysAmp;
@@ -298,7 +296,7 @@ Boolean SndCreateMidiList(UInt32 creator, Boolean multipleDBs, UInt16 *wCountP, 
 }
 
 Err SndPlaySmf(void *chanP, SndSmfCmdEnum cmd, UInt8 *smfP, SndSmfOptionsType *selP, SndSmfChanRangeType *chanRangeP, SndSmfCallbacksType *callbacksP, Boolean bNoWait) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   UInt32 i, j, id, len;
   UInt16 volume, mthd[3];
   Err err = sndErrBadParam;
@@ -419,7 +417,7 @@ Err SndPlaySmfResourceIrregardless(UInt32 resType, Int16 resID, SystemPreference
 }
 
 Err SndInterruptSmfIrregardless(void) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
   if (module->ap && module->ap->mixer_stop) {
     module->ap->mixer_stop();
@@ -614,7 +612,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
 }
 
 Err SndStreamStart(SndStreamRef channel) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd;
   SndStreamArg *arg;
   Err err = sndErrBadParam;
@@ -894,7 +892,7 @@ Err SndStreamDeviceControl(SndStreamRef channel, Int32 cmd, void* param, Int32 s
 }
 
 void SndStreamRefDestructor(void *p) {
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd = (SndStreamType *)p;
 
   if (snd) {
@@ -918,7 +916,7 @@ static Err SndStreamCreateInternal(
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative)            /* true if callback is arm native */ {
 
-  snd_module_t *module = (snd_module_t *)thread_get(snd_key);
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd;
   int ptr, pcm, samplesize;
   Err err = sndErrBadParam;

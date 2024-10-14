@@ -150,6 +150,34 @@ typedef struct {
 
 typedef struct pumpkin_httpd_t pumpkin_httpd_t;
 
+typedef enum {
+  sto_key,
+  dm_key,
+  evt_key,
+  fnt_key,
+  frm_key,
+  ins_key,
+  fld_key,
+  menu_key,
+  sys_key,
+  sysu_key,
+  uic_key,
+  win_key,
+  pref_key,
+  gps_key,
+  vfs_key,
+  kbd_key,
+  clp_key,
+  srm_key,
+  ftr_key,
+  key_key,
+  snd_key,
+  seltime_key,
+  fatal_key,
+  emu_key,
+  last_key
+} local_storage_key_t;
+
 typedef UInt32 PilotMainF(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
 Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, MemPtr cmdPBP, UInt32 *resultP, PilotMainF pilotMain);
 uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb);
@@ -166,6 +194,8 @@ void pumpkin_heap_walk(int global);
 
 int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
+int pumpkin_set_local_storage(local_storage_key_t key, void *p);
+void *pumpkin_get_local_storage(local_storage_key_t key);
 void pumpkin_deploy_files(char *path);
 void pumpkin_local_refresh(void);
 void pumpkin_set_spawner(int handle);
@@ -492,8 +522,6 @@ void AbtShowAboutPumpkin(UInt32 creator);
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow);
 void *WinReinitModule(void *module);
 int WinFinishModule(Boolean deleteDisplay);
-int BmpInitModule(UInt16 density);
-int BmpFinishModule(void);
 int FntInitModule(UInt16 density);
 int FntFinishModule(void);
 int UicInitModule(void);

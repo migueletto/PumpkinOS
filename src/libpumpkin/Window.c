@@ -55,8 +55,6 @@ typedef struct {
   UInt16 coordSys;
 } win_surface_t;
 
-extern thread_key_t *win_key;
-
 static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   BitmapType *bitmapP = WinGetBitmap(wh);
   uint8_t *bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
@@ -97,7 +95,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     return -1;
   }
 
-  thread_set(win_key, module);
+  pumpkin_set_local_storage(win_key, module);
 
   module->density = density;
   module->width = width;
@@ -197,9 +195,9 @@ void *WinReinitModule(void *module) {
 
   if (module) {
     WinFinishModule(false);
-    thread_set(win_key, module);
+    pumpkin_set_local_storage(win_key, module);
   } else {
-    old = (win_module_t *)thread_get(win_key);
+    old = (win_module_t *)pumpkin_get_local_storage(win_key);
     WinInitModule(old->density, old->width, old->height, old->depth0, old->displayWindow);
   }
 
@@ -207,7 +205,7 @@ void *WinReinitModule(void *module) {
 }
 
 int WinFinishModule(Boolean deleteDisplay) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module) {
     if (deleteDisplay) {
@@ -222,7 +220,7 @@ int WinFinishModule(Boolean deleteDisplay) {
 }
 
 RGBColorType *WinGetPalette(UInt16 n) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   switch (n) {
     case 1:  return module->defaultPalette1; break;
@@ -232,9 +230,7 @@ RGBColorType *WinGetPalette(UInt16 n) {
   }
 }
 
-static void pointTo(UInt16 density, Coord *x, Coord *y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
-
+static void pointTo(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
   switch (density) {
     case kDensityLow:
       switch (module->coordSys) {
@@ -255,9 +251,7 @@ static void pointTo(UInt16 density, Coord *x, Coord *y) {
   }
 }
 
-static void pointFrom(UInt16 density, Coord *x, Coord *y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
-
+static void pointFrom(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
   switch (density) {
     case kDensityLow:
       switch (module->coordSys) {
@@ -279,7 +273,7 @@ static void pointFrom(UInt16 density, Coord *x, Coord *y) {
 }
 
 ColorTableType *pumpkin_defaultcolorTable(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->colorTable;
 }
 
@@ -363,13 +357,13 @@ void WinMoveWindowAddr(WindowType *oldLocationP, WindowType *newLocationP) {
 }
 
 void WinSetActiveWindow(WinHandle winHandle) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   module->activeWindow = winHandle;
 //debug(1, "XXX", "WinSetActiveWindow %p", module->activeWindow);
 }
 
 WinHandle WinSetDrawWindow(WinHandle winHandle) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle prev = module->drawWindow;
   module->drawWindow = winHandle;
   debug(DEBUG_TRACE, "Window", "WinSetDrawWindow %p", module->drawWindow);
@@ -377,17 +371,17 @@ WinHandle WinSetDrawWindow(WinHandle winHandle) {
 }
 
 WinHandle WinGetDrawWindow(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->drawWindow;
 }
 
 WinHandle WinGetActiveWindow(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->activeWindow;
 }
 
 WinHandle WinGetDisplayWindow(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->displayWindow;
 }
 
@@ -479,11 +473,11 @@ void WinRestoreBits(WinHandle winHandle, Coord destX, Coord destY) {
 }
 
 void WinSetDisplayExtent(Coord extentX, Coord extentY) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   Err err;
 
-  pointFrom(module->density, &extentX, &extentY);
+  pointFrom(module, module->density, &extentX, &extentY);
   module->width = extentX;
   module->height = extentY;
 
@@ -499,11 +493,11 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
 }
 
 void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (extentX) *extentX = module->width;
   if (extentY) *extentY = module->height;
-  pointFrom(module->density, extentX, extentY);
+  pointFrom(module, module->density, extentX, extentY);
 }
 
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y) {
@@ -528,7 +522,7 @@ void WinGetBounds(WinHandle winH, RectangleType *rP) {
 // Set the bounds of the window to display-relative coordinates.
 // A visible window cannot have its bounds modified.
 void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bmp, *old;
   UInt32 density, depth;
   Coord width, height;
@@ -559,7 +553,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
 }
 
 void WinGetWindowExtent(Coord *extentX, Coord *extentY) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
     if (extentX) *extentX = module->drawWindow->windowBounds.extent.x;
@@ -573,7 +567,7 @@ void WinDisplayToWindowPt(Coord *extentX, Coord *extentY) {
 
 // Convert a window-relative coordinate to a display-relative coordinate. The coordinate passed is assumed to be relative to the draw window.
 void WinWindowToDisplayPt(Coord *extentX, Coord *extentY) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
     if (extentX) *extentX += module->drawWindow->windowBounds.topLeft.x;
@@ -589,7 +583,7 @@ BitmapType *WinGetBitmap(WinHandle winHandle) {
 // The various functions that access these fields convert the native coordinates to the coordinate system being used by the window.
 
 void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x1, y1, x2, y2;
 
   if (wh && rP) {
@@ -618,7 +612,7 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
 }
 
 void WinSetClip(const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
     WinSetClipingBounds(module->drawWindow, rP);
@@ -626,7 +620,7 @@ void WinSetClip(const RectangleType *rP) {
 }
 
 void WinResetClip(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
 //debug(1, "XXX", "WinResetClip %p", module->drawWindow);
@@ -638,7 +632,7 @@ void WinResetClip(void) {
 }
 
 void WinGetClip(RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x1, y1, x2, y2;
 
   if (module->drawWindow && rP) {
@@ -663,7 +657,7 @@ void WinGetClip(RectangleType *rP) {
 }
 
 void WinClipRectangle(RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x1, y1, x2, y2;
 
   if (module->drawWindow) {
@@ -717,8 +711,7 @@ Boolean WinModal(WinHandle winHandle) {
   return winHandle ? winHandle->windowFlags.modal : false;
 }
 
-static IndexedColorType getBit(WinHandle wh, Coord x, Coord y, RGBColorType *rgb) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static IndexedColorType getBit(win_module_t *module, WinHandle wh, Coord x, Coord y, RGBColorType *rgb) {
   BitmapType *bitmapP;
   IndexedColorType p = 0;
 
@@ -755,11 +748,11 @@ static IndexedColorType getBit(WinHandle wh, Coord x, Coord y, RGBColorType *rgb
 
 // Return the color value of a pixel in the current draw window
 IndexedColorType WinGetPixel(Coord x, Coord y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   IndexedColorType p = 0;
 
   if (module->drawWindow) {
-    p = getBit(module->drawWindow, x, y, NULL);
+    p = getBit(module, module->drawWindow, x, y, NULL);
   }
 
   return p;
@@ -767,11 +760,11 @@ IndexedColorType WinGetPixel(Coord x, Coord y) {
 
 // Return the RGB color values of a pixel in the current draw window
 Err WinGetPixelRGB(Coord x, Coord y, RGBColorType *rgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Err err = sysErrParamErr;
 
   if (module->drawWindow && rgbP) {
-    getBit(module->drawWindow, x, y, rgbP);
+    getBit(module, module->drawWindow, x, y, rgbP);
     err = errNone;
   }
 
@@ -779,17 +772,17 @@ Err WinGetPixelRGB(Coord x, Coord y, RGBColorType *rgbP) {
 }
 
 void WinAdjustCoords(Coord *x, Coord *y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
-  pointTo(module->density, x, y);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  pointTo(module, module->density, x, y);
 }
 
 void WinAdjustCoordsInv(Coord *x, Coord *y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
-  pointFrom(module->density, x, y);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  pointFrom(module, module->density, x, y);
 }
 
 static void WinAdjustCoordEnd(Coord *c, UInt16 cs) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   switch (module->density) {
     case kDensityLow:
@@ -805,8 +798,7 @@ static void WinAdjustCoordEnd(Coord *c, UInt16 cs) {
   }
 }
 
-static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static void dirty_region(win_module_t *module, Coord x1, Coord y1, Coord x2, Coord y2) {
   Coord xx1, yy1, xx2, yy2, aux;
 
 //debug(1, "XXX", "dirty_region (%d,%d,%d,%d) ...", x1, y1, x2, y2);
@@ -823,7 +815,7 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 
   xx1 = x1;
   yy1 = y1;
-  pointTo(module->density, &xx1, &yy1);
+  pointTo(module, module->density, &xx1, &yy1);
   xx2 = x2;
   yy2 = y2;
   WinAdjustCoordEnd(&xx2, module->coordSys);
@@ -837,11 +829,10 @@ static void dirty_region(Coord x1, Coord y1, Coord x2, Coord y2) {
 #define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 
-static Boolean WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode, Boolean checked) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static Boolean WinPutBit(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode, Boolean checked) {
   Boolean r = false;
 
-  pointTo(wh->density, &x, &y);
+  pointTo(module, wh->density, &x, &y);
   if (checked || CLIPW_OK(wh, x, y)) {
     Boolean dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
     BmpPutBit(b, false, WinGetBitmap(wh), x, y, mode, dbl);
@@ -851,13 +842,12 @@ static Boolean WinPutBit(WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperat
   return r;
 }
 
-static void WinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
   Coord x0, y0;
   Boolean ok;
 
   if (wh) {
-    ok = WinPutBit(wh, x, y, windowColor, mode, false);
+    ok = WinPutBit(module, wh, x, y, windowColor, mode, false);
 
     if (ok && wh == module->activeWindow && wh != module->displayWindow) {
       x0 = wh->windowBounds.topLeft.x;
@@ -866,7 +856,7 @@ static void WinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor,
         x0 <<= 1;
         y0 <<= 1;
       }
-      WinPutBit(module->displayWindow, x0 + x, y0 + y, displayColor, mode, true);
+      WinPutBit(module, module->displayWindow, x0 + x, y0 + y, displayColor, mode, true);
     }
   } else {
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
@@ -875,14 +865,14 @@ static void WinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor,
 
 #if 0
 static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord cx, cy, x0, y0;
   Boolean dbl;
 
   if (wh) {
     cx = x;
     cy = y;
-    pointTo(wh->density, &cx, &cy);
+    pointTo(module, wh->density, &cx, &cy);
 
     if (CLIPW_OK(wh, cx, cy)) {
       dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
@@ -891,7 +881,7 @@ static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowCol
       if (wh == module->activeWindow && wh != module->displayWindow) {
         cx = x;
         cy = y;
-        pointTo(module->displayWindow->density, &cx, &cy);
+        pointTo(module, module->displayWindow->density, &cx, &cy);
         x0 = wh->windowBounds.topLeft.x;
         y0 = wh->windowBounds.topLeft.y;
         dbl = module->displayWindow->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
@@ -940,8 +930,7 @@ static UInt32 getColor(win_module_t *module, UInt16 depth, Boolean back) {
   return c;
 }
 
-static UInt32 getPattern(WinHandle wh, Coord x, Coord y, PatternType pattern) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static UInt32 getPattern(win_module_t *module, WinHandle wh, Coord x, Coord y, PatternType pattern) {
   Coord rx, ry;
   UInt8 b, depth;
   UInt32 c1, c2, c = 0;
@@ -979,8 +968,7 @@ static UInt32 getPattern(WinHandle wh, Coord x, Coord y, PatternType pattern) {
   return c;
 }
 
-static void draw_hline(Coord x1, Coord x2, Coord y, PatternType pattern) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static void draw_hline(win_module_t *module, Coord x1, Coord x2, Coord y, PatternType pattern) {
   Coord x, aux;
   UInt32 c, d;
 
@@ -991,14 +979,13 @@ static void draw_hline(Coord x1, Coord x2, Coord y, PatternType pattern) {
   }
 
   for (x = x1; x <= x2; x++) {
-    c = getPattern(module->drawWindow, x, y, pattern);
-    d = getPattern(module->displayWindow, x, y, pattern);
-    WinPutBitDisplay(module->drawWindow, x, y, c, d, module->transferMode);
+    c = getPattern(module, module->drawWindow, x, y, pattern);
+    d = getPattern(module, module->displayWindow, x, y, pattern);
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
   }
 }
 
-static void draw_vline(Coord x, Coord y1, Coord y2, PatternType pattern) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static void draw_vline(win_module_t *module, Coord x, Coord y1, Coord y2, PatternType pattern) {
   Coord y, aux;
   UInt32 c, d;
 
@@ -1009,14 +996,13 @@ static void draw_vline(Coord x, Coord y1, Coord y2, PatternType pattern) {
   }
 
   for (y = y1; y <= y2; y++) {
-    c = getPattern(module->drawWindow, x, y, pattern);
-    d = getPattern(module->displayWindow, x, y, pattern);
-    WinPutBitDisplay(module->drawWindow, x, y, c, d, module->transferMode);
+    c = getPattern(module, module->drawWindow, x, y, pattern);
+    d = getPattern(module, module->displayWindow, x, y, pattern);
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
   }
 }
 
-static void draw_gline(int x1, int y1, int x2, int y2, PatternType pattern) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+static void draw_gline(win_module_t *module, int x1, int y1, int x2, int y2, PatternType pattern) {
   int dx, dy, sx, sy, err, e2;
   UInt32 c, d;
 
@@ -1029,9 +1015,9 @@ static void draw_gline(int x1, int y1, int x2, int y2, PatternType pattern) {
   err = (dx > dy ? dx : -dy)/2;
 
   for (;;) {
-    c = getPattern(module->drawWindow, x1, y1, pattern);
-    d = getPattern(module->displayWindow, x1, y1, pattern);
-    WinPutBitDisplay(module->drawWindow, x1, y1, c, d, module->transferMode);
+    c = getPattern(module, module->drawWindow, x1, y1, pattern);
+    d = getPattern(module, module->displayWindow, x1, y1, pattern);
+    WinPutBitDisplay(module, module->drawWindow, x1, y1, c, d, module->transferMode);
     if (x1 == x2 && y1 == y2) break;
     e2 = err;
     if (e2 > -dx) { err -= dy; x1 += sx; }
@@ -1040,19 +1026,19 @@ static void draw_gline(int x1, int y1, int x2, int y2, PatternType pattern) {
 }
 
 UInt8 WinGetBackAlpha(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->backAlpha;
 }
 
 UInt8 WinSetBackAlpha(UInt8 alpha) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt8 old = module->backAlpha;
   module->backAlpha = alpha;
   return old;
 }
 
 void WinEraseWindow(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RGBColorType back, fore;
   RectangleType rect;
   Coord y;
@@ -1063,15 +1049,15 @@ void WinEraseWindow(void) {
     WinSetForeColorRGB(&back, &fore);
     for (y = 0; y < rect.extent.y; y++) {
       //WinEraseLine(rect.topLeft.x, y, rect.topLeft.x + rect.extent.x - 1, y);
-      draw_hline(rect.topLeft.x, rect.topLeft.x + rect.extent.x - 1, y, blackPattern);
+      draw_hline(module, rect.topLeft.x, rect.topLeft.x + rect.extent.x - 1, y, blackPattern);
     }
     WinSetForeColorRGB(&fore, NULL);
-    if (module->drawWindow == module->activeWindow) dirty_region(rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
   }
 }
 
 void WinPaintPixel(Coord x, Coord y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   UInt32 c, d;
 
@@ -1080,8 +1066,8 @@ void WinPaintPixel(Coord x, Coord y) {
     c = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
     bitmapP = WinGetBitmap(module->displayWindow);
     d = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
-    WinPutBitDisplay(module->drawWindow, x, y, c, d, module->transferMode);
-    if (module->drawWindow == module->activeWindow) dirty_region(x, y, x, y);
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, x, y, x, y);
   }
 }
 
@@ -1126,7 +1112,7 @@ void WinErasePixel(Coord x, Coord y) {
     WinSetDrawMode(prevMode);
 
 void WinInvertPixel(Coord x, Coord y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   invertPrefix();
   if (!isDouble) x = WinScaleCoord(x, false);
   if (!isDouble) y = WinScaleCoord(y, false);
@@ -1145,17 +1131,17 @@ void WinPaintPixels(UInt16 numPoints, PointType pts[]) {
 }
 
 void WinPaintLine(Coord x1, Coord y1, Coord x2, Coord y2) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (y1 == y2) {
-    draw_hline(x1, x2, y2, module->pattern);
+    draw_hline(module, x1, x2, y2, module->pattern);
   } else if (x1 == x2) {
-    draw_vline(x1, y1, y2, module->pattern);
+    draw_vline(module, x1, y1, y2, module->pattern);
   } else {
-    draw_gline(x1, y1, x2, y2, module->pattern);
+    draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
 
-  if (module->drawWindow == module->activeWindow) dirty_region(x1, y1, x2, y2);
+  if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
 }
 
 void WinPaintLines(UInt16 numLines, WinLineType lines[]) {
@@ -1198,7 +1184,7 @@ void WinDrawGrayLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 }
 
 void WinInvertLine(Coord x1, Coord y1, Coord x2, Coord y2) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   invertPrefix();
   if (!isDouble) x1 = WinScaleCoord(x1, false);
   if (!isDouble) y1 = WinScaleCoord(y1, false);
@@ -1211,7 +1197,6 @@ void WinInvertLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 // fill=true : draw filled retangle inside rP (including limits)
 // fill=false: draw retangle border around rP (ouside limits)
 static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 cornerDiam, Boolean fill, Boolean gray) {
-  //win_module_t *module = (win_module_t *)thread_get(win_key);
   Coord x1, y1, x2, y2, y, d, aux;
   Int16 i;
 
@@ -1232,7 +1217,6 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
     if (cornerDiam == 0) {
       if (fill) {
         for (y = y1; y <= y2; y++) {
-          //draw_hline(x1, x2, y, module->pattern);
           WinPaintLine(x1, y, x2, y);
         }
       } else {
@@ -1242,23 +1226,14 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
             WinDrawGrayLine(x1-1-i, y2+1+i, x2+1+i, y2+1+i);
             WinDrawGrayLine(x1-1-i, y1-1-i, x1-1-i, y2+1+i);
             WinDrawGrayLine(x2+1+i, y1-1-i, x2+1+i, y2+1+i);
-            //draw_hline(x1-1-i, x2+1+i, y1-1-i, grayPattern);
-            //draw_hline(x1-1-i, x2+1+i, y2+1+i, grayPattern);
-            //draw_vline(x1-1-i, y1-1-i, y2+1+i, grayPattern);
-            //draw_vline(x2+1+i, y1-1-i, y2+1+i, grayPattern);
           } else {
             WinPaintLine(x1-1-i, y1-1-i, x2+1+i, y1-1-i);
             WinPaintLine(x1-1-i, y2+1+i, x2+1+i, y2+1+i);
             WinPaintLine(x1-1-i, y1-1-i, x1-1-i, y2+1+i);
             WinPaintLine(x2+1+i, y1-1-i, x2+1+i, y2+1+i);
-            //draw_hline(x1-1-i, x2+1+i, y1-1-i, module->pattern);
-            //draw_hline(x1-1-i, x2+1+i, y2+1+i, module->pattern);
-            //draw_vline(x1-1-i, y1-1-i, y2+1+i, module->pattern);
-            //draw_vline(x2+1+i, y1-1-i, y2+1+i, module->pattern);
           }
         }
       }
-      //if (module->drawWindow == module->activeWindow) dirty_region(x1-1, y1-1, x2+1, y2+1);
       return;
     }
 
@@ -1280,7 +1255,6 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
     for (y = y1; y <= y1+cornerDiam; y++) {
       if (fill) {
         WinPaintLine(x1+d, y, x2-d, y);
-        //draw_hline(x1+d, x2-d, y, module->pattern);
       } else {
         if (!gray || (y % 2) == 0) {
           for (i = 0; i < width; i++) {
@@ -1294,7 +1268,6 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
     for (; y < y2-cornerDiam; y++) {
       if (fill) {
         WinPaintLine(x1, y, x2, y);
-        //draw_hline(x1, x2, y, module->pattern);
       } else {
         if (!gray || (y % 2) == 0) {
           for (i = 0; i < width; i++) {
@@ -1308,7 +1281,6 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
     for (; y <= y2; y++) {
       if (fill) {
         WinPaintLine(x1+d, y, x2-d, y);
-        //draw_hline(x1+d, x2-d, y, module->pattern);
       } else {
         if (!gray || (y % 2) == 0) {
           for (i = 0; i < width; i++) {
@@ -1319,12 +1291,11 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
       }
       d++;
     }
-    //if (fill && module->drawWindow == module->activeWindow) dirty_region(x1-1, y1-1, x2+1, y2+1);
   }
 }
 
 void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   PatternType oldp = module->pattern;
   module->pattern = blackPattern; // XXX is this correct ? if it is not blackPattern, ChemTable does not paint the whole cell
   WinPaintRectangleF(rP, 1, cornerDiam, true, false);
@@ -1341,7 +1312,7 @@ void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RGBColorType back, fore;
   UInt8 alpha;
   Boolean f = false;
@@ -1367,7 +1338,7 @@ void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (rP) {
     invertPrefix();
     RectangleType rect;
@@ -1380,20 +1351,20 @@ void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (y1 == y2) {
-    draw_hline(x1, x2, y2, module->pattern);
+    draw_hline(module, x1, x2, y2, module->pattern);
   } else if (x1 == x2) {
-    draw_vline(x1, y1, y2, module->pattern);
+    draw_vline(module, x1, y1, y2, module->pattern);
   } else {
-    draw_gline(x1, y1, x2, y2, module->pattern);
+    draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
-  if (module->drawWindow == module->activeWindow) dirty_region(x1, y1, x2, y2);
+  if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
 }
 
 void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x1, y1, x2, y2, y, d, aux;
 
   if (rP) {
@@ -1412,18 +1383,18 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 
     d = cornerDiam;
     for (y = y1; y < y1+cornerDiam; y++) {
-      draw_hline(x1+d, x2-d, y, module->pattern);
+      draw_hline(module, x1+d, x2-d, y, module->pattern);
       d--;
     }
     for (; y < y2-cornerDiam; y++) {
-      draw_hline(x1, x2, y, module->pattern);
+      draw_hline(module, x1, x2, y, module->pattern);
     }
     d = 0;
     for (; y <= y2; y++) {
-      draw_hline(x1+d, x2-d, y, module->pattern);
+      draw_hline(module, x1+d, x2-d, y, module->pattern);
       d++;
     }
-    if (module->drawWindow == module->activeWindow) dirty_region(x1, y1, x2, y2);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
   }
 }
 
@@ -1436,7 +1407,7 @@ UInt16 shadowWidth : 2;  // only meaninful for cornerDiam=0
 UInt16 width       : 2;
 */
 void WinPaintRectangleFrame(FrameType frame, const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 cornerDiam, width;
 
   if (module->drawWindow && rP) {
@@ -1456,7 +1427,7 @@ void WinPaintRectangleFrame(FrameType frame, const RectangleType *rP) {
 }
 
 void WinDrawGrayRectangleFrame(FrameType frame, const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 cornerDiam, width;
 
   if (module->drawWindow && rP) {
@@ -1495,7 +1466,7 @@ void WinEraseRectangleFrame(FrameType frame, const RectangleType *rP) {
 }
 
 void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (rP) {
     invertPrefix();
     RectangleType rect;
@@ -1507,7 +1478,7 @@ void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
 }
 
 void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Coord dstX, Coord dstY) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *dstBmp;
   UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType dstRect, aux, clip, intersection, *dirtyRect;
@@ -1675,7 +1646,7 @@ void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *srcRect, Coord d
 }
 
 void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *windowBitmap, *displayBitmap, *best;
   RectangleType srcRect;
   UInt16 windowDensity, bitmapDensity, displayDensity, bitmapDepth, coordSys, displayDepth, windowDepth;
@@ -1884,7 +1855,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 }
 
 void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *srcRect, Coord dstX, Coord dstY, WinDrawOperation mode) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (srcWin == NULL) {
     debug(DEBUG_ERROR, "Window", "WinCopyRectangle srcWin is NULL");
@@ -1904,7 +1875,7 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *windowBitmap, *best;
   RectangleType rect;
   UInt16 bitmapDensity;
@@ -1949,7 +1920,7 @@ void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
 }
 
 static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   FontType *f;
   FontTypeV2 *f2;
   FontID font;
@@ -2088,7 +2059,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       w = FntCharsWidth((char *)chars, len);
       h = FntCharHeight();
       if (w > 0) {
-        dirty_region(x0, y0, x0+w-1, y0+h-1);
+        dirty_region(module, x0, y0, x0+w-1, y0+h-1);
       }
     }
   }
@@ -2137,7 +2108,7 @@ void WinPaintChars(const Char *chars, Int16 len, Coord x, Coord y) {
 // NOT mode.) This is the standard function for drawing inverted text.
 
 void WinDrawInvertedChars(const Char *chars, Int16 len, Coord x, Coord y) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   debug(DEBUG_TRACE, "Window", "WinDrawInvertedChars(\"%.*s\", %d, %d)", len, chars, x, y);
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   IndexedColorType oldt = module->textColor;
@@ -2187,14 +2158,14 @@ void WinInvertChars(const Char *chars, Int16 len, Coord x, Coord y) {
 }
 
 UnderlineModeType WinSetUnderlineMode(UnderlineModeType mode) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UnderlineModeType prev = module->underlineMode;
   module->underlineMode = mode;
   return prev;
 }
 
 WinDrawOperation WinSetDrawMode(WinDrawOperation newMode) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   debug(DEBUG_TRACE, "Window", "WinSetDrawMode %d", newMode);
   WinDrawOperation prev = module->transferMode;
   module->transferMode = newMode;
@@ -2202,7 +2173,7 @@ WinDrawOperation WinSetDrawMode(WinDrawOperation newMode) {
 }
 
 IndexedColorType WinGetForeColor(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->foreColor;
 }
 
@@ -2230,7 +2201,7 @@ IndexedColorType WinGetForeColor(void) {
 }
 
 IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
   UInt16 numEntries;
 
@@ -2251,12 +2222,12 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
 }
 
 IndexedColorType WinGetBackColor(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->backColor;
 }
 
 IndexedColorType WinSetBackColor(IndexedColorType backColor) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
   UInt16 numEntries;
 
@@ -2277,7 +2248,7 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
 }
 
 IndexedColorType WinSetTextColor(IndexedColorType textColor) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
   UInt16 numEntries;
 
@@ -2298,7 +2269,7 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
 }
 
 void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
     prevRgbP->index = module->foreColorRGB.index;
@@ -2318,7 +2289,7 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
 }
 
 void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
     prevRgbP->index = module->backColorRGB.index;
@@ -2346,7 +2317,7 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
 }
 
 void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
     prevRgbP->index = module->textColorRGB.index;
@@ -2374,14 +2345,14 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
 }
 
 void WinGetPattern(CustomPatternType *patternP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (patternP) {
     MemMove(patternP, module->patternData, sizeof(CustomPatternType));
   }
 }
 
 void WinSetPattern(const CustomPatternType *patternP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (patternP) {
     MemMove(module->patternData, patternP, sizeof(CustomPatternType));
@@ -2393,12 +2364,12 @@ void WinSetPattern(const CustomPatternType *patternP) {
 }
 
 PatternType WinGetPatternType(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->pattern;
 }
 
 void WinSetPatternType(PatternType newPattern) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   switch (newPattern) {
     case blackPattern:
@@ -2423,7 +2394,7 @@ void WinSetPatternType(PatternType newPattern) {
 // color table, the default color table of the current screen is used.
 
 IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
   UInt16 numEntries;
   RGBColorType entry;
@@ -2464,7 +2435,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
 }
 
 void WinIndexToRGB(IndexedColorType i, RGBColorType *rgbP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
   RGBColorType entry;
 
@@ -2512,7 +2483,7 @@ void WinScreenUnlock(void) {
 }
 
 UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 prev;
 
   debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem %d", coordSys);
@@ -2546,17 +2517,17 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
 }
 
 UInt16 WinGetCoordinateSystem(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
 }
 
 UInt16 WinGetRealCoordinateSystem(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   return module->coordSys;
 }
 
 Coord WinScaleCoord(Coord coord, Boolean ceiling) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->coordSys == kCoordinatesDouble) {
     coord *= 2;
@@ -2567,7 +2538,7 @@ Coord WinScaleCoord(Coord coord, Boolean ceiling) {
 }
 
 Coord WinUnscaleCoord(Coord coord, Boolean ceiling) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->coordSys == kCoordinatesDouble) {
     coord /= 2;
@@ -2632,7 +2603,7 @@ void WinUnscaleAbsRect(AbsRectType *arP, Boolean ceiling) {
 
 // unlike WinScreenMode, this function always returns the true screen dimensions
 Err WinScreenGetAttribute(WinScreenAttrType selector, UInt32 *attrP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Err err = sysErrParamErr;
 
   switch (selector) {
@@ -2725,7 +2696,7 @@ void WinPaintTiledBitmap(BitmapType* bitmapP, RectangleType* rectP) {
 }
 
 Err WinGetSupportedDensity(UInt16 *densityP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Err err = sysErrParamErr;
 
   if (densityP) {
@@ -2761,7 +2732,7 @@ UInt32 WinGetScalingMode(void) {
 }
 
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RectangleType rect;
   UInt32 width, height;
   Coord srcX, srcY, srcW, srcH, w, h;
@@ -2775,11 +2746,11 @@ void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect) {
     WinScreenMode(winScreenModeGet, &width, &height, NULL, NULL);
     debug(DEBUG_TRACE, "Window", "WinSaveRectangle %d,%d,%d,%d", srcX, srcY, srcW, srcH);
 
-    pointTo(module->density, &srcX, &srcY);
-    pointTo(module->density, &srcW, &srcH);
+    pointTo(module, module->density, &srcX, &srcY);
+    pointTo(module, module->density, &srcW, &srcH);
     w = width;
     h = height;
-    pointTo(module->density, &w, &h);
+    pointTo(module, module->density, &w, &h);
     width = w;
     height = h;
 
@@ -2804,7 +2775,7 @@ void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect) {
 }
 
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RectangleType rect;
   UInt32 width, height;
   Coord dstX, dstY, dstW, dstH, w, h;
@@ -2818,11 +2789,11 @@ void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect) {
     WinScreenMode(winScreenModeGet, &width, &height, NULL, NULL);
     debug(DEBUG_TRACE, "Window", "WinRestoreRectangle %d,%d,%d,%d", dstX, dstY, dstW, dstH);
 
-    pointTo(module->density, &dstX, &dstY);
-    pointTo(module->density, &dstW, &dstH);
+    pointTo(module, module->density, &dstX, &dstY);
+    pointTo(module, module->density, &dstW, &dstH);
     w = width;
     h = height;
-    pointTo(module->density, &w, &h);
+    pointTo(module, module->density, &w, &h);
     width = w;
     height = h;
 
@@ -2854,7 +2825,7 @@ void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect) {
 
 // Scroll a rectangle in the draw window.
 void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coord distance, RectangleType *vacatedP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RectangleType rect;
 
   if (module->drawWindow && rP && vacatedP && distance > 0) {
@@ -2885,7 +2856,7 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
 }
 
 WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 density, depth;
   Coord w0, h0;
   WinHandle wh = NULL;
@@ -2971,7 +2942,7 @@ static void broadcastDisplayChange(UInt32 oldDepth, UInt32 newDepth) {
 
 // Set or retrieve the palette for the draw window
 Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColorType *tableP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh;
   ColorTableType *colorTable;
   UInt16 i, index;
@@ -3083,7 +3054,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
 }
 
 void WinPushDrawState(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   debug(DEBUG_TRACE, "Window", "WinPushDrawState");
   if (module->numPush < DrawStateStackSize) {
@@ -3107,7 +3078,7 @@ void WinPushDrawState(void) {
 }
 
 void WinPopDrawState(void) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   debug(DEBUG_TRACE, "Window", "WinPopDrawState");
   if (module->numPush) {
@@ -3140,7 +3111,7 @@ void WinPopDrawState(void) {
 }
 
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord width, height;
   UInt16 depth, entry, i;
   Err err = sysErrParamErr;
@@ -3152,7 +3123,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       // a single-density width or height is returned, even if the handheld has a double-density display.
       width = module->width;
       height = module->height;
-      pointFrom(module->density, &width, &height);
+      pointFrom(module, module->density, &width, &height);
       if (depthP) *depthP = operation == winScreenModeGet ? module->depth : module->depth0;
       if (widthP) *widthP = width;
       if (heightP) *heightP = height;
@@ -3375,7 +3346,7 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
 }
 
 void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   IndexedColorType objFore, objFill, objSelFill, objSelFore, oldb, oldf;
   RectangleType aux;
   WinDrawOperation prev;
@@ -3430,7 +3401,7 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
 }
 
 void WinSendWindowEvents(WinHandle wh) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   EventType event;
 
   if (module->activeWindow) {
@@ -3449,7 +3420,7 @@ void WinSendWindowEvents(WinHandle wh) {
 }
 
 void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
   uint8_t *bits = BmpGetBits(bitmapP);
   uint32_t len;
@@ -3469,7 +3440,7 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
 }
 
 static void WinLegacyWrite(UInt32 offset, UInt32 value, UInt16 n) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
   RectangleType rect;
   WinHandle old;
@@ -3501,7 +3472,7 @@ static void WinLegacyWrite(UInt32 offset, UInt32 value, UInt16 n) {
 
   old = module->activeWindow;
   module->activeWindow = module->displayWindow;
-  dirty_region(x, y, x + rect.extent.x, y + rect.extent.y);
+  dirty_region(module, x, y, x + rect.extent.x, y + rect.extent.y);
   module->activeWindow = old;
 }
 
@@ -3518,7 +3489,7 @@ void WinLegacyWriteLong(UInt32 offset, UInt32 value) {
 }
 
 static void WinSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
-  win_module_t *module = (win_module_t *)thread_get(win_key);
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   win_surface_t *wsurf = (win_surface_t *)data;
   WinHandle old;
   UInt16 prev;

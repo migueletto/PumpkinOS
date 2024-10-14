@@ -18,8 +18,6 @@ typedef struct {
   FontID currentFont;
 } fnt_module_t;
 
-extern thread_key_t *fnt_key;
-
 static void FntSaveFont(FontPtr font, FontID id);
 
 static void adjust(Int16 *r) {
@@ -37,7 +35,7 @@ int FntInitModule(UInt16 density) {
     return -1;
   }
 
-  thread_set(fnt_key, module);
+  pumpkin_set_local_storage(fnt_key, module);
 
   // map all system fonts
   for (i = 0; i < 128; i++) {
@@ -48,7 +46,7 @@ int FntInitModule(UInt16 density) {
 }
 
 int FntFinishModule(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
 
   if (module) {
     xfree(module);
@@ -58,12 +56,12 @@ int FntFinishModule(void) {
 }
 
 FontID FntGetFont(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   return module->currentFont;
 }
 
 FontID FntSetFont(FontID font) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   FontID prev = module->currentFont;
   module->currentFont = stdFont;
   if (font >= 0 && font < 256) {
@@ -77,7 +75,7 @@ FontID FntSetFont(FontID font) {
 }
 
 FontPtr FntGetFontPtr(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   if (module->fonts[module->currentFont]) {
     return module->fonts[module->currentFont];
   }
@@ -85,7 +83,7 @@ FontPtr FntGetFontPtr(void) {
 }
 
 Int16 FntBaseLine(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   Int16 r = 0;
   if (module->fonts[module->currentFont]) {
     r = module->fonts[module->currentFont]->ascent;
@@ -97,7 +95,7 @@ Int16 FntBaseLine(void) {
 }
 
 Int16 FntCharHeight(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   Int16 r = 0;
   if (module->fonts[module->currentFont]) {
     r = module->fonts[module->currentFont]->fRectHeight;
@@ -109,7 +107,7 @@ Int16 FntCharHeight(void) {
 }
 
 Int16 FntLineHeight(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   Int16 r = 0;
   if (module->fonts[module->currentFont]) {
     r = module->fonts[module->currentFont]->fRectHeight + module->fonts[module->currentFont]->leading;
@@ -121,7 +119,7 @@ Int16 FntLineHeight(void) {
 }
 
 Int16 FntAverageCharWidth(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   Int16 r = 0;
   if (module->fonts[module->currentFont]) {
     r = module->fonts[module->currentFont]->fRectWidth;
@@ -133,7 +131,7 @@ Int16 FntAverageCharWidth(void) {
 }
 
 Int16 FntCharWidth(Char ch) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   UInt8 uc = (UInt8)ch;
   Int16 r = MISSING_SYMBOL_WIDTH;
   if (module->fonts[module->currentFont] && uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
@@ -146,7 +144,7 @@ Int16 FntCharWidth(Char ch) {
 }
 
 Int16 FntCharsWidth(Char const *chars, Int16 len) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   UInt8 uc;
   Int16 i, r = 0;
 
@@ -178,7 +176,7 @@ Int16 FntCharsWidth(Char const *chars, Int16 len) {
 // does not exist within the current font, the missing character symbol is substituted.
 
 Int16 FntWCharWidth(WChar iChar) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   UInt8 uc = (UInt16)iChar; // XXX
   Int16 r = MISSING_SYMBOL_WIDTH;
   if (module->fonts[module->currentFont] && uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
@@ -191,7 +189,7 @@ Int16 FntWCharWidth(WChar iChar) {
 }
 
 Int16 FntDescenderHeight(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   Int16 r = 0;
   if (module->fonts[module->currentFont]) {
     r = module->fonts[module->currentFont]->descent;
@@ -325,7 +323,7 @@ void FntFreeFont(FontPtr f) {
 }
 
 Err FntDefineFont(FontID font, FontPtr fontP) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   FontTypeV2 *f2;
   Err err = sysErrParamErr;
 
@@ -712,7 +710,7 @@ static void FntSaveFont(FontPtr font, FontID id) {
 }
 
 void FntSaveFonts(void) {
-  fnt_module_t *module = (fnt_module_t *)thread_get(fnt_key);
+  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   FontID font;
 
   for (font = 0; font < 256; font++) {

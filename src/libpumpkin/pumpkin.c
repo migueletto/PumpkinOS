@@ -85,6 +85,8 @@
 
 #define BORDER_SIZE 4
 
+#define MULTI_THREAD (!pumpkin_module.dia && !pumpkin_module.single)
+
 typedef struct {
   uint16_t refNum;
   uint32_t type;
@@ -150,6 +152,7 @@ typedef struct {
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
   void *table;
+  void *local_storage[last_key];
 } pumpkin_task_t;
 
 typedef struct {
@@ -239,6 +242,7 @@ typedef struct {
   int nev, iev, oev;
   calibration_t calibration;
   surface_t *background;
+  void *local_storage[last_key];
 } pumpkin_module_t;
 
 typedef union {
@@ -275,34 +279,9 @@ static const RGBColorType colorLockedBorder     = { 0, 0xF0, 0xC0, 0x80 };
 
 static mutex_t *mutex;
 static pumpkin_module_t pumpkin_module;
+static thread_key_t *task_key;
 
 static void pumpkin_make_current(int i);
-
-thread_key_t *task_key;
-thread_key_t *sto_key;
-thread_key_t *dm_key;
-thread_key_t *evt_key;
-thread_key_t *fnt_key;
-thread_key_t *frm_key;
-thread_key_t *ins_key;
-thread_key_t *fld_key;
-thread_key_t *menu_key;
-thread_key_t *sys_key;
-thread_key_t *sysu_key;
-thread_key_t *uic_key;
-thread_key_t *bmp_key;
-thread_key_t *win_key;
-thread_key_t *pref_key;
-thread_key_t *gps_key;
-thread_key_t *vfs_key;
-thread_key_t *kbd_key;
-thread_key_t *clp_key;
-thread_key_t *srm_key;
-thread_key_t *ftr_key;
-thread_key_t *key_key;
-thread_key_t *snd_key;
-thread_key_t *seltime_key;
-thread_key_t *fatal_key;
 
 void *pumpkin_heap_base(void) {
   return heap_base(heap_get());
@@ -550,6 +529,37 @@ static void pumpkin_unload_fonts(void) {
   }
 }
 
+int pumpkin_set_local_storage(local_storage_key_t key, void *p) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int r = -1;
+
+  if (key >= 0 && key < last_key) {
+    if (task && MULTI_THREAD) {
+      task->local_storage[key] = p;
+    } else {
+      pumpkin_module.local_storage[key] = p;
+    }
+    r = 0;
+  }
+
+  return r;
+}
+
+void *pumpkin_get_local_storage(local_storage_key_t key) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  void *p = NULL;
+
+  if (key >= 0 && key < last_key) {
+    if (task && MULTI_THREAD) {
+      p = task->local_storage[key];
+    } else {
+      p = pumpkin_module.local_storage[key];
+    }
+  }
+
+  return p;
+}
+
 int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
   int fd;
 
@@ -564,30 +574,6 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   }
 
   task_key = thread_key();
-  sto_key = thread_key();
-  dm_key = thread_key();
-  evt_key = thread_key();
-  fnt_key = thread_key();
-  frm_key = thread_key();
-  ins_key = thread_key();
-  fld_key = thread_key();
-  menu_key = thread_key();
-  sys_key = thread_key();
-  sysu_key = thread_key();
-  uic_key = thread_key();
-  bmp_key = thread_key();
-  win_key = thread_key();
-  pref_key = thread_key();
-  gps_key = thread_key();
-  vfs_key = thread_key();
-  kbd_key = thread_key();
-  clp_key = thread_key();
-  srm_key = thread_key();
-  ftr_key = thread_key();
-  key_key = thread_key();
-  snd_key = thread_key();
-  seltime_key = thread_key();
-  fatal_key = thread_key();
 
   pumpkin_module.engine = engine;
   pumpkin_module.wp = wp;
@@ -1329,7 +1315,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   sys_strncpy(task->name, name, dmDBNameLength-1);
 
   thread_set(task_key, task);
-  if (!pumpkin_module.dia && !pumpkin_module.single) {
+  if (MULTI_THREAD) {
     task->heap = heap_init(HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   } else {
@@ -1351,7 +1337,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   task->lang = LanguageInit(language);
 
   UicInitModule();
-  BmpInitModule(DEFAULT_DENSITY);
   WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, DEFAULT_DEPTH, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
@@ -1461,7 +1446,7 @@ static int pumpkin_local_finish(UInt32 creator) {
   VFSFinishModule();
   GPSFinishModule();
   SysFinishModule();
-  if (!pumpkin_module.dia && !pumpkin_module.single) {
+  if (MULTI_THREAD) {
     SysUFinishModule();
   }
   EvtFinishModule();
@@ -1472,7 +1457,6 @@ static int pumpkin_local_finish(UInt32 creator) {
   UicFinishModule();
   FntFinishModule();
   WinFinishModule(true);
-  BmpFinishModule();
 
   if (pumpkin_module.tasks[task->task_index].bootRef) {
     DmCloseDatabase(pumpkin_module.tasks[task->task_index].bootRef);
@@ -1487,7 +1471,7 @@ static int pumpkin_local_finish(UInt32 creator) {
     if (task->serial[i]) pumpkin_heap_free(task->serial[i], "serial_descr");
   }
 
-  if (!pumpkin_module.dia && !pumpkin_module.single) {
+  if (MULTI_THREAD) {
     StoFinish();
     heap_finish(task->heap);
   }
@@ -1738,7 +1722,7 @@ int pumpkin_launch(launch_request_t *request) {
         data->height /= 2;
       }
 
-      if (!pumpkin_module.dia && !pumpkin_module.single) {
+      if (MULTI_THREAD) {
         data->x = (pumpkin_module.width - data->width) / 2;
         data->y = (pumpkin_module.height - data->height) / 2;
 
@@ -2430,7 +2414,7 @@ int pumpkin_sys_event(void) {
             pumpkin_module.tasks[j].removed = 0;
             pumpkin_module.render = 1;
           }
-        } 
+        }
 
         if (pumpkin_module.fullrefresh || pumpkin_module.refresh) {
           for (j = 0; j < pumpkin_module.num_tasks; j++) {
@@ -2543,7 +2527,6 @@ int pumpkin_sys_event(void) {
                 pumpkin_module.dragging = i;
               }
               pumpkin_make_current(i);
-  
             } else {
               pumpkin_module.current_task = -1;
             }

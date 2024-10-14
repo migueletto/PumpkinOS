@@ -15,8 +15,6 @@ typedef struct {
   Boolean startSelected;
 } seltime_module_t;
 
-extern thread_key_t *seltime_key;
-
 int SelTimeInitModule(void) {
   seltime_module_t *module;
 
@@ -24,13 +22,13 @@ int SelTimeInitModule(void) {
     return -1;
   }
 
-  thread_set(seltime_key, module);
+  pumpkin_set_local_storage(seltime_key, module);
 
   return 0;
 }
 
 int SelTimeFinishModule(void) {
-  seltime_module_t *module = (seltime_module_t *)thread_get(seltime_key);
+  seltime_module_t *module = (seltime_module_t *)pumpkin_get_local_storage(seltime_key);
 
   if (module) {
     xfree(module);
@@ -264,7 +262,7 @@ static void setTime(FormType *frm, UInt16 id, TimeType *timeP, Boolean is24h, ch
 }
 
 static Boolean SelectTimeHandleEvent(EventType *eventP) {
-  seltime_module_t *module = (seltime_module_t *)thread_get(seltime_key);
+  seltime_module_t *module = (seltime_module_t *)pumpkin_get_local_storage(seltime_key);
   FormType *frm;
   ControlType *ctl;
   UInt16 index;
@@ -356,7 +354,7 @@ static Boolean SelectTimeHandleEvent(EventType *eventP) {
 }
 
 Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, const Char *titleP, Int16 startOfDay, Int16 endOfDay, Int16 startOfDisplay) {
-  seltime_module_t *module = (seltime_module_t *)thread_get(seltime_key);
+  seltime_module_t *module = (seltime_module_t *)pumpkin_get_local_storage(seltime_key);
   FormType *frm, *previous;
   UInt16 index, i;
   ListType *list;

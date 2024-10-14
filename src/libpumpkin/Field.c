@@ -61,8 +61,6 @@ typedef struct {
   UInt16 penDownOffset;
 } fld_module_t;
 
-extern thread_key_t *fld_key;
-
 static void nop(Err err) {
 }
 
@@ -75,7 +73,7 @@ int FldInitModule(void) {
     return -1;
   }
 
-  thread_set(fld_key, module);
+  pumpkin_set_local_storage(fld_key, module);
 
   return 0;
 }
@@ -85,9 +83,9 @@ void *FldReinitModule(void *module) {
 
   if (module) {
     FldFinishModule();
-    thread_set(fld_key, module);
+    pumpkin_set_local_storage(fld_key, module);
   } else {
-    old = (fld_module_t *)thread_get(fld_key);
+    old = (fld_module_t *)pumpkin_get_local_storage(fld_key);
     FldInitModule();
   }
 
@@ -95,7 +93,7 @@ void *FldReinitModule(void *module) {
 }
 
 int FldFinishModule(void) {
-  fld_module_t *module = (fld_module_t *)thread_get(fld_key);
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
 
   if (module) {
     xfree(module);
@@ -105,13 +103,13 @@ int FldFinishModule(void) {
 }
 
 FieldType *FldGetActiveField(void) {
-  fld_module_t *module = (fld_module_t *)thread_get(fld_key);
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
 
   return module->activeField;
 }
 
 void FldSetActiveField(FieldType *fldP) {
-  fld_module_t *module = (fld_module_t *)thread_get(fld_key);
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
 
   InsPtEnable(false);
 
@@ -411,7 +409,7 @@ static Boolean deleteSelection(FieldType *fldP) {
 }
 
 Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
-  fld_module_t *module = (fld_module_t *)thread_get(fld_key);
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
   EventType event;
   UInt16 line, offset;
   FontID old;

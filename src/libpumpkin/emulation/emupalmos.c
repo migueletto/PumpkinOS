@@ -115,22 +115,21 @@ static const uint8_t SysLibLoad_code[] = {
 0x30, 0x03, 0x4c, 0xee, 0x0c, 0xf8, 0xff, 0xac, 0x4e, 0x5e, 0x4e, 0x75,
 };
 
-static thread_key_t *emu_key;
 static int debug_on;
 
 void emupalmos_finish(int f) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->m68k_state.finish = f;
   state->finish = f;
 }
 
 int emupalmos_finished(void) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   return state->finish;
 }
 
 void emupalmos_panic(char *msg, int code) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   UInt32 creator;
 
   debug(DEBUG_ERROR, "EmuPalmOS", "panic: %s", msg);
@@ -228,7 +227,7 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
 }
 
 uint8_t cpu_read_byte(uint32_t address) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram;
   uint32_t value;
 
@@ -247,7 +246,7 @@ uint8_t cpu_read_byte(uint32_t address) {
 }
 
 uint16_t cpu_read_word(uint32_t address) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint8_t *ram;
   uint32_t value;
@@ -271,7 +270,7 @@ uint16_t cpu_read_word(uint32_t address) {
 }
 
 uint32_t cpu_read_long(uint32_t address) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t value;
   uint8_t *ram;
 
@@ -299,7 +298,7 @@ uint32_t cpu_read_long(uint32_t address) {
 }
 
 void cpu_write_byte(uint32_t address, uint8_t value) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram;
 
   if (state->write_byte) return state->write_byte(address, value);
@@ -321,7 +320,7 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
 }
 
 void cpu_write_word(uint32_t address, uint16_t value) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram;
 
   if (state->write_word) return state->write_word(address, value);
@@ -343,7 +342,7 @@ void cpu_write_word(uint32_t address, uint16_t value) {
 }
 
 void cpu_write_long(uint32_t address, uint32_t value) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram;
 
   if (state->write_long) return state->write_long(address, value);
@@ -1405,7 +1404,7 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
 
 #ifdef ARMEMU
 uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *stack, *call68KAddr, *returnAddr;
   uint32_t stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
@@ -1515,7 +1514,7 @@ static void print_regs(void) {
 */
 
 static int cpu_instr_callback(unsigned int pc) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
   uint16_t trap, selector;
@@ -1617,7 +1616,6 @@ void emupalmos_debug(int on) {
 }
 
 int emupalmos_init(void) {
-  emu_key = thread_key();
   m68k_init_once();
   allTrapsInit();
   debug_on = debug_getsyslevel("M68K") == DEBUG_TRACE;
@@ -1746,15 +1744,15 @@ emu_state_t *emupalmos_install(void) {
   emu_state_t *oldState, *state;
 
   state = emupalmos_new();
-  oldState = thread_get(emu_key);
-  thread_set(emu_key, state);
+  oldState = pumpkin_get_local_storage(emu_key);
+  pumpkin_set_local_storage(emu_key, state);
 
   return oldState;
 }
 
 void emupalmos_deinstall(emu_state_t *oldState) {
-  emu_state_t *state = thread_get(emu_key);
-  thread_set(emu_key, oldState);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  pumpkin_set_local_storage(emu_key, oldState);
   palmos_systrap_finish(state);
   emupalmos_destroy(state);
 }
@@ -1767,7 +1765,7 @@ void emupalmos_memory_hooks(
   void (*write_word)(uint32_t address, uint16_t value),
   void (*write_long)(uint32_t address, uint32_t value)) {
 
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->read_byte = read_byte;
   state->read_word = read_word;
   state->read_long = read_long;
@@ -1829,8 +1827,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
   if (amdc0 && amdd0) {
     state = emupalmos_new();
-    oldState = thread_get(emu_key);
-    thread_set(emu_key, state);
+    oldState = pumpkin_get_local_storage(emu_key);
+    pumpkin_set_local_storage(emu_key, state);
 
     paramBlock = getParamBlock(launchCode, param, ram);
     paramBlockStart = paramBlock ? paramBlock - ram : 0;
@@ -1856,7 +1854,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     MemHandleUnlock(hSysAppInfo);
     MemHandleFree(hSysAppInfo);
 
-    thread_set(emu_key, oldState);
+    pumpkin_set_local_storage(emu_key, oldState);
     palmos_systrap_finish(state);
     emupalmos_destroy(state);
 
@@ -1883,8 +1881,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
   if (code1) {
       state = emupalmos_new();
-      oldState = thread_get(emu_key);
-      thread_set(emu_key, state);
+      oldState = pumpkin_get_local_storage(emu_key);
+      pumpkin_set_local_storage(emu_key, state);
 
       codeStart = code1 - ram;
       codeSize = MemHandleSize(hCode1);
@@ -2155,7 +2153,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         freeParamBlock(launchCode, param, paramBlock, ram);
       }
 
-      thread_set(emu_key, oldState);
+      pumpkin_set_local_storage(emu_key, oldState);
       palmos_systrap_finish(state);
       emupalmos_destroy(state);
 
@@ -2190,10 +2188,10 @@ uint8_t *emupalmos_ram(void) {
 }
 
 emu_state_t *m68k_get_emu_state(void) {
-  return thread_get(emu_key);
+  return pumpkin_get_local_storage(emu_key);
 }
 
 m68k_state_t *m68k_get_state(void) {
-  emu_state_t *state = thread_get(emu_key);
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   return &state->m68k_state;
 }

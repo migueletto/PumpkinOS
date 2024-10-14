@@ -35,8 +35,6 @@ typedef struct {
   char tmpname[MAX_PATH];
 } vfs_module_t;
 
-extern thread_key_t *vfs_key;
-
 static void buildpath(vfs_module_t *module, char *dst, char *src) {
   char *s;
 
@@ -59,7 +57,7 @@ static void buildpath(vfs_module_t *module, char *dst, char *src) {
 }
 
 int VFSInitModule(char *card) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
 
   if (module == NULL) {
     if ((module = xcalloc(1, sizeof(vfs_module_t))) == NULL) {
@@ -73,14 +71,14 @@ int VFSInitModule(char *card) {
 
     StrNCopy(module->card, card, MAX_CARD);
     vfs_chdir(module->session, module->card);
-    thread_set(vfs_key, module);
+    pumpkin_set_local_storage(vfs_key, module);
   }
 
   return 0;
 }
 
 int VFSFinishModule(void) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
 
   if (module) {
     if (module->session) vfs_close_session(module->session);
@@ -101,12 +99,12 @@ Err VFSInit(void) {
 }
 
 char *VFSGetMount(void) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   return module ? vfs_getmount(module->session, "/") : NULL;
 }
 
 Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   vfs_file_t *f;
   Err err = vfsErrBadName;
 
@@ -126,7 +124,7 @@ Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
 }
 
 Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRef *fileRefP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   vfs_dir_t *d;
   vfs_file_t *f;
   int type, mode;
@@ -247,7 +245,7 @@ Err VFSFileWrite(FileRef fileRef, UInt32 numBytes, const void *dataP, UInt32 *nu
 }
 
 Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
@@ -265,7 +263,7 @@ Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
 }
 
 Err VFSFileRename(UInt16 volRefNum, const Char *pathNameP, const Char *newNameP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
@@ -460,7 +458,7 @@ Err VFSFileSetDate(FileRef fileRef, UInt16 whichDate, UInt32 date) {
 }
 
 Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
   if (volRefNum != VOLREF) {
@@ -611,7 +609,7 @@ Err VFSVolumeSetLabel(UInt16 volRefNum, const Char *labelP) {
 }
 
 Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   uint64_t total, free;
   Err err = vfsErrFileBadRef;
 
@@ -675,7 +673,7 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
 }
 
 Err VFSChangeDir(UInt16 volRefNum, char *path) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char *old, *cwd;
   Err err = sysErrParamErr;
 
@@ -706,7 +704,7 @@ Err VFSChangeDir(UInt16 volRefNum, char *path) {
 }
 
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char *cwd;
   Err err = sysErrParamErr;
 
@@ -725,7 +723,7 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
 }
 
 Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char *cwd, *s;
   Int32 len;
   Err err = sysErrParamErr;
@@ -778,7 +776,7 @@ Int32 VFSFilePrintF(FileRef fileRef, const char *format, ...) {
 }
 
 Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributesP) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   int type;
   Err err = vfsErrBadName;
 
@@ -804,6 +802,6 @@ Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributes
 }
 
 char *VFSTmpName(void) {
-  vfs_module_t *module = (vfs_module_t *)thread_get(vfs_key);
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   return module->tmpname;
 }

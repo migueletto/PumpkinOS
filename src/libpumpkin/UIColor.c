@@ -60,8 +60,6 @@ typedef struct {
   IndexedColorType old[UILastColorTableEntry];
 } uic_module_t;
 
-extern thread_key_t *uic_key;
-
 int UicInitModule(void) {
   uic_module_t *module;
   int i;
@@ -74,13 +72,13 @@ int UicInitModule(void) {
     module->table[i] = table[i];
   }
 
-  thread_set(uic_key, module);
+  pumpkin_set_local_storage(uic_key, module);
 
   return 0;
 }
 
 int UicFinishModule(void) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
 
   if (module) {
     xfree(module);
@@ -90,7 +88,7 @@ int UicFinishModule(void) {
 }
 
 IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry) {
     return module->table[which];
@@ -100,7 +98,7 @@ IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
 }
 
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
   RGBColorType *palette;
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
@@ -114,7 +112,7 @@ void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgb
 }
 
 void UIColorGetTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
     WinIndexToRGB(module->table[which], rgbP);
@@ -126,7 +124,7 @@ void UIColorGetTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
 // value according to the palette used by the current draw window.
 
 Err UIColorSetTableEntry(UIColorTableEntries which, const RGBColorType *rgbP) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
     module->table[which] = WinRGBToIndex(rgbP);
@@ -137,7 +135,7 @@ Err UIColorSetTableEntry(UIColorTableEntries which, const RGBColorType *rgbP) {
 }
 
 Err UIColorPushTable(void) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
   Int16 i;
 
   for (i = 0; i < UILastColorTableEntry; i++) {
@@ -148,7 +146,7 @@ Err UIColorPushTable(void) {
 }
 
 Err UIColorPopTable(void) {
-  uic_module_t *module = (uic_module_t *)thread_get(uic_key);
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
   Int16 i;
 
   for (i = 0; i < UILastColorTableEntry; i++) {
