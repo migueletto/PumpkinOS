@@ -6,10 +6,10 @@ void *xmalloc_debug(const char *file, const char *func, int line, sys_size_t siz
   void *ptr = sys_malloc(size);
 
   if (ptr) {
-    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %d", ptr, size);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %u", ptr, (uint32_t)size);
     sys_memset(ptr, 0, size);
   } else {
-    debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %d", size);
+    debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %u", (uint32_t)size);
   }
 
   return ptr;
@@ -27,12 +27,12 @@ void *xrealloc_debug(const char *file, const char *func, int line, void *ptr, sy
 
   if (ptr2) {
     debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory free %p", ptr);
-    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %d", ptr2, size);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %u", ptr2, (uint32_t)size);
   } else {
     if (size) {
-      debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %d", size);
+      debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory new error %u", (uint32_t)size);
     } else {
-      debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %d", ptr2, size);
+      debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory new %p %u", ptr2, (uint32_t)size);
     }
   }
 
@@ -70,7 +70,7 @@ void *xmemcpy_debug(const char *file, const char *func, int line, void *dest, co
   void *r = NULL;
 
   if (dest) {
-    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memcpy %p %p %d", dest, src ,n);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memcpy %p %p %u", dest, src, (uint32_t)n);
     r = sys_memcpy(dest, src, n);
   } else {
     debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memcpy null");
@@ -83,7 +83,7 @@ void *xmemset_debug(const char *file, const char *func, int line, void *s, int c
   void *r = NULL;
 
   if (s) {
-    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memset %p %d %d", s, c, n);
+    debug_full(file, func, line, DEBUG_TRACE, "MEM", "memory memset %p %d %u", s, c, (uint32_t)n);
     r = sys_memset(s, c, n);
   } else {
     debug_full(file, func, line, DEBUG_ERROR, "MEM", "memory memset null");

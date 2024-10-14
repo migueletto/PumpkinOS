@@ -180,7 +180,7 @@ case sysTrapMemPtrRecoverHandle: {
   MemHandle res = MemPtrRecoverHandle(p ? l_p : 0);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "MemPtrRecoverHandle(p=0x%08X): %d", p, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "MemPtrRecoverHandle(p=0x%08X): %p", p, res);
 }
 break;
 case sysTrapMemPtrFlags: {
@@ -1028,7 +1028,7 @@ case sysTrapDmResizeRecord: {
   MemHandle res = DmResizeRecord(dbP ? l_dbP : 0, index, newSize);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmResizeRecord(dbP=0x%08X, index=%d, newSize=%d): %d", dbP, index, newSize, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmResizeRecord(dbP=0x%08X, index=%d, newSize=%d): %p", dbP, index, newSize, res);
 }
 break;
 case sysTrapDmReleaseRecord: {
@@ -1153,7 +1153,7 @@ case sysTrapDmResizeResource: {
   MemHandle res = DmResizeResource(resourceH ? l_resourceH : 0, newSize);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmResizeResource(resourceH=0x%08X, newSize=%d): %d", resourceH, newSize, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmResizeResource(resourceH=0x%08X, newSize=%d): %p", resourceH, newSize, res);
 }
 break;
 case sysTrapDmNextOpenResDatabase: {
@@ -1246,7 +1246,7 @@ case sysTrapDmNewResource: {
   MemHandle res = DmNewResource(dbP ? l_dbP : 0, resType, resID, size);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmNewResource(dbP=0x%08X, resType=%d, resID=%d, size=%d): 0x%08X", dbP, resType, resID, size, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmNewResource(dbP=0x%08X, resType=%d, resID=%d, size=%d): %p", dbP, resType, resID, size, res);
 }
 break;
 case sysTrapDmRemoveResource: {
@@ -2673,7 +2673,7 @@ case sysTrapFldGetTextHandle: {
   MemHandle res = FldGetTextHandle(fldP ? s_fldP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FldGetTextHandle(fldP=0x%08X): %d", fldP, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FldGetTextHandle(fldP=0x%08X): %p", fldP, res);
 }
 break;
 case sysTrapFldGetTextPtr: {
@@ -3411,7 +3411,7 @@ case sysTrapTblGetRowData: {
   int16_t row = ARG16;
   UIntPtr res = TblGetRowData(tableP ? s_tableP : NULL, row);
   m68k_set_reg(M68K_REG_D0, res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d): 0x%08X", tableP, row, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d)", tableP, row);
 }
 break;
 case sysTrapTblSetRowData: {

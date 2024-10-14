@@ -154,7 +154,7 @@ void ClipboardAddItem(const ClipboardFormatType format, const void *ptr, UInt16 
       break;
 
     default:
-      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardAddItem format %d not supported");
+      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardAddItem format %d not supported", format);
       break;
   }
 }
@@ -176,7 +176,7 @@ Err ClipboardAppendItem(const ClipboardFormatType format, const void *ptr, UInt1
       break;
 
     default:
-      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardAppendItem format %d not supported");
+      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardAppendItem format %d not supported", format);
       break;
   }
 
@@ -229,7 +229,7 @@ MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length) {
       break;
 
     default:
-      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardGetItem format %d not supported");
+      debug(DEBUG_ERROR, PALMOS_MODULE, "ClipboardGetItem format %d not supported", format);
       break;
   }
 

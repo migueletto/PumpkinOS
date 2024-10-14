@@ -27,13 +27,13 @@ void debug_rawtty(int raw);
 
 void
 debug_errno_full(const char *file, const char *func, int line, const char *sys, const char *fmt,
-                 ...);
+                 ...) __attribute__ ((format (printf, 5, 6)));
 
 void debugva_full(const char *file, const char *func, int line, int level, const char *sys,
                   const char *fmt, sys_va_list ap);
 
 void debug_full(const char *file, const char *func, int line, int level, const char *sys,
-                const char *fmt, ...);
+                const char *fmt, ...) __attribute__ ((format (printf, 6, 7)));
 
 void debug_bytes_full(const char *file, const char *func, int line, int level, const char *sys,
                       unsigned char *buf, int len);

@@ -65,7 +65,7 @@ static int16_t initTimePrefs(SystemPreferencesType *prefs, int *_dst) {
   dst = sys_isdst() ? 60 : 0;
   sdt -= dst;
 
-  debug(DEBUG_INFO, PALMOS_MODULE, "setting prefs timeZone %d (dst %d)", sdt, dst);
+  debug(DEBUG_INFO, PALMOS_MODULE, "setting prefs timeZone %d (dst %d)", (int32_t)sdt, dst);
   prefs->timeZone = sdt;
   prefs->daylightSavingAdjustment = dst;
   prefs->minutesWestOfGMT = prefs->timeZone; // XXX minutesWestOfGMT is UInt32

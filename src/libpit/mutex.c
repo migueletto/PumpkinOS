@@ -51,7 +51,7 @@ mutex_t *mutex_create(char *name) {
   }
 
   if (m) {
-    debug(DEBUG_TRACE, "MUTEX", "created mutex %s (%08x)", m->name, m);
+    debug(DEBUG_TRACE, "MUTEX", "created mutex %s (%p)", m->name, m);
   }
 
   return m;
@@ -65,7 +65,7 @@ int mutex_destroy(mutex_t *m) {
     if (r != 0) {
       debug_errno("MUTEX", "pthread_mutex_destroy (%s)", m->name);
     }
-    debug(DEBUG_TRACE, "MUTEX", "destroyed mutex %s (%08x)", m->name, m);
+    debug(DEBUG_TRACE, "MUTEX", "destroyed mutex %s (%p)", m->name, m);
     xfree(m);
   }
 
@@ -84,7 +84,7 @@ int mutex_lock(mutex_t *m) {
   int r = -1;
 
   if (m) {
-    debug(DEBUG_TRACE, "MUTEX", "locking mutex %s (%08x)", m->name, m);
+    debug(DEBUG_TRACE, "MUTEX", "locking mutex %s (%p)", m->name, m);
     r = pthread_mutex_lock(&m->mutex);
     if (r != 0) {
       debug_errno("MUTEX", "pthread_mutex_lock");
@@ -93,7 +93,7 @@ int mutex_lock(mutex_t *m) {
         m->t = sys_get_clock();
       }
       m->count++;
-      debug(DEBUG_TRACE, "MUTEX", "locked mutex %s (%08x) count %d", m->name, m, m->count);
+      debug(DEBUG_TRACE, "MUTEX", "locked mutex %s (%p) count %d", m->name, m, m->count);
     }
   }
 
@@ -105,16 +105,16 @@ int mutex_unlock(mutex_t *m) {
   int r = -1;
 
   if (m) {
-    debug(DEBUG_TRACE, "MUTEX", "unlocking mutex %s (%08x) count %d", m->name, m, m->count);
+    debug(DEBUG_TRACE, "MUTEX", "unlocking mutex %s (%p) count %d", m->name, m, m->count);
     m->count--;
     if (m->count == 0) {
       dt = sys_get_clock() - m->t;
       if (dt >= 300000) {
-        debug(DEBUG_INFO, "MUTEX", "mutex %s (%08x) locked for %lld us", m->name, m, dt);
+        debug(DEBUG_INFO, "MUTEX", "mutex %s (%p) locked for %u us", m->name, m, (uint32_t)dt);
       }
     }
     r = pthread_mutex_unlock(&m->mutex);
-    debug(DEBUG_TRACE, "MUTEX", "unlocked mutex %s (%08x)", m->name, m);
+    debug(DEBUG_TRACE, "MUTEX", "unlocked mutex %s (%p)", m->name, m);
     if (r != 0) {
       debug_errno("MUTEX", "pthread_mutex_unlock");
     }
@@ -139,7 +139,7 @@ cond_t *cond_create(char *name) {
   }
 
   if (c) {
-    debug(DEBUG_TRACE, "MUTEX", "created cond %s (%08x)", c->name, c);
+    debug(DEBUG_TRACE, "MUTEX", "created cond %s (%p)", c->name, c);
   }
 
   return c;
@@ -154,7 +154,7 @@ int cond_destroy(cond_t *c) {
       debug(DEBUG_ERROR, "MUTEX", "pthread_cond_destroy: %d", r);
       r = -1;
     }
-    debug(DEBUG_TRACE, "MUTEX", "destroyed cond %s (%08x)", c->name, c);
+    debug(DEBUG_TRACE, "MUTEX", "destroyed cond %s (%p)", c->name, c);
     xfree(c);
   }
 
@@ -252,7 +252,7 @@ sema_t *semaphore_create_named(char *name, int count) {
       xfree(sem);
       sem = NULL;
     } else {
-      debug(DEBUG_TRACE, "MUTEX", "created named semaphore \"%s\" (%08x)", name, sem);
+      debug(DEBUG_TRACE, "MUTEX", "created named semaphore \"%s\" (%p)", name, sem);
       sem->named = 1;
     }
   }
@@ -271,7 +271,7 @@ sema_t *semaphore_create(int count) {
   if ((sem = xcalloc(1, sizeof(sema_t))) != NULL) {
     if (sem_init(&sem->sem, 0, count) == 0) {
       sem->s = &sem->sem;
-      debug(DEBUG_TRACE, "MUTEX", "created semaphore (%08x)", sem);
+      debug(DEBUG_TRACE, "MUTEX", "created semaphore (%p)", sem);
     } else {
       if (errno == ENOSYS) {
         n1 = sys_get_tid();
@@ -285,7 +285,7 @@ sema_t *semaphore_create(int count) {
           xfree(sem);
           sem = NULL;
         } else {
-          debug(DEBUG_TRACE, "MUTEX", "created named semaphore \"%s\" (%08x)", name, sem);
+          debug(DEBUG_TRACE, "MUTEX", "created named semaphore \"%s\" (%p)", name, sem);
           sem->named = 1;
         }
       } else {
@@ -369,7 +369,7 @@ int semaphore_destroy(sema_t *sem) {
     }
     
     if (r == 0) {
-      debug(DEBUG_TRACE, "MUTEX", "destroyed semaphore (%08x)", sem);
+      debug(DEBUG_TRACE, "MUTEX", "destroyed semaphore (%p)", sem);
     }
     xfree(sem);
   }

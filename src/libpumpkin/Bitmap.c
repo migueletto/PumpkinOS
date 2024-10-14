@@ -3250,7 +3250,7 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
       depth = BmpGetBitDepth(oldBmp[i]);
       MemMove(p, oldBmp[i], headerSize);
 
-      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u %dx%d, %d bpp, offset 0x%08X", i, version, width, height, depth, p - p0);
+      debug(DEBUG_TRACE, "Bitmap", "bitmap index %d V%u %dx%d, %d bpp, offset 0x%08X", i, version, width, height, depth, (UInt32)(p - p0));
       if (compression == BitmapCompressionTypeNone) {
         MemMove(p + headerSize, (UInt8 *)oldBmp[i] + headerSize, rowBytes * height);
       } else {

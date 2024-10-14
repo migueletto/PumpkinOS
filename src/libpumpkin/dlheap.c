@@ -166,7 +166,7 @@ void *heap_alloc(heap_t *heap, sys_size_t size) {
     sys_size_t *q = (sys_size_t *)p;
     sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_alloc %lu bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
+    debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
     heap_draw(heap, p, (uint8_t *)p + realsize, 1);
 #endif
@@ -179,7 +179,7 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
     sys_size_t *q = (sys_size_t *)p;
     sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_free %lu bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
+    debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
     heap_draw(heap, p, (uint8_t *)p + realsize, -1);
 #endif
@@ -188,7 +188,7 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
     q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_alloc %lu bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
+    debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
     heap_draw(heap, p, (uint8_t *)p + realsize, 1);
 #endif
@@ -205,7 +205,7 @@ void heap_free(heap_t *heap, void *p) {
     q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_free %lu bytes %p to %p", realsize, p, (uint8_t *)p + realsize - 1);
+    debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
 #ifdef VISUAL_HEAP
     heap_draw(heap, p, (uint8_t *)p + realsize, -1);
 #endif
@@ -225,9 +225,9 @@ void *heap_morecore(sys_size_t size) {
   if ((heap->pointer + size) < heap->size - HEAP_MARGIN) {
     p = &heap->start[heap->pointer];
     heap->pointer += size;
-    debug(DEBUG_TRACE, "Heap", "heap_morecore %u + %lu < %u", heap->pointer, size, heap->size - HEAP_MARGIN);
+    debug(DEBUG_TRACE, "Heap", "heap_morecore %u + %u < %u", heap->pointer, (uint32_t)size, heap->size - HEAP_MARGIN);
   } else {
-    debug(DEBUG_ERROR, "Heap", "heap_morecore %u + %lu >= %u", heap->pointer, size, heap->size - HEAP_MARGIN);
+    debug(DEBUG_ERROR, "Heap", "heap_morecore %u + %u >= %u", heap->pointer, (uint32_t)size, heap->size - HEAP_MARGIN);
     heap_exhausted_error();
   }
 
@@ -257,7 +257,7 @@ void heap_walk(heap_t *heap, void (*callback)(uint32_t *p, uint32_t size, uint32
   header_t *header, *next;
   void *data;
 
-  debug(DEBUG_TRACE, "Heap", "heap_walk task %u size %lu %p", task, heap->pointer, heap->start);
+  debug(DEBUG_TRACE, "Heap", "heap_walk task %u size %u %p", task, heap->pointer, heap->start);
 
   for (offset = 0; offset < heap->pointer;) {
     current = offset;
@@ -289,7 +289,7 @@ void heap_assert(const char *file, int line, const char *func, const char *cond)
   } else {
     sys_snprintf(buf, sizeof(buf) - 1, "assert %s, line %d: %s", file, line, cond);
   }
-  debug(DEBUG_ERROR, "Heap", buf);
+  debug(DEBUG_ERROR, "Heap", "%s", buf);
 
   heap_assertion_error(buf);
 }

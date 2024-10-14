@@ -290,7 +290,7 @@ Boolean SndCreateMidiList(UInt32 creator, Boolean multipleDBs, UInt16 *wCountP, 
 
   if (wCountP) *wCountP = i;
   if (entHP) *entHP = h;
-  debug(DEBUG_INFO, "Sound", "SndCreateMidiList %d record(s) in list 0x%08X", i, h ? (uint8_t *)h - emupalmos_ram() : 0);
+  debug(DEBUG_INFO, "Sound", "SndCreateMidiList %d record(s) in list 0x%08X", i, (UInt32)(h ? (uint8_t *)h - emupalmos_ram() : 0));
 
   return i > 0;
 }

@@ -2653,7 +2653,7 @@ static void do_check_free_chunk(p) mchunkptr p;
     assert(aligned_OK(chunk2mem(p)));
     /* ... matching footer field */
     if (next->prev_size != sz) {
-      debug(DEBUG_ERROR, "Heap", "do_check_free_chunk p=%p next=%p next->prev_size=%d sz=%d", p, next, next->prev_size, sz);
+      debug(DEBUG_ERROR, "Heap", "do_check_free_chunk p=%p next=%p next->prev_size=%u sz=%u", p, next, (uint32_t)next->prev_size, (uint32_t)sz);
       debug_bytes(DEBUG_ERROR, "Heap", (uint8_t *)p, sz + 16);
     }
     assert(next->prev_size == sz);
@@ -4768,7 +4768,7 @@ void mSTATs(void)
 
   //debug(DEBUG_TRACE, "Heap", "max system bytes = %10lu", (CHUNK_SIZE_T)(mi.usmblks));
   //debug(DEBUG_TRACE, "Heap", "in use bytes     = %10lu", (CHUNK_SIZE_T)(mi.uordblks + mi.hblkhd));
-  //debug(DEBUG_INFO, "Heap", "usage %lu / %lu", (CHUNK_SIZE_T)(mi.uordblks + mi.hblkhd), (CHUNK_SIZE_T)(mi.arena + mi.hblkhd));
+  //debug(DEBUG_INFO, "Heap", "usage %u / %u", (uint32_t)(mi.uordblks + mi.hblkhd), (uint32_t)(mi.arena + mi.hblkhd));
 
 /*
 #ifdef WIN32 

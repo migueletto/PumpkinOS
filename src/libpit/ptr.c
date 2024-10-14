@@ -107,7 +107,7 @@ static int ptr_new_aux(void *p, void (*destructor)(void *p), int c) {
           table[index].p = p;
           if (c) table[index].cond = cond_create(buf);
           gp = (generic_t *)table[index].p;
-          debug(DEBUG_TRACE, "PTR", "new handle %d (%d) (%s) (%08x)", id, index, gp->tag, p);
+          debug(DEBUG_TRACE, "PTR", "new handle %d (%d) (%s) (%p)", id, index, gp->tag, p);
         }
         break;
       }
@@ -218,7 +218,7 @@ static void *ptr_access(const char *file, const char *func, int line, int id, ch
           debug_full(file, func, line, DEBUG_TRACE, "PTR", "locked handle %d (%d) (%s) locking=%d", id, index, tag, locking);
           t = sys_get_clock() - t;
           if (t >= 5000) {
-            debug_full(file, func, line, DEBUG_INFO, "PTR", "lock handle %d (%d) (%s) wait %lld us", id, index, tag, t);
+            debug_full(file, func, line, DEBUG_INFO, "PTR", "lock handle %d (%d) (%s) wait %u us", id, index, tag, (uint32_t)t);
           }
         }
         break;

@@ -354,7 +354,7 @@ static int httpd_handle(http_connection_t *con) {
 
     } else if (!sys_strcmp(con->header_name[con->num_headers], "If-Modified-Since")) {
       if_modified_since = parse_date(con->header_value[con->num_headers]);
-      debug(DEBUG_TRACE, "WEB", "if modified since %d (%s)", if_modified_since, con->header_value[con->num_headers]);
+      debug(DEBUG_TRACE, "WEB", "if modified since (%s)", con->header_value[con->num_headers]);
     }
 
     con->num_headers++;

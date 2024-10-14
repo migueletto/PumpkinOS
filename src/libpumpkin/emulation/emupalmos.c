@@ -218,7 +218,7 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
   if (address > hsize-size) {
     m68k_pulse_halt();
     sys_snprintf(buf, sizeof(buf)-1, "%s %d bytes(s) %s invalid 68K address 0x%08X", read ? "Read" : "Write", size, read ? "from" : "to", address);
-    debug(DEBUG_ERROR, "EmuPalmOS", buf);
+    debug(DEBUG_ERROR, "EmuPalmOS", "%s", buf);
     emupalmos_panic(buf, EMUPALMOS_INVALID_ADDRESS);
     return 0;
   }
@@ -1195,7 +1195,7 @@ Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other) {
     m68k_write_memory_32(a, (uint8_t *)e1 - ram);
     m68k_write_memory_32(a + 4, (uint8_t *)e2 - ram);
     m68k_write_memory_32(a + 8, other);
-    debug(DEBUG_TRACE, "EmuPalmOS", "CallCompareFunction 0x%08X 0x%08X 0x%08X %d ...", comparF, (uint8_t *)e1 - ram, (uint8_t *)e2 - ram, other);
+    debug(DEBUG_TRACE, "EmuPalmOS", "CallCompareFunction 0x%08X 0x%08X 0x%08X %d ...", comparF, (uint32_t)((uint8_t *)e1 - ram), (uint32_t)((uint8_t *)e2 - ram), other);
     r = call68K_func(0, comparF, a, argsSize) & 0xFFFF;
     debug(DEBUG_TRACE, "EmuPalmOS", "CallCompareFunction returned %d", r);
     pumpkin_heap_free(p, "CallCompareFunction");
@@ -1651,7 +1651,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x348:
           // Err ExgRegisterDatatype(UInt32 creatorID, UInt16 id, const Char *dataTypesP, const Char *descriptionsP, UInt16 flags)
           pumpkin_id2s(r0, st);
-          debug(DEBUG_TRACE, "ARM", "ExgRegisterDatatype('%s', 0x%04X, 0x%08X, 0x%08X, ___) not implemented", st, r1, strArg(r2), strArg(r3));
+          debug(DEBUG_TRACE, "ARM", "ExgRegisterDatatype('%s', 0x%04X, %p, %p, ___) not implemented", st, r1, strArg(r2), strArg(r3));
           r0 = 0xffff;
           break;
         case 0x354:

@@ -462,7 +462,7 @@ void palmos_netlibtrap(uint16_t trap) {
         encode_NetConfigNameType(nameArrayP + i*4, &nameArray[i]);
       }
       if (arrayEntriesP) m68k_write_memory_16(arrayEntriesP, arrayEntries);
-      debug(DEBUG_TRACE, "EmuPalmOS", "NetLibConfigList(refNum=%d, nameArray=0x%08X, arrayEntriesP=0x%08X [%d]): %d", libRefNum, nameArray, arrayEntriesP, arrayEntries, err);
+      debug(DEBUG_TRACE, "EmuPalmOS", "NetLibConfigList(refNum=%d, nameArray=0x%08X, arrayEntriesP=0x%08X [%d]): %d", libRefNum, nameArrayP, arrayEntriesP, arrayEntries, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;

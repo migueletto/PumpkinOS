@@ -461,7 +461,7 @@ static int io_stream_connection_loop(io_connection_t *con, int handle) {
     }
 
     if (con->timeout && con->lastdata && (t - con->lastdata) > con->timeout) {
-      debug(DEBUG_INFO, "IO", "timeout (%d - %d) > %d", t, con->lastdata, con->timeout);
+      debug(DEBUG_INFO, "IO", "timeout %u", con->timeout);
       if (io_callback_timeout(con, handle)) {
         debug(DEBUG_INFO, "IO", "exiting on timeout callback");
         return -1;

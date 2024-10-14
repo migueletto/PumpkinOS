@@ -441,7 +441,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       char *filename = emupalmos_trap_in(filenameP, trap, 0);
       char *msg = emupalmos_trap_in(msgP, trap, 2);
       ErrDisplayFileLineMsg(filename, lineNo, msg);
-      debug(DEBUG_INFO, "EmuPalmOS", "ErrDisplayFileLineMsg(0x%08X \"%s\", %d, 0x%08X \"%s\")", filenameP, filename ? filename : "", lineNo, msg ? msg : "");
+      debug(DEBUG_INFO, "EmuPalmOS", "ErrDisplayFileLineMsg(0x%08X \"%s\", %d, 0x%08X \"%s\")", filenameP, filename ? filename : "", lineNo, msgP, msg ? msg : "");
       }
       break;
     case sysTrapFileControl: {
@@ -704,7 +704,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t stringP = ARG32;
       char *string = (char *)emupalmos_trap_in(stringP, trap, 3);
       TimeToAscii(hours, minutes, timeFormat, string);
-      debug(DEBUG_TRACE, "EmuPalmOS", "TimeToAscii(%u, %u, %u, 0x%08X)", hours, minutes, timeFormat, string);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TimeToAscii(%u, %u, %u, 0x%08X \"%s\")", hours, minutes, timeFormat, stringP, string ? string : "");
       }
       break;
     case sysTrapDateTemplateToAscii: {
@@ -718,7 +718,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       char *template = (char *)emupalmos_trap_in(templateP, trap, 0);
       char *string = (char *)emupalmos_trap_in(stringP, trap, 4);
       UInt16 res = DateTemplateToAscii(template, months, days, years, string, stringLen);
-      debug(DEBUG_TRACE, "EmuPalmOS", "DateTemplateToAscii(0x%08X, %u, %u, %u, 0x%08X, %d): %u", templateP, months, days, years, string, stringLen, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "DateTemplateToAscii(0x%08X, %u, %u, %u, 0x%08X \"%s\", %d): %u", templateP, months, days, years, stringP, string ? string : "", stringLen, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
@@ -1153,7 +1153,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t prefsSize = ARG16;
       PrefSetAppPreferencesV10(creator, version, emupalmos_trap_in(prefsP, trap, 2), prefsSize);
       pumpkin_id2s(creator, buf);
-      debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferencesV10('%s', %d, 0x%08X, %d, %d)", buf, version, prefsP, prefsSize);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferencesV10('%s', %d, 0x%08X, %d)", buf, version, prefsP, prefsSize);
       }
       break;
     case sysTrapPrefGetAppPreferences: {

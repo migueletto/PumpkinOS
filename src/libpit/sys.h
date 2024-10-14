@@ -393,15 +393,15 @@ int sys_toupper(int c);
 
 int sys_tolower(int c);
 
-int sys_sprintf(char *str, const char *format, ...);
+int sys_sprintf(char *str, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
-int sys_snprintf(char *str, sys_size_t size, const char *format, ...);
+int sys_snprintf(char *str, sys_size_t size, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 
 int sys_vsprintf(char *str, const char *format, sys_va_list ap);
 
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap);
 
-int sys_sscanf(const char *str, const char *format, ...);
+int sys_sscanf(const char *str, const char *format, ...) __attribute__ ((format (scanf, 2, 3)));
 
 sys_size_t sys_getpagesize(void);
 

@@ -1621,19 +1621,19 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
           r = 0;
           debug(DEBUG_INFO, PUMPKINOS, "reply %u from %d", *p, port);
         } else {
-          debug(DEBUG_ERROR, PUMPKINOS, "received %d bytes from %d but was expecting %d bytes", len, port, sizeof(uint32_t));
+          debug(DEBUG_ERROR, PUMPKINOS, "received %d bytes from %d but was expecting %u bytes", len, port, (uint32_t)sizeof(uint32_t));
         }
       } else {
         if (len == sizeof(uint32_t)) {
           p = (uint32_t *)buf;
-          debug(DEBUG_ERROR, PUMPKINOS, "received reply %u from %d but was expecting %d", p, client, port);
+          debug(DEBUG_ERROR, PUMPKINOS, "received reply %u from %d but was expecting %d", *p, client, port);
         } else {
           debug(DEBUG_ERROR, PUMPKINOS, "received reply from %d but was expecting %d", client, port);
         }
       }
       xfree(buf);
     } else {
-      debug(DEBUG_ERROR, PUMPKINOS, "received nothing from %d but was expecting %d bytes", port, sizeof(uint32_t));
+      debug(DEBUG_ERROR, PUMPKINOS, "received nothing from %d but was expecting %u bytes", port, (uint32_t)sizeof(uint32_t));
     }
   }
 

@@ -386,7 +386,7 @@ Boolean UIPickColor(IndexedColorType *indexP, RGBColorType *rgbP, UIPickColorSta
     }
 
   } else {
-    debug(DEBUG_ERROR, PALMOS_MODULE, "UIPickColor neither index / rgb used", *indexP);
+    debug(DEBUG_ERROR, PALMOS_MODULE, "UIPickColor neither index / rgb used");
     start = UIPickColorStartPalette;
     UIPickColorSetControls(frm, false, NULL, false, &dummy);
   }

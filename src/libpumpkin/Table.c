@@ -771,7 +771,7 @@ UIntPtr TblGetRowData(const TableType *tableP, Int16 row) {
 void TblSetRowData(TableType *tableP, Int16 row, UIntPtr data) {
   if (tableP && row >= 0 && row < tableP->numRows) {
     tableP->rowAttrs[row].data = data;
-    debug(DEBUG_TRACE, "Table", "TblSetRowData (%d) = %p", row, data);
+    debug(DEBUG_TRACE, "Table", "TblSetRowData (%d)", row);
   }
 }
 
