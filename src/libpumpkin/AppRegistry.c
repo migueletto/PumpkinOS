@@ -121,6 +121,7 @@ void AppRegistryFinish(AppRegistryType *ar) {
       }
       xfree(ar->registry);
     }
+    if (ar->regname) xfree(ar->regname);
     mutex_destroy(ar->mutex);
     xfree(ar);
   }

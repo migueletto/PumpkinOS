@@ -32,7 +32,6 @@ struct wman_t {
   texture_t *vborder, *vsborder, *vs0border, *vs1border;
   rect_t r;
   int border, n;
-  void *bg;
   wman_area_t area[MAX_AREAS];
 };
 
@@ -180,6 +179,7 @@ static texture_t *solid_texture(wman_t *wm, int depth, int width, int height, ui
   uint32_t i, n;
   uint32_t *b32;
   uint16_t *b16;
+  void *bg;
 
   if (wm->w) {
     if ((t = wm->wp->create_texture(wm->w, width, height)) != NULL) {
@@ -191,22 +191,23 @@ static texture_t *solid_texture(wman_t *wm, int depth, int width, int height, ui
           for (i = 0; i < n; i++) {
             b16[i] = rgb565(r, g, b);
           }
-          wm->bg = (uint8_t *)b16;
+          bg = (uint8_t *)b16;
           break;
         case 32:
           b32 = xcalloc(1, n * 4);
           for (i = 0; i < n; i++) {
             b32[i] = rgba32(r, g, b, 0xFF);
           }
-          wm->bg = (uint8_t *)b32;
+          bg = (uint8_t *)b32;
           break;
         default:
-          wm->bg = NULL;
+          bg = NULL;
           break;
       }
   
-      if (wm->bg) {
-        wm->wp->update_texture(wm->w, t, wm->bg);
+      if (bg) {
+        wm->wp->update_texture(wm->w, t, bg);
+        xfree(bg);
       }
     }
   }
@@ -216,22 +217,31 @@ static texture_t *solid_texture(wman_t *wm, int depth, int width, int height, ui
 
 int wman_set_image_background(wman_t *wm, int depth, void *image) {
   uint32_t n;
+  void *bg;
   int res = -1;
 
-  if (wm->w && wm->background && wm->bg && image) {
+  if (wm->w && wm->background && image) {
     switch (depth) {
       case 16:
         n = wm->r.width * wm->r.height * 2;
-        sys_memcpy(wm->bg, image, n);
+        bg = xcalloc(1, n);
+        sys_memcpy(bg, image, n);
         break;
       case 32:
         n = wm->r.width * wm->r.height * 4;
-        sys_memcpy(wm->bg, image, n);
+        bg = xcalloc(1, n);
+        sys_memcpy(bg, image, n);
+        break;
+      default:
+        bg = NULL;
         break;
     }
 
-    wm->wp->update_texture(wm->w, wm->background, wm->bg);
-    res = 0;
+    if (bg) {
+      wm->wp->update_texture(wm->w, wm->background, bg);
+      xfree(bg);
+      res = 0;
+    }
   }
 
   return res;
@@ -242,8 +252,6 @@ int wman_set_background(wman_t *wm, int depth, uint8_t r, uint8_t g, uint8_t b) 
 
   if (wm) {
     if (wm->background) wm->wp->destroy_texture(wm->w, wm->background);
-    if (wm->bg) xfree(wm->bg);
-    wm->bg = NULL;
     wm->background = solid_texture(wm, depth, wm->r.width, wm->r.height, r, g, b);
     res = 0;
   }
@@ -722,7 +730,6 @@ int wman_finish(wman_t *wm) {
     if (wm->vborder)    wm->wp->destroy_texture(wm->w, wm->vborder);
     if (wm->vs0border)  wm->wp->destroy_texture(wm->w, wm->vs0border);
     if (wm->vs1border)  wm->wp->destroy_texture(wm->w, wm->vs1border);
-    if (wm->bg) xfree(wm->bg);
     xfree(wm);
     r = 0;
   }

@@ -47,8 +47,13 @@ int FntInitModule(UInt16 density) {
 
 int FntFinishModule(void) {
   fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
+  int i;
 
   if (module) {
+    for (i = 128; i < 256; i++) {
+      if (module->fonts[i]) FntFreeFont(module->fonts[i]);
+      if (module->fontsv2[i]) FntFreeFont((FontPtr)module->fontsv2[i]);
+    }
     xfree(module);
   }
 
@@ -317,6 +322,8 @@ void FntFreeFont(FontPtr f) {
       xfree(ff->pitch);
       xfree(ff->width);
       xfree(ff->column);
+      xfree(ff->data);
+      xfree(ff->bmp);
       xfree(ff);
     }
   }
@@ -671,6 +678,7 @@ void pumpkin_destroy_fontv2(void *p) {
       for (i = 0; i < font->densityCount; i++) {
         if (font->bmp[i]) BmpDelete(font->bmp[i]);
       }
+      xfree(font->bmp);
     }
     if (font->data) {
       for (i = 0; i < font->densityCount; i++) {

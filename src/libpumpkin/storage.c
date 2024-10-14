@@ -849,7 +849,7 @@ void StoHeapWalk(uint32_t *p, uint32_t size, uint32_t task) {
       }
     }
   } else if (task == 0) {
-    debug(DEBUG_INFO, "STOR", "leak %p %u (%d)", p, size, sizeof(storage_handle_t));
+    debug(DEBUG_INFO, "STOR", "leak %p %u (%u)", p, size, (uint32_t)sizeof(storage_handle_t));
   }
 }
 
@@ -1465,7 +1465,6 @@ static int StoMapResources(storage_t *sto, storage_db_t *db) {
         if (ent == NULL) break;
         if (ent->type != VFS_FILE) continue;
         if (!sys_strcmp(ent->name, ".") || !sys_strcmp(ent->name, "..")) continue;
-st[0] = 0;
         st[4] = 0;
         if ((n = sys_sscanf(ent->name, "%c%c%c%c.%08X.%d", st, st+1, st+2, st+3, &type, &id)) == 6) {
           StoAddRes(sto, db, type, id, ent->size);
@@ -1682,6 +1681,14 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           }
           db->mode = 0;
           StoWriteHeader(sto, db);
+
+
+          if (db->elements) {
+            xfree(db->elements);
+            db->elements = NULL;
+            db->totalElements = 0;
+            db->numRecs = 0;
+          }
         }
 
         if (dbRef->prev) {
@@ -2049,7 +2056,7 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "DmGetResourceEx %s %d: 0x%08X", st, resID, h ? (uint8_t *)h - sto->base : 0);
+  debug(DEBUG_TRACE, "STOR", "DmGetResourceEx %s %d: 0x%08X", st, resID, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
   return h;
 }
 
@@ -2263,7 +2270,7 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "DmGetResourceIndex %p %u: 0x%08X", dbP, index, h ? (uint8_t *)h - sto->base : 0);
+  debug(DEBUG_TRACE, "STOR", "DmGetResourceIndex %p %u: 0x%08X", dbP, index, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
   return h;
 }
 
@@ -2300,7 +2307,7 @@ Err DmReleaseResource(MemHandle resourceH) {
   if (resourceH) {
     h = (storage_handle_t *)resourceH;
     pumpkin_id2s(h->d.res.type, st);
-    debug(DEBUG_TRACE, "STOR", "DmReleaseResource 0x%08X '%s' %d use %d lock %d", (uint8_t *)h - sto->base, st, h->d.res.id, h->useCount, h->lockCount);
+    debug(DEBUG_TRACE, "STOR", "DmReleaseResource 0x%08X '%s' %d use %d lock %d", (uint32_t)((uint8_t *)h - sto->base), st, h->d.res.id, h->useCount, h->lockCount);
     switch (h->htype & ~STO_INFLATED) {
       case STO_TYPE_RES:
         debug(DEBUG_TRACE, "STOR", "DmReleaseResource '%s' %d inflated %d", st, h->d.res.id, (h->htype & STO_INFLATED) ? 1 : 0);
@@ -2335,11 +2342,11 @@ Err DmReleaseResource(MemHandle resourceH) {
             }
           }
         } else {
-          debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X handle type %d is not inflated", (uint8_t *)h - sto->base, h->htype);
+          debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X handle type %d is not inflated", (uint32_t)((uint8_t *)h - sto->base), h->htype);
         }
         break;
       default:
-        debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X unexpected handle type %d", (uint8_t *)h - sto->base, h->htype & ~STO_INFLATED);
+        debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X unexpected handle type %d", (uint32_t)((uint8_t *)h - sto->base), h->htype & ~STO_INFLATED);
         break;
     }
     err = errNone;
@@ -3127,7 +3134,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
       dbRef = (DmOpenType *)dbP;
       if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
         if (dbRef->dbID == sto->watchID) {
-          debug(DEBUG_INFO, "STOR", "WATCH DmNewRecord(%p, %p [%d], %u): 0x%08X", dbRef, atP, atP ? *atP : 0, size);
+          debug(DEBUG_INFO, "STOR", "WATCH DmNewRecord(%p, %p [%d], %u)", dbRef, atP, atP ? *atP : 0, size);
         }
         db = (storage_db_t *)(sto->base + dbRef->dbID);
         debug(DEBUG_TRACE, "STOR", "DmNewRecordEx database \"%s\" at %d size %u", db->name, *atP, size);
@@ -4319,7 +4326,7 @@ MemHandle MemHandleNew(UInt32 size) {
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, h ? (uint8_t *)h - sto->base : 0, h);
+  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, (uint32_t)(h ? (uint8_t *)h - sto->base : 0), h);
   return h;
 }
 
@@ -4329,7 +4336,7 @@ Err MemHandleFree(MemHandle hh) {
   char st[8];
   Err err = dmErrInvalidParam;
 
-  debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", hh ? (uint8_t *)hh - sto->base : 0, hh);
+  debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", (uint32_t)(hh ? (uint8_t *)hh - sto->base : 0), hh);
 
   if (hh) {
     h = (storage_handle_t *)hh;
@@ -4445,7 +4452,7 @@ Err MemHandleUnlock(MemHandle h) {
         }
       }
     } else {
-      debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", (uint8_t *)h - sto->base);
+      debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", (uint32_t)((uint8_t *)h - sto->base));
     }
   }
 
@@ -4499,10 +4506,10 @@ Err MemChunkFree(MemPtr chunkDataP) {
   debug(DEBUG_TRACE, "STOR", "MemChunkFree %p", chunkDataP);
   if (chunkDataP) {
     if ((h = MemPtrRecoverHandle(chunkDataP)) != NULL) {
-      debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", (uint8_t *)h - sto->base);
+      debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", (uint32_t)((uint8_t *)h - sto->base));
       switch (h->htype & ~STO_INFLATED) {
         case STO_TYPE_MEM:
-          debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p", chunkDataP, h);
+          debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p 0x%08X", chunkDataP, (uint32_t)((uint8_t *)h - sto->base));
           if (h->buf) StoPtrFree(h->buf);
           pumpkin_heap_free(h, "Handle");
           err = errNone;

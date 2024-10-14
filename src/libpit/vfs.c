@@ -458,6 +458,7 @@ vfs_dir_t *vfs_opendir(vfs_session_t *session, char *path) {
   vdir->readdir = mount->callback.readdir;
   vdir->closedir = mount->callback.closedir;
   mutex_unlock(mutex);
+  xfree(abspath);
 
   return vdir;
 }
@@ -470,10 +471,14 @@ vfs_ent_t *vfs_readdir(vfs_dir_t *dir) {
 }
 
 int vfs_closedir(vfs_dir_t *dir) {
+  int r = -1;
+
   if (dir) {
-    return dir->closedir ? dir->closedir(dir->priv) : -1;
+    r = dir->closedir ? dir->closedir(dir->priv) : -1;
+    xfree(dir);
   }
-  return -1;
+
+  return r;
 }
 
 vfs_file_t *vfs_open_special(vfs_fpriv_t *fpriv,
@@ -541,6 +546,7 @@ vfs_file_t *vfs_open(vfs_session_t *session, char *path, int mode) {
   vfile->truncate  = mount->callback.truncate;
   vfile->fstat = mount->callback.fstat;
   mutex_unlock(mutex);
+  xfree(abspath);
 
   return vfile;
 }
@@ -627,10 +633,14 @@ int vfs_printf(vfs_file_t *f, char *fmt, ...) {
 }
 
 int vfs_close(vfs_file_t *f) {
+  int r = -1;
+
   if (f) {
-    return f->close ? f->close(f->fpriv) : -1;
+    r = f->close ? f->close(f->fpriv) : -1;
+    xfree(f);
   }
-  return -1;
+
+  return r;
 }
 
 uint32_t vfs_seek(vfs_file_t *f, uint32_t pos, int fromend) {

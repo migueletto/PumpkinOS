@@ -130,6 +130,7 @@ PIT_LIB_FUNCTION(builtin,loadlib)
   script_ref_t obj = 0;
 PIT_LIB_CODE
   obj = script_loadlib(PIT_LIB_PE, libname);
+  PIT_LIB_FREE_S(libname);
   r = 0;
 PIT_LIB_END_O(obj)
 
