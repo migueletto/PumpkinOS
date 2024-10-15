@@ -194,6 +194,8 @@ void PrefsSave(void)
 {
 	AddrPreferenceType prefs;
 
+  MemSet(&prefs, sizeof(AddrPreferenceType), 0);
+
 	// Write the preferences / saved-state information.
 	prefs.currentCategory = CurrentCategory;
 
