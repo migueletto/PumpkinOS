@@ -66,6 +66,7 @@ Err ExpCardInfo(UInt16 slotRefNum, ExpCardInfoType *infoP) {
     StrCopy(infoP->productStr, "Card");
     StrCopy(infoP->deviceClassStr, "Storage");
     StrCopy(infoP->deviceUniqueIDStr, "");
+    err = errNone;
   }
 
   return err;
