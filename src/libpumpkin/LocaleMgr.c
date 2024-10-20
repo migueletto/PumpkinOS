@@ -6,7 +6,7 @@
 
 // each word is 2 bytes, 10 words per locale
 #define numCols 10
-#define numLocales(h) (MemHandleSize(h) / (numCols * 2))
+#define numLocales(h) ((MemHandleSize(h) - 2) / (numCols * 2))
 
 UInt16 LmGetNumLocales(void) {
   MemHandle h;
@@ -33,6 +33,7 @@ Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
   if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
+      p++;
       for (i = *ioLocaleIndex; i < num; i++) {
         tz = (Int16)p[i * numCols + 6];
         if (tz == timeZone) {
@@ -67,6 +68,7 @@ Err LmLocaleToIndex(const LmLocaleType *iLocale, UInt16 *oLocaleIndex) {
   if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
+      p++;
       for (i = 0; i < num; i++) {
         if ((iLocale->language == lmAnyLanguage || iLocale->language == p[i * numCols + 1]) &&
             (iLocale->country == lmAnyCountry || iLocale->country == p[i * numCols + 0])) {
@@ -122,6 +124,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
   if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
+      p++;
       if (iLocaleIndex < num) {
         switch (iChoice) {
           case lmChoiceLocale:
