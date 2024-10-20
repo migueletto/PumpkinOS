@@ -1,8 +1,6 @@
 #ifndef MD5_H
 #define MD5_H
 
-#include <stdint.h>
-
 #define MD5_HASH_LEN 16
 
 typedef struct {

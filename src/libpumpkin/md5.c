@@ -1,3 +1,4 @@
+#include "sys.h"
 #include "md5.h"
 
 // based on: https://github.com/Zunawe/md5-c
