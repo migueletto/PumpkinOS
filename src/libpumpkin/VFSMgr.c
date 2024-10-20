@@ -564,7 +564,8 @@ Err VFSVolumeUnmount(UInt16 volRefNum) {
 Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
   Err err = sysErrParamErr;
 
-  if (volRefNumP && volIteratorP && *volIteratorP == vfsIteratorStart) {
+  // XXX WinLauncher passes volIterator = 0x80000000
+  if (volRefNumP && volIteratorP && (*volIteratorP == vfsIteratorStart || *volIteratorP == 0x80000000)) {
     *volRefNumP = VOLREF;
     *volIteratorP = vfsIteratorStop;
     err = errNone;
@@ -669,7 +670,7 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
           MemHandle *sortInfoHP, UInt32 *typeP,
           UInt32 *creatorP, UInt16 *numRecordsP) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBInfo not implemented");
-  return_err(sysErrParamErr);
+  return_err(vfsErrBadData);
 }
 
 Err VFSChangeDir(UInt16 volRefNum, char *path) {
