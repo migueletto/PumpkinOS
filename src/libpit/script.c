@@ -16,8 +16,10 @@
 
 struct script_engine_t {
   mutex_t *unload_mutex;
+  void *lib;
   int num_lib_unload;
   int (*lib_unload_f[MAX_LIB_UNLOAD])(void);
+  void *llib[MAX_LIB_UNLOAD];
 
   int (*dl_ext_script_init)(void);
   script_priv_t *(*dl_ext_script_create)(void);
@@ -58,6 +60,7 @@ int script_init(script_engine_t *engine) {
 
   engine->num_lib_unload = 0;
   sys_memset(engine->lib_unload_f, 0, sizeof(engine->lib_unload_f));
+  sys_memset(engine->llib, 0, sizeof(engine->llib));
 
   if ((engine->unload_mutex = mutex_create("unload")) == NULL) {
     return -1;
@@ -72,12 +75,14 @@ int script_finish(script_engine_t *engine) {
   if (engine) {
     for (i = 0; i < engine->num_lib_unload; i++) {
       engine->lib_unload_f[i]();
+      sys_lib_close(engine->llib[i]);
     }
 
     if (engine->unload_mutex) {
       mutex_destroy(engine->unload_mutex);
     }
 
+    if (engine->lib) sys_lib_close(engine->lib);
     xfree(engine);
   }
 
@@ -873,7 +878,8 @@ script_ref_t script_loadlib(int pe, char *libname) {
     if (mutex_lock(env->engine->unload_mutex) == 0) {
       if (env->engine->num_lib_unload < MAX_LIB_UNLOAD) {
         debug(DEBUG_INFO, "SCRIPT", "registering finalizer for %s library", libname);
-        env->engine->lib_unload_f[env->engine->num_lib_unload++] = unload_f;
+        env->engine->lib_unload_f[env->engine->num_lib_unload] = unload_f;
+        env->engine->llib[env->engine->num_lib_unload++] = lib;
       } else {
         debug(DEBUG_ERROR, "SCRIPT", "finalizer for %s library will not be called", libname);
       }
@@ -903,15 +909,14 @@ script_ref_t script_loadlib(int pe, char *libname) {
   return obj;
 }
 
-#define ENGINE_SYMBOL(sym) engine->dl_##sym = sys_lib_defsymbol(lib, #sym, 1); err += ((engine->dl_##sym) == NULL) ? 1 : 0
+#define ENGINE_SYMBOL(sym) engine->dl_##sym = sys_lib_defsymbol(engine->lib, #sym, 1); err += ((engine->dl_##sym) == NULL) ? 1 : 0
 
 script_engine_t *script_load_engine(char *libname) {
   script_engine_t *engine;
-  void *lib;
   int first_load, err = -1;
 
   if ((engine = xcalloc(1, sizeof(script_engine_t))) != NULL) {
-    if ((lib = sys_lib_load(libname, &first_load)) != NULL) {
+    if ((engine->lib = sys_lib_load(libname, &first_load)) != NULL) {
       err = 0;
       ENGINE_SYMBOL(ext_script_init);
       ENGINE_SYMBOL(ext_script_engine_id);
@@ -937,6 +942,7 @@ script_engine_t *script_load_engine(char *libname) {
     }
 
     if (err) {
+      if (engine->lib) sys_lib_close(engine->lib);
       xfree(engine);
       engine = NULL;
     }
