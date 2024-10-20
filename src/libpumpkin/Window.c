@@ -1676,7 +1676,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDepth = BmpGetBitDepth(best);
       bitmapEndianness = BmpGetLittleEndianBits(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
-      dither = !BmpGetNoDither(bitmapP);
+      dither = !BmpGetNoDither(best);
 
       displayBitmap = WinGetBitmap(module->displayWindow);
       displayDepth = BmpGetBitDepth(displayBitmap);
