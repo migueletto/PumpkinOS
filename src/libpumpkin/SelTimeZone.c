@@ -41,11 +41,68 @@ static void SelectTimeZoneDrawItem(Int16 itemNum, RectangleType *bounds, Char **
   }
 }
 
+static Boolean SelTimeZoneEventHandler(EventType *event) {
+  SystemPreferencesType prefs;
+  DateTimeType dateTime;
+  FormType *frm;
+  FieldType *fld;
+  MemHandle h;
+  UInt32 t;
+  UInt16 index, *tz;
+  Int16 newTimeZone;
+  char currentTime[16], newTime[16];
+  Boolean handled = false;
+
+  switch (event->eType) {
+    case lstSelectEvent:
+      if (event->data.lstSelect.listID == 13403) {
+        newTimeZone = 0;
+        if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
+          if ((tz = MemHandleLock(h)) != NULL) {
+            if (event->data.lstSelect.selection < tz[0]) {
+              newTimeZone = (Int16)tz[event->data.lstSelect.selection + 1];
+            }
+            MemHandleUnlock(h);
+          }
+          DmReleaseResource(h);
+        }
+
+        frm = FrmGetActiveForm();
+        PrefGetPreferences(&prefs);
+        t = TimGetSeconds();
+
+        TimSecondsToDateTime(t, &dateTime);
+        TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, currentTime);
+        index = FrmGetObjectIndex(frm, 13401);
+        fld = (FieldType *)FrmGetObjectPtr(frm, index);
+        FldDelete(fld, 0, 100);
+        FldInsert(fld, currentTime, StrLen(currentTime));
+
+        TimSecondsToDateTime(t - prefs.timeZone * 60 + newTimeZone * 60, &dateTime);
+        TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, newTime);
+        index = FrmGetObjectIndex(frm, 13402);
+        fld = (FieldType *)FrmGetObjectPtr(frm, index);
+        FldDelete(fld, 0, 100);
+        FldInsert(fld, newTime, StrLen(newTime));
+
+        handled = true;
+      }
+      break;
+    default:
+      break;
+  }
+
+  return handled;
+}
+
 Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, const Char *titleP, Boolean showTimes, Boolean anyLocale) {
   FormType *frm, *previous;
   ListType *list;
   FieldType *fld;
   MemHandle h;
+  SystemPreferencesType prefs;
+  DateTimeType dateTime;
+  UInt32 t;
   UInt16 i, j, max, maxc, maxs, index;
   UInt16 *tz, *country;
   UInt8 *p;
@@ -164,14 +221,18 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
   // 13407: label "Current time"
 
   if (showTimes) {
-     StrCopy(currentTime, "XXX"); // XXX fill currentTime
-     StrCopy(newTime, "XXX"); // XXX fill newTime
+    PrefGetPreferences(&prefs);
+    t = TimGetSeconds();
+    TimSecondsToDateTime(t, &dateTime);
+    TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, currentTime);
+    StrCopy(newTime, currentTime);
+
     index = FrmGetObjectIndex(frm, 13401);
     fld = (FieldType *)FrmGetObjectPtr(frm, index);
-    FldSetTextPtr(fld, currentTime);
+    FldInsert(fld, currentTime, StrLen(currentTime));
     index = FrmGetObjectIndex(frm, 13402);
     fld = (FieldType *)FrmGetObjectPtr(frm, index);
-    FldSetTextPtr(fld, newTime);
+    FldInsert(fld, newTime, StrLen(newTime));
 
   } else {
     index = FrmGetObjectIndex(frm, 13401);
@@ -187,6 +248,8 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
   }
 
   previous = FrmGetActiveForm();
+  FrmSetEventHandler(frm, SelTimeZoneEventHandler);
+
   if (FrmDoDialog(frm) == 13412) { // "OK" button
     if (list && choices) {
       i = LstGetSelection(list);
@@ -218,4 +281,4 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
 
   return r;
 
-} 
+}
