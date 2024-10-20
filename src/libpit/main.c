@@ -128,8 +128,8 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
   script_finish(engine);
   vfs_finish();
   status = thread_get_status();
-  thread_close();
   debug(DEBUG_INFO, "MAIN", "%s stopping", SYSTEM_NAME);
+  thread_close();
   debug_close();
 
   return status;
