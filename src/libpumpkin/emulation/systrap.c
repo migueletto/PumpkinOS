@@ -230,9 +230,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(startPP, trap, 0);
       emupalmos_trap_in(endPP, trap, 1);
       // XXX
-      if (startPP) m68k_write_memory_32(startPP, state->stackStart);
-      if (endPP) m68k_write_memory_32(endPP, state->stackStart + stackSize);
-      debug(DEBUG_TRACE, "EmuPalmOS", "SysGetStackInfo(0x%08X, 0x%08X): %d", startPP, endPP, true);
+      //if (startPP) m68k_write_memory_32(startPP, state->stackStart);
+      //if (endPP) m68k_write_memory_32(endPP, state->stackStart + stackSize);
+      if (startPP) m68k_write_memory_32(startPP, state->stackStart + stackSize);
+      if (endPP) m68k_write_memory_32(endPP, state->stackStart);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysGetStackInfo(0x%08X [0x%08X], 0x%08X [0x%08X]): %d", startPP, state->stackStart, endPP, state->stackStart + stackSize, true);
       m68k_set_reg(M68K_REG_D0, true);
       }
       break;
@@ -780,10 +782,13 @@ uint32_t palmos_systrap(uint16_t trap) {
       palmos_omtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapPinsDispatch:
-      palmos_pinstrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2)) ;
+      palmos_pinstrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapAccessorDispatch:
-      palmos_accessortrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2)) ;
+      palmos_accessortrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      break;
+    case sysTrapExpansionDispatch:
+      palmos_expansiontrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapWinScreenMode: {
       // Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP)
