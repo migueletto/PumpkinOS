@@ -99,17 +99,18 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
   UInt32 seconds;
   DateTimeType dateTime;
   FormType *frm;
-  MemHandle h;
+  MemHandle h1, h2;
   ControlType *ctl;
   ListType *lst;
   Int16 year, month, day, hour, minute;
   Int16 timeZone;
   LmLocaleType locale;
-  UInt16 i, index, *tz;
+  UInt16 i, index, *tz, *ct;
   Boolean handled = false;
 
   switch (event->eType) {
     case frmOpenEvent:
+    case frmUpdateEvent:
       frm = FrmGetActiveForm();
       formSetup(frm);
 
@@ -127,10 +128,14 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
       ctl = (ControlType *)FrmGetObjectPtr(frm, index);
       CtlSetLabel(ctl, data->timeBuf);
 
-      if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
-        if ((tz = MemHandleLock(h)) != NULL) {
+      h1 = DmGetResource(wrdListRscType, 13400);
+      h2 = DmGetResource(wrdListRscType, 13401);
+      if (h1 && h2) {
+        tz = MemHandleLock(h1);
+        ct = MemHandleLock(h2);
+        if (tz && ct) {
           for (i = 0; i < tz[0]; i++) {
-            if (prefs.timeZone == (Int16)tz[i+1]) {
+            if (prefs.timeZone == (Int16)tz[i+1] && prefs.country == ct[i+1]) {
               if (SysStringByIndex(13400, i, data->timeZoneBuf, 64) != NULL) {
                 index = FrmGetObjectIndex(frm, setTimeZoneTrigger);
                 ctl = (ControlType *)FrmGetObjectPtr(frm, index);
@@ -139,10 +144,12 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
               break;
             }
           }
-          MemHandleUnlock(h);
         }
-        DmReleaseResource(h);
+        if (tz) MemHandleUnlock(h1);
+        if (ct) MemHandleUnlock(h2);
       }
+      if (h1) DmReleaseResource(h1);
+      if (h2) DmReleaseResource(h2);
 
       index = FrmGetObjectIndex(frm, daylightTrigger);
       ctl = (ControlType *)FrmGetObjectPtr(frm, index);
@@ -186,6 +193,8 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
           locale.country = prefs.country;
           if (SelectTimeZone(&timeZone, &locale, "Set Time Zone", true, false)) {
             PrefSetPreference(prefTimeZone, timeZone);
+            PrefSetPreference(prefCountry, locale.country);
+            FrmUpdateForm(datetimeForm, 0);
           }
           handled = true;
           break;
@@ -237,6 +246,7 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
   NumberFormatType numberFormat;
   LmLocaleType locale;
   UInt8 weekStartDay;
+  Int16 tz;
   char *text;
   Boolean handled = false;
 
@@ -448,6 +458,9 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
             localeIndex = data->countries[event->data.popSelect.selection].index;
             PrefSetPreference(prefCountry, localeIndex);
 
+            if (LmGetLocaleSetting(localeIndex, lmChoiceTimeZone, &tz, sizeof(Int16)) == errNone) {
+              PrefSetPreference(prefTimeZone, tz);
+            }
             if (LmGetLocaleSetting(localeIndex, lmChoiceLocale, &locale, sizeof(LmLocaleType)) == errNone) {
               PrefSetPreference(prefLanguage, locale.language);
             }
