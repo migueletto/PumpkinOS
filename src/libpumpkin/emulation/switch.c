@@ -711,7 +711,10 @@ case sysTrapDmOpenDatabaseByTypeCreator: {
   DmOpenRef res = DmOpenDatabaseByTypeCreator(type, creator, mode);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmOpenDatabaseByTypeCreator(type=%d, creator=%d, mode=%d): 0x%08X", type, creator, mode, r_res);
+  char stype[8], screator[8];
+  pumpkin_id2s(type, stype);
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmOpenDatabaseByTypeCreator(type='%s', creator='%s', mode=%d): 0x%08X", stype, screator, mode, r_res);
 }
 break;
 case sysTrapDmOpenDBNoOverlay: {
