@@ -939,11 +939,11 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
     if (callback == NULL) {
       filename = (char *)context;
       if ((ext = getext(filename)) != NULL) {
-        if (!strcasecmp(ext, "png")) {
+        if (!sys_strcasecmp(ext, "png")) {
           r = stbi_write_png(filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
-        } else if (!strcasecmp(ext, "bmp")) {
+        } else if (!sys_strcasecmp(ext, "bmp")) {
           r = stbi_write_bmp(filename, surface->width, surface->height, ocomp, buf);
-        } else if (!strcasecmp(ext, "jpg")) {
+        } else if (!sys_strcasecmp(ext, "jpg")) {
           r = stbi_write_jpg(filename, surface->width, surface->height, ocomp, buf, quality);
         } else {
           debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
