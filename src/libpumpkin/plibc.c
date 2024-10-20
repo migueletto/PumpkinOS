@@ -34,19 +34,19 @@ int plibc_init(void) {
 
   plibc_finish();
 
-  table[0] = plibc_calloc(1, sizeof(fd_t));
+  table[0] = sys_calloc(1, sizeof(fd_t));
   table[0]->fileRef = stdinFileRef;
-  plibc_stdin = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stdin = sys_calloc(1, sizeof(PLIBC_FILE));
   plibc_stdin->fd = 0;
 
-  table[1] = plibc_calloc(1, sizeof(fd_t));
+  table[1] = sys_calloc(1, sizeof(fd_t));
   table[1]->fileRef = stdoutFileRef;
-  plibc_stdout = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stdout = sys_calloc(1, sizeof(PLIBC_FILE));
   plibc_stdout->fd = 1;
 
-  table[2] = plibc_calloc(1, sizeof(fd_t));
+  table[2] = sys_calloc(1, sizeof(fd_t));
   table[2]->fileRef = stderrFileRef;
-  plibc_stderr = plibc_calloc(1, sizeof(PLIBC_FILE));
+  plibc_stderr = sys_calloc(1, sizeof(PLIBC_FILE));
   plibc_stderr->fd = 2;
 
   return 0;
@@ -58,14 +58,14 @@ int plibc_finish(void) {
 
   for (fd = 0; fd < MAX_FDS; fd++) {
     if (table[fd]) {
-      plibc_free(table[fd]);
+      sys_free(table[fd]);
       table[fd] = NULL;
     }
   }
 
-  plibc_free(plibc_stdin);
-  plibc_free(plibc_stdout);
-  plibc_free(plibc_stderr);
+  sys_free(plibc_stdin);
+  sys_free(plibc_stdout);
+  sys_free(plibc_stderr);
 
   return 0;
 }
@@ -145,7 +145,7 @@ int plibc_open(const char *pathname, int flags) {
 
     if (VFSFileOpen(1, pathname, openMode, &fileRef) == errNone) {
       if ((err = VFSFileSeek(fileRef, origin, 0)) == errNone || err == vfsErrFileEOF) {
-        if ((f = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+        if ((f = sys_calloc(1, sizeof(fd_t))) != NULL) {
           f->fileRef = fileRef;
           table[fd] = f;
         } else {
@@ -178,7 +178,7 @@ int plibc_close(int fd) {
         VFSFileClose(table[fd]->fileRef);
       }
     }
-    plibc_free(table[fd]);
+    sys_free(table[fd]);
     table[fd] = NULL;
     r = 0;
   }
@@ -270,7 +270,7 @@ int plibc_dup(int oldfd) {
     }
 
     if (fd < MAX_FDS) {
-      if ((table[fd] = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+      if ((table[fd] = sys_calloc(1, sizeof(fd_t))) != NULL) {
         table[fd]->fileRef = table[oldfd]->fileRef;
       } else {
         fd = -1;
@@ -289,7 +289,7 @@ int plibc_dup2(int oldfd, int newfd) {
   if (oldfd >= 0 && oldfd < MAX_FDS && newfd >= 0 && newfd < MAX_FDS && table[oldfd]) {
     plibc_close(newfd);
 
-    if ((table[newfd] = plibc_calloc(1, sizeof(fd_t))) != NULL) {
+    if ((table[newfd] = sys_calloc(1, sizeof(fd_t))) != NULL) {
       table[newfd]->fileRef = table[oldfd]->fileRef;
     } else {
       newfd = -1;
@@ -308,7 +308,7 @@ PLIBC_FILE *plibc_fdopen(int fd, const char *mode) {
   // XXX mode is ignored
 
   if (fd >= 0 && fd < MAX_FDS && table[fd] && table[fd]->fileRef) {
-    if ((stream = plibc_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
+    if ((stream = sys_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
       stream->fd = fd;
     }
   }
@@ -347,9 +347,9 @@ PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
         return NULL;
     }
 
-    if ((stream = plibc_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
+    if ((stream = sys_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
       if ((stream->fd = plibc_open(pathname, flags)) == -1) {
-        plibc_free(stream);
+        sys_free(stream);
         stream = NULL;
       }
     }

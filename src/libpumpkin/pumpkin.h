@@ -493,6 +493,7 @@ UInt16 *SysLibGetDispatch68K(UInt16 refNum);
 Boolean SysCreateDataBaseList68K(UInt32 type, UInt32 creator, UInt16 *dbCount, MemHandle *dbIDs, Boolean lookupName);
 void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF, Int32 other);
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
+Int32 SysRandom32(Int32 newSeed);
 
 Boolean CallFormHandler(UInt32 addr, EventType *event);
 Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt8 cmd, EventType *eventP);

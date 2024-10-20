@@ -62,6 +62,13 @@ thread_key_t *thread_key(void) {
   return key;
 }
 
+void thread_key_delete(thread_key_t *key) {
+  if (key) {
+    pthread_key_delete(key->key);
+    sys_free(key);
+  }
+}
+
 void thread_set(thread_key_t *key, void *value) {
   pthread_setspecific(key->key, value);
 }
@@ -123,6 +130,8 @@ void thread_close(void) {
   }
   mutex_destroy(flags_mutex);
   mutex_destroy(mutex);
+  thread_key_delete(tname);
+  thread_key_delete(local);
 }
 
 void thread_set_name(char *name) {
@@ -539,4 +548,17 @@ unsigned int thread_get_flags(unsigned int mask) {
   }
 
   return r;
+}
+
+void thread_yield(int waiting) {
+}
+
+void thread_resume(int handle) {
+}
+
+int thread_needs_run(void) {
+  return 0;
+}
+
+void thread_run(void) {
 }

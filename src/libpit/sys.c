@@ -55,9 +55,9 @@
 
 #include "sys.h"
 #include "thread.h"
+#include "endianness.h"
 #include "ptr.h"
 #include "debug.h"
-#include "xalloc.h"
 
 #define EN_US "en_US"
 
@@ -86,22 +86,6 @@ void sys_init(void) {
   if ((err = WSAStartup(version, &data)) != 0) {
     debug(DEBUG_ERROR, "SYS", "WSAStartup error %d", err);
   }
-#endif
-}
-
-void sys_srand(int32_t seed) {
-#ifdef WINDOWS
-  srand(seed);
-#else
-  srandom(seed);
-#endif
-}
-
-int32_t sys_rand(void) {
-#ifdef WINDOWS
-  return rand();
-#else
-  return random();
 #endif
 }
 
@@ -162,7 +146,7 @@ static void fd_destructor(void *p) {
   f = (fd_t *)p;
 
   if (f) {
-    debug(DEBUG_TRACE, "SYS", "fd_destructor type=%d f=0x%08X", f->type, f);
+    debug(DEBUG_TRACE, "SYS", "fd_destructor type=%d f=%p", f->type, f);
 
     switch (f->type) {
       case FD_FILE:
@@ -345,146 +329,6 @@ uint64_t sys_time(void) {
   return time(&t);
 }
 
-int sys_isdst(void) {
-  sys_tm_t tm;
-  uint64_t t;
-
-  t = sys_time();
-  sys_localtime(&t, &tm);
-
-  return tm.tm_isdst > 0 ? 1 : 0;
-}
-
-uint64_t sys_timegm(sys_tm_t *tm) {
-  struct tm stm;
-  uint64_t t;
-
-  xmemset(&stm, 0, sizeof(stm));
-  stm.tm_year = tm->tm_year;
-  stm.tm_mon = tm->tm_mon;
-  stm.tm_mday = tm->tm_mday;
-  stm.tm_wday = tm->tm_wday;
-  stm.tm_hour = tm->tm_hour;
-  stm.tm_min = tm->tm_min;
-  stm.tm_sec = tm->tm_sec;
-  stm.tm_isdst = tm->tm_isdst;
-  stm.tm_yday = tm->tm_yday;
-#ifdef WINDOWS32
-  t = _mkgmtime(&stm);
-#else
-  t = timegm(&stm);
-#endif
-
-  return t;
-}
-
-uint64_t sys_timelocal(sys_tm_t *tm) {
-  struct tm stm;
-  uint64_t t;
-
-  xmemset(&stm, 0, sizeof(stm));
-  stm.tm_year = tm->tm_year;
-  stm.tm_mon = tm->tm_mon;
-  stm.tm_mday = tm->tm_mday;
-  stm.tm_wday = tm->tm_wday;
-  stm.tm_hour = tm->tm_hour;
-  stm.tm_min = tm->tm_min;
-  stm.tm_sec = tm->tm_sec;
-  stm.tm_isdst = tm->tm_isdst;
-  stm.tm_yday = tm->tm_yday;
-
-#ifdef WINDOWS
-  t = mktime(&stm);
-#endif
-#ifdef LINUX
-  t = timelocal(&stm);
-#endif
-#ifdef SERENITY
-  t = mktime(&stm);
-#endif
-
-  return t;
-}
-
-int sys_gmtime(const uint64_t *t, sys_tm_t *tm) {
-  time_t tt;
-#ifdef WINDOWS
-  // the MSVC implementation of gmtime() is already thread safe
-  struct tm *stm;
-  tt = *t;
-  stm = gmtime(&tt);
-  tm->tm_year = stm->tm_year;
-  tm->tm_mon = stm->tm_mon;
-  tm->tm_mday = stm->tm_mday;
-  tm->tm_wday = stm->tm_wday;
-  tm->tm_hour = stm->tm_hour;
-  tm->tm_min = stm->tm_min;
-  tm->tm_sec = stm->tm_sec;
-  tm->tm_isdst = stm->tm_isdst;
-  tm->tm_yday = stm->tm_yday;
-#else
-  struct tm st;
-  tt = *t;
-  gmtime_r(&tt, &st);
-  tm->tm_year = st.tm_year;
-  tm->tm_mon = st.tm_mon;
-  tm->tm_mday = st.tm_mday;
-  tm->tm_wday = st.tm_wday;
-  tm->tm_hour = st.tm_hour;
-  tm->tm_min = st.tm_min;
-  tm->tm_sec = st.tm_sec;
-  tm->tm_isdst = st.tm_isdst;
-  tm->tm_yday = st.tm_yday;
-#endif
-
-  return 0;
-}
-
-int sys_localtime(const uint64_t *t, sys_tm_t *tm) {
-  time_t tt;
-#ifdef WINDOWS
-  struct tm *stm;
-  // the MSVC implementation of localtime() is already thread safe
-  tt = *t;
-  stm = localtime(&tt);
-  tm->tm_year = stm->tm_year;
-  tm->tm_mon = stm->tm_mon;
-  tm->tm_mday = stm->tm_mday;
-  tm->tm_wday = stm->tm_wday;
-  tm->tm_hour = stm->tm_hour;
-  tm->tm_min = stm->tm_min;
-  tm->tm_sec = stm->tm_sec;
-  tm->tm_isdst = stm->tm_isdst;
-  tm->tm_yday = stm->tm_yday;
-#else
-  struct tm st;
-  tt = *t;
-  localtime_r(&tt, &st);
-  tm->tm_year = st.tm_year;
-  tm->tm_mon = st.tm_mon;
-  tm->tm_mday = st.tm_mday;
-  tm->tm_wday = st.tm_wday;
-  tm->tm_hour = st.tm_hour;
-  tm->tm_min = st.tm_min;
-  tm->tm_sec = st.tm_sec;
-  tm->tm_isdst = st.tm_isdst;
-  tm->tm_yday = st.tm_yday;
-#endif
-
-  return 0;
-}
-
-int sys_timeofday(sys_timeval_t *tv) {
-  struct timeval t;
-  int r;
-
-  r = gettimeofday(&t, NULL);
-  tv->tv_sec = t.tv_sec;
-  tv->tv_usec = t.tv_usec;
-
-  return r;
-}
-
 char *sys_getenv(char *name) {
   return getenv(name);
 }
@@ -515,7 +359,7 @@ int sys_country(char *country, int len) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
     }
-    if (!strcmp(buf, "C")) {
+    if (!sys_strcmp(buf, "C")) {
       sys_strncpy(buf, EN_US, sizeof(buf)-1);
     }
     if ((p = sys_strchr(buf, '_')) != NULL) {
@@ -552,7 +396,7 @@ int sys_language(char *language, int len) {
       // "pt_BR.UTF-8" -> "pt_BR"
       *p = 0;
     }
-    if (!strcmp(buf, "C")) {
+    if (!sys_strcmp(buf, "C")) {
       sys_strncpy(buf, EN_US, sizeof(buf)-1);
     }
     if ((p = sys_strchr(buf, '_')) != NULL) {
@@ -1276,7 +1120,7 @@ int sys_fstat(int fd, sys_stat_t *st) {
   fd_t *f;
 
   if (st) {
-    xmemset(st, 0, sizeof(sys_stat_t));
+    sys_memset(st, 0, sizeof(sys_stat_t));
 
     if ((f = ptr_lock(fd, TAG_FD)) != NULL) {
       if (f->type == FD_FILE) {
@@ -1468,8 +1312,10 @@ int sys_mkdir(const char *pathname) {
   normalize_path(pathname, buf, FILE_PATH);
 #ifdef WINDOWS32
   r = mkdir(buf);
-#else
-  r = mkdir(buf, 0755);
+#endif
+#ifdef WINDOWS64
+  r = mkdir(buf);
+  //r = mkdir(buf, 0755);
 #endif
 #else
   sys_strncpy(buf, pathname, FILE_PATH);
@@ -1507,7 +1353,7 @@ int sys_serial_open(char *device, char *word, int baud) {
     return -1;
   }
 
-  xmemset(&dcb, 0, sizeof(dcb));
+  sys_memset(&dcb, 0, sizeof(dcb));
 
   if (!GetCommState(handle, &dcb)) {
     debug_errno("SYS", "GetCommState");
@@ -1530,7 +1376,7 @@ int sys_serial_open(char *device, char *word, int baud) {
   dcb.fRtsControl = RTS_CONTROL_DISABLE;
   dcb.fAbortOnError = FALSE;
 
-  switch (tolower(word[0])) {
+  switch (sys_tolower(word[0])) {
     case 'n': dcb.Parity = NOPARITY; break;
     case 'o': dcb.Parity = ODDPARITY; break;
     case 'e': dcb.Parity = EVENPARITY; break;
@@ -1572,7 +1418,7 @@ int sys_serial_open(char *device, char *word, int baud) {
     CloseHandle(handle);
     return -1;
   }
-  debug(DEBUG_INFO, "SYS", "read timeouts interval=%d, mult=%d, const=%d",
+  debug(DEBUG_INFO, "SYS", "read timeouts interval=%ld, mult=%ld, const=%ld",
     timeouts.ReadIntervalTimeout, timeouts.ReadTotalTimeoutMultiplier, timeouts.ReadTotalTimeoutConstant);
 
   timeouts.ReadIntervalTimeout = MAXDWORD;
@@ -1697,7 +1543,7 @@ int sys_serial_word(int serial, char *word) {
     return 1;
   }
 
-  switch (tolower(word[0])) {
+  switch (sys_tolower(word[0])) {
     case 'n': parity = 0; break;
     case 'o': parity = PARENB | PARODD; break;
     case 'e': parity = PARENB; break;
@@ -2019,7 +1865,7 @@ void sys_install_handler(int signum, void (*handler)(int)) {
   signal(signum, handler);
 #else
   struct sigaction action;
-  xmemset(&action, 0, sizeof(action));
+  sys_memset(&action, 0, sizeof(action));
   action.sa_handler = handler;
   sigaction(signum, &action, NULL);
 #endif
@@ -2041,7 +1887,7 @@ void *sys_lib_load(char *libname, int *first_load) {
 #ifdef WINDOWS
   normalize_path(libname, buf, FILE_PATH-1);
   len = sys_strlen(buf);
-  if (strstr(buf, ".dll") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
+  if (sys_strstr(buf, ".dll") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
     sys_strcat(buf, ".dll");
   }
 
@@ -2065,7 +1911,7 @@ void *sys_lib_load(char *libname, int *first_load) {
 #else
   sys_strncpy(buf, libname, FILE_PATH-1);
   len = sys_strlen(buf);
-  if (strstr(buf, ".so") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 4) {
+  if (sys_strstr(buf, ".so") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 4) {
     sys_strcat(buf, ".so");
   }
 
@@ -2148,6 +1994,165 @@ void sys_set_finish(int status) {
   thread_set_flags(FLAG_FINISH);
 }
 
+static const char *sys_inet_ntop(int af, const void *a0, char *s, uint32_t l) {
+	const unsigned char *a = a0;
+	int i, j, max, best;
+	char buf[100];
+
+	switch (af) {
+	case AF_INET:
+		if (sys_snprintf(s, l, "%d.%d.%d.%d", a[0],a[1],a[2],a[3]) < l)
+			return s;
+		break;
+	case AF_INET6:
+		if (sys_memcmp(a, "\0\0\0\0\0\0\0\0\0\0\377\377", 12))
+			sys_snprintf(buf, sizeof buf,
+				"%x:%x:%x:%x:%x:%x:%x:%x",
+				256*a[0]+a[1],256*a[2]+a[3],
+				256*a[4]+a[5],256*a[6]+a[7],
+				256*a[8]+a[9],256*a[10]+a[11],
+				256*a[12]+a[13],256*a[14]+a[15]);
+		else
+			sys_snprintf(buf, sizeof buf,
+				"%x:%x:%x:%x:%x:%x:%d.%d.%d.%d",
+				256*a[0]+a[1],256*a[2]+a[3],
+				256*a[4]+a[5],256*a[6]+a[7],
+				256*a[8]+a[9],256*a[10]+a[11],
+				a[12],a[13],a[14],a[15]);
+		// Replace longest /(^0|:)[:0]{2,}/ with "::"
+		for (i=best=0, max=2; buf[i]; i++) {
+			if (i && buf[i] != ':') continue;
+			j = sys_strspn(buf+i, ":0");
+			if (j>max) best=i, max=j;
+		}
+		if (max>3) {
+			buf[best] = buf[best+1] = ':';
+			sys_memmove(buf+best+2, buf+best+max, i-best-max+1);
+		}
+		if (sys_strlen(buf) < l) {
+			sys_strcpy(s, buf);
+			return s;
+		}
+		break;
+	default:
+		errno = EAFNOSUPPORT;
+		return 0;
+	}
+	errno = ENOSPC;
+	return 0;
+}
+
+static int hexval(unsigned int c) {
+	if (c-'0'<10) return c-'0';
+	c |= 32;
+	if (c-'a'<6) return c-'a'+10;
+	return -1;
+}
+
+static int sys_inet_pton(int af, const char *s, void *a0) {
+	uint16_t ip[8];
+	unsigned char *a = a0;
+	int i, j, v, d, brk=-1, need_v4=0;
+
+	if (af==AF_INET) {
+		for (i=0; i<4; i++) {
+			for (v=j=0; j<3 && sys_isdigit(s[j]); j++)
+				v = 10*v + s[j]-'0';
+			if (j==0 || (j>1 && s[0]=='0') || v>255) return 0;
+			a[i] = v;
+			if (s[j]==0 && i==3) return 1;
+			if (s[j]!='.') return 0;
+			s += j+1;
+		}
+		return 0;
+	} else if (af!=AF_INET6) {
+		errno = EAFNOSUPPORT;
+		return -1;
+	}
+
+	if (*s==':' && *++s!=':') return 0;
+
+	for (i=0; ; i++) {
+		if (s[0]==':' && brk<0) {
+			brk=i;
+			ip[i&7]=0;
+			if (!*++s) break;
+			if (i==7) return 0;
+			continue;
+		}
+		for (v=j=0; j<4 && (d=hexval(s[j]))>=0; j++)
+			v=16*v+d;
+		if (j==0) return 0;
+		ip[i&7] = v;
+		if (!s[j] && (brk>=0 || i==7)) break;
+		if (i==7) return 0;
+		if (s[j]!=':') {
+			if (s[j]!='.' || (i<6 && brk<0)) return 0;
+			need_v4=1;
+			i++;
+			ip[i&7]=0;
+			break;
+		}
+		s += j+1;
+	}
+	if (brk>=0) {
+		sys_memmove(ip+brk+7-i, ip+brk, 2*(i+1-brk));
+		for (j=0; j<7-i; j++) ip[brk+j] = 0;
+	}
+	for (j=0; j<8; j++) {
+		*a++ = ip[j]>>8;
+		*a++ = ip[j];
+	}
+	if (need_v4 && sys_inet_pton(AF_INET, (void *)s, a-4) <= 0) return 0;
+	return 1;
+}
+
+static int __inet_aton(const char *s0, struct in_addr *dest) {
+  const char *s = s0;
+  unsigned char *d = (void *)dest;
+  unsigned long a[4] = { 0 };
+  char *z;
+  int i;
+
+  for (i=0; i<4; i++) {
+    a[i] = sys_strtoul(s, &z, 0);
+    if (z==s || (*z && *z != '.') || !sys_isdigit(*s))
+      return 0;
+    if (!*z) break;
+    s=z+1;
+  }
+  if (i==4) return 0;
+  switch (i) {
+  case 0:
+    a[1] = a[0] & 0xffffff;
+    a[0] >>= 24;
+  case 1:
+    a[2] = a[1] & 0xffff;
+    a[1] >>= 16;
+  case 2:
+    a[3] = a[2] & 0xff;
+    a[2] >>= 8;
+  }
+  for (i=0; i<4; i++) {
+    if (a[i] > 255) return 0;
+    d[i] = a[i];
+  }
+  return 1;
+}
+
+static in_addr_t sys_inet_addr(const char *p) {
+  struct in_addr a;
+  if (!__inet_aton(p, &a)) return -1;
+  return a.s_addr;
+}
+
+static char *sys_inet_ntoa(struct in_addr in) {
+  static char buf[16];
+  unsigned char *a = (void *)&in;
+  sys_snprintf(buf, sizeof buf, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
+  return buf;
+}
+
 static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port, int *len, int ipv4_only) {
   struct sockaddr_in *addr;
   struct sockaddr_in6 *addr6;
@@ -2156,13 +2161,13 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
   in_addr_t ip;
   int i, r = -1;
 
-  xmemset((char *)a, 0, sizeof(struct sockaddr_storage));
+  sys_memset((char *)a, 0, sizeof(struct sockaddr_storage));
 
-  if (strchr(host, ':') != NULL) {
+  if (sys_strchr(host, ':') != NULL) {
     // ipv6 numeric address
     addr6 = (struct sockaddr_in6 *)a;
-    xmemset((char *)addr6, 0, sizeof(struct sockaddr_in6));
-    if ((r = inet_pton(AF_INET6, host, &(addr6->sin6_addr))) != 1) {
+    sys_memset((char *)addr6, 0, sizeof(struct sockaddr_in6));
+    if ((r = sys_inet_pton(AF_INET6, host, &(addr6->sin6_addr))) != 1) {
       if (r == 0) {
         debug(DEBUG_ERROR, "SYS", "invalid ipv6 address %s", host);
       } else {
@@ -2171,29 +2176,29 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
       r = -1;
     } else {
       addr6->sin6_family = AF_INET6;
-      addr6->sin6_port = htons(port);
+      addr6->sin6_port = sys_htobe16(port);
       //__be32 sin6_flowinfo;
       //addr6->sin6_scope_id = htonl(0x20);
       *len = sizeof(struct sockaddr_in6);
       r = 1;
     }
 
-  } else if (host[0] && !isalpha((int)host[strlen(host)-1])) {
+  } else if (host[0] && !isalpha((int)host[sys_strlen(host)-1])) {
     // ipv4 numeric address
     addr = (struct sockaddr_in *)a;
-    xmemset((char *)addr, 0, sizeof(struct sockaddr_in));
-    if ((ip = inet_addr(host)) == INADDR_NONE && sys_strcmp(host, "255.255.255.255")) {
+    sys_memset((char *)addr, 0, sizeof(struct sockaddr_in));
+    if ((ip = sys_inet_addr(host)) == INADDR_NONE && sys_strcmp(host, "255.255.255.255")) {
       debug(DEBUG_ERROR, "SYS", "invalid ipv4 address %s", host);
     }
     addr->sin_family = AF_INET;
     addr->sin_addr.s_addr = ip;
-    addr->sin_port = htons(port);
+    addr->sin_port = sys_htobe16(port);
     *len = sizeof(struct sockaddr_in);
     r = 0;
 
   } else {
     // host name
-    xmemset((char *)&hints, 0, sizeof(struct addrinfo));
+    sys_memset((char *)&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
@@ -2208,11 +2213,11 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
           case AF_INET:
             addr = (struct sockaddr_in *)a;
             sys_memcpy(addr, pr->ai_addr, pr->ai_addrlen);
-            s = (char *)inet_ntoa(addr->sin_addr);
+            s = sys_inet_ntoa(addr->sin_addr);
             if (s) {
               addr->sin_family = AF_INET;
-              addr->sin_port = htons(port);
-              debug(DEBUG_TRACE, "SYS", "host %s resolves to ipv4 address %s len %d", host, s, pr->ai_addrlen);
+              addr->sin_port = sys_htobe16(port);
+              debug(DEBUG_TRACE, "SYS", "host %s resolves to ipv4 address %s len %d", host, s, (int)pr->ai_addrlen);
               *len = pr->ai_addrlen;
               r = 0;
             }
@@ -2221,11 +2226,11 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
             if (!ipv4_only) {
               addr6 = (struct sockaddr_in6 *)a;
               sys_memcpy(addr6, pr->ai_addr, pr->ai_addrlen);
-              xmemset(name, 0, sizeof(name));
-              if (inet_ntop(AF_INET6, &(addr6->sin6_addr), name, sizeof(name)-1)) {
+              sys_memset(name, 0, sizeof(name));
+              if (sys_inet_ntop(AF_INET6, &(addr6->sin6_addr), name, sizeof(name)-1)) {
                 addr6->sin6_family = AF_INET6;
-                addr6->sin6_port = htons(port);
-                debug(DEBUG_TRACE, "SYS", "host %s resolves to ipv6 address %s len %d", host, name, pr->ai_addrlen);
+                addr6->sin6_port = sys_htobe16(port);
+                debug(DEBUG_TRACE, "SYS", "host %s resolves to ipv6 address %s len %d", host, name, (int)pr->ai_addrlen);
                 *len = pr->ai_addrlen;
                 r = 1;
               }
@@ -2464,7 +2469,7 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
 #ifdef SERENITY
   if (port == 0) {
     // XXX if port==0, bind() should pick a randon port number, but
-    // Serenity does not dot that. So we do the hard and inneficient way.
+    // SerenityOS does not do that. So we do the hard and inneficient way.
     r = -1;
     for (port = 16384; port < 65536; port++) {
       sys_tcpip_fill_addr(&addr, host, port, &addrlen, 0);
@@ -2482,7 +2487,7 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
     return -1;
   }
 
-  xmemset(&addr, 0, sizeof(addr));
+  sys_memset(&addr, 0, sizeof(addr));
   socklen = sizeof(addr);
   if (getsockname(sock, (struct sockaddr *)&addr, &socklen) == -1) {
     debug_errno("SYS", "getsockname");
@@ -2492,14 +2497,14 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
   switch (addr.ss_family) {
     case AF_INET:
       addr4 = (struct sockaddr_in *)&addr;
-      s = (char *)inet_ntoa(addr4->sin_addr);
-      *pport = ntohs(addr4->sin_port);
+      s = sys_inet_ntoa(addr4->sin_addr);
+      *pport = sys_be16toh(addr4->sin_port);
       break;
     case AF_INET6:
       addr6 = (struct sockaddr_in6 *)&addr;
-      inet_ntop(AF_INET6, &(addr6->sin6_addr), aux, sizeof(aux)-1);
+      sys_inet_ntop(AF_INET6, &(addr6->sin6_addr), aux, sizeof(aux)-1);
       s = aux;
-      *pport = ntohs(addr6->sin6_port);
+      *pport = sys_be16toh(addr6->sin6_port);
       break;
     default:
       debug(DEBUG_ERROR, "SYS", "fd %d received invalid address family %d", sock, addr.ss_family);
@@ -2630,7 +2635,7 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timev
     return r;
   }
 
-  xmemset((char *)&addr, 0, sizeof(addr));
+  sys_memset((char *)&addr, 0, sizeof(addr));
   addrlen = sizeof(addr);
   csock = accept(sock, (struct sockaddr *)&addr, &addrlen);
 
@@ -2639,20 +2644,20 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timev
     return -1;
   }
 
-  xmemset(host, 0, hlen);
+  sys_memset(host, 0, hlen);
 
   switch (addr.ss_family) {
     case AF_INET:
       addr4 = (struct sockaddr_in *)&addr;
-      s = (char *)inet_ntoa(addr4->sin_addr);
+      s = sys_inet_ntoa(addr4->sin_addr);
       if (s) sys_strncpy(host, s, hlen-1);
-      *port = ntohs(addr4->sin_port);
+      *port = sys_be16toh(addr4->sin_port);
       ipv6 = 0;
       break;
     case AF_INET6:
       addr6 = (struct sockaddr_in6 *)&addr;
-      inet_ntop(AF_INET6, &(addr6->sin6_addr), host, hlen-1);
-      *port = ntohs(addr6->sin6_port);
+      sys_inet_ntop(AF_INET6, &(addr6->sin6_addr), host, hlen-1);
+      *port = sys_be16toh(addr6->sin6_port);
       ipv6 = 1;
       break;
     default:
@@ -2746,24 +2751,24 @@ static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigne
   }
 
   addrlen = sizeof(addr);
-  xmemset(&addr, 0, addrlen);
+  sys_memset(&addr, 0, addrlen);
   r = recvfrom(sock, (char *)buf, n, 0, (struct sockaddr *)&addr, &addrlen);
 
   if (r != -1) {
     //debug(DEBUG_TRACE, "SYS", "fd %d received %d bytes", sock, r);
-    xmemset(host, 0, hlen);
+    sys_memset(host, 0, hlen);
 
     switch (addr.ss_family) {
       case AF_INET:
         addr4 = (struct sockaddr_in *)&addr;
-        s = (char *)inet_ntoa(addr4->sin_addr);
+        s = sys_inet_ntoa(addr4->sin_addr);
         if (s) sys_strncpy(host, s, hlen-1);
-        *port = ntohs(addr4->sin_port);
+        *port = sys_be16toh(addr4->sin_port);
         break;
       case AF_INET6:
         addr6 = (struct sockaddr_in6 *)&addr;
-        inet_ntop(AF_INET6, &(addr6->sin6_addr), host, hlen-1);
-        *port = ntohs(addr6->sin6_port);
+        sys_inet_ntop(AF_INET6, &(addr6->sin6_addr), host, hlen-1);
+        *port = sys_be16toh(addr6->sin6_port);
         break;
       default:
         debug(DEBUG_ERROR, "SYS", "fd %d received invalid address family %d", sock, addr.ss_family);
@@ -2915,7 +2920,7 @@ int sys_tmpname(char *buf, int max) {
 
   if (max >= 256 + L_tmpnam + 1) {
     t = getenv("TEMP");
-    xmemset(buf, 0, max);
+    sys_memset(buf, 0, max);
     sys_strncpy(buf, t ? t : "\\", 255);
     n = sys_strlen(buf);
     if (tmpnam(&buf[n])) {
@@ -2954,58 +2959,6 @@ void *sys_realloc(void *ptr, sys_size_t size) {
   return realloc(ptr, size);
 }
 
-char *sys_strdup(const char *s) {
-  return strdup(s);
-}
-
-char *sys_strndup(const char *s, sys_size_t n) {
-  return strndup(s, n);
-}
-
-char *sys_strcpy(char *dest, const char *src) {
-  return strcpy(dest, src);
-}
-
-char *sys_strncpy(char *dest, const char *src, sys_size_t n) {
-  return strncpy(dest, src, n);
-}
-
-uint32_t sys_strlen(const char *s) {
-  return strlen(s);
-}
-
-char *sys_strchr(const char *s, int c) {
-  return strchr(s, c);
-}
-
-char *sys_strrchr(const char *s, int c) {
-  return strrchr(s, c);
-}
-
-char *sys_strstr(const char *haystack, const char *needle) {
-  return strstr(haystack, needle);
-}
-
-char *sys_strpbrk(const char *s, const char *accept) {
-  int i, j;
-
-  for (i = 0; s[i]; i++) {
-    for (j = 0; accept[j]; j++) {
-      if (s[i] == accept[j]) return (char *)&s[i];
-    }
-  }
-
-  return NULL;
-}
-
-int sys_atoi(const char *nptr) {
-  return atoi(nptr);
-}
-
-double sys_atof(const char *nptr) {
-  return atof(nptr);
-}
-
 long sys_strtol(const char *nptr, char **endptr, int base) {
   return strtol(nptr, endptr, base);
 }
@@ -3018,49 +2971,10 @@ double sys_strtod(const char *nptr, char **endptr) {
   return strtod(nptr, endptr);
 }
 
-int sys_strcmp(const char *s1, const char *s2) {
-  return strcmp(s1, s2);
-}
-
-int sys_strncmp(const char *s1, const char *s2, sys_size_t n) {
-  return strncmp(s1, s2, n);
-}
-
-int sys_strcasecmp(const char *s1, const char *s2) {
-  return strcasecmp(s1, s2);
-}
-
-int sys_strncasecmp(const char *s1, const char *s2, sys_size_t n) {
-  return strncasecmp(s1, s2, n);
-}
-
-char *sys_strcat(char *dest, const char *src) {
-  return strcat(dest, src);
-}
-
-char *sys_strncat(char *dest, const char *src, sys_size_t n) {
-  return strncat(dest, src, n);
-}
-
-int sys_memcmp(const void *s1, const void *s2, sys_size_t n) {
-  return memcmp(s1, s2, n);
-}
-
-void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
-  return memcpy(dest, src, n);
-}
-
-void *sys_memmove(void *dest, const void *src, sys_size_t n) {
-  return memmove(dest, src, n);
-}
-
-void *sys_memset(void *s, int c, sys_size_t n) {
-  return memset(s, c, n);
-}
-
 int sys_abs(int x) {
-  return abs(x);
+  return x < 0 ? -x : x;
 }
+
 double sys_floor(double x) {
   return floor(x);
 }
@@ -3070,7 +2984,7 @@ double sys_ceil(double x) {
 }
 
 double sys_fabs(double x) {
-  return fabs(x);
+  return x < 0 ? -x : x;
 }
 
 double sys_log(double x) {
@@ -3125,46 +3039,12 @@ void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(cons
   return qsort(base, nmemb, size, compar);
 }
 
-void *sys_bsearch(const void *key, const void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
-  return bsearch(key, base, nmemb, size, compar);
-}
-
-int sys_toupper(int c) {
-  return toupper(c);
-}
-
-int sys_tolower(int c) {
-  return tolower(c);
-}
-
-int sys_sprintf(char *str, const char *format, ...) {
-  sys_va_list ap;
-  int r;
-
-  sys_va_start(ap, format);
-  r = vsprintf(str, format, ap);
-  sys_va_end(ap);
-
-  return r;
-}
-
 int sys_vsprintf(char *str, const char *format, sys_va_list ap) {
   return vsprintf(str, format, ap);
 }
 
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap) {
   return vsnprintf(str, size, format, ap);
-}
-
-int sys_snprintf(char *str, sys_size_t size, const char *format, ...) {
-  sys_va_list ap;
-  int r;
-
-  sys_va_start(ap, format);
-  r = sys_vsnprintf(str, size, format, ap);
-  sys_va_end(ap);
-
-  return r;
 }
 
 int sys_sscanf(const char *str, const char *format, ...) {
@@ -3179,7 +3059,11 @@ int sys_sscanf(const char *str, const char *format, ...) {
 }
 
 sys_size_t sys_getpagesize(void) {
+#ifdef WINDOWS
+  return 4096; // XXX
+#else
   return sysconf(_SC_PAGE_SIZE);
+#endif
 }
 
 int sys_setjmp(sys_jmp_buf env) {

@@ -64,8 +64,6 @@ int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...);
 int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap);
 int plibc_printf(const char *format, ...);
 int plibc_vprintf(const char *format, sys_va_list ap);
-int plibc_sprintf(char *str, const char *format, ...);
-int plibc_snprintf(char *str, sys_size_t size, const char *format, ...);
 
 int plibc_iscntrl(int c);
 int plibc_isblank(int c);
@@ -86,42 +84,5 @@ void plibc_error(const char *filename, const char *function, int lineNo, char *m
 
 #define plibc_assert(expr) if (!(expr)) plibc_error(__FILE__, __FUNCTION__, __LINE__, #expr);
 #define plibc_abort() plibc_error(__FILE__, __FUNCTION__, __LINE__, "abort");
-
-#define plibc_malloc      sys_malloc
-#define plibc_calloc      sys_calloc
-#define plibc_realloc     sys_realloc
-#define plibc_free        sys_free
-
-#define plibc_memcmp      sys_memcmp
-#define plibc_memmove     sys_memmove
-#define plibc_memcpy      sys_memcpy
-#define plibc_memset      sys_memset
-
-#define plibc_strdup      sys_strdup
-#define plibc_strndup     sys_strndup
-#define plibc_strcpy      sys_strcpy
-#define plibc_strncpy     sys_strncpy
-#define plibc_strlen      sys_strlen
-#define plibc_strchr      sys_strchr
-#define plibc_strrchr     sys_strrchr
-#define plibc_strstr      sys_strstr
-#define plibc_strpbrk     sys_strpbrk
-#define plibc_strcmp      sys_strcmp
-#define plibc_strncmp     sys_strncmp
-#define plibc_strcasecmp  sys_strcasecmp
-#define plibc_strncasecmp sys_strncasecmp
-#define plibc_strcat      sys_strcat
-#define plibc_strncat     sys_strncat
-#define plibc_strtol      sys_strtol
-#define plibc_strtoul     sys_strtoul
-#define plibc_strtod      sys_strtod
-
-#define plibc_vsprintf    sys_vsprintf
-#define plibc_vsnprintf   sys_vsnprintf
-#define plibc_sscanf      sys_sscanf
-
-#define plibc_tolower     sys_tolower
-#define plibc_toupper     sys_toupper
-#define plibc_atoi        sys_atoi
 
 #endif

@@ -1012,6 +1012,7 @@ int pumpkin_global_finish(void) {
   SysUFinishModule();
   StoFinish();
   heap_finish(pumpkin_module.heap);
+  thread_key_delete(task_key);
   mutex_destroy(pumpkin_module.fs_mutex);
   mutex_destroy(mutex);
 
@@ -2641,12 +2642,15 @@ void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   int i;
 
+/*
   if (thread_get_handle() == pumpkin_module.spawner) {
     if (pumpkin_sys_event() == -1) {
       pumpkin_set_finish(1);
       sys_set_finish(1);
     }
   }
+*/
+  thread_yield(0);
 
   if (x) *x = 0;
   if (y) *y = 0;
@@ -2846,12 +2850,14 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
   uint32_t *arg, reply;
   int r, client, ev = 0;
 
+/*
   if (thread_get_handle() == pumpkin_module.spawner) {
     if (pumpkin_sys_event() == -1) {
       pumpkin_set_finish(1);
       sys_set_finish(1);
     }
   }
+*/
   pumpkin_alarm_check();
 
   if ((r = thread_server_read_timeout_from(usec, &buf, &len, &client)) == 1) {

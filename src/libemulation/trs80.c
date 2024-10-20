@@ -479,7 +479,7 @@ static uint8_t trs80_getclock(uint8_t cmd) {
   uint64_t t;
 
   t = sys_time();
-  sys_localtime(&t, &ttm);
+  sys_gmtime(&t, &ttm);
   tm = &ttm;
 
   debug(DEBUG_INFO, "TRS80", "get clock cmd %d", cmd);

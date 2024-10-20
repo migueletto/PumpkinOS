@@ -50,38 +50,12 @@ static Int16 mapLanguage(char *language) {
   return -1;
 }
 
-static int16_t initTimePrefs(SystemPreferencesType *prefs, int *_dst) {
-  sys_tm_t tm;
-  uint64_t dt, tl;
-  int64_t sdt;
-  int dst;
-
-  dt = sys_time();
-  sys_gmtime(&dt, &tm);
-  sdt = (int64_t)dt;
-  tl = (int64_t)sys_timelocal(&tm);
-  sdt -= tl;
-  sdt /= 60;
-  dst = sys_isdst() ? 60 : 0;
-  sdt -= dst;
-
-  debug(DEBUG_INFO, PALMOS_MODULE, "setting prefs timeZone %d (dst %d)", (int32_t)sdt, dst);
-  prefs->timeZone = sdt;
-  prefs->daylightSavingAdjustment = dst;
-  prefs->minutesWestOfGMT = prefs->timeZone; // XXX minutesWestOfGMT is UInt32
-
-  if (_dst) *_dst = dst;
-  return (int16_t)sdt;
-}
-
 static void initPrefs(SystemPreferencesType *prefs) {
   LmLocaleType systemLocale, aux;
   char countryName[kMaxCountryNameLen+1];
   char country[8], language[16];
   UInt16 index;
   Int16 n;
-  int16_t dt;
-  int dst;
   Boolean found;
 
   prefs->version = 9;                             // Version of preference info
@@ -204,41 +178,16 @@ static void initPrefs(SystemPreferencesType *prefs) {
     }
   }
 
-  dt = initTimePrefs(prefs, &dst);
-
   if (!found) {
-    if (systemLocale.language == lmAnyLanguage) {
-      index = 0;
-      if (LmTimeZoneToIndex(dt, &index) == errNone) {
-        debug(DEBUG_INFO, PALMOS_MODULE, "inferred locale index %d based on timeZone %d (dst %d)", index, dt, dst);
-        found = true;
-      }
+    aux.language = lmAnyLanguage;
+    aux.country = cUnitedStates;
+    if (LmLocaleToIndex(&aux, &index) == errNone) {
+      debug(DEBUG_INFO, PALMOS_MODULE, "defaulting to US locale index %d", index);
+      systemLocale.country = aux.country;
+      systemLocale.language = aux.language;
+      found = true;
     } else {
-      for (index = 0;; index++) {
-        if (LmTimeZoneToIndex(dt, &index) != errNone) break;
-        LmGetLocaleSetting(index, lmChoiceLocale, &aux, sizeof(LmLocaleType));
-        if (aux.language == systemLocale.language) {
-          debug(DEBUG_INFO, PALMOS_MODULE, "inferred locale index %d based on language %d and timeZone %d (dst %d)", index, systemLocale.language, dt, dst);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        debug(DEBUG_ERROR, PALMOS_MODULE, "could not infer locale based on language %d timeZone %d (dst %d)", systemLocale.language, dt, dst);
-      }
-    }
-
-    if (!found) {
-      aux.language = lmAnyLanguage;
-      aux.country = cUnitedStates;
-      if (LmLocaleToIndex(&aux, &index) == errNone) {
-        debug(DEBUG_INFO, PALMOS_MODULE, "defaulting to US locale index %d", index);
-        systemLocale.country = aux.country;
-        systemLocale.language = aux.language;
-        found = true;
-      } else {
-        debug(DEBUG_ERROR, PALMOS_MODULE, "could not find any suitable locale");
-      }
+      debug(DEBUG_ERROR, PALMOS_MODULE, "could not find any suitable locale");
     }
   }
 
@@ -254,6 +203,7 @@ static void initPrefs(SystemPreferencesType *prefs) {
     prefs->timeZoneCountry = systemLocale.country;
     prefs->language = systemLocale.language;
 
+    LmGetLocaleSetting(index, lmChoiceTimeZone, &prefs->timeZone, sizeof(prefs->timeZone));
     LmGetLocaleSetting(index, lmChoiceDateFormat, &prefs->dateFormat, sizeof(prefs->dateFormat));
     LmGetLocaleSetting(index, lmChoiceLongDateFormat, &prefs->longDateFormat, sizeof(prefs->longDateFormat));
     LmGetLocaleSetting(index, lmChoiceTimeFormat, &prefs->timeFormat, sizeof(prefs->timeFormat));

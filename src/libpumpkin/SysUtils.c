@@ -17,14 +17,43 @@ typedef struct {
   CmpFuncPPtr comparFP;
   void *otherP;
   UInt32 comparF68k;
+
+  // for random
+  int n, i, j;
+  uint32_t init[32];
+  uint32_t *x;
+
 } sysu_module_t;
+
+static const uint32_t random_init[] = {
+  0x00000000, 0x5851f42d, 0xc0b18ccf, 0xcbb5f646,
+  0xc7033129, 0x30705b04, 0x20fd5db4, 0x9a8b7f78,
+  0x502959d8, 0xab894868, 0x6c0356a7, 0x88cdb7ff,
+  0xb477d43f, 0x70a3a52b, 0xa8e4baf1, 0xfd8341fc,
+  0x8ae16fd9, 0x742d2f7a, 0x0d1f0796, 0x76035e09,
+  0x40f7702c, 0x6fa72ca5, 0xaaa84157, 0x58a0df74,
+  0xc74a0364, 0xae533cc4, 0x04185faf, 0x6de3b115,
+  0x0cab8628, 0xf043bfa4, 0x398150e9, 0x37521657
+};
+
+static void __srandom(sysu_module_t *module, uint32_t seed);
 
 int SysUInitModule(void) {
   sysu_module_t *module;
+  int i;
 
   if ((module = xcalloc(1, sizeof(sysu_module_t))) == NULL) {
     return -1;
   }
+
+  for (i = 0; i < 32; i++) {
+    module->init[i] = random_init[i];
+  }
+  module->n = 31;
+  module->i = 3;
+  module->j = 0; 
+  module->x = module->init + 1;
+  __srandom(module, sys_get_clock() & 0xFFFFFFFF);
 
   pumpkin_set_local_storage(sysu_key, module);
 
@@ -86,19 +115,69 @@ MemHandle SysFormPointerArrayToStrings(Char *c, Int16 stringCount) {
   return h;
 }
 
+static uint32_t lcg31(uint32_t x) {
+  return (1103515245*x + 12345) & 0x7fffffff;
+}
+
+static uint64_t lcg64(uint64_t x) {
+  return 6364136223846793005ull*x + 1;
+}
+
+static void __srandom(sysu_module_t *module, uint32_t seed) {
+  uint64_t s = seed;
+  int k;
+
+  if (module->n == 0) {
+    module->x[0] = s;
+    return;
+  }
+  module->i = module->n == 31 || module->n == 7 ? 3 : 1;
+  module->j = 0;
+  for (k = 0; k < module->n; k++) {
+    s = lcg64(s);
+    module->x[k] = s>>32;
+  }
+  // make sure x contains at least one odd number
+  module->x[0] |= 1;
+}
+
+static uint32_t __random(sysu_module_t *module) {
+  uint32_t k;
+
+  if (module->n == 0) {
+    k = module->x[0] = lcg31(module->x[0]);
+    goto end;
+  }
+  module->x[module->i] += module->x[module->j];
+  k = module->x[module->i]>>1;
+  if (++module->i == module->n)
+    module->i = 0;
+  if (++module->j == module->n)
+    module->j = 0;
+end:
+  return k;
+}
+
 // Return a random number anywhere from 0 to sysRandomMax
 Int16 SysRandom(Int32 newSeed) {
   int32_t r;
-
-  if (newSeed) {
-    sys_srand(newSeed);
-  }
-
-  r = sys_rand();
-  if (r < 0) r = -r;
-
+  r = SysRandom32(newSeed);
   return r % sysRandomMax;
 }
+
+Int32 SysRandom32(Int32 newSeed) {
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
+  int32_t r;
+
+  if (newSeed) {
+    __srandom(module, newSeed);
+  }
+    
+  r = __random(module);
+  if (r < 0) r = -r;
+  
+  return r;
+} 
 
 /*
 0000000 nul nul  bs   N   e   w  sp   M   o   o   n nul   W   a   x   i

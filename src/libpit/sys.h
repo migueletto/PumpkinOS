@@ -118,6 +118,7 @@ typedef __builtin_va_list sys_va_list;
 #define sys_va_start(v,l) __builtin_va_start(v,l)
 #define sys_va_end(v)     __builtin_va_end(v)
 #define sys_va_arg(v,l)   __builtin_va_arg(v,l)
+#define sys_va_copy(d,s)  __builtin_va_copy(d,s)
 
 typedef jmp_buf sys_jmp_buf;
 
@@ -127,13 +128,7 @@ void sys_usleep(uint32_t us);
 
 uint64_t sys_time(void);
 
-int sys_isdst(void);
-
 uint64_t sys_timegm(sys_tm_t *tm);
-
-uint64_t sys_timelocal(sys_tm_t *tm);
-
-int sys_localtime(const uint64_t *t, sys_tm_t *tm);
 
 int sys_gmtime(const uint64_t *t, sys_tm_t *tm);
 
@@ -211,10 +206,6 @@ void sys_fdset(int n, sys_fdset_t *fds);
 void sys_fdzero(sys_fdset_t *fds);
 
 int sys_fdisset(int n, sys_fdset_t *fds);
-
-void sys_srand(int32_t seed);
-
-int32_t sys_rand(void);
 
 int sys_serial_open(char *device, char *word, int baud);
 
@@ -313,13 +304,25 @@ char *sys_strcpy(char *dest, const char *src);
 
 char *sys_strncpy(char *dest, const char *src, sys_size_t n);
 
-uint32_t sys_strlen(const char *s);
+sys_size_t sys_strlen(const char *s);
+
+sys_size_t sys_strnlen(const char *s, sys_size_t n);
+
+char *sys_strchrnul(const char *s, int c);
+
+void *sys_memrchr(const void *m, int c, sys_size_t n);
 
 char *sys_strchr(const char *s, int c);
 
 char *sys_strrchr(const char *s, int c);
 
+void *sys_memchr(const void *src, int c, sys_size_t n);
+
 char *sys_strstr(const char *haystack, const char *needle);
+
+sys_size_t sys_strspn(const char *s, const char *c);
+
+sys_size_t sys_strcspn(const char *s, const char *c);
 
 char *sys_strpbrk(const char *s, const char *accept);
 
@@ -402,6 +405,19 @@ int sys_vsprintf(char *str, const char *format, sys_va_list ap);
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap);
 
 int sys_sscanf(const char *str, const char *format, ...) __attribute__ ((format (scanf, 2, 3)));
+
+int sys_iscntrl(int c);
+int sys_isblank(int c);
+int sys_isspace(int c);
+int sys_isgraph(int c);
+int sys_ispunct(int c);
+int sys_islower(int c);
+int sys_isupper(int c);
+int sys_isalpha(int c);
+int sys_isdigit(int c);
+int sys_isxdigit(int c);
+int sys_isalnum(int c);
+int sys_isprint(int c);
 
 sys_size_t sys_getpagesize(void);
 

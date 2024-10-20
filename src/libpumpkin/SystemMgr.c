@@ -335,7 +335,26 @@ UInt32 SysTaskID(void) {
 }
 
 Err SysTaskDelay(Int32 delay) {
-  sys_usleep(delay * 10000);
+  UInt32 d, usec;
+  int64_t t0, t;
+
+  if (delay > 0) {
+    usec = delay * 10000;
+
+    if (thread_needs_run()) {
+      t0 = sys_get_clock();
+      for (d = 0; d <= usec; d += 100) {
+        t = sys_get_clock();
+        if ((uint32_t)(t - t0) >= usec) break;
+        thread_yield(0);
+        if (thread_must_end()) break;
+        sys_usleep(usec < 100 ? usec : 100);
+      }
+    } else {
+      sys_usleep(usec);
+    }
+  }
+
   return errNone;
 }
 

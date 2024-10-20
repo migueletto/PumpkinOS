@@ -250,9 +250,14 @@ static int libos_start(int pe) {
     }
 
     if (data->width > 0 && data->height > 0 && (data->depth == 16 || data->depth == 32)) {
-      // Calling in the same thread. As a result, the script engine will remain locked.
-      // This could be a problem only if an application calls the engine, which is unlikely.
-      r = libos_action(data);
+      if (thread_needs_run()) {
+        r = thread_begin("LIBOS", libos_action, data);
+        thread_run();
+      } else {
+        // Calling in the same thread. As a result, the script engine will remain locked.
+        // This could be a problem only if an application calls the engine, which is unlikely.
+        r = libos_action(data);
+      }
     }
   }
 

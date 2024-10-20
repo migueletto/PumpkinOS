@@ -1317,7 +1317,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
 }
 
 Err DmCreateDatabase(UInt16 cardNo, const Char *nameP, UInt32 creator, UInt32 type, Boolean resDB) {
-  return DmCreateDatabaseEx(nameP, creator, type, resDB ? dmHdrAttrResDB : 0, sys_rand() & 0xFFFFFF, true);
+  return DmCreateDatabaseEx(nameP, creator, type, resDB ? dmHdrAttrResDB : 0, ((UInt32)SysRandom32(0)) & 0xFFFFFF, true);
 }
 
 static int StoAddDatabaseHandle(storage_t *sto, storage_db_t *db, storage_handle_t *h) {
@@ -1771,7 +1771,7 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           db->bckDate = 0;
           db->modNum = 0;
           db->attributes = 0;
-          db->uniqueIDSeed = sys_rand() & 0xFFFFFF;
+          db->uniqueIDSeed = ((UInt32)SysRandom32(0)) & 0xFFFFFF;
           db->version = 0;
           db->appInfoID = 0;
           db->sortInfoID = 0;
