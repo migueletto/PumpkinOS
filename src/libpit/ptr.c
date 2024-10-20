@@ -54,16 +54,14 @@ int ptr_init(void) {
 }
 
 int ptr_close(void) {
-  //generic_t *gp;
+  generic_t *gp;
   int i;
 
   for (i = 1; i < MAX_PTRS; i++) {
-/*
     gp = (generic_t *)table[i].p;
     if (table[i].used) {
       debug(DEBUG_INFO, "PTR", "handle %d (%d) (%s) was not closed", table[i].id, i, gp->tag);
     }
-*/
     table[i].used = 0;
     table[i].locking = 0;
     table[i].delete = 0;
