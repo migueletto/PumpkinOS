@@ -41,7 +41,7 @@ Err EvtDequeuePenPoint(PointType *retP) {
   return errNone;
 }
 
-Err EvtFlushNextPenStroke() {
+Err EvtFlushNextPenStroke(void) {
   debug(DEBUG_ERROR, "PALMOS", "EvtFlushNextPenStroke not implemented");
   return errNone;
 }
@@ -83,7 +83,7 @@ Err EvtWakeup(void) {
   return errNone;
 }
 
-Err EvtWakeupWithoutNilEvent() {
+Err EvtWakeupWithoutNilEvent(void) {
   debug(DEBUG_ERROR, "PALMOS", "EvtWakeupWithoutNilEvent not implemented");
   return errNone;
 }
