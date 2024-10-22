@@ -459,6 +459,7 @@ Err SysKernelInfo(void *paramP) {
 
 Boolean SysCreatePanelList(UInt16 *panelCount, MemHandle *panelIDs) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "SysCreatePanelList not implemented");
+  *panelCount = 0;
   return 0;
 }
 
