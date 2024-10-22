@@ -166,7 +166,7 @@ static void libshell_print(shell_t *shell, int err, char *fmt, ...) {
   sys_vsnprintf(shell->buf, MAX_BUF, fmt, ap);
   sys_va_end(ap);
 
-  if (err) debug(DEBUG_ERROR, "SHELL", shell->buf);
+  if (err) debug(DEBUG_ERROR, "SHELL", "%s", shell->buf);
   libshell_write_aux(shell, err, shell->buf, -1);
 }
 
