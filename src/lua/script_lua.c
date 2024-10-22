@@ -15,8 +15,8 @@ struct script_priv_t {
 
 int ext_script_init(void) {
   debug(DEBUG_INFO, "LUA", "%s", LUA_RELEASE);
-  debug(DEBUG_INFO, "LUA", "integer type is %d bytes", sizeof(lua_Integer));
-  debug(DEBUG_INFO, "LUA", "floating point type is %d bytes", sizeof(lua_Number));
+  debug(DEBUG_INFO, "LUA", "integer type is %d bytes", (int)sizeof(lua_Integer));
+  debug(DEBUG_INFO, "LUA", "floating point type is %d bytes", (int)sizeof(lua_Number));
 
   return 0;
 }
@@ -537,7 +537,7 @@ int ext_script_object_set(script_priv_t *priv, script_ref_t obj, script_arg_t *k
   get_ref(priv->L, obj);
 
   if (!lua_istable(priv->L, -1)) {
-    debug(DEBUG_ERROR, "LUA", "object %lld not found or not a table", obj);
+    debug(DEBUG_ERROR, "LUA", "object ot found or not a table");
     return -1;
   }
 
@@ -555,7 +555,7 @@ int ext_script_object_get(script_priv_t *priv, script_ref_t obj, script_arg_t *k
   get_ref(priv->L, obj);
 
   if (!lua_istable(priv->L, -1)) {
-    debug(DEBUG_ERROR, "LUA", "object %lld not found or not a table", obj);
+    debug(DEBUG_ERROR, "LUA", "object not found or not a table");
     return -1;
   }
 
