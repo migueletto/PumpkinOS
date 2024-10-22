@@ -3475,7 +3475,6 @@ static void ListViewScroll (Int16 linesToScroll)
 	else if (linesToScroll < 0)
 		SeekRecord (&newTopVisibleRecord, -linesToScroll, dmSeekBackward);
 
-if (TopVisibleRecord == newTopVisibleRecord) debug(1, "XXX", "ListViewScroll fatal error linesToScroll=%d TopVisibleRecord=%d", linesToScroll, TopVisibleRecord);
 	ErrFatalDisplayIf (TopVisibleRecord == newTopVisibleRecord,
 					   "Invalid scroll value");
 
