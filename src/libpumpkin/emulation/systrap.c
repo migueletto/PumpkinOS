@@ -280,6 +280,21 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HwrGetROMToken(cardNo=%d, token=%d, dataP=0x%08X, sizeP=0x%08X): %d", cardNo, token, dataP, sizeP, res);
       }
       break;
+    case sysTrapSysCreatePanelList: {
+      // Boolean SysCreatePanelList(UInt16 *panelCount, MemHandle *panelIDs)
+      uint32_t panelCountP = ARG32;
+      uint32_t panelIDsP = ARG32;
+      UInt16 panelCount;
+      MemHandle panelIDs;
+      emupalmos_trap_in(panelCountP, trap, 0);
+      emupalmos_trap_in(panelIDsP, trap, 1);
+      Boolean res = SysCreatePanelList(&panelCount, &panelIDs);
+      if (panelCountP) m68k_write_memory_16(panelCountP, panelCount);
+      if (panelIDsP) m68k_write_memory_32(panelIDsP, emupalmos_trap_out(panelIDs));
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysCreatePanelList(panelCount=0x%08X, panelIDs=0x%08X): %d", panelCountP, panelIDsP, res);
+      }
+      break;
     case sysTrapSysInsertionSort:
     case sysTrapSysQSort: {
       // void SysQSort(void *baseP, UInt16 numOfElements, Int16 width, CmpFuncPtr comparF, Int32 other)
@@ -2355,6 +2370,12 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtSetNullEventTick(%u): %d", tick, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
+      break;
+    case sysTrapEvtFlushNextPenStroke:
+      // Err EvtFlushNextPenStroke(void)
+      err = EvtFlushNextPenStroke();
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushNextPenStroke(): %d", err);
+      m68k_set_reg(M68K_REG_D0, err);
       break;
     case sysTrapClipboardGetItem: {
       // MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length)
