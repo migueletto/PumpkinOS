@@ -597,20 +597,20 @@ static void getLabel(bmp_edit_t *data) {
 
   switch (version) {
     case 0:
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, width, height);
+      StrNPrintF(data->title, MAX_TITLE-1, "%s: V0 %dx%d 1b", data->prefix, width, height);
       break;
     case 1:
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, width, height, depth);
+      StrNPrintF(data->title, MAX_TITLE-1, "%s: V1 %dx%d %db", data->prefix, width, height, depth);
       break;
     case 2:
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, width, height, depth);
+      StrNPrintF(data->title, MAX_TITLE-1, "%s: V2 %dx%d %db", data->prefix, width, height, depth);
       break;
     case 3:
       density = BmpGetDensity(bmp);
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, width, height, depth, density);
+      StrNPrintF(data->title, MAX_TITLE-1, "%s: V3 %dx%d %db (%d)", data->prefix, width, height, depth, density);
       break;
     default:
-      sys_snprintf(data->title, MAX_TITLE-1, "%s: V?", data->prefix);
+      StrNPrintF(data->title, MAX_TITLE-1, "%s: V?", data->prefix);
       break;
   }
 }

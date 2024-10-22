@@ -37,7 +37,7 @@ static void printAddr(bin_edit_t *data, int row) {
   index = row * data->cols;
 
   if (data->index + index < data->size) {
-    sys_snprintf(buf, sizeof(buf)-1, "%04X", data->index + index);
+    StrNPrintF(buf, sizeof(buf)-1, "%04X", data->index + index);
     WinSetTextColorRGB(&addr, NULL);
     x = data->rect.topLeft.x + 1;
     y = data->rect.topLeft.y + row * data->fh;
@@ -57,7 +57,7 @@ static void printByte(bin_edit_t *data, int col, int row, Boolean inverse) {
   WinSetBackColorRGB(inverse ? &red : &white, NULL);
 
   if (data->index + index < data->size) {
-    sys_snprintf(buf, sizeof(buf)-1, "%02X", data->p[data->index + index]);
+    StrNPrintF(buf, sizeof(buf)-1, "%02X", data->p[data->index + index]);
     c = (char)data->p[data->index + index];
     if (c < 32 || c > 127) c = -1;
   } else {
@@ -281,7 +281,7 @@ Boolean editBinary(FormType *frm, char *title, MemHandle h) {
   data.p = xcalloc(1, data.size);
 
   if ((p = (UInt8 *)MemHandleLock(h)) != NULL) {
-    xmemcpy(data.p, p, data.size);
+    MemMove(data.p, p, data.size);
     MemHandleUnlock(h);
   }
 
