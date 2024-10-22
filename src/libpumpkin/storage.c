@@ -5295,6 +5295,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
     if (count == size) {
       size += 16;
       list = xrealloc(list, size * sizeofSysDBListItemType);
+      buf = (UInt8 *)list;
     }
     dbID = (uint8_t *)db - sto->base;
     debug(DEBUG_INFO, "STOR", "found \"%s\" dbID 0x%08X", db->name, dbID);
