@@ -155,7 +155,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     // XXX some dead keys are not mapped by this
 
     case WM_KEYDOWN:
-      debug(DEBUG_TRACE, "Windows", "keyDown %d 0x%08X", wParam, lParam);
+      debug(DEBUG_TRACE, "Windows", "keyDown %u 0x%08X", (uint32_t)wParam, (uint32_t)lParam);
       window = (win_window_t *)GetProp(hwnd, WINDOW_PROP);
       code = mapKey(wParam);
       debug(DEBUG_TRACE, "Windows", "keyDown mapKey %d", code);
@@ -173,7 +173,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
       return 0;
 
     case WM_KEYUP:
-      debug(DEBUG_TRACE, "Windows", "keyUp %d 0x%08X", wParam, lParam);
+      debug(DEBUG_TRACE, "Windows", "keyUp %u 0x%08X", (uint32_t)wParam, (uint32_t)lParam);
       window = (win_window_t *)GetProp(hwnd, WINDOW_PROP);
       code = mapKey(wParam);
       debug(DEBUG_TRACE, "Windows", "keyUp mapKey %d", code);
