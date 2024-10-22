@@ -1309,14 +1309,14 @@ int sys_mkdir(const char *pathname) {
   int r;
 
 #ifdef WINDOWS
+  DWORD err;
   normalize_path(pathname, buf, FILE_PATH);
-#ifdef WINDOWS32
-  r = mkdir(buf);
-#endif
-#ifdef WINDOWS64
-  r = mkdir(buf);
-  //r = mkdir(buf, 0755);
-#endif
+  if (!CreateDirectory(buf, NULL)) {
+    err = GetLastError();
+    r = (err == ERROR_ALREADY_EXISTS) ? 0 : -1;
+  } else {
+    r = 0;
+  }
 #else
   sys_strncpy(buf, pathname, FILE_PATH);
   r = mkdir(buf, 0755);
@@ -1418,8 +1418,8 @@ int sys_serial_open(char *device, char *word, int baud) {
     CloseHandle(handle);
     return -1;
   }
-  debug(DEBUG_INFO, "SYS", "read timeouts interval=%ld, mult=%ld, const=%ld",
-    timeouts.ReadIntervalTimeout, timeouts.ReadTotalTimeoutMultiplier, timeouts.ReadTotalTimeoutConstant);
+  debug(DEBUG_INFO, "SYS", "read timeouts interval=%d, mult=%d, const=%d",
+    (int32_t)timeouts.ReadIntervalTimeout, (int32_t)timeouts.ReadTotalTimeoutMultiplier, (int32_t)timeouts.ReadTotalTimeoutConstant);
 
   timeouts.ReadIntervalTimeout = MAXDWORD;
   timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
