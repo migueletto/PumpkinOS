@@ -589,6 +589,8 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 void pumpkin_sound_init(void);
 void pumpkin_sound_finish(void);
 
+int pumpkin_system_call(uint32_t id, uint64_t *iret, void **pret, ...);
+
 #ifdef __cplusplus
 }
 #endif

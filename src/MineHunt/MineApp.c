@@ -15,7 +15,7 @@
 #include "Mine.h"
 #include "MineRsc.h"
 #include "pumpkin.h"
-#include "debug.h"
+#include "pumpkin_syscall.h"
 
 
 // #define DEBUG_SAME_GAME			1		// always use same random seed
