@@ -247,7 +247,6 @@ typedef ErrExceptionType *ErrExceptionPtr;
 extern "C" {
 #endif
 
-#ifdef PALMOS
 #if EMULATION_LEVEL != EMULATION_NONE
 	#define	ErrSetJump(buf)			setjmp(buf)
 	#define	ErrLongJump(buf,res) 	longjmp(buf,res)
@@ -258,10 +257,6 @@ extern "C" {
 								
 	void	ErrLongJump(ErrJumpBuf buf, Int16 result)
 								SYS_TRAP(sysTrapErrLongJump);
-#endif
-#else
-	#define	ErrSetJump(buf)			sys_setjmp(buf)
-	#define	ErrLongJump(buf,res) 	sys_longjmp(buf,res)
 #endif
 						
 MemPtr*	ErrExceptionList(void)

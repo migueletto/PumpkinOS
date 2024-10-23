@@ -9,6 +9,14 @@
 
 #define PALMOS_MODULE "Error"
 
+Int16 ErrSetJump(ErrJumpBuf buf) {
+  return sys_setjmp(buf);
+}
+
+void ErrLongJump(ErrJumpBuf buf, Int16 result) {
+  sys_longjmp(buf, result);
+}
+
 MemPtr *ErrExceptionList(void) {
   return pumpkin_get_exception();
 }
