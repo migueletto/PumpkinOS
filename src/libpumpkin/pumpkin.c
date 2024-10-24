@@ -1105,6 +1105,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   MemHandle h;
   Boolean firstLoad;
   void *lib;
+  void **pumpkin_system_call_p;
   int m68k;
 
   if (request) {
@@ -1124,6 +1125,12 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
               debug(DEBUG_ERROR, PUMPKINOS, "PilotMain not found in dlib");
+            } else {
+              pumpkin_system_call_p = sys_lib_defsymbol(lib, "pumpkin_system_call_p", 0);
+              if (pumpkin_system_call_p) {
+                debug(DEBUG_INFO, PUMPKINOS, "setting syscall address for \"%s\"", request->name);
+                *pumpkin_system_call_p = (void *)pumpkin_system_call;
+              }
             }
           } else {
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource not loaded");

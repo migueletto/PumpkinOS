@@ -9,14 +9,11 @@
  *****************************************************************************/
 
 #include <PalmOS.h>
-
 #include <PalmUtils.h>
 
 #include "Mine.h"
 #include "MineRsc.h"
-#include "pumpkin.h"
 #include "pumpkin_syscall.h"
-
 
 // #define DEBUG_SAME_GAME			1		// always use same random seed
 
@@ -42,6 +39,8 @@
 /***********************************************************************
  *	Global variables
  ***********************************************************************/
+pumpkin_system_call_t pumpkin_system_call_p;
+
 static GameType	gGame;
 static MinePrefType	gMinePref;
 
@@ -59,7 +58,6 @@ static const RGBColorType gClassicColors[] = 		// fixed colors used by classic m
 	{0, 0xFF, 0x00, 0x00}
 	};
 static RGBColorType gUIColors[6];					// colors used by non-classic mode
-
 
 /***********************************************************************
  *	Prototypes

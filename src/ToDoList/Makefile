@@ -4,6 +4,7 @@ include ../commonp.mak
 PROGRAM=ToDoList
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 OBJS=ToDo.o ToDoDB.o ToDoRsc.o ToDoTransfer.o
+CUSTOMPFLAGS=-DPUMPKIN_APP
 
 $(PROGRAM).prc: $(DLIB)
 	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c todo -n "To Do List" resources/*.dat $(DLIB)

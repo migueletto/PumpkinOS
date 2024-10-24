@@ -1,3 +1,6 @@
+#ifndef PUMPKIN_H
+#define PUMPKIN_H
+
 #include "script.h"
 #include "pit_io.h"
 #include "pwindow.h"
@@ -6,6 +9,7 @@
 #include "graphic.h"
 #include "surface.h"
 #include "gps.h"
+#include "pumpkin_syscall_id.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -589,8 +593,16 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 void pumpkin_sound_init(void);
 void pumpkin_sound_finish(void);
 
-int pumpkin_system_call(uint32_t id, uint64_t *iret, void **pret, ...);
+int pumpkin_system_call(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+
+typedef int (*pumpkin_system_call_t)(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+
+#ifdef PUMPKIN_APP
+extern int (*pumpkin_system_call_p)(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+#endif
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

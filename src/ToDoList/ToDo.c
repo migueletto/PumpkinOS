@@ -20,6 +20,7 @@
 #include "ToDo.h"
 #include "ToDoDB.h"
 #include "ToDoRsc.h"
+#include "pumpkin_syscall.h"
 //#include "debug.h"
 
 // Error checking routines
@@ -136,6 +137,8 @@ typedef struct {
  *	Global variables
  *
  ***********************************************************************/
+
+pumpkin_system_call_t pumpkin_system_call_p;
 
 static DmOpenRef			ToDoDB;										// ToDo database
 static char					CategoryName [dmCategoryLength];		// name of the current category

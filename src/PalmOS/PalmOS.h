@@ -18,8 +18,13 @@
 #ifndef PALMOS
 #include "sys.h"
 #endif
+
 #include <PalmTypes.h>
 #include <SystemPublic.h>
 #include <UIPublic.h>
+
+#ifndef PALMOS
+#include "pumpkin.h"
+#endif
 
 #endif	// __PALMOS_H__
