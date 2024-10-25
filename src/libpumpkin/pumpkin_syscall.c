@@ -1,13 +1,21 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
+#include <ExpansionMgr.h>
+#include <FixedMath.h>
+#include <DLServer.h>
+#include <SerialMgrOld.h>
+#include <UDAMgr.h>
+#include <PceNativeCall.h>
 
 #include "debug.h"
 
-int pumpkin_system_call(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...) {
+int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...) {
   sys_va_list ap;
   int r = 0;
 
   sys_va_start(ap, pret);
   switch (id) {
+//#include "syscall_switch.c"
     case sysTrapAttnIndicatorEnable: {
       Boolean enableIt = sys_va_arg(ap, int32_t);
       AttnIndicatorEnable(enableIt);

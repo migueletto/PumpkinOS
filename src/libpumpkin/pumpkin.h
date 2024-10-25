@@ -593,12 +593,30 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 void pumpkin_sound_init(void);
 void pumpkin_sound_finish(void);
 
-int pumpkin_system_call(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+typedef enum {
+  BT_LIB = 1,
+  CPM_LIB,
+  EXG_LIB,
+  FS_LIB,
+  GPS_LIB,
+  INET_LIB,
+  IR_LIB,
+  NET_LIB,
+  PDI_LIB,
+  PWR_LIB,
+  QUE_LIB,
+  SEL_TRAP,
+  SER_LIB,
+  SLOT_LIB,
+  SSL_LIB
+} syscall_lib_e;
 
-typedef int (*pumpkin_system_call_t)(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+
+typedef int (*pumpkin_system_call_t)(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
 
 #ifdef PUMPKIN_APP
-extern int (*pumpkin_system_call_p)(uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+extern int (*pumpkin_system_call_p)(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
 #endif
 
 #ifdef __cplusplus
