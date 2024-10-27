@@ -13,7 +13,6 @@
 
 #include "Mine.h"
 #include "MineRsc.h"
-#include "pumpkin_syscall.h"
 
 // #define DEBUG_SAME_GAME			1		// always use same random seed
 
@@ -39,7 +38,7 @@
 /***********************************************************************
  *	Global variables
  ***********************************************************************/
-pumpkin_system_call_t pumpkin_system_call_p;
+PUMPKIN_API;
 
 static GameType	gGame;
 static MinePrefType	gMinePref;
@@ -2324,8 +2323,6 @@ static Err StartApplication()
 	SysRandom(TimGetSeconds());
 #endif
 	
-	FrmCenterDialogs(true);
-
 	error = WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
 	ErrNonFatalDisplayIf(error, "WinScreenMode error");
 	
@@ -2972,7 +2969,7 @@ static void AppEventLoop()
  *			vmk		10/8/95		Initial Version
  *
  ***********************************************************************/
-UInt32 PilotMain(UInt16 cmd, void * UNUSED_PARAM(cmdPBP), UInt16 launchFlags)
+PUBLIC UInt32 PilotMain(UInt16 cmd, void * UNUSED_PARAM(cmdPBP), UInt16 launchFlags)
 {
 	Err error;
 	

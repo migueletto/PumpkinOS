@@ -22,7 +22,6 @@
 
 #include "ToDo.h"
 #include "ToDoDB.h"
-//#include "debug.h"
 
 // Export error checking routines
 void ECToDoDBValidate(DmOpenRef dbP);
@@ -483,8 +482,6 @@ static UInt16 ToDoFindSortPosition(DmOpenRef dbP, ToDoDBRecord *newRecord,
 	r = (DmFindSortPosition (dbP, newRecord, newRecordInfo, 
 		(DmComparF *)ToDoCompareRecords, sortOrder));
 		
-	//debug(DEBUG_INFO, "SYS", "DmFindSortPosition n=%d i=%u", DmNumRecords(dbP), r);
-	
 	return r;
 }
 

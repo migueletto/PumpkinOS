@@ -436,6 +436,16 @@ void WinDrawWindowFrame(void) {
   debug(DEBUG_ERROR, "Window", "WinDrawWindowFrame not implemented");
 }
 
+void WinGetFramesRectangle(FrameType frame, const RectangleType *rP, RectangleType *obscuredRect) {
+  Int16 width;
+
+  if (rP && obscuredRect) {
+    width = frame & 0x03;
+    RctCopyRectangle(rP, obscuredRect);
+    RctInsetRectangle(obscuredRect, -width);
+  }
+}
+
 // Create an offscreen window and copy the specified region from the draw window to the offscreen window.
 // The offscreen window is the same size as the region to copy.
 // This function tries to copy the window’s bitmap using compressed
@@ -2126,10 +2136,6 @@ void WinDrawTruncChars(const Char *chars, Int16 len, Coord x, Coord y, Coord max
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   WinDrawCharsC((uint8_t *)chars, len, x, y, maxWidth);
   WinSetDrawMode(prev);
-}
-
-void WinGlueDrawTruncChars(const Char* pChars, UInt16 length, Int16 x, Int16 y, Int16 maxWidth) {
-  WinDrawTruncChars(pChars, length, x, y, maxWidth);
 }
 
 // The winMask transfer mode is used to erase the characters. See

@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include "debug.h"
-
 Int16 TblGlueGetNumberOfColumns(const TableType *tableP) {
   return TblGetNumberOfColumns(tableP);
 }

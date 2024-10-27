@@ -28,8 +28,6 @@
 #include "DateTime.h"
 #include "ToDoDB.h"
 
-#include "debug.h"
-
 extern void ECApptDBValidate (DmOpenRef dbP);
 
 
@@ -3643,7 +3641,6 @@ static void ListInitTableRow (TablePtr table, UInt16 row, UInt16 recordNum,
 	UInt16 							attr;
 	Boolean 						masked;
 
-debug(1, "XXX", "ListInitTableRow row %d", row);
 	CHECK_DB_LEAKS (Agenda.todoDB);
 	// Get a pointer to the ToDo record.
 	recordH = DmQueryRecord( Agenda.todoDB, recordNum);

@@ -8,15 +8,18 @@ Err FlpBase10Info(FlpDouble a, UInt32 *mantissaP, Int16 *exponentP, Int16 *signP
 }
 
 Err FlpFToA(FlpDouble a, Char *s) {
-  debug(DEBUG_ERROR, "PALMOS", "FlpFToA not implemented");
-  return sysErrParamErr;
+  Err err = sysErrParamErr;
+
+  if (s) {
+    StrPrintF(s, "%f", a);
+    err = errNone;
+  }
+
+  return err;
 }
 
 FlpDouble FlpAToF(const Char *s) {
-  FlpDouble f;
-  debug(DEBUG_ERROR, "PALMOS", "FlpAToF not implemented");
-  MemSet(&f, sizeof(f), 0);
-  return f;
+  return s ? sys_atof(s) : 0.0;
 }
 
 FlpDouble FlpCorrectedAdd(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate) {
@@ -34,16 +37,19 @@ FlpDouble FlpCorrectedSub(FlpDouble firstOperand, FlpDouble secondOperand, Int16
 }
 
 void FlpBufferAToF(FlpDouble *result, const Char *s) {
-  debug(DEBUG_ERROR, "PALMOS", "FlpBufferAToF not implemented");
+  if (result && s) *result = sys_atof(s);
 }
 
 UInt32 FlpVersion(void) {
-  debug(DEBUG_ERROR, "PALMOS", "FlpVersion not implemented");
-  return 0;
+  return flpVersion;
 }
 
 void FlpSelectorErrPrv(UInt16 flpSelector) {
   debug(DEBUG_ERROR, "PALMOS", "FlpSelectorErrPrv not implemented");
+}
+
+FlpDouble _d_add(FlpDouble a, FlpDouble b) {
+  return a + b;
 }
 
 /*

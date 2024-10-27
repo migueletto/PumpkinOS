@@ -28,8 +28,6 @@
 #include "sections.h"
 #include "Datebook.h"
 
-#include "debug.h"
-
 
 /***********************************************************************
  *
@@ -505,10 +503,8 @@ static void ApptPack(ApptDBRecordPtr s, ApptPackedDBRecordPtr d)
 	// DateType:           2
 	// ApptDBRecordType:  48
 
-debug(1, "XXX", "ApptPack src %p", s);
 	flags = 0;
 	offset = 0;
-debug(1, "XXX", "ApptPack when at %d", offset);
 	DmWrite(d, offset,   &s->when->startTime, sizeof(UInt16));
 	DmWrite(d, offset+2, &s->when->endTime, sizeof(UInt16));
 	DmWrite(d, offset+4, &s->when->date, sizeof(UInt16));
@@ -517,7 +513,6 @@ debug(1, "XXX", "ApptPack when at %d", offset);
 
 	if (s->alarm != NULL) {
 		size = sizeof(UInt16);
-debug(1, "XXX", "ApptPack alarm at %d advance %d unit %d", offset, s->alarm->advance, s->alarm->advanceUnit);
 		w = (s->alarm->advanceUnit << 8) | s->alarm->advance;
 		DmWrite(d, offset, &w, size);
 		offset += size;
@@ -525,7 +520,6 @@ debug(1, "XXX", "ApptPack alarm at %d advance %d unit %d", offset, s->alarm->adv
 	}
 	
 	if (s->repeat != NULL) {
-debug(1, "XXX", "ApptPack repeat at %d", offset);
 		w = s->repeat->repeatType;
 		DmWrite(d, offset,   &w, sizeof(UInt16));
 		DmWrite(d, offset+2, &s->repeat->repeatEndDate, sizeof(UInt16));
@@ -538,7 +532,6 @@ debug(1, "XXX", "ApptPack repeat at %d", offset);
 	}
 
 	if (s->exceptions != NULL) {
-debug(1, "XXX", "ApptPack exceptions at %d", offset);
 		DmWrite(d, offset, &s->exceptions->numExceptions, sizeof(UInt16));
 		offset += sizeof(UInt16);
 		for (i = 0; i < s->exceptions->numExceptions; i++) {
@@ -551,7 +544,6 @@ debug(1, "XXX", "ApptPack exceptions at %d", offset);
 	
 	if (s->description != NULL) {
 		size = StrLen(s->description) + 1;
-debug(1, "XXX", "ApptPack description at %d (%d bytes)", offset, size);
 		DmWrite(d, offset, s->description, size);
 		offset += size;
 		if (offset & 1) offset++;
@@ -560,13 +552,11 @@ debug(1, "XXX", "ApptPack description at %d (%d bytes)", offset, size);
 	
 	if (s->note != NULL) {
 		size = StrLen(s->note) + 1;
-debug(1, "XXX", "ApptPack note at %d (%d bytes)", offset, size);
 		DmWrite(d, offset, s->note, size);
 		offset += size;
 		flags |= APPT_FLAG_NOTE;
 	}
 	
-debug(1, "XXX", "ApptPack flags 0x%04X offset %d", flags, 3 * sizeof(UInt16));
 	DmWrite(d, 3 * sizeof(UInt16), &flags, sizeof(UInt16));
 }
 
@@ -592,14 +582,12 @@ static void ApptUnpack(ApptPackedDBRecordPtr src, ApptDBRecordPtr dest)
 	ApptDBRecordFlags flags;
 	UInt16 i, index, len;
 	
-debug(1, "XXX", "ApptUnpack src %p", src);
 	flags.when = (src->flags & APPT_FLAG_WHEN) ? 1 : 0;
 	flags.alarm = (src->flags & APPT_FLAG_ALARM) ? 1 : 0;
 	flags.repeat = (src->flags & APPT_FLAG_REPEAT) ? 1 : 0;
 	flags.exceptions = (src->flags & APPT_FLAG_EXCEP) ? 1 : 0;
 	flags.description = (src->flags & APPT_FLAG_DESCR) ? 1 : 0;
 	flags.note = (src->flags & APPT_FLAG_NOTE) ? 1 : 0;
-debug(1, "XXX", "ApptUnpack flags 0x%04X", src->flags);
 
 	index = 0;
 
@@ -612,7 +600,6 @@ debug(1, "XXX", "ApptUnpack flags 0x%04X", src->flags);
 		dest->alarm = &dest->localAlarm;
 		dest->alarm->advance = src->w[index] & 0xFF;
 		dest->alarm->advanceUnit = src->w[index++] >> 8;
-debug(1, "XXX", "ApptUnpack alarm at index %d advance %d unit %d", index, dest->alarm->advance, dest->alarm->advanceUnit);
 	} else {
 		dest->alarm = NULL;
 	}
@@ -637,7 +624,6 @@ typedef struct {
 
 */
 	if (flags.repeat) {
-debug(1, "XXX", "ApptUnpack repeat at index %d", index);
 		dest->repeat = &dest->localRepeat;
 		dest->repeat->repeatType = src->w[index++] & 0xFF;
 		dest->repeat->repeatEndDate.year = src->w[index] >> 9;
@@ -657,7 +643,6 @@ typedef struct {
 } ExceptionsListType;
 */
 	if (flags.exceptions) {
-debug(1, "XXX", "ApptUnpack exceptions at index %d", index);
 		dest->exceptions = &dest->localExceptions;
 		dest->exceptions->numExceptions = src->w[index++];
 		if (dest->exceptions->numExceptions > 16) dest->exceptions->numExceptions = 16;
@@ -672,10 +657,8 @@ debug(1, "XXX", "ApptUnpack exceptions at index %d", index);
 	}
 		
 	if (flags.description) {
-debug(1, "XXX", "ApptUnpack description at index %d ...", index);
 		dest->description = (char *)&src->w[index];
 		len = StrLen(dest->description) + 1;
-debug(1, "XXX", "ApptUnpack description at index %d \"%s\" len %d", index, dest->description, len);
 		if (len & 1) len++;
 		index += len >> 1;
 	} else {
@@ -683,12 +666,10 @@ debug(1, "XXX", "ApptUnpack description at index %d \"%s\" len %d", index, dest-
 	}
 		
 	if (flags.note) {
-debug(1, "XXX", "ApptUnpack note at index %d", index);
 		dest->note = (char *)&src->w[index];
 	} else {
 		dest->note = NULL;
 	}
-debug(1, "XXX", "ApptUnpack src %p end", src);
 }
 
 /************************************************************
@@ -769,7 +750,6 @@ Boolean ApptFindFirst (DmOpenRef dbP, DateType date, UInt16* indexP)
 
 	kmin = probe = 0;
 	numOfRecords = DmNumRecords(dbP);
-debug(1, "XXX", "ApptFindFirst %04d-%02d-%02d num=%d", 1904+date.year, date.month, date.day, numOfRecords);
 	
 	
 	while (numOfRecords > 0)
@@ -779,7 +759,6 @@ debug(1, "XXX", "ApptFindFirst %04d-%02d-%02d num=%d", 1904+date.year, date.mont
 		
 		index = probe;
 		recordH = DmQueryNextInCategory (dbP, &index, dmAllCategories);
-debug(1, "XXX", "ApptFindFirst DmQueryNextInCategory index=%d recordH=%08X", index, recordH);
 		if (recordH)
 			{
 			r = (ApptPackedDBRecordPtr) MemHandleLock (recordH);
@@ -789,21 +768,18 @@ debug(1, "XXX", "ApptFindFirst DmQueryNextInCategory index=%d recordH=%08X", ind
 			else
 				result = DateCompare (date, r->whenDate);
 			MemHandleUnlock (recordH);
-debug(1, "XXX", "ApptFindFirst flags=0x%04X repeat=%d result=%d", r->flags, (r->flags & APPT_FLAG_REPEAT) ? 1: 0, result);
 			}
 
 		// If no handle, assume the record is deleted, deleted records
 		// are greater.
 		else {
 			result = -1;
-debug(1, "XXX", "ApptFindFirst null result=%d", result);
 		}
 			
 
 		// If the date passed is less than the probe's date, keep searching.
 		if (result < 0) {
 			numOfRecords = i;
-debug(1, "XXX", "ApptFindFirst <0 numOfRecord=%d", numOfRecords);
 		}
 
 		// If the date passed is greater than the probe's date, keep searching.
@@ -811,7 +787,6 @@ debug(1, "XXX", "ApptFindFirst <0 numOfRecord=%d", numOfRecords);
 			{
 			kmin = probe + 1;
 			numOfRecords = numOfRecords - i - 1;
-debug(1, "XXX", "ApptFindFirst >0 kmin=%d i=%d probe=%d numOfRecords=%d", kmin, i, probe, numOfRecords);
 			}
 
 		// If the records are equal find the first record on the day.
@@ -819,16 +794,13 @@ debug(1, "XXX", "ApptFindFirst >0 kmin=%d i=%d probe=%d numOfRecords=%d", kmin, 
 			{
 			found = true;
 			*indexP = index;
-debug(1, "XXX", "ApptFindFirst =0 numOfRecords=%d index=%d", numOfRecords, index);
 			while (true)
 				{
 				err = DmSeekRecordInCategory (dbP, &index, 1, dmSeekBackward, 
 					dmAllCategories);
-debug(1, "XXX", "ApptFindFirst DmSeekRecordInCategory back index=%d err=%d", index, err);
 				if (err == dmErrSeekFailed) break;
 				
 				recordH = DmQueryRecord(dbP, index);
-debug(1, "XXX", "ApptFindFirst DmQueryRecord index=%d recordH=%08X", index, recordH);
 				r = (ApptPackedDBRecordPtr) MemHandleLock (recordH);
 				//if (r->flags.repeat)
 				if (r->flags & APPT_FLAG_REPEAT)
@@ -838,13 +810,11 @@ debug(1, "XXX", "ApptFindFirst DmQueryRecord index=%d recordH=%08X", index, reco
 				MemHandleUnlock (recordH);
 				if (result != 0) break;
 				*indexP = index;
-debug(1, "XXX", "ApptFindFirst DmQueryRecord index=%d recordH=%08X result=%d", index, recordH, result);
 				}
 
 			break;
 			}
 		}
-debug(1, "XXX", "ApptFindFirst found=%d result=%d probe=%d", found, result, probe);
 
 	
 	// If that were no appointments on the specified day, return the 
@@ -1172,7 +1142,6 @@ static Boolean FindNextRepeat (ApptDBRecordPtr apptRec, DatePtr dateP, Boolean s
 	
 	if (searchForward)
 		{
-debug(1, "XXX", "FindNextRepeat forward %04d-%02x-%02d", 1904+dateP->year, dateP->month, dateP->day);
 		// Is the date passed after the end date of the appointment?
 		if (DateCompare (date, apptRec->repeat->repeatEndDate) > 0)
 			return (false);
@@ -1181,12 +1150,10 @@ debug(1, "XXX", "FindNextRepeat forward %04d-%02x-%02d", 1904+dateP->year, dateP
 		if (DateCompare (date, apptRec->when->date) < 0)
 		{
 			date = apptRec->when->date;
-debug(1, "XXX", "FindNextRepeat date before appt");
 		}
 		}
 	else
 		{
-debug(1, "XXX", "FindNextRepeat backward %04d-%02x-%02d", 1904+dateP->year, dateP->month, dateP->day);
 		// Is the date passed is before the start date of the appointment? 
 		// return false now
 		if (DateCompare (date, apptRec->when->date) < 0)
@@ -1202,10 +1169,8 @@ debug(1, "XXX", "FindNextRepeat backward %04d-%02x-%02d", 1904+dateP->year, date
 	// or be set in the else case above.  Since apptNoEndDate is not a 
 	// valid date (month is 15) set it must be set to the last date 
 	// support by the current OS  12/31/31
-debug(1, "XXX", "FindNextRepeat date int 0x%04X", DateToInt(date));
 	if ( DateToInt(date) == apptNoEndDate) {
 		date.month = 12;
-debug(1, "XXX", "FindNextRepeat no end date");
 	}
 
 	// Get the frequency on occurrecne (ex: every 2nd day, every 3rd month, etc).  
@@ -1213,7 +1178,6 @@ debug(1, "XXX", "FindNextRepeat no end date");
 	
 	// Get the date of the first occurrecne of the appointment.
 	start = apptRec->when->date;	
-debug(1, "XXX", "FindNextRepeat freq %d start %04d-%02x-%02d", freq, 1904+start.year, start.month, start.day);
 
 	switch (apptRec->repeat->repeatType)
 		{
@@ -1221,16 +1185,13 @@ debug(1, "XXX", "FindNextRepeat freq %d start %04d-%02x-%02d", freq, 1904+start.
 		case repeatDaily:
 			dateInDays = DateToDays (date);
 			startInDays = DateToDays (start);
-debug(1, "XXX", "FindNextRepeat daily date %d start %d", dateInDays, startInDays);
 			if (searchForward)
 				daysTilNext = (dateInDays - startInDays + freq - 1) / freq * freq;
 			else
 				daysTilNext = (dateInDays - startInDays) / freq * freq;
-debug(1, "XXX", "FindNextRepeat until next %d max %d", daysTilNext, maxDays);
 			if (startInDays + daysTilNext > (UInt32) maxDays)
 				return (false);
 			DateDaysToDate (startInDays + daysTilNext, &next);
-debug(1, "XXX", "FindNextRepeat next %04d-%02x-%02d", 1904+next.year, next.month, next.day);
 
 			break;
 			
@@ -1441,13 +1402,10 @@ debug(1, "XXX", "FindNextRepeat next %04d-%02x-%02d", 1904+next.year, next.month
 		
 	if (searchForward)
 		{
-debug(1, "XXX", "FindNextRepeat compare %04d-%02x-%02d %04d-%02x-%02d", 1904+next.year, next.month, next.day, 1904+apptRec->repeat->repeatEndDate.year, apptRec->repeat->repeatEndDate.month, apptRec->repeat->repeatEndDate.day);
 		// Is the next occurrence after the end date of the appointment?
 		if (DateCompare (next, apptRec->repeat->repeatEndDate) > 0)
 			return (false);
-debug(1, "XXX", "FindNextRepeat compare <= 0");
 
-debug(1, "XXX", "FindNextRepeat assert %04d-%02x-%02d >= %04d-%02x-%02d", 1904+next.year, next.month, next.day, 1904+dateP->year, dateP->month, dateP->day);
 		ErrFatalDisplayIf ((DateToInt (next) < DateToInt (*dateP)),
 			"Calculation error");
 		}
@@ -2443,7 +2401,6 @@ static void ApptAlarmMunge ( ApptPackedDBRecordPtr	inPackedRecordP, UInt16						
 	//if ( inPackedRecordP->flags.alarm )
 	if ( inPackedRecordP->flags & APPT_FLAG_ALARM )
 		{
-debug(1, "XXX", "ApptAlarmMunge ApptUnpack %p", inPackedRecordP);
 		ApptUnpack (inPackedRecordP, &apptRec);
 		
 		// Get the first alarm on or after inAlarmStart
@@ -2834,14 +2791,12 @@ void ApptGetAppointments (DmOpenRef dbP, DateType date, UInt16 days,
 	tempDate = date;
 	DateAdjust (&tempDate, days-1);
 	endDate = DateToInt(tempDate);
-debug(1, "XXX", "ApptGetAppointments %04d-%02d-%02d days=%d loop begin", 1904+date.year, date.month, date.day, days);
 
 	// Find the first non-repeating appointment of the day.
 	ApptFindFirst (dbP, date, &recordNum);
 	while (true)
 		{
 		recordH = DmQueryNextInCategory (dbP, &recordNum, dmAllCategories);
-debug(1, "XXX", "ApptGetAppointments DmQueryNextInCategory recordNum=%d recordH=%08X", recordNum, recordH);
 		if (! recordH) break;
 
 		// Check if the appointment is on the date passed, if it is 
@@ -2853,37 +2808,29 @@ debug(1, "XXX", "ApptGetAppointments DmQueryNextInCategory recordNum=%d recordH=
 		MemHandleUnlock (recordH);
 		
 		if ((DateToInt (apptDate) < startDate) || (DateToInt (apptDate) > endDate)) {
-debug(1, "XXX", "ApptGetAppointments apptDate < start or > end");
 			break;
 		}
 		
 		// Add the record to the appoitment list.
 		index = DateToDays (apptDate) - DateToDays (date);
-debug(1, "XXX", "ApptGetAppointments index=%d", index);
 		
 		if (AddAppointmentToList (&apptLists[index], counts[index], startTime, endTime, recordNum)) {
 			counts[index]++;
-debug(1, "XXX", "ApptGetAppointments to list");
 		} else {
-debug(1, "XXX", "ApptGetAppointments break");
 			break;
 		}
 			
 		recordNum++;
-debug(1, "XXX", "ApptGetAppointments recordNum=%d", recordNum);
 		}
-debug(1, "XXX", "ApptGetAppointments loop end");
 
 
 	// Add the repeating appointments to the list.  Repeating appointments
 	// are stored at the beginning of the database.
 	recordNum = 0;
 	dateInDays = DateToDays (date);
-debug(1, "XXX", "ApptGetAppointments dateInDays=%d begin loop2", dateInDays);
 	while (true)
 		{
 		recordH = DmQueryNextInCategory (dbP, &recordNum, dmAllCategories);
-debug(1, "XXX", "ApptGetAppointments DmQueryNextInCategory again recordNum=%d recordH=%08X", recordNum, recordH);
 		if (! recordH) break;
 		
 		r = (ApptPackedDBRecordPtr) MemHandleLock (recordH);
@@ -2892,7 +2839,6 @@ debug(1, "XXX", "ApptGetAppointments DmQueryNextInCategory again recordNum=%d re
 		
 		if (repeats)
 			{
-debug(1, "XXX", "ApptGetAppointments repeats ApptUnpack %p", r);
 			ApptUnpack (r, &apptRec);
 
 			if (days == 1)
@@ -2937,17 +2883,13 @@ debug(1, "XXX", "ApptGetAppointments repeats ApptUnpack %p", r);
 		
 		 recordNum++;
 		}
-debug(1, "XXX", "ApptGetAppointments end loop2", dateInDays);
 
 	
 	// Sort the list by start time.
-debug(1, "XXX", "ApptGetAppointments days=%d", days);
 	for (index = 0; index < days; index ++)
 		{
-debug(1, "XXX", "ApptGetAppointments days=%d index=%d", days, index);
 		if (apptLists[index])
 			{
-debug(1, "XXX", "ApptGetAppointments days=%d index=%d has list", days, index);
 			apptList = MemHandleLock(apptLists[index]);
 			SysInsertionSort (apptList, counts[index], sizeof (ApptInfoType), (_comparF *)ApptListCompare, 0L);
 	
@@ -2983,10 +2925,6 @@ Err ApptGetRecord (DmOpenRef dbP, UInt16 index, ApptDBRecordPtr r,
 	
 
 	handle = DmQueryRecord(dbP, index);
-debug(1, "XXX", "ApptGetRecord DmQueryRecord index %d handle 0x%08X", index, handle);
-if (DmGetLastErr()) {
-debug(1, "XXX", "error");
-}
 	ErrFatalDisplayIf(DmGetLastErr(), "Error Querying record");
 	
 	src = (ApptPackedDBRecordPtr) MemHandleLock (handle);
@@ -2997,8 +2935,6 @@ debug(1, "XXX", "error");
 		return DmGetLastErr();
 		}
 	
-debug(1, "XXX", "ApptGetRecord index %d handle 0x%08X ApptUnpack %p", index, handle, src);
-debug_bytes(1, "XXX", (UInt8 *)src, MemHandleSize(handle));
 	ApptUnpack(src, r);
 	
 	*handleP = handle;
@@ -3050,10 +2986,8 @@ Err ApptChangeRecord(DmOpenRef dbP, UInt16 *index, ApptDBRecordPtr r,
 	
 	// We do not assume that r is completely valid so we get a valid
 	// ApptDBRecordPtr...
-debug(1, "XXX", "ApptChangeRecord ApptGetRecord %d", *index);
 	if ((result = ApptGetRecord(dbP, *index, &src, &srcH)) != 0)
 		return result;
-debug(1, "XXX", "ApptChangeRecord ApptGetRecord %d done", *index);
 	
 	// and we apply the changes to it.
 	if (changedFields.when) 
@@ -3077,7 +3011,6 @@ debug(1, "XXX", "ApptChangeRecord ApptGetRecord %d done", *index);
 
 	// Allocate a new chunk with the correct size and pack the data from 
 	// the unpacked record into it.
-debug(1, "XXX", "ApptChangeRecord DmNewHandle %d", ApptPackedSize(&src));
 	dstH = DmNewHandle(dbP, (UInt32) ApptPackedSize(&src));
 	if (dstH)
 		{
@@ -3135,10 +3068,7 @@ debug(1, "XXX", "ApptChangeRecord DmNewHandle %d", ApptPackedSize(&src));
 attachRecord:
 	// Attach the new record to the old index,  the preserves the 
 	// category and record id.
-debug(1, "XXX", "ApptChangeRecord attach index %d handle 0x%08X p %p ...", *index, dstH, dst);
 	result = DmAttachRecord (dbP, index, dstH, &oldH);
-debug(1, "XXX", "ApptChangeRecord attach index %d handle 0x%08X old 0x%08X p %p result %d", *index, dstH, oldH, dst, result);
-debug_bytes(1, "XXX", (UInt8 *)dst, MemHandleSize(dstH));
 	
 	MemPtrUnlock(dst);
 
@@ -3178,7 +3108,6 @@ Err ApptNewRecord(DmOpenRef dbP, ApptDBRecordPtr r, UInt16 *index)
 	Err err;
 
 	
-debug(1, "XXX", "ApptNewRecord DmNewHandle %d", ApptPackedSize(r));
 	// Make a new chunk with the correct size.
 	recordH = DmNewHandle (dbP, (UInt32) ApptPackedSize(r));
 	if (recordH == NULL)
@@ -3186,7 +3115,6 @@ debug(1, "XXX", "ApptNewRecord DmNewHandle %d", ApptPackedSize(r));
 
 	recordP = MemHandleLock (recordH);
 	
-debug(1, "XXX", "ApptNewRecord pack");
 	// Copy the data from the unpacked record to the packed one.
 	ApptPack (r, recordP);
 
@@ -3196,7 +3124,6 @@ debug(1, "XXX", "ApptNewRecord pack");
 
 	// 4) attach in place
 	err = DmAttachRecord(dbP, &newIndex, recordH, 0);
-debug(1, "XXX", "ApptNewRecord DmAttachRecord index %d err %d", newIndex, err);
 	if (err) 
 		MemHandleFree(recordH);
 	else

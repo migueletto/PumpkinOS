@@ -1,17 +1,15 @@
 #include <PalmOS.h>
 
-#include "sys.h"
-
 UInt16 TxtGlueCharAttr(WChar inChar) {
-  return TxtCharAttr(inChar);
+  return TxtUpperChar(inChar);
 }
 
 WChar TxtGlueUpperChar(WChar inChar) {
-  return sys_toupper(inChar);
+  return TxtUpperChar(inChar);
 }
 
 WChar TxtGlueLowerChar(WChar inChar) {
-  return sys_tolower(inChar);
+  return TxtLowerChar(inChar);
 }
 
 Boolean TxtGlueCharIsValid(WChar inChar) {

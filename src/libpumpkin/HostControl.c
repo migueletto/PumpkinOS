@@ -276,7 +276,7 @@ long HostTruncate(const char *s, long l) {
   return 0;
 }
 
-long HostUTime (const char *s, HostUTimeType *p) {
+long HostUTime(const char *s, HostUTimeType *p) {
   debug(DEBUG_ERROR, "PALMOS", "HostUTime not implemented");
   return 0;
 }
@@ -336,22 +336,22 @@ HostErrType HostSaveScreen(const char* fileName) {
   return 0;
 }
 
-Err HostExgLibOpen (UInt16 libRefNum) {
+Err HostExgLibOpen(UInt16 libRefNum) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibOpen not implemented");
   return 0;
 }
 
-Err HostExgLibClose (UInt16 libRefNum) {
+Err HostExgLibClose(UInt16 libRefNum) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibClose not implemented");
   return 0;
 }
 
-Err HostExgLibSleep (UInt16 libRefNum) {
+Err HostExgLibSleep(UInt16 libRefNum) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibSleep not implemented");
   return 0;
 }
 
-Err HostExgLibWake (UInt16 libRefNum) {
+Err HostExgLibWake(UInt16 libRefNum) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibWake not implemented");
   return 0;
 }
@@ -361,12 +361,12 @@ Boolean HostExgLibHandleEvent(UInt16 libRefNum, void* eventP) {
   return 0;
 }
 
-Err  HostExgLibConnect (UInt16 libRefNum, void* exgSocketP) {
+Err  HostExgLibConnect(UInt16 libRefNum, void* exgSocketP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibConnect not implemented");
   return 0;
 }
 
-Err HostExgLibAccept (UInt16 libRefNum, void* exgSocketP) {
+Err HostExgLibAccept(UInt16 libRefNum, void* exgSocketP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibAccept not implemented");
   return 0;
 }
@@ -376,32 +376,32 @@ Err HostExgLibDisconnect(UInt16 libRefNum, void* exgSocketP,Err error) {
   return 0;
 }
 
-Err HostExgLibPut (UInt16 libRefNum, void* exgSocketP) {
+Err HostExgLibPut(UInt16 libRefNum, void* exgSocketP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibPut not implemented");
   return 0;
 }
 
-Err HostExgLibGet (UInt16 libRefNum, void* exgSocketP) {
+Err HostExgLibGet(UInt16 libRefNum, void* exgSocketP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibGet not implemented");
   return 0;
 }
 
-UInt32  HostExgLibSend (UInt16 libRefNum, void* exgSocketP, const void* const bufP, const UInt32 bufLen, Err* errP) {
+UInt32  HostExgLibSend(UInt16 libRefNum, void* exgSocketP, const void* const bufP, const UInt32 bufLen, Err* errP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibSend not implemented");
   return 0;
 }
 
-UInt32  HostExgLibReceive (UInt16 libRefNum, void* exgSocketP, void* bufP, const UInt32 bufSize, Err* errP) {
+UInt32  HostExgLibReceive(UInt16 libRefNum, void* exgSocketP, void* bufP, const UInt32 bufSize, Err* errP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibReceive not implemented");
   return 0;
 }
 
-Err  HostExgLibControl (UInt16 libRefNum, UInt16 op, void* valueP, UInt16* valueLenP) {
+Err  HostExgLibControl(UInt16 libRefNum, UInt16 op, void* valueP, UInt16* valueLenP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibControl not implemented");
   return 0;
 }
 
-Err  HostExgLibRequest (UInt16 libRefNum, void* exgSocketP) {
+Err  HostExgLibRequest(UInt16 libRefNum, void* exgSocketP) {
   debug(DEBUG_ERROR, "PALMOS", "HostExgLibRequest not implemented");
   return 0;
 }
@@ -492,14 +492,19 @@ void HostTraceOutputB(unsigned short p, const void *p2, HostSizeType p3) {
   debug(DEBUG_ERROR, "PALMOS", "HostTraceOutputB not implemented");
 }
 
-HostErr HostDbgSetDataBreak (UInt32 addr, UInt32 size) {
+HostErr HostDbgSetDataBreak(UInt32 addr, UInt32 size) {
   debug(DEBUG_ERROR, "PALMOS", "HostDbgSetDataBreak not implemented");
   return 0;
 }
 
-HostErr HostDbgClearDataBreak (void) {
+HostErr HostDbgClearDataBreak(void) {
   debug(DEBUG_ERROR, "PALMOS", "HostDbgClearDataBreak not implemented");
   return 0;
+}
+
+const char *HostSlotRoot(long slotNo) {
+  debug(DEBUG_ERROR, "PALMOS", "HostSlotRoot not implemented");
+  return NULL;
 }
 
 long HostSlotMax(void) {
@@ -510,4 +515,19 @@ long HostSlotMax(void) {
 HostBoolType HostSlotHasCard(long slotNo) {
   debug(DEBUG_ERROR, "PALMOS", "HostSlotHasCard not implemented");
   return 0;
+}
+
+const char *HostPutFile(const char *prompt, const char *defaultDir, const char *defaultName) {
+  debug(DEBUG_ERROR, "PALMOS", "HostPutFile not implemented");
+  return NULL;
+}
+
+const char *HostGetFile(const char *prompt, const char *defaultDir) {
+  debug(DEBUG_ERROR, "PALMOS", "HostGetFile not implemented");
+  return NULL;
+}
+
+const char *HostGetDirectory(const char *prompt, const char *defaultDir) {
+  debug(DEBUG_ERROR, "PALMOS", "HostGetDirectory not implemented");
+  return NULL;
 }

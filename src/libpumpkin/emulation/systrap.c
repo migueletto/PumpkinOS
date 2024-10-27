@@ -22,7 +22,6 @@
 
 // not mapped:
 // FldNewField
-// CtlNewControl
 
 static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
   char buf[256];
@@ -2112,6 +2111,29 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
+
+    case sysTrapCtlNewControl: {
+      // ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, const Char *textP, Coord x, Coord y, Coord width, Coord height, FontID font, UInt8 group, Boolean leftAnchor)
+      uint32_t formPP = ARG32;
+      uint16_t id = ARG16;
+      uint8_t style = ARG8;
+      uint32_t textP = ARG32;
+      int16_t x = ARG16;
+      int16_t y = ARG16;
+      int16_t width = ARG16;
+      int16_t height = ARG16;
+      uint8_t font = ARG8;
+      uint8_t group = ARG8;
+      uint8_t leftAnchor = ARG8;
+      uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+      void *form = emupalmos_trap_in(formP, trap, 0);
+      char *text = (char *)emupalmos_trap_in(textP, trap, 3);
+      ControlType *ctl = CtlNewControl(&form, id, style, text, x, y, width, height, font, group, leftAnchor);
+      uint32_t a = emupalmos_trap_out(ctl);
+      debug(DEBUG_TRACE, "EmuPalmOS", "CtlNewControl(0x%08X, %u, %d, 0x%08X [%s], %d, %d, %d, %d, %d, %d, %d): 0x%08X", formPP, id, style, textP, text, x, y, width, height, font, group, leftAnchor, a);
+      m68k_set_reg(M68K_REG_A0, a);
+      }
+      break;
     case sysTrapCtlGetStyle68K: { // custom trap created for use in 68K code
       // ControlStyleType CtlGetStyle(ControlType *controlP)
       uint32_t controlP = ARG32;

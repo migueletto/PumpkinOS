@@ -121,6 +121,7 @@ typedef __builtin_va_list sys_va_list;
 #define sys_va_copy(d,s)  __builtin_va_copy(d,s)
 
 typedef jmp_buf sys_jmp_buf;
+typedef struct __jmp_buf_tag *sys_jmp_bufp;
 
 void sys_init(void);
 

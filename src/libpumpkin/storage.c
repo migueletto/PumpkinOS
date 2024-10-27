@@ -2762,6 +2762,10 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
   return pos;
 }
 
+UInt16 DmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other) {
+  return DmFindSortPosition(dbP, newRecord, NULL, compar, other);
+}
+
 UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordInfo, UInt32 compar, Int16 other) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
@@ -4493,10 +4497,6 @@ MemPtr MemPtrNew(UInt32 size) {
   return p;
 }
 
-MemPtr MemGluePtrNew(UInt32 size) {
-  return MemPtrNew(size);
-}
-
 Err MemChunkFree(MemPtr chunkDataP) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h;
@@ -5029,6 +5029,11 @@ Err MemCardInfo(UInt16 cardNo, Char *cardNameP, Char *manufNameP, UInt16 *versio
   return errNone;
 }
 
+Err MemCardFormat(UInt16 cardNo, const Char *cardNameP, const Char *manufNameP, const Char *ramStoreNameP) {
+  debug(DEBUG_ERROR, "STOR", "MemCardFormat not implemented");
+  return dmErrInvalidParam;
+}
+
 Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
@@ -5347,4 +5352,14 @@ Boolean SysCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCount, MemH
 
 Boolean SysCreateDataBaseList68K(UInt32 type, UInt32 creator, UInt16 *dbCount, MemHandle *dbIDs, Boolean lookupName) {
   return StoCreateDataBaseList(type, creator, dbCount, dbIDs, lookupName, true);
+}
+
+Err MemStoreInfo(UInt16 cardNo, UInt16 storeNumber, UInt16 *versionP, UInt16 *flagsP, Char *nameP, UInt32 *crDateP, UInt32 *bckUpDateP, UInt32 *heapListOffsetP, UInt32 *initCodeOffset1P, UInt32 *initCodeOffset2P, LocalID *databaseDirIDP) {
+  debug(DEBUG_ERROR, "STOR", "MemStoreInfo not implemented");
+  return dmErrInvalidParam;
+}
+
+Err MemStoreSetInfo(UInt16 cardNo, UInt16 storeNumber, UInt16 *versionP, UInt16 *flagsP, Char *nameP, UInt32 *crDateP, UInt32 *bckUpDateP, UInt32 *heapListOffsetP, UInt32 *initCodeOffset1P, UInt32 *initCodeOffset2P, LocalID *databaseDirIDP) {
+  debug(DEBUG_ERROR, "STOR", "MemStoreSetInfo not implemented");
+  return dmErrInvalidParam;
 }

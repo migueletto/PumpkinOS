@@ -102,10 +102,13 @@
 /************************************************************************
  * New Floating point manager types (private)
  ***********************************************************************/
+/*
 typedef struct {
 	Int32 high;
 	Int32 low;
 } _sfpe_64_bits;											// for internal use only
+*/
+typedef double _sfpe_64_bits;
 
 typedef _sfpe_64_bits sfpe_long_long;				// for internal use only
 typedef _sfpe_64_bits sfpe_unsigned_long_long;	// for internal use only
@@ -114,7 +117,8 @@ typedef _sfpe_64_bits sfpe_unsigned_long_long;	// for internal use only
 /************************************************************************
  * New Floating point manager types (public)
  ***********************************************************************/
-typedef Int32 FlpFloat;
+//typedef Int32 FlpFloat;
+typedef float FlpFloat;
 typedef _sfpe_64_bits FlpDouble;
 typedef _sfpe_64_bits FlpLongDouble;
 

@@ -9,6 +9,11 @@ Err OmOverlayDBNameToLocale(const Char *overlayDBName, LmLocaleType *overlayLoca
   return omErrUnknownLocale;
 }
 
+Err OmLocaleToOverlayDBName(const Char *baseDBName, const LmLocaleType *targetLocale, Char *overlayDBName) {
+  debug(DEBUG_ERROR, "PALMOS", "OmLocaleToOverlayDBName not implemented");
+  return omErrUnknownLocale;
+}
+
 void OmGetCurrentLocale(LmLocaleType *currentLocale) {
   OmGetSystemLocale(currentLocale);
 }

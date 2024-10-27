@@ -50,8 +50,6 @@
 #include "DateAlarm.h"
 #include "Datebook.h"
 
-#include "debug.h"
-
 #if WRISTPDA
 
 // Note View
@@ -341,25 +339,21 @@ static Boolean GetTime (TimePtr startP, TimePtr endP, UInt16 titleStrID)
 	
 	// Get today's date, are we displaying today?
 	TimSecondsToDateTime (TimGetSeconds (), &dateTime);
-debug(1, "XXX", "GetTime titleID %d", titleStrID);
 	if (	Date.year == dateTime.year - firstYear &&
 			Date.month == dateTime.month &&
 			Date.day == dateTime.day)
 		{
 		firstDisplayHour = dateTime.hour+1;
-debug(1, "XXX", "GetTime today first hour %d", firstDisplayHour);
 		}
 	else //not today
 		{
 		firstDisplayHour = DayStartHour;
-debug(1, "XXX", "GetTime not today first hour %d", firstDisplayHour);
 		}
 
 	// If the event is untimed, pass the default start time
 	// and duration.
 	if (TimeToInt (*startP) == (UInt16)apptNoTime)
 		{
-debug(1, "XXX", "GetTime untimed event");
 		untimed = true;
 		start.hours = min (firstDisplayHour, hoursPerDay-1);
 		start.minutes = 0;
@@ -368,7 +362,6 @@ debug(1, "XXX", "GetTime untimed event");
 		}
 	else
 		{
-debug(1, "XXX", "GetTime timed event");
 		untimed = false;
 		start = *startP;
 		end = *endP;
@@ -376,7 +369,6 @@ debug(1, "XXX", "GetTime timed event");
 		
 	
 	title = MemHandleLock(DmGetResource (strRsc, titleStrID));
-debug(1, "XXX", "GetTime title \"%s\"", title);
 
 	selected = SelectTime (&start, &end, untimed, title, DayStartHour, DayEndHour,start.hours);
 
@@ -384,13 +376,9 @@ debug(1, "XXX", "GetTime title \"%s\"", title);
 	
 	if (selected)
 		{
-debug(1, "XXX", "GetTime time selected");
 		*startP = start;
 		*endP = end;
 		}
-	else {
-debug(1, "XXX", "GetTime time not selected");
-	}
 	
 	return (selected);
 }
@@ -589,12 +577,10 @@ static Boolean DeleteRecord (UInt16 recordNum)
 				if (archive)
 					DmArchiveRecord (ApptDB, recordNum);
 				else {
-debug(1, "XXX", "DmDeleteRecord %d", recordNum);
 					DmDeleteRecord (ApptDB, recordNum);
 				}
 					
 				// move it to the end of the DB
-debug(1, "XXX", "DmMoveRecord %d to %d", recordNum, DmNumRecords (ApptDB));
 				DmMoveRecord (ApptDB, recordNum, DmNumRecords (ApptDB));
 				}
 			break;
@@ -651,7 +637,6 @@ static Err CreateException (ApptDBRecordPtr newRec, UInt16* indexP)
 	DmRecordInfo (ApptDB, *indexP, &attr, NULL, NULL);	
 
 	err = ApptNewRecord (ApptDB, newRec, indexP);				
-debug(1, "XXX", "CreateException ApptNewRecord recnum %d err %d", *indexP, err);
 
 	if (! err)
 		{
@@ -938,7 +923,6 @@ static Err SplitRepeatingEvent (UInt16* indexP)
 		apptRec.repeat = &repeat;
 		
 		err = ApptNewRecord (ApptDB, &apptRec, &index);				
-debug(1, "XXX", "SplitRepeatingEvent ApptNewRecord recnum %d err %d", index, err);
 		DmFindRecordByID (ApptDB, uniqueID, indexP);
 		}
 
@@ -2969,7 +2953,6 @@ static void DetailsSetTimeTrigger (TimeType start, TimeType end)
 
 	else
 		{
-debug(1, "XXX", "start %02d:%02d end %02d:%02d", start.hours, start.minutes, end.hours, end.minutes);
 		str = label;
 		TimeToAscii (start.hours, start.minutes, TimeFormat, str);
 		str += StrLen (str);
@@ -3104,7 +3087,6 @@ static Boolean DetailsDeleteAppointment (void)
 	// Delete the record,  this routine will display an appropriate 
 	// dialog to confirm the action.  If the dialog is canceled 
 	// don't update the display.
-debug(1, "XXX", "DetailsDeleteAppointment DeleteRecord");
 	if (! DeleteRecord (recordNum))
 		return (false);
 
@@ -3735,21 +3717,17 @@ static DetailsPtr DetailsInit (void)
 	MemHandle recordH;
 	ApptDBRecordType	apptRec;
 
-debug(1, "XXX", "DetailsInit begin");
 	// Allocate and initialize a block to hold a temporary copy of the 
 	// info from the appointment record, we don't want to apply any changes 
 	// to the record until the "Details Dialog" is confirmed.
 	if (! DetailsP)
 		{
-debug(1, "XXX", "DetailsInit details is null");
 		DetailsP = MemPtrNew (sizeof (DetailsType));
 		details = DetailsP;
 		MemSet (details, sizeof (DetailsType), 0);
 		
 		// Get a pointer to the appointment record.
-debug(1, "XXX", "DetailsInit ApptGetRecord ...");
 		ApptGetRecord (ApptDB, CurrentRecord, &apptRec, &recordH);
-debug(1, "XXX", "DetailsInit ApptGetRecord done");
 		
 		DmRecordInfo (ApptDB, CurrentRecord, &attr, NULL, NULL);
 
@@ -3778,7 +3756,6 @@ debug(1, "XXX", "DetailsInit ApptGetRecord done");
 		}
 	else {
 		details = DetailsP;
-debug(1, "XXX", "DetailsInit details is not null");
 	}
 
 	// Set the time selector label.
@@ -3814,7 +3791,6 @@ debug(1, "XXX", "DetailsInit details is not null");
 		lst = GetObjectPtr (DetailsAlarmAdvanceList);		
 		LstSetSelection (lst, details->alarm.advanceUnit);
 		label = LstGetSelectionText (lst, details->alarm.advanceUnit);
-debug(1, "XXX", "DetailsInit detail unit %d label \"%s\"", details->alarm.advanceUnit, label);
 
 		ctl = GetObjectPtr (DetailsAlarmAdvanceSelector);
 		CtlSetLabel (ctl, label);
@@ -3837,7 +3813,6 @@ debug(1, "XXX", "DetailsInit detail unit %d label \"%s\"", details->alarm.advanc
 	CtlSetValue (ctl, details->secret);
 
 
-debug(1, "XXX", "DetailsInit end");
 	return (details);
 }
 
@@ -4943,7 +4918,6 @@ static Boolean DayViewClearEditState (void)
 
 	if ( ! ItemSelected)
 		{
-debug(1, "XXX", "DayViewClearEditState no ItemSelected CurrentRecord %d -> %d", CurrentRecord, noRecordSelected);
 		CurrentRecord = noRecordSelected;
 		return (false);
 		}
@@ -4952,10 +4926,8 @@ debug(1, "XXX", "DayViewClearEditState no ItemSelected CurrentRecord %d -> %d", 
 	table = FrmGetObjectPtr (frm, FrmGetObjectIndex (frm, DayTable));
 	DmRecordInfo (ApptDB, CurrentRecord, NULL, &uniqueID, NULL);
 	found = TblFindRowData (table, uniqueID, &row);
-debug(1, "XXX", "DayViewClearEditState ItemSelected CurrentRecord %d row %d", CurrentRecord, row);
 	ErrNonFatalDisplayIf (!found, "Wrong record");
 	
-debug(1, "XXX", "DayViewClearEditState TblReleaseFocus");
 	TblReleaseFocus (table);
 	
 	// We're leaving a record. If it's secret and we're masking secret records
@@ -4981,7 +4953,6 @@ debug(1, "XXX", "DayViewClearEditState TblReleaseFocus");
 	
 	// If a different row has been selected, clear the edit state, this 
 	// will delete the current record if its empty.
-debug(1, "XXX", "DayViewClearEditState ClearEditState");
 	if (ClearEditState ())
 		{
 		numAppts = NumAppts;
@@ -5031,18 +5002,14 @@ static UInt16 DayViewFindAppointment (UInt16 recordNum)
 	
 	appts = MemHandleLock (ApptsH);
 
-debug(1, "XXX", "DayViewFindAppointment find %d num %d", recordNum, NumAppts);
 	for (i = 0; i < NumAppts; i++)
 		{
-debug(1, "XXX", "DayViewFindAppointment appt %d rec %d", i, appts[i].recordNum);
 		if (appts[i].recordNum == recordNum)
 			{
-debug(1, "XXX", "DayViewFindAppointment found");
 			MemPtrUnlock (appts);
 			return (i);
 			}
 		}
-debug(1, "XXX", "DayViewFindAppointment not found");
 
 	MemPtrUnlock (appts);
 
@@ -5211,7 +5178,6 @@ static void DayViewDrawIcons (void * table, Int16 row, Int16 column,
 	WinDrawOperation prev;
 	UInt16 th;
 
-debug(1, "XXX", "DayViewDrawIcons row %d col %d", row, column);
 	// Get the appointment index that corresponds to the table item.
 	// The index of the appointment in the appointment list, is stored
 	// as the row id.
@@ -5228,7 +5194,6 @@ debug(1, "XXX", "DayViewDrawIcons row %d col %d", row, column);
 	fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
 	oldf = WinSetForeColor(fieldLine);
 	th = FntCharHeight();
-debug(1, "XXX", "DayViewDrawIcons line %d,%d", x, y+th-1);
 	WinDrawLine(x, y+th-1, x + bounds->extent.x - 1, y+th-1);
 	WinSetForeColor(oldf);
 
@@ -5237,9 +5202,7 @@ debug(1, "XXX", "DayViewDrawIcons line %d,%d", x, y+th-1);
 	curFont = FntSetFont(apptTimeFont);
 
 	ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
-debug(1, "XXX", "DayViewDrawIcons apptIndex %d recordNum %d", apptIndex, recordNum);
 	if (apptRec.description) {
-debug(1, "XXX", "DayViewDrawIcons description %d,%d \"%s\"", x+1, y, apptRec.description);
 		prev = WinSetDrawMode(winOverlay);
 		WinPaintChars(apptRec.description, StrLen(apptRec.description), x+1, y);
 		WinSetDrawMode(prev);
@@ -5252,7 +5215,6 @@ debug(1, "XXX", "DayViewDrawIcons description %d,%d \"%s\"", x+1, y, apptRec.des
 	// Draw note icon
 	if (apptRec.note)
 		{
-debug(1, "XXX", "DayViewDrawIcons note %d,%d", x, y);
 		chr = symbolNote;
 		WinDrawChars (&chr, 1, x, y);
 		x += FntCharWidth (chr) + 1;
@@ -5261,7 +5223,6 @@ debug(1, "XXX", "DayViewDrawIcons note %d,%d", x, y);
 	// Draw alarm icon
 	if (apptRec.alarm)
 		{
-debug(1, "XXX", "DayViewDrawIcons alarm %d,%d", x, y);
 		chr = symbolAlarm;
 		WinDrawChars (&chr, 1, x, y);
 		x += FntCharWidth (chr) + 1;
@@ -5270,7 +5231,6 @@ debug(1, "XXX", "DayViewDrawIcons alarm %d,%d", x, y);
 	// Draw repeat icon
 	if (apptRec.repeat)
 		{
-debug(1, "XXX", "DayViewDrawIcons repeat %d,%d", x, y);
 		chr = symbolRepeat;
 		WinDrawChars (&chr, 1, x, y);
 		x += FntCharWidth (chr) + 1;
@@ -5594,7 +5554,6 @@ static void DayViewInsertAppointment (UInt16 apptIndex, UInt16 recordNum, UInt16
 			appts[i].recordNum++;
 		}
 
-debug(1, "XXX", "ZZZ DayViewInsertAppointment apptIndex=%d recordNum=%d", apptIndex, recordNum);
 	appts[apptIndex].recordNum = recordNum;
 //	appts[apptIndex].endTime.hours = appts[apptIndex].startTime.hours + 1;
 
@@ -5657,7 +5616,6 @@ static Err DayViewGetDescription (void * table, Int16 row, Int16 column,
 //	RectangleType r;
 	
 	*textH = 0;
-debug(1, "XXX", "DayViewGetDescription row %d col %d editable %d", row, column, editable);
 
 	// Get the appoitment that corresponds to the table item.
 	// The index of the appointment in the appointment list, is stored
@@ -5669,21 +5627,17 @@ debug(1, "XXX", "DayViewGetDescription row %d col %d editable %d", row, column, 
 	appts = MemHandleLock (ApptsH);
 	recordNum = appts[apptIndex].recordNum;
 	MemHandleUnlock (ApptsH);
-debug(1, "XXX", "DayViewGetDescription apptIndex %d recnum %d", apptIndex, recordNum);
 
 	if (recordNum == emptySlot)
 		{
-debug(1, "XXX", "DayViewGetDescription emptySlot");
 		// If we're drawing the description, return a null MemHandle.
 		if  (! editable) 
 			return (0);
-debug(1, "XXX", "DayViewGetDescription editable");
 
 		// If we have reached the maximum number of displayable event, then
 		// exit returning an error.
 		if (NumApptsOnly >= apptMaxPerDay)
 			return (-1);
-debug(1, "XXX", "DayViewGetDescription not maximum");
 
 
 		// If we're editing the description, create a new record.
@@ -5731,7 +5685,6 @@ debug(1, "XXX", "DayViewGetDescription not maximum");
 		// do it here.  We'll redraw the row on the tblSelect event.
 		if (ApptDescFont != apptEmptyDescFont)
 			{
-debug(1, "XXX", "DayViewGetDescription mark row invalid");
 			redraw = true;
 			TblMarkRowInvalid (table, row);
 			}
@@ -5744,13 +5697,11 @@ debug(1, "XXX", "DayViewGetDescription mark row invalid");
 		// Make sure the record has a description field so that we have
 		// something to edit.
 		apptRec.description = (char *)"";
-debug(1, "XXX", "DayViewGetDescription set descr \"\"");
 		
 		if (AlarmPreset.advance != apptNoAlarm)
 			apptRec.alarm = &AlarmPreset;
 
 		error = ApptNewRecord (ApptDB, &apptRec, &recordNum);
-debug(1, "XXX", "DayViewGetDescription ApptNewRecord recnum %d err %d", recordNum, error);
 
 		if (error)
 			{
@@ -5758,7 +5709,6 @@ debug(1, "XXX", "DayViewGetDescription ApptNewRecord recnum %d err %d", recordNu
 			return (error);
 			}
 
-debug(1, "XXX", "DayViewGetDescription DayViewGetDescription apptIndex %d recnum %d row %d", apptIndex, recordNum, row);
 		DayViewInsertAppointment (apptIndex, recordNum, row);
 
 		// If the alarm preset preference is set we needed to reinitialize the
@@ -5795,12 +5745,10 @@ debug(1, "XXX", "DayViewGetDescription DayViewGetDescription apptIndex %d recnum
 		if (! redraw)
 			DayViewDrawTimeBars ();
 		} else {
-debug(1, "XXX", "DayViewGetDescription not emptySlot");
 		}
 
 
 	// Get the offset and length of the description field 
-debug(1, "XXX", "DayViewGetDescription ApptGetRecord recnum %d", recordNum);
 	ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
 	
 	
@@ -5809,7 +5757,6 @@ debug(1, "XXX", "DayViewGetDescription ApptGetRecord recnum %d", recordNum);
 		ApptDBRecordFlags changedFields;
 		
 		
-debug(1, "XXX", "DayViewGetDescription description is null");
 		// Add the note to the record.
 		MemSet (&changedFields, sizeof (changedFields), 0);
 		changedFields.description = true;
@@ -5818,14 +5765,11 @@ debug(1, "XXX", "DayViewGetDescription description is null");
 		if (error) return error;
 		
 		ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
-debug(1, "XXX", "DayViewGetDescription ApptGetRecord recnum %d", recordNum);
 		}
 	
 	recordP = MemHandleLock(recordH);
-debug(1, "XXX", "DayViewGetDescription recordP %p", recordP);
 	*textOffset = apptRec.description - recordP;
 	*textAllocSize = StrLen (apptRec.description) + 1;  // one for null terminator
-debug(1, "XXX", "dateBook load offset %d size %d", *textOffset, *textAllocSize);
 	*textH = recordH;
 	MemHandleUnlock (recordH);
 	MemHandleUnlock (recordH);  // MemHandle was also locked in ApptGetRecord
@@ -5883,7 +5827,6 @@ static Boolean DayViewSaveDescription (void * table, Int16 row, Int16 column)
 	appts = MemHandleLock (ApptsH);
 	recordNum = appts[apptIndex].recordNum;
 	MemHandleUnlock (ApptsH);
-debug(1, "XXX", "DayViewSaveDescription row %d apptIndex %d recordNum %d", row, apptIndex, recordNum);
 
 	// XXX da erro quando estah em uma linha vazia e clica em outra linha
 	ErrFatalDisplayIf ( (recordNum == emptySlot), "Error saving appointment");
@@ -5965,7 +5908,6 @@ static Int16 DayViewGetDescriptionHeight (Int16 apptIndex, Int16 width, Int16 ma
 	UInt16 			attr;
 	
 
-debug(1, "XXX", "DayViewGetDescriptionHeight begin apptIndex %d width %d maxheight %d", apptIndex, width, maxHeight);
 	// Get the record index.
 	appts = MemHandleLock (ApptsH);
 	recordNum = appts[apptIndex].recordNum;
@@ -5976,7 +5918,6 @@ debug(1, "XXX", "DayViewGetDescriptionHeight begin apptIndex %d width %d maxheig
 	// Empty time slot?
 	if (recordNum == emptySlot)
 		{
-debug(1, "XXX", "DayViewGetDescriptionHeight emptySlot");
 		curFont = FntSetFont (apptTimeFont);
 		height = FntLineHeight ();
 		FntSetFont (curFont);
@@ -5984,15 +5925,11 @@ debug(1, "XXX", "DayViewGetDescriptionHeight emptySlot");
 		}
 	else
 		{	  
-debug(1, "XXX", "DayViewGetDescriptionHeight recordNum %d", recordNum);
 		// Get the appointment record.
-debug(1, "XXX", "DayViewGetDescriptionHeight ApptGetRecord ...");
 		ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
-debug(1, "XXX", "DayViewGetDescriptionHeight ApptGetRecord done");
 
 
 		DmRecordInfo (ApptDB, recordNum, &attr, NULL, NULL);
-debug(1, "XXX", "DayViewGetDescriptionHeight DmRecordInfo attr 0x%04X", attr);
 		// The following code is commented out since masked records are no longer limited
 		// to one line. The reason for this is to keep masking and unmasking of individual
 		// records from affecting the position of records on the screen.
@@ -6029,23 +5966,19 @@ debug(1, "XXX", "DayViewGetDescriptionHeight DmRecordInfo attr 0x%04X", attr);
 			// Compute the height of the appointment description.
 			FntSetFont (ApptDescFont);
 			
-debug(1, "XXX", "DayViewGetDescriptionHeight FldCalcFieldHeight \"%s\" %d", apptRec.description, width - iconsWidth);
 			height = FldCalcFieldHeight (apptRec.description, width - iconsWidth);
 			lineHeight = FntLineHeight ();
 			height = min (height, (maxHeight / lineHeight));
 			height *= lineHeight;
 			
 			*fontIdP = ApptDescFont;
-debug(1, "XXX", "DayViewGetDescriptionHeight FldCalcFieldHeight height %d font %d", height, *fontIdP);
 			FntSetFont (curFont);
 			}
 		MemHandleUnlock (recordH);
 		}
 
-debug(1, "XXX", "DayViewGetDescriptionHeight end iconsWidth %d height %d", iconsWidth, height);
 
 	*iconsWidthP = iconsWidth;
-debug(1, "XXX", "DayViewGetDescriptionHeight end *iconsWidthP %d", *iconsWidthP);
 	return (height);
 }
 
@@ -6121,7 +6054,6 @@ static void DayViewInitRow (TablePtr table, UInt16 row, UInt16 apptIndex,
 	UInt16 time;
 	ApptInfoPtr	appts;	
 
-debug(1, "XXX", "DayViewInitRow row %d height %d", row, rowHeight);
 	// Make the row usable.
 	TblSetRowUsable (table, row, true);
 	
@@ -6135,7 +6067,6 @@ debug(1, "XXX", "DayViewInitRow row %d height %d", row, rowHeight);
 	appts = MemHandleLock(ApptsH);
 	time = TimeToInt(appts[apptIndex].startTime);
 	MemHandleUnlock(ApptsH);
-debug(1, "XXX", "DayViewInitRow row %d apptIndex %d set time 0x%04X", row, apptIndex, time);
 	TblSetItemInt (table, row, timeColumn, time);
 	#if WRISTPDA
 	TblSetItemFont( table, row, timeColumn, FossilLargeFontID( WRISTPDA, fontID ) );
@@ -6148,13 +6079,11 @@ debug(1, "XXX", "DayViewInitRow row %d apptIndex %d set time 0x%04X", row, apptI
 	// on the presence of a note.
 	if (! iconsWidth)
 		{
-debug(1, "XXX", "DayViewInitRow row %d normal", row);
 		TblSetItemStyle (table, row, descColumn, textTableItem);		
 		TblSetItemInt (table, row, descColumn, 0);
 		}
 	else
 		{
-debug(1, "XXX", "DayViewInitRow row %d narrow %d", row, iconsWidth);
 		TblSetItemStyle (table, row, descColumn, narrowTextTableItem);
 		TblSetItemInt (table, row, descColumn, iconsWidth);
 		}
@@ -6233,18 +6162,15 @@ static void DayViewLoadTable (void)
 	TblGetBounds (table, &r);
 	tableHeight = r.extent.y;
 	columnWidth = TblGetColumnWidth (table, descColumn);
-debug(1, "XXX", "DayViewLoadTable tableHeight %d columnWidth %d", tableHeight, columnWidth);
 
 
 	// If we currently have a selected record, make sure that it is not
 	// above the first visible record.
 	if (CurrentRecord != noRecordSelected)
 		{
-debug(1, "XXX", "DayViewLoadTable currentRecord %d", CurrentRecord);
 		apptIndex = DayViewFindAppointment (CurrentRecord);
 		if (apptIndex < TopVisibleAppt)
 			TopVisibleAppt = apptIndex;
-debug(1, "XXX", "DayViewLoadTable TopVisibleAppt %d", TopVisibleAppt);
 		}
 
 	if (TopVisibleAppt >= NumAppts)			// Fix: sometimes, TopVisibleAppt is greater than NumAppt
@@ -6257,14 +6183,11 @@ debug(1, "XXX", "DayViewLoadTable TopVisibleAppt %d", TopVisibleAppt);
 	row = 0;
 	dataHeight = 0;
 	oldPos = pos = 0;
-debug(1, "XXX", "DayViewLoadTable1 apptIndex %d numAppts %d", apptIndex, NumAppts);
 
 	while (apptIndex < NumAppts)
 		{		
-debug(1, "XXX", "DayViewLoadTable loop apptIndex %d", apptIndex);
 		// Compute the height of the appointment's description.
 		height = DayViewGetDescriptionHeight (apptIndex, columnWidth, tableHeight, &iconsWidth, &fontID);
-debug(1, "XXX", "DayViewLoadTable loop height %d", height);
 
 		// Is there enought room for at least one line of the the decription.
 		currFont = FntSetFont (fontID);
@@ -6272,7 +6195,6 @@ debug(1, "XXX", "DayViewLoadTable loop height %d", height);
 		FntSetFont (currFont);
 		if (tableHeight >= dataHeight + lineHeight)
 			{
-debug(1, "XXX", "DayViewLoadTable loop enough space");
 			// Get the height of the current row.
 			rowUsable = TblRowUsable (table, row);
 			if (rowUsable)
@@ -6324,14 +6246,12 @@ debug(1, "XXX", "DayViewLoadTable loop enough space");
 			// row load the record into the table.
 			if (init)
 				{
-debug(1, "XXX", "DayViewLoadTable row %d init apptIndex %d", row, apptIndex);
 				DayViewInitRow (table, row, apptIndex, height, uniqueID, iconsWidth, fontID);
 				}
 
 			// If the height or the position of the item has changed draw the item.
 			else 
 				{
-debug(1, "XXX", "DayViewLoadTable row %d not init apptIndex %d", row, apptIndex);
 				TblSetRowID (table, row, apptIndex);
 				if (height != oldHeight)
 					{
@@ -6350,16 +6270,13 @@ debug(1, "XXX", "DayViewLoadTable row %d not init apptIndex %d", row, apptIndex)
 			lastAppt = apptIndex;
 			apptIndex++;
 			row++;
-debug(1, "XXX", "DayViewLoadTable loop enough space end");
 			}
 		
 		dataHeight += height;
-debug(1, "XXX", "DayViewLoadTable loop dataheight %d", dataHeight);
 
 		// Is the table full?
 		if (dataHeight >= tableHeight)		
 			{
-debug(1, "XXX", "DayViewLoadTable loop table full");
 			// If we have a currently selected record, make sure that it is
 			// not below the last visible record.  If the currently selected 
 			// record is the last visible record, make sure the whole description 
@@ -6389,13 +6306,11 @@ debug(1, "XXX", "DayViewLoadTable loop table full");
 			oldPos = pos = 0;
 			}
 		}
-debug(1, "XXX", "DayViewLoadTable loop end");
 
 
 
 	// Hide the items that don't have any data.
 	numRows = TblGetNumberOfRows (table);
-debug(1, "XXX", "DayViewLoadTable1 row %d numRows %d dataHeight %d tableHeight %d", row, numRows, dataHeight, tableHeight);
 	while (row < numRows)
 		{		
 		TblSetRowUsable (table, row, false);
@@ -6409,7 +6324,6 @@ debug(1, "XXX", "DayViewLoadTable1 row %d numRows %d dataHeight %d tableHeight %
 	while (dataHeight < tableHeight)
 		{
 		apptIndex = TopVisibleAppt;
-debug(1, "XXX", "DayViewLoadTable apptIndex %d dataHeight %d", apptIndex, dataHeight);
 		if (apptIndex == 0) break;
 		apptIndex--;
 
@@ -6438,7 +6352,6 @@ debug(1, "XXX", "DayViewLoadTable apptIndex %d dataHeight %d", apptIndex, dataHe
 		TblSetRowMasked(table,0,masked);
 
 
-debug(1, "XXX", "DayViewLoadTable2 apptIndex %d recordNum %d", apptIndex, recordNum);
 		DayViewInitRow (table, 0, apptIndex, height, uniqueID, iconsWidth, fontID);
 		
 		TopVisibleAppt = apptIndex;
@@ -6540,7 +6453,6 @@ static void DayViewLayoutDay (Boolean retieve)
 			appts[i].startTime.minutes = 0;				
 			appts[i].endTime.hours = DayStartHour + i + 1;				
 			appts[i].endTime.minutes = 0;				
-debug(1, "XXX", "ZZZ DayViewLayoutDay apptIndex=%d recordNum=%d", i, emptySlot);
 			appts[i].recordNum = emptySlot;	
 			}
 			
@@ -6652,7 +6564,6 @@ debug(1, "XXX", "ZZZ DayViewLayoutDay apptIndex=%d recordNum=%d", i, emptySlot);
 					endTime = appts[j+1].startTime;
 		
 	
-debug(1, "XXX", "ZZZ DayViewLayoutDay2 apptIndex=%d recordNum=%d", j, emptySlot);
 				appts[j].recordNum = emptySlot;
 				appts[j].startTime = apptsOnly[i].endTime;
 				appts[j].endTime = endTime;
@@ -6726,7 +6637,6 @@ debug(1, "XXX", "ZZZ DayViewLayoutDay2 apptIndex=%d recordNum=%d", j, emptySlot)
 				NumAppts++;
 	
 				appts[i].startTime = next;
-debug(1, "XXX", "ZZZ DayViewLayoutDay3 apptIndex=%d recordNum=%d", i, emptySlot);
 				appts[i].recordNum = emptySlot;	
 	
 				// The end time is the beginning of the next hour or the 
@@ -6843,7 +6753,6 @@ static Boolean DayViewNewAppointment (EventType* event)
 	if (AlarmPreset.advance != apptNoAlarm)
 		newAppt.alarm = &AlarmPreset;
 	error = ApptNewRecord (ApptDB, &newAppt, &recordNum);
-debug(1, "XXX", "DayViewNewAppointment ApptNewRecord recnum %d err %d", recordNum, error);
 	
 	// If necessary display an alert that indicates that the new record could 
 	// not be created.
@@ -6927,7 +6836,6 @@ static void DayViewDeleteAppointment (void)
 		// Delete the record,  this routine will display an appropriate 
 		// dialog to confirm the action.  If the dialog is canceled 
 		// don't update the display.
-debug(1, "XXX", "DayViewDeleteAppointment DeleteRecord");
 		if (! DeleteRecord (recordNum))
 			{
 				FrmUpdateForm (DayView, 0);		// Re-masks the record if necessary.
@@ -7104,7 +7012,6 @@ static void DayViewSelectTime (TablePtr table, UInt16 row)
 	endTime = appts[apptIndex].endTime;
 	recordNum = appts[apptIndex].recordNum;
 	MemHandleUnlock (ApptsH);
-debug(1, "XXX", "DayViewSelectTime row %d apptIndex %d recordNum %d %02d:%02d %02d:%02d", row, apptIndex, recordNum, startTime.hours, startTime.minutes, endTime.hours, endTime.minutes);
 
 	// Display the time picker
 	userConfirmed = GetTime (&startTime, &endTime, setTimeTitleStrID);
@@ -7229,20 +7136,15 @@ static Boolean DayViewSelectIcons (EventType* event)
 	RectangleType	itemR;
 	ApptDBRecordType apptRec;
 
-debug(1, "XXX", "DayViewSelectIcons");
 	if (event->data.tblEnter.column != descColumn)
 		return (false);
-debug(1, "XXX", "DayViewSelectIcons descColumn");
 
 	// Check if there are any icons.
 	table = (TablePtr) event->data.tblEnter.pTable;
 	row = event->data.tblEnter.row;
-debug(1, "XXX", "DayViewSelectIcons row %d", row);
 	if (TblRowMasked(table,row))
 		return (false);
-debug(1, "XXX", "DayViewSelectIcons row %d not masked", row);
 	iconsWidth = TblGetItemInt (table, row, descColumn);
-debug(1, "XXX", "DayViewSelectIcons iconsWidth %d", iconsWidth);
 	if (! iconsWidth)
 		return (false);
 	
@@ -7258,11 +7160,9 @@ debug(1, "XXX", "DayViewSelectIcons iconsWidth %d", iconsWidth);
 	
 	x = event->screenX;
 	y = event->screenY;
-debug(1, "XXX", "DayViewSelectIcons test %d,%d in %d,%d %d,%d", x, y, r.topLeft.x, r.topLeft.y, r.extent.x, r.extent.y);
 	
 	if (RctPtInRectangle (x, y, &r))
 		{
-debug(1, "XXX", "DayViewSelectIcons inside");
 		// Get the record index of the selected appointment.
 		apptIndex = TblGetRowID (table, row);
 		appts = MemHandleLock (ApptsH);
@@ -7346,7 +7246,6 @@ debug(1, "XXX", "DayViewSelectIcons inside");
 			return (true);
 			}
 		} else {
-debug(1, "XXX", "DayViewSelectIcons outside");
 		}
 
 	return (false);
@@ -7392,7 +7291,6 @@ static void DayViewItemSelected (EventType* event)
 	row = event->data.tblSelect.row;
 	column = event->data.tblSelect.column;
 
-debug(1, "XXX", "ZZZ DayViewItemSelected begin");
 	if (TblRowMasked(table,row))
 		{
 		if (SecVerifyPW (showPrivateRecords) == true)
@@ -7469,11 +7367,9 @@ debug(1, "XXX", "ZZZ DayViewItemSelected begin");
 				newAppt.alarm = &AlarmPreset;		
 
 			error = ApptNewRecord (ApptDB, &newAppt, &recordNum);
-debug(1, "XXX", "DayViewItemSelected ApptNewRecord recnum %d err %d", recordNum, error);
 			
 			if (! error)
 				{
-debug(1, "XXX", "ZZZ DayViewItemSelected apptIndex=%d recordNum=%d", apptIndex, recordNum);
 				appts[apptIndex].recordNum =  recordNum;
 		
 				// Store the unique id of the record in the row.
@@ -7502,7 +7398,6 @@ debug(1, "XXX", "ZZZ DayViewItemSelected apptIndex=%d recordNum=%d", apptIndex, 
 	// Was a description selected?
 	else if (column == descColumn)
 		{
-debug(1, "XXX", "ZZZ DayViewItemSelected descColumn");
 		// Get the record index of the selected appointment.
 		apptIndex = TblGetRowID (table, row);
 		appts = MemHandleLock (ApptsH);
@@ -7514,7 +7409,6 @@ debug(1, "XXX", "ZZZ DayViewItemSelected descColumn");
 		// been selected.
 		if (TblEditing (table))
 			{
-debug(1, "XXX", "ZZZ DayViewItemSelected editing");
 			ItemSelected = true;
 
 			// If the row will have been visually invalidate if: an empty slot
@@ -7528,7 +7422,6 @@ debug(1, "XXX", "ZZZ DayViewItemSelected editing");
 			// redraw the table so the the alarm icon can be drawn.
 			if (TblRowInvalid (table, row))
 				{
-debug(1, "XXX", "ZZZ DayViewItemSelected row %d invalid", row);
 				TblReleaseFocus (table);
 				DayViewLayoutDay (true);
 				DayViewLoadTable ();
@@ -7540,7 +7433,6 @@ debug(1, "XXX", "ZZZ DayViewItemSelected row %d invalid", row);
 		else
 			FrmGotoForm (NewNoteView);
 		}
-debug(1, "XXX", "ZZZ DayViewItemSelected end");
 }
 
 
@@ -8807,7 +8699,6 @@ Boolean DayViewHandleEvent (EventType* event)
 	// Handle the button that was selected.
 	else if (event->eType == ctlSelectEvent)
 		{
-debug(1, "XXX", "ctlSelectEvent %d", event->data.ctlSelect.controlID);
 		switch (event->data.ctlSelect.controlID)
 			{
 			case DayWeekViewButton:
@@ -8923,28 +8814,22 @@ debug(1, "XXX", "ctlSelectEvent %d", event->data.ctlSelect.controlID);
 	// clear the edit state.
 	else if (event->eType == tblEnterEvent)
 		{
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent");
 		table = (TablePtr) event->data.tblEnter.pTable;
 		if (ItemSelected)
 			{
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent ItemSelected");
 			DmRecordInfo (ApptDB, CurrentRecord, NULL, &uniqueID, NULL);
 			if (TblFindRowData (table, uniqueID, &row))
 				{
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent ItemSelected uniqueID %d found", uniqueID);
 				if (event->data.tblEnter.row != row) {
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent ItemSelected event row %d != row %d", event->data.tblEnter.row, row);
 					handled = DayViewClearEditState ();
 				}
 				}
 			} else {
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent no ItemSelected");
 			}
 		if (event->data.tblEnter.column == timeBarColumn)
 			handled = true;
 		else if (! handled) {
 			handled = DayViewSelectIcons (event);
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent not timeBar handled=%d", handled);
 		}
 		}
 		
@@ -8952,7 +8837,6 @@ debug(1, "XXX", "ZZZ DayViewHandleEvent tblEnterEvent not timeBar handled=%d", h
 	// An item in the table has been selected.
 	else if (event->eType == tblSelectEvent)
 		{
-debug(1, "XXX", "ZZZ DayViewHandleEvent tblSelectEvent");
 		DayViewItemSelected (event);
 		handled = true;
 		}

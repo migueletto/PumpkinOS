@@ -355,6 +355,11 @@ Err SndPlaySmf(void *chanP, SndSmfCmdEnum cmd, UInt8 *smfP, SndSmfOptionsType *s
   return err;
 }
 
+Err SndPlaySmfIrregardless (void *channelP, SndSmfCmdEnum command, UInt8 *midiDataP, SndSmfOptionsType *optionsP, SndSmfChanRangeType *channelRangeP, SndSmfCallbacksType *callbacksP, Boolean noWait) {
+  // XXX
+  return SndPlaySmf(channelP, command, midiDataP, optionsP, channelRangeP, callbacksP, noWait);
+}
+
 Err SndPlaySmfResource(UInt32 resType, Int16 resID, SystemPreferencesChoice volumeSelector) {
   SndSmfOptionsType options;
   MemHandle h;

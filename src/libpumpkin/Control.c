@@ -759,3 +759,13 @@ ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, con
 
   return controlP;
 }
+
+GraphicControlType *CtlNewGraphicControl(void **formPP, UInt16 ID, ControlStyleType style, DmResID bitmapID, DmResID selectedBitmapID, Coord x, Coord y, Coord width, Coord height, UInt8 group, Boolean leftAnchor) {
+  debug(DEBUG_ERROR, "Control", "CtlNewGraphicControl not implemented");
+  return NULL;
+}
+
+SliderControlType *CtlNewSliderControl(void **formPP, UInt16 ID, ControlStyleType style, DmResID thumbID, DmResID backgroundID, Coord x, Coord y, Coord width, Coord height, UInt16 minValue, UInt16 maxValue, UInt16 pageSize, UInt16 value) {
+  debug(DEBUG_ERROR, "Control", "CtlNewSliderControl not implemented");
+  return NULL;
+}

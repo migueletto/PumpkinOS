@@ -20,8 +20,6 @@
 #include "ToDo.h"
 #include "ToDoDB.h"
 #include "ToDoRsc.h"
-#include "pumpkin_syscall.h"
-//#include "debug.h"
 
 // Error checking routines
 extern void ECToDoDBValidate(DmOpenRef dbP);
@@ -138,7 +136,7 @@ typedef struct {
  *
  ***********************************************************************/
 
-pumpkin_system_call_t pumpkin_system_call_p;
+PUMPKIN_API;
 
 static DmOpenRef			ToDoDB;										// ToDo database
 static char					CategoryName [dmCategoryLength];		// name of the current category
@@ -962,9 +960,7 @@ static Boolean SeekRecord (UInt16* indexP, Int16 offset, Int16 direction)
 
 	while (true)
 		{
-		//debug(DEBUG_INFO, "SYS", "DmSeekRecordInCategory n=%d i=%u o=%d d=%d c=%u", DmNumRecords(ToDoDB), *indexP, offset, direction, CurrentCategory);
 		err = DmSeekRecordInCategory (ToDoDB, indexP, offset, direction, CurrentCategory);
-		//debug(DEBUG_INFO, "SYS", "DmSeekRecordInCategory i=%u err=%d", *indexP, err);
 		if (err) return (false);
 
 		if ( ShowCompletedItems && (! ShowOnlyDueItems))
@@ -5908,7 +5904,7 @@ static void EventLoop (void)
  *			ABa 07/04/00	Add the todoLaunchCmdImportVObject launch code (DateBook uses it to import vtodo)
  *
  ***********************************************************************/
-UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+PUBLIC UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
 	Err error;
 	DmOpenRef dbP;
@@ -5917,9 +5913,6 @@ UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 	if (cmd == sysAppLaunchCmdNormalLaunch)
 		{
 		TraceOutput(TL(appErrorClass, "PilotMain() - sysAppLaunchCmdNormalLaunch"));
-		//debug_setsyslevel(NULL, DEBUG_INFO);
-		//debug_init("log.txt");
-		//debug(DEBUG_INFO, "SYS", "NormalLaunch begin");
 		
 		error = StartApplication ();
 		if (error != errNone)
@@ -5929,8 +5922,6 @@ UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 		EventLoop ();
 		StopApplication ();
 		
-		//debug(DEBUG_INFO, "SYS", "NormalLaunch end");
-		//debug_close();
 		}
 
 	else if (cmd == sysAppLaunchCmdFind)

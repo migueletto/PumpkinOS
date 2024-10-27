@@ -325,3 +325,21 @@ Err TxtTransliterate(const Char *inSrcText, UInt16 inSrcLength, Char *outDstText
   debug(DEBUG_ERROR, PALMOS_MODULE, "TxtTransliterate not implemented");
   return 0;
 }
+
+Err TxtConvertEncoding(Boolean newConversion, TxtConvertStateType *ioStateP, const Char *srcTextP, UInt16 *ioSrcBytes, CharEncodingType srcEncoding, Char *dstTextP, UInt16 *ioDstBytes, CharEncodingType dstEncoding, const Char *substitutionStr, UInt16 substitutionLen) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtConvertEncoding not implemented");
+  return 0;
+}
+
+Boolean TxtWordBounds(const Char *inText, UInt32 inLength, UInt32 inOffset, UInt32 *outStart, UInt32 *outEnd) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtWordBounds not implemented");
+  return false;
+}
+
+WChar TxtUpperChar(WChar inChar) {
+  return sys_toupper(inChar);
+}
+
+WChar TxtLowerChar(WChar inChar) {
+  return sys_tolower(inChar);
+}

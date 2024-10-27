@@ -7,6 +7,7 @@ SRC=$(ROOT)/src
 VFS=$(ROOT)/vfs
 TOOLS=$(ROOT)/tools
 LIBPIT=$(SRC)/libpit
+LIBAPP=$(SRC)/libapp/libapp.a
 
 SYSNAME=pit
 VERSION=1.0
@@ -73,6 +74,7 @@ $(error Missing BITS parameter (must be either 32 or 64))
 endif
 
 HOSTCC=gcc
+AR=ar
 
 ifeq ($(OSNAME),)
 OSNAME := $(shell uname -o)

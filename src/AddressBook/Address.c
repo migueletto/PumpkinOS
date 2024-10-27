@@ -62,6 +62,8 @@
  *
  ***********************************************************************/
 
+PUMPKIN_API;
+
 DmOpenRef					AddrDB = NULL;
 privateRecordViewEnum		PrivateRecordVisualStatus;
 Char						CategoryName [dmCategoryLength];
@@ -161,7 +163,7 @@ static Boolean	PrvAppLaunchCmdDatabaseInit(DmOpenRef dbP);
  *         art   7/24/95   Initial Revision
  *
  ***********************************************************************/
-UInt32   PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+PUBLIC UInt32   PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
 	return PrvAppPilotMain(cmd, cmdPBP, launchFlags);
 }

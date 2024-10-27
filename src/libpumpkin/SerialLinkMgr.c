@@ -42,6 +42,11 @@ Err SlkSendPacket(SlkPktHeaderPtr headerP, SlkWriteDataPtr writeList) {
   return 0;
 }
 
+Err SlkReceivePacket(UInt16 socket, Boolean andOtherSockets, SlkPktHeaderPtr headerP, void *bodyP, UInt16 bodySize, Int32 timeout) {
+  debug(DEBUG_ERROR, "PALMOS", "SlkReceivePacket not implemented");
+  return 0;
+}
+
 // system use only
 Err SlkSysPktDefaultResponse(SlkPktHeaderPtr headerP, void *bodyP) {
   debug(DEBUG_ERROR, "PALMOS", "SlkSysPktDefaultResponse not implemented");
@@ -54,3 +59,7 @@ Err SlkProcessRPC(SlkPktHeaderPtr headerP, void *bodyP) {
   return errNone;
 }
 
+Err SlkSocketPortID(UInt16 socket, UInt16 *portIDP) {
+  debug(DEBUG_ERROR, "PALMOS", "SlkSocketPortID not implemented");
+  return errNone;
+}

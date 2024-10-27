@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include "debug.h"
-
 Int16 LstGlueGetTopItem(const ListType *listP) {
   return listP ? listP->topItem : 0;
 }

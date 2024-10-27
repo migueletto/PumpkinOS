@@ -1,14 +1,6 @@
 #include <PalmOS.h>
 #include <FntGlue.h>
   
-#include "sys.h"
-#include "thread.h"
-#include "pwindow.h"
-#include "vfs.h"
-#include "pumpkin.h"
-#include "debug.h"
-#include "xalloc.h"
-
 FontID FntGlueGetDefaultFontID(FontDefaultType inFontType) {
   FontID fontID;
 
@@ -24,12 +16,10 @@ FontID FntGlueGetDefaultFontID(FontDefaultType inFontType) {
 }
 
 Boolean FntGlueTruncateString(char* iDstString, const char* iSrcString, FontID iFont, Coord iMaxWidth, Boolean iAddEllipsis) {
-  debug(DEBUG_ERROR, "PALMOS", "FntGlueTruncateString not implemented");
   return 0;
 }
 
 Int16 FntGlueWCharWidth(WChar iChar) {
-  debug(DEBUG_ERROR, "PALMOS", "FntGlueWCharWidth not implemented");
   return 0;
 }
 

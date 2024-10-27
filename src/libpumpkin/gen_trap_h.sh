@@ -15,11 +15,26 @@
 #   return (UInt16)iret;
 # }
 
-awk '
+awk -v trap=$1 '
+BEGIN {
+  print "#include <PalmOS.h>";
+  print "#include <VFSMgr.h>";
+  print "#include <ExpansionMgr.h>";
+  print "#include <DLServer.h>";
+  print "#include <SerialMgrOld.h>";
+  print "#include <UDAMgr.h>";
+  print "#include <PceNativeCall.h>";
+  print "#include <FixedMath.h>";
+  print "";
+  print "inline void FrmCenterDialogs(Boolean center) {";
+  print "  pumpkin_system_call_p(0, sysCallFrmCenterDialogs, 0, NULL, NULL, center);";
+  print "}";
+  print "";
+}
 /^#/ {
   next;
 } 
-{
+$1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   rtype = $4;
   gsub("_", " ", rtype);
   s = "inline " rtype;
@@ -28,25 +43,40 @@ awk '
   }
   s = s $5 "(";
   nargs = 0 + $6;
+  varargs = 0;
+  lastarg = "";
   if (nargs == 0) {
     s = s "void";
   } else {
     for (i = 0; i < nargs; i++) {
       if (i > 0) s = s ", ";
       atype = $(7 + i*2);
-      gsub("_", " ", atype);
+      if (atype != "sys_va_list") {
+        gsub("_", " ", atype);
+      }
       s = s atype;
+      if (atype == "...") {
+        varargs = 1;
+        break;
+      }
       if (!(atype ~ /[*]$/)) {
         s = s " ";
       }
-      s = s $(7 + i*2 + 1);
+      lastarg = $(7 + i*2 + 1);
+      s = s lastarg;
     }
   }
   s = s ") {";
   print s;
   if ($1 ~ /LIB$/) lib = $1; else lib = "0";
   if ($1 == "SYS_TRAP") sel = 0; else sel = $3;
-  if (rtype ~ /[*]$/) {
+
+  if (varargs == 1) {
+    print("  sys_va_list ap;");
+    print("  sys_va_start(ap, " lastarg ");");
+  }
+
+  if (rtype ~ /[*]$/ || rtype == "MemHandle" || rtype == "MemPtr" || rtype == "WinHandle" || rtype == "DmOpenRef" || rtype == "FileHand") {
     print "  void *pret;";
     s = "  pumpkin_system_call_p(" lib ", " $2 ", " sel ", NULL, &pret";
     if (nargs > 0) {
@@ -59,6 +89,9 @@ awk '
     }
     s = s ");";
     print s;
+    if (varargs == 1) {
+      print("  sys_va_end(ap);");
+    }
     print "  return (" rtype ")pret;";
   } else {
     if (rtype != "void") {
@@ -77,6 +110,9 @@ awk '
     }
     s = s ");";
     print s;
+    if (varargs == 1) {
+      print("  sys_va_end(ap);");
+    }
     if (rtype != "void") print "  return (" rtype ")iret;";
   }
   print "}";

@@ -42,8 +42,6 @@
 #include "sections.h"
 #include "Datebook.h"
 
-#include "debug.h"
-
 extern void ECApptDBValidate (DmOpenRef dbP);
 
 
@@ -54,6 +52,8 @@ extern void ECApptDBValidate (DmOpenRef dbP);
  *	 PC-relative strings turned off.
  *
  ***********************************************************************/
+
+PUMPKIN_API;
 
 extern	UInt16					TopVisibleAppt;
 extern privateRecordViewEnum	CurrentRecordVisualStatus;	// applies to current record
@@ -1255,11 +1255,9 @@ Boolean ClearEditState (void)
 	MemHandle recordH;
 	ApptDBRecordType apptRec;
 
-debug(1, "XXX", "ZZZ ClearEditState begin");
 	if ( ! ItemSelected)
 		{
 		CurrentRecord = noRecordSelected;
-debug(1, "XXX", "ZZZ ClearEditState no ItemSelected return");
 		return (false);
 		}
 	
@@ -1277,15 +1275,11 @@ debug(1, "XXX", "ZZZ ClearEditState no ItemSelected return");
 	ApptGetRecord (ApptDB, recordNum, &apptRec, &recordH);
 	hasAlarm = (apptRec.alarm != NULL);	
 	empty = true;
-debug(1, "XXX", "ZZZ ClearEditState recordNum=%d", recordNum);
 	if (apptRec.description && *apptRec.description) {
-debug(1, "XXX", "ZZZ ClearEditState has description");
 		empty = false;
 	} else if (apptRec.note && *apptRec.note) {
-debug(1, "XXX", "ZZZ ClearEditState has note");
 		empty = false;
 	} else {
-debug(1, "XXX", "ZZZ ClearEditState empty");
 	}
 	MemHandleUnlock (recordH);
 
@@ -1293,7 +1287,6 @@ debug(1, "XXX", "ZZZ ClearEditState empty");
 	if (empty)
 		{
 		UInt32		alarmRef;	// Ignored. Needed for AlarmGetTrigger()
-debug(1, "XXX", "ZZZ ClearEditState is empty");
 
 		// if the event to be delete had an alarm, be sure to remove it
 		// from the posted alarm queue before the event is deleted.
@@ -1305,12 +1298,10 @@ debug(1, "XXX", "ZZZ ClearEditState is empty");
 		// This can occur when a new empty record is deleted.
 		if (RecordDirty)
 			{
-debug(1, "XXX", "ZZZ ClearEditState dirty");
 			DmDeleteRecord (ApptDB, recordNum);
 			DmMoveRecord (ApptDB, recordNum, DmNumRecords (ApptDB));
 			}
 		else {
-debug(1, "XXX", "ZZZ ClearEditState DmRemoveRecord %d", recordNum);
 			DmRemoveRecord (ApptDB, recordNum);
 		}
 		
@@ -1325,11 +1316,9 @@ debug(1, "XXX", "ZZZ ClearEditState DmRemoveRecord %d", recordNum);
 				}
 			}
 
-debug(1, "XXX", "ZZZ ClearEditState end true");
 		return (true);
 		}
 
-debug(1, "XXX", "ZZZ ClearEditState end false");
 	return (false);
 }
 
@@ -1376,32 +1365,12 @@ Char* DateParamString(const Char* inTemplate, const Char* param0,
  *			rbb	11/12/99	Added recentFormFeature to pick default view on launch
  *
  ***********************************************************************/
-UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+PUBLIC UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
 	UInt16 error;
 	UInt32 defaultForm;
    DmOpenRef dbP;
        
-#ifndef PALMOS
-debug(1, "XXX", "ApptDateTimeType: %d", sizeof(ApptDateTimeType));
-debug(1, "XXX", "ApptDBRecordFlags: %d", sizeof(ApptDBRecordFlags));
-debug(1, "XXX", "AlarmInfoType: %d", sizeof(AlarmInfoType));
-debug(1, "XXX", "RepeatInfoType: %d", sizeof(RepeatInfoType));
-debug(1, "XXX", "DateType: %d", sizeof(DateType));
-debug(1, "XXX", "ApptDBRecordType: %d", sizeof(ApptDBRecordType));
-
-{
-DateType d1, d2;
-d1.year = 2021 - 1904;
-d1.month = 7;
-d1.day = 20;
-UInt32 n = DateToDays(d1);
-DateDaysToDate(n, &d2);
-debug(1, "XXX", "d1 %04d-%02x-%02d", 1904+d1.year, d1.month, d1.day);
-debug(1, "XXX", "d2 %04d-%02x-%02d", 1904+d2.year, d2.month, d2.day);
-}
-#endif
-	
 	// The only place the following define is used is in the Jamfile for this application.
 	// It's sole purpose is to provide a way to check if cross segment calls are being made
 	// when application globals are unavailable.

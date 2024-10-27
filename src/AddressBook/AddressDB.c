@@ -321,9 +321,9 @@ static void printRecord(PrvAddrPackedDBRecord *rec, int indent) {
 	char *p;
 
 #ifdef PALMOS
-  SysDebug(1, "check", "%srecord 0x%08lX options=0x%08lX flags=%08lX", indent ? "  " : "", (UInt32)rec, rec->options, rec->flags);
+  //SysDebug(1, "check", "%srecord 0x%08lX options=0x%08lX flags=%08lX", indent ? "  " : "", (UInt32)rec, rec->options, rec->flags);
 #else
-  SysDebug(1, "check", "%srecord %p options=0x%08X flags=%08X", indent ? "  " : "", rec, rec->options, rec->flags);
+  //SysDebug(1, "check", "%srecord %p options=0x%08X flags=%08X", indent ? "  " : "", rec, rec->options, rec->flags);
 #endif
   flags = rec->flags.allBits;
   p = (char *)rec;
@@ -331,7 +331,7 @@ static void printRecord(PrvAddrPackedDBRecord *rec, int indent) {
 
   for (index = firstAddressField; index < ad_addressFieldsCount; index++) {
     if (GetBitMacro(flags, index) != 0) {
-      SysDebug(1, "check", "%s  field %d: \"%s\"", indent ? "  " : "", index, p);
+      //SysDebug(1, "check", "%s  field %d: \"%s\"", indent ? "  " : "", index, p);
       p += StrLen(p) + 1;
     }
   }
@@ -345,7 +345,7 @@ static void printDatabase(DmOpenRef dbP) {
   PrvAddrPackedDBRecord *rec;
 
 	num = DmNumRecords(dbP);
-  SysDebug(1, "check", "database %d records begin", num);
+  //SysDebug(1, "check", "database %d records begin", num);
   for (index = 0; index < num; index++) {
     h = DmGetRecord(dbP, index);
     rec = MemHandleLock(h);
@@ -353,21 +353,21 @@ static void printDatabase(DmOpenRef dbP) {
     MemHandleUnlock(h);
     DmReleaseRecord(dbP, index, false);
   }
-  SysDebug(1, "check", "database %d records end", num);
+  //SysDebug(1, "check", "database %d records end", num);
 #endif
 }
 
 static void printMove(DmOpenRef dbP, UInt16 from, UInt16 to) {
 #ifdef SYSDEBUG
   printDatabase(dbP);
-  SysDebug(1, "check", "move record from %d to %d", from, to);
+  //SysDebug(1, "check", "move record from %d to %d", from, to);
 #endif
 }
 
 static void printPosition(UInt16 index, char *label) {
 #ifdef SYSDEBUG
-  SysDebug(1, "check", "%s record at position %d", label, index);
-  SysDebug(1, "check", "-------------");
+  //SysDebug(1, "check", "%s record at position %d", label, index);
+  //SysDebug(1, "check", "-------------");
 #endif
 }
 

@@ -660,3 +660,8 @@ Err SrmPrimeWakeupHandler(UInt16 portId, UInt16 minBytes) {
 
   return errNone;
 }
+
+Err SrmCustomControl(UInt16 portId, UInt16 opCode, UInt32 creator, void *valueP, UInt16 *valueLenP) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SrmCustomControl not implemented");
+  return serErrBadPort;
+}

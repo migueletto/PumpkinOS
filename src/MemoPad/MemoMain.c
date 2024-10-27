@@ -42,8 +42,6 @@
 #include "MemoRsc.h"
 #include "MemoMain.h"
 
-#include "debug.h"
-
 /***********************************************************************
  *
  *	Internal Constants
@@ -124,6 +122,8 @@ typedef struct {
  *	Global variables
  *
  ***********************************************************************/
+
+PUMPKIN_API;
 
 static DmOpenRef				MemoDB;
 static char						CategoryName [dmCategoryLength];
@@ -349,7 +349,6 @@ static UInt16 StartApplication (void)
 	else
 		MemosInCategory = DmNumRecordsInCategory (MemoDB, CurrentCategory);
 
-//debug(1, "XXX", "StartApplication TopVisibleRecord=%d", TopVisibleRecord);
 	return (err);
 }
 
@@ -559,7 +558,6 @@ void MemoLoadPrefs(UInt32*	currentRecordID)
 		}
 
 		TopVisibleRecord = prefs.topVisibleRecord;
-//debug(1, "XXX", "MemoLoadPrefs TopVisibleRecord=%d", TopVisibleRecord);
 		CurrentRecord = prefs.currentRecord;
 		CurrentView = prefs.currentView;
 		CurrentCategory = prefs.currentCategory;
@@ -590,7 +588,6 @@ void MemoLoadPrefs(UInt32*	currentRecordID)
 	// The first time this app starts register to handle .txt and text/plain.
 	if (prefsVersion != memoPrefsVersionNum)
 		RegisterData();
-//debug(1, "XXX", "Memo prefs load TopVisibleRecord=%d", prefs.topVisibleRecord);
 }
 
 
@@ -647,7 +644,6 @@ void MemoSavePrefs(UInt16 scrollPosition)
 	// Write the state information.
 	PrefSetAppPreferences (sysFileCMemo, memoPrefID, memoPrefsVersionNum, &prefs,
 						   sizeof (MemoPreferenceType), true);
-//debug(1, "XXX", "Memo prefs save TopVisibleRecord=%d", prefs.topVisibleRecord);
 
 
 }
@@ -773,7 +769,6 @@ static void ChangeCategory (UInt16 category)
 
 	CurrentCategory = category;
 	TopVisibleRecord = 0;
-//debug(1, "XXX", "ChangeCategory TopVisibleRecord=%d", TopVisibleRecord);
 }
 
 
@@ -950,7 +945,6 @@ static void Search (FindParamsPtr findParams)
 	UInt32 longPos;
 	UInt16 matchLength;
 
-//debug(1, "XXX", "MemoPad search \"%s\"", findParams->strToFind);
 	// Find the application's data file.
 	err = DmGetNextDatabaseByTypeCreator (true, &searchState, memoDBType,
 										  sysFileCMemo, true, &cardNo, &dbID);
@@ -959,7 +953,6 @@ static void Search (FindParamsPtr findParams)
 		findParams->more = false;
 		return;
 	}
-//debug(1, "XXX", "MemoPad search db ok mode 0x%04X", findParams->dbAccesMode);
 
 	// Open the Memo database.
 	dbP = DmOpenDatabase(cardNo, dbID, findParams->dbAccesMode);
@@ -968,7 +961,6 @@ static void Search (FindParamsPtr findParams)
 		findParams->more = false;
 		return;
 	}
-//debug(1, "XXX", "MemoPad search open ok");
 
 	// Display the heading line.
 	headerStringH = DmGetResource(strRsc, FindMemoHeaderStr);
@@ -1046,7 +1038,6 @@ static void Search (FindParamsPtr findParams)
 
 Exit:
 	DmCloseDatabase (dbP);
-//debug(1, "XXX", "MemoPad search end");
 }
 
 
@@ -1083,16 +1074,13 @@ static void GoToItem (GoToParamsPtr goToParams, Boolean launchingApp)
 	EventType event;
 
 
-//debug(1, "XXX", "GoToItem begin");
 	recordNum = goToParams->recordNum;
 	if (!DmQueryRecord(MemoDB, recordNum))
 	{
-//debug(1, "XXX", "GoToItem query not ok");
 
 		if (!SeekRecord(&recordNum, 0, dmSeekBackward))
 			if (!SeekRecord(&recordNum, 0, dmSeekForward))
 			{
-//debug(1, "XXX", "GoToItem alert %d goto invalid record %d", secGotoInvalidRecordAlert, recordNum);
 				FrmAlert(secGotoInvalidRecordAlert);
 				FrmGotoForm(ListView);
 				return;
@@ -1101,7 +1089,6 @@ static void GoToItem (GoToParamsPtr goToParams, Boolean launchingApp)
 	DmRecordInfo(MemoDB, recordNum, &attr, &uniqueID, NULL);
 	if ((attr & dmRecAttrSecret) && PrivateRecordVisualStatus == maskPrivateRecords)
 	{
-//debug(1, "XXX", "GoToItem alert %d goto invalid record %d (priv)", secGotoInvalidRecordAlert, recordNum);
 		FrmAlert(secGotoInvalidRecordAlert);
 		FrmGotoForm(ListView);
 		return;
@@ -1109,7 +1096,6 @@ static void GoToItem (GoToParamsPtr goToParams, Boolean launchingApp)
 
 	// Make the item the first item displayed.
 	TopVisibleRecord = recordNum;
-//debug(1, "XXX", "GoToItem TopVisibleRecord=%d", TopVisibleRecord);
 
 	// Change the current category if necessary.
 	if (CurrentCategory != dmAllCategories)
@@ -1955,14 +1941,12 @@ static void EditViewSaveRecord (void)
 	FieldPtr fld;
 	FormPtr	frm;
 
-//debug(1, "XXX", "EditViewSaveRecord begin");
 	// Find out if the field has been modified or if it's empty.
 	frm = FrmGetFormPtr (EditView);
 	fld = FrmGetObjectPtr (frm, FrmGetObjectIndex (frm, EditMemoField));
 	ptr = FldGetTextPtr (fld);
 	dirty = FldDirty (fld);
 	empty = (*ptr == 0);
-//debug(1, "XXX", "EditViewSaveRecord ptr \"%s\" empty %d dirty %d", ptr, empty ? 1 : 0, dirty ? 1 : 0);
 
 	FldReleaseFocus (fld);
 
@@ -1972,19 +1956,16 @@ static void EditViewSaveRecord (void)
 	// Clear the handle value in the field, otherwise the handle
 	// will be free when the form is disposed of.
 	FldSetTextHandle (fld, 0);
-//debug(1, "XXX", "EditViewSaveRecord ptr \"%s\"", ptr);
 
 	// If there's data in an existing record, mark it dirty if
 	// necessary and release it.
 	if (! empty)
 	{
-//debug(1, "XXX", "EditViewSaveRecord DmRecordInfo");
 		DmRecordInfo (MemoDB, CurrentRecord, &attr, NULL, NULL);
 
 		if (PrivateRecordVisualStatus == hidePrivateRecords && (attr & dmRecAttrSecret))
 			MemosInCategory--;
 
-//debug(1, "XXX", "EditViewSaveRecord DmReleaseRecord");
 		DmReleaseRecord (MemoDB, CurrentRecord, dirty);
 
 		// Move the current record to the correct sort position.
@@ -1995,7 +1976,6 @@ static void EditViewSaveRecord (void)
 	// If the record is empty, delete it.
 	else
 	{
-//debug(1, "XXX", "EditViewSaveRecord empty");
 		if (dirty)
 		{
 			DmDeleteRecord (MemoDB, CurrentRecord);
@@ -2840,7 +2820,6 @@ static UInt16 ListViewNumberOfRows (TablePtr table)
 	currFont = FntSetFont (ListFont);
 	rows = tableHeight / FntLineHeight ();
 	FntSetFont (currFont);
-//debug(1, "XXX", "ListViewNumberOfRows rowsInTable=%d height=%d rows=%d", rowsInTable, tableHeight, rows);
 
 	if (rows <= rowsInTable)
 		return (rows);
@@ -2894,7 +2873,6 @@ static void ListViewDrawRecord (void * table, Int16 row, Int16 UNUSED_PARAM(colu
 	// Get the record number that corresponds to the table item to draw.
 	// The record number is stored in the "intValue" field of the item.
 	recordNum = TblGetRowID (table, row);
-//debug(1, "XXX", "ListViewDrawRecord row %d rec %d", row, recordNum);
 
 	DmRecordInfo (MemoDB, recordNum, &attr, NULL, NULL);
 	// If the record is private and we are to hide private records, then get out of here.
@@ -2902,7 +2880,6 @@ static void ListViewDrawRecord (void * table, Int16 row, Int16 UNUSED_PARAM(colu
 	// take care of it here also.
 	if ((attr & dmRecAttrSecret) && PrivateRecordVisualStatus == hidePrivateRecords)
 	{
-//debug(1, "XXX", "ListViewDrawRecord hide");
 		return;
 	}
 
@@ -2921,7 +2898,6 @@ static void ListViewDrawRecord (void * table, Int16 row, Int16 UNUSED_PARAM(colu
 
 	//pos = DmPositionInCategory (MemoDB, recordNum, category);
 	pos = TopRowPositionInCategory + row;
-//debug(1, "XXX", "ListViewDrawRecord pos %d", pos);
 	StrIToA (posStr, pos+1);
 	len = StrLen(posStr);
 	// Warning if more than 99999 record (5 chars)
@@ -2951,7 +2927,6 @@ static void ListViewDrawRecord (void * table, Int16 row, Int16 UNUSED_PARAM(colu
 		 }
 		 */
 		ListViewDisplayMask (&maskRectangle);
-//debug(1, "XXX", "ListViewDrawRecord mask");
 	}
 	else
 	{
@@ -2959,7 +2934,6 @@ static void ListViewDrawRecord (void * table, Int16 row, Int16 UNUSED_PARAM(colu
 		memoH = DmQueryRecord(MemoDB, recordNum);
 		memoP = MemHandleLock(memoH);
 		DrawMemoTitle (memoP, x, y, bounds->extent.x - x);
-//debug(1, "XXX", "ListViewDrawRecord memo \"%s\"", memoP);
 		MemHandleUnlock(memoH);
 	}
 }
@@ -3100,12 +3074,10 @@ static void ListViewLoadTable (FormPtr frm)
 	// For each row in the table, store the record number in the table item
 	// that will dispaly the record.
 	numRows = TblGetNumberOfRows (table);
-//debug(1, "XXX", "ListViewLoadTable numRows=%d", numRows);
 	for (row = 0; row < numRows; row++)
 	{
 		// Get the next record in the currunt category.
 		recordH = DmQueryNextInCategory (MemoDB, &recordNum, CurrentCategory);
-//debug(1, "XXX", "ListViewLoadTable row=%d recordNum=%d recordH=%d", row, recordNum, recordH ? 1 : 0);
 		if(row == 0)
 		{
 			// store the position of the first row so we can use TopRowPositionInCategory+row
@@ -3117,7 +3089,6 @@ static void ListViewLoadTable (FormPtr frm)
 		// otherwise set the table row unusable.
 		if (recordH && (tableHeight >= dataHeight + lineHeight))
 		{
-//debug(1, "XXX", "ListViewLoadTable tableHeight >= dataHeight + lineHeight");
 			TblSetRowID (table, row, recordNum);
 			TblSetItemStyle (table, row, 0, customTableItem);
 			TblSetItemFont (table, row, 0, ListFont);
@@ -3125,7 +3096,6 @@ static void ListViewLoadTable (FormPtr frm)
 			TblSetRowHeight (table, row, lineHeight);
 
 			DmRecordInfo (MemoDB, recordNum, NULL, &uniqueID, NULL);
-//debug(1, "XXX", "ListViewLoadTable uniqueID=%d", uniqueID);
 			if ((TblGetRowData (table, row) != uniqueID) ||
 				( ! TblRowUsable (table, row)))
 			{
@@ -3133,7 +3103,6 @@ static void ListViewLoadTable (FormPtr frm)
 
 				// Store the unique id of the record in the row.
 				TblSetRowData (table, row, uniqueID);
-//debug(1, "XXX", "ListViewLoadTable TblSetRowData uniqueID=%d", uniqueID);
 
 				// Mark the row invalid so that it will draw when we call the
 				// draw routine.
@@ -3146,7 +3115,6 @@ static void ListViewLoadTable (FormPtr frm)
 		}
 		else
 		{
-//debug(1, "XXX", "ListViewLoadTable NOT tableHeight >= dataHeight + lineHeight");
 			// Set the row height - when scrolling winDown, the heights of the last rows of
 			// the table are used to determine how far to scroll.  As rows are deleted
 			// from the top of the table, formerly unused rows scroll into view, and the
@@ -3192,33 +3160,27 @@ static void ListViewLoadRecords (FormPtr frm)
 
 	table = FrmGetObjectPtr (frm, FrmGetObjectIndex (frm, ListTable));
 	rowsInTable = ListViewNumberOfRows (table);
-//debug(1, "XXX", "ListViewLoadRecords CurrentCategory=%d CurrentRecord=%d rowsInTable=%d", CurrentCategory, CurrentRecord, rowsInTable);
 
 	// Is the current record before the first visible record?
 	if (CurrentRecord != noRecordSelected)
 	{
-//debug(1, "XXX", "ListViewLoadRecords CurrentRecord != noRecordSelected, TopVisibleRecord=%d", TopVisibleRecord);
 		if (TopVisibleRecord > CurrentRecord) {
 			TopVisibleRecord = CurrentRecord;
-//debug(1, "XXX", "ListViewLoadRecords TopVisibleRecord > CurrentRecord, TopVisibleRecord=%d", CurrentRecord);
                 }
 
 		// Is the current record after the last visible record?
 		else
 		{
-//debug(1, "XXX", "ListViewLoadRecords TopVisibleRecord <= CurrentRecord");
 			recordNum = TopVisibleRecord;
 			DmSeekRecordInCategory (MemoDB, &recordNum, rowsInTable-1,
 									dmSeekForward, CurrentCategory);
 			if (recordNum < CurrentRecord) {
 				TopVisibleRecord = CurrentRecord;
-//debug(1, "XXX", "ListViewLoadRecords TopVisibleRecord=%d", CurrentRecord);
                         }
 		}
 	}
 
 
-//debug(1, "XXX", "ListViewLoadRecords MemosInCategory=%d", MemosInCategory);
 	// Make sure we show a full display of records.
 	if (MemosInCategory)
 	{
@@ -3230,7 +3192,6 @@ static void ListViewLoadRecords (FormPtr frm)
 	else {
 		TopVisibleRecord = 0;
         }
-//debug(1, "XXX", "ListViewLoadRecords TopVisibleRecord=%d", TopVisibleRecord);
 
 	ListViewLoadTable (frm);
 
@@ -3345,7 +3306,6 @@ static void ListViewNextCategory (void)
 
 		// Display the new category.
 		TopVisibleRecord = 0;
-//debug(1, "XXX", "ListViewNextCategory TopVisibleRecord=%d", TopVisibleRecord);
 		frm = FrmGetActiveForm ();
 		ListViewLoadTable (frm);
 		table = GetObjectPtr (ListTable);
@@ -3397,7 +3357,6 @@ static void ListViewPageScroll (WinDirectionType direction)
 			{
 				// Not enough records to fill one page.  Start with the first record
 				newTopVisibleRecord = 0;
-//debug(1, "XXX", "ListViewPageScroll TopVisibleRecord=%d", TopVisibleRecord);
 				SeekRecord (&newTopVisibleRecord, 0, dmSeekForward);
 			}
 		}
@@ -3410,7 +3369,6 @@ static void ListViewPageScroll (WinDirectionType direction)
 		{
 			// Not enough records to fill one page.  Start with the first record
 			newTopVisibleRecord = 0;
-//debug(1, "XXX", "ListViewPageScroll TopVisibleRecord=%d", TopVisibleRecord);
 			SeekRecord (&newTopVisibleRecord, 0, dmSeekForward);
 		}
 	}
@@ -3421,7 +3379,6 @@ static void ListViewPageScroll (WinDirectionType direction)
 	if (TopVisibleRecord != newTopVisibleRecord)
 	{
 		TopVisibleRecord = newTopVisibleRecord;
-//debug(1, "XXX", "ListViewPageScroll TopVisibleRecord=%d", TopVisibleRecord);
 		ListViewLoadRecords (FrmGetActiveForm ());
 		TblRedrawTable(table);
 	}
@@ -3479,7 +3436,6 @@ static void ListViewScroll (Int16 linesToScroll)
 					   "Invalid scroll value");
 
 	TopVisibleRecord = newTopVisibleRecord;
-//debug(1, "XXX", "ListViewScroll TopVisibleRecord=%d", TopVisibleRecord);
 
 
 	// Move the bits that will remain visible.
@@ -3924,7 +3880,6 @@ static Boolean ListViewUpdateDisplay (UInt16 updateCode)
 	{
 		if (updateCode & updateDisplayOptsChanged) {
 			TopVisibleRecord = 0;
-//debug(1, "XXX", "ListViewUpdateDisplay TopVisibleRecord=%d", TopVisibleRecord);
                 }
 
 		ListViewLoadRecords (FrmGetActiveForm());
@@ -4316,7 +4271,7 @@ static void EventLoop (void)
  *								PhoneNumberLookup() as the two tasks are incompatible with each other.
  *
  ***********************************************************************/
-UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
+PUBLIC UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
 	UInt16 error;
 	DmOpenRef dbP;
@@ -4334,7 +4289,6 @@ UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 
 	else if (cmd == sysAppLaunchCmdFind)
 	{
-//debug(1, "XXX", "MemoPad PilotMain sysAppLaunchCmdFind");
 		Search ((FindParamsPtr)cmdPBP);
 	}
 
@@ -4343,10 +4297,8 @@ UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 	//  if the use hits the Find soft key next to the Graffiti area.
 	else if (cmd == sysAppLaunchCmdGoTo)
 	{
-//debug(1, "XXX", "MemoPad PilotMain sysAppLaunchCmdGoTo");
 		if (launchFlags & sysAppLaunchFlagNewGlobals)
 		{
-//debug(1, "XXX", "MemoPad PilotMain sysAppLaunchFlagNewGlobals");
 			error = StartApplication ();
 			if (error) return (error);
 
@@ -4356,7 +4308,6 @@ UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 			StopApplication ();
 		}
 		else {
-//debug(1, "XXX", "MemoPad PilotMain not sysAppLaunchFlagNewGlobals");
 			GoToItem ((GoToParamsPtr) cmdPBP, false);
 		}
 	}

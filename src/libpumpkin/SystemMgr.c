@@ -319,6 +319,11 @@ Err SysTranslateKernelErr(Err err) {
   return 0;
 }
 
+Err SysTaskCreate(UInt32 *taskIDP, UInt32 *creator, ProcPtr codeP, MemPtr stackP, UInt32 stackSize, UInt32 attr, UInt32 priority, UInt32 tSlice) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SysTaskCreate not implemented");
+  return 0;
+}
+
 Err SysTaskDelete(UInt32 taskID, UInt32 priority) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "SysTaskDelete not implemented");
   return 0;
@@ -437,6 +442,11 @@ Err SysResSemaphoreRelease(UInt32 smID) {
   return 0;
 }
 
+Err SysTimerCreate(UInt32 *timerIDP, UInt32 *tagP, SysTimerProcPtr timerProc, UInt32 periodicDelay, UInt32 param) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SysTimerCreate not implemented");
+  return 0;
+}
+
 Err SysTimerDelete(UInt32 timerID) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "SysTimerDelete not implemented");
   return 0;
@@ -548,4 +558,18 @@ UInt16 SysBatteryInfoV20(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalTh
 UInt32 TimGetTicks(void) {
   sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   return ((uint64_t)sys_get_clock() - module->t0) / 10000; // XXX 100 ticks per second
+}
+
+Err SysMailboxWait(UInt32 mbID, void *msgP, UInt32 priority, Int32 timeout) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SysMailboxWait not implemented");
+  return 0;
+}
+
+Err SysEvGroupWait(UInt32 evID, UInt32 mask, UInt32 value, Int32 matchType, Int32 timeout) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SysEvGroupWait not implemented");
+  return 0;
+}
+
+void SysColdBoot(void *card0P, UInt32 card0Size, void *card1P, UInt32 card1Size, UInt32  sysCardHeaderOffset) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "SysColdBoot not implemented");
 }

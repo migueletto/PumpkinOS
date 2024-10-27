@@ -199,6 +199,7 @@
 #endif
 #else
 	#define	ErrJumpBuf	sys_jmp_buf
+	#define	ErrJumpBufP	sys_jmp_bufp
 #endif
 	
 // Structure used to store Try state.

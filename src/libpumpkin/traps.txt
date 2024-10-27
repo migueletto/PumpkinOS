@@ -17,7 +17,7 @@ BT_LIB btLibTrapPiconetDestroy 0 Err BtLibPiconetDestroy 1 UInt16 btLibRefNum
 BT_LIB btLibTrapPiconetLock 0 Err BtLibPiconetLockInbound 1 UInt16 btLibRefNum
 BT_LIB btLibTrapPiconetUnlock 0 Err BtLibPiconetUnlockInbound 2 UInt16 btLibRefNum Boolean discoverable
 BT_LIB btLibTrapRegisterManagementNotification 0 Err BtLibRegisterManagementNotification 3 UInt16 btLibRefNum BtLibManagementProcPtr callbackP UInt32 refCon
-BT_LIB btLibTrapSdpCompareUuids 0 Err BtLibSdpCompareUuids 2 UInt16 btLibRefNum BtLibSdpUuidType_* uuid1
+BT_LIB btLibTrapSdpCompareUuids 0 Err BtLibSdpCompareUuids 3 UInt16 btLibRefNum BtLibSdpUuidType_* uuid1 BtLibSdpUuidType_* uuid2
 BT_LIB btLibTrapSdpGetGetServerChannelByUuid 0 Err BtLibSdpGetServerChannelByUuid 5 UInt16 btLibRefNum BtLibSocketRef socket BtLibDeviceAddressType_* rDev BtLibSdpUuidType_* serviceUUIDList UInt8 uuidListLen
 BT_LIB btLibTrapSdpGetPsmByUuid 0 Err BtLibSdpGetPsmByUuid 5 UInt16 btLibRefNum BtLibSocketRef socket BtLibDeviceAddressType_* rDev BtLibSdpUuidType_* serviceUUIDList UInt8 uuidListLen
 BT_LIB btLibTrapSdpParseRawDataElement 0 Err BtLibSdpParseRawDataElement 4 UInt16 btLibRefNum const_UInt8_* value UInt16_* offset UInt32_* length
@@ -192,7 +192,7 @@ INET_LIB inetLibTrapURLCrack 0 Err INetLibURLCrack 3 UInt16 libRefnum UInt8_* ur
 INET_LIB inetLibTrapURLGetInfo 0 Err INetLibURLGetInfo 4 UInt16 libRefnum MemHandle inetH UInt8_* urlTextP INetURLInfoType_* urlInfoP
 INET_LIB inetLibTrapURLOpen 0 Err INetLibURLOpen 7 UInt16 libRefnum MemHandle inetH UInt8_* urlP UInt8_* cacheIndexURLP MemHandle_* sockHP Int32 timeout UInt16 flags
 INET_LIB inetLibTrapURLsAdd 0 Err INetLibURLsAdd 5 UInt16 libRefnum Char_* baseURLStr Char_* embeddedURLStr Char_* resultURLStr UInt16_* resultLenP
-INET_LIB inetLibTrapURLsCompare 0 Int16 INetLibURLsCompare 2 UInt16 libRefnum Char_* URLStr1
+INET_LIB inetLibTrapURLsCompare 0 Int16 INetLibURLsCompare 3 UInt16 libRefnum Char_* URLStr1 Char_* URLStr2
 INET_LIB inetLibTrapWiCmd 0 Boolean INetLibWiCmd 4 UInt16 refNum UInt16 cmd int enableOrX int y
 INET_LIB inetLibTrapWirelessIndicatorCmd 0 Boolean INetLibWirelessIndicatorCmd 5 UInt16 refNum MemHandle inetH UInt16 cmd int enableOrX int y
 INET_LIB sysLibTrapClose 0 Err INetLibClose 2 UInt16 libRefnum MemHandle inetH
@@ -236,18 +236,16 @@ NET_LIB netLibOpenConfig 0 Err NetLibOpenConfig 4 UInt16 refNum UInt16 configInd
 NET_LIB netLibTrapAddrAToIN 0 NetIPAddr NetLibAddrAToIN 2 UInt16 libRefnum const_Char_* a
 NET_LIB netLibTrapAddrINToA 0 Char_* NetLibAddrINToA 3 UInt16 libRefnum NetIPAddr inet Char_* spaceP
 NET_LIB netLibTrapBitGetFixed 0 UInt32 NetLibBitGetFixed 4 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP UInt16 numBits
-NET_LIB netLibTrapBitGetUIntV 0 Int32 NetLibBitGetIntV 3 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP
 NET_LIB netLibTrapBitGetUIntV 0 UInt32 NetLibBitGetUIntV 3 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP
 NET_LIB netLibTrapBitMove 0 void NetLibBitMove 6 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP UInt8_* srcP UInt32_* srcBitOffsetP UInt32 numBits
 NET_LIB netLibTrapBitPutFixed 0 void NetLibBitPutFixed 5 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP UInt32 value UInt16 numBits
-NET_LIB netLibTrapBitPutUIntV 0 void NetLibBitPutIntV 4 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP Int32 value
 NET_LIB netLibTrapBitPutUIntV 0 void NetLibBitPutUIntV 4 UInt16 libRefNum UInt8_* dstP UInt32_* dstBitOffsetP UInt32 value
 NET_LIB netLibTrapConnectionRefresh 0 Err NetLibConnectionRefresh 4 UInt16 refNum Boolean refresh UInt8_* allInterfacesUpP UInt16_* netIFErrP
 NET_LIB netLibTrapDmReceive 0 Int16 NetLibDmReceive 10 UInt16 libRefNum NetSocketRef socket void_* recordP UInt32 recordOffset UInt16 rcvLen UInt16 flags void_* fromAddrP UInt16_* fromLenP Int32 timeout Err_* errP
 NET_LIB netLibTrapFinishCloseWait 0 Err NetLibFinishCloseWait 1 UInt16 libRefnum
 NET_LIB netLibTrapGetHostByAddr 0 NetHostInfoPtr NetLibGetHostByAddr 7 UInt16 libRefNum UInt8_* addrP UInt16 len UInt16 type NetHostInfoBufPtr bufP Int32 timeout Err_* errP
 NET_LIB netLibTrapGetHostByName 0 NetHostInfoPtr NetLibGetHostByName 5 UInt16 libRefNum const_Char_* nameP NetHostInfoBufPtr bufP Int32 timeout Err_* errP
-NET_LIB netLibTrapGetMailExchangeByName 0 Int16 NetLibGetMailExchangeByName 7 UInt16 libRefNum Char_* mailNameP UInt16 maxEntries Char hostNames[][netDNSMaxDomainName+1] UInt16 priorities[] Int32 timeout Err_* errP
+#NET_LIB netLibTrapGetMailExchangeByName 0 Int16 NetLibGetMailExchangeByName 7 UInt16 libRefNum Char_* mailNameP UInt16 maxEntries Char hostNames[][netDNSMaxDomainName+1] UInt16 priorities[] Int32 timeout Err_* errP
 NET_LIB netLibTrapGetServByName 0 NetServInfoPtr NetLibGetServByName 6 UInt16 libRefNum const_Char_* servNameP const_Char_* protoNameP NetServInfoBufPtr bufP Int32 timeout Err_* errP
 NET_LIB netLibTrapHandlePowerOff 0 Err NetLibHandlePowerOff 2 UInt16 refNum SysEventType_* eventP
 NET_LIB netLibTrapIFAttach 0 Err NetLibIFAttach 4 UInt16 libRefNum UInt32 ifCreator UInt16 ifInstance Int32 timeout
@@ -277,7 +275,7 @@ NET_LIB netLibTrapSocketOpen 0 NetSocketRef NetLibSocketOpen 6 UInt16 libRefnum 
 NET_LIB netLibTrapSocketOptionGet 0 Int16 NetLibSocketOptionGet 8 UInt16 libRefnum NetSocketRef socket UInt16 level UInt16 option void_* optValueP UInt16_* optValueLenP Int32 timeout Err_* errP
 NET_LIB netLibTrapSocketOptionSet 0 Int16 NetLibSocketOptionSet 8 UInt16 libRefnum NetSocketRef socket UInt16 level UInt16 option void_* optValueP UInt16 optValueLen Int32 timeout Err_* errP
 NET_LIB netLibTrapSocketShutdown 0 Int16 NetLibSocketShutdown 5 UInt16 libRefnum NetSocketRef socket Int16 direction Int32 timeout Err_* errP
-NET_LIB netLibTrapTracePrintF 0 Err NetLibTracePrintF 2 UInt16 libRefNum const_Char_* formatStr
+NET_LIB netLibTrapTracePrintF 0 Err NetLibTracePrintF 3 UInt16 libRefNum const_Char_* formatStr ... ap
 NET_LIB netLibTrapTracePutS 0 Err NetLibTracePutS 2 UInt16 libRefNum Char_* strP
 NET_LIB sysLibTrapClose 0 Err NetLibClose 2 UInt16 libRefnum UInt16 immediate
 NET_LIB sysLibTrapOpen 0 Err NetLibOpen 2 UInt16 libRefnum UInt16_* netIFErrsP
@@ -307,26 +305,36 @@ PDI_LIB PdiLibTrapWriterDelete 0 void PdiWriterDelete 2 UInt16 libRefnum PdiWrit
 PDI_LIB PdiLibTrapWriterNew 0 PdiWriterType_* PdiWriterNew 3 UInt16 libRefnum UDAWriterType_* output UInt16 version
 PDI_LIB sysLibTrapClose 0 Err PdiLibClose 1 UInt16 libRefnum
 PDI_LIB sysLibTrapOpen 0 Err PdiLibOpen 1 UInt16 libRefnum
-PWR_LIB pwrMgrLibTrapClose 0 Err PwrMgrLibClose 1 UInt16 refnum
-PWR_LIB pwrMgrLibTrapOpen 0 Err PwrMgrLibOpen 1 UInt16 refnum
-PWR_LIB pwrSetLowPowerMode 0 Boolean PwrSetLowPowerMode 3 UInt16 refNum const_UInt32 creator const_Boolean enable
-QUE_LIB queAPILibTrapClosePoint 0 QueErrT16 QueClosePoint 2 const_UInt16 refNum const_QuePointHandle point
-QUE_LIB queAPILibTrapCreatePoint 0 QueErrT16 QueCreatePoint 3 const_UInt16 refNum const_QuePointType_* pointData QuePointHandle_* point
-QUE_LIB queAPILibTrapCreatePointFromAddress 0 QueErrT16 QueCreatePointFromAddress 3 const_UInt16 refNum const_QueSelectAddressType_* address const_UInt32 relaunchAppCreator
-QUE_LIB queAPILibTrapCreatePointFromEvent 0 QueErrT16 QueCreatePointFromEvent 3 const_UInt16 refNum const_EventType_* event QuePointHandle_* point
-QUE_LIB queAPILibTrapDeserializePoint 0 QueErrT16 QueDeserializePoint 4 const_UInt16 refNum const_void_* pointData const_UInt32 pointDataSize QuePointHandle_* point
-QUE_LIB queAPILibTrapGetPointInfo 0 QueErrT16 QueGetPointInfo 3 const_UInt16 refNum const_QuePointHandle point QuePointType_* pointInfo
-QUE_LIB queAPILibTrapHandleEvent 0 Boolean QueHandleEvent 2 const_UInt16 refNum const_EventType_* event
-QUE_LIB queAPILibTrapRouteToPoint 0 QueErrT16 QueRouteToPoint 3 const_UInt16 refNum const_QuePointHandle point const_Boolean showMap
-QUE_LIB queAPILibTrapSelectAddressFromFind 0 QueErrT16 QueSelectAddressFromFind 4 const_UInt16 refNum const_QueSelectAddressType_* address const_UInt32 relaunchAppCreator const_Boolean tryToCreateFirst
-QUE_LIB queAPILibTrapSelectPointFromFind 0 QueErrT16 QueSelectPointFromFind 2 const_UInt16 refNum const_UInt32 relaunchAppCreator
-QUE_LIB queAPILibTrapSelectPointFromMap 0 QueErrT16 QueSelectPointFromMap 2 const_UInt16 refNum const_UInt32 relaunchAppCreator
-QUE_LIB queAPILibTrapSerializePoint 0 UInt32 QueSerializePoint 4 const_UInt16 refNum const_QuePointHandle point void_* pointData const_UInt32 pointDataSize
-QUE_LIB queAPILibTrapSetRouteToItem 0 QueErrT16 QueSetRouteToItem 2 const_UInt16 refNum const_QuePointHandle point
-QUE_LIB queAPILibTrapViewPointDetails 0 QueErrT16 QueViewPointDetails 2 const_UInt16 refNum const_QuePointHandle point
-QUE_LIB queAPILibTrapViewPointOnMap 0 QueErrT16 QueViewPointOnMap 2 const_UInt16 refNum const_QuePointHandle point
-QUE_LIB sysLibTrapClose 0 QueErrT16 QueAPIClose 1 const_UInt16 refNum
-QUE_LIB sysLibTrapOpen 0 QueErrT16 QueAPIOpen 2 const_UInt16 refNum const_UInt16 version
+SEL_TRAP sysTrapAccessorDispatch 0 ControlStyleType CtlGlueGetControlStyle 1 const_ControlType_* ctlP
+SEL_TRAP sysTrapAccessorDispatch 1 Boolean FldGlueGetLineInfo 4 const_FieldType_* fldP UInt16 lineNum UInt16_* startP UInt16_* lengthP
+SEL_TRAP sysTrapAccessorDispatch 2 Boolean FrmGlueGetObjectUsable 2 const_FormType_* formP UInt16 objIndex
+SEL_TRAP sysTrapAccessorDispatch 3 BitmapCompressionType BmpGlueGetCompressionType 1 const_BitmapType_* bitmapP
+SEL_TRAP sysTrapAccessorDispatch 4 Boolean BmpGlueGetTransparentValue 2 const_BitmapType_* bitmapP UInt32_* transparentValueP
+SEL_TRAP sysTrapAccessorDispatch 5 void BmpGlueSetTransparentValue 2 BitmapType_* bitmapP UInt32 transparentValue
+SEL_TRAP sysTrapAccessorDispatch 6 FontID CtlGlueGetFont 1 const_ControlType_* ctlP
+SEL_TRAP sysTrapAccessorDispatch 7 void CtlGlueSetFont 2 ControlType_* ctlP FontID fontID
+SEL_TRAP sysTrapAccessorDispatch 8 void CtlGlueGetGraphics 3 const_ControlType_* ctlP DmResID_* bitmapID DmResID_* selectedBitmapID
+SEL_TRAP sysTrapAccessorDispatch 9 SliderControlType_* CtlGlueNewSliderControl 13 void_** formPP UInt16 ID ControlStyleType style DmResID thumbID DmResID backgroundID Coord x Coord y Coord width Coord height UInt16 minValue UInt16 maxValue UInt16 pageSize UInt16 value
+SEL_TRAP sysTrapAccessorDispatch 10 void CtlGlueSetLeftAnchor 2 ControlType_* ctlP Boolean leftAnchor
+SEL_TRAP sysTrapAccessorDispatch 11 UInt16 FrmGlueGetDefaultButtonID 1 const_FormType_* formP
+SEL_TRAP sysTrapAccessorDispatch 12 void FrmGlueSetDefaultButtonID 2 FormType_* formP UInt16 defaultButton
+SEL_TRAP sysTrapAccessorDispatch 13 UInt16 FrmGlueGetHelpID 1 const_FormType_* formP
+SEL_TRAP sysTrapAccessorDispatch 14 void FrmGlueSetHelpID 2 FormType_* formP UInt16 helpRscID
+SEL_TRAP sysTrapAccessorDispatch 15 UInt16 FrmGlueGetMenuBarID 1 const_FormType_* formP
+SEL_TRAP sysTrapAccessorDispatch 16 FontID FrmGlueGetLabelFont 2 const_FormType_* formP UInt16 labelID
+SEL_TRAP sysTrapAccessorDispatch 17 void FrmGlueSetLabelFont 3 FormType_* formP UInt16 labelID FontID fontID
+SEL_TRAP sysTrapAccessorDispatch 18 FormEventHandlerType_* FrmGlueGetEventHandler 1 const_FormType_* formP
+SEL_TRAP sysTrapAccessorDispatch 19 FontID LstGlueGetFont 1 const_ListType_* listP
+SEL_TRAP sysTrapAccessorDispatch 20 void LstGlueSetFont 2 ListType_* listP FontID fontID
+SEL_TRAP sysTrapAccessorDispatch 21 Char_** LstGlueGetItemsText 1 const_ListType_* listP
+SEL_TRAP sysTrapAccessorDispatch 22 void LstGlueSetIncrementalSearch 2 ListType_* listP Boolean incrementalSearch
+SEL_TRAP sysTrapAccessorDispatch 23 Boolean TblGlueGetColumnMasked 2 const_TableType_* tableP Int16 column
+SEL_TRAP sysTrapAccessorDispatch 24 FrameType WinGlueGetFrameType 1 const_WinHandle winH
+SEL_TRAP sysTrapAccessorDispatch 25 void WinGlueSetFrameType 2 WinHandle winH FrameType frame
+SEL_TRAP sysTrapAccessorDispatch 26 UInt16 FrmGlueGetObjIDFromObjPtr 2 void_* formObjP FormObjectKind objKind
+SEL_TRAP sysTrapAccessorDispatch 27 void_* LstGlueGetDrawFunction 1 ListType_* listP
+SEL_TRAP sysTrapAccessorDispatch 28 Boolean CtlGlueIsGraphical 1 ControlType_* controlP
+SEL_TRAP sysTrapAccessorDispatch 29 void CtlGlueSetFrameStyle 2 ControlType_* controlP ButtonFrameType frameStyle
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCloseDB Err CncProfileCloseDB 0
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCount Err CncProfileCount 1 UInt16_* profilesCountP
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCreate Err CncProfileCreate 1 CncProfileID_* profileIdP
@@ -352,69 +360,66 @@ SEL_TRAP sysTrapExpansionMgr expSlotLibFind Err ExpSlotLibFind 2 UInt16 slotRefN
 SEL_TRAP sysTrapExpansionMgr expSlotRegister Err ExpSlotRegister 2 UInt16 slotLibRefNum UInt16_* slotRefNum
 SEL_TRAP sysTrapExpansionMgr expSlotUnregister Err ExpSlotUnregister 1 UInt16 slotRefNum
 SEL_TRAP sysTrapFlpDispatch sysFloatAToF FlpDouble FlpAToF 1 const_Char_* s
-SEL_TRAP sysTrapFlpDispatch sysFloatAToF void FlpBufferAToF 2 FlpDouble_* result const_Char_* s
-SEL_TRAP sysTrapFlpDispatch sysFloatBase10Info Err FlpBase10Info 4 FlpDouble a UInt32_* mantissaP Int16_* exponentP Int16_* signP
-SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd FlpDouble FlpCorrectedAdd 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd void FlpBufferCorrectedAdd 4 FlpDouble_* result FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub FlpDouble FlpCorrectedSub 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub void FlpBufferCorrectedSub 4 FlpDouble_* result FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
+#SEL_TRAP sysTrapFlpDispatch sysFloatBase10Info Err FlpBase10Info 4 FlpDouble a UInt32_* mantissaP Int16_* exponentP Int16_* signP
+#SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd FlpDouble FlpCorrectedAdd 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
+#SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub FlpDouble FlpCorrectedSub 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
 SEL_TRAP sysTrapFlpDispatch sysFloatFToA Err FlpFToA 2 FlpDouble a Char_* s
 SEL_TRAP sysTrapFlpDispatch sysFloatVersion UInt32 FlpVersion 0
 SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_add FlpDouble _d_add 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmp Int32 _d_cmp 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmpe Int32 _d_cmpe 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_div FlpDouble _d_div 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtof FlpFloat _d_dtof 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoi Int32 _d_dtoi 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoll sfpe_long_long _d_dtoll 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoq FlpLongDouble _d_dtoq 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtou UInt32 _d_dtou 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoull sfpe_unsigned_long_long _d_dtoull 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_feq Int32 _d_feq 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fge Int32 _d_fge 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fgt Int32 _d_fgt 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fle Int32 _d_fle 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_flt Int32 _d_flt 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fne Int32 _d_fne 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_for Int32 _d_for 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fun Int32 _d_fun 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_itod FlpDouble _d_itod 1 Int32 a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_lltod FlpDouble _d_lltod 1 sfpe_long_long a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_mul FlpDouble _d_mul 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_neg FlpDouble _d_neg 1 FlpDouble a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_qtod FlpDouble _d_qtod 1 const_FlpLongDouble_* a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_sub FlpDouble _d_sub 2 FlpDouble a FlpDouble b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_ulltod FlpDouble _d_ulltod 1 sfpe_unsigned_long_long a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_utod FlpDouble _d_utod 1 UInt32 a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_add FlpFloat _f_add 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmp Int32 _f_cmp 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmpe Int32 _f_cmpe 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_div FlpFloat _f_div 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_feq Int32 _f_feq 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fge Int32 _f_fge 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fgt Int32 _f_fgt 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fle Int32 _f_fle 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_flt Int32 _f_flt 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fne Int32 _f_fne 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_for Int32 _f_for 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftod FlpDouble _f_ftod 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoi Int32 _f_ftoi 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoll sfpe_long_long _f_ftoll 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoq FlpLongDouble _f_ftoq 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftou UInt32 _f_ftou 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoull sfpe_unsigned_long_long _f_ftoull 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fun Int32 _f_fun 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_itof FlpFloat _f_itof 1 Int32 a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_lltof FlpFloat _f_lltof 1 sfpe_long_long a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_mul FlpFloat _f_mul 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_neg FlpFloat _f_neg 1 FlpFloat a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_qtof FlpFloat _f_qtof 1 const_FlpLongDouble_* a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_sub FlpFloat _f_sub 2 FlpFloat a FlpFloat b
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ulltof FlpFloat _f_ulltof 1 sfpe_unsigned_long_long a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_utof FlpFloat _f_utof 1 UInt32 a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_get_fpscr Int32 _fp_get_fpscr 0
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_round Int32 _fp_round 1 Int32 a
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_set_fpscr void _fp_set_fpscr 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmp Int32 _d_cmp 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmpe Int32 _d_cmpe 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_div FlpDouble _d_div 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtof FlpFloat _d_dtof 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoi Int32 _d_dtoi 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoll sfpe_long_long _d_dtoll 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoq FlpLongDouble _d_dtoq 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtou UInt32 _d_dtou 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoull sfpe_unsigned_long_long _d_dtoull 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_feq Int32 _d_feq 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fge Int32 _d_fge 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fgt Int32 _d_fgt 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fle Int32 _d_fle 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_flt Int32 _d_flt 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fne Int32 _d_fne 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_for Int32 _d_for 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fun Int32 _d_fun 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_itod FlpDouble _d_itod 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_lltod FlpDouble _d_lltod 1 sfpe_long_long a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_mul FlpDouble _d_mul 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_neg FlpDouble _d_neg 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_qtod FlpDouble _d_qtod 1 const_FlpLongDouble_* a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_sub FlpDouble _d_sub 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_ulltod FlpDouble _d_ulltod 1 sfpe_unsigned_long_long a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_utod FlpDouble _d_utod 1 UInt32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_add FlpFloat _f_add 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmp Int32 _f_cmp 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmpe Int32 _f_cmpe 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_div FlpFloat _f_div 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_feq Int32 _f_feq 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fge Int32 _f_fge 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fgt Int32 _f_fgt 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fle Int32 _f_fle 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_flt Int32 _f_flt 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fne Int32 _f_fne 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_for Int32 _f_for 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftod FlpDouble _f_ftod 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoi Int32 _f_ftoi 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoll sfpe_long_long _f_ftoll 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoq FlpLongDouble _f_ftoq 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftou UInt32 _f_ftou 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoull sfpe_unsigned_long_long _f_ftoull 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fun Int32 _f_fun 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_itof FlpFloat _f_itof 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_lltof FlpFloat _f_lltof 1 sfpe_long_long a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_mul FlpFloat _f_mul 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_neg FlpFloat _f_neg 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_qtof FlpFloat _f_qtof 1 const_FlpLongDouble_* a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_sub FlpFloat _f_sub 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ulltof FlpFloat _f_ulltof 1 sfpe_unsigned_long_long a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_utof FlpFloat _f_utof 1 UInt32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_get_fpscr Int32 _fp_get_fpscr 0
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_round Int32 _fp_round 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_set_fpscr void _fp_set_fpscr 1 Int32 a
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpCreateBitmapV3 BitmapTypeV3_* BmpCreateBitmapV3 4 const_BitmapType_* bitmapP UInt16 density const_void_* bitsP const_ColorTableType_* colorTableP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetCompressionType BitmapCompressionType BmpGetCompressionType 1 const_BitmapType_* bitmapP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetDensity UInt16 BmpGetDensity 1 const_BitmapType_* bitmapP
@@ -468,12 +473,12 @@ SEL_TRAP sysTrapHostControl hostSelectorFGetC long HostFGetC 1 HostFILEType_* fi
 SEL_TRAP sysTrapHostControl hostSelectorFGetPos long HostFGetPos 2 HostFILEType_* fileP long_* posP
 SEL_TRAP sysTrapHostControl hostSelectorFGetS char_* HostFGetS 3 char_* s long n HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFOpen HostFILEType_* HostFOpen 2 const_char_* name const_char_* mode
-SEL_TRAP sysTrapHostControl hostSelectorFPrintF long HostFPrintF 2 HostFILEType_* fileP const_char_* fmt
+SEL_TRAP sysTrapHostControl hostSelectorFPrintF long HostFPrintF 3 HostFILEType_* fileP const_char_* fmt ... ap
 SEL_TRAP sysTrapHostControl hostSelectorFPutC long HostFPutC 2 long c HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFPutS long HostFPutS 2 const_char_* s HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFRead long HostFRead 4 void_* buffer long size long count HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFReopen HostFILEType_* HostFReopen 3 const_char_* name const_char_* mode HostFILEType_* fileP
-SEL_TRAP sysTrapHostControl hostSelectorFScanF long HostFScanF 2 HostFILEType_* fileP const_char_* fmt
+SEL_TRAP sysTrapHostControl hostSelectorFScanF long HostFScanF 3 HostFILEType_* fileP const_char_* fmt ... ap
 SEL_TRAP sysTrapHostControl hostSelectorFSeek long HostFSeek 3 HostFILEType_* fileP long offset long origin
 SEL_TRAP sysTrapHostControl hostSelectorFSetPos long HostFSetPos 2 HostFILEType_* fileP long_* pos
 SEL_TRAP sysTrapHostControl hostSelectorFTell long HostFTell 1 HostFILEType_* fileP
@@ -540,8 +545,8 @@ SEL_TRAP sysTrapHostControl hostSelectorTmpNam char_* HostTmpNam 1 char_* nameP
 SEL_TRAP sysTrapHostControl hostSelectorTraceClose void HostTraceClose 0
 SEL_TRAP sysTrapHostControl hostSelectorTraceInit void HostTraceInit 0
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputB void HostTraceOutputB 3 UInt16 a const_void_* b HostSizeType c
-SEL_TRAP sysTrapHostControl hostSelectorTraceOutputT void HostTraceOutputT 2 UInt16 a const_char_* b
-SEL_TRAP sysTrapHostControl hostSelectorTraceOutputTL void HostTraceOutputTL 2 UInt16 a const_char_* b
+SEL_TRAP sysTrapHostControl hostSelectorTraceOutputT void HostTraceOutputT 3 UInt16 a const_char_* b ... ap
+SEL_TRAP sysTrapHostControl hostSelectorTraceOutputTL void HostTraceOutputTL 3 UInt16 a const_char_* b ... ap
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputVT void HostTraceOutputVT 3 UInt16 a const_char_* b char_* va
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputVTL void HostTraceOutputVTL 3 UInt16 a const_char_* b char_* va
 SEL_TRAP sysTrapHostControl hostSelectorTruncate long HostTruncate 2 const_char_* a long b
@@ -628,7 +633,7 @@ SEL_TRAP sysTrapSerialDispatch sysSerialSleep Err SrmSleep 0
 SEL_TRAP sysTrapSerialDispatch sysSerialWake Err SrmWake 0
 SEL_TRAP sysTrapTsmDispatch tsmGetFepMode TsmFepModeType TsmGetFepMode 1 void_* nullParam
 SEL_TRAP sysTrapTsmDispatch tsmSetFepMode TsmFepModeType TsmSetFepMode 2 void_* nullParam TsmFepModeType inNewMode
-SEL_TRAP sysTrapUdaMgrDispatch sysUdaControl Err UDAControl 2 UDAObjectType_* ioObject UInt16 parameter
+SEL_TRAP sysTrapUdaMgrDispatch sysUdaControl Err UDAControl 3 UDAObjectType_* ioObject UInt16 parameter ... ap
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeReaderNew UDAReaderType_* UDAExchangeReaderNew 1 ExgSocketType_* socket
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeWriterNew UDAWriterType_* UDAExchangeWriterNew 2 ExgSocketType_* socket UDABufferSize bufferSize
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaMemoryReaderNew UDAReaderType_* UDAMemoryReaderNew 2 const_UInt8_* bufferP UDABufferSize bufferSizeInBytes
@@ -742,6 +747,10 @@ SSL_LIB kSslRead 0 Int32 SslRead 5 UInt16 refnum SslContext_* ctx void_* buffer 
 SSL_LIB kSslReceive 0 Int16 SslReceive 9 UInt16 refnum SslContext_* ctx void_* buffer UInt16 bufferLen UInt16 flags void_* fromAddr UInt16 fromLen Int32 timeout Err_* errRet
 SSL_LIB kSslSend 0 Int16 SslSend 9 UInt16 refnum SslContext_* ctx void_* buffer UInt16 bufferLen UInt16 flags void_* toAddr UInt16 toLen Int32 timeout Err_* errRet
 SSL_LIB kSslWrite 0 Int32 SslWrite 5 UInt16 refnum SslContext_* ctx void_* buffer Int32 bufferLen Err_* errRet
+GPD_LIB sysLibTrapOpen 0 Err GPDOpen 1 UInt16 uRefNum
+GPD_LIB sysLibTrapClose 0 Err GPDClose 2 UInt16 uRefNum UInt32_* dwRefCountP
+GPD_LIB GPDTrapGetVersion 0 Err GPDGetVersion 2 UInt16 uRefNum UInt32_* dwVerP
+GPD_LIB GPDTrapRead 0 Err GPDReadInstant 2 UInt16 uRefNum UInt8_* resultP 
 SYS_TRAP sysLibTrapClose 0 Err SysLibClose 1 UInt16 refNum
 SYS_TRAP sysLibTrapOpen 0 Err SysLibOpen 1 UInt16 refNum
 SYS_TRAP sysLibTrapSleep 0 Err SysLibSleep 1 UInt16 refNum
@@ -833,11 +842,11 @@ SYS_TRAP sysTrapDayHandleEvent 0 Boolean DayHandleEvent 2 DaySelectorType_* sele
 SYS_TRAP sysTrapDayOfMonth 0 Int16 DayOfMonth 3 Int16 month Int16 day Int16 year
 SYS_TRAP sysTrapDayOfWeek 0 Int16 DayOfWeek 3 Int16 month Int16 day Int16 year
 SYS_TRAP sysTrapDaysInMonth 0 Int16 DaysInMonth 2 Int16 month Int16 year
-SYS_TRAP sysTrapDbgCommSettings 0 Err DbgCommSettings 2 UInt32_* baudP UInt32_* flagsP
-SYS_TRAP sysTrapDbgControl 0 Boolean DbgControl 4 UInt32 handlerID UInt16 op void_* paramP UInt32_* dwParamP
-SYS_TRAP sysTrapDbgGetMessage 0 Char_* DbgGetMessage 2 UInt8_* bufferP Int32 timeout
-SYS_TRAP sysTrapDbgMessage 0 void DbgMessage 1 const_Char_* aStr
-SYS_TRAP sysTrapDbgSrcMessage 0 void DbgSrcMessage 1 const_Char_* debugStr
+#SYS_TRAP sysTrapDbgCommSettings 0 Err DbgCommSettings 2 UInt32_* baudP UInt32_* flagsP
+#SYS_TRAP sysTrapDbgControl 0 Boolean DbgControl 4 UInt32 handlerID UInt16 op void_* paramP UInt32_* dwParamP
+#SYS_TRAP sysTrapDbgGetMessage 0 Char_* DbgGetMessage 2 UInt8_* bufferP Int32 timeout
+#SYS_TRAP sysTrapDbgMessage 0 void DbgMessage 1 const_Char_* aStr
+#SYS_TRAP sysTrapDbgSrcMessage 0 void DbgSrcMessage 1 const_Char_* debugStr
 SYS_TRAP sysTrapDlkControl 0 Err DlkControl 3 DlkCtlEnum op void_* param1P void_* param2P
 SYS_TRAP sysTrapDlkDispatchRequest 0 Err DlkDispatchRequest 1 DlkServerSessionPtr sessP
 SYS_TRAP sysTrapDlkGetSyncInfo 0 Err DlkGetSyncInfo 6 UInt32_* succSyncDateP UInt32_* lastSyncDateP DlkSyncStateType_* syncStateP Char_* nameBufP Char_* logBufP Int32_* logLenP
@@ -921,8 +930,8 @@ SYS_TRAP sysTrapEncDigestMD5 0 Err EncDigestMD5 3 UInt8_* strP UInt16 strLen UIn
 SYS_TRAP sysTrapErrAlertCustom 0 UInt16 ErrAlertCustom 4 Err errCode Char_* errMsgP Char_* preMsgP Char_* postMsgP
 SYS_TRAP sysTrapErrDisplayFileLineMsg 0 void ErrDisplayFileLineMsg 3 const_Char_*_const filename UInt16 lineNo const_Char_*_const msg
 SYS_TRAP sysTrapErrExceptionList 0 MemPtr_* ErrExceptionList 0
-#SYS_TRAP sysTrapErrLongJump 0 void ErrLongJump 2 ErrJumpBuf buf Int16 result
-#SYS_TRAP sysTrapErrSetJump 0 Int16 ErrSetJump 1 ErrJumpBuf buf
+SYS_TRAP sysTrapErrLongJump 0 void ErrLongJump 2 ErrJumpBuf buf Int16 result
+SYS_TRAP sysTrapErrSetJump 0 Int16 ErrSetJump 1 ErrJumpBuf buf
 SYS_TRAP sysTrapErrThrow 0 void ErrThrow 1 Int32 err
 SYS_TRAP sysTrapEvtAddEventToQueue 0 void EvtAddEventToQueue 1 const_EventType_* event
 SYS_TRAP sysTrapEvtAddUniqueEventToQueue 0 void EvtAddUniqueEventToQueue 3 const_EventType_* eventP UInt32 id Boolean inPlace
@@ -1171,14 +1180,14 @@ SYS_TRAP sysTrapGsiInitialize 0 void GsiInitialize 0
 SYS_TRAP sysTrapGsiSetLocation 0 void GsiSetLocation 2 const_Int16 x const_Int16 y
 SYS_TRAP sysTrapGsiSetShiftState 0 void GsiSetShiftState 2 const_UInt16 lockFlags const_UInt16 tempShift
 SYS_TRAP sysTrapHwrGetROMToken 0 Err SysGetROMToken 4 UInt16 cardNo UInt32 token UInt8_*_* dataP UInt16_* sizeP
-SYS_TRAP sysTrapImcReadFieldNoSemicolon 0 Char_* ImcReadFieldNoSemicolon 4 void_* inputStream GetCharF inputFunc UInt16_* c const_UInt16 maxChars
-SYS_TRAP sysTrapImcReadFieldQuotablePrintable 0 Char_* ImcReadFieldQuotablePrintable 6 void_* inputStream GetCharF inputFunc UInt16_* c const_Char stopAt const_Boolean quotedPrintable const_UInt16 maxChars
-SYS_TRAP sysTrapImcReadPropertyParameter 0 void ImcReadPropertyParameter 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* nameP Char_* valueP
-SYS_TRAP sysTrapImcReadWhiteSpace 0 void ImcReadWhiteSpace 4 void_* inputStream GetCharF inputFunc const_UInt16_*_const charAttrP UInt16_* c
-SYS_TRAP sysTrapImcSkipAllPropertyParameters 0 void ImcSkipAllPropertyParameters 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* identifierP Boolean_* quotedPrintableP
-SYS_TRAP sysTrapImcStringIsAscii 0 Boolean ImcStringIsAscii 1 const_Char_*_const stringP
-SYS_TRAP sysTrapImcWriteNoSemicolon 0 void ImcWriteNoSemicolon 3 void_* outputStream PutStringF outputFunc const_Char_*_const stringP
-SYS_TRAP sysTrapImcWriteQuotedPrintable 0 void ImcWriteQuotedPrintable 4 void_* outputStream PutStringF outputFunc const_Char_* stringP const_Boolean noSemicolons
+#SYS_TRAP sysTrapImcReadFieldNoSemicolon 0 Char_* ImcReadFieldNoSemicolon 4 void_* inputStream GetCharF inputFunc UInt16_* c const_UInt16 maxChars
+#SYS_TRAP sysTrapImcReadFieldQuotablePrintable 0 Char_* ImcReadFieldQuotablePrintable 6 void_* inputStream GetCharF inputFunc UInt16_* c const_Char stopAt const_Boolean quotedPrintable const_UInt16 maxChars
+#SYS_TRAP sysTrapImcReadPropertyParameter 0 void ImcReadPropertyParameter 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* nameP Char_* valueP
+#SYS_TRAP sysTrapImcReadWhiteSpace 0 void ImcReadWhiteSpace 4 void_* inputStream GetCharF inputFunc const_UInt16_*_const charAttrP UInt16_* c
+#SYS_TRAP sysTrapImcSkipAllPropertyParameters 0 void ImcSkipAllPropertyParameters 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* identifierP Boolean_* quotedPrintableP
+#SYS_TRAP sysTrapImcStringIsAscii 0 Boolean ImcStringIsAscii 1 const_Char_*_const stringP
+#SYS_TRAP sysTrapImcWriteNoSemicolon 0 void ImcWriteNoSemicolon 3 void_* outputStream PutStringF outputFunc const_Char_*_const stringP
+#SYS_TRAP sysTrapImcWriteQuotedPrintable 0 void ImcWriteQuotedPrintable 4 void_* outputStream PutStringF outputFunc const_Char_* stringP const_Boolean noSemicolons
 SYS_TRAP sysTrapInsPtCheckBlink 0 void InsPtCheckBlink 0
 SYS_TRAP sysTrapInsPtEnable 0 void InsPtEnable 1 Boolean enableIt
 SYS_TRAP sysTrapInsPtEnabled 0 Boolean InsPtEnabled 0
@@ -1402,10 +1411,10 @@ SYS_TRAP sysTrapStrNCat 0 Char_* StrNCat 3 Char_* dst const_Char_* src Int16 n
 SYS_TRAP sysTrapStrNCompare 0 Int16 StrNCompare 3 const_Char_* s1 const_Char_* s2 Int32 n
 SYS_TRAP sysTrapStrNCompareAscii 0 Int16 StrNCompareAscii 3 const_Char_* s1 const_Char_* s2 Int32 n
 SYS_TRAP sysTrapStrNCopy 0 Char_* StrNCopy 3 Char_* dst const_Char_* src Int16 n
-SYS_TRAP sysTrapStrPrintF 0 Int16 StrPrintF 2 Char_* s const_Char_* formatStr
+SYS_TRAP sysTrapStrPrintF 0 Int16 StrPrintF 3 Char_* s const_Char_* formatStr ... ap
 SYS_TRAP sysTrapStrStr 0 Char_* StrStr 2 const_Char_* str const_Char_* token
 SYS_TRAP sysTrapStrToLower 0 Char_* StrToLower 2 Char_* dst const_Char_* src
-#SYS_TRAP sysTrapStrVPrintF 0 Int16 StrVPrintF 3 Char_* s const_Char_* formatStr sys_va_list arg
+SYS_TRAP sysTrapStrVPrintF 0 Int16 StrVPrintF 3 Char_* s const_Char_* formatStr sys_va_list ap
 SYS_TRAP sysTrapSysAppExit 0 Err SysAppExit 3 SysAppInfoPtr appInfoP MemPtr prevGlobalsP MemPtr globalsP
 SYS_TRAP sysTrapSysAppLaunch 0 Err SysAppLaunch 6 UInt16 cardNo LocalID dbID UInt16 launchFlags UInt16 cmd MemPtr cmdPBP UInt32_* resultP
 SYS_TRAP sysTrapSysAppLauncherDialog 0 void SysAppLauncherDialog 0
@@ -1454,6 +1463,7 @@ SYS_TRAP sysTrapSysMailboxFlush 0 Err SysMailboxFlush 1 UInt32 mbID
 SYS_TRAP sysTrapSysMailboxSend 0 Err SysMailboxSend 3 UInt32 mbID void_* msgP UInt32 wAck
 SYS_TRAP sysTrapSysMailboxWait 0 Err SysMailboxWait 4 UInt32 mbID void_* msgP UInt32 priority Int32 timeout
 SYS_TRAP sysTrapSysNewOwnerID 0 UInt16 SysNewOwnerID 0
+SYS_TRAP sysTrapSysNotifyRegister 0 Err SysNotifyRegister 6 UInt16 cardNo LocalID dbID UInt32 notifyType SysNotifyProcPtr callbackP Int8 priority void_* userDataP
 SYS_TRAP sysTrapSysNotifyBroadcast 0 Err SysNotifyBroadcast 1 SysNotifyParamType_* notify
 SYS_TRAP sysTrapSysNotifyBroadcastDeferred 0 Err SysNotifyBroadcastDeferred 2 SysNotifyParamType_* notify Int16 paramSize
 SYS_TRAP sysTrapSysNotifyBroadcastFromInterrupt 0 Err SysNotifyBroadcastFromInterrupt 3 UInt32 notifyType UInt32 broadcaster void_* notifyDetailsP

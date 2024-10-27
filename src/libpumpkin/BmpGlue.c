@@ -1,7 +1,5 @@
 #include <PalmOS.h>
 
-#include "debug.h"
-
 void BmpGlueGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {
   BmpGetDimensions(bitmapP, widthP, heightP, rowBytesP);
 }

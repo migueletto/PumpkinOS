@@ -524,6 +524,9 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
 void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);
 void AbtShowAboutPumpkin(UInt32 creator);
 
+WChar TxtUpperChar(WChar inChar);
+WChar TxtLowerChar(WChar inChar);
+
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow);
 void *WinReinitModule(void *module);
 int WinFinishModule(Boolean deleteDisplay);
@@ -603,12 +606,10 @@ typedef enum {
   IR_LIB,
   NET_LIB,
   PDI_LIB,
-  PWR_LIB,
-  QUE_LIB,
-  SEL_TRAP,
   SER_LIB,
   SLOT_LIB,
-  SSL_LIB
+  SSL_LIB,
+  GPD_LIB
 } syscall_lib_e;
 
 int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
@@ -616,7 +617,9 @@ int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *
 typedef int (*pumpkin_system_call_t)(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
 
 #ifdef PUMPKIN_APP
+#define PUBLIC __attribute__((visibility("default")))
 extern int (*pumpkin_system_call_p)(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
+#define PUMPKIN_API PUBLIC pumpkin_system_call_t pumpkin_system_call_p
 #endif
 
 #ifdef __cplusplus

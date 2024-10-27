@@ -1364,6 +1364,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   SelTimeInitModule();
   SysFatalAlertInit();
 
+  FrmCenterDialogs(true);
+
   if (i == 0) {
     pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
     if (prefs.value[pBackgroundImage] & 0xFFFF) {
@@ -4823,6 +4825,18 @@ void SysNotifyBroadcastQueued(void) {
     task->num_notifs = 0;
     debug(DEBUG_INFO, PUMPKINOS, "flush notification queue end");
   }
+}
+
+// XXX this may be incorrect
+Err SysNotifyBroadcastFromInterrupt(UInt32 notifyType, UInt32 broadcaster, void *notifyDetailsP) {
+  SysNotifyParamType notify;
+
+  MemSet(&notify, sizeof(SysNotifyParamType), 0);
+  notify.notifyType = notifyType;
+  notify.broadcaster = broadcaster;
+  notify.notifyDetailsP = notifyDetailsP;
+
+  return SysNotifyBroadcast(&notify);
 }
 
 void *pumpkin_gettable(uint32_t n) {

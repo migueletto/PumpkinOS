@@ -806,3 +806,8 @@ char *VFSTmpName(void) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   return module->tmpname;
 }
+
+Err VFSCustomControl(UInt32 fsCreator, UInt32 apiCreator, UInt16 apiSelector, void *valueP, UInt16 *valueLenP) {
+  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSCustomControl not implemented");
+  return_err(sysErrParamErr);
+}

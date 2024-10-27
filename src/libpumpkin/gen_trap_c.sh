@@ -20,9 +20,6 @@ BEGIN {
   next;
 }
 $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
-  if ($2 == "sysTrapFlpDispatch" || $2 == "sysTrapFlpEmDispatch") {
-    next;
-  }
   if ($1 == "SEL_TRAP") {
     if (insel && insel != $2) {
       print "    }";
@@ -51,6 +48,8 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   nargs = 0 + $6;
   for (i = 0; i < nargs; i++) {
     atype = $(7 + i*2);
+    if (atype == "sys_va_list" || atype == "...") break;
+    if (atype == "ErrJumpBuf") atype = "ErrJumpBufP";
     if (atype != "sys_va_list") {
       gsub("_", " ", atype);
     }
@@ -98,8 +97,11 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   s = s ");";
   print s;
   if (rtype != "void") {
-    if (rtype ~ /[*]$/ || rtype == "MemHandle" || rtype == "MemPtr" || rtype == "WinHandle" || rtype == "DmOpenRef" || rtype == "FileHand") {
+    if (rtype ~ /[*]$/ || rtype == "MemHandle" || rtype == "MemPtr" || rtype == "WinHandle" || rtype == "DmOpenRef" || rtype == "FileHand" || rtype == "NetHostInfoPtr" || rtype == "NetServInfoPtr") {
       print "      *pret = (void *)ret;";
+    } else if (rtype == "FlpDouble") {
+      print "      uint64_t *d = (uint64_t *)(&ret);";
+      print "      *iret = *d;";
     } else {
       print "      *iret = ret;";
     }

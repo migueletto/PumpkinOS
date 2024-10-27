@@ -4,7 +4,7 @@ include ../commonp.mak
 PROGRAM=MineHunt
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 OBJS=MineApp.o
-CUSTOMPFLAGS=-DPUMPKIN_APP
+CUSTOMPFLAGS=-DPUMPKIN_APP -fvisibility=hidden
 
 $(PROGRAM).prc: $(DLIB) res
 	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c mine -n MineHunt *.bin
@@ -12,9 +12,10 @@ $(PROGRAM).prc: $(DLIB) res
 
 $(DLIB): $(PROGRAM).dlib
 	cp $(PROGRAM).dlib $(DLIB)
+	strip $(DLIB)
 
-$(PROGRAM).dlib: $(OBJS)
-	$(CC) -shared -o $(PROGRAM).dlib $(OBJS)
+$(PROGRAM).dlib: $(OBJS) $(LIBAPP)
+	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(LIBAPP)
 
 res: resource.rcp
 	$(PILRC) resource.rcp; touch res
