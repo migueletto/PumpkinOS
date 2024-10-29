@@ -2207,6 +2207,7 @@ static inline void m68ki_check_interrupts(void)
 }
 
 
+extern uint32_t tos_systrap(uint8_t type);
 extern uint32_t palmos_systrap(uint16_t trap);
 //extern int cpu_instr_callback(int pc);
 

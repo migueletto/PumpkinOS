@@ -14,8 +14,15 @@ $(DLIB): $(PROGRAM).dlib
 	cp $(PROGRAM).dlib $(DLIB)
 	strip $(DLIB)
 
-$(PROGRAM).dlib: $(OBJS) $(LIBAPP)
-	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(LIBAPP)
+$(PROGRAM).dlib: $(OBJS) $(STUBS).o
+	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(STUBS).o
+
+$(STUBS).o: $(STUBS).c
+	$(CC) $(CFLAGS) -c $(STUBS).c
+
+$(STUBS).c: $(OBJS)
+	$(NM) $(OBJS) | sort | uniq > $(STUBS).txt
+	$(LIBPUMPKIN)/gen_stubs.sh > $(STUBS).c
 
 clean:
-	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) $(DLIB)
+	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) $(DLIB) $(STUBS).c $(STUBS).o $(STUBS).txt

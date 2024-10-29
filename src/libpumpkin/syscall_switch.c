@@ -232,6 +232,56 @@
       }
       break;
 
+    case 30: {
+      FontDefaultType inFontType = sys_va_arg(ap, FontDefaultType);
+      FontID ret = FntGlueGetDefaultFontID(inFontType);
+      *iret = ret;
+      }
+      break;
+
+    case 31: {
+      char *iDstString = sys_va_arg(ap, char *);
+      const char *iSrcString = sys_va_arg(ap, char *);
+      FontID iFont = sys_va_arg(ap, FontID);
+      Coord iMaxWidth = sys_va_arg(ap, Int32);
+      Boolean iAddEllipsis = sys_va_arg(ap, UInt32);
+      Boolean ret = FntGlueTruncateString(iDstString, iSrcString, iFont, iMaxWidth, iAddEllipsis);
+      *iret = ret;
+      }
+      break;
+
+    case 32: {
+      WChar iChar = sys_va_arg(ap, UInt32);
+      Int16 ret = FntGlueWCharWidth(iChar);
+      *iret = ret;
+      }
+      break;
+
+    case 33: {
+      const Char *charsP = sys_va_arg(ap, Char *);
+      UInt16 length = sys_va_arg(ap, UInt32);
+      Int16 pixelWidth = sys_va_arg(ap, Int32);
+      Boolean *leadingEdge = sys_va_arg(ap, Boolean *);
+      Int16 *truncWidth = sys_va_arg(ap, Int16 *);
+      Int16 ret = FntGlueWidthToOffset(charsP, length, pixelWidth, leadingEdge, truncWidth);
+      *iret = ret;
+      }
+      break;
+
+    case 34: {
+      WChar inChar = sys_va_arg(ap, UInt32);
+      WChar ret = TxtGlueUpperChar(inChar);
+      *iret = ret;
+      }
+      break;
+
+    case 35: {
+      WChar inChar = sys_va_arg(ap, UInt32);
+      WChar ret = TxtGlueLowerChar(inChar);
+      *iret = ret;
+      }
+      break;
+
     }
     }
     break;
@@ -1695,6 +1745,20 @@
       UInt32 *outStart = sys_va_arg(ap, UInt32 *);
       UInt32 *outEnd = sys_va_arg(ap, UInt32 *);
       Boolean ret = TxtWordBounds(inText, inLength, inOffset, outStart, outEnd);
+      *iret = ret;
+      }
+      break;
+
+    case intlTxtUpperChar: {
+      WChar inChar = sys_va_arg(ap, UInt32);
+      WChar ret = TxtUpperChar(inChar);
+      *iret = ret;
+      }
+      break;
+
+    case intlTxtLowerChar: {
+      WChar inChar = sys_va_arg(ap, UInt32);
+      WChar ret = TxtLowerChar(inChar);
       *iret = ret;
       }
       break;

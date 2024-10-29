@@ -20,6 +20,7 @@
 #include "iterator.h"
 #include "loadfile.h"
 #include "emupalmosinc.h"
+#include "tos.h"
 #include "AppRegistry.h"
 #include "language.h"
 #include "storage.h"
@@ -1106,11 +1107,12 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   Boolean firstLoad;
   void *lib;
   void **pumpkin_system_call_p;
-  int m68k;
+  int m68k, tos;
 
   if (request) {
     pilot_main = request->pilot_main;
     lib = NULL;
+    tos = 0;
 
     if (pilot_main) {
       debug(DEBUG_INFO, PUMPKINOS, "using provided PilotMain");
@@ -1138,6 +1140,10 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
               pilot_main = pumpkin_script_main;
               opendb = 1;
               DmReleaseResource(h);
+            } else if ((h = DmGet1Resource('dtos', 1)) != NULL) {
+              tos = 1;
+              opendb = 1;
+              DmReleaseResource(h);
             }
           }
           DmCloseDatabase(dbRef);
@@ -1160,6 +1166,9 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       }
       debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
+    } else if (tos) {
+        debug(DEBUG_INFO, PUMPKINOS, "calling tos_main for \"%s\" as subroutine (opendb)", request->name);
+        r = pumpkin_pilotmain(request->name, tos_main, request->code, request->param, request->flags);
     } else {
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);

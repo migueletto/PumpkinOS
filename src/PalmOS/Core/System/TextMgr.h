@@ -381,6 +381,11 @@ Int16 TxtCompare(const Char *s1, UInt16 s1Len, UInt16 *s1MatchLen,
 			const Char *s2, UInt16 s2Len, UInt16 *s2MatchLen)
 		INTL_TRAP(intlTxtCompare);
 
+
+WChar TxtUpperChar(WChar inChar) INTL_TRAP(intlTxtUpperChar);
+
+WChar TxtLowerChar(WChar inChar) INTL_TRAP(intlTxtLowerChar);
+
 #ifdef __cplusplus
 	}
 #endif

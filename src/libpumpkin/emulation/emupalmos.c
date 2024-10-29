@@ -1611,6 +1611,10 @@ static void emupalmos_destroy(emu_state_t *state) {
   }
 }
 
+int emupalmos_debug_on(void) {
+  return debug_on;
+}
+
 void emupalmos_debug(int on) {
   debug_on = 1;
 }
@@ -1736,8 +1740,10 @@ static void palmos_systrap_init(emu_state_t *state) {
 }
 
 static void palmos_systrap_finish(emu_state_t *state) {
-  MemHandleUnlock(state->hNative);
-  MemHandleFree(state->hNative);
+  if (state && state->hNative) {
+    MemHandleUnlock(state->hNative);
+    MemHandleFree(state->hNative);
+  }
 }
 
 emu_state_t *emupalmos_install(void) {

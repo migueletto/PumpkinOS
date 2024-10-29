@@ -17,6 +17,8 @@
 *.pdb
 *.log
 *.pyc
+syscalls_stubs.txt
+syscalls_stubs.c
 res
 zig-cache
 !/lib/*

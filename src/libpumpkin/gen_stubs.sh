@@ -1,23 +1,9 @@
 #!/bin/sh
 
-# SYS_TRAP sysTrapStrIToA 0 Char_* StrIToA 2 Char_* s Int32 i
-# SYS_TRAP sysTrapStrLen 0 UInt16 StrLen 1 const_Char_* src
-
-# inline Char *StrIToA(Char *s, Int32 i) {
-#   void *pret;
-#   pumpkin_system_call_p(0, sysTrapStrIToA, 0, NULL, &pret, s, i);
-#   return (Char *)pret;
-# }
-#
-# inline UInt16 StrLen(const Char *src) {
-#   uint64_t iret;
-#   pumpkin_system_call_p(0, sysTrapStrLen, 0, &iret, NULL, src);
-#   return (UInt16)iret;
-# }
-
-awk -v trap=$1 '
+awk '
 BEGIN {
   print "#include <PalmOS.h>";
+  print "#include <PalmCompatibility.h>";
   print "#include <VFSMgr.h>";
   print "#include <ExpansionMgr.h>";
   print "#include <DLServer.h>";
@@ -25,19 +11,30 @@ BEGIN {
   print "#include <UDAMgr.h>";
   print "#include <PceNativeCall.h>";
   print "#include <FixedMath.h>";
+  print "#include <FntGlue.h>";
+  print "#include <TxtGlue.h>";
+  print "#include <CPMLib.h>";
+  print "#include <GPSLib68K.h>";
+  print "#include <GPDLib.h>";
+  print "#include <PdiLib.h>";
+  print "#include <BtLib.h>";
+  print "#include <FSLib.h>";
+  print "#include <SslLib.h>";
+  print "#include <INetMgr.h>";
+  print "#include <SlotDrvrLib.h>";
   print "";
-  print "inline void FrmCenterDialogs(Boolean center) {";
-  print "  pumpkin_system_call_p(0, sysCallFrmCenterDialogs, 0, NULL, NULL, center);";
-  print "}";
-  print "";
+}
+FILENAME == "syscalls_stubs.txt" {
+  symbol[$1] = 1;
+  next;
 }
 /^#/ {
   next;
 } 
-$1 == trap || ($1 !~ /LIB$/ && trap == "0") {
+symbol[$5] {
   rtype = $4;
   gsub("_", " ", rtype);
-  s = "inline " rtype;
+  s = rtype;
   if (!(rtype ~ /[*]$/)) {
     s = s " ";
   }
@@ -72,8 +69,8 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   if ($1 == "SYS_TRAP") sel = 0; else sel = $3;
 
   if (varargs == 1) {
-    print("  sys_va_list ap;");
-    print("  sys_va_start(ap, " lastarg ");");
+    print "  sys_va_list ap;";
+    print "  sys_va_start(ap, " lastarg ");";
   }
 
   if (rtype ~ /[*]$/ || rtype == "MemHandle" || rtype == "MemPtr" || rtype == "WinHandle" || rtype == "DmOpenRef" || rtype == "FileHand") {
@@ -90,7 +87,7 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
     s = s ");";
     print s;
     if (varargs == 1) {
-      print("  sys_va_end(ap);");
+      print "  sys_va_end(ap);";
     }
     print "  return (" rtype ")pret;";
   } else {
@@ -111,13 +108,15 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
     s = s ");";
     print s;
     if (varargs == 1) {
-      print("  sys_va_end(ap);");
+      print "  sys_va_end(ap);";
     }
-    if (rtype != "void") print "  return (" rtype ")iret;";
+    if (rtype != "void") {
+      print "  return (" rtype ")iret;";
+    }
   }
   print "}";
   print "";
 }
-' traps.txt
+' syscalls_stubs.txt ../libpumpkin/traps.txt
 
 exit 0

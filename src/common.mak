@@ -7,7 +7,9 @@ SRC=$(ROOT)/src
 VFS=$(ROOT)/vfs
 TOOLS=$(ROOT)/tools
 LIBPIT=$(SRC)/libpit
+LIBPUMPKIN=$(SRC)/libpumpkin
 LIBAPP=$(SRC)/libapp/libapp.a
+STUBS=syscalls_stubs
 
 SYSNAME=pit
 VERSION=1.0
@@ -75,6 +77,7 @@ endif
 
 HOSTCC=gcc
 AR=ar
+NM=nm -j -u
 
 ifeq ($(OSNAME),)
 OSNAME := $(shell uname -o)

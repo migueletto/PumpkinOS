@@ -335,6 +335,12 @@ SEL_TRAP sysTrapAccessorDispatch 26 UInt16 FrmGlueGetObjIDFromObjPtr 2 void_* fo
 SEL_TRAP sysTrapAccessorDispatch 27 void_* LstGlueGetDrawFunction 1 ListType_* listP
 SEL_TRAP sysTrapAccessorDispatch 28 Boolean CtlGlueIsGraphical 1 ControlType_* controlP
 SEL_TRAP sysTrapAccessorDispatch 29 void CtlGlueSetFrameStyle 2 ControlType_* controlP ButtonFrameType frameStyle
+SEL_TRAP sysTrapAccessorDispatch 30 FontID FntGlueGetDefaultFontID 1 FontDefaultType inFontType
+SEL_TRAP sysTrapAccessorDispatch 31 Boolean FntGlueTruncateString 5 char_* iDstString const_char_* iSrcString FontID iFont Coord iMaxWidth Boolean iAddEllipsis
+SEL_TRAP sysTrapAccessorDispatch 32 Int16 FntGlueWCharWidth 1 WChar iChar
+SEL_TRAP sysTrapAccessorDispatch 33 Int16 FntGlueWidthToOffset 5 const_Char_* charsP UInt16 length Int16 pixelWidth Boolean_* leadingEdge Int16_* truncWidth
+SEL_TRAP sysTrapAccessorDispatch 34 WChar TxtGlueUpperChar 1 WChar inChar
+SEL_TRAP sysTrapAccessorDispatch 35 WChar TxtGlueLowerChar 1 WChar inChar
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCloseDB Err CncProfileCloseDB 0
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCount Err CncProfileCount 1 UInt16_* profilesCountP
 SEL_TRAP sysTrapCncMgrDispatch sysTrapCncMgrProfileCreate Err CncProfileCreate 1 CncProfileID_* profileIdP
@@ -579,6 +585,8 @@ SEL_TRAP sysTrapIntlDispatch intlTxtSetNextChar UInt16 TxtSetNextChar 3 Char_* i
 SEL_TRAP sysTrapIntlDispatch intlTxtStrEncoding CharEncodingType TxtStrEncoding 1 const_Char_* inStr
 SEL_TRAP sysTrapIntlDispatch intlTxtTransliterate Err TxtTransliterate 5 const_Char_* inSrcText UInt16 inSrcLength Char_* outDstText UInt16_* ioDstLength TranslitOpType inOp
 SEL_TRAP sysTrapIntlDispatch intlTxtWordBounds Boolean TxtWordBounds 5 const_Char_* inText UInt32 inLength UInt32 inOffset UInt32_* outStart UInt32_* outEnd
+SEL_TRAP sysTrapIntlDispatch intlTxtUpperChar WChar TxtUpperChar 1 WChar inChar
+SEL_TRAP sysTrapIntlDispatch intlTxtLowerChar WChar TxtLowerChar 1 WChar inChar
 SEL_TRAP sysTrapLmDispatch lmGetLocaleSetting Err LmGetLocaleSetting 4 UInt16 iLocaleIndex LmLocaleSettingChoice iChoice void_* oValue UInt16 iValueSize
 SEL_TRAP sysTrapLmDispatch lmGetNumLocales UInt16 LmGetNumLocales 0
 SEL_TRAP sysTrapLmDispatch lmLocaleToIndex Err LmLocaleToIndex 2 const_LmLocaleType_* iLocale UInt16_* oLocaleIndex

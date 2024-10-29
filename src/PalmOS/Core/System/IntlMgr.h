@@ -91,7 +91,10 @@
 #define intlTxtNameToEncoding			31	
 #define	intlIntlStrictChecks			32
 
-#define intlMaxSelector					intlIntlStrictChecks
+#define intlTxtUpperChar          33
+#define intlTxtLowerChar          34
+
+#define intlMaxSelector					intlTxtLowerChar
 
 typedef UInt16 IntlSelector;
 

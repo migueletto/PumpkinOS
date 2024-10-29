@@ -128,6 +128,8 @@ void encode_NetSocketAddrType(uint32_t addrP, NetSocketAddrType *a);
 void encode_NetHostInfoBufType(uint32_t bufP, NetHostInfoBufType *buf);
 void decode_smfoptions(uint32_t selP, SndSmfOptionsType *options);
 
+uint32_t tos_systrap(uint8_t type);
+
 uint32_t palmos_systrap(uint16_t trap);
 
 void palmos_serialtrap(uint32_t sp, uint16_t idx, uint32_t sel);
@@ -146,6 +148,7 @@ void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg);
 uint32_t emupalmos_trap_out(void *address);
 
+int emupalmos_debug_on(void);
 void emupalmos_debug(int on);
 
 emu_state_t *emupalmos_install(void);

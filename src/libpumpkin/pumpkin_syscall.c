@@ -7,6 +7,8 @@
 #include <UDAMgr.h>
 #include <PceNativeCall.h>
 #include <FixedMath.h>
+#include <FntGlue.h>
+#include <TxtGlue.h>
 #include <BmpGlue.h>
 #include <FrmGlue.h>
 #include <CtlGlue.h>
@@ -31,18 +33,6 @@ int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *
 
   if (lib == 0) {
     switch (id) {
-      case sysCallTxtLowerChar: {
-        WChar c = sys_va_arg(ap, uint32_t);
-        c = TxtLowerChar(c);
-        *iret = c;
-        }
-        break;
-      case sysCallTxtUpperChar: {
-        WChar c = sys_va_arg(ap, uint32_t);
-        c = TxtUpperChar(c);
-        *iret = c;
-        }
-        break;
 #include "syscall_switch.c"
       default:
         debug(DEBUG_ERROR, PUMPKINOS, "invalid syscall 0x%04X %d", id, sel);
