@@ -1158,7 +1158,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_get_context(&old_cpu);
 
     MemSet(&aux_cpu, sizeof(m68ki_cpu_core), 0);
-    aux_cpu.trapf = 1;
+    aux_cpu.palmos = 1;
     m68k_set_context(&aux_cpu);
     m68k_init();
     m68k_set_cpu_type(M68K_CPU_TYPE_68020);
@@ -2124,7 +2124,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       state->sysAppInfoStart = sysAppInfoStart;
 
       MemSet(&main_cpu, sizeof(m68ki_cpu_core), 0);
-      main_cpu.trapf = 1;
+      main_cpu.palmos = 1;
       m68k_set_context(&main_cpu);
       m68k_init();
       m68k_set_cpu_type(M68K_CPU_TYPE_68020);

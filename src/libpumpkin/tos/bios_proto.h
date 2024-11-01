@@ -1,0 +1,12 @@
+void Getmpb(MPB *ptr);
+int16_t Bconstat(int16_t dev);
+int32_t Bconin(int16_t dev);
+void Bconout(int16_t dev, int16_t c);
+int32_t Rwabs(int16_t rwflag, void *buff, int16_t cnt, int16_t recnr, int16_t dev, int32_t lrecno);
+int32_t Setexc(int16_t number, void *vec);
+int32_t Tickcal(void);
+BPB *Getbpb(int16_t dev);
+int32_t Bcostat(int16_t dev);
+int32_t Mediach(int16_t dev);
+int32_t Drvmap(void);
+int32_t Kbshift(int16_t mode);

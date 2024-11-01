@@ -87,6 +87,7 @@ typedef struct {
   void (*write_byte)(uint32_t address, uint8_t value);
   void (*write_word)(uint32_t address, uint16_t value);
   void (*write_long)(uint32_t address, uint32_t value);
+  void *extra;
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);

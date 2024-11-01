@@ -1,0 +1,12 @@
+0 void Getmpb 1 MPB@* ptr
+1 int16_t Bconstat 1 int16_t dev
+2 int32_t Bconin 1 int16_t dev
+3 void Bconout 2 int16_t dev int16_t c
+4 int32_t Rwabs 6 int16_t rwflag void@* buff int16_t cnt int16_t recnr int16_t dev int32_t lrecno
+5 int32_t Setexc 2 int16_t number void@* vec
+6 int32_t Tickcal 0
+7 BPB@* Getbpb 1 int16_t dev
+8 int32_t Bcostat 1 int16_t dev
+9 int32_t Mediach 1 int16_t dev
+10 int32_t Drvmap 0
+11 int32_t Kbshift 1 int16_t mode

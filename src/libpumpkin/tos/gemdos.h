@@ -1,0 +1,43 @@
+typedef struct {
+/*
+  int8_t   d_reserved[21]; // Reserved for GEMDOS
+  uint8_t  d_attrib;       // File attributes
+  uint16_t d_time;         // Time
+  uint16_t d_date;         // Date
+  uint32_t d_length;       // File length
+  int8_t   d_fname[14];    // Filename
+*/
+  uint8_t dta[256];
+} DTA;
+
+struct sigaction {
+  int a;
+};
+
+struct sockaddr {
+  int a;
+};
+
+struct iovec {
+  int a;
+};
+
+struct timeval {
+  int a;
+};
+
+struct msghdr {
+  int a;
+};
+
+typedef void *SHARED_LIB;
+typedef void *SLB_EXEC;
+typedef void *DISKINFO;
+typedef void *DOSTIME;
+typedef void *XATTR;
+typedef void *STAT;
+typedef void *POLLFD;
+typedef void *COOKIE;
+typedef void *timezone;
+typedef void *MPB;
+typedef void *BPB;

@@ -1,0 +1,181 @@
+0 void Pterm0 0
+1 int32_t Cconin 0
+2 int32_t Cconout 1 int16_t c
+3 int32_t Cauxin 0
+4 int32_t Cauxout 1 int16_t c
+5 int32_t Cprnout 1 int16_t c
+6 int32_t Crawio 1 int16_t w
+7 int32_t Crawcin 0
+8 int32_t Cnecin 0
+9 int32_t Cconws 1 uint8_t@* buf
+10 int32_t Cconrs LINE_* buf
+11 int32_t Cconis 0
+14 int32_t Dsetdrv 1 int16_t drv
+16 int16_t Cconos 0
+17 int16_t Cprnos 0
+18 int16_t Cauxis 0
+19 int16_t Cauxos 0
+20 int32_t Maddalt 2 void@* start int32_t size
+21 int32_t Srealloc 1 int32_t len
+22 int32_t Slbopen 5 char@* name char@* path int32_t min_ver SHARED_LIB@* sl SLB_EXEC@* fn
+23 int32_t Slbclose 1 SHARED_LIB@* sl
+25 int16_t Dgetdrv 0
+26 void Fsetdta 1 DTA@* buf
+32 int32_t Super 1 void@* stack
+42 uint16_t Tgetdate 0
+43 int16_t Tsetdate 1 uint16_t date
+44 uint32_t Tgettime 0
+45 int16_t Tsettime 1 uint16_t time
+47 DTA@* Fgetdta 0
+48 uint16_t Sversion 0
+49 void Ptermres 2 int32_t keepcnt int16_t retcode
+51 int32_t Sconfig 2 int16_t mode int32_t flags
+54 int16_t Dfree 2 DISKINFO@* buf int16_t driveno
+57 int32_t Dcreate 1 char@* path
+58 int32_t Ddelete 1 char@* path
+59 int16_t Dsetpath 1 char@* path
+60 int16_t Fcreate 2 char@* fname int16_t attr
+61 int32_t Fopen 2 char@* fname int16_t mode
+62 int16_t Fclose 1 int16_t handle
+63 int32_t Fread 3 int16_t handle int32_t count void@* buf
+64 int32_t Fwrite 3 int16_t handle int32_t count void@* buf
+65 int16_t Fdelete 1 char@* fname
+66 int32_t Fseek 3 int32_t offset int16_t handle int16_t seekmode
+67 int16_t Fattrib 3 char@* filename int16_t wflag int16_t attrib
+68 void@* Mxalloc 2 int32_t amount int16_t mode
+69 int16_t Fdup 1 int16_t handle
+70 int16_t Fforce 2 int16_t stdh int16_t nonstdh
+71 int16_t Dgetpath 2 char@* path int16_t driveno
+72 void@* Malloc 1 int32_t number
+73 int32_t Mfree 1 void@* block
+74 int32_t Mshrink 2 void@* block int32_t newsiz
+#75 int32_t Pexec 2 uint16_t mode ...
+76 void Pterm 1 uint16_t retcode
+78 int32_t Fsfirst 2 char@* filename int16_t attr
+79 int16_t Fsnext 0
+86 int32_t Frename 2 char@* oldname char@* newname
+87 void Fdatime 3 DOSTIME@* timeptr int16_t handle int16_t wflag
+92 int32_t Flock 4 int16_t handle int16_t mode int32_t start int32_t length
+96 int32_t Nversion 0
+98 int32_t Frlock 3 int16_t handle int32_t start int32_t length
+99 int32_t Frunlock 2 int16_t handle int32_t start
+100 int32_t Flock2 2 int16_t handle int32_t length
+101 int32_t Funlock 1 int16_t handle
+102 int32_t Fflush 1 int16_t handle
+255 void Syield 0
+256 int32_t Fpipe 1 int16_t@* usrh
+257 int32_t Ffchown 3 int16_t fd int16_t uid int16_t gid
+258 int32_t Ffchmod 2 int16_t fd int16_t mode
+259 int16_t Fsync 1 int16_t handle
+#260 int32_t Fcntl 3 int16_t fh int32_t arg int16_t cmd
+261 int32_t Finstat 1 int16_t fh
+262 int32_t Foutstat 1 int16_t fh
+263 int32_t Fgetchar 2 int16_t fh int16_t mode
+264 int32_t Fputchar 3 int16_t fh int32_t ch int16_t mode
+265 int32_t Pwait 0
+266 int16_t Pnice 1 int16_t delta
+267 int16_t Pgetpid 0
+268 int16_t Pgetppid 0
+269 int16_t Pgetpgrp 0
+270 int16_t Psetpgrp 2 int16_t pid int16_t newgrp
+271 int16_t Pgetuid 0
+272 int16_t Psetuid 1 int16_t id
+273 int32_t Pkill 2 int16_t pid int16_t sig
+274 int32_t Psignal 2 int16_t sig int32_t handler
+275 int16_t Pvfork 0
+276 int16_t Pgetgid 0
+277 int16_t Psetgid 1 int16_t id
+278 int32_t Psigblock 1 int32_t mask
+279 int32_t Psigsetmask 1 int32_t mask
+280 int32_t Pusrval 1 int32_t val
+281 int16_t Pdomain 1 int16_t dom
+282 void Psigreturn 0
+283 int16_t Pfork 0
+284 int32_t Pwait3 2 int16_t flag int32_t@* rusage
+285 int32_t Fselect 3 uint16_t timeout int32_t@* rfds int32_t@* wfds int32_t dummy
+286 int32_t Prusage 1 int32_t@* r
+287 int32_t Psetlimit 2 int16_t lim int32_t value
+288 int32_t Talarm 1 int32_t time
+289 void Pause 0
+290 int32_t Sysconf 1 int16_t n
+291 int32_t Psigpending 0
+292 int32_t Dpathconf 2 uint8_t@* name int16_t mode
+293 int32_t Pmsg 3 int16_t mode int32_t mbox void@* msg
+294 int32_t Fmidipipe 3 int16_t pid int16_t in int16_t out
+295 int32_t Prenice 2 int16_t pid int16_t delta
+296 int32_t Dopendir 2 char@* name int16_t flag
+297 int32_t Dreaddir 3 int16_t len int32_t dirhandle char@* buf
+298 int32_t Drewinddir 1 int32_t handle
+299 int32_t Dclosedir 1 int32_t dirhandle
+300 int32_t Fxattr 3 int16_t flag char@* name XATTR@* xattr
+301 int32_t Flink 2 char@* oldname char@* newname
+302 int32_t Fsymlink 2 char@* oldname char@* newname
+303 int32_t Freadlink 3 int16_t bufsiz char@* buf char@* name
+304 int32_t Dcntl 3 int16_t cmd char@* name int32_t arg
+305 int32_t Fchown 3 char@* name int16_t uid int16_t gid
+306 int32_t Fchmod 2 char@* name int16_t mode
+307 int16_t Pumask 1 int16_t mode
+308 int32_t Psemaphore 3 int16_t mode int32_t id int32_t timeout
+309 int32_t Dlock 2 int16_t mode int16_t drv
+310 void Psigpause 1 int32_t mask
+311 int32_t Psigaction 3 int16_t sig struct@sigaction@* act struct@sigaction@* oact
+312 int32_t Pgeteuid 0
+313 int32_t Pgetegid 0
+314 int32_t Pwaitpid 3 int16_t pid int16_t flag int32_t@* rusage
+315 int32_t Dgetcwd 3 char@* path int16_t drv int16_t size
+316 void Salert 1 char@* msg
+317 int32_t Tmalarm 1 int32_t time
+318 int32_t Psigintr 2 int16_t vec int16_t sig
+319 int32_t Suptime 2 int32_t@* uptime int32_t@* loadaverage
+320 int16_t Ptrace 4 int16_t request int16_t pid void@* addr int32_t data
+321 int32_t Mvalidate 4 int16_t pid void@* start int32_t size int32_t@* flags
+322 int32_t Dxreaddir 5 int16_t ln int32_t dirh char@* buf XATTR@* xattr int32_t@* xr
+323 int32_t Pseteuid 1 int16_t euid
+324 int32_t Psetegid 1 int16_t egid
+325 int16_t Pgetauid 0
+326 int16_t Psetauid 1 int16_t id
+327 int32_t Pgetgroups 2 int16_t len int16_t@* gidset
+328 int32_t Psetgroups 2 int16_t len int16_t@* gidset
+329 int32_t Tsetitimer 5 int16_t which int32_t@* interval int32_t@* value int32_t@* ointerval int32_t@* ovalue
+330 int32_t Dchroot 1 char@* path
+331 int32_t Fstat64 3 int16_t flag char@* name STAT@* stat
+332 int32_t Fseek64 5 int32_t hioffset uint32_t lowoffset int16_t handle int16_t seekmode int64_t@* newpos
+333 int32_t Dsetkey 4 int32_t hidev int32_t lowdev char@* key int16_t cipher
+334 int32_t Psetreuid 2 int16_t ruid int16_t euid
+335 int32_t Psetregid 2 int16_t rgid int16_t egid
+336 void Sync 0
+337 int32_t Shutdown 1 int32_t mode
+338 int32_t Dreadlabel 3 char@* path char@* label int16_t length
+339 int32_t Dwritelabel 2 char@* path char@* label
+340 int32_t Ssystem 3 int16_t mode int32_t arg1 int32_t arg2
+341 int32_t Tgettimeofday 2 struct@timeval@* tv timezone@* tzp
+342 int32_t Tsettimeofday 2 struct@timeval@* tv timezone@* tzp
+343 int Tadjtime 2 struct@timeval@* delta struct@timeval@* olddelta
+344 int32_t Pgetpriority 2 int16_t which int16_t who
+345 int32_t Psetpriority 3 int16_t which int16_t who int16_t pri
+346 int32_t Fpoll 3 POLLFD@* fds uint32_t nfds uint32_t timeout
+347 int32_t Fwritev 3 int16_t handle struct@iovec@* iov int32_t niov
+348 int32_t Freadv 3 int16_t handle struct@iovec@* iov int32_t niov
+349 int32_t Ffstat64 2 int16_t fd STAT@* stat
+350 int32_t Psysctl 6 int32_t@* name uint32_t namelen void@* old uint32_t@* oldlenp void@* new uint32_t newlen
+352 int32_t Fsocket 3 int32_t domain int32_t type int32_t protocol
+353 int32_t Fsocketpair 4 int32_t domain int32_t type int32_t protocol int16_t@* fds
+354 int32_t Faccept 3 int16_t fd struct@sockaddr@* name uint32_t@* anamelen
+355 int32_t Fconnect 3 int16_t fd struct@sockaddr@* name uint32_t anamelen
+356 int32_t Fbind 3 int16_t fd struct@sockaddr@* name uint32_t anamelen
+357 int32_t Flisten 2 int16_t fd int32_t backlog
+358 int32_t Frecvmsg 3 int16_t fd struct@msghdr@* msg int32_t flags
+359 int32_t Fsendmsg 3 int16_t fd struct@msghdr@* msg int32_t flags
+360 int32_t Frecvfrom 6 int16_t fd void@* buf int32_t buflen int32_t flags struct@sockaddr@* to uint32_t@* addrlen
+361 int32_t Fsendto 6 int16_t fd void@* buf int32_t buflen int32_t flags struct@sockaddr@* to uint32_t addrlen
+362 int32_t Fsetsockopt 5 int16_t fd int32_t level int32_t name void@* val uint32_t valsize
+363 int32_t Fgetsockopt 5 int16_t fd int32_t level int32_t name void@* val uint32_t@* valsize
+364 int32_t Fgetpeername 3 int16_t fd struct@sockaddr@* asa uint32_t@* alen
+365 int32_t Fgetsockname 3 int16_t fd struct@sockaddr@* asa uint32_t@* alen
+366 int32_t Fshutdown 2 int16_t fd int32_t how
+381 int32_t Maccess 3 void@* start int32_t size int16_t mode
+384 int32_t Fchown16 4 char@* name int16_t uid int16_t gid int16_t flag
+385 int32_t Fchdir 1 int16_t handle
+386 int32_t Ffdopendir 1 int16_t fd
+387 int16_t Fdirfd 1 int32_t handle
+1296 int32_t Dxopendir 2 char@* name int16_t flag

@@ -1009,7 +1009,8 @@ typedef struct
 	void (*set_fc_callback)(unsigned int new_fc);     /* Called when the CPU function code changes */
 	int (*instr_hook_callback)(unsigned int pc);      /* Called every instruction cycle prior to execution */
 
-  int trapf;
+  int palmos;
+  int tos;
 
 } m68ki_cpu_core;
 

@@ -33170,7 +33170,7 @@ static void m68k_op_trap(m68k_state_t *m68k_state)
   uint t = REG_IR & 0xf;
 
 	/* Trap#n stacks exception frame type 0 */
-	if (t == 0x0f && m68ki_cpu.trapf) {
+	if (t == 0x0f && m68ki_cpu.palmos) {
 		uint16_t trap = m68k_read_memory_16(REG_PC);
 		REG_PC += 2;
 		uint32_t r = palmos_systrap(trap);
@@ -33178,10 +33178,10 @@ static void m68k_op_trap(m68k_state_t *m68k_state)
 			m68ki_push_32(REG_PC);
 			REG_PC = r;
 		}
-	} else if (t == 0x01 || t == 0x0d || t == 0x0e) {
+	} else if ((t == 0x01 || t == 0x02 || t == 0x0d || t == 0x0e) && m68ki_cpu.tos) {
 		tos_systrap(t);
 	} else {
-		m68ki_exception_trapN(EXCEPTION_TRAP_BASE + (REG_IR & 0xf));	/* HJB 990403 */
+		m68ki_exception_trapN(EXCEPTION_TRAP_BASE + t);	/* HJB 990403 */
 	}
 }
 

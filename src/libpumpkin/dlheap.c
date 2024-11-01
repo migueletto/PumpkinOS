@@ -27,6 +27,7 @@ struct heap_t {
   uint8_t *end;
   void *state;
   mutex_t *mutex;
+  int free;
 #ifdef VISUAL_HEAP
   window_provider_t *wp;
   window_t *w;
@@ -38,7 +39,7 @@ struct heap_t {
 #endif
 };
 
-heap_t *heap_init(uint32_t size, void *_wp) {
+heap_t *heap_init(uint8_t *base, uint32_t size, void *_wp) {
   heap_t *heap;
 #ifdef VISUAL_HEAP
   int width, height;
@@ -50,7 +51,11 @@ heap_t *heap_init(uint32_t size, void *_wp) {
     return NULL;
   }
 
-  if ((heap->start = xcalloc(1, size)) == NULL) {
+  heap->free = 1;
+  if (base) {
+    heap->start = base;
+    heap->free = 0;
+  } else if ((heap->start = xcalloc(1, size)) == NULL) {
     xfree(heap);
     heap = NULL;
     return NULL;
@@ -81,7 +86,7 @@ void heap_finish(heap_t *heap) {
   if (heap) {
     debug(DEBUG_INFO, "Heap", "heap_finish");
     dlmalloc_stats();
-    if (heap->start) xfree(heap->start);
+    if (heap->start && heap->free) xfree(heap->start);
     if (heap->state) xfree(heap->state);
 #ifdef VISUAL_HEAP
     if (heap->surface) surface_destroy(heap->surface);
@@ -161,7 +166,7 @@ static void heap_draw(heap_t *heap, uint8_t *from, uint8_t *to, int incr) {
 #endif
 
 void *heap_alloc(heap_t *heap, sys_size_t size) {
-  void *p = dlmalloc(size);
+  void *p = dlmalloc(heap, size);
   if (p) {
     sys_size_t *q = (sys_size_t *)p;
     sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
@@ -184,7 +189,7 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
     heap_draw(heap, p, (uint8_t *)p + realsize, -1);
 #endif
 
-    p = dlrealloc(p, size);
+    p = dlrealloc(heap, p, size);
     q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
     realsize -= 16;
@@ -209,17 +214,17 @@ void heap_free(heap_t *heap, void *p) {
 #ifdef VISUAL_HEAP
     heap_draw(heap, p, (uint8_t *)p + realsize, -1);
 #endif
-    dlfree(p);
+    dlfree(heap, p);
   }
 }
 
-void *dlmalloc_get_state(void) {
-  heap_t *heap = heap_get();
+void *dlmalloc_get_state(void *h) {
+  heap_t *heap = (heap_t *)h;
   return heap->state;
 }
 
-void *heap_morecore(sys_size_t size) {
-  heap_t *heap = heap_get();
+void *heap_morecore(void *h, sys_size_t size) {
+  heap_t *heap = (heap_t *)h;
   void *p = NULL;
 
   if ((heap->pointer + size) < heap->size - HEAP_MARGIN) {
@@ -278,11 +283,11 @@ void heap_walk(heap_t *heap, void (*callback)(uint32_t *p, uint32_t size, uint32
   debug(DEBUG_TRACE, "Heap", "heap_walk end");
 }
 
-void heap_assert(const char *file, int line, const char *func, const char *cond) {
+void heap_assert(void *h, const char *file, int line, const char *func, const char *cond) {
   char buf[256];
 
   // the heap is corrupted, reset it
-  dlmalloc_init_state();
+  dlmalloc_init_state(h);
 
   if (func) {
     sys_snprintf(buf, sizeof(buf) - 1, "assert %s, %s, line %d: %s", file, func, line, cond);

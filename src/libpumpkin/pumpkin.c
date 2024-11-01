@@ -20,7 +20,6 @@
 #include "iterator.h"
 #include "loadfile.h"
 #include "emupalmosinc.h"
-#include "tos.h"
 #include "AppRegistry.h"
 #include "language.h"
 #include "storage.h"
@@ -588,7 +587,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   StoRemoveLocks(APP_STORAGE);
 
-  pumpkin_module.heap = heap_init(HEAP_SIZE*8, wp);
+  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
 
   SysUInitModule(); // sto calls SysQSortP
@@ -1107,12 +1106,11 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   Boolean firstLoad;
   void *lib;
   void **pumpkin_system_call_p;
-  int m68k, tos;
+  int m68k;
 
   if (request) {
     pilot_main = request->pilot_main;
     lib = NULL;
-    tos = 0;
 
     if (pilot_main) {
       debug(DEBUG_INFO, PUMPKINOS, "using provided PilotMain");
@@ -1140,10 +1138,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
               pilot_main = pumpkin_script_main;
               opendb = 1;
               DmReleaseResource(h);
-            } else if ((h = DmGet1Resource('dtos', 1)) != NULL) {
-              tos = 1;
-              opendb = 1;
-              DmReleaseResource(h);
             }
           }
           DmCloseDatabase(dbRef);
@@ -1166,9 +1160,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       }
       debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
-    } else if (tos) {
-        debug(DEBUG_INFO, PUMPKINOS, "calling tos_main for \"%s\" as subroutine (opendb)", request->name);
-        r = pumpkin_pilotmain(request->name, tos_main, request->code, request->param, request->flags);
     } else {
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
@@ -1333,7 +1324,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
 
   thread_set(task_key, task);
   if (MULTI_THREAD) {
-    task->heap = heap_init(HEAP_SIZE, NULL);
+    task->heap = heap_init(NULL, HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   } else {
     task->heap = pumpkin_module.heap;
@@ -4968,7 +4959,7 @@ void pumpkin_sound_init(void) {
 
   if ((task = xcalloc(1, sizeof(pumpkin_task_t))) != NULL) {
     thread_set(task_key, task);
-    task->heap = heap_init(256*1024, NULL);
+    task->heap = heap_init(NULL, 256*1024, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
     VFSInitModule(VFS_CARD);
     SndInitModule(pumpkin_module.ap);
