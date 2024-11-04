@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 
+#include "heap.h"
 #include "tos.h"
 #include "debug.h"
 

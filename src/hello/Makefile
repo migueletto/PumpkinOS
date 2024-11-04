@@ -7,12 +7,12 @@ PRC=$(VFS)/app_install/$(PROGRAM).prc
 $(PRC): $(PROGRAM).prc
 	cp $(PROGRAM).prc $(PRC)
 
-$(PROGRAM).prc: res.flag
+$(PROGRAM).prc: res
 	$(PRCDUILD) -f $(PROGRAM).prc -t ctos -c Helo -n $(PROGRAM) *.bin
 
-res.flag: resource.rcp hello.ttp
-	$(PILRC) resource.rcp; touch res.flag
+res: resource.rcp hello.ttp
+	$(PILRC) resource.rcp; touch res
 
 clean:
-	rm -f $(PRC) $(PROGRAM).prc *.bin res.flag
+	rm -f $(PRC) $(PROGRAM).prc *.bin res
 

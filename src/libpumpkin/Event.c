@@ -593,6 +593,29 @@ Boolean EvtSysEventAvail(Boolean ignorePenUps) {
   return false;
 }
 
+Boolean EvtKeyEventAvail(void) {
+  evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
+  int i, j;
+  
+  for (;;) {
+    if (EvtPumpEvents(0) != 1) break;
+  }
+  
+  for (i = 0; i < module->numEvents; i++) {
+    j = (module->idxOut + i) % MAX_EVENTS;
+
+    switch (module->events[j].eType) {
+      case keyDownEvent:
+        debug(DEBUG_TRACE, PALMOS_MODULE, "EvtKeyEventAvail %s available", eventName[module->events[j].eType]);
+        return true;
+     default:
+        break;
+    }
+  }
+
+  return false;
+}
+
 Boolean EvtEventAvail(void) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
 

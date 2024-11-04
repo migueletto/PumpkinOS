@@ -22,7 +22,10 @@ enum { PLIBC_SEEK_SET, PLIBC_SEEK_CUR, PLIBC_SEEK_END };
 int plibc_init(void);
 int plibc_finish(void);
 int plibc_setfd(int fd, void *fileRef);
-int plibc_open(const char *pathname, int flags);
+int plibc_mkdir(int vol, const char *pathname);
+int plibc_chdir(int vol, const char *pathname);
+int plibc_getdir(int vol, char *pathname, int max);
+int plibc_open(int vol, const char *pathname, int flags);
 int plibc_close(int fd);
 sys_ssize_t plibc_read(int fd, void *buf, sys_size_t count);
 sys_ssize_t plibc_write(int fd, void *buf, sys_size_t count);
@@ -32,7 +35,7 @@ int plibc_dup2(int oldfd, int newfd);
 PLIBC_FILE *plibc_fdopen(int fd, const char *mode);
 int plibc_fileno(PLIBC_FILE *stream);
 
-PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode);
+PLIBC_FILE *plibc_fopen(int vol, const char *pathname, const char *mode);
 int plibc_fclose(PLIBC_FILE *stream);
 sys_size_t plibc_fread(void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream);
 sys_size_t plibc_fwrite(const void *ptr, sys_size_t size, sys_size_t nmemb, PLIBC_FILE *stream);
@@ -41,8 +44,8 @@ int plibc_ftruncate(PLIBC_FILE *stream, long offset);
 long plibc_ftell(PLIBC_FILE *stream);
 int plibc_feof(PLIBC_FILE *stream);
 int plibc_fflush(PLIBC_FILE *stream);
-int plibc_rename(const char *oldpath, const char *newpath);
-int plibc_remove(const char *pathname);
+int plibc_rename(int vol, const char *oldpath, const char *newpath);
+int plibc_remove(int vol, const char *pathname);
 char *plibc_tmpnam(void);
 int plibc_errno(void);
 const char *plibc_strerror(int err);
@@ -53,6 +56,8 @@ int plibc_fputs(const char *s, PLIBC_FILE *stream);
 int plibc_fgetc(PLIBC_FILE *stream);
 int plibc_ungetc(int c, PLIBC_FILE *stream);
 char *plibc_fgets(char *s, int size, PLIBC_FILE *stream);
+
+int plibc_haschar(void);
 
 #define plibc_putchar(c) plibc_fputc(c, plibc_stdout)
 #define plibc_putc plibc_fputc

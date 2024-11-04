@@ -24,7 +24,7 @@ EMUOBJS=emulation/emupalmos.o emulation/omtrap.o emulation/pinstrap.o emulation/
         emulation/trapnames.o emulation/m68k/m68kcpu.o emulation/m68k/m68kdasm.o emulation/softfloat/softfloat.o emulation/m68k/m68kops.o emulation/disasm.o \
         $(ARMOBJS) $(DARMOBJS)
 
-TOSOBJS=tos/tos.o tos/gemdos_impl.o tos/bios_impl.o
+TOSOBJS=tos/tos.o tos/gemdos_impl.o tos/bios_impl.o tos/xbios_impl.o tos/vdi.o tos/aes.o
 
 ifeq ($(OSNAME),Android)
 LAUNCHEROBJS=$(SRC)/Launcher/Launcher.o $(SRC)/Launcher/editbin.o $(SRC)/Launcher/editbmp.o $(SRC)/Launcher/editform.o $(SRC)/Launcher/editstr.o

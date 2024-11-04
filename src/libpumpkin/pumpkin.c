@@ -148,6 +148,7 @@ typedef struct {
   void *data;
   void *subdata;
   int (*getchar)(void *iodata);
+  int (*haschar)(void *iodata);
   void (*putchar)(void *iodata, char c);
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
@@ -1354,7 +1355,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   EvtInitModule();
   SysInitModule();
   GPSInitModule(pumpkin_module.gps_parse_line, pumpkin_module.bt);
-  VFSInitModule(VFS_CARD);
+  VFSInitModule();
+  VFSAddVolume(VFS_CARD);
   KeyboardInitModule();
   ClpInitModule();
   SrmInitModule();
@@ -4849,10 +4851,16 @@ void *pumpkin_gettable(uint32_t n) {
   return task->table;
 }
 
-void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c), void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
+void pumpkin_setio(
+  int (*getchar)(void *iodata),
+  int (*haschar)(void *iodata),
+  void (*putchar)(void *iodata, char c),
+  void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
+
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   task->getchar = getchar;
+  task->haschar = haschar;
   task->putchar = putchar;
   task->setcolor = setcolor;
   task->iodata = iodata;
@@ -4863,6 +4871,12 @@ int pumpkin_getchar(void) {
 
   return task->getchar ? task->getchar(task->iodata) : 0;
 }
+
+int pumpkin_haschar(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  return task->haschar ? task->haschar(task->iodata) : 0;
+} 
 
 void pumpkin_putchar(char c) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
@@ -4961,7 +4975,8 @@ void pumpkin_sound_init(void) {
     thread_set(task_key, task);
     task->heap = heap_init(NULL, 256*1024, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
-    VFSInitModule(VFS_CARD);
+    VFSInitModule();
+    VFSAddVolume(VFS_CARD);
     SndInitModule(pumpkin_module.ap);
   }
 }

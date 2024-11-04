@@ -104,7 +104,19 @@ int plibc_isatty(int fd) {
   return r;
 }
 
-int plibc_open(const char *pathname, int flags) {
+int plibc_mkdir(int vol, const char *pathname) {
+  return VFSDirCreate(vol, pathname) == errNone ? 0 : -1;
+}
+
+int plibc_chdir(int vol, const char *pathname) {
+  return VFSChangeDir(vol, (char *)pathname) == errNone ? 0 : -1;
+}
+
+int plibc_getdir(int vol, char *pathname, int max) {
+  return VFSCurrentDir(vol, pathname, max) == errNone ? 0 : -1;
+}
+
+int plibc_open(int vol, const char *pathname, int flags) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
   FileOrigin origin;
   FileRef fileRef;
@@ -127,8 +139,8 @@ int plibc_open(const char *pathname, int flags) {
 
   if (fd < MAX_FDS) {
     if (flags & PLIBC_CREAT) {
-      if (VFSFileOpen(1, pathname, vfsModeRead, &fileRef) != errNone) {
-        VFSFileCreate(1, pathname) == errNone ? 0 : -1;
+      if (VFSFileOpen(vol, pathname, vfsModeRead, &fileRef) != errNone) {
+        VFSFileCreate(vol, pathname) == errNone ? 0 : -1;
       } else {
         VFSFileClose(fileRef);
       }
@@ -143,7 +155,7 @@ int plibc_open(const char *pathname, int flags) {
       origin = vfsOriginBeginning;
     }
 
-    if (VFSFileOpen(1, pathname, openMode, &fileRef) == errNone) {
+    if (VFSFileOpen(vol, pathname, openMode, &fileRef) == errNone) {
       if ((err = VFSFileSeek(fileRef, origin, 0)) == errNone || err == vfsErrFileEOF) {
         if ((f = sys_calloc(1, sizeof(fd_t))) != NULL) {
           f->fileRef = fileRef;
@@ -156,6 +168,8 @@ int plibc_open(const char *pathname, int flags) {
         VFSFileClose(fileRef);
         fd = -1;
       }
+    } else {
+      fd = -1;
     }
   } else {
     fd = -1;
@@ -326,7 +340,7 @@ int plibc_fileno(PLIBC_FILE *stream) {
   return fd;
 }
 
-PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
+PLIBC_FILE *plibc_fopen(int vol, const char *pathname, const char *mode) {
   PLIBC_FILE *stream = NULL;
   int flags;
 
@@ -348,7 +362,7 @@ PLIBC_FILE *plibc_fopen(const char *pathname, const char *mode) {
     }
 
     if ((stream = sys_calloc(1, sizeof(PLIBC_FILE))) != NULL) {
-      if ((stream->fd = plibc_open(pathname, flags)) == -1) {
+      if ((stream->fd = plibc_open(vol, pathname, flags)) == -1) {
         sys_free(stream);
         stream = NULL;
       }
@@ -373,21 +387,21 @@ char *plibc_tmpnam(void) {
   return VFSTmpName();
 }
 
-int plibc_rename(const char *oldpath, const char *newpath) {
+int plibc_rename(int vol, const char *oldpath, const char *newpath) {
   int r = -1;
 
   if (oldpath && newpath) {
-    r = VFSFileRename(1, oldpath, newpath) == errNone;
+    r = VFSFileRename(vol, oldpath, newpath) == errNone;
   }
 
   return r;
 }
 
-int plibc_remove(const char *pathname) {
+int plibc_remove(int vol, const char *pathname) {
   int r = -1;
 
   if (pathname) {
-    r = VFSFileDelete(1, pathname) == errNone;
+    r = VFSFileDelete(vol, pathname) == errNone;
   }
 
   return r;
@@ -596,6 +610,10 @@ int plibc_vprintf(const char *format, sys_va_list ap) {
   }
 
   return r;
+}
+
+int plibc_haschar(void) {
+  return pumpkin_haschar();
 }
 
 int plibc_errno(void) {

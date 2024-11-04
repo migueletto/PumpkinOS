@@ -10,7 +10,6 @@
 #include "xalloc.h"
 
 #define LABEL   "Volume"
-#define VOLREF  1
 
 #define MEDIA_TYPE  expMediaType_PoserHost
 #define FS_MOUNT    vfsMountClass_POSE
@@ -26,21 +25,34 @@
 #define MAX_PATH  256
 
 #define PALMOS_MODULE "VFSMgr"
+#define NUM_VOLUMES   8
+
+#define return_err(err) \
+  pumpkin_set_lasterr(err); \
+  if (err && err != vfsErrFileEOF && err != vfsErrFileNotFound && err != expErrEnumerationEmpty) \
+    debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
+  return err
+
+#define checkvol(module, volRefNum) \
+  if (volRefNum < 1 || volRefNum > NUM_VOLUMES || module->volume[volRefNum - 1][0] == 0) { \
+    return_err(vfsErrVolumeBadRef); \
+  } \
+  vfs_chdir(module->session, module->volume[volRefNum - 1])
 
 typedef struct {
   vfs_session_t *session;
-  char card[MAX_CARD];
+  char volume[NUM_VOLUMES][MAX_CARD];
   char path[MAX_PATH];
   char path2[MAX_PATH];
   char tmpname[MAX_PATH];
 } vfs_module_t;
 
-static void buildpath(vfs_module_t *module, char *dst, char *src) {
+static void buildpath(vfs_module_t *module, UInt16 volRefNum, char *dst, char *src) {
   char *s;
 
   MemSet(dst, MAX_PATH, 0);
   if (src[0] == '/') {
-    StrCopy(dst, module->card);
+    StrCopy(dst, module->volume[volRefNum-1]);
     src++;
   } else {
     StrNCopy(dst, vfs_cwd(module->session), MAX_PATH-1);
@@ -56,7 +68,7 @@ static void buildpath(vfs_module_t *module, char *dst, char *src) {
   }
 }
 
-int VFSInitModule(char *card) {
+int VFSInitModule(void) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
 
   if (module == NULL) {
@@ -69,12 +81,30 @@ int VFSInitModule(char *card) {
       return -1;
     }
 
-    StrNCopy(module->card, card, MAX_CARD);
-    vfs_chdir(module->session, module->card);
     pumpkin_set_local_storage(vfs_key, module);
   }
 
   return 0;
+}
+
+int VFSAddVolume(char *volume) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+  int i, volRefNum = -1;
+
+  if (module) {
+    for (i = 0; i < NUM_VOLUMES; i++) {
+      if (module->volume[i][0] == 0) break;
+    }
+    if (i < NUM_VOLUMES) {
+      StrNCopy(module->volume[i], volume, MAX_CARD);
+      volRefNum = i + 1;
+      debug(DEBUG_TRACE, PALMOS_MODULE, "volume \"%s\" added as volRefNum %d", volume, volRefNum);
+    } else {
+      debug(DEBUG_ERROR, PALMOS_MODULE, "no room for volume \"%s\"", volume);
+    }
+  }
+
+  return volRefNum;
 }
 
 int VFSFinishModule(void) {
@@ -87,12 +117,6 @@ int VFSFinishModule(void) {
 
   return 0;
 }
-
-#define return_err(err) \
-  pumpkin_set_lasterr(err); \
-  if (err && err != vfsErrFileEOF && err != vfsErrFileNotFound && err != expErrEnumerationEmpty) \
-    debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
-  return err
 
 Err VFSInit(void) {
   return_err(errNone);
@@ -108,12 +132,10 @@ Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
   vfs_file_t *f;
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (pathNameP && pathNameP[0]) {
-    buildpath(module, module->path, (char *)pathNameP);
+    buildpath(module, volRefNum, module->path, (char *)pathNameP);
     if ((f = vfs_open(module->session, module->path, VFS_WRITE | VFS_TRUNC)) != NULL) {
       vfs_close(f);
       err = errNone;
@@ -130,12 +152,10 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
   int type, mode;
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (pathNameP && pathNameP[0]) {
-    buildpath(module, module->path, (char *)pathNameP);
+    buildpath(module, volRefNum, module->path, (char *)pathNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileOpen \"%s\" -> \"%s\"", pathNameP, module->path);
     type = vfs_checktype(module->session, module->path);
 
@@ -248,12 +268,10 @@ Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (pathNameP && pathNameP[0]) {
-    buildpath(module, module->path, (char *)pathNameP);
+    buildpath(module, volRefNum, module->path, (char *)pathNameP);
     if (vfs_unlink(module->session, module->path) == 0) {
       err = errNone;
     }
@@ -266,13 +284,11 @@ Err VFSFileRename(UInt16 volRefNum, const Char *pathNameP, const Char *newNameP)
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (pathNameP && pathNameP[0] && newNameP && newNameP[0]) {
-    buildpath(module, module->path, (char *)pathNameP);
-    buildpath(module, module->path2, (char *)newNameP);
+    buildpath(module, volRefNum, module->path, (char *)pathNameP);
+    buildpath(module, volRefNum, module->path2, (char *)newNameP);
     if (vfs_rename(module->session, module->path, module->path2) == 0) {
       err = errNone;
     }
@@ -461,12 +477,10 @@ Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (dirNameP && dirNameP[0]) {
-    buildpath(module, module->path, (char *)dirNameP);
+    buildpath(module, volRefNum, module->path, (char *)dirNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSDirCreate \"%s\" -> \"%s\"", dirNameP, module->path);
     if (vfs_mkdir(module->session, module->path) == 0) {
       err = errNone;
@@ -522,13 +536,11 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
 }
 
 Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *pathStr, UInt16 *bufLenP) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = sysErrParamErr;
 
   debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetDefaultDirectory not implemented");
-
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (fileTypeStr && pathStr && bufLenP) {
     StrNCopy(pathStr, "/", *bufLenP);
@@ -562,22 +574,57 @@ Err VFSVolumeUnmount(UInt16 volRefNum) {
 }
 
 Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+  UInt32 i, num;
   Err err = sysErrParamErr;
 
-  // XXX WinLauncher passes volIterator = 0x80000000
-  if (volRefNumP && volIteratorP && (*volIteratorP == vfsIteratorStart || *volIteratorP == 0x80000000)) {
-    *volRefNumP = VOLREF;
-    *volIteratorP = vfsIteratorStop;
-    err = errNone;
+  if (volRefNumP && volIteratorP) {
+    for (i = 0, num = 0; i < NUM_VOLUMES && module->volume[i][0]; i++) {
+      num++;
+    }
+
+    switch (*volIteratorP) {
+      case vfsIteratorStart:
+      case 0x80000000: // XXX WinLauncher passes volIterator = 0x80000000
+        if (num == 0) {
+          *volIteratorP = vfsIteratorStop;
+          err = expErrEnumerationEmpty;
+        } else if (num == 1) {
+          *volRefNumP = 1;
+          *volIteratorP = vfsIteratorStop;
+          err = errNone;
+        } else {
+          *volRefNumP = 1;
+          *volIteratorP = 1;
+          err = errNone;
+        }
+        break;
+      case vfsIteratorStop:
+        err = sysErrParamErr;
+        break;
+      default:
+        if (num <= 1 || *volIteratorP >= num) {
+          err = sysErrParamErr;
+        } else if (*volIteratorP == num - 1) {
+          *volRefNumP = num;
+          *volIteratorP = vfsIteratorStop;
+          err = errNone;
+        } else {
+          *volRefNumP = *volIteratorP + 1;
+          *volIteratorP = *volIteratorP + 1;
+          err = errNone;
+        }
+        break;
+    }
   }
 
   return_err(err);
 }
 
 Err VFSVolumeInfo(UInt16 volRefNum, VolumeInfoType *volInfoP) {
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+
+  checkvol(module, volRefNum);
 
   if (volInfoP) {
     MemSet(volInfoP, sizeof(VolumeInfoType), 0);
@@ -594,18 +641,22 @@ Err VFSVolumeInfo(UInt16 volRefNum, VolumeInfoType *volInfoP) {
 }
 
 Err VFSVolumeGetLabel(UInt16 volRefNum, Char *labelP, UInt16 bufLen) {
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+
+  checkvol(module, volRefNum);
 
   if (labelP && bufLen) {
-    MemMove(labelP, LABEL, bufLen);
+    StrNPrintF(labelP, bufLen-1, "%s%d", LABEL, volRefNum);
   }
 
   return_err(errNone);
 }
 
 Err VFSVolumeSetLabel(UInt16 volRefNum, const Char *labelP) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+
+  checkvol(module, volRefNum);
+
   return_err(vfsErrBadName);
 }
 
@@ -614,11 +665,9 @@ Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
   uint64_t total, free;
   Err err = vfsErrFileBadRef;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
-  buildpath(module, module->path, "");
+  buildpath(module, volRefNum, module->path, "");
   if (vfs_statfs(module->session, module->path, &total, &free) == 0) {
     if (volumeTotalP) *volumeTotalP = total; // XXX overflow 64 -> 32 bits
     if (volumeUsedP) *volumeUsedP = total - free; // XXX overflow 64 -> 32 bits
@@ -678,20 +727,18 @@ Err VFSChangeDir(UInt16 volRefNum, char *path) {
   char *old, *cwd;
   Err err = sysErrParamErr;
 
-  if (volRefNum != VOLREF) {
-    return vfsErrVolumeBadRef;
-  }
+  checkvol(module, volRefNum);
 
   if (path) {
     if (path[0] == '/') {
-      buildpath(module, module->path, path);
+      buildpath(module, volRefNum, module->path, path);
     } else {
       StrNCopy(module->path, path, MAX_PATH - 1);
     }
     old = xstrdup(vfs_cwd(module->session));
     if (vfs_chdir(module->session, module->path) == 0) {
       cwd = vfs_cwd(module->session);
-      if (StrNCompare(module->card, cwd, StrLen(module->card)) == 0) {
+      if (StrNCompare(module->volume[volRefNum-1], cwd, StrLen(module->volume[volRefNum-1])) == 0) {
         err = errNone;
       } else {
         debug(DEBUG_ERROR, PALMOS_MODULE, "attempt to escape root old=\"%s\" path=\"%s\" new=\"%s\"", old, path, cwd);
@@ -709,14 +756,12 @@ Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max) {
   char *cwd;
   Err err = sysErrParamErr;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (path) {
     cwd = vfs_cwd(module->session);
-    cwd += StrLen(module->card) - 1;
-    StrNCopy(path, cwd, max-1);;
+    cwd += StrLen(module->volume[volRefNum-1]) - 1;
+    StrNCopy(path, cwd, max-1);
     err = errNone;
   }
 
@@ -729,17 +774,15 @@ Err VFSRealPath(UInt16 volRefNum, char *path, char *realPath, UInt16 max) {
   Int32 len;
   Err err = sysErrParamErr;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (path && realPath) {
-    buildpath(module, module->path, path);
+    buildpath(module, volRefNum, module->path, path);
 
     if ((cwd = vfs_cwd(module->session)) != NULL) {
       if ((s = vfs_abspath(cwd, module->path)) != NULL) {
-        len = StrLen(module->card);
-        if (StrNCompare(s, module->card, len) == 0) {
+        len = StrLen(module->volume[volRefNum-1]);
+        if (StrNCompare(s, module->volume[volRefNum-1], len) == 0) {
           MemMove(realPath, s + len - 1, max - 1);
           err = errNone;
         }
@@ -781,12 +824,10 @@ Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributes
   int type;
   Err err = vfsErrBadName;
 
-  if (volRefNum != VOLREF) {
-    return_err(vfsErrVolumeBadRef);
-  }
+  checkvol(module, volRefNum);
 
   if (pathNameP && pathNameP[0] && attributesP) {
-    buildpath(module, module->path, (char *)pathNameP);
+    buildpath(module, volRefNum, module->path, (char *)pathNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileType \"%s\" -> \"%s\"", pathNameP, module->path);
     type = vfs_checktype(module->session, module->path);
 

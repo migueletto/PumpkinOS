@@ -5,14 +5,34 @@
 #include "bios_proto.h"
 #include "debug.h"
 
+// BIOS devices:
+// 0 prn: (Printer/Parallel port)
+// 1 aux: (Aux device, the RS-232 port)
+// 2 con: (Console, VT-52 terminal)
+// 3 MIDI port
+// 4 Keyboard port
+// 5 Screen
+// 6 ST compatible RS-232 port (Modem 1)
+// 7 SCC channel B (Modem 2)
+// 8 TTMFP serial port (Modem 3)
+// 9 SCC channel A (Modem 4)
+
 void Getmpb(MPB *ptr) {
   debug(DEBUG_ERROR, "TOS", "Getmpb not implemented");
 }
 
 int16_t Bconstat(int16_t dev) {
+  int32_t r = 0;
+
   // returns -1 when there are characters waiting in the buffer, and 0 if this is not the case
-  debug(DEBUG_ERROR, "TOS", "Bconstat not implemented");
-  return 0;
+
+  switch (dev) {
+    case 2: // con: (Console)
+      r = plibc_haschar() ? -1 : 0;
+      break;
+  }
+
+  return r;
 }
 
 int32_t Bconin(int16_t dev) {

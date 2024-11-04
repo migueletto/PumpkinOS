@@ -13,7 +13,12 @@ extern void m68881_mmu_ops(m68k_state_t *m68k_state);
 
 static void m68k_op_1010(m68k_state_t *m68k_state)
 {
-	m68ki_exception_1010();
+	if (m68ki_cpu.tos) {
+	  uint opcode = m68ki_read_16(REG_PC - 2);
+		tos_systrap(opcode);
+  } else {
+	  m68ki_exception_1010();
+  }
 }
 
 

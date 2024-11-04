@@ -129,8 +129,7 @@ void encode_NetSocketAddrType(uint32_t addrP, NetSocketAddrType *a);
 void encode_NetHostInfoBufType(uint32_t bufP, NetHostInfoBufType *buf);
 void decode_smfoptions(uint32_t selP, SndSmfOptionsType *options);
 
-uint32_t tos_systrap(uint8_t type);
-
+uint32_t tos_systrap(uint16_t type);
 uint32_t palmos_systrap(uint16_t trap);
 
 void palmos_serialtrap(uint32_t sp, uint16_t idx, uint32_t sel);

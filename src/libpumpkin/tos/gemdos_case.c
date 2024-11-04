@@ -75,8 +75,8 @@
     case 9: { // int32_t Cconws(uint8_t *buf)
         int valid = 0;
         uint32_t abuf = ARG32;
-        uint8_t *buf = (uint8_t *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        uint8_t *buf = (uint8_t *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Cconws(buf);
@@ -146,8 +146,8 @@
     case 20: { // int32_t Maddalt(void *start, int32_t size)
         int valid = 0;
         uint32_t astart = ARG32;
-        void *start = (void *)(ram + astart);
-        valid |= (uint8_t *)start >= data->block && (uint8_t *)start < data->block + data->blockSize;
+        void *start = (void *)(memory + astart);
+        valid |= (uint8_t *)start >= data->memory && (uint8_t *)start < data->memory + data->memorySize;
         int32_t size = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -167,44 +167,6 @@
       }
       break;
 
-    case 22: { // int32_t Slbopen(char *name, char *path, int32_t min_ver, SHARED_LIB *sl, SLB_EXEC *fn)
-        int valid = 0;
-        uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
-        uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
-        int32_t min_ver = ARG32;
-        uint32_t asl = ARG32;
-        SHARED_LIB *sl = (SHARED_LIB *)(ram + asl);
-        valid |= (uint8_t *)sl >= data->block && (uint8_t *)sl < data->block + data->blockSize;
-        uint32_t afn = ARG32;
-        SLB_EXEC *fn = (SLB_EXEC *)(ram + afn);
-        valid |= (uint8_t *)fn >= data->block && (uint8_t *)fn < data->block + data->blockSize;
-        int32_t res = 0;
-        if (valid) {
-          res = Slbopen(name, path, min_ver, sl, fn);
-        }
-        m68k_set_reg(M68K_REG_D0, res);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Slbopen(0x%08X, 0x%08X, %d, 0x%08X, 0x%08X): %d", aname, apath, min_ver, asl, afn, res);
-      }
-      break;
-
-    case 23: { // int32_t Slbclose(SHARED_LIB *sl)
-        int valid = 0;
-        uint32_t asl = ARG32;
-        SHARED_LIB *sl = (SHARED_LIB *)(ram + asl);
-        valid |= (uint8_t *)sl >= data->block && (uint8_t *)sl < data->block + data->blockSize;
-        int32_t res = 0;
-        if (valid) {
-          res = Slbclose(sl);
-        }
-        m68k_set_reg(M68K_REG_D0, res);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Slbclose(0x%08X): %d", asl, res);
-      }
-      break;
-
     case 25: { // int16_t Dgetdrv(void)
         int16_t res = 0;
         res = Dgetdrv();
@@ -216,8 +178,8 @@
     case 26: { // void Fsetdta(DTA *buf)
         int valid = 0;
         uint32_t abuf = ARG32;
-        DTA *buf = (DTA *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        DTA *buf = (DTA *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         if (valid) {
           Fsetdta(buf);
         }
@@ -226,14 +188,22 @@
       break;
 
     case 32: { // int32_t Super(void *stack)
-        int valid = 0;
+        // switches between user-mode and supervisor-mode, or interrogates the current mode
+        // stack: if 1, the current mode will be interrogated
+        //        if 0, switches between user-mode and supervisor-mode
+        //        other value: sets the new address for the supervisor stack
+        // return value:
+        //   if the state is to be obtained, value 0 means user-mode and value -1 means supervisor-mode
+        //   else returns the address of the old supervisor stack, provided mode is supervisor-mode
+
         uint32_t astack = ARG32;
-        void *stack = (void *)(ram + astack);
-        valid |= (uint8_t *)stack >= data->block && (uint8_t *)stack < data->block + data->blockSize;
         int32_t res = 0;
-        if (valid) {
-          res = Super(stack);
-        }
+        if (astack == 1) {
+          res = data->supervisor ? -1 : 0;
+        } else if (astack == 0) {
+          data->supervisor = !data->supervisor;
+          debug(DEBUG_ERROR, "TOS", "%s supervisor mode", data->supervisor ? "entering" : "leaving");
+        } 
         m68k_set_reg(M68K_REG_D0, res);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Super(0x%08X): %d", astack, res);
       }
@@ -276,7 +246,7 @@
     case 47: { // DTA *Fgetdta(void)
         DTA *res = NULL;
         res = Fgetdta();
-        uint32_t ares = res ? ((uint8_t *)res - ram) : 0;
+        uint32_t ares = res ? ((uint8_t *)res - memory) : 0;
         m68k_set_reg(M68K_REG_D0, ares);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Fgetdta(): 0x%08X", ares);
       }
@@ -298,21 +268,11 @@
       }
       break;
 
-    case 51: { // int32_t Sconfig(int16_t mode, int32_t flags)
-        int16_t mode = ARG16;
-        int32_t flags = ARG32;
-        int32_t res = 0;
-        res = Sconfig(mode, flags);
-        m68k_set_reg(M68K_REG_D0, res);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Sconfig(%d, %d): %d", mode, flags, res);
-      }
-      break;
-
     case 54: { // int16_t Dfree(DISKINFO *buf, int16_t driveno)
         int valid = 0;
         uint32_t abuf = ARG32;
-        DISKINFO *buf = (DISKINFO *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        DISKINFO *buf = (DISKINFO *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int16_t driveno = ARG16;
         int16_t res = 0;
         if (valid) {
@@ -326,8 +286,8 @@
     case 57: { // int32_t Dcreate(char *path)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Dcreate(path);
@@ -340,8 +300,8 @@
     case 58: { // int32_t Ddelete(char *path)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Ddelete(path);
@@ -354,8 +314,8 @@
     case 59: { // int16_t Dsetpath(char *path)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int16_t res = 0;
         if (valid) {
           res = Dsetpath(path);
@@ -368,8 +328,8 @@
     case 60: { // int16_t Fcreate(char *fname, int16_t attr)
         int valid = 0;
         uint32_t afname = ARG32;
-        char *fname = (char *)(ram + afname);
-        valid |= (uint8_t *)fname >= data->block && (uint8_t *)fname < data->block + data->blockSize;
+        char *fname = (char *)(memory + afname);
+        valid |= (uint8_t *)fname >= data->memory && (uint8_t *)fname < data->memory + data->memorySize;
         int16_t attr = ARG16;
         int16_t res = 0;
         if (valid) {
@@ -383,10 +343,10 @@
     case 61: { // int32_t Fopen(char *fname, int16_t mode)
         int valid = 0;
         uint32_t afname = ARG32;
-        char *fname = (char *)(ram + afname);
-        valid |= (uint8_t *)fname >= data->block && (uint8_t *)fname < data->block + data->blockSize;
+        char *fname = (char *)(memory + afname);
+        valid |= (uint8_t *)fname >= data->memory && (uint8_t *)fname < data->memory + data->memorySize;
         int16_t mode = ARG16;
-        int32_t res = 0;
+        int32_t res = -1;
         if (valid) {
           res = Fopen(fname, mode);
         }
@@ -409,8 +369,8 @@
         int16_t handle = ARG16;
         int32_t count = ARG32;
         uint32_t abuf = ARG32;
-        void *buf = (void *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        void *buf = (void *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fread(handle, count, buf);
@@ -425,8 +385,8 @@
         int16_t handle = ARG16;
         int32_t count = ARG32;
         uint32_t abuf = ARG32;
-        void *buf = (void *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        void *buf = (void *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fwrite(handle, count, buf);
@@ -439,8 +399,8 @@
     case 65: { // int16_t Fdelete(char *fname)
         int valid = 0;
         uint32_t afname = ARG32;
-        char *fname = (char *)(ram + afname);
-        valid |= (uint8_t *)fname >= data->block && (uint8_t *)fname < data->block + data->blockSize;
+        char *fname = (char *)(memory + afname);
+        valid |= (uint8_t *)fname >= data->memory && (uint8_t *)fname < data->memory + data->memorySize;
         int16_t res = 0;
         if (valid) {
           res = Fdelete(fname);
@@ -464,8 +424,8 @@
     case 67: { // int16_t Fattrib(char *filename, int16_t wflag, int16_t attrib)
         int valid = 0;
         uint32_t afilename = ARG32;
-        char *filename = (char *)(ram + afilename);
-        valid |= (uint8_t *)filename >= data->block && (uint8_t *)filename < data->block + data->blockSize;
+        char *filename = (char *)(memory + afilename);
+        valid |= (uint8_t *)filename >= data->memory && (uint8_t *)filename < data->memory + data->memorySize;
         int16_t wflag = ARG16;
         int16_t attrib = ARG16;
         int16_t res = 0;
@@ -482,7 +442,7 @@
         int16_t mode = ARG16;
         void *res = NULL;
         res = Mxalloc(amount, mode);
-        uint32_t ares = res ? ((uint8_t *)res - ram) : 0;
+        uint32_t ares = res ? ((uint8_t *)res - memory) : 0;
         m68k_set_reg(M68K_REG_D0, ares);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Mxalloc(%d, %d): 0x%08X", amount, mode, ares);
       }
@@ -510,8 +470,8 @@
     case 71: { // int16_t Dgetpath(char *path, int16_t driveno)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int16_t driveno = ARG16;
         int16_t res = 0;
         if (valid) {
@@ -522,22 +482,12 @@
       }
       break;
 
-    case 72: { // void *Malloc(int32_t number)
-        int32_t number = ARG32;
-        void *res = NULL;
-        res = Malloc(number);
-        uint32_t ares = res ? ((uint8_t *)res - ram) : 0;
-        m68k_set_reg(M68K_REG_D0, ares);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Malloc(%d): 0x%08X", number, ares);
-      }
-      break;
-
     case 73: { // int32_t Mfree(void *block)
         int valid = 0;
         uint32_t ablock = ARG32;
-        void *block = (void *)(ram + ablock);
-        valid |= (uint8_t *)block >= data->block && (uint8_t *)block < data->block + data->blockSize;
-        int32_t res = 0;
+        void *block = (void *)(memory + ablock);
+        valid |= (uint8_t *)block >= data->memory && (uint8_t *)block < data->memory + data->memorySize;
+        int32_t res = -1;
         if (valid) {
           res = Mfree(block);
         }
@@ -548,9 +498,10 @@
 
     case 74: { // int32_t Mshrink(void *block, int32_t newsiz)
         int valid = 0;
+        uint16_t dummy = ARG16;
         uint32_t ablock = ARG32;
-        void *block = (void *)(ram + ablock);
-        valid |= (uint8_t *)block >= data->block && (uint8_t *)block < data->block + data->blockSize;
+        void *block = (void *)(memory + ablock);
+        valid |= (uint8_t *)block >= data->memory && (uint8_t *)block < data->memory + data->memorySize;
         int32_t newsiz = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -571,8 +522,8 @@
     case 78: { // int32_t Fsfirst(char *filename, int16_t attr)
         int valid = 0;
         uint32_t afilename = ARG32;
-        char *filename = (char *)(ram + afilename);
-        valid |= (uint8_t *)filename >= data->block && (uint8_t *)filename < data->block + data->blockSize;
+        char *filename = (char *)(memory + afilename);
+        valid |= (uint8_t *)filename >= data->memory && (uint8_t *)filename < data->memory + data->memorySize;
         int16_t attr = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -594,11 +545,11 @@
     case 86: { // int32_t Frename(char *oldname, char *newname)
         int valid = 0;
         uint32_t aoldname = ARG32;
-        char *oldname = (char *)(ram + aoldname);
-        valid |= (uint8_t *)oldname >= data->block && (uint8_t *)oldname < data->block + data->blockSize;
+        char *oldname = (char *)(memory + aoldname);
+        valid |= (uint8_t *)oldname >= data->memory && (uint8_t *)oldname < data->memory + data->memorySize;
         uint32_t anewname = ARG32;
-        char *newname = (char *)(ram + anewname);
-        valid |= (uint8_t *)newname >= data->block && (uint8_t *)newname < data->block + data->blockSize;
+        char *newname = (char *)(memory + anewname);
+        valid |= (uint8_t *)newname >= data->memory && (uint8_t *)newname < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Frename(oldname, newname);
@@ -611,8 +562,8 @@
     case 87: { // void Fdatime(DOSTIME *timeptr, int16_t handle, int16_t wflag)
         int valid = 0;
         uint32_t atimeptr = ARG32;
-        DOSTIME *timeptr = (DOSTIME *)(ram + atimeptr);
-        valid |= (uint8_t *)timeptr >= data->block && (uint8_t *)timeptr < data->block + data->blockSize;
+        DOSTIME *timeptr = (DOSTIME *)(memory + atimeptr);
+        valid |= (uint8_t *)timeptr >= data->memory && (uint8_t *)timeptr < data->memory + data->memorySize;
         int16_t handle = ARG16;
         int16_t wflag = ARG16;
         if (valid) {
@@ -700,8 +651,8 @@
     case 256: { // int32_t Fpipe(int16_t *usrh)
         int valid = 0;
         uint32_t ausrh = ARG32;
-        int16_t *usrh = (int16_t *)(ram + ausrh);
-        valid |= (uint8_t *)usrh >= data->block && (uint8_t *)usrh < data->block + data->blockSize;
+        int16_t *usrh = (int16_t *)(memory + ausrh);
+        valid |= (uint8_t *)usrh >= data->memory && (uint8_t *)usrh < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fpipe(usrh);
@@ -947,8 +898,8 @@
         int valid = 0;
         int16_t flag = ARG16;
         uint32_t arusage = ARG32;
-        int32_t *rusage = (int32_t *)(ram + arusage);
-        valid |= (uint8_t *)rusage >= data->block && (uint8_t *)rusage < data->block + data->blockSize;
+        int32_t *rusage = (int32_t *)(memory + arusage);
+        valid |= (uint8_t *)rusage >= data->memory && (uint8_t *)rusage < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Pwait3(flag, rusage);
@@ -962,11 +913,11 @@
         int valid = 0;
         uint16_t timeout = ARG16;
         uint32_t arfds = ARG32;
-        int32_t *rfds = (int32_t *)(ram + arfds);
-        valid |= (uint8_t *)rfds >= data->block && (uint8_t *)rfds < data->block + data->blockSize;
+        int32_t *rfds = (int32_t *)(memory + arfds);
+        valid |= (uint8_t *)rfds >= data->memory && (uint8_t *)rfds < data->memory + data->memorySize;
         uint32_t awfds = ARG32;
-        int32_t *wfds = (int32_t *)(ram + awfds);
-        valid |= (uint8_t *)wfds >= data->block && (uint8_t *)wfds < data->block + data->blockSize;
+        int32_t *wfds = (int32_t *)(memory + awfds);
+        valid |= (uint8_t *)wfds >= data->memory && (uint8_t *)wfds < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fselect(timeout, rfds, wfds);
@@ -979,8 +930,8 @@
     case 286: { // int32_t Prusage(int32_t *r)
         int valid = 0;
         uint32_t ar = ARG32;
-        int32_t *r = (int32_t *)(ram + ar);
-        valid |= (uint8_t *)r >= data->block && (uint8_t *)r < data->block + data->blockSize;
+        int32_t *r = (int32_t *)(memory + ar);
+        valid |= (uint8_t *)r >= data->memory && (uint8_t *)r < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Prusage(r);
@@ -1035,8 +986,8 @@
     case 292: { // int32_t Dpathconf(uint8_t *name, int16_t mode)
         int valid = 0;
         uint32_t aname = ARG32;
-        uint8_t *name = (uint8_t *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        uint8_t *name = (uint8_t *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t mode = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -1052,8 +1003,8 @@
         int16_t mode = ARG16;
         int32_t mbox = ARG32;
         uint32_t amsg = ARG32;
-        void *msg = (void *)(ram + amsg);
-        valid |= (uint8_t *)msg >= data->block && (uint8_t *)msg < data->block + data->blockSize;
+        void *msg = (void *)(memory + amsg);
+        valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Pmsg(mode, mbox, msg);
@@ -1087,8 +1038,8 @@
     case 296: { // int32_t Dopendir(char *name, int16_t flag)
         int valid = 0;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t flag = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -1104,8 +1055,8 @@
         int16_t len = ARG16;
         int32_t dirhandle = ARG32;
         uint32_t abuf = ARG32;
-        char *buf = (char *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        char *buf = (char *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Dreaddir(len, dirhandle, buf);
@@ -1137,11 +1088,11 @@
         int valid = 0;
         int16_t flag = ARG16;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t axattr = ARG32;
-        XATTR *xattr = (XATTR *)(ram + axattr);
-        valid |= (uint8_t *)xattr >= data->block && (uint8_t *)xattr < data->block + data->blockSize;
+        XATTR *xattr = (XATTR *)(memory + axattr);
+        valid |= (uint8_t *)xattr >= data->memory && (uint8_t *)xattr < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fxattr(flag, name, xattr);
@@ -1154,11 +1105,11 @@
     case 301: { // int32_t Flink(char *oldname, char *newname)
         int valid = 0;
         uint32_t aoldname = ARG32;
-        char *oldname = (char *)(ram + aoldname);
-        valid |= (uint8_t *)oldname >= data->block && (uint8_t *)oldname < data->block + data->blockSize;
+        char *oldname = (char *)(memory + aoldname);
+        valid |= (uint8_t *)oldname >= data->memory && (uint8_t *)oldname < data->memory + data->memorySize;
         uint32_t anewname = ARG32;
-        char *newname = (char *)(ram + anewname);
-        valid |= (uint8_t *)newname >= data->block && (uint8_t *)newname < data->block + data->blockSize;
+        char *newname = (char *)(memory + anewname);
+        valid |= (uint8_t *)newname >= data->memory && (uint8_t *)newname < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Flink(oldname, newname);
@@ -1171,11 +1122,11 @@
     case 302: { // int32_t Fsymlink(char *oldname, char *newname)
         int valid = 0;
         uint32_t aoldname = ARG32;
-        char *oldname = (char *)(ram + aoldname);
-        valid |= (uint8_t *)oldname >= data->block && (uint8_t *)oldname < data->block + data->blockSize;
+        char *oldname = (char *)(memory + aoldname);
+        valid |= (uint8_t *)oldname >= data->memory && (uint8_t *)oldname < data->memory + data->memorySize;
         uint32_t anewname = ARG32;
-        char *newname = (char *)(ram + anewname);
-        valid |= (uint8_t *)newname >= data->block && (uint8_t *)newname < data->block + data->blockSize;
+        char *newname = (char *)(memory + anewname);
+        valid |= (uint8_t *)newname >= data->memory && (uint8_t *)newname < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fsymlink(oldname, newname);
@@ -1189,11 +1140,11 @@
         int valid = 0;
         int16_t bufsiz = ARG16;
         uint32_t abuf = ARG32;
-        char *buf = (char *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        char *buf = (char *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Freadlink(bufsiz, buf, name);
@@ -1207,8 +1158,8 @@
         int valid = 0;
         int16_t cmd = ARG16;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int32_t arg = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1222,8 +1173,8 @@
     case 305: { // int32_t Fchown(char *name, int16_t uid, int16_t gid)
         int valid = 0;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t uid = ARG16;
         int16_t gid = ARG16;
         int32_t res = 0;
@@ -1238,8 +1189,8 @@
     case 306: { // int32_t Fchmod(char *name, int16_t mode)
         int valid = 0;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t mode = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -1291,11 +1242,11 @@
         int valid = 0;
         int16_t sig = ARG16;
         uint32_t aact = ARG32;
-        struct sigaction *act = (struct sigaction *)(ram + aact);
-        valid |= (uint8_t *)act >= data->block && (uint8_t *)act < data->block + data->blockSize;
+        struct sigaction *act = (struct sigaction *)(memory + aact);
+        valid |= (uint8_t *)act >= data->memory && (uint8_t *)act < data->memory + data->memorySize;
         uint32_t aoact = ARG32;
-        struct sigaction *oact = (struct sigaction *)(ram + aoact);
-        valid |= (uint8_t *)oact >= data->block && (uint8_t *)oact < data->block + data->blockSize;
+        struct sigaction *oact = (struct sigaction *)(memory + aoact);
+        valid |= (uint8_t *)oact >= data->memory && (uint8_t *)oact < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Psigaction(sig, act, oact);
@@ -1326,8 +1277,8 @@
         int16_t pid = ARG16;
         int16_t flag = ARG16;
         uint32_t arusage = ARG32;
-        int32_t *rusage = (int32_t *)(ram + arusage);
-        valid |= (uint8_t *)rusage >= data->block && (uint8_t *)rusage < data->block + data->blockSize;
+        int32_t *rusage = (int32_t *)(memory + arusage);
+        valid |= (uint8_t *)rusage >= data->memory && (uint8_t *)rusage < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Pwaitpid(pid, flag, rusage);
@@ -1340,8 +1291,8 @@
     case 315: { // int32_t Dgetcwd(char *path, int16_t drv, int16_t size)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int16_t drv = ARG16;
         int16_t size = ARG16;
         int32_t res = 0;
@@ -1356,8 +1307,8 @@
     case 316: { // void Salert(char *msg)
         int valid = 0;
         uint32_t amsg = ARG32;
-        char *msg = (char *)(ram + amsg);
-        valid |= (uint8_t *)msg >= data->block && (uint8_t *)msg < data->block + data->blockSize;
+        char *msg = (char *)(memory + amsg);
+        valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         if (valid) {
           Salert(msg);
         }
@@ -1387,11 +1338,11 @@
     case 319: { // int32_t Suptime(int32_t *uptime, int32_t *loadaverage)
         int valid = 0;
         uint32_t auptime = ARG32;
-        int32_t *uptime = (int32_t *)(ram + auptime);
-        valid |= (uint8_t *)uptime >= data->block && (uint8_t *)uptime < data->block + data->blockSize;
+        int32_t *uptime = (int32_t *)(memory + auptime);
+        valid |= (uint8_t *)uptime >= data->memory && (uint8_t *)uptime < data->memory + data->memorySize;
         uint32_t aloadaverage = ARG32;
-        int32_t *loadaverage = (int32_t *)(ram + aloadaverage);
-        valid |= (uint8_t *)loadaverage >= data->block && (uint8_t *)loadaverage < data->block + data->blockSize;
+        int32_t *loadaverage = (int32_t *)(memory + aloadaverage);
+        valid |= (uint8_t *)loadaverage >= data->memory && (uint8_t *)loadaverage < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Suptime(uptime, loadaverage);
@@ -1406,8 +1357,8 @@
         int16_t request = ARG16;
         int16_t pid = ARG16;
         uint32_t aaddr = ARG32;
-        void *addr = (void *)(ram + aaddr);
-        valid |= (uint8_t *)addr >= data->block && (uint8_t *)addr < data->block + data->blockSize;
+        void *addr = (void *)(memory + aaddr);
+        valid |= (uint8_t *)addr >= data->memory && (uint8_t *)addr < data->memory + data->memorySize;
         int32_t data = ARG32;
         int16_t res = 0;
         if (valid) {
@@ -1422,12 +1373,12 @@
         int valid = 0;
         int16_t pid = ARG16;
         uint32_t astart = ARG32;
-        void *start = (void *)(ram + astart);
-        valid |= (uint8_t *)start >= data->block && (uint8_t *)start < data->block + data->blockSize;
+        void *start = (void *)(memory + astart);
+        valid |= (uint8_t *)start >= data->memory && (uint8_t *)start < data->memory + data->memorySize;
         int32_t size = ARG32;
         uint32_t aflags = ARG32;
-        int32_t *flags = (int32_t *)(ram + aflags);
-        valid |= (uint8_t *)flags >= data->block && (uint8_t *)flags < data->block + data->blockSize;
+        int32_t *flags = (int32_t *)(memory + aflags);
+        valid |= (uint8_t *)flags >= data->memory && (uint8_t *)flags < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Mvalidate(pid, start, size, flags);
@@ -1442,14 +1393,14 @@
         int16_t ln = ARG16;
         int32_t dirh = ARG32;
         uint32_t abuf = ARG32;
-        char *buf = (char *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        char *buf = (char *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         uint32_t axattr = ARG32;
-        XATTR *xattr = (XATTR *)(ram + axattr);
-        valid |= (uint8_t *)xattr >= data->block && (uint8_t *)xattr < data->block + data->blockSize;
+        XATTR *xattr = (XATTR *)(memory + axattr);
+        valid |= (uint8_t *)xattr >= data->memory && (uint8_t *)xattr < data->memory + data->memorySize;
         uint32_t axr = ARG32;
-        int32_t *xr = (int32_t *)(ram + axr);
-        valid |= (uint8_t *)xr >= data->block && (uint8_t *)xr < data->block + data->blockSize;
+        int32_t *xr = (int32_t *)(memory + axr);
+        valid |= (uint8_t *)xr >= data->memory && (uint8_t *)xr < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Dxreaddir(ln, dirh, buf, xattr, xr);
@@ -1498,8 +1449,8 @@
         int valid = 0;
         int16_t len = ARG16;
         uint32_t agidset = ARG32;
-        int16_t *gidset = (int16_t *)(ram + agidset);
-        valid |= (uint8_t *)gidset >= data->block && (uint8_t *)gidset < data->block + data->blockSize;
+        int16_t *gidset = (int16_t *)(memory + agidset);
+        valid |= (uint8_t *)gidset >= data->memory && (uint8_t *)gidset < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Pgetgroups(len, gidset);
@@ -1513,8 +1464,8 @@
         int valid = 0;
         int16_t len = ARG16;
         uint32_t agidset = ARG32;
-        int16_t *gidset = (int16_t *)(ram + agidset);
-        valid |= (uint8_t *)gidset >= data->block && (uint8_t *)gidset < data->block + data->blockSize;
+        int16_t *gidset = (int16_t *)(memory + agidset);
+        valid |= (uint8_t *)gidset >= data->memory && (uint8_t *)gidset < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Psetgroups(len, gidset);
@@ -1528,17 +1479,17 @@
         int valid = 0;
         int16_t which = ARG16;
         uint32_t ainterval = ARG32;
-        int32_t *interval = (int32_t *)(ram + ainterval);
-        valid |= (uint8_t *)interval >= data->block && (uint8_t *)interval < data->block + data->blockSize;
+        int32_t *interval = (int32_t *)(memory + ainterval);
+        valid |= (uint8_t *)interval >= data->memory && (uint8_t *)interval < data->memory + data->memorySize;
         uint32_t avalue = ARG32;
-        int32_t *value = (int32_t *)(ram + avalue);
-        valid |= (uint8_t *)value >= data->block && (uint8_t *)value < data->block + data->blockSize;
+        int32_t *value = (int32_t *)(memory + avalue);
+        valid |= (uint8_t *)value >= data->memory && (uint8_t *)value < data->memory + data->memorySize;
         uint32_t aointerval = ARG32;
-        int32_t *ointerval = (int32_t *)(ram + aointerval);
-        valid |= (uint8_t *)ointerval >= data->block && (uint8_t *)ointerval < data->block + data->blockSize;
+        int32_t *ointerval = (int32_t *)(memory + aointerval);
+        valid |= (uint8_t *)ointerval >= data->memory && (uint8_t *)ointerval < data->memory + data->memorySize;
         uint32_t aovalue = ARG32;
-        int32_t *ovalue = (int32_t *)(ram + aovalue);
-        valid |= (uint8_t *)ovalue >= data->block && (uint8_t *)ovalue < data->block + data->blockSize;
+        int32_t *ovalue = (int32_t *)(memory + aovalue);
+        valid |= (uint8_t *)ovalue >= data->memory && (uint8_t *)ovalue < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Tsetitimer(which, interval, value, ointerval, ovalue);
@@ -1551,8 +1502,8 @@
     case 330: { // int32_t Dchroot(char *path)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Dchroot(path);
@@ -1566,11 +1517,11 @@
         int valid = 0;
         int16_t flag = ARG16;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t astat = ARG32;
-        STAT *stat = (STAT *)(ram + astat);
-        valid |= (uint8_t *)stat >= data->block && (uint8_t *)stat < data->block + data->blockSize;
+        STAT *stat = (STAT *)(memory + astat);
+        valid |= (uint8_t *)stat >= data->memory && (uint8_t *)stat < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fstat64(flag, name, stat);
@@ -1587,8 +1538,8 @@
         int16_t handle = ARG16;
         int16_t seekmode = ARG16;
         uint32_t anewpos = ARG32;
-        int64_t *newpos = (int64_t *)(ram + anewpos);
-        valid |= (uint8_t *)newpos >= data->block && (uint8_t *)newpos < data->block + data->blockSize;
+        int64_t *newpos = (int64_t *)(memory + anewpos);
+        valid |= (uint8_t *)newpos >= data->memory && (uint8_t *)newpos < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fseek64(hioffset, lowoffset, handle, seekmode, newpos);
@@ -1603,8 +1554,8 @@
         int32_t hidev = ARG32;
         int32_t lowdev = ARG32;
         uint32_t akey = ARG32;
-        char *key = (char *)(ram + akey);
-        valid |= (uint8_t *)key >= data->block && (uint8_t *)key < data->block + data->blockSize;
+        char *key = (char *)(memory + akey);
+        valid |= (uint8_t *)key >= data->memory && (uint8_t *)key < data->memory + data->memorySize;
         int16_t cipher = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -1653,11 +1604,11 @@
     case 338: { // int32_t Dreadlabel(char *path, char *label, int16_t length)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         uint32_t alabel = ARG32;
-        char *label = (char *)(ram + alabel);
-        valid |= (uint8_t *)label >= data->block && (uint8_t *)label < data->block + data->blockSize;
+        char *label = (char *)(memory + alabel);
+        valid |= (uint8_t *)label >= data->memory && (uint8_t *)label < data->memory + data->memorySize;
         int16_t length = ARG16;
         int32_t res = 0;
         if (valid) {
@@ -1671,11 +1622,11 @@
     case 339: { // int32_t Dwritelabel(char *path, char *label)
         int valid = 0;
         uint32_t apath = ARG32;
-        char *path = (char *)(ram + apath);
-        valid |= (uint8_t *)path >= data->block && (uint8_t *)path < data->block + data->blockSize;
+        char *path = (char *)(memory + apath);
+        valid |= (uint8_t *)path >= data->memory && (uint8_t *)path < data->memory + data->memorySize;
         uint32_t alabel = ARG32;
-        char *label = (char *)(ram + alabel);
-        valid |= (uint8_t *)label >= data->block && (uint8_t *)label < data->block + data->blockSize;
+        char *label = (char *)(memory + alabel);
+        valid |= (uint8_t *)label >= data->memory && (uint8_t *)label < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Dwritelabel(path, label);
@@ -1699,11 +1650,11 @@
     case 341: { // int32_t Tgettimeofday(struct timeval *tv, timezone *tzp)
         int valid = 0;
         uint32_t atv = ARG32;
-        struct timeval *tv = (struct timeval *)(ram + atv);
-        valid |= (uint8_t *)tv >= data->block && (uint8_t *)tv < data->block + data->blockSize;
+        struct timeval *tv = (struct timeval *)(memory + atv);
+        valid |= (uint8_t *)tv >= data->memory && (uint8_t *)tv < data->memory + data->memorySize;
         uint32_t atzp = ARG32;
-        timezone *tzp = (timezone *)(ram + atzp);
-        valid |= (uint8_t *)tzp >= data->block && (uint8_t *)tzp < data->block + data->blockSize;
+        timezone *tzp = (timezone *)(memory + atzp);
+        valid |= (uint8_t *)tzp >= data->memory && (uint8_t *)tzp < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Tgettimeofday(tv, tzp);
@@ -1716,11 +1667,11 @@
     case 342: { // int32_t Tsettimeofday(struct timeval *tv, timezone *tzp)
         int valid = 0;
         uint32_t atv = ARG32;
-        struct timeval *tv = (struct timeval *)(ram + atv);
-        valid |= (uint8_t *)tv >= data->block && (uint8_t *)tv < data->block + data->blockSize;
+        struct timeval *tv = (struct timeval *)(memory + atv);
+        valid |= (uint8_t *)tv >= data->memory && (uint8_t *)tv < data->memory + data->memorySize;
         uint32_t atzp = ARG32;
-        timezone *tzp = (timezone *)(ram + atzp);
-        valid |= (uint8_t *)tzp >= data->block && (uint8_t *)tzp < data->block + data->blockSize;
+        timezone *tzp = (timezone *)(memory + atzp);
+        valid |= (uint8_t *)tzp >= data->memory && (uint8_t *)tzp < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Tsettimeofday(tv, tzp);
@@ -1733,11 +1684,11 @@
     case 343: { // int Tadjtime(struct timeval *delta, struct timeval *olddelta)
         int valid = 0;
         uint32_t adelta = ARG32;
-        struct timeval *delta = (struct timeval *)(ram + adelta);
-        valid |= (uint8_t *)delta >= data->block && (uint8_t *)delta < data->block + data->blockSize;
+        struct timeval *delta = (struct timeval *)(memory + adelta);
+        valid |= (uint8_t *)delta >= data->memory && (uint8_t *)delta < data->memory + data->memorySize;
         uint32_t aolddelta = ARG32;
-        struct timeval *olddelta = (struct timeval *)(ram + aolddelta);
-        valid |= (uint8_t *)olddelta >= data->block && (uint8_t *)olddelta < data->block + data->blockSize;
+        struct timeval *olddelta = (struct timeval *)(memory + aolddelta);
+        valid |= (uint8_t *)olddelta >= data->memory && (uint8_t *)olddelta < data->memory + data->memorySize;
         int res = 0;
         if (valid) {
           res = Tadjtime(delta, olddelta);
@@ -1771,8 +1722,8 @@
     case 346: { // int32_t Fpoll(POLLFD *fds, uint32_t nfds, uint32_t timeout)
         int valid = 0;
         uint32_t afds = ARG32;
-        POLLFD *fds = (POLLFD *)(ram + afds);
-        valid |= (uint8_t *)fds >= data->block && (uint8_t *)fds < data->block + data->blockSize;
+        POLLFD *fds = (POLLFD *)(memory + afds);
+        valid |= (uint8_t *)fds >= data->memory && (uint8_t *)fds < data->memory + data->memorySize;
         uint32_t nfds = ARG32;
         uint32_t timeout = ARG32;
         int32_t res = 0;
@@ -1788,8 +1739,8 @@
         int valid = 0;
         int16_t handle = ARG16;
         uint32_t aiov = ARG32;
-        struct iovec *iov = (struct iovec *)(ram + aiov);
-        valid |= (uint8_t *)iov >= data->block && (uint8_t *)iov < data->block + data->blockSize;
+        struct iovec *iov = (struct iovec *)(memory + aiov);
+        valid |= (uint8_t *)iov >= data->memory && (uint8_t *)iov < data->memory + data->memorySize;
         int32_t niov = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1804,8 +1755,8 @@
         int valid = 0;
         int16_t handle = ARG16;
         uint32_t aiov = ARG32;
-        struct iovec *iov = (struct iovec *)(ram + aiov);
-        valid |= (uint8_t *)iov >= data->block && (uint8_t *)iov < data->block + data->blockSize;
+        struct iovec *iov = (struct iovec *)(memory + aiov);
+        valid |= (uint8_t *)iov >= data->memory && (uint8_t *)iov < data->memory + data->memorySize;
         int32_t niov = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1820,8 +1771,8 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t astat = ARG32;
-        STAT *stat = (STAT *)(ram + astat);
-        valid |= (uint8_t *)stat >= data->block && (uint8_t *)stat < data->block + data->blockSize;
+        STAT *stat = (STAT *)(memory + astat);
+        valid |= (uint8_t *)stat >= data->memory && (uint8_t *)stat < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Ffstat64(fd, stat);
@@ -1834,18 +1785,18 @@
     case 350: { // int32_t Psysctl(int32_t *name, uint32_t namelen, void *old, uint32_t *oldlenp, void *new, uint32_t newlen)
         int valid = 0;
         uint32_t aname = ARG32;
-        int32_t *name = (int32_t *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        int32_t *name = (int32_t *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t namelen = ARG32;
         uint32_t aold = ARG32;
-        void *old = (void *)(ram + aold);
-        valid |= (uint8_t *)old >= data->block && (uint8_t *)old < data->block + data->blockSize;
+        void *old = (void *)(memory + aold);
+        valid |= (uint8_t *)old >= data->memory && (uint8_t *)old < data->memory + data->memorySize;
         uint32_t aoldlenp = ARG32;
-        uint32_t *oldlenp = (uint32_t *)(ram + aoldlenp);
-        valid |= (uint8_t *)oldlenp >= data->block && (uint8_t *)oldlenp < data->block + data->blockSize;
+        uint32_t *oldlenp = (uint32_t *)(memory + aoldlenp);
+        valid |= (uint8_t *)oldlenp >= data->memory && (uint8_t *)oldlenp < data->memory + data->memorySize;
         uint32_t anew = ARG32;
-        void *new = (void *)(ram + anew);
-        valid |= (uint8_t *)new >= data->block && (uint8_t *)new < data->block + data->blockSize;
+        void *new = (void *)(memory + anew);
+        valid |= (uint8_t *)new >= data->memory && (uint8_t *)new < data->memory + data->memorySize;
         uint32_t newlen = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1873,8 +1824,8 @@
         int32_t type = ARG32;
         int32_t protocol = ARG32;
         uint32_t afds = ARG32;
-        int16_t *fds = (int16_t *)(ram + afds);
-        valid |= (uint8_t *)fds >= data->block && (uint8_t *)fds < data->block + data->blockSize;
+        int16_t *fds = (int16_t *)(memory + afds);
+        valid |= (uint8_t *)fds >= data->memory && (uint8_t *)fds < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fsocketpair(domain, type, protocol, fds);
@@ -1888,11 +1839,11 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t aanamelen = ARG32;
-        uint32_t *anamelen = (uint32_t *)(ram + aanamelen);
-        valid |= (uint8_t *)anamelen >= data->block && (uint8_t *)anamelen < data->block + data->blockSize;
+        uint32_t *anamelen = (uint32_t *)(memory + aanamelen);
+        valid |= (uint8_t *)anamelen >= data->memory && (uint8_t *)anamelen < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Faccept(fd, name, anamelen);
@@ -1906,8 +1857,8 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t anamelen = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1922,8 +1873,8 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t anamelen = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1948,8 +1899,8 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t amsg = ARG32;
-        struct msghdr *msg = (struct msghdr *)(ram + amsg);
-        valid |= (uint8_t *)msg >= data->block && (uint8_t *)msg < data->block + data->blockSize;
+        struct msghdr *msg = (struct msghdr *)(memory + amsg);
+        valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         int32_t flags = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1964,8 +1915,8 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t amsg = ARG32;
-        struct msghdr *msg = (struct msghdr *)(ram + amsg);
-        valid |= (uint8_t *)msg >= data->block && (uint8_t *)msg < data->block + data->blockSize;
+        struct msghdr *msg = (struct msghdr *)(memory + amsg);
+        valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         int32_t flags = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -1980,16 +1931,16 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t abuf = ARG32;
-        void *buf = (void *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        void *buf = (void *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t buflen = ARG32;
         int32_t flags = ARG32;
         uint32_t ato = ARG32;
-        struct sockaddr *to = (struct sockaddr *)(ram + ato);
-        valid |= (uint8_t *)to >= data->block && (uint8_t *)to < data->block + data->blockSize;
+        struct sockaddr *to = (struct sockaddr *)(memory + ato);
+        valid |= (uint8_t *)to >= data->memory && (uint8_t *)to < data->memory + data->memorySize;
         uint32_t aaddrlen = ARG32;
-        uint32_t *addrlen = (uint32_t *)(ram + aaddrlen);
-        valid |= (uint8_t *)addrlen >= data->block && (uint8_t *)addrlen < data->block + data->blockSize;
+        uint32_t *addrlen = (uint32_t *)(memory + aaddrlen);
+        valid |= (uint8_t *)addrlen >= data->memory && (uint8_t *)addrlen < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Frecvfrom(fd, buf, buflen, flags, to, addrlen);
@@ -2003,13 +1954,13 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t abuf = ARG32;
-        void *buf = (void *)(ram + abuf);
-        valid |= (uint8_t *)buf >= data->block && (uint8_t *)buf < data->block + data->blockSize;
+        void *buf = (void *)(memory + abuf);
+        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
         int32_t buflen = ARG32;
         int32_t flags = ARG32;
         uint32_t ato = ARG32;
-        struct sockaddr *to = (struct sockaddr *)(ram + ato);
-        valid |= (uint8_t *)to >= data->block && (uint8_t *)to < data->block + data->blockSize;
+        struct sockaddr *to = (struct sockaddr *)(memory + ato);
+        valid |= (uint8_t *)to >= data->memory && (uint8_t *)to < data->memory + data->memorySize;
         uint32_t addrlen = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -2026,8 +1977,8 @@
         int32_t level = ARG32;
         int32_t name = ARG32;
         uint32_t aval = ARG32;
-        void *val = (void *)(ram + aval);
-        valid |= (uint8_t *)val >= data->block && (uint8_t *)val < data->block + data->blockSize;
+        void *val = (void *)(memory + aval);
+        valid |= (uint8_t *)val >= data->memory && (uint8_t *)val < data->memory + data->memorySize;
         uint32_t valsize = ARG32;
         int32_t res = 0;
         if (valid) {
@@ -2044,11 +1995,11 @@
         int32_t level = ARG32;
         int32_t name = ARG32;
         uint32_t aval = ARG32;
-        void *val = (void *)(ram + aval);
-        valid |= (uint8_t *)val >= data->block && (uint8_t *)val < data->block + data->blockSize;
+        void *val = (void *)(memory + aval);
+        valid |= (uint8_t *)val >= data->memory && (uint8_t *)val < data->memory + data->memorySize;
         uint32_t avalsize = ARG32;
-        uint32_t *valsize = (uint32_t *)(ram + avalsize);
-        valid |= (uint8_t *)valsize >= data->block && (uint8_t *)valsize < data->block + data->blockSize;
+        uint32_t *valsize = (uint32_t *)(memory + avalsize);
+        valid |= (uint8_t *)valsize >= data->memory && (uint8_t *)valsize < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fgetsockopt(fd, level, name, val, valsize);
@@ -2062,11 +2013,11 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aasa = ARG32;
-        struct sockaddr *asa = (struct sockaddr *)(ram + aasa);
-        valid |= (uint8_t *)asa >= data->block && (uint8_t *)asa < data->block + data->blockSize;
+        struct sockaddr *asa = (struct sockaddr *)(memory + aasa);
+        valid |= (uint8_t *)asa >= data->memory && (uint8_t *)asa < data->memory + data->memorySize;
         uint32_t aalen = ARG32;
-        uint32_t *alen = (uint32_t *)(ram + aalen);
-        valid |= (uint8_t *)alen >= data->block && (uint8_t *)alen < data->block + data->blockSize;
+        uint32_t *alen = (uint32_t *)(memory + aalen);
+        valid |= (uint8_t *)alen >= data->memory && (uint8_t *)alen < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fgetpeername(fd, asa, alen);
@@ -2080,11 +2031,11 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aasa = ARG32;
-        struct sockaddr *asa = (struct sockaddr *)(ram + aasa);
-        valid |= (uint8_t *)asa >= data->block && (uint8_t *)asa < data->block + data->blockSize;
+        struct sockaddr *asa = (struct sockaddr *)(memory + aasa);
+        valid |= (uint8_t *)asa >= data->memory && (uint8_t *)asa < data->memory + data->memorySize;
         uint32_t aalen = ARG32;
-        uint32_t *alen = (uint32_t *)(ram + aalen);
-        valid |= (uint8_t *)alen >= data->block && (uint8_t *)alen < data->block + data->blockSize;
+        uint32_t *alen = (uint32_t *)(memory + aalen);
+        valid |= (uint8_t *)alen >= data->memory && (uint8_t *)alen < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Fgetsockname(fd, asa, alen);
@@ -2107,8 +2058,8 @@
     case 381: { // int32_t Maccess(void *start, int32_t size, int16_t mode)
         int valid = 0;
         uint32_t astart = ARG32;
-        void *start = (void *)(ram + astart);
-        valid |= (uint8_t *)start >= data->block && (uint8_t *)start < data->block + data->blockSize;
+        void *start = (void *)(memory + astart);
+        valid |= (uint8_t *)start >= data->memory && (uint8_t *)start < data->memory + data->memorySize;
         int32_t size = ARG32;
         int16_t mode = ARG16;
         int32_t res = 0;
@@ -2123,8 +2074,8 @@
     case 384: { // int32_t Fchown16(char *name, int16_t uid, int16_t gid, int16_t flag)
         int valid = 0;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t uid = ARG16;
         int16_t gid = ARG16;
         int16_t flag = ARG16;
@@ -2167,8 +2118,8 @@
     case 1296: { // int32_t Dxopendir(char *name, int16_t flag)
         int valid = 0;
         uint32_t aname = ARG32;
-        char *name = (char *)(ram + aname);
-        valid |= (uint8_t *)name >= data->block && (uint8_t *)name < data->block + data->blockSize;
+        char *name = (char *)(memory + aname);
+        valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         int16_t flag = ARG16;
         int32_t res = 0;
         if (valid) {

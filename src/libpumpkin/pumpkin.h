@@ -410,6 +410,7 @@ void EvtGetEventUs(EventType *event, Int32 timeoutUs);
 void EvtPrintEvent(char *op, EventType *event);
 void EvtReturnPenMove(Boolean penMove);
 void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *pRight);
+Boolean EvtKeyEventAvail(void);
 
 #define ErrFatalDisplayEx(msg, finish) ErrDisplayFileLineMsgEx(__FILE__, __FUNCTION__, (UInt16) __LINE__, msg, finish)
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);
@@ -520,6 +521,7 @@ Err KbdDrawKeyboard(KeyboardType kbd, Boolean upper, WinHandle wh, RectangleType
 char *VFSGetMount(void);
 Err VFSChangeDir(UInt16 volRefNum, char *path);
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
+int VFSAddVolume(char *volume);
 
 void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);
 void AbtShowAboutPumpkin(UInt32 creator);
@@ -553,7 +555,7 @@ int SysInitModule(void);
 int SysFinishModule(void);
 int NotInitModule(void);
 int NotFinishModule(void);
-int VFSInitModule(char *card);
+int VFSInitModule(void);
 int VFSFinishModule(void);
 int KeyboardInitModule(void);
 int KeyboardFinishModule(void);
@@ -582,9 +584,13 @@ int pumpkin_script_init_env(int pe);
 int pumpkin_script_finish_env(void);
 
 void *pumpkin_gettable(uint32_t n);
-void pumpkin_setio(int (*getchar)(void *iodata), void (*putchar)(void *iodata, char c),
-       void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
+void pumpkin_setio(
+  int (*getchar)(void *iodata),
+  int (*haschar)(void *iodata),
+  void (*putchar)(void *iodata, char c),
+  void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 int pumpkin_getchar(void);
+int pumpkin_haschar(void);
 void pumpkin_putchar(char c);
 void pumpkin_write(char *s, uint32_t len);
 void pumpkin_puts(char *s);

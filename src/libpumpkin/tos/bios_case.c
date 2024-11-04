@@ -1,8 +1,8 @@
     case 0: { // void Getmpb(MPB *ptr)
         int valid = 0;
         uint32_t aptr = ARG32;
-        MPB *ptr = (MPB *)(ram + aptr);
-        valid |= (uint8_t *)ptr >= data->block && (uint8_t *)ptr < data->block + data->blockSize;
+        MPB *ptr = (MPB *)(memory + aptr);
+        valid |= (uint8_t *)ptr >= data->memory && (uint8_t *)ptr < data->memory + data->memorySize;
         if (valid) {
           Getmpb(ptr);
         }
@@ -40,8 +40,8 @@
         int valid = 0;
         int16_t rwflag = ARG16;
         uint32_t abuff = ARG32;
-        void *buff = (void *)(ram + abuff);
-        valid |= (uint8_t *)buff >= data->block && (uint8_t *)buff < data->block + data->blockSize;
+        void *buff = (void *)(memory + abuff);
+        valid |= (uint8_t *)buff >= data->memory && (uint8_t *)buff < data->memory + data->memorySize;
         int16_t cnt = ARG16;
         int16_t recnr = ARG16;
         int16_t dev = ARG16;
@@ -59,8 +59,8 @@
         int valid = 0;
         int16_t number = ARG16;
         uint32_t avec = ARG32;
-        void *vec = (void *)(ram + avec);
-        valid |= (uint8_t *)vec >= data->block && (uint8_t *)vec < data->block + data->blockSize;
+        void *vec = (void *)(memory + avec);
+        valid |= (uint8_t *)vec >= data->memory && (uint8_t *)vec < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
           res = Setexc(number, vec);
@@ -82,7 +82,7 @@
         int16_t dev = ARG16;
         BPB *res = NULL;
         res = Getbpb(dev);
-        uint32_t ares = res ? ((uint8_t *)res - ram) : 0;
+        uint32_t ares = res ? ((uint8_t *)res - memory) : 0;
         m68k_set_reg(M68K_REG_D0, ares);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Getbpb(%d): 0x%08X", dev, ares);
       }

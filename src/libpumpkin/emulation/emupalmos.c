@@ -271,22 +271,24 @@ uint16_t cpu_read_word(uint32_t address) {
 
 uint32_t cpu_read_long(uint32_t address) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint32_t value;
+  uint32_t value = 0;
   uint8_t *ram;
 
   if (state->read_long) return state->read_long(address);
 
   if (address >= 0xFFFFF000) {
-    switch (address) {
-      case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
-        WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-        value = state->screenStart;
-        debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
-        break;
-      default:
-        debug(DEBUG_INFO, "EmuPalmOS", "read 32 bits from register 0x%08X", address);
-        value = 0;
-        break;
+    if (state->m68k_state.s_m68ki_cpu.palmos) {
+      switch (address) {
+        case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
+          WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
+          value = state->screenStart;
+          debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
+          break;
+        default:
+          debug(DEBUG_INFO, "EmuPalmOS", "read 32 bits from register 0x%08X", address);
+          value = 0;
+          break;
+      }
     }
   } else {
     ram = pumpkin_heap_base();

@@ -17,12 +17,12 @@ if [ -z "$prefix" ]; then
   exit 0
 fi
 
-rm -f $prefix"_proto1.h" $prefix"_case.c" $prefix"_impl1.c"
+rm -f $prefix"_proto1.h" $prefix"_case1.c" $prefix"_impl1.c"
 
 awk -v prefix=$prefix '
 BEGIN {
   filename_proto = prefix "_proto1.h";
-  filename_case  = prefix "_case.c";
+  filename_case  = prefix "_case1.c";
   filename_impl  = prefix "_impl1.c";
 
   print "#include <PalmOS.h>" >> filename_impl;

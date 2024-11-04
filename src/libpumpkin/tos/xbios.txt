@@ -1,0 +1,126 @@
+0 void Initmouse 3 int16_t type MOUSE@* par void@* mousevec
+1 void@* Ssbrk 1 int16_t count
+2 void@* Physbase 0
+3 void@* Logbase 0
+4 int16_t Getrez 0
+5 void VsetScreen 4 void@* laddr void@* paddr int16_t rezz int16_t mode
+6 void Setpalette 1 void@* pallptr
+7 int16_t Setcolor 2 int16_t colornum int16_t color
+8 int16_t Floprd 7 void@* buf int32_t filler int16_t devno int16_t sectno int16_t trackno int16_t sideno int16_t count
+9 int16_t Flopwr 7 void@* buf int32_t filler int16_t devno int16_t sectno int16_t trackno int16_t sideno int16_t count
+10 int16_t Flopfmt void@* buf int32_t filler int16_t devno int16_t spt int16_t trackno int16_t sideno int16_t interlv int32_t magic int16_t virgin
+11 void Dbmsg 3 int16_t rsrvd int16_t msg_num int32_t msg_arg
+12 void Midiws 2 int16_t cnt void@* ptr
+13 void Mfpint 2 int16_t number void@* vector
+14 IOREC@* Iorec 1 int16_t dev
+15 int32_t Rsconf 6 int16_t baud int16_t ctr int16_t ucr int16_t rsr int16_t tsr int16_t scr
+16 KEYTAB@* Keytbl 3 void@* unshift void@* shift void@* capslock
+17 int32_t Random 0
+18 void Protobt 4 void@* buf int32_t serialno int16_t disktype int16_t execflag
+19 int16_t Flopver 7 void@* buf int32_t filler int16_t devno int16_t sectno int16_t trackno int16_t sideno int16_t count
+20 void Scrdmp 0
+21 int16_t Cursconf 2 int16_t func int16_t rate
+22 void Settime 1 uint32_t time
+23 uint32_t Gettime 0
+24 void Bioskeys 0
+25 void Ikbdws 2 int16_t count int8_t@* ptr
+26 void Jdisint 1 int16_t number
+27 void Jenabint 1 int16_t number
+28 int8_t Giaccess 2 int16_t dat int16_t regno
+29 void Offgibit 1 int16_t bitno
+30 void Ongibit i1 nt16_t bitno
+31 void Xbtimer 4 int16_t timer int16_t control int16_t dat void@* vector
+32 void@* Dosound 1 int8_t@* buf
+33 int16_t Setprt 1 int16_t config
+34 KBDVBASE@* Kbdvbase 0
+35 int16_t Kbrate 2 int16_t initial int16_t repeat
+36 int16_t Prtblk 1 PBDEF@* par
+37 void Vsync 0
+38 int32_t Supexec 1 void@* func
+39 void Puntaes 0
+41 int16_t Floprate 2 int16_t devno int16_t newrate
+42 int16_t DMAread 4 int32_t sector int16_t count void@* buffer int16_t devno
+43 int16_t DMAwrite 4 int32_t sector int16_t count void@* buffer int16_t devno
+#43 void Janus 1 int16_t mode
+44 int32_t Bconmap 1 int16_t devno
+46 int16_t NVMaccess 4 int16_t op int16_t start int16_t count int8_t@* buffer
+48 void Metainit 1 META_INFO_1@* buffer
+49 int32_t Metaopen 2 int16_t drive META_DRVINFO@* buffer
+50 int32_t Metaclose 1 int16_t drive
+51 int32_t Metaread 4 int16_t drive void@* buffer int32_t blockno int16_t count
+52 int32_t Metawrite 4 int16_t drive void@* buffer int32_t blockno int16_t count
+53 int32_t Metaseek 2 int16_t drive int32_t blockno
+54 int32_t Metastatus 2 int16_t drive void@* buffer
+55 int32_t Metaioctl 4 int16_t drive int32_t magic int16_t opcode void@* buffer
+59 int32_t Metastartaudio 3 int16_t drive int16_t flag uint8_t@* bytearray
+60 int32_t Metastopaudio 1 int16_t drive
+61 int32_t Metasetsongtime 4 int16_t drive int16_t repeat int32_t starttime int32_t endtime
+62 int32_t Metagettoc 3 int16_t drive int16_t flag CD_TOC_ENTRY@* buffer
+63 int32_t Metadiscinfo 2 int16_t drive CD_DISC_INFO@* p
+64 int16_t Blitmode 1 int16_t mode
+80 int16_t EsetShift 1 int16_t shftMode
+81 int16_t EgetShift 0
+82 int16_t EsetBank 1 int16_t bankNum
+83 int16_t EsetColor 2 int16_t colorNum int16_t color
+84 void EsetPalette 3 int16_t colorNum int16_t count int16_t@* palettePtr
+85 void EgetPalette 3 int16_t colorNum int16_t count int16_t@* palettePtr
+86 int16_t EsetGray 1 int16_t sw
+87 int16_t EsetSmear 1 int16_t sw
+88 int16_t VsetMode 1 int16_t mode
+89 int16_t mon_type 0
+90 void VsetSync 1 int16_t flag
+91 int32_t VgetSize 1 int16_t mode
+93 void VsetRGB 3 int16_t index int16_t count int32_t@* array
+94 void VgetRGB 3 int16_t index int16_t count int32_t@* array
+95 int16_t ValidMode 1 int16_t mode
+96 void Dsp_DoBlock 4 int8_t@* data_in int32_t size_in int8_t@* data_out int32_t size_out
+97 void Dsp_BlkHandShake 4 int8_t@* data_in int32_t size_in int8_t@* data_out int32_t size_out
+98 void Dsp_BlkUnpacked 4 int32_t@* data_in int32_t size_in int32_t@* data_out int32_t size_out
+99 void Dsp_InStream 4 int8_t@* data_in int32_t block_size int32_t num_blocks int32_t@* blocks_done
+100 void Dsp_OutStream 4 int8_t@* data_out int32_t block_size int32_t num_blocks int32_t@* blocks_done
+101 void Dsp_IOStream 6 int8_t@* data_in int8_t@* data_out int32_t block_insize int32_t block_outsize int32_t num_blocks int32_t@* blocks_done
+102 void Dsp_RemoveInterrupts 1 int16_t mask
+103 int16_t Dsp_GetWordSize 0
+104 int16_t Dsp_Lock 0
+105 void Dsp_Unlock 0
+106 void Dsp_Available 2 int32_t@* xavailable int32_t@* yavailable
+107 int16_t Dsp_Reserve 2 int32_t xreserve int32_t yreserve
+108 int16_t Dsp_LoadProg 3 int8_t@* file int16_t ability int8_t@* buffer
+109 void Dsp_ExecProg 3 int8_t@* codeptr int32_t codesize int16_t ability
+110 void Dsp_ExecBoot 3 int8_t@* codeptr int32_t codesize int16_t ability
+111 int32_t Dsp_LodToBinary 2 int8_t@* file int8_t@* codeptr
+112 void Dsp_TriggerHC 1 int16_t vector
+113 int16_t Dsp_RequestUniqueAbility 0
+114 int16_t Dsp_GetProgAbility 0
+115 void Dsp_FlushSubroutines 0
+116 int16_t Dsp_LoadSubroutine 3 int8_t@* codeptr int32_t codesize int16_t ability
+117 int16_t Dsp_InqSubrAbility 1 int16_t ability
+118 int16_t Dsp_RunSubroutine 1 int16_t handle
+119 int16_t Dsp_Hf0 1 int16_t flag
+120 int16_t Dsp_Hf1 1 int16_t flag
+121 int16_t Dsp_Hf2 0
+122 int16_t Dsp_Hf3 0
+123 void Dsp_BlkWords 4 void@* data_in int32_t size_in void@* data_out int32_t size_out
+124 void Dsp_BlkBytes 4 void@* data_in int32_t size_in void@* data_out int32_t size_out
+125 int8_t Dsp_HStat 0
+126 void Dsp_SetVectors 2 void@* receiver void@* transmitter
+127 void Dsp_MultBlocks 4 int32_t numsend int32_t numreceive DSPBLOCK@* sendblocks DSPBLOCK@* receiveblocks
+128 int32_t locksnd 0
+129 int32_t unlocksnd 0
+130 int32_t soundcmd 2 int16_t mode int16_t dat
+131 int32_t setbuffer 3 int16_t reg void@* begaddr void@* endaddr
+132 int32_t setmode 1 int16_t mode
+133 int32_t settracks 2 int16_t playtracks int16_t rectracks
+134 int32_t setmontracks 1 int16_t montrack
+135 int32_t setinterrupt 2 int16_t src_inter int16_t cause
+136 int32_t buffoper 1 int16_t mode
+137 int32_t dsptristate 2 int16_t dspxmit int16_t dsprec
+138 int32_t gpio 2 int16_t mode int16_t dat
+139 int32_t devconnect 5 int16_t src int16_t dst int16_t srcclk int16_t prescale int16_t protocol
+140 int16_t sndstatus 1 int16_t reset
+141 int32_t buffptr 1 int32_t@* ptr
+150 void VsetMask 3 int32_t ormask int32_t andmask int16_t overlay
+160 int32_t CacheCtrl 2 int16_t OpCode int16_t Param
+161 int32_t WdgCtrl 1 int16_t OpCode
+162 int32_t Xbios 3 int16_t command int16_t device int32_t param
+165 int32_t WavePlay 4 int16_t flags int32_t rate int32_t sptr int32_t slen

@@ -243,6 +243,10 @@ static int command_getchar(void *data) {
   return c;
 }
 
+static int command_haschar(void *data) {
+  return EvtKeyEventAvail();
+}
+
 static command_internal_data_t *command_get_data(void) {
   command_data_t *data = pumpkin_get_data();
   return data->idata;
@@ -1864,6 +1868,7 @@ static Err StartApplication(void *param) {
   data->idata = idata;
   pumpkin_set_data(data);
   plibc_init();
+  plibc_dup(2); // reserve file desriptor 3 (2 is duplicated to 3)
 
   prefsSize = sizeof(command_prefs_t);
   if (PrefGetAppPreferences(AppID, 1, &idata->prefs, &prefsSize, true) == noPreferenceFound) {
@@ -1916,7 +1921,7 @@ static Err StartApplication(void *param) {
     command_load_external_commands(idata);
   }
 
-  pumpkin_setio(command_getchar, command_putchar, command_setcolor, idata);
+  pumpkin_setio(command_getchar, command_haschar, command_putchar, command_setcolor, idata);
 
   FrmGotoForm(MainForm);
 
@@ -1971,6 +1976,7 @@ static void StopApplication(void) {
   FrmCloseAllForms();
   PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
 
+  plibc_close(3);
   plibc_finish();
   pumpkin_script_finish_env();
   pumpkin_script_destroy(idata->pe);

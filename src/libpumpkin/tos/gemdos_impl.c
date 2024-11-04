@@ -59,7 +59,7 @@ int32_t Cnecin(void) {
 }
 
 int32_t Cconws(uint8_t *buf) {
-  debug(DEBUG_ERROR, "TOS", "Cconws not implemented");
+  if (buf) plibc_write(1, buf, sys_strlen((char *)buf));
   return 0;
 }
 
@@ -74,8 +74,18 @@ int32_t Cconis(void) {
 }
 
 int32_t Dsetdrv(int16_t drv) {
-  debug(DEBUG_ERROR, "TOS", "Dsetdrv not implemented");
-  return 0;
+  // Set the current drive and returns a bit-map of mounted drives
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  int32_t r = 0x07; // bitmap of drives a, b and c
+
+  switch (drv) {
+    case 0: data->volume = data->a; break;
+    case 1: data->volume = data->b; break;
+    case 2: data->volume = data->c; break;
+  }
+
+  return r;
 }
 
 int16_t Cconos(void) {
@@ -104,22 +114,22 @@ int32_t Maddalt(void *start, int32_t size) {
 }
 
 int32_t Srealloc(int32_t len) {
+  // allocate screen memory (TOS 4)
+  // returns (if len has the value -1) the maximum possible size of the screen memory
   debug(DEBUG_ERROR, "TOS", "Srealloc not implemented");
   return 0;
 }
 
-int32_t Slbopen(char *name, char *path, int32_t min_ver, SHARED_LIB *sl, SLB_EXEC *fn) {
-  debug(DEBUG_ERROR, "TOS", "Slbopen not implemented");
-  return 0;
-}
-
-int32_t Slbclose(SHARED_LIB *sl) {
-  debug(DEBUG_ERROR, "TOS", "Slbclose not implemented");
-  return 0;
-}
-
 int16_t Dgetdrv(void) {
-  debug(DEBUG_ERROR, "TOS", "Dgetdrv not implemented");
+  // returns the current drive number (A=0, B=1, etc)
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
+  if (data->volume == data->a) return 0;
+  if (data->volume == data->b) return 1;
+  if (data->volume == data->c) return 2;
+
+  // should not happen
   return 0;
 }
 
@@ -127,35 +137,52 @@ void Fsetdta(DTA *buf) {
   debug(DEBUG_ERROR, "TOS", "Fsetdta not implemented");
 }
 
-int32_t Super(void *stack) {
-  debug(DEBUG_ERROR, "TOS", "Super not implemented");
-  return 0;
-}
-
 uint16_t Tgetdate(void) {
-  debug(DEBUG_ERROR, "TOS", "Tgetdate not implemented");
-  return 0;
+  // obtains the current date
+  // returns a uint16_t number with the date, which is coded as follows:
+  // Bits Meaning
+  // 0-4  Day (1-31)
+  // 5-8  Month (1-12)
+  // 9-15 Year (0-119, 0=1980) 
+
+  DateTimeType dateTime;
+  UInt32 seconds = TimGetSeconds();
+  TimSecondsToDateTime(seconds, &dateTime);
+  uint16_t d = dateTime.day | (dateTime.month << 5) | ((dateTime.year - 1980) << 9);
+
+  return d;
 }
 
 int16_t Tsetdate(uint16_t date) {
   debug(DEBUG_ERROR, "TOS", "Tsetdate not implemented");
-  return 0;
+  return -1;
 }
 
 uint32_t Tgettime(void) {
-  debug(DEBUG_ERROR, "TOS", "Tgettime not implemented");
-  return 0;
+  // returns the system time, coded as follows:
+  // Bits  Meaning
+  // 0-4   Seconds in units of two (0-29)
+  // 5-10  Minutes (0-59)
+  // 11-15 Hours (0-23) 
+
+  DateTimeType dateTime;
+  UInt32 seconds = TimGetSeconds();
+  TimSecondsToDateTime(seconds, &dateTime);
+  uint32_t t = dateTime.second | (dateTime.minute << 5) | (dateTime.hour << 11);
+
+  return t;
 }
 
 int16_t Tsettime(uint16_t time) {
   debug(DEBUG_ERROR, "TOS", "Tsettime not implemented");
-  return 0;
+  return -1;
 }
 
 DTA *Fgetdta(void) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  return (DTA *)(data->block + 0x80);
+
+  return (DTA *)(data->memory + 0x80);
 }
 
 uint16_t Sversion(void) {
@@ -166,37 +193,70 @@ void Ptermres(int32_t keepcnt, int16_t retcode) {
   emupalmos_finish(1);
 }
 
-int32_t Sconfig(int16_t mode, int32_t flags) {
-  debug(DEBUG_ERROR, "TOS", "Sconfig not implemented");
-  return 0;
-}
-
 int16_t Dfree(DISKINFO *buf, int16_t driveno) {
   debug(DEBUG_ERROR, "TOS", "Dfree not implemented");
   return 0;
 }
 
 int32_t Dcreate(char *path) {
-  debug(DEBUG_ERROR, "TOS", "Dcreate not implemented");
-  return 0;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
+  return path ? plibc_mkdir(data->volume, path) : -1;
 }
 
 int32_t Ddelete(char *path) {
-  debug(DEBUG_ERROR, "TOS", "Fdelete not implemented");
-  return 0;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
+  return path ? plibc_remove(data->volume, path) : -1;
 }
 
 int16_t Dsetpath(char *path) {
-  debug(DEBUG_ERROR, "TOS", "Dsetpath not implemented");
-  return 0;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  char *s;
+  int i;
+  int16_t r = -1;
+
+  if (path) {
+    s = sys_strdup(path);
+    for (i = 0; path[i]; i++) {
+      s[i] = path[i] == '\\' ? '/' : path[i];
+    }
+    r = plibc_chdir(data->volume, s);
+    sys_free(s);
+  }
+
+  return r;
 }
 
 int16_t Fcreate(char *fname, int16_t attr) {
-  debug(DEBUG_ERROR, "TOS", "Fcreate not implemented");
+  // creates a new file, or truncates an existing one
+  // attr   File attributes:
+  // bit 0: File is write-protected
+  // bit 1: File is hidden
+  // bit 2: File is a system file
+  // bit 3: Volume label (diskette name)
+  // bit 5: Archive bit 
+
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  int16_t handle;
+
+  if (fname) {
+    if ((handle = plibc_open(data->volume, fname, PLIBC_CREAT | PLIBC_TRUNC)) != -1) {
+      plibc_close(handle);
+    }
+  }
+
+  // XXX what should be returned ?
   return 0;
 }
 
 int32_t Fopen(char *fname, int16_t mode) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
   int32_t handle = -1;
 
   if (fname) {
@@ -212,7 +272,8 @@ int32_t Fopen(char *fname, int16_t mode) {
       case 2: flags = PLIBC_RDWR; break;
       default: flags = PLIBC_RDONLY; break;
     }
-    handle = plibc_open(fname, flags);
+    handle = plibc_open(data->volume, fname, flags);
+    debug(DEBUG_TRACE, "TOS", "Fopen(\"%s\", %d): %d", fname, mode, handle);
   }
 
   return handle;
@@ -272,7 +333,10 @@ int32_t Fwrite(int16_t handle, int32_t count, void *buf) {
 }
 
 int16_t Fdelete(char *fname) {
-  return fname ? plibc_remove(fname) : -1;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
+  return fname ? plibc_remove(data->volume, fname) : -1;
 }
 
 int32_t Fseek(int32_t offset, int16_t handle, int16_t seekmode) {
@@ -298,48 +362,54 @@ int16_t Fattrib(char *filename, int16_t wflag, int16_t attrib) {
 }
 
 void *Mxalloc(int32_t amount, int16_t mode) {
-  debug(DEBUG_ERROR, "TOS", "Mxalloc not implemented");
-  return 0;
-}
-
-int16_t Fdup(int16_t handle) {
-  debug(DEBUG_ERROR, "TOS", "Fdup not implemented");
-  return 0;
-}
-
-int16_t Fforce(int16_t stdh, int16_t nonstdh) {
-  debug(DEBUG_ERROR, "TOS", "Fforce not implemented");
-  return 0;
-}
-
-int16_t Dgetpath(char *path, int16_t driveno) {
-  debug(DEBUG_ERROR, "TOS", "Dgetpath not implemented");
-  return 0;
-}
-
-void *Malloc(int32_t number) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  void *p = NULL;
+  uint8_t *p = NULL;
 
-  if (number == -1) {
-    // get size of the largest available memory block
-    //addr = 16384; // XXX
-  } else if (number > 0) {
-    p = heap_alloc(data->heap, number);
+  if (amount > 0) {
+    // XXX mode is ignored
+    p = heap_alloc(data->heap, amount);
   }
 
   return p;
 }
 
+int16_t Fdup(int16_t handle) {
+  return plibc_dup(handle);
+}
+
+int16_t Fforce(int16_t stdh, int16_t nonstdh) {
+  // redirects a standard channel to a specific other channel created by the application. The following apply
+
+  debug(DEBUG_ERROR, "TOS", "Fforce not implemented");
+  return 0;
+}
+
+int16_t Dgetpath(char *path, int16_t driveno) {
+  // obtains the current directory on the drive driveno
+
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  int volume;
+
+  switch (driveno) {
+    case 0: volume = data->a; break;
+    case 1: volume = data->b; break;
+    case 2: volume = data->c; break;
+    default: volume = -1; break;
+  }
+
+  // XXX Dgetpath does not have a size limit on path
+  return volume != -1 ? plibc_getdir(volume, path, 256) : -1;
+}
+
 int32_t Mfree(void *block) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  uint8_t *ram = pumpkin_heap_base();
   uint8_t *p = (uint8_t *)block;
   int32_t r = -1;
 
-  if (p >= (ram + data->heapStart) && p < (ram + data->heapStart + data->heapSize)) {
+  if (p >= (data->memory + data->heapStart) && p < (data->memory + data->heapStart + data->heapSize)) {
     heap_free(data->heap, p);
     r = 0;
   }
@@ -352,21 +422,37 @@ int32_t Mshrink(void *block, int32_t newsiz) {
 }
 
 void Pterm(uint16_t retcode) {
-  debug(DEBUG_ERROR, "TOS", "Pterm not implemented");
+  emupalmos_finish(1);
 }
 
 int32_t Fsfirst(char *filename, int16_t attr) {
+  // obtain information about the first occurrence of a file or subdirectory
+  // the directory entry will fill the disk transfer area (DTA)
+  // filename: pointer to the filename or subdirectory (may contain '*' and '?')
+  // attr: attributes that should be matched by the file searched for
+  //   bit 0: include read-only files
+  //   bit 1: include hidden files
+  //   bit 2: include system files
+  //   bit 3: include volume labels
+  //   bit 4: include subdirectories
+  //   bit 5: include files with archive-bit set 
+
   debug(DEBUG_ERROR, "TOS", "Fsfirst not implemented");
   return 0;
 }
 
 int16_t Fsnext(void) {
+  // search for next file entry
+
   debug(DEBUG_ERROR, "TOS", "Fsnext not implemented");
   return 0;
 }
 
 int32_t Frename(char *oldname, char *newname) {
-  return oldname && newname ? plibc_rename(oldname, newname) : -1;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
+  return oldname && newname ? plibc_rename(data->volume, oldname, newname) : -1;
 }
 
 void Fdatime(DOSTIME *timeptr, int16_t handle, int16_t wflag) {
