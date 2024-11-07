@@ -4062,7 +4062,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
 
     card = VFS_CARD;
     if (card[0] == '/') card++;
-    sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, filename);
+    sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(1), card, filename);
     debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d bitmap as %s", width, height, buf);
     surface_save(surface, buf, 0);
 
@@ -4461,7 +4461,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
 
       card = VFS_CARD;
       if (card[0] == '/') card++;
-      sys_snprintf(h->prefix, sizeof(h->prefix)-1, "%s%s", VFSGetMount(), card);
+      sys_snprintf(h->prefix, sizeof(h->prefix)-1, "%s%s", VFSGetMount(1), card);
 
       value.type = SCRIPT_ARG_STRING;
       value.value.s = h->prefix;
@@ -4476,7 +4476,7 @@ pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker
       }
 
       if (root[0] == '/') root++;
-      sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(), card, root);
+      sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(1), card, root);
 
       if (httpd_create("0.0.0.0", port, PUMPKIN_SERVER_NAME, buf, NULL, NULL, NULL, NULL, NULL, pumpkin_httpd_callback, h, 0) == -1) {
         xfree(h->script);

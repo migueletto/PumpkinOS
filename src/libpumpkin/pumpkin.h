@@ -518,7 +518,7 @@ UInt16 KbdGrfGetState(void);
 void KbdGrfSetState(UInt16 state);
 Err KbdDrawKeyboard(KeyboardType kbd, Boolean upper, WinHandle wh, RectangleType *bounds);
 
-char *VFSGetMount(void);
+char *VFSGetMount(UInt16 volRefNum);
 Err VFSChangeDir(UInt16 volRefNum, char *path);
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
 int VFSAddVolume(char *volume);
