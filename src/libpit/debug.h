@@ -38,10 +38,14 @@ void debug_full(const char *file, const char *func, int line, int level, const c
 void debug_bytes_full(const char *file, const char *func, int line, int level, const char *sys,
                       unsigned char *buf, int len);
 
+void debug_bytes_offset_full(const char *file, const char *func, int line, int level, const char *sys,
+                             unsigned char *buf, int len, unsigned int offset);
+
 #define debug_errno(sys, fmt, args...)    debug_errno_full(__FILE__, __FUNCTION__, __LINE__, sys, fmt, ##args)
 #define debugva(level, sys, fmt, args...) debugva_full(__FILE__, __FUNCTION__, __LINE__, level, sys, fmt, ##args)
 #define debug(level, sys, fmt, args...)   debug_full(__FILE__, __FUNCTION__, __LINE__, level, sys, fmt, ##args)
 #define debug_bytes(level, sys, buf, len) debug_bytes_full(__FILE__, __FUNCTION__, __LINE__, level, sys, buf, len);
+#define debug_bytes_offset(level, sys, buf, len, offset) debug_bytes_offset_full(__FILE__, __FUNCTION__, __LINE__, level, sys, buf, len, offset);
 
 #ifdef __cplusplus
 }

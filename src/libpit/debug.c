@@ -266,13 +266,13 @@ void debug_errno_full(const char *file, const char *func, int line, const char *
   debug_full(file, func, line, DEBUG_ERROR, sys, "%s failed: %d (%s)", buf, err, msg);
 }
 
-void debug_bytes_full(const char *file, const char *func, int line, int level, const char *sys, unsigned char *buf, int len) {
+void debug_bytes_offset_full(const char *file, const char *func, int line, int level, const char *sys, unsigned char *buf, int len, unsigned int offset) {
   char sbuf[1024], abuf[32], *p, *e;
   uint32_t i, j, n;
 
   if (!inited) return;
   p = sbuf;
-  sys_sprintf(p, "%04X: ", 0);
+  sys_sprintf(p, "%08X: ", offset);
   n = sys_strlen(p);
   p += n;
   e = p + 1024 - n - 4;
@@ -291,7 +291,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
       abuf[j] = 0;
       debug_full(file, func, line, level, sys, "%s %s", sbuf, abuf);
       p = sbuf;
-      sys_sprintf(p, "%04X: ", i+1);
+      sys_sprintf(p, "%08X: ", offset+i+1);
       n = sys_strlen(p);
       p += n;
       e = p + 1024 - n - 4;
@@ -310,4 +310,8 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
     }
     debug_full(file, func, line, level, sys, "%s %s", sbuf, abuf);
   }
+}
+
+void debug_bytes_full(const char *file, const char *func, int line, int level, const char *sys, unsigned char *buf, int len) {
+  debug_bytes_offset_full(file, func, line, level, sys, buf, len, 0);
 }
