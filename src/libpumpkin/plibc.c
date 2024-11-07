@@ -254,6 +254,7 @@ sys_ssize_t plibc_lseek(int fd, sys_ssize_t offset, int whence) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
   FileOrigin origin;
   UInt32 pos;
+  Err err;
   sys_ssize_t r = -1;
 
   if (fd >= 0 && fd < MAX_FDS && table[fd] && table[fd]->fileRef) {
@@ -264,7 +265,8 @@ sys_ssize_t plibc_lseek(int fd, sys_ssize_t offset, int whence) {
       default: return -1;
     }
   
-    if (VFSFileSeek(table[fd]->fileRef, origin, offset) == errNone) {
+    err = VFSFileSeek(table[fd]->fileRef, origin, offset);
+    if (err == errNone || err == vfsErrFileEOF) {
       if (VFSFileTell(table[fd]->fileRef, &pos) == errNone) {
         r = pos;
       }
