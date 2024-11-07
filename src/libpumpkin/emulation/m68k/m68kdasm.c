@@ -34,6 +34,7 @@
 /* ======================================================================== */
 
 #include "sys.h"
+#include "debug.h"
 #include "m68k.h"
 
 #ifndef uint32
@@ -4011,6 +4012,126 @@ unsigned int m68k_is_valid_instruction(unsigned int instruction, unsigned int cp
 		return 0;
 
 	return 1;
+}
+
+typedef struct {
+  uint32_t pc, size;
+  char *buf;
+} m68k_disasm_t;
+
+/*
+  for (int i = 0; i < stackp; i++) { \
+    debug(1, "XXX", "PUSH DSTACK %3d: 0x%08X ", i, stack[i]); \
+  }
+*/
+
+#define PUSH(pc) \
+  if (0) debug(DEBUG_TRACE, "M68K", "DSTACK push 0x%08X at %d", pc, stackp); \
+  stack[stackp++] = pc
+
+#define POP() \
+  pc = stack[--stackp]; \
+  if (0) debug(DEBUG_TRACE, "M68K", "DSTACK pop  0x%08X from %d", pc, stackp)
+
+void m68k_disassemble_range(unsigned int start, unsigned int end, unsigned int cpu_type) {
+  m68k_disasm_t *mem;
+  unsigned int pc, opcode, stack[4096];
+  uint8_t pad[16];
+  int stackp, pop, size, index;
+  uint32_t i, total;
+  int32_t offset;
+  char buf[128];
+
+  mem = sys_calloc((end - start) / 2, sizeof(m68k_disasm_t));
+  stackp = 0;
+  PUSH(start);
+  pop = 1;
+
+  for (;;) {
+    if (pop) {
+      if (stackp == 0) break;
+      POP();
+      pop = 0;
+    }
+    index = (pc - start) / 2;
+    if (mem[index].buf) {
+      pop = 1;
+      continue;
+    }
+
+    opcode = m68k_read_memory_16(pc);
+
+    if (opcode == 0x6000) {
+      // BRA 16 bits
+      offset = (int16_t)m68k_read_memory_16(pc + 2);
+      PUSH(pc + 2 + offset);
+      pop = 1;
+    } else if ((opcode & 0xff00) == 0x6000) {
+      // BRA 8 bits
+      offset = (int8_t)(opcode & 0xff);
+      PUSH(pc + 2 + offset);
+      pop = 1;
+    } else if ((opcode & 0xfff8) == 0x51c8) {
+      // DBRA
+      offset = (int16_t)m68k_read_memory_16(pc + 2);
+      PUSH(pc + 2 + offset);
+    } else if ((opcode & 0xf0ff) == 0x60ff) {
+      // Bcc 32 bits
+      offset = (int32_t)m68k_read_memory_32(pc + 2);
+      PUSH(pc + 2 + offset);
+    } else if ((opcode & 0xf0ff) == 0x6000) {
+      // Bcc 16 bits
+      offset = (int16_t)m68k_read_memory_16(pc + 2);
+      PUSH(pc + 2 + offset);
+    } else if ((opcode & 0xf000) == 0x6000) {
+      // Bcc 8 bits
+      offset = (int8_t)(opcode & 0xff);
+      PUSH(pc + 2 + offset);
+    } else if (opcode == 0x4eb9) {
+      // JSR 32 bits
+      PUSH((uint32_t)m68k_read_memory_32(pc + 2));
+    } else if (opcode == 0x4e75) {
+      // RTS
+      pop = 1;
+    }
+
+    size = m68k_disassemble(buf, pc, cpu_type);
+//char buf2[128];
+//m68k_make_hex(buf2, pc, size);
+//debug(1, "XXX", "%08X: %-20s: %s", pc, buf2, buf);
+    mem[index].pc = pc;
+    mem[index].size = size;
+    mem[index].buf = sys_strdup(buf);
+    pc += size;
+    if (pc >= end) {
+      pop = 1;
+    }
+  }
+
+  pc = start;
+  size = (end - start) / 2;
+  for (index = 0; index < size; index++) {
+    if (mem[index].buf) {
+      total = mem[index].pc - pc;
+      if (total > 0) {
+        debug(DEBUG_TRACE, "M68K", "gap from %08X to %08X (%d bytes)", pc, mem[index].pc - 1, total);
+        for (;;) {
+          for (i = 0; i < 16 && pc+i < mem[index].pc; i++) {
+            pad[i] = m68k_read_memory_8(pc+i);
+          }
+          debug_bytes_offset(DEBUG_TRACE, "M68K", pad, i, pc);
+          if (i < 16) break;
+          pc += 16;
+        }
+      }
+      m68k_make_hex(buf, mem[index].pc, mem[index].size);
+      debug(DEBUG_TRACE, "M68K", "%08X: %-20s: %s", mem[index].pc, buf, mem[index].buf);
+      pc = mem[index].pc + mem[index].size;
+      sys_free(mem[index].buf);
+    }
+  }
+
+  sys_free(mem);
 }
 
 // f028 2215 0008

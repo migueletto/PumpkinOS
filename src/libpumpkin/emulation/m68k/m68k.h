@@ -388,6 +388,9 @@ unsigned int m68k_disassemble(char* str_buff, unsigned int pc, unsigned int cpu_
  */
 unsigned int m68k_disassemble_raw(char* str_buff, unsigned int pc, const unsigned char* opdata, const unsigned char* argdata, unsigned int cpu_type);
 
+void m68k_disassemble_range(unsigned int start, unsigned int end, unsigned int cpu_type);
+
+void m68k_make_hex(char *buf, unsigned int pc, unsigned int length);
 
 /* ======================================================================== */
 /* ============================== MAME STUFF ============================== */

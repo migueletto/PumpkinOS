@@ -1258,6 +1258,17 @@ void m68k_state_register(const char *type, int index)
 
 #endif /* M68K_COMPILE_FOR_MAME */
 
+void m68k_make_hex(char *buf, unsigned int pc, unsigned int length) {
+  char *ptr = buf;
+
+  for (; length > 0; length -= 2) {
+    sys_sprintf(ptr, "%04x", cpu_read_word(pc));
+    pc += 2;
+    ptr += 4;
+    if (length > 2) *ptr++ = ' ';
+  }
+}
+
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */
 /* ======================================================================== */
