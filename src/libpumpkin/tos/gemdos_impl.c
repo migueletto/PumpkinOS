@@ -133,10 +133,6 @@ int16_t Dgetdrv(void) {
   return 0;
 }
 
-void Fsetdta(DTA *buf) {
-  debug(DEBUG_ERROR, "TOS", "Fsetdta not implemented");
-}
-
 uint16_t Tgetdate(void) {
   // obtains the current date
   // returns a uint16_t number with the date, which is coded as follows:
@@ -178,13 +174,6 @@ int16_t Tsettime(uint16_t time) {
   return -1;
 }
 
-DTA *Fgetdta(void) {
-  emu_state_t *state = m68k_get_emu_state();
-  tos_data_t *data = (tos_data_t *)state->extra;
-
-  return (DTA *)(data->memory + 0x80);
-}
-
 uint16_t Sversion(void) {
   return (17 << 8) | 0; // 0.17 -> TOS version 1.62 (for no particular reason)
 }
@@ -224,8 +213,10 @@ int16_t Dsetpath(char *path) {
     for (i = 0; path[i]; i++) {
       s[i] = path[i] == '\\' ? '/' : path[i];
     }
+    debug(DEBUG_TRACE, "TOS", "Dsetpath chdir \"%s\"", s);
     r = plibc_chdir(data->volume, s);
     sys_free(s);
+    debug(DEBUG_TRACE, "TOS", "Dsetpath(\"%s\"): %d", path, r);
   }
 
   return r;
@@ -390,17 +381,25 @@ int16_t Dgetpath(char *path, int16_t driveno) {
 
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  int volume;
+  int volume, i, r = -1;
 
   switch (driveno) {
     case 0: volume = data->a; break;
     case 1: volume = data->b; break;
     case 2: volume = data->c; break;
-    default: volume = -1; break;
+    default: return -1;
   }
 
   // XXX Dgetpath does not have a size limit on path
-  return volume != -1 ? plibc_getdir(volume, path, 256) : -1;
+  if (plibc_getdir(volume, path, 256) != -1) {
+    for (i = 0; path[i]; i++) {
+      if (path[i] == '/') path[i] = '\\';
+    }
+    debug(DEBUG_TRACE, "TOS", "Dgetpath(\"%s\", %d)", path, driveno);
+    r = 0;
+  }
+
+  return r;
 }
 
 int32_t Mfree(void *block) {
@@ -418,6 +417,25 @@ int32_t Mfree(void *block) {
 }
 
 int32_t Mshrink(void *block, int32_t newsiz) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  uint8_t *kbdvbase, *physbase, *lineaVars;
+
+  data->heapSize = data->memorySize - ((uint8_t *)block - data->memory);
+  data->heap = heap_init((uint8_t *)block + newsiz, data->heapSize, NULL);
+  debug(DEBUG_INFO, "TOS", "heap: 0x%08X (%u bytes)", (uint32_t)((uint8_t *)block - data->memory + newsiz), data->heapSize);
+      
+  kbdvbase = heap_alloc(data->heap, XBIOS_KBDVBASE_SIZE);
+  data->kbdvbase = kbdvbase - data->memory;
+  
+  physbase = heap_alloc(data->heap, screenSize); // screen buffer (640*400/8 = 32000)
+  data->physbase = physbase - data->memory;
+  debug(DEBUG_INFO, "TOS", "screen: 0x%08X", data->physbase);
+  
+  lineaVars = heap_alloc(data->heap, lineaSize);
+  data->lineaVars = lineaVars - data->memory;
+  debug(DEBUG_INFO, "TOS", "linea: 0x%08X", data->lineaVars);
+
   return 0;
 }
 
@@ -437,8 +455,66 @@ int32_t Fsfirst(char *filename, int16_t attr) {
   //   bit 4: include subdirectories
   //   bit 5: include files with archive-bit set 
 
-  debug(DEBUG_ERROR, "TOS", "Fsfirst not implemented");
-  return 0;
+  // DTA:
+  //  0 BYTE  d_reserved[21];
+  // 21 BYTE  d_attrib;
+  // 22 UWORD d_time;
+  // 24 UWORD d_date;
+  // 26 LONG  d_length;
+  // 30 char  d_fname[14];
+
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  char buf[256];
+  int32_t i, handle, len, r = -1;
+  uint32_t dta;
+
+  if (filename) {
+    debug(DEBUG_TRACE, "TOS", "Fsfirst \"%s\" 0x%04X", filename, attr);
+
+    for (i = 0; filename[i]; i++) {
+      if (filename[i] == '?' || filename[i] == '*') break;
+    }
+
+    if (filename[i] == 0) {
+      // no wildcards
+      Dgetpath(buf, Dgetdrv());
+      debug(DEBUG_TRACE, "TOS", "getpath drive %d \"%s\"", Dgetdrv(), buf);
+      len = sys_strlen(buf);
+      if (len > 0 && buf[len - 1] != '\\') {
+        sys_strncat(buf, "\\", sizeof(buf) - len - 1);
+        debug(DEBUG_TRACE, "TOS", "getpath sep \"%s\"", buf);
+      }
+      sys_strncat(buf, filename, sizeof(buf) - sys_strlen(buf) - 1);
+      debug(DEBUG_TRACE, "TOS", "getpath filename \"%s\"", buf);
+      for (i = 0; buf[i]; i++) {
+        if (buf[i] == '\\') buf[i] = '/';
+      }
+      debug(DEBUG_TRACE, "TOS", "Fsfirst open \"%s\"", buf);
+
+      if ((handle = plibc_open(data->volume, buf, PLIBC_RDONLY)) != -1) {
+        len = plibc_lseek(handle, 0, PLIBC_SEEK_END);
+        plibc_close(handle);
+        debug(DEBUG_TRACE, "TOS", "Fsfirst len=%d", len);
+        dta = m68k_read_memory_32(data->basePageStart + 0x0020);
+        debug(DEBUG_TRACE, "TOS", "Fsfirst basePage=0x%08X dta=0x%08X", data->basePageStart, dta);
+        m68k_write_memory_8(dta + 21, 0);
+        m68k_write_memory_16(dta + 22, 0);
+        m68k_write_memory_16(dta + 24, 0);
+        m68k_write_memory_32(dta + 26, len);
+        for (i = 0; filename[i]; i++) {
+          m68k_write_memory_8(dta + 30 + i, filename[i]);
+        }
+        r = 0;
+      } else {
+        debug(DEBUG_INFO, "TOS", "Fsfirst \"%s\" not found", filename);
+      }
+    } else {
+      debug(DEBUG_ERROR, "TOS", "Fsfirst wildcard not supported");
+    }
+  }
+
+  return r;
 }
 
 int16_t Fsnext(void) {

@@ -22,8 +22,8 @@
 #define lowMemSize     2048
 #define basePageSize    256
 #define stackSize      4096
-#define screenSize    32768
-#define lineaSize      1024
+
+#define maxPath 256
 
 //  uint8_t ph_branch[2];  branch to start of program (0x601a)
 //  uint8_t ph_tlen[4];    .text length
@@ -53,44 +53,89 @@
 // 0x002C: pointer to env string
 // 0x0080: command line image
 
-static uint32_t tos_read_byte(uint8_t *memory, uint32_t address) {
+
+// 0x00000000 - 0x009FFFFF: RAM
+// 0x00A00000 – 0x00DEFFFF: RAM
+// 0x00DF0000 – 0x00DFFFFF: RAM
+// 0x00E00000 – 0x00EFFFFF: ROM
+// 0x00F00000 - 0x00F0003F: IDE controller
+// 0x00F00040 – 0x00F9FFFF: unassigned
+// 0x00FA0000 – 0x00FBFFFF: cartridge ROM
+// 0x00FC0000 – 0x00FEFFFF: OS ROM
+// 0x00FF0000 – 0x00FF7FFF: unassigned
+// 0x00FF8000 - 0x00FFF9FF: I/O
+// 0x00FFFA00 - 0x00FFFA3F: I/O 68091 (peripheral)
+// 0x00FFFA40 - 0x00FFFA7F: I/O 68881 (math)
+// 0x00FFFA80 - 0x00FFFBFF: I/O 68901 (peripheral)
+// 0x00FFFC00 - 0x00FFFC1F: I/O 6850 (keyboard, MIDI)
+// 0x00FFFC20 - 0x00FFFC3F: I/O RTC
+// 0x00FFFC40 – 0x00FFFFFF: unassigned
+// 0x01000000 – 0x01FFFFFF: RAM (expansion)
+// 0x02000000 – 0xFDFFFFFF: reserved
+// 0xFE000000 – 0xFEFEFFFF: VME
+// 0xFEFF0000 – 0xFEFFFFFF: VME
+// 0xFF000000 – 0xFFFFFFFF: shadow of 0x00000000 – 0x00FFFFFF
+
+static uint32_t tos_read_byte(uint8_t *memory, uint32_t memorySize, uint32_t address) {
   uint32_t value = 0;
 
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "TOS", "read from register address 0x%08X", address);
+  if ((address & 0xFF000000) == 0xFF000000) {
+    address &= 0x00FFFFFF;
+  }
+  
+  if (address >= 0x00FF8000 && address < 0x01000000) {
+    debug(DEBUG_INFO, "TOS", "read from I/O register 0x%08X", address);
 
     switch (address) {
-      case 0xFFFFFC00: // keyboard ACIA control
+      case 0x00FFFA09: // MFP-ST Interrupt Enable Register B
+        value = 0x40; // keyboard/MIDI
+        break;
+      case 0x00FFFC00: // Keyboard ACIA Control
+        // bit 0: receiver full
+        // bit 1: transmitter empty
         value = 3;
         break;
-      case 0xFFFFFC02: // keyboard ACIA data
-        value = (uint32_t)((char)-9);
+      case 0x00FFFC02: // keyboard ACIA data
+        value = 0;
+        break;
+      case 0x00FFFC04: // MIDI ACIA Control
+        value = 0;
+        break;
+      case 0x00FFFC06: // MIDI ACIA data
+        value = 0;
         break;
       default:
         value = 0;
         break;
     }
-  } else {
+  } else if (address < memorySize) {
     value = memory[address];
+  } else {
+    //debug(DEBUG_ERROR, "TOS", "read from unmapped address 0x%08X", address);
   }
 
   return value;
 }
 
-static void tos_write_byte(uint8_t *memory, uint32_t address, uint8_t value) {
-  memory[address] = value;
+static void tos_write_byte(uint8_t *memory, uint32_t memorySize, uint32_t address, uint8_t value) {
+  if ((address & 0xFF000000) == 0xFF000000) {
+    address &= 0x00FFFFFF;
+  }
+
+  if (address >= 0x00FF8000 && address < 0x01000000) {
+    debug(DEBUG_INFO, "TOS", "write 0x%02X to I/O register 0x%08X", value, address);
+  } else if (address < memorySize) {
+    memory[address] = value;
+  } else {
+    //debug(DEBUG_ERROR, "TOS", "write 0x%02X to unmapped address 0x%08X", value, address);
+  }
 }
 
 static uint8_t read_byte(uint32_t address) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  uint8_t b = 0;
 
-  if (address < data->memorySize) {
-    b = tos_read_byte(data->memory, address);
-  }
-
-  return b;
+  return tos_read_byte(data->memory, data->memorySize, address);
 }
 
 static uint16_t read_word(uint32_t address) {
@@ -98,10 +143,10 @@ static uint16_t read_word(uint32_t address) {
   tos_data_t *data = (tos_data_t *)state->extra;
   uint16_t w = 0;
 
-  if ((address & 1) == 0 && address <= data->memorySize-2) {
-    w = (tos_read_byte(data->memory, address) << 8) | tos_read_byte(data->memory + 1, address);
+  if ((address & 1) == 0) {
+    w = (tos_read_byte(data->memory, data->memorySize, address) << 8) | tos_read_byte(data->memory, data->memorySize, address + 1);
   } else {
-    debug(DEBUG_ERROR, "TOS", "read_word invalid address 0x%08X", address);
+    debug(DEBUG_ERROR, "TOS", "read_word unaligned address 0x%08X", address);
   }
 
   return w;
@@ -112,11 +157,11 @@ static uint32_t read_long(uint32_t address) {
   tos_data_t *data = (tos_data_t *)state->extra;
   uint32_t l = 0;
 
-  if ((address & 1) == 0 && address <= data->memorySize-4) {
-    l = (tos_read_byte(data->memory,     address) << 24) | (tos_read_byte(data->memory + 1, address) << 16) |
-        (tos_read_byte(data->memory + 2, address) <<  8) |  tos_read_byte(data->memory + 3, address);
+  if ((address & 1) == 0) {
+    l = (tos_read_byte(data->memory, data->memorySize, address    ) << 24) | (tos_read_byte(data->memory, data->memorySize, address + 1) << 16) |
+        (tos_read_byte(data->memory, data->memorySize, address + 2) <<  8) |  tos_read_byte(data->memory, data->memorySize, address + 3);
   } else {
-    debug(DEBUG_ERROR, "TOS", "read_long invalid address 0x%08X", address);
+    debug(DEBUG_ERROR, "TOS", "read_long unaligned address 0x%08X", address);
   }
 
   return l;
@@ -126,20 +171,18 @@ static void write_byte(uint32_t address, uint8_t value) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
 
-  if (address < data->memorySize) {
-    tos_write_byte(data->memory, address, value);
-  }
+  tos_write_byte(data->memory, data->memorySize, address, value);
 }
 
 static void write_word(uint32_t address, uint16_t value) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
 
-  if ((address & 1) == 0 && address <= data->memorySize-2) {
-    tos_write_byte(data->memory, address    , value >> 8);
-    tos_write_byte(data->memory, address + 1, value & 0xFF);
+  if ((address & 1) == 0) {
+    tos_write_byte(data->memory, data->memorySize, address    , value >> 8);
+    tos_write_byte(data->memory, data->memorySize, address + 1, value & 0xFF);
   } else {
-    debug(DEBUG_ERROR, "TOS", "write_word invalid address 0x%08X", address);
+    debug(DEBUG_ERROR, "TOS", "write_word unaligned address 0x%08X", address);
   }
 }
 
@@ -147,249 +190,328 @@ static void write_long(uint32_t address, uint32_t value) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
 
-  if ((address & 1) == 0 && address <= data->memorySize-4) {
-    tos_write_byte(data->memory, address    ,  value >> 24);
-    tos_write_byte(data->memory, address + 1, (value >> 16) & 0xFF);
-    tos_write_byte(data->memory, address + 2, (value >>  8) & 0xFF);
-    tos_write_byte(data->memory, address + 3,  value        & 0xFF);
+  if ((address & 1) == 0) {
+    tos_write_byte(data->memory, data->memorySize, address    ,  value >> 24);
+    tos_write_byte(data->memory, data->memorySize, address + 1, (value >> 16) & 0xFF);
+    tos_write_byte(data->memory, data->memorySize, address + 2, (value >>  8) & 0xFF);
+    tos_write_byte(data->memory, data->memorySize, address + 3,  value        & 0xFF);
   } else {
-    debug(DEBUG_ERROR, "TOS", "write_word invalid address 0x%08X", address);
-  }
-}
-
-static void make_hex(char *buf, unsigned int pc, unsigned int length) {
-  char *ptr = buf;
-
-  for (; length > 0; length -= 2) {
-    sys_sprintf(ptr, "%04x", cpu_read_word(pc));
-    pc += 2;
-    ptr += 4;
-    if (length > 2) *ptr++ = ' ';
+    debug(DEBUG_ERROR, "TOS", "write_word unaligned address 0x%08X", address);
   }
 }
 
 static int cpu_instr_callback(unsigned int pc) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
   uint32_t instr_size, d[8], a[8];
   char buf[128], buf2[128];
   int i;
 
-  if (emupalmos_debug_on()) {
-    instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68020);
-    make_hex(buf2, pc, instr_size);
+  if (data->debug_m68k) {
+    instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68000);
+    m68k_make_hex(buf2, pc, instr_size);
     for (i = 0; i < 8; i++) {
       d[i] = m68k_get_reg(NULL, M68K_REG_D0 + i);
       a[i] = m68k_get_reg(NULL, M68K_REG_A0 + i);
     }
-    debug(DEBUG_INFO, "M68K", "A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A4=0x%08X,A5=0x%08X,A6=0x%08X,A7=0x%08X",
+    debug(DEBUG_TRACE, "M68K", "A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A4=0x%08X,A5=0x%08X,A6=0x%08X,A7=0x%08X",
       a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d)",
+    debug(DEBUG_TRACE, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d)",
       pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
   }
 
   return 0;
 }
 
-int tos_main(int argc, char *argv[]) {
-  MemHandle hTos, hMemory;
-  uint8_t *tos, *memory, *reloc, *kbdvbase, *physbase, *lineaVars;
+static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir, int argc, char *argv[]) {
+  MemHandle hMemory;
+  uint8_t *memory, *reloc, *kbdvbase, *physbase, *lineaVars;
   uint16_t jump, aflags;
-  uint32_t offset, textSize, dataSize, bssSize, symSize, relocSize, reserved, pflags, memorySize, heapSize, tosSize;
+  uint32_t offset, textSize, dataSize, bssSize, symSize, relocSize, reserved, pflags, memorySize, heapSize;
   uint32_t pc, a7, basePageStart, stackStart, textStart, dataStart, bssStart, heapStart, *relocBase, value, rem;
   m68ki_cpu_core main_cpu;
   emu_state_t *state, *oldState;
   tos_data_t data;
   int i, j, k, r = -1;
 
-  if ((hTos = DmGet1Resource('ctos', 1)) != NULL) {
-    if ((tos = MemHandleLock(hTos)) != NULL) {
-      tosSize = MemHandleSize(hTos);
-      offset = get2b(&jump, tos, 0);
+  if (tos && tosSize > headerSize && dir) {
+    offset = get2b(&jump, tos, 0);
 
-      if (jump == 0x601a) {
-        debug(DEBUG_INFO, "TOS", "main argc=%d", argc);
+    if (jump == 0x601a) {
+      offset += get4b(&textSize, tos, offset);
+      offset += get4b(&dataSize, tos, offset);
+      offset += get4b(&bssSize, tos, offset);
+      offset += get4b(&symSize, tos, offset);
+      offset += get4b(&reserved, tos, offset);
+      offset += get4b(&pflags, tos, offset);
+      offset += get2b(&aflags, tos, offset);
+      relocSize = tosSize - (headerSize + textSize + dataSize + symSize);
 
-        offset += get4b(&textSize, tos, offset);
-        offset += get4b(&dataSize, tos, offset);
-        offset += get4b(&bssSize, tos, offset);
-        offset += get4b(&symSize, tos, offset);
-        offset += get4b(&reserved, tos, offset);
-        offset += get4b(&pflags, tos, offset);
-        offset += get2b(&aflags, tos, offset);
-        relocSize = tosSize - (headerSize + textSize + dataSize + symSize);
+      debug(DEBUG_INFO, "TOS", "header:");
+      debug_bytes(DEBUG_INFO, "TOS", tos, headerSize);
+      debug(DEBUG_INFO, "TOS", "tos   size %d (0x%04X)", tosSize, tosSize);
+      debug(DEBUG_INFO, "TOS", "text  size %d (0x%04X)", textSize, textSize);
+      debug(DEBUG_INFO, "TOS", "data  size %d (0x%04X)", dataSize, dataSize);
+      debug(DEBUG_INFO, "TOS", "bss   size %d (0x%04X)", bssSize, bssSize);
+      debug(DEBUG_INFO, "TOS", "sym   size %d (0x%04X)", symSize, symSize);
+      debug(DEBUG_INFO, "TOS", "reloc size %d (0x%04X)", relocSize, relocSize);
+      debug(DEBUG_INFO, "TOS", "pflags 0x%08X", pflags);
+      debug(DEBUG_INFO, "TOS", "aflags 0x%04X", aflags);
 
-        debug(DEBUG_INFO, "TOS", "header:");
-        debug_bytes(DEBUG_INFO, "TOS", tos, headerSize);
-        debug(DEBUG_INFO, "TOS", "tos   size %d (0x%04X)", tosSize, tosSize);
-        debug(DEBUG_INFO, "TOS", "text  size %d (0x%04X)", textSize, textSize);
-        debug(DEBUG_INFO, "TOS", "data  size %d (0x%04X)", dataSize, dataSize);
-        debug(DEBUG_INFO, "TOS", "bss   size %d (0x%04X)", bssSize, bssSize);
-        debug(DEBUG_INFO, "TOS", "sym   size %d (0x%04X)", symSize, symSize);
-        debug(DEBUG_INFO, "TOS", "reloc size %d (0x%04X)", relocSize, relocSize);
-        debug(DEBUG_INFO, "TOS", "pflags 0x%08X", pflags);
-        debug(DEBUG_INFO, "TOS", "aflags 0x%04X", aflags);
+      oldState = emupalmos_install();
+      state = pumpkin_get_local_storage(emu_key);
+      state->extra = &data;
 
-        oldState = emupalmos_install();
-        state = pumpkin_get_local_storage(emu_key);
-        state->extra = &data;
+      rem = (textSize + dataSize + bssSize) & 0x0F;
+      if (rem != 0) {
+        bssSize += 16 - rem;
+      }
 
-        rem = (textSize + dataSize + bssSize) & 0x0F;
-        if (rem != 0) {
-          bssSize += 16 - rem;
+      memorySize = 0x100000; // 1M
+      hMemory = MemHandleNew(memorySize + 16);
+      memory = MemHandleLock(hMemory);
+      MemSet(memory, memorySize, 0);
+
+      rem = ((uint64_t)(memory)) & 0x0F;
+      if (rem != 0) {
+        memory += 16 - rem;
+      }
+
+      MemMove(memory + lowMemSize + basePageSize, &tos[offset], textSize);
+      if (dataSize > 0) {
+        MemMove(memory + lowMemSize + basePageSize + textSize, &tos[offset + textSize], dataSize);
+      }
+
+      heapSize = memorySize - (lowMemSize + basePageSize + textSize + dataSize + bssSize + stackSize);
+      basePageStart = lowMemSize;
+      textStart     = lowMemSize + basePageSize;
+      dataStart     = lowMemSize + basePageSize + textSize;
+      bssStart      = lowMemSize + basePageSize + textSize + dataSize;
+      heapStart     = lowMemSize + basePageSize + textSize + dataSize + bssSize;
+      stackStart    = lowMemSize + basePageSize + textSize + dataSize + bssSize + heapSize;
+
+
+      MemSet(&data, sizeof(tos_data_t), 0);
+      data.debug_m68k = debug_getsyslevel("M68K") == DEBUG_TRACE;
+      data.memory = memory;
+      data.memorySize = memorySize;
+      data.basePageStart = basePageStart;
+      data.heapStart = heapStart;
+      data.heapSize = heapSize;
+
+      write_long(0x0000042E, data.memorySize); // phystop: physical top of ST compatible RAM
+
+      write_long(basePageStart + 0x0000, basePageStart);
+      write_long(basePageStart + 0x0004, memorySize);
+      write_long(basePageStart + 0x0008, textStart);
+      write_long(basePageStart + 0x000C, textSize);
+      write_long(basePageStart + 0x0010, dataStart);
+      write_long(basePageStart + 0x0014, dataSize);
+      write_long(basePageStart + 0x0018, bssStart);
+      write_long(basePageStart + 0x001C, bssSize);
+      write_long(basePageStart + 0x0020, basePageStart + 0x0080);
+      write_long(basePageStart + 0x0024, basePageStart);
+      write_long(basePageStart + 0x0028, 0);
+      write_long(basePageStart + 0x002C, basePageStart + 0x0028); // pointer to env string -> reserved
+
+      for (i = 1, k = 0; i < argc && k < 128; i++) {
+        if (i > 1) {
+          write_byte(basePageStart + 0x0081 + k, ' ');
+          k++;
         }
-
-        memorySize = 0x100000; // 1M
-        hMemory = MemHandleNew(memorySize + 16);
-        memory = MemHandleLock(hMemory);
-        MemSet(memory, memorySize, 0);
-
-        rem = ((uint64_t)(memory)) & 0x0F;
-        if (rem != 0) {
-          memory += 16 - rem;
+        for (j = 0; argv[i][j] && k < 128; j++, k++) {
+          write_byte(basePageStart + 0x0081 + k, argv[i][j]);
         }
+      }
+      write_byte(basePageStart + 0x0080, k);
 
-        MemMove(memory + lowMemSize + basePageSize, &tos[offset], textSize);
-        if (dataSize > 0) {
-          MemMove(memory + lowMemSize + basePageSize + textSize, &tos[offset + textSize], dataSize);
-        }
+      debug(DEBUG_INFO, "TOS", "basepg: 0x%08X", basePageStart);
+      debug_bytes_offset(DEBUG_INFO, "TOS", memory + basePageStart, basePageSize, basePageStart);
 
-        heapSize = memorySize - (lowMemSize + basePageSize + textSize + dataSize + bssSize + stackSize);
-        basePageStart = lowMemSize;
-        textStart     = lowMemSize + basePageSize;
-        dataStart     = lowMemSize + basePageSize + textSize;
-        bssStart      = lowMemSize + basePageSize + textSize + dataSize;
-        heapStart     = lowMemSize + basePageSize + textSize + dataSize + bssSize;
-        stackStart    = lowMemSize + basePageSize + textSize + dataSize + bssSize + heapSize;
+      debug(DEBUG_INFO, "TOS", "text  : 0x%08X", textStart);
+      debug_bytes_offset(DEBUG_INFO, "TOS", memory + textStart, textSize, textStart);
 
-        MemSet(&data, sizeof(tos_data_t), 0);
-        data.memory = memory;
-        data.memorySize = memorySize;
-        data.heapStart = heapStart;
-        data.heapSize = heapSize;
+      if (dataSize > 0) {
+        debug(DEBUG_INFO, "TOS", "data  : 0x%08X", dataStart);
+        debug_bytes_offset(DEBUG_INFO, "TOS", memory + dataStart, dataSize, dataStart);
+      }
 
-        write_long(0x0000042E, data.memorySize); // phystop: physical top of ST compatible RAM
+      if (bssSize > 0) {
+        debug(DEBUG_INFO, "TOS", "bss   : 0x%08X", bssStart);
+      }
 
-        write_long(basePageStart + 0x0000, basePageStart); // XXX
-        write_long(basePageStart + 0x0004, memorySize); // XXX
-        write_long(basePageStart + 0x0008, textStart);
-        write_long(basePageStart + 0x000C, textSize);
-        write_long(basePageStart + 0x0010, dataStart);
-        write_long(basePageStart + 0x0014, dataSize);
-        write_long(basePageStart + 0x0018, bssStart);
-        write_long(basePageStart + 0x001C, bssSize);
+      debug(DEBUG_INFO, "TOS", "heap  : 0x%08X", heapStart);
+      debug(DEBUG_INFO, "TOS", "stack : 0x%08X", stackStart);
 
-        for (i = 1, k = 0; i < argc && k < 128; i++) {
-          if (i > 1) {
-            write_byte(basePageStart + 0x0081 + k, ' ');
-            k++;
-          }
-          for (j = 0; argv[i][j] && k < 128; j++, k++) {
-            write_byte(basePageStart + 0x0081 + k, argv[i][j]);
-          }
-        }
-        write_byte(basePageStart + 0x0080, k);
+      if (relocSize > 0) {
+        relocBase = (uint32_t *)(tos + headerSize + textSize + dataSize + symSize);
+        get4b(&offset, (uint8_t *)relocBase, 0);
+        if (offset) {
+          debug(DEBUG_INFO, "TOS", "reloc:");
+          debug_bytes(DEBUG_INFO, "TOS", (uint8_t *)relocBase, relocSize);
 
-        debug(DEBUG_INFO, "TOS", "basepg: 0x%08X", basePageStart);
-        debug_bytes(DEBUG_INFO, "TOS", memory + basePageStart, basePageSize);
+          value = read_long(textStart + offset);
+          debug(DEBUG_INFO, "TOS", "reloc offset 0x00 0x%08X 0x%08X -> 0x%08X", offset, value, value + textStart);
+          value += textStart;
+          write_long(textStart + offset, value);
 
-        debug(DEBUG_INFO, "TOS", "text  : 0x%08X", textStart);
-        debug_bytes(DEBUG_INFO, "TOS", memory + textStart, textSize);
-
-        if (dataSize > 0) {
-          debug(DEBUG_INFO, "TOS", "data  : 0x%08X", dataStart);
-          debug_bytes(DEBUG_INFO, "TOS", memory + dataStart, dataSize);
-        }
-
-        if (bssSize > 0) {
-          debug(DEBUG_INFO, "TOS", "bss   : 0x%08X", bssStart);
-        }
-
-        debug(DEBUG_INFO, "TOS", "heap  : 0x%08X", heapStart);
-        debug(DEBUG_INFO, "TOS", "stack : 0x%08X", stackStart);
-
-        if (relocSize > 0) {
-          relocBase = (uint32_t *)(tos + headerSize + textSize + dataSize + symSize);
-          get4b(&offset, (uint8_t *)relocBase, 0);
-          if (offset) {
-            debug(DEBUG_INFO, "TOS", "reloc:");
-            debug_bytes(DEBUG_INFO, "TOS", (uint8_t *)relocBase, relocSize);
+          for (reloc = ((uint8_t *)relocBase) + 4; *reloc; reloc++) {
+            if (*reloc == 1) {
+              offset += 254;
+              continue;
+            }
+            offset += *reloc;
 
             value = read_long(textStart + offset);
-            debug(DEBUG_INFO, "TOS", "reloc offset 0x00 0x%08X 0x%08X -> 0x%08X", offset, value, value + textStart);
+            debug(DEBUG_INFO, "TOS", "reloc offset 0x%02X 0x%08X 0x%08X -> 0x%08X", *reloc, offset, value, value + textStart);
             value += textStart;
             write_long(textStart + offset, value);
-
-            for (reloc = ((uint8_t *)relocBase) + 4; *reloc; reloc++) {
-              if (*reloc == 1) {
-                offset += 254;
-                continue;
-              }
-              offset += *reloc;
-
-              value = read_long(textStart + offset);
-              debug(DEBUG_INFO, "TOS", "reloc offset 0x%02X 0x%08X 0x%08X -> 0x%08X", *reloc, offset, value, value + textStart);
-              value += textStart;
-              write_long(textStart + offset, value);
-            }
           }
         }
-
-        data.heap = heap_init(&memory[heapStart], heapSize, NULL);
-
-        kbdvbase = heap_alloc(data.heap, XBIOS_KBDVBASE_SIZE);
-        data.kbdvbase = kbdvbase - memory;
-
-        physbase = heap_alloc(data.heap, screenSize); // screen buffer (640*400/8 = 32000)
-        data.physbase = physbase - memory;
-        debug(DEBUG_INFO, "TOS", "screen: 0x%08X", data.physbase);
-
-        lineaVars = heap_alloc(data.heap, lineaSize);
-        data.lineaVars = lineaVars - memory;
-        debug(DEBUG_INFO, "TOS", "linea : 0x%08X", data.lineaVars);
-
-        data.a = VFSAddVolume("/app_tos/a/");
-        data.b = VFSAddVolume("/app_tos/b/");
-        data.c = VFSAddVolume("/app_tos/c/");
-
-        pc = textStart;
-        a7 = stackStart + stackSize - 16;
-        state->stackStart = stackStart;
-
-        write_long(a7 + 4, basePageStart);
-        write_long(a7, 0); // return address
-
-        MemSet(&main_cpu, sizeof(m68ki_cpu_core), 0);
-        main_cpu.tos = 1;
-        m68k_set_context(&main_cpu);
-        m68k_init();
-        m68k_set_cpu_type(M68K_CPU_TYPE_68020);
-        m68k_pulse_reset();
-        m68k_set_reg(M68K_REG_PC, pc);
-        m68k_set_reg(M68K_REG_SP, a7);
-        m68k_set_instr_hook_callback(cpu_instr_callback);
-
-        emupalmos_memory_hooks(
-          read_byte, read_word, read_long,
-          write_byte, write_word, write_long
-        );
-        FntSetFont(mono8x16Font);
-
-        emupalmos_debug(1);
-        for (; !emupalmos_finished() && !thread_must_end();) {
-          m68k_execute(&state->m68k_state, 100000);
-        }
-        r = 0;
-
-        emupalmos_deinstall(oldState);
-        MemHandleFree(hMemory);
-      } else {
-        debug(DEBUG_ERROR, "TOS", "0x601a signature not found on ctos resource");
-        debug_bytes(DEBUG_INFO, "TOS", tos, tosSize < 32 ? tosSize : 32);
       }
+
+      data.heap = heap_init(&memory[heapStart], heapSize, NULL);
+
+      kbdvbase = heap_alloc(data.heap, XBIOS_KBDVBASE_SIZE);
+      data.kbdvbase = kbdvbase - memory;
+
+      physbase = heap_alloc(data.heap, screenSize); // screen buffer (640*400/8 = 32000)
+      data.physbase = physbase - memory;
+      debug(DEBUG_INFO, "TOS", "screen: 0x%08X", data.physbase);
+
+      lineaVars = heap_alloc(data.heap, lineaSize);
+      data.lineaVars = lineaVars - memory;
+      debug(DEBUG_INFO, "TOS", "linea : 0x%08X", data.lineaVars);
+
+      data.a = VFSAddVolume("/app_tos/a/");
+      data.b = VFSAddVolume("/app_tos/b/");
+      data.c = VFSAddVolume("/app_tos/c/");
+      Dsetdrv(drive);
+      Dsetpath(dir);
+      debug(DEBUG_INFO, "TOS", "using drive '%c' directory \"%s\"", drive + 'A', dir);
+
+      pc = textStart;
+      a7 = stackStart + stackSize - 16;
+      state->stackStart = stackStart;
+
+      write_long(a7 + 4, basePageStart);
+      write_long(a7, 0); // return address
+
+      MemSet(&main_cpu, sizeof(m68ki_cpu_core), 0);
+      main_cpu.tos = 1;
+      m68k_set_context(&main_cpu);
+      m68k_init();
+      m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+      m68k_pulse_reset();
+      m68k_set_reg(M68K_REG_PC, pc);
+      m68k_set_reg(M68K_REG_SP, a7);
+      m68k_set_instr_hook_callback(cpu_instr_callback);
+
+      emupalmos_memory_hooks(
+        read_byte, read_word, read_long,
+        write_byte, write_word, write_long
+      );
+      FntSetFont(mono8x16Font);
+
+      if (data.debug_m68k) {
+        debug(DEBUG_INFO, "TOS", "text disassembly begin");
+        m68k_disassemble_range(textStart, dataStart, M68K_CPU_TYPE_68000);
+        debug(DEBUG_INFO, "TOS", "text disassembly end");
+      }
+
+      for (; !emupalmos_finished() && !thread_must_end();) {
+        if (m68k_get_reg(NULL, M68K_REG_PC) == 0) break;
+        m68k_execute(&state->m68k_state, 100000);
+      }
+      r = 0;
+
+      emupalmos_deinstall(oldState);
+      MemHandleFree(hMemory);
+    } else {
+      debug(DEBUG_ERROR, "TOS", "0x601a signature not found");
+      debug_bytes(DEBUG_INFO, "TOS", tos, headerSize);
+    }
+  } else {
+    debug(DEBUG_ERROR, "TOS", "invalid TOS pointer (%p) or size (%d)", tos, tosSize);
+  }
+
+  return r;
+}
+
+int tos_main_vfs(char *path, int argc, char *argv[]) {
+  char buf[maxPath], vfsd[16];
+  UInt16 volRefNum;
+  UInt32 tosSize, numBytesRead;
+  FileRef fileRef;
+  uint8_t *tos;
+  int drive, last, len, i, r = -1;
+
+  if (path && path[0]) {
+    if (path[1] == ':') {
+      drive = TxtUpperChar(path[0]);
+      switch (drive) {
+        case 'A':
+        case 'B':
+        case 'C':
+          drive -= 'A';
+          StrNCopy(buf, &path[2], sizeof(buf) - 1);
+          break;
+        default:
+          debug(DEBUG_ERROR, "TOS", "invalid drive '%c' on path \"%s\"", drive, path);
+          return -1;
+      }
+    } else {
+      drive = 0;
+      StrNCopy(buf, path, sizeof(buf) - 1);
+    }
+
+    for (i = 0, last = -1; buf[i]; i++) {
+      if (buf[i] == '\\') last = i;
+    }
+
+    len = StrLen(buf);
+    if (len > 0 && (last == -1 || (last >= 0 && last < len - 1))) {
+      if (last >= 0) buf[last] = 0;
+      StrNPrintF(vfsd, sizeof(vfsd) - 1, "/app_tos/%c/", drive + 'a');
+      volRefNum = VFSAddVolume(vfsd);
+      if (VFSFileOpen(volRefNum, &buf[last + 1], vfsModeRead, &fileRef) == errNone) {
+        if (VFSFileSize(fileRef, &tosSize) == errNone) {
+          if ((tos = MemPtrNew(tosSize)) != NULL) {
+            if (VFSFileRead(fileRef, tosSize, tos, &numBytesRead) == errNone && numBytesRead == tosSize) {
+              r = tos_main_memory(tos, tosSize, drive, buf[0] ? buf : "\\", argc, argv);
+            } else {
+              debug(DEBUG_ERROR, "TOS", "could not read file \"%s\"", buf);
+            }
+            MemPtrFree(tos);
+          }
+        } else {
+          debug(DEBUG_ERROR, "TOS", "could not obtain file size for \"%s\"", buf);
+        }
+        VFSFileClose(fileRef);
+      } else {
+        debug(DEBUG_ERROR, "TOS", "could not open \"%s\"", buf);
+      }
+    } else {
+      debug(DEBUG_ERROR, "TOS", "invalid path \"%s\"", path);
+    }
+  }
+
+  return r;
+}
+
+int tos_main_resource(DmResType type, DmResID id, int argc, char *argv[]) {
+  MemHandle hTos;
+  uint8_t *tos;
+  int r = -1;
+
+  if ((hTos = DmGet1Resource(type, id)) != NULL) {
+    if ((tos = MemHandleLock(hTos)) != NULL) {
+      r = tos_main_memory(tos, MemHandleSize(hTos), 0, "\\", argc, argv);
       MemHandleUnlock(hTos);
     }
     DmReleaseResource(hTos);
   } else {
-    debug(DEBUG_ERROR, "TOS", "ctos resource not found");
+    debug(DEBUG_ERROR, "TOS", "resource not found");
   }
 
   return r;

@@ -176,14 +176,9 @@
       break;
 
     case 26: { // void Fsetdta(DTA *buf)
-        int valid = 0;
-        uint32_t abuf = ARG32;
-        DTA *buf = (DTA *)(memory + abuf);
-        valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
-        if (valid) {
-          Fsetdta(buf);
-        }
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Fsetdta(0x%08X)", abuf);
+        uint32_t buf = ARG32;
+        write_long(data->basePageStart + 0x0020, buf);
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Fsetdta(0x%08X)", buf);
       }
       break;
 
@@ -244,11 +239,9 @@
       break;
 
     case 47: { // DTA *Fgetdta(void)
-        DTA *res = NULL;
-        res = Fgetdta();
-        uint32_t ares = res ? ((uint8_t *)res - memory) : 0;
-        m68k_set_reg(M68K_REG_D0, ares);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Fgetdta(): 0x%08X", ares);
+        uint32_t res = read_long(data->basePageStart + 0x0020);
+        m68k_set_reg(M68K_REG_D0, res);
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Fgetdta(): 0x%08X", res);
       }
       break;
 
@@ -371,7 +364,7 @@
         uint32_t abuf = ARG32;
         void *buf = (void *)(memory + abuf);
         valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
-        int32_t res = 0;
+        int32_t res = -1;
         if (valid) {
           res = Fread(handle, count, buf);
         }
@@ -387,7 +380,7 @@
         uint32_t abuf = ARG32;
         void *buf = (void *)(memory + abuf);
         valid |= (uint8_t *)buf >= data->memory && (uint8_t *)buf < data->memory + data->memorySize;
-        int32_t res = 0;
+        int32_t res = -1;
         if (valid) {
           res = Fwrite(handle, count, buf);
         }

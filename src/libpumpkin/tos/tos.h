@@ -8,9 +8,15 @@
 
 #define XBIOS_KBDVBASE_SIZE  37
 
+#define screenSize    32768
+#define lineaSize      1024
+
+#define TosType 'ctos'
+
 typedef struct {
   uint8_t *memory;
   uint32_t memorySize;
+  uint32_t basePageStart;
   uint32_t heapStart;
   uint32_t heapSize;
   heap_t *heap;
@@ -20,6 +26,7 @@ typedef struct {
   uint16_t volume;
   uint16_t a, b, c;
   uint32_t lineaVars;
+  int debug_m68k;
 } tos_data_t;
 
 typedef struct {
@@ -56,7 +63,8 @@ typedef struct {
   int32_t adrout[AES_ADROUT_LEN];
 } aes_pb_t;
 
-int tos_main(int argc, char *argv[]);
+int tos_main_vfs(char *path, int argc, char *argv[]);
+int tos_main_resource(DmResType type, DmResID id, int argc, char *argv[]);
 
 int32_t vdi_call(vdi_pb_t *vdi_pb);
 int32_t aes_call(aes_pb_t *aes_pb);
