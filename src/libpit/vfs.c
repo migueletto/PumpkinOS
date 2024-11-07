@@ -368,7 +368,7 @@ int vfs_chdir(vfs_session_t *session, char *path) {
   }
 
   xfree(abspath);
-  debug(DEBUG_INFO, "VFS", "current directory \"%s\"", session->cwd);
+  debug(DEBUG_TRACE, "VFS", "set current directory \"%s\"", session->cwd);
 
   return 0;
 }
@@ -402,6 +402,7 @@ int vfs_mkdir(vfs_session_t *session, char *path) {
 }
 
 char *vfs_cwd(vfs_session_t *session) {
+  debug(DEBUG_TRACE, "VFS", "get current directory \"%s\"", session->cwd);
   return session->cwd;
 }
 
