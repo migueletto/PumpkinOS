@@ -1335,7 +1335,7 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
   UInt16 formId = 0;
 
   if ((dbRef = DmOpenDatabase(0, data->dbID, dmModeReadWrite)) != NULL) {
-    if ((h = DmGetResourceIndex(dbRef, item->index)) != NULL) {
+    if ((h = DmGet1Resource(item->type, item->id)) != NULL) {
       pumpkin_id2s(item->type, st);
       StrNPrintF(title, sizeof(title)-1, "%s %d", st, item->id);
       formId = EditBinForm;
