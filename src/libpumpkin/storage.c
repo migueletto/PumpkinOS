@@ -1390,8 +1390,8 @@ static Int32 compare_handle(void *e1, void *e2, void *otherP) {
 
   db = (storage_db_t *)otherP;
   if (db->ftype == STO_TYPE_RES) {
-    h1 = (storage_handle_t *)e1;
-    h2 = (storage_handle_t *)e2;
+    h1 = *((storage_handle_t **)e1);
+    h2 = *((storage_handle_t **)e2);
 
     if (h1->d.res.type < h2->d.res.type) {
       r = -1;
