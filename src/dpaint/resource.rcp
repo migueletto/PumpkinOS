@@ -6,15 +6,6 @@ BEGIN
   BITMAP "dpaint_high.bmp" BPP 8 DENSITY 144
 END
 
-ALERT ID 1000
-ERROR
-BEGIN
-  TITLE "Error"
-  MESSAGE "^1^2^3"
-  BUTTONS "OK"
-END
-
-HEX  "tDrv" ID 1 "A" 0x00
 HEX  "tDir" ID 1 "DPAINT" 0x00
 HEX  "tPrg" ID 1 "DPAINT.TOS" 0x00
 DATA "ZipF" ID 1 "dpaint.dat"
