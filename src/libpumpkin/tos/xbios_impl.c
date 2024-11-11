@@ -14,42 +14,6 @@ void *Ssbrk(int16_t count) {
   return 0;
 }
 
-int16_t Getrez(void) {
-  // returns the current resolution of the screen:
-  // 0  320x200 (4 planes)
-  // 1  640x200 (2 planes)
-  // 2  640x400 (one plane)
-  // 4  640x480 (4 planes, TT only)
-  // 6 1280x960 (one plane, TT only)
-  // 7  320x480 (8 planes, TT only)
-
-  return 1;
-}
-
-void Setscreen(void *laddr, void *paddr, int16_t rezz) {
-  // alter the screen resolution and screen memory addresses
-  // laddr: address of the logical screen memory
-  // paddr: address of the physical screen memory
-  // rezz: 0 = ST Low
-  //       1 = ST Medium
-  //       2 = ST High
-  // a value of -1 means that the corresponding address or resolution will not be altered
-}
-
-void Setpalette(void *pallptr) {
-  debug(DEBUG_ERROR, "TOS", "Setpalette not implemented");
-}
-
-int16_t Setcolor(int16_t colornum, int16_t color) {
-  // returns the value of a colour register or sets this to a new value
-  // colornum: number of the colour register (0..15)
-  // color: new colour value (-1 = don't alter)
-  // returns the old value of the colour register
-  debug(DEBUG_ERROR, "TOS", "Setcolor not implemented");
-
-  return 0;
-}
-
 int16_t Floprd(void *buf, int32_t filler, int16_t devno, int16_t sectno, int16_t trackno, int16_t sideno, int16_t count) {
   debug(DEBUG_ERROR, "TOS", "Floprd not implemented");
   return 0;

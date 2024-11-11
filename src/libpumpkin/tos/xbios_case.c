@@ -32,55 +32,105 @@
       break;
 
     case 3: { // void *Logbase(void)
-        uint32_t res = data->physbase; // XXX logbase = physbase
+        uint32_t res = data->logbase;
         m68k_set_reg(M68K_REG_D0, res);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Logbase(): 0x%08X", res);
       }
       break;
 
     case 4: { // int16_t Getrez(void)
-        int16_t res = 0;
-        res = Getrez();
+        // returns the current resolution of the screen:
+        // 0  320x200 (4 planes)
+        // 1  640x200 (2 planes)
+        // 2  640x400 (one plane)
+
+        int16_t res = data->screen_res;
         m68k_set_reg(M68K_REG_D0, res);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Getrez(): %d", res);
       }
       break;
 
     case 5: { // void Setscreen(void *laddr, void *paddr, int16_t rezz)
-        int valid = 0;
-        uint32_t aladdr = ARG32;
-        void *laddr = (void *)(memory + aladdr);
-        valid |= (uint8_t *)laddr >= data->memory && (uint8_t *)laddr < data->memory + data->memorySize;
-        uint32_t apaddr = ARG32;
-        void *paddr = (void *)(memory + apaddr);
-        valid |= (uint8_t *)paddr >= data->memory && (uint8_t *)paddr < data->memory + data->memorySize;
+        // alter the screen resolution and screen memory addresses
+        // laddr: address of the logical screen memory
+        // paddr: address of the physical screen memory
+        // rezz: same as in Getrez
+        // a value of -1 means that the corresponding address or resolution will not be altered
+
+        uint32_t laddr = ARG32;
+        uint32_t paddr = ARG32;
         int16_t rezz = ARG16;
-        if (valid) {
-          Setscreen(laddr, paddr, rezz);
+
+        if (laddr != 0xFFFFFFFF) {
+          data->logbase = laddr;
         }
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Setscreen(0x%08X, 0x%08X, %d)", aladdr, apaddr, rezz);
+
+        if (paddr != 0xFFFFFFFF) {
+          data->physbase = paddr;
+        }
+
+        if (rezz != -1) {
+          switch (rezz) {
+            case 0:
+            case 1:
+            case 2:
+              data->screen_res = rezz;
+              break;
+            default:
+              debug(DEBUG_ERROR, "TOS", "GEMDOS Setscreen invalid resolution %d", rezz);
+              break;
+          }
+        }
+
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Setscreen(0x%08X, 0x%08X, %d)", laddr, paddr, rezz);
       }
       break;
 
     case 6: { // void Setpalette(void *pallptr)
-        int valid = 0;
-        uint32_t apallptr = ARG32;
-        void *pallptr = (void *)(memory + apallptr);
-        valid |= (uint8_t *)pallptr >= data->memory && (uint8_t *)pallptr < data->memory + data->memorySize;
-        if (valid) {
-          Setpalette(pallptr);
+        // loads the ST color lookup table with a new palette
+        uint32_t pallptr = ARG32;
+        if (pallptr) {
+          uint16_t color, rgb;
+          uint32_t colornum;
+          for (colornum = 0; colornum < 16; colornum++) {
+            color = m68k_read_memory_16(pallptr);
+            rgb = tos_convert_color(color);
+            data->tos_color[colornum] = color;
+            data->pumpkin_color[colornum] = rgb;
+            debug(DEBUG_TRACE, "TOS", "GEMDOS Setpalette %u color 0x%04X rgb565 0x%04X", colornum, color, rgb);
+            pallptr += 2;
+          }
+          data->screen_updated = 1;
         }
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Setpalette(0x%08X)", apallptr);
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Setpalette(0x%08X)", pallptr);
       }
       break;
 
     case 7: { // int16_t Setcolor(int16_t colornum, int16_t color)
-        int16_t colornum = ARG16;
-        int16_t color = ARG16;
-        int16_t res = 0;
-        res = Setcolor(colornum, color);
-        m68k_set_reg(M68K_REG_D0, res);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Setcolor(%d, %d): %d", colornum, color, res);
+        // returns the value of a colour register or sets this to a new value
+        // colornum: number of the colour register (0..15)
+        // color: new colour value (-1 = don't alter)
+        // returns the old value of the colour register
+        // each of the sixteen color registers is bitmapped into a WORD as follows:
+        // xxxx xRRR xGGG xBBB
+        // xxxx x321 x321 x321
+
+        uint16_t colornum = ARG16;
+        uint16_t color = ARG16;
+        uint16_t rgb, old = 0;
+
+        if (colornum < 16) {
+          old = data->tos_color[colornum];
+          if (color != 0xffff) {
+            rgb = tos_convert_color(color);
+            data->tos_color[colornum] = color;
+            data->pumpkin_color[colornum] = rgb;
+            data->screen_updated = 1;
+            debug(DEBUG_TRACE, "TOS", "GEMDOS Setcolor %u color 0x%04X rgb565 0x%04X", colornum, color, rgb);
+          }
+        }
+        m68k_set_reg(M68K_REG_D0, old);
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Setcolor(%u, %u): %u", colornum, color, old);
       }
       break;
 

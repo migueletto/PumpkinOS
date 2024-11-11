@@ -1,0 +1,8 @@
+APPLICATIONICONNAME ID 1000 "Test"
+
+HEX  "tDrv" ID 1 "A" 0x00
+HEX  "tDir" ID 1 "TEST" 0x00
+HEX  "tPrg" ID 1 "PROGRAM.TOS" 0x00
+DATA "ZipF" ID 1 "test.dat"
+
+HEX "wind" ID 1 0x02 0x80 0x01 0x90

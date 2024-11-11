@@ -25,9 +25,13 @@ static const FileRef stdinFileRef  = &dummy0;
 static const FileRef stdoutFileRef = &dummy1;
 static const FileRef stderrFileRef = &dummy2;
 
-PLIBC_FILE *plibc_stdin = NULL;
-PLIBC_FILE *plibc_stdout = NULL;
-PLIBC_FILE *plibc_stderr = NULL;
+static const PLIBC_FILE fplibc_stdin  = { 0, 0 };
+static const PLIBC_FILE fplibc_stdout = { 1, 0 };
+static const PLIBC_FILE fplibc_stderr = { 2, 0 };
+
+const PLIBC_FILE *plibc_stdin  = &fplibc_stdin;
+const PLIBC_FILE *plibc_stdout = &fplibc_stdout;
+const PLIBC_FILE *plibc_stderr = &fplibc_stderr;
 
 int plibc_init(void) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
@@ -36,18 +40,12 @@ int plibc_init(void) {
 
   table[0] = sys_calloc(1, sizeof(fd_t));
   table[0]->fileRef = stdinFileRef;
-  plibc_stdin = sys_calloc(1, sizeof(PLIBC_FILE));
-  plibc_stdin->fd = 0;
 
   table[1] = sys_calloc(1, sizeof(fd_t));
   table[1]->fileRef = stdoutFileRef;
-  plibc_stdout = sys_calloc(1, sizeof(PLIBC_FILE));
-  plibc_stdout->fd = 1;
 
   table[2] = sys_calloc(1, sizeof(fd_t));
   table[2]->fileRef = stderrFileRef;
-  plibc_stderr = sys_calloc(1, sizeof(PLIBC_FILE));
-  plibc_stderr->fd = 2;
 
   return 0;
 }
@@ -62,10 +60,6 @@ int plibc_finish(void) {
       table[fd] = NULL;
     }
   }
-
-  sys_free(plibc_stdin);
-  sys_free(plibc_stdout);
-  sys_free(plibc_stderr);
 
   return 0;
 }

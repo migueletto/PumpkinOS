@@ -83,6 +83,20 @@ int VFSInitModule(void) {
   return 0;
 }
 
+Boolean VFSVolumeExists(char *volume) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+  vfs_session_t *session;
+  Boolean r = false;
+
+  if (module && volume && volume[0]) {
+    session = vfs_open_session();
+    r = vfs_chdir(session, volume) == 0;
+    vfs_close_session(session);
+  }
+
+  return r;
+}
+
 int VFSAddVolume(char *volume) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   int i, volRefNum = -1;
@@ -101,10 +115,13 @@ int VFSAddVolume(char *volume) {
     }
 
     if (i < NUM_VOLUMES) {
-      StrNCopy(module->volume[i], volume, MAX_CARD);
+      StrNCopy(module->volume[i], volume, MAX_CARD-1);
       volRefNum = i + 1;
       module->session[i] = vfs_open_session();
-      vfs_chdir(module->session[i], module->volume[i]);
+      if (vfs_chdir(module->session[i], module->volume[i]) == -1) {
+        vfs_mkdir(module->session[i], module->volume[i]);
+        vfs_chdir(module->session[i], module->volume[i]);
+      }
       debug(DEBUG_TRACE, PALMOS_MODULE, "volume \"%s\" added as volRefNum %d", volume, volRefNum);
     } else {
       debug(DEBUG_ERROR, PALMOS_MODULE, "no room for volume \"%s\"", volume);

@@ -13,9 +13,9 @@
 
 typedef struct PLIBC_FILE PLIBC_FILE;
 
-extern PLIBC_FILE *plibc_stdin;
-extern PLIBC_FILE *plibc_stdout;
-extern PLIBC_FILE *plibc_stderr;
+extern const PLIBC_FILE *plibc_stdin;
+extern const PLIBC_FILE *plibc_stdout;
+extern const PLIBC_FILE *plibc_stderr;
 
 enum { PLIBC_SEEK_SET, PLIBC_SEEK_CUR, PLIBC_SEEK_END };
 
@@ -59,11 +59,11 @@ char *plibc_fgets(char *s, int size, PLIBC_FILE *stream);
 
 int plibc_haschar(void);
 
-#define plibc_putchar(c) plibc_fputc(c, plibc_stdout)
+#define plibc_putchar(c) plibc_fputc(c, (PLIBC_FILE *)plibc_stdout)
 #define plibc_putc plibc_fputc
-#define plibc_puts(s) plibc_fputs(s, plibc_stdout)
+#define plibc_puts(s) plibc_fputs(s, (PLIBC_FILE *)plibc_stdout)
 #define plibc_getc plibc_fgetc
-#define plibc_getchar() plibc_fgetc(plibc_stdin)
+#define plibc_getchar() plibc_fgetc((PLIBC_FILE *)plibc_stdin)
 
 int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...);
 int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap);

@@ -4038,7 +4038,7 @@ void m68k_disassemble_range(unsigned int start, unsigned int end, unsigned int c
   unsigned int pc, opcode, stack[4096];
   uint8_t pad[16];
   int stackp, pop, size, index;
-  uint32_t i, total;
+  uint32_t i, total, addr;
   int32_t offset;
   char buf[128];
 
@@ -4089,9 +4089,26 @@ void m68k_disassemble_range(unsigned int start, unsigned int end, unsigned int c
       PUSH(pc + 2 + offset);
     } else if (opcode == 0x4eb9) {
       // JSR 32 bits
-      PUSH((uint32_t)m68k_read_memory_32(pc + 2));
+      addr = m68k_read_memory_32(pc + 2);
+      if (addr >= start && addr < end) {
+        PUSH(addr);
+      } else {
+        debug(DEBUG_ERROR, "M68K", "invalid address 0x%08X for absolute JSR ", addr);
+      }
     } else if (opcode == 0x4e75) {
       // RTS
+      pop = 1;
+    } else if (opcode == 0x4ef9) {
+      // JMP xxxx.l
+      addr = m68k_read_memory_32(pc + 2);
+      if (addr >= start && addr < end) {
+        PUSH(addr);
+      } else {
+        debug(DEBUG_ERROR, "M68K", "invalid address 0x%08X for absolute JMP", addr);
+      }
+      pop = 1;
+    } else if ((opcode & 0xfff0) == 0x4ed0) {
+      // JMP (Ax)
       pop = 1;
     }
 

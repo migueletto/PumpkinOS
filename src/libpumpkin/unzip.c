@@ -8,20 +8,14 @@ typedef struct {
   JZFile zip;
   Int32 size;
   Int32 pointer;
+  UInt16 volRefNum;
+  char *dir;
   UInt8 *p;
-  char *dir;
-} mem_zip_t;
-
-typedef struct {
-  JZFile zip;
-  Int32 size;
-  Int32 pointer;
   FileRef f;
-  char *dir;
-} file_zip_t;
+} zip_t;
 
 static sys_size_t mem_read(JZFile *file, void *buf, sys_size_t size) {
-  mem_zip_t *zip = (mem_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
   Int32 sz = (Int32)size;
 
   if (buf) {
@@ -36,13 +30,13 @@ static sys_size_t mem_read(JZFile *file, void *buf, sys_size_t size) {
 }
 
 static sys_size_t mem_tell(JZFile *file) {
-  mem_zip_t *zip = (mem_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
 
   return zip->pointer;
 }
 
 static int mem_seek(JZFile *file, sys_size_t offset, int whence) {
-  mem_zip_t *zip = (mem_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
   Int32 offs = (Int32)offset;
 
   switch (whence) {
@@ -71,7 +65,7 @@ static void mem_close(JZFile *file) {
 }
 
 static sys_size_t file_read(JZFile *file, void *buf, sys_size_t size) {
-  file_zip_t *zip = (file_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
   Int32 sz = (Int32)size;
   UInt32 numBytesRead;
   Err err;
@@ -87,7 +81,7 @@ static sys_size_t file_read(JZFile *file, void *buf, sys_size_t size) {
 }
 
 static sys_size_t file_tell(JZFile *file) {
-  file_zip_t *zip = (file_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
   UInt32 filePos;
   Err err;
 
@@ -97,7 +91,7 @@ static sys_size_t file_tell(JZFile *file) {
 }
 
 static int file_seek(JZFile *file, sys_size_t offset, int whence) {
-  file_zip_t *zip = (file_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
   Int32 offs = (Int32)offset;
   FileOrigin origin;
   Err err;
@@ -126,12 +120,12 @@ static int file_error(JZFile *file) {
 }
 
 static void file_close(JZFile *file) {
-  file_zip_t *zip = (file_zip_t *)file;
+  zip_t *zip = (zip_t *)file;
 
   VFSFileClose(zip->f);
 }
 
-static void writeFile(char *filename, void *data, sys_size_t bytes) {
+static void writeFile(UInt16 volRefNum, char *filename, void *data, sys_size_t bytes) {
   FileRef f;
   UInt32 numBytesWritten;
   int i;
@@ -142,9 +136,9 @@ static void writeFile(char *filename, void *data, sys_size_t bytes) {
 
     filename[i] = '\0'; // terminate string at this point
 
-    if (VFSFileOpen(1, filename, vfsModeRead, &f) != errNone) {
+    if (VFSFileOpen(volRefNum, filename, vfsModeRead, &f) != errNone) {
       debug(DEBUG_TRACE, "unzip", "create directory \"%s\"", filename);
-      if (VFSDirCreate(1, filename) != errNone) {
+      if (VFSDirCreate(volRefNum, filename) != errNone) {
         debug(DEBUG_ERROR, "unzip", "couldn't create directory \"%s\"", filename);
         return;
       }
@@ -158,16 +152,16 @@ static void writeFile(char *filename, void *data, sys_size_t bytes) {
   if (!i || filename[i-1] == '/')
     return; // empty filename or directory entry
 
-  if (VFSFileOpen(1, filename, vfsModeRead, &f) == errNone) {
+  if (VFSFileOpen(volRefNum, filename, vfsModeRead, &f) == errNone) {
     debug(DEBUG_TRACE, "unzip", "delete existing file \"%s\"", filename);
     VFSFileClose(f);
-    VFSFileDelete(1, filename);
+    VFSFileDelete(volRefNum, filename);
   }
 
   debug(DEBUG_TRACE, "unzip", "create file \"%s\"", filename);
-  if (VFSFileCreate(1, filename) == errNone) {
+  if (VFSFileCreate(volRefNum, filename) == errNone) {
     if (bytes > 0) {
-      if (VFSFileOpen(1, filename, vfsModeWrite, &f) == errNone && f != NULL) {
+      if (VFSFileOpen(volRefNum, filename, vfsModeWrite, &f) == errNone && f != NULL) {
         VFSFileWrite(f, bytes, data, &numBytesWritten);
         VFSFileClose(f);
       } else {
@@ -179,15 +173,15 @@ static void writeFile(char *filename, void *data, sys_size_t bytes) {
   }
 }
 
-static int processFile(JZFile *zip) {
-  mem_zip_t *z = (mem_zip_t *)zip;
+static int processFile(JZFile *z) {
+  zip_t *zip = (zip_t *)z;
   JZFileHeader header;
   char *name, filename[1024];
   Int32 len;
   UInt8 *data;
 
   MemSet(filename, sizeof(filename), 0);
-  StrNCopy(filename, z->dir, sizeof(filename) - 2);
+  StrNCopy(filename, zip->dir, sizeof(filename) - 2);
   len = StrLen(filename);
   if (len > 0 && filename[len-1] != '/') {
     filename[len-1] = '/';
@@ -196,7 +190,7 @@ static int processFile(JZFile *zip) {
   }
   name = filename + len;
 
-  if (jzReadLocalFileHeader(zip, &header, name, sizeof(filename) - len - 1)) {
+  if (jzReadLocalFileHeader(z, &header, name, sizeof(filename) - len - 1)) {
     debug(DEBUG_ERROR, "unzip", "couldn't read local file header");
     return -1;
   }
@@ -208,13 +202,13 @@ static int processFile(JZFile *zip) {
 
   debug(DEBUG_TRACE, "unzip", "entry \"%s\", %d (%d) bytes", filename, header.compressedSize, header.uncompressedSize);
 
-  if (jzReadData(zip, &header, data) != Z_OK) {
+  if (jzReadData(z, &header, data) != Z_OK) {
     debug(DEBUG_ERROR, "unzip", "couldn't read file data");
     sys_free(data);
     return -1;
   }
 
-  writeFile(filename, data, header.uncompressedSize);
+  writeFile(zip->volRefNum, filename, data, header.uncompressedSize);
   sys_free(data);
 
   return 0;
@@ -235,13 +229,13 @@ static int recordCallback(JZFile *zip, int idx, JZFileHeader *header, char *file
   return 1; // continue
 }
 
-int pumpkin_unzip_memory(UInt8 *p, UInt32 size, char *dir) {
+int pumpkin_unzip_memory(UInt8 *p, UInt32 size, UInt16 volRefNum, char *dir) {
   JZEndRecord endRecord;
-  mem_zip_t *zip;
+  zip_t *zip;
   int r = -1;
 
   if (p && dir) {
-    zip = sys_malloc(sizeof(mem_zip_t));
+    zip = sys_malloc(sizeof(zip_t));
     zip->zip.read = mem_read;
     zip->zip.tell = mem_tell;
     zip->zip.seek = mem_seek;
@@ -249,6 +243,7 @@ int pumpkin_unzip_memory(UInt8 *p, UInt32 size, char *dir) {
     zip->zip.close = mem_close;
     zip->size = size;
     zip->p = p;
+    zip->volRefNum = volRefNum;
     zip->dir = dir;
 
     if (jzReadEndRecord((JZFile *)zip, &endRecord) == 0) {
@@ -266,14 +261,14 @@ int pumpkin_unzip_memory(UInt8 *p, UInt32 size, char *dir) {
   return r;
 }
 
-int pumpkin_unzip_resource(UInt32 type, UInt16 id, char *dir) {
+int pumpkin_unzip_resource(UInt32 type, UInt16 id, UInt16 volRefNum, char *dir) {
   MemHandle h;
   UInt8 *p;
   int r = -1;
 
   if (dir && (h = DmGetResource(type, id)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
-      r = pumpkin_unzip_memory(p, MemHandleSize(h), dir);
+      r = pumpkin_unzip_memory(p, MemHandleSize(h), volRefNum, dir);
       MemHandleUnlock(h);
     }
     DmReleaseResource(h);
@@ -282,19 +277,20 @@ int pumpkin_unzip_resource(UInt32 type, UInt16 id, char *dir) {
   return r;
 }
 
-int pumpkin_unzip_file(FileRef f, char *dir) {
+int pumpkin_unzip_file(FileRef f, UInt16 volRefNum, char *dir) {
   JZEndRecord endRecord;
-  file_zip_t *zip;
+  zip_t *zip;
   int r = -1;
 
   if (f && dir) {
-    zip = sys_malloc(sizeof(file_zip_t));
+    zip = sys_malloc(sizeof(zip_t));
     zip->zip.read = file_read;
     zip->zip.tell = file_tell;
     zip->zip.seek = file_seek;
     zip->zip.error = file_error;
     zip->zip.close = file_close;
     zip->f = f;
+    zip->volRefNum = volRefNum;
     zip->dir = dir;
 
     if (jzReadEndRecord((JZFile *)zip, &endRecord) == 0) {
@@ -312,12 +308,12 @@ int pumpkin_unzip_file(FileRef f, char *dir) {
   return r;
 }
 
-int pumpkin_unzip_filename(char *filename, char *dir) {
+int pumpkin_unzip_filename(UInt16 srcVolRefNum, char *filename, UInt16 dstVolRefNum, char *dir) {
   FileRef f;
   int r = -1;
 
-  if (filename && dir && VFSFileOpen(1, filename, vfsModeRead, &f) == errNone) {
-    r = pumpkin_unzip_file(f, dir);
+  if (filename && dir && VFSFileOpen(srcVolRefNum, filename, vfsModeRead, &f) == errNone) {
+    r = pumpkin_unzip_file(f, dstVolRefNum, dir);
     VFSFileClose(f);
   }
 

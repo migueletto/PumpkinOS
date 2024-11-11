@@ -521,6 +521,7 @@ Err KbdDrawKeyboard(KeyboardType kbd, Boolean upper, WinHandle wh, RectangleType
 char *VFSGetMount(UInt16 volRefNum);
 Err VFSChangeDir(UInt16 volRefNum, char *path);
 Err VFSCurrentDir(UInt16 volRefNum, char *path, UInt16 max);
+Boolean VFSVolumeExists(char *volume);
 int VFSAddVolume(char *volume);
 
 void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);

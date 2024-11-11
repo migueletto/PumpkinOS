@@ -3,6 +3,9 @@
 
 #include "thread.h"
 #include "bytes.h"
+#include "rgb.h"
+#include "plibc.h"
+#include "unzip.h"
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
@@ -10,18 +13,26 @@
 #include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"
 #include "emupalmos.h"
-#include "heap.h"
 #include "tos.h"
 #include "gemdos.h"
 #include "gemdos_proto.h"
 #include "bios_proto.h"
 #include "xbios_proto.h"
+#include "xbios_proto.h"
 #include "debug.h"
 
 #define headerSize       28
-#define lowMemSize     2048
+
+#define sysvarsSize    2048
+#define kbdvSize         64
+#define lineaSize      1024
+#define screenSize    32000
+#define lowMemSize     (sysvarsSize + kbdvSize + lineaSize + screenSize)
 #define basePageSize    256
 #define stackSize      4096
+
+#define ioStart 0x00FF8000
+#define ioEnd   0x01000000
 
 #define maxPath 256
 
@@ -76,16 +87,35 @@
 // 0xFEFF0000 – 0xFEFFFFFF: VME
 // 0xFF000000 – 0xFFFFFFFF: shadow of 0x00000000 – 0x00FFFFFF
 
-static uint32_t tos_read_byte(uint8_t *memory, uint32_t memorySize, uint32_t address) {
-  uint32_t value = 0;
+static const uint16_t palette[] = {
+  7, 7, 7,
+  7, 0, 0,
+  0, 7, 0,
+  7, 7, 0,
+  0, 0, 7,
+  7, 0, 7,
+  0, 7, 7,
+  5, 5, 5,
+  3, 3, 3,
+  7, 3, 3,
+  3, 7, 3,
+  7, 7, 3,
+  3, 3, 7,
+  7, 3, 7,
+  3, 7, 7,
+  0, 0, 0
+};
+
+static uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
+  EventType event;
+  Err err;
+  uint8_t value = 0;
 
   if ((address & 0xFF000000) == 0xFF000000) {
     address &= 0x00FFFFFF;
   }
   
-  if (address >= 0x00FF8000 && address < 0x01000000) {
-    debug(DEBUG_INFO, "TOS", "read from I/O register 0x%08X", address);
-
+  if (address >= ioStart && address < ioEnd) {
     switch (address) {
       case 0x00FFFA09: // MFP-ST Interrupt Enable Register B
         value = 0x40; // keyboard/MIDI
@@ -93,10 +123,107 @@ static uint32_t tos_read_byte(uint8_t *memory, uint32_t memorySize, uint32_t add
       case 0x00FFFC00: // Keyboard ACIA Control
         // bit 0: receiver full
         // bit 1: transmitter empty
-        value = 3;
+
+        value = 0x02;
+
+        while (EvtEventAvail()) {
+          EvtGetEvent(&event, 0);
+          if (SysHandleEvent(&event)) continue;
+          if (MenuHandleEvent(NULL, &event, &err)) continue;
+          if (event.eType == appStopEvent) {
+            emupalmos_finish(1);
+          } else if (event.eType == keyDownEvent) {
+            data->ikbd_state = event.data.keyDown.chr;
+            data->ikbd_cmd = 0xFE;
+          }
+        }
+
+        if (data->ikbd_state && data->ikbd_cmd != 0x80) {
+          value |= 0x01;
+        }
         break;
       case 0x00FFFC02: // keyboard ACIA data
-        value = 0;
+        if (data->ikbd_cmd) {
+          Int16 x, y;
+          Boolean penDown, right;
+
+          switch (data->ikbd_cmd) {
+            case 0x0D:
+              // Interrogate mouse position.
+              // Returns:  0xF7  ; absolute mouse position header 
+              //   BUTTONS
+              //     0000dcba
+              //     where a is right button down since last interrogation
+              //     b is right button up since last
+              //     c is left button down since last
+              //     d is left button up since last
+              //   XMSB      ; X coordinate
+              //   XLSB
+              //   YMSB      ; Y coordinate
+              //   YLSB
+
+              switch (data->ikbd_state) {
+                case 1: // header
+                  EvtGetPenEx(&x, &y, &penDown, &right);
+                  switch (data->screen_res) {
+                    case 0: x >>= 1; y >>= 1; break;
+                    case 1: y >>= 1; break;
+                  }
+                  value = 0xF7;
+                  data->ikbd_x = x;
+                  data->ikbd_y = y;
+                  if (penDown) {
+                    data->ikbd_button = right ? 2 : 1;
+                  } else {
+                    data->ikbd_button = 0;
+                  }
+                  data->ikbd_state = 2;
+                  break;
+                case 2: // buttons
+                  if (data->ikbd_button) {
+                    value = 0x04;
+                  } else {
+                    value = 0x08;
+                  }
+                  data->ikbd_state = 3;
+                  break;
+                case 3: // MSB X
+                  value = data->ikbd_x >> 8;
+                  data->ikbd_state = 4;
+                  break;
+                case 4: // LSB X
+                  value = data->ikbd_x & 0xff;
+                  data->ikbd_state = 5;
+                  break;
+                case 5: // MSB Y
+                  value = data->ikbd_y >> 8;
+                  data->ikbd_state = 6;
+                  break;
+                case 6: // LSB Y
+                  value = data->ikbd_y & 0xff;
+                  data->ikbd_state = 0;
+                  data->ikbd_cmd = 0;
+                  break;
+                default:
+                  value = 0;
+                  data->ikbd_state = 0;
+                  data->ikbd_cmd = 0;
+                  break;
+              }
+              break;
+            case 0xFE:
+              value = data->ikbd_state;
+              debug(DEBUG_TRACE, "TOS", "key 0x%02X", value);
+              data->ikbd_state = 0;
+              data->ikbd_cmd = 0;
+              break;
+            default:
+              debug(DEBUG_ERROR, "TOS", "unknown ikbd command 0x%02X", data->ikbd_cmd);
+              data->ikbd_cmd = 0;
+              value = 0;
+              break;
+          }
+        }
         break;
       case 0x00FFFC04: // MIDI ACIA Control
         value = 0;
@@ -108,8 +235,11 @@ static uint32_t tos_read_byte(uint8_t *memory, uint32_t memorySize, uint32_t add
         value = 0;
         break;
     }
-  } else if (address < memorySize) {
-    value = memory[address];
+    //debug(DEBUG_INFO, "TOS", "read 0x%02X from IO register 0x%08X", value, address);
+
+  } else if (address < data->memorySize) {
+    value = data->memory[address];
+
   } else {
     //debug(DEBUG_ERROR, "TOS", "read from unmapped address 0x%08X", address);
   }
@@ -117,15 +247,27 @@ static uint32_t tos_read_byte(uint8_t *memory, uint32_t memorySize, uint32_t add
   return value;
 }
 
-static void tos_write_byte(uint8_t *memory, uint32_t memorySize, uint32_t address, uint8_t value) {
+void tos_write_byte(tos_data_t *data, uint32_t address, uint8_t value) {
   if ((address & 0xFF000000) == 0xFF000000) {
     address &= 0x00FFFFFF;
   }
 
-  if (address >= 0x00FF8000 && address < 0x01000000) {
-    debug(DEBUG_INFO, "TOS", "write 0x%02X to I/O register 0x%08X", value, address);
-  } else if (address < memorySize) {
-    memory[address] = value;
+  if (address >= ioStart && address < ioEnd) {
+    //debug(DEBUG_INFO, "TOS", "write 0x%02X to IO register 0x%08X", value, address);
+
+    switch (address) {
+      case 0x00FFFC02: // keyboard ACIA data
+        if (data->ikbd_cmd != 0x80) {
+          data->ikbd_cmd = value;
+          data->ikbd_state = 1;
+        } else {
+          data->ikbd_cmd = 0;
+        }
+        break;
+    }
+
+  } else if (address < data->memorySize) {
+    data->memory[address] = value;
   } else {
     //debug(DEBUG_ERROR, "TOS", "write 0x%02X to unmapped address 0x%08X", value, address);
   }
@@ -135,7 +277,7 @@ static uint8_t read_byte(uint32_t address) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
 
-  return tos_read_byte(data->memory, data->memorySize, address);
+  return tos_read_byte(data, address);
 }
 
 static uint16_t read_word(uint32_t address) {
@@ -144,7 +286,7 @@ static uint16_t read_word(uint32_t address) {
   uint16_t w = 0;
 
   if ((address & 1) == 0) {
-    w = (tos_read_byte(data->memory, data->memorySize, address) << 8) | tos_read_byte(data->memory, data->memorySize, address + 1);
+    w = (tos_read_byte(data, address) << 8) | tos_read_byte(data, address + 1);
   } else {
     debug(DEBUG_ERROR, "TOS", "read_word unaligned address 0x%08X", address);
   }
@@ -158,8 +300,10 @@ static uint32_t read_long(uint32_t address) {
   uint32_t l = 0;
 
   if ((address & 1) == 0) {
-    l = (tos_read_byte(data->memory, data->memorySize, address    ) << 24) | (tos_read_byte(data->memory, data->memorySize, address + 1) << 16) |
-        (tos_read_byte(data->memory, data->memorySize, address + 2) <<  8) |  tos_read_byte(data->memory, data->memorySize, address + 3);
+    l = (tos_read_byte(data, address    ) << 24) |
+        (tos_read_byte(data, address + 1) << 16) |
+        (tos_read_byte(data, address + 2) <<  8) |
+         tos_read_byte(data, address + 3);
   } else {
     debug(DEBUG_ERROR, "TOS", "read_long unaligned address 0x%08X", address);
   }
@@ -167,11 +311,126 @@ static uint32_t read_long(uint32_t address) {
   return l;
 }
 
+static void write_screen(tos_data_t *data, uint32_t address, uint16_t value) {
+  uint32_t i, k, x, y, plane, offset, index;
+  uint16_t b, b2, b3, b4, color;
+  uint8_t *m = &data->memory[data->physbase];
+
+  offset = address - data->physbase;
+  put2b(value, m, offset);
+
+  switch (data->screen_res) {
+    case 0: // 320x200 (4 planes)
+      plane = (offset >> 1) & 0x03;
+      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, plane, address);
+      switch (plane) {
+        case 0:
+          b = value;
+          get2b(&b2, m, offset + 2);
+          get2b(&b3, m, offset + 4);
+          get2b(&b4, m, offset + 6);
+          break;
+        case 1:
+          get2b(&b,  m, offset - 2);
+          b2 = value;
+          get2b(&b3, m, offset + 2);
+          get2b(&b4, m, offset + 4);
+          break;
+        case 2:
+          get2b(&b,  m, offset - 4);
+          get2b(&b2, m, offset - 2);
+          b3 = value;
+          get2b(&b4, m, offset + 2);
+          break;
+        case 3:
+          get2b(&b,  m, offset - 6);
+          get2b(&b2, m, offset - 4);
+          get2b(&b3, m, offset - 2);
+          b4 = value;
+          break;
+      }
+      offset >>= 3;
+      y = offset / 20;        // 0 .. 199
+      x = (offset % 20) * 16; // 0 .. 304
+      y <<= 1; // 0 .. 398
+      x <<= 1; // 0 .. 608
+      offset = y * 640 + x;
+      for (i = 0, k = 30; i < 16; i++, k -= 2) {
+        index = (b & 1) | ((b2 & 1) << 1) | ((b3 & 1) << 2) | ((b4 & 1) << 3);
+        color = data->pumpkin_color[index];
+        data->screen[offset + k] = color;
+        data->screen[offset + k + 1] = color;
+        data->screen[offset + 640 + k] = color;
+        data->screen[offset + 640 + k + 1] = color;
+        b  >>= 1;
+        b2 >>= 1;
+        b3 >>= 1;
+        b4 >>= 1;
+      }
+      break;
+    case 1: // 640x200 (2 planes)
+      plane = (offset >> 1) & 0x01;
+      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, plane, address);
+      switch (plane) {
+        case 0:
+          b = value;
+          get2b(&b2, m, offset + 2);
+          break;
+        case 1:
+          get2b(&b, m, offset - 2);
+          b2 = value;
+          break;
+      }
+      offset >>= 2;
+      y = offset / 40;        // 0 .. 199
+      x = (offset % 40) * 16; // 0 .. 624
+      y <<= 1; // 0 .. 398
+      offset = y * 640 + x;
+      for (i = 0, k = 30; i < 16; i++, k--) {
+        index = (b & 1) | ((b2 & 1) << 1);
+        color = data->pumpkin_color[index];
+        data->screen[offset + k] = color;
+        data->screen[offset + 640 + k] = color;
+        b  >>= 1;
+        b2 >>= 1;
+      }
+      break;
+    case 2: // 640x400 (1 plane)
+      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, 0, address);
+      b = value;
+      offset >>= 1;
+      y = offset / 40;        // 0 .. 199
+      x = (offset % 40) * 16; // 0 .. 624
+      for (i = 0, k = 30; i < 16; i++, k--) {
+        color = data->pumpkin_color[b & 1];
+        data->screen[offset + k] = color;
+        b >>= 1;
+      }
+      break;
+  }
+  data->screen_updated = 1;
+}
+
 static void write_byte(uint32_t address, uint8_t value) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
 
-  tos_write_byte(data->memory, data->memorySize, address, value);
+  if (address >= data->physbase && address < data->physbase + screenSize) {
+    uint16_t w;
+    if ((address & 1) == 0) {
+      w = value;
+      w <<= 8;
+      w |= data->memory[address + 1];
+    } else {
+      address--;
+      w = data->memory[address];
+      w <<= 8;
+      w |= value;
+    }
+    write_screen(data, address, w);
+  } else {
+    tos_write_byte(data, address, value);
+  }
 }
 
 static void write_word(uint32_t address, uint16_t value) {
@@ -179,8 +438,12 @@ static void write_word(uint32_t address, uint16_t value) {
   tos_data_t *data = (tos_data_t *)state->extra;
 
   if ((address & 1) == 0) {
-    tos_write_byte(data->memory, data->memorySize, address    , value >> 8);
-    tos_write_byte(data->memory, data->memorySize, address + 1, value & 0xFF);
+    if (address >= data->physbase && address < data->physbase + screenSize) {
+      write_screen(data, address, value);
+    } else {
+      tos_write_byte(data, address    , value >> 8);
+      tos_write_byte(data, address + 1, value & 0xFF);
+    }
   } else {
     debug(DEBUG_ERROR, "TOS", "write_word unaligned address 0x%08X", address);
   }
@@ -191,10 +454,15 @@ static void write_long(uint32_t address, uint32_t value) {
   tos_data_t *data = (tos_data_t *)state->extra;
 
   if ((address & 1) == 0) {
-    tos_write_byte(data->memory, data->memorySize, address    ,  value >> 24);
-    tos_write_byte(data->memory, data->memorySize, address + 1, (value >> 16) & 0xFF);
-    tos_write_byte(data->memory, data->memorySize, address + 2, (value >>  8) & 0xFF);
-    tos_write_byte(data->memory, data->memorySize, address + 3,  value        & 0xFF);
+    if (address >= data->physbase && address < data->physbase + screenSize) {
+      write_screen(data, address    , value >> 16);
+      write_screen(data, address + 2, value & 0xffff);
+    } else {
+      tos_write_byte(data, address    ,  value >> 24);
+      tos_write_byte(data, address + 1, (value >> 16) & 0xFF);
+      tos_write_byte(data, address + 2, (value >>  8) & 0xFF);
+      tos_write_byte(data, address + 3,  value        & 0xFF);
+    }
   } else {
     debug(DEBUG_ERROR, "TOS", "write_word unaligned address 0x%08X", address);
   }
@@ -223,18 +491,30 @@ static int cpu_instr_callback(unsigned int pc) {
   return 0;
 }
 
-static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir, int argc, char *argv[]) {
-  MemHandle hMemory;
-  uint8_t *memory, *reloc, *kbdvbase, *physbase, *lineaVars;
+static void screen_refresh(tos_data_t *data) {
+  if (data->screen_updated) {
+    uint64_t t = sys_get_clock();
+
+    if ((t - data->last_refresh) >= 50000) {
+      pumpkin_screen_copy(data->screen, 0, 400);
+      data->screen_updated = 0;
+      data->last_refresh = t;
+    }
+  }
+}
+
+static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, uint32_t tosSize, int argc, char *argv[]) {
+  MemHandle hMemory, hIo;
+  uint8_t *memory, *reloc;
   uint16_t jump, aflags;
-  uint32_t offset, textSize, dataSize, bssSize, symSize, relocSize, reserved, pflags, memorySize, heapSize;
-  uint32_t pc, a7, basePageStart, stackStart, textStart, dataStart, bssStart, heapStart, *relocBase, value, rem;
+  uint32_t offset, textSize, dataSize, bssSize, symSize, relocSize, reserved, pflags, memorySize;
+  uint32_t pc, a7, basePageStart, stackStart, textStart, dataStart, bssStart, *relocBase, value, rem;
   m68ki_cpu_core main_cpu;
   emu_state_t *state, *oldState;
   tos_data_t data;
   int i, j, k, r = -1;
 
-  if (tos && tosSize > headerSize && dir) {
+  if (tos && tosSize > headerSize) {
     offset = get2b(&jump, tos, 0);
 
     if (jump == 0x601a) {
@@ -262,6 +542,10 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
       state = pumpkin_get_local_storage(emu_key);
       state->extra = &data;
 
+      if ((textSize & 1)) textSize++;
+      if ((dataSize & 1)) dataSize++;
+      if ((bssSize  & 1)) bssSize++;
+
       rem = (textSize + dataSize + bssSize) & 0x0F;
       if (rem != 0) {
         bssSize += 16 - rem;
@@ -282,24 +566,44 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
         MemMove(memory + lowMemSize + basePageSize + textSize, &tos[offset + textSize], dataSize);
       }
 
-      heapSize = memorySize - (lowMemSize + basePageSize + textSize + dataSize + bssSize + stackSize);
       basePageStart = lowMemSize;
       textStart     = lowMemSize + basePageSize;
       dataStart     = lowMemSize + basePageSize + textSize;
       bssStart      = lowMemSize + basePageSize + textSize + dataSize;
-      heapStart     = lowMemSize + basePageSize + textSize + dataSize + bssSize;
-      stackStart    = lowMemSize + basePageSize + textSize + dataSize + bssSize + heapSize;
-
+      stackStart    = lowMemSize + basePageSize + textSize + dataSize + bssSize;
 
       MemSet(&data, sizeof(tos_data_t), 0);
       data.debug_m68k = debug_getsyslevel("M68K") == DEBUG_TRACE;
       data.memory = memory;
       data.memorySize = memorySize;
       data.basePageStart = basePageStart;
-      data.heapStart = heapStart;
-      data.heapSize = heapSize;
+      data.kbdvbase  = sysvarsSize;
+      data.lineaVars = sysvarsSize + kbdvSize;
+      data.physbase  = sysvarsSize + kbdvSize + lineaSize;
+      data.logbase   = data.physbase;
+      data.screen = sys_malloc(640 * 400 * 2);
+
+      for (i = 0, j = 0; i < 16; i++, j += 3) {
+        data.tos_color[i] = (palette[j] << 8) | (palette[j+1] << 4) | palette[j+2];
+        data.pumpkin_color[i] = rgb565(
+          palette[j  ] ? ((palette[j  ] << 5) | 0x1F) : 0,
+          palette[j+1] ? ((palette[j+1] << 5) | 0x1F) : 0,
+          palette[j+2] ? ((palette[j+2] << 5) | 0x1F) : 0);
+        debug(DEBUG_TRACE, "TOS", "init palette %d r%u g%u b%u rgb565 0x%04X", i, palette[j], palette[j+1], palette[j+2], data.pumpkin_color[i]);
+      }
+
+      data.ioSize = ioEnd - ioStart;
+      hIo = MemHandleNew(data.ioSize);
+      data.io = MemHandleLock(hIo);
+      MemSet(data.io, data.ioSize, 0);
 
       write_long(0x0000042E, data.memorySize); // phystop: physical top of ST compatible RAM
+
+      write_long(0x000005A0, 0x00000700); // _p_cookies: pointer to the system Cookie Jar
+      write_long(0x00000700, '_VDO');
+      write_long(0x00000704, 0x10000); // Deluxe Paint checks if this value is 0x10000 (STe)
+      write_long(0x00000708, 0);
+      write_long(0x0000070C, 0);
 
       write_long(basePageStart + 0x0000, basePageStart);
       write_long(basePageStart + 0x0004, memorySize);
@@ -325,23 +629,27 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
       }
       write_byte(basePageStart + 0x0080, k);
 
-      debug(DEBUG_INFO, "TOS", "basepg: 0x%08X", basePageStart);
+      debug(DEBUG_INFO, "TOS", "sysvars : 0x%08X (%u bytes)", 0, sysvarsSize);
+      debug(DEBUG_INFO, "TOS", "kbdvbase: 0x%08X (%u bytes)", data.kbdvbase, kbdvSize);
+      debug(DEBUG_INFO, "TOS", "line-a  : 0x%08X (%u bytes)", data.lineaVars, lineaSize);
+      debug(DEBUG_INFO, "TOS", "screen  : 0x%08X (%u bytes)", data.physbase, screenSize);
+
+      debug(DEBUG_INFO, "TOS", "basePage: 0x%08X", basePageStart);
       debug_bytes_offset(DEBUG_INFO, "TOS", memory + basePageStart, basePageSize, basePageStart);
 
-      debug(DEBUG_INFO, "TOS", "text  : 0x%08X", textStart);
+      debug(DEBUG_INFO, "TOS", "text: 0x%08X (%u bytes)", textStart, textSize);
       debug_bytes_offset(DEBUG_INFO, "TOS", memory + textStart, textSize, textStart);
 
       if (dataSize > 0) {
-        debug(DEBUG_INFO, "TOS", "data  : 0x%08X", dataStart);
+        debug(DEBUG_INFO, "TOS", "data: 0x%08X (%u bytes)", dataStart, dataSize);
         debug_bytes_offset(DEBUG_INFO, "TOS", memory + dataStart, dataSize, dataStart);
       }
 
       if (bssSize > 0) {
-        debug(DEBUG_INFO, "TOS", "bss   : 0x%08X", bssStart);
+        debug(DEBUG_INFO, "TOS", "bss: 0x%08X (%u bytes)", bssStart, bssSize);
       }
 
-      debug(DEBUG_INFO, "TOS", "heap  : 0x%08X", heapStart);
-      debug(DEBUG_INFO, "TOS", "stack : 0x%08X", stackStart);
+      debug(DEBUG_INFO, "TOS", "stack: 0x%08X (%u bytes)", stackStart, stackSize);
 
       if (relocSize > 0) {
         relocBase = (uint32_t *)(tos + headerSize + textSize + dataSize + symSize);
@@ -370,25 +678,10 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
         }
       }
 
-      data.heap = heap_init(&memory[heapStart], heapSize, NULL);
-
-      kbdvbase = heap_alloc(data.heap, XBIOS_KBDVBASE_SIZE);
-      data.kbdvbase = kbdvbase - memory;
-
-      physbase = heap_alloc(data.heap, screenSize); // screen buffer (640*400/8 = 32000)
-      data.physbase = physbase - memory;
-      debug(DEBUG_INFO, "TOS", "screen: 0x%08X", data.physbase);
-
-      lineaVars = heap_alloc(data.heap, lineaSize);
-      data.lineaVars = lineaVars - memory;
-      debug(DEBUG_INFO, "TOS", "linea : 0x%08X", data.lineaVars);
-
-      data.a = VFSAddVolume("/app_tos/a/");
-      data.b = VFSAddVolume("/app_tos/b/");
-      data.c = VFSAddVolume("/app_tos/c/");
-      Dsetdrv(drive);
-      Dsetpath(dir);
-      debug(DEBUG_INFO, "TOS", "using drive '%c' directory \"%s\"", drive + 'A', dir);
+      data.a = volRefNumA;
+      data.b = volRefNumB;
+      data.c = VFSAddVolume("/app_tos/C/");
+      Dsetdrv(0);
 
       pc = textStart;
       a7 = stackStart + stackSize - 16;
@@ -411,7 +704,6 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
         read_byte, read_word, read_long,
         write_byte, write_word, write_long
       );
-      FntSetFont(mono8x16Font);
 
       if (data.debug_m68k) {
         debug(DEBUG_INFO, "TOS", "text disassembly begin");
@@ -422,11 +714,14 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
       for (; !emupalmos_finished() && !thread_must_end();) {
         if (m68k_get_reg(NULL, M68K_REG_PC) == 0) break;
         m68k_execute(&state->m68k_state, 100000);
+        screen_refresh(&data);
       }
       r = 0;
 
       emupalmos_deinstall(oldState);
       MemHandleFree(hMemory);
+      MemHandleFree(hIo);
+      sys_free(data.screen);
     } else {
       debug(DEBUG_ERROR, "TOS", "0x601a signature not found");
       debug_bytes(DEBUG_INFO, "TOS", tos, headerSize);
@@ -438,81 +733,103 @@ static int tos_main_memory(uint8_t *tos, uint32_t tosSize, int drive, char *dir,
   return r;
 }
 
-int tos_main_vfs(char *path, int argc, char *argv[]) {
-  char buf[maxPath], vfsd[16];
-  UInt16 volRefNum;
+static UInt16 tos_map_drive(char drive, char *dir, Boolean *created) {
+  char vfsd[64];
+
+  StrNPrintF(vfsd, sizeof(vfsd) - 1, "/app_tos/%c/%s/", drive, dir);
+  *created = !VFSVolumeExists(vfsd);
+
+  return VFSAddVolume(vfsd);
+}
+
+static int tos_main(UInt16 volRefNumA, UInt16 volRefNumB, char *program, int argc, char *argv[]) {
   UInt32 tosSize, numBytesRead;
   FileRef fileRef;
   uint8_t *tos;
-  int drive, last, len, i, r = -1;
+  int r = -1;
 
-  if (path && path[0]) {
-    if (path[1] == ':') {
-      drive = TxtUpperChar(path[0]);
-      switch (drive) {
-        case 'A':
-        case 'B':
-        case 'C':
-          drive -= 'A';
-          StrNCopy(buf, &path[2], sizeof(buf) - 1);
-          break;
-        default:
-          debug(DEBUG_ERROR, "TOS", "invalid drive '%c' on path \"%s\"", drive, path);
-          return -1;
-      }
-    } else {
-      drive = 0;
-      StrNCopy(buf, path, sizeof(buf) - 1);
-    }
-
-    for (i = 0, last = -1; buf[i]; i++) {
-      if (buf[i] == '\\') last = i;
-    }
-
-    len = StrLen(buf);
-    if (len > 0 && (last == -1 || (last >= 0 && last < len - 1))) {
-      if (last >= 0) buf[last] = 0;
-      StrNPrintF(vfsd, sizeof(vfsd) - 1, "/app_tos/%c/", drive + 'a');
-      volRefNum = VFSAddVolume(vfsd);
-      if (VFSFileOpen(volRefNum, &buf[last + 1], vfsModeRead, &fileRef) == errNone) {
-        if (VFSFileSize(fileRef, &tosSize) == errNone) {
-          if ((tos = MemPtrNew(tosSize)) != NULL) {
-            if (VFSFileRead(fileRef, tosSize, tos, &numBytesRead) == errNone && numBytesRead == tosSize) {
-              r = tos_main_memory(tos, tosSize, drive, buf[0] ? buf : "\\", argc, argv);
-            } else {
-              debug(DEBUG_ERROR, "TOS", "could not read file \"%s\"", buf);
-            }
-            MemPtrFree(tos);
+  if (program && program[0]) {
+    if (VFSFileOpen(volRefNumA, program, vfsModeRead, &fileRef) == errNone) {
+      if (VFSFileSize(fileRef, &tosSize) == errNone) {
+        if ((tos = MemPtrNew(tosSize)) != NULL) {
+          if (VFSFileRead(fileRef, tosSize, tos, &numBytesRead) == errNone && numBytesRead == tosSize) {
+            r = tos_main_memory(volRefNumA, volRefNumB, tos, tosSize, argc, argv);
+          } else {
+            debug(DEBUG_ERROR, "TOS", "could not read file \"%s\"", program);
           }
-        } else {
-          debug(DEBUG_ERROR, "TOS", "could not obtain file size for \"%s\"", buf);
+          MemPtrFree(tos);
         }
-        VFSFileClose(fileRef);
       } else {
-        debug(DEBUG_ERROR, "TOS", "could not open \"%s\"", buf);
+        debug(DEBUG_ERROR, "TOS", "could not obtain file size for \"%s\"", program);
       }
+      VFSFileClose(fileRef);
     } else {
-      debug(DEBUG_ERROR, "TOS", "invalid path \"%s\"", path);
+      debug(DEBUG_ERROR, "TOS", "could not open \"%s\"", program);
     }
   }
 
   return r;
 }
 
-int tos_main_resource(DmResType type, DmResID id, int argc, char *argv[]) {
-  MemHandle hTos;
-  uint8_t *tos;
+static int tos_main_zip(char *dirA, char *dirB, char *program, int argc, char *argv[]) {
+  UInt16 volRefNumA, volRefNumB;
+  Boolean createdA, createdB;
   int r = -1;
 
-  if ((hTos = DmGet1Resource(type, id)) != NULL) {
-    if ((tos = MemHandleLock(hTos)) != NULL) {
-      r = tos_main_memory(tos, MemHandleSize(hTos), 0, "\\", argc, argv);
-      MemHandleUnlock(hTos);
+  if (dirA && dirA[0] && program && program[0]) {
+    volRefNumA = tos_map_drive('A', dirA, &createdA);
+
+    if (volRefNumA != 0xffff) {
+      if (createdA) {
+        debug(DEBUG_INFO, "TOS", "extracting contents for drive A");
+        r = pumpkin_unzip_resource(zipRsc, 1, volRefNumA, "");
+      } else {
+        r = 0;
+      }
+
+      if (r == 0) {
+        volRefNumB = (dirB && dirB[0]) ? tos_map_drive('B', dirB, &createdB) : 0xffff;
+        if (volRefNumB != 0xffff && createdB) {
+          debug(DEBUG_INFO, "TOS", "extracting contents for drive B");
+          pumpkin_unzip_resource(zipRsc, 2, volRefNumB, "");
+        }
+        r = tos_main(volRefNumA, volRefNumB, program, argc, argv);
+      }
     }
-    DmReleaseResource(hTos);
-  } else {
-    debug(DEBUG_ERROR, "TOS", "resource not found");
   }
+
+  return r;
+}
+
+UInt32 TOSMain(void) {
+  MemHandle hDir[2], hPrg;
+  char *sDir[2], *sPrg, *argv[1];
+  UInt32 drive, r = -1;
+
+  for (drive = 0; drive < 2; drive++) {
+    hDir[drive] = DmGet1Resource('tDir', drive + 1);
+    sDir[drive] = hDir[drive] ? MemHandleLock(hDir[drive]) : NULL;
+  }
+
+  hPrg = DmGet1Resource('tPrg', 1);
+  sPrg = hPrg ? MemHandleLock(hPrg) : NULL;
+
+  if (sDir[0] && sPrg) {
+    plibc_init();
+    plibc_dup(2);
+    argv[0] = sPrg;
+    r = tos_main_zip(sDir[0], sDir[1], sPrg, 1, argv);
+    plibc_close(3);
+    plibc_finish();
+  }
+
+  for (drive = 0; drive < 2; drive++) {
+    if (sDir[drive]) MemHandleUnlock(hDir[drive]);
+    if (hDir[drive]) DmReleaseResource(hDir[drive]);
+  }
+
+  if (sPrg) MemHandleUnlock(hPrg);
+  if (hPrg) DmReleaseResource(hPrg);
 
   return r;
 }
@@ -535,8 +852,8 @@ static uint32_t tos_gemdos_systrap(void) {
         uint32_t addr = 0;
         if (number == -1) {
           // get size of the largest available memory block
-          addr = 128*1024; // XXX
-        } else if (number > 0) {
+          addr = 256*1024; // XXX
+        } else if (data->heap && number > 0) {
           uint8_t *p = heap_alloc(data->heap, number);
           addr = p ? (p - memory) : 0;
         }
@@ -588,6 +905,16 @@ static uint32_t tos_bios_systrap(void) {
   }
 
   return r;
+}
+
+static uint16_t tos_convert_color(uint16_t color) {
+  uint16_t red, green, blue;
+
+  red   = (color & 0x0700) >> 8;
+  green = (color & 0x0070) >> 4;
+  blue  =  color & 0x0007;
+
+  return rgb565(red ? ((red << 5) | 0x1F) : 0, green ? ((green << 5) | 0x1F) : 0, blue ? ((blue << 5) | 0x1F) : 0);
 }
 
 static uint32_t tos_xbios_systrap(void) {

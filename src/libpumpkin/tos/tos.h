@@ -1,3 +1,6 @@
+#ifndef TOS_H
+#define TOS_H
+
 #define AES_GLOBAL_LEN 15
 
 #define AES_INTIN_LEN   16
@@ -6,16 +9,15 @@
 #define AES_ADRIN_LEN   16
 #define AES_ADROUT_LEN  16
 
-#define XBIOS_KBDVBASE_SIZE  37
-
-#define screenSize    32768
-#define lineaSize      1024
-
 #define TosType 'ctos'
+
+#include "heap.h"
 
 typedef struct {
   uint8_t *memory;
   uint32_t memorySize;
+  uint8_t *io;
+  uint32_t ioSize;
   uint32_t basePageStart;
   uint32_t heapStart;
   uint32_t heapSize;
@@ -23,10 +25,19 @@ typedef struct {
   int supervisor;
   uint32_t kbdvbase;
   uint32_t physbase;
+  uint32_t logbase;
+  uint32_t lineaVars;
   uint16_t volume;
   uint16_t a, b, c;
-  uint32_t lineaVars;
   int debug_m68k;
+  uint8_t ikbd_cmd, ikbd_state, ikbd_button;
+  uint16_t ikbd_x, ikbd_y;
+  uint64_t last_refresh;
+  uint16_t tos_color[16];
+  uint16_t pumpkin_color[16];
+  uint16_t *screen;
+  int screen_res;
+  int screen_updated;
 } tos_data_t;
 
 typedef struct {
@@ -63,8 +74,10 @@ typedef struct {
   int32_t adrout[AES_ADROUT_LEN];
 } aes_pb_t;
 
-int tos_main_vfs(char *path, int argc, char *argv[]);
-int tos_main_resource(DmResType type, DmResID id, int argc, char *argv[]);
+UInt32 TOSMain(void);
 
+void tos_write_byte(tos_data_t *data, uint32_t address, uint8_t value);
 int32_t vdi_call(vdi_pb_t *vdi_pb);
 int32_t aes_call(aes_pb_t *aes_pb);
+
+#endif

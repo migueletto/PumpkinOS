@@ -75,17 +75,18 @@ int32_t Cconis(void) {
 
 int32_t Dsetdrv(int16_t drv) {
   // Set the current drive and returns a bit-map of mounted drives
+  // returns bitmap of drives a, b and c
+
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  int32_t r = 0x07; // bitmap of drives a, b and c
 
   switch (drv) {
     case 0: data->volume = data->a; break;
-    case 1: data->volume = data->b; break;
-    case 2: data->volume = data->c; break;
+    case 1: if (data->b != 0xffff) data->volume = data->b; break;
+    case 2: if (data->c != 0xffff) data->volume = data->c; break;
   }
 
-  return r;
+  return Drvmap();
 }
 
 int16_t Cconos(void) {
@@ -233,16 +234,13 @@ int16_t Fcreate(char *fname, int16_t attr) {
 
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  int16_t handle;
+  int16_t handle = -1;
 
   if (fname) {
-    if ((handle = plibc_open(data->volume, fname, PLIBC_CREAT | PLIBC_TRUNC)) != -1) {
-      plibc_close(handle);
-    }
+    handle = plibc_open(data->volume, fname, PLIBC_CREAT | PLIBC_TRUNC | PLIBC_RDWR);
   }
 
-  // XXX what should be returned ?
-  return 0;
+  return handle;
 }
 
 int32_t Fopen(char *fname, int16_t mode) {
@@ -357,7 +355,7 @@ void *Mxalloc(int32_t amount, int16_t mode) {
   tos_data_t *data = (tos_data_t *)state->extra;
   uint8_t *p = NULL;
 
-  if (amount > 0) {
+  if (data->heap && amount > 0) {
     // XXX mode is ignored
     p = heap_alloc(data->heap, amount);
   }
@@ -408,7 +406,7 @@ int32_t Mfree(void *block) {
   uint8_t *p = (uint8_t *)block;
   int32_t r = -1;
 
-  if (p >= (data->memory + data->heapStart) && p < (data->memory + data->heapStart + data->heapSize)) {
+  if (data->heap && p >= (data->memory + data->heapStart) && p < (data->memory + data->heapStart + data->heapSize)) {
     heap_free(data->heap, p);
     r = 0;
   }
@@ -419,34 +417,111 @@ int32_t Mfree(void *block) {
 int32_t Mshrink(void *block, int32_t newsiz) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  uint8_t *kbdvbase, *physbase, *lineaVars;
+  int32_t r = -1;
 
-  data->heapSize = data->memorySize - ((uint8_t *)block - data->memory);
-  data->heap = heap_init((uint8_t *)block + newsiz, data->heapSize, NULL);
-  debug(DEBUG_INFO, "TOS", "heap: 0x%08X (%u bytes)", (uint32_t)((uint8_t *)block - data->memory + newsiz), data->heapSize);
-      
-  kbdvbase = heap_alloc(data->heap, XBIOS_KBDVBASE_SIZE);
-  data->kbdvbase = kbdvbase - data->memory;
-  
-  physbase = heap_alloc(data->heap, screenSize); // screen buffer (640*400/8 = 32000)
-  data->physbase = physbase - data->memory;
-  debug(DEBUG_INFO, "TOS", "screen: 0x%08X", data->physbase);
-  
-  lineaVars = heap_alloc(data->heap, lineaSize);
-  data->lineaVars = lineaVars - data->memory;
-  debug(DEBUG_INFO, "TOS", "linea: 0x%08X", data->lineaVars);
+  if (data->heap == NULL) {
+    data->heapStart = (uint8_t *)block - data->memory + newsiz;
+    data->heapSize = data->memorySize - data->heapStart;
+    data->heap = heap_init(data->memory + data->heapStart, data->heapSize, NULL);
+    debug(DEBUG_INFO, "TOS", "heap: 0x%08X (%u bytes)", data->heapStart, data->heapSize);
+    r = 0;
+  } else {
+    debug(DEBUG_ERROR, "TOS", "Mshrink called again");
+  }
 
-  return 0;
+  return r;
 }
 
 void Pterm(uint16_t retcode) {
   emupalmos_finish(1);
 }
 
-int32_t Fsfirst(char *filename, int16_t attr) {
+static int fsfirst_match(char *pat, char *name) {
+  char *dot, *p = pat, *n = name;
+
+  if (name[0] == '.') {
+    return 0; // skip .* files
+  }
+
+  dot = sys_strrchr(name, '.');  // '*' matches everything except last dot in name
+  if (dot && p[0] == '*' && p[1] == 0) {
+    return 0; // plain '*' must not match anything with extension
+  }
+
+  while (*n) {
+    if (*p == '*') {
+      while (*n && n != dot) n++;
+      p++;
+    } else if (*p == '?' && *n) {
+      n++;
+      p++;
+    } else if (sys_toupper((unsigned char)*p++) != sys_toupper((unsigned char)*n++)) {
+      return 0;
+    }
+  }
+
+  // whole name consumed, what about pattern?
+
+  // '*' match any number of chars, so skip them all
+  while (p[0] == '*') p++;
+
+  // '*' for extension matches also filenames without extension
+  if (p[0] == '.' && p[1] == '*') p += 2;
+
+  // skip rest of extension '*' chars
+  while (p[0] == '*') p++;
+
+  // ends here = match?
+  return p[0] == 0;
+}
+
+static int32_t fsfirst_fill(tos_data_t *data, char *pattern, char **list, int32_t i, int32_t n, uint32_t dta) {
+  FileRef fileRef;
+  UInt32 fileSize, attributes;
+  uint16_t attr;
+  int32_t j, r = -1;
+
+  if (VFSFileOpen(data->volume, list[i], vfsModeRead, &fileRef) == errNone) {
+    VFSFileGetAttributes(fileRef, &attributes);
+    if (attributes & vfsFileAttrDirectory) {
+      fileSize = 0; // XXX is this correct ?
+      attr = 0x10;
+    } else {
+      VFSFileSize(fileRef, &fileSize);
+      debug(DEBUG_TRACE, "TOS", "fileSize=%d", fileSize);
+      attr = 0;
+    }
+    VFSFileClose(fileRef);
+
+    m68k_write_memory_16(dta + 0, i+1); // next index
+    m68k_write_memory_16(dta + 2, n);   // number of items
+    m68k_write_memory_32(dta + 4, (uint32_t)((uint8_t *)list - (uint8_t *)pumpkin_heap_base()));
+    for (j = 0; pattern[j] && j < 12; j++) {
+      m68k_write_memory_8(dta + 8 + j, pattern[j]);
+    }
+    m68k_write_memory_8(dta + 8 + j, 0);
+    m68k_write_memory_8(dta + 20, 1);   // flag: dta is initialized
+
+    m68k_write_memory_8(dta + 21, attr);
+    m68k_write_memory_16(dta + 22, 0);
+    m68k_write_memory_16(dta + 24, 0);
+    m68k_write_memory_32(dta + 26, fileSize);
+    for (j = 0; list[i][j] && j < 12; j++) {
+      m68k_write_memory_8(dta + 30 + j, list[i][j]);
+    }
+    m68k_write_memory_8(dta + 30 + j, 0);
+    r = 0;
+  } else {
+    debug(DEBUG_TRACE, "TOS", "could not open \"%s\"", list[i]);
+  }
+
+  return r;
+}
+
+int32_t Fsfirst(char *pat, int16_t attr) {
   // obtain information about the first occurrence of a file or subdirectory
   // the directory entry will fill the disk transfer area (DTA)
-  // filename: pointer to the filename or subdirectory (may contain '*' and '?')
+  // pat: pointer to the pattern or subdirectory (may contain '*' and '?')
   // attr: attributes that should be matched by the file searched for
   //   bit 0: include read-only files
   //   bit 1: include hidden files
@@ -465,52 +540,65 @@ int32_t Fsfirst(char *filename, int16_t attr) {
 
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
-  char buf[256];
-  int32_t i, handle, len, r = -1;
+  FileRef dirRef;
+  UInt32 dirEntryIterator;
+  FileInfoType info;
+  char buf[256], pattern[12];
+  char **list;
+  int32_t i, n, r = -1;
   uint32_t dta;
 
-  if (filename) {
-    debug(DEBUG_TRACE, "TOS", "Fsfirst \"%s\" 0x%04X", filename, attr);
+  dta = m68k_read_memory_32(data->basePageStart + 0x0020);
+  m68k_write_memory_8(dta + 20, 0); // flag: dta is not initialized yet
 
-    for (i = 0; filename[i]; i++) {
-      if (filename[i] == '?' || filename[i] == '*') break;
+  if (pat) {
+    sys_strncpy(pattern, pat, sizeof(pattern)-1);
+    for (i = sys_strlen(pattern)-1; i >= 0; i--) {
+      if (pattern[i] != ' ') break;
+      pattern[i] = 0;
+    }
+    debug(DEBUG_TRACE, "TOS", "Fsfirst \"%s\" 0x%04X", pattern, attr);
+    list = NULL;
+    n = 0;
+
+    if (VFSCurrentDir(data->volume, buf, sizeof(buf)-1) == errNone) {
+      if (VFSFileOpen(data->volume, buf, vfsModeRead, &dirRef) == errNone) {
+        list = pumpkin_heap_alloc(256 * sizeof(char *), "dir_list");
+        for (dirEntryIterator = vfsIteratorStart; dirEntryIterator != vfsIteratorStop && n < 256;) {
+          sys_memset(&info, 0, sizeof(FileInfoType));
+          info.nameP = buf;
+          info.nameBufLen = sizeof(buf)-1;
+          if (VFSDirEntryEnumerate(dirRef, &dirEntryIterator, &info) != errNone) break;
+          if ((info.attributes & vfsFileAttrDirectory) && !(attr & 0x10)) continue;
+          list[n] = sys_strdup(info.nameP);
+          debug(DEBUG_TRACE, "TOS", "Fsfirst item %d \"%s\"", n, list[n]);
+          n++;
+        }
+        VFSFileClose(dirRef);
+      }
     }
 
-    if (filename[i] == 0) {
-      // no wildcards
-      Dgetpath(buf, Dgetdrv());
-      debug(DEBUG_TRACE, "TOS", "getpath drive %d \"%s\"", Dgetdrv(), buf);
-      len = sys_strlen(buf);
-      if (len > 0 && buf[len - 1] != '\\') {
-        sys_strncat(buf, "\\", sizeof(buf) - len - 1);
-        debug(DEBUG_TRACE, "TOS", "getpath sep \"%s\"", buf);
+    if (list) {
+      for (i = 0; i < n; i++) {
+        if (fsfirst_match(pattern, list[i])) break;
       }
-      sys_strncat(buf, filename, sizeof(buf) - sys_strlen(buf) - 1);
-      debug(DEBUG_TRACE, "TOS", "getpath filename \"%s\"", buf);
-      for (i = 0; buf[i]; i++) {
-        if (buf[i] == '\\') buf[i] = '/';
-      }
-      debug(DEBUG_TRACE, "TOS", "Fsfirst open \"%s\"", buf);
 
-      if ((handle = plibc_open(data->volume, buf, PLIBC_RDONLY)) != -1) {
-        len = plibc_lseek(handle, 0, PLIBC_SEEK_END);
-        plibc_close(handle);
-        debug(DEBUG_TRACE, "TOS", "Fsfirst len=%d", len);
-        dta = m68k_read_memory_32(data->basePageStart + 0x0020);
-        debug(DEBUG_TRACE, "TOS", "Fsfirst basePage=0x%08X dta=0x%08X", data->basePageStart, dta);
-        m68k_write_memory_8(dta + 21, 0);
-        m68k_write_memory_16(dta + 22, 0);
-        m68k_write_memory_16(dta + 24, 0);
-        m68k_write_memory_32(dta + 26, len);
-        for (i = 0; filename[i]; i++) {
-          m68k_write_memory_8(dta + 30 + i, filename[i]);
-        }
-        r = 0;
-      } else {
-        debug(DEBUG_INFO, "TOS", "Fsfirst \"%s\" not found", filename);
+      if (i < n) {
+        debug(DEBUG_TRACE, "TOS", "Fsfirst \"%s\" matches \"%s\" ", pattern, list[i]);
+        r = fsfirst_fill(data, pattern, list, i, n, dta);
       }
-    } else {
-      debug(DEBUG_ERROR, "TOS", "Fsfirst wildcard not supported");
+
+      if (r == -1) {
+        debug(DEBUG_TRACE, "TOS", "Fsfirst \"%s\" has no match", pattern);
+        m68k_write_memory_32(dta, 0);
+        m68k_write_memory_32(dta + 4, 0);
+        m68k_write_memory_32(dta + 8, 0);
+        m68k_write_memory_32(dta + 12, 0);
+        m68k_write_memory_8(dta + 20, 0);
+
+        for (i = 0; i < n; i++) sys_free(list[i]);
+        pumpkin_heap_free(list, "dir_list");
+      }
     }
   }
 
@@ -520,8 +608,51 @@ int32_t Fsfirst(char *filename, int16_t attr) {
 int16_t Fsnext(void) {
   // search for next file entry
 
-  debug(DEBUG_ERROR, "TOS", "Fsnext not implemented");
-  return 0;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  char **list, pattern[12];
+  int32_t i, j, n;
+  int16_t r = -1;
+  uint32_t addr, dta;
+
+  dta = m68k_read_memory_32(data->basePageStart + 0x0020);
+
+  if (m68k_read_memory_8(dta + 20)) {
+    i = m68k_read_memory_16(dta + 0); // current index
+    n = m68k_read_memory_16(dta + 2); // number of items
+    addr = m68k_read_memory_32(dta + 4);
+    list = (char **)((uint8_t *)pumpkin_heap_base() + addr);
+    for (j = 0; j < 11; j++) {
+      pattern[j] = m68k_read_memory_8(dta + 8 + j);
+    }
+    pattern[j] = 0;
+    debug(DEBUG_TRACE, "TOS", "Fsnext \"%s\" %d (%d)", pattern, i, n);
+
+    for (; i < n; i++) {
+      if (fsfirst_match(pattern, list[i])) break;
+    }
+
+    if (i < n) {
+      debug(DEBUG_TRACE, "TOS", "Fsnext \"%s\" matches \"%s\" ", pattern, list[i]);
+      r = fsfirst_fill(data, pattern, list, i, n, dta);
+    }
+
+    if (r == -1) {
+      debug(DEBUG_TRACE, "TOS", "Fsnext \"%s\" end", pattern);
+      m68k_write_memory_32(dta, 0);
+      m68k_write_memory_32(dta + 4, 0);
+      m68k_write_memory_32(dta + 8, 0);
+      m68k_write_memory_32(dta + 12, 0);
+      m68k_write_memory_8(dta + 20, 0);
+
+      for (i = 0; i < n; i++) sys_free(list[i]);
+      pumpkin_heap_free(list, "dir_list");
+    }
+  } else {
+    debug(DEBUG_ERROR, "TOS", "Fsnext DTA is not initialized");
+  }
+
+  return r;
 }
 
 int32_t Frename(char *oldname, char *newname) {

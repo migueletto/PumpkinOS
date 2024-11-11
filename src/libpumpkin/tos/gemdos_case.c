@@ -197,7 +197,7 @@
           res = data->supervisor ? -1 : 0;
         } else if (astack == 0) {
           data->supervisor = !data->supervisor;
-          debug(DEBUG_ERROR, "TOS", "%s supervisor mode", data->supervisor ? "entering" : "leaving");
+          debug(DEBUG_TRACE, "TOS", "%s supervisor mode", data->supervisor ? "entering" : "leaving");
         } 
         m68k_set_reg(M68K_REG_D0, res);
         debug(DEBUG_TRACE, "TOS", "GEMDOS Super(0x%08X): %d", astack, res);

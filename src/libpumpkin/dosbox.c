@@ -39,7 +39,7 @@ UInt32 DOSBoxMain(Boolean sameTask) {
 
       if ((err = VFSFileOpen(1, buf, vfsModeRead, &fileRef)) != errNone) {
         if ((err = VFSDirCreate(1, buf)) == errNone) {
-          if (pumpkin_unzip_resource(zipRsc, 1, buf) == 0) {
+          if (pumpkin_unzip_resource(zipRsc, 1, 1, buf) == 0) {
             err = VFSFileOpen(1, buf, vfsModeRead, &fileRef);
           } else {
             FrmCustomAlert(1000, "Error unziping resource.", "", "");

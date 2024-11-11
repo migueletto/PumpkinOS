@@ -1,9 +1,5 @@
 void Initmouse(int16_t type, MOUSE *par, void *mousevec);
 void *Ssbrk(int16_t count);
-int16_t Getrez(void);
-void Setscreen( void *laddr, void *paddr, int16_t rezz);
-void Setpalette(void *pallptr);
-int16_t Setcolor(int16_t colornum, int16_t color);
 int16_t Floprd(void *buf, int32_t filler, int16_t devno, int16_t sectno, int16_t trackno, int16_t sideno, int16_t count);
 int16_t Flopwr(void *buf, int32_t filler, int16_t devno, int16_t sectno, int16_t trackno, int16_t sideno, int16_t count);
 int16_t Flopfmt(void);

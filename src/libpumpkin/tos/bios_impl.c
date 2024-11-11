@@ -1,6 +1,16 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
 
+#ifdef ARMEMU
+#include "armemu.h"
+#endif
+#include "m68k/m68k.h"
+#include "m68k/m68kcpu.h"
+#include "emupalmosinc.h"
+#include "emupalmos.h"
 #include "plibc.h"
+#include "heap.h"
+#include "tos.h"
 #include "gemdos.h"
 #include "bios_proto.h"
 #include "debug.h"
@@ -41,12 +51,12 @@ int32_t Bconin(int16_t dev) {
   // returns the read-in character as an ASCII value in the bits 0..7
 
   switch (dev) {
-    case 2: // con: (Console)
+    case 2: // console
       // when reading from the console, the bits 16 to 23 contain the scan-code of the relevant key
       // if, in addition, the corresponding bit of the system variable conterm is set, then the bits 24 to 31 contain the current value of Kbshift
       c = plibc_getchar();
       break;
-    case 4: // Keyboard port
+    case 4: // keyboard port
       break;
   }
 
@@ -54,9 +64,15 @@ int32_t Bconin(int16_t dev) {
 }
 
 void Bconout(int16_t dev, int16_t c) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+
   switch (dev) {
-    case 2: // con: (Console)
+    case 2: // console
       plibc_putchar(c);
+      break;
+    case 4: // keyboard port
+      tos_write_byte(data, 0x00FFFC02, c);
       break;
   }
 }
@@ -94,8 +110,13 @@ int32_t Mediach(int16_t dev) {
 }
 
 int32_t Drvmap(void) {
-  debug(DEBUG_ERROR, "TOS", "Drvmap not implemented");
-  return 0;
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  int32_t r = 0x01;
+  if (data->b != 0xffff) r |= 0x2;
+  if (data->c != 0xffff) r |= 0x4;
+
+  return r;
 }
 
 int32_t Kbshift(int16_t mode) {
