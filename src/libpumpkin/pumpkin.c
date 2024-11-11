@@ -4070,6 +4070,16 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
   }
 }
 
+void pumpkin_save_surface(surface_t *surface, char *filename) {
+  char *card, buf[256];
+
+  card = VFS_CARD;
+  if (card[0] == '/') card++;
+  sys_snprintf(buf, sizeof(buf)-1, "%s%s%s", VFSGetMount(1), card, filename);
+  debug(DEBUG_INFO, PUMPKINOS, "saving %dx%d surface as %s", surface->width, surface->height, buf);
+  surface_save(surface, buf, 0);
+}
+
 void LongToRGB(UInt32 c, RGBColorType *rgb) {
   rgb->r = r32(c);
   rgb->g = g32(c);
