@@ -587,12 +587,24 @@ Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *path
 }
 
 Err VFSRegisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType, const Char *pathStr) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSRegisterDefaultDirectory not implemented");
+  char stype[8];
+
+  if (fileTypeStr && pathStr) {
+    pumpkin_id2s(mediaType, stype);
+    debug(DEBUG_ERROR, PALMOS_MODULE, "VFSRegisterDefaultDirectory \"%s\" '%s' \"%s\" not implemented", fileTypeStr, stype, pathStr);
+  }
+
   return_err(errNone);
 }
 
 Err VFSUnregisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSUnregisterDefaultDirectory not implemented");
+  char stype[8];
+
+  if (fileTypeStr) {
+    pumpkin_id2s(mediaType, stype);
+    debug(DEBUG_ERROR, PALMOS_MODULE, "VFSUnregisterDefaultDirectory \"%s\" '%s' not implemented", fileTypeStr, stype);
+  }
+
   return_err(errNone);
 }
 
