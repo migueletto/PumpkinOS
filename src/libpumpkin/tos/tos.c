@@ -311,8 +311,16 @@ static uint32_t read_long(uint32_t address) {
   return l;
 }
 
-static void write_screen(tos_data_t *data, uint32_t address, uint16_t value) {
-  uint32_t i, k, x, y, plane, offset, index;
+static void write_screen_color(uint16_t *screen, uint32_t offset, uint16_t color, int le) {
+  if (le) {
+    put2l(color, (uint8_t *)screen, offset * 2);
+  } else {
+    put2b(color, (uint8_t *)screen, offset * 2);
+  }
+}
+
+static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, uint16_t value, int le, int dbl) {
+  uint32_t i, k, x, y, plane, offset, index, factor;
   uint16_t b, b2, b3, b4, color;
   uint8_t *m = &data->memory[data->physbase];
 
@@ -352,16 +360,19 @@ static void write_screen(tos_data_t *data, uint32_t address, uint16_t value) {
       offset >>= 3;
       y = offset / 20;        // 0 .. 199
       x = (offset % 20) * 16; // 0 .. 304
-      y <<= 1; // 0 .. 398
-      x <<= 1; // 0 .. 608
-      offset = y * 640 + x;
-      for (i = 0, k = 30; i < 16; i++, k -= 2) {
+      factor = dbl ? 2 : 1;
+      x *= factor;
+      y *= factor;
+      offset = y * 320 * factor + x;
+      for (i = 0, k = 15*factor; i < 16; i++, k -= factor) {
         index = (b & 1) | ((b2 & 1) << 1) | ((b3 & 1) << 2) | ((b4 & 1) << 3);
         color = data->pumpkin_color[index];
-        data->screen[offset + k] = color;
-        data->screen[offset + k + 1] = color;
-        data->screen[offset + 640 + k] = color;
-        data->screen[offset + 640 + k + 1] = color;
+        write_screen_color(screen, offset + k, color, le);
+        if (dbl) {
+          write_screen_color(screen, offset + k + 1, color, le);
+          write_screen_color(screen, offset + 640 + k, color, le);
+          write_screen_color(screen, offset + 640 + k + 1, color, le);
+        }
         b  >>= 1;
         b2 >>= 1;
         b3 >>= 1;
@@ -384,13 +395,14 @@ static void write_screen(tos_data_t *data, uint32_t address, uint16_t value) {
       offset >>= 2;
       y = offset / 40;        // 0 .. 199
       x = (offset % 40) * 16; // 0 .. 624
-      y <<= 1; // 0 .. 398
+      factor = dbl ? 2 : 1;
+      y *= factor;
       offset = y * 640 + x;
       for (i = 0, k = 30; i < 16; i++, k--) {
         index = (b & 1) | ((b2 & 1) << 1);
         color = data->pumpkin_color[index];
-        data->screen[offset + k] = color;
-        data->screen[offset + 640 + k] = color;
+        write_screen_color(screen, offset + k, color, le);
+        if (dbl) write_screen_color(screen, offset + 640 + k, color, le);
         b  >>= 1;
         b2 >>= 1;
       }
@@ -403,7 +415,7 @@ static void write_screen(tos_data_t *data, uint32_t address, uint16_t value) {
       x = (offset % 40) * 16; // 0 .. 624
       for (i = 0, k = 30; i < 16; i++, k--) {
         color = data->pumpkin_color[b & 1];
-        data->screen[offset + k] = color;
+        write_screen_color(screen, offset + k, color, le);
         b >>= 1;
       }
       break;
@@ -427,7 +439,7 @@ static void write_byte(uint32_t address, uint8_t value) {
       w <<= 8;
       w |= value;
     }
-    write_screen(data, address, w);
+    write_screen(data, data->screen, address, w, 1, 1);
   } else {
     tos_write_byte(data, address, value);
   }
@@ -439,7 +451,7 @@ static void write_word(uint32_t address, uint16_t value) {
 
   if ((address & 1) == 0) {
     if (address >= data->physbase && address < data->physbase + screenSize) {
-      write_screen(data, address, value);
+      write_screen(data, data->screen, address, value, 1, 1);
     } else {
       tos_write_byte(data, address    , value >> 8);
       tos_write_byte(data, address + 1, value & 0xFF);
@@ -455,8 +467,8 @@ static void write_long(uint32_t address, uint32_t value) {
 
   if ((address & 1) == 0) {
     if (address >= data->physbase && address < data->physbase + screenSize) {
-      write_screen(data, address    , value >> 16);
-      write_screen(data, address + 2, value & 0xffff);
+      write_screen(data, data->screen, address    , value >> 16, 1, 1);
+      write_screen(data, data->screen, address + 2, value & 0xffff, 1, 1);
     } else {
       tos_write_byte(data, address    ,  value >> 24);
       tos_write_byte(data, address + 1, (value >> 16) & 0xFF);
@@ -680,7 +692,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
 
       data.a = volRefNumA;
       data.b = volRefNumB;
-      data.c = VFSAddVolume("/app_tos/C/");
+      data.c = VFSAddVolume("/app_card/TOS/C/");
       Dsetdrv(0);
 
       pc = textStart;
