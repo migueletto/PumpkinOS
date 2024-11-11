@@ -107,6 +107,7 @@ char *EvtGetEventName(UInt16 eType) {
   if (eType <= lastRegularEvent) {
     return eventName[eType];
   }
+
   return NULL;
 }
 
@@ -169,9 +170,20 @@ void EvtAddEventToQueue(const EventType *event) {
 
 void EvtAddUniqueEventToQueue(const EventType *eventP, UInt32 id, Boolean inPlace) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
+  char *name;
   int i, j;
 
-  if (id == 0) {
+  if (eventP) {
+    if (id != 0) {
+      if (eventP->eType >= firstUserEvent) {
+        debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddUniqueEventToQueue %d (userEvent %d): id %d (0x%08X) ignored", eventP->eType, eventP->eType - firstUserEvent, id, id);
+      } else {
+        name = EvtGetEventName(eventP->eType);
+        if (!name) name = "";
+        debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddUniqueEventToQueue %d (%s): id %d (0x%08X) ignored", eventP->eType, name, id, id);
+      }
+    }
+
     for (i = 0; i < module->numEvents; i++) {
       j = (module->idxOut + i) % MAX_EVENTS;
       if (module->events[j].eType == eventP->eType) {
@@ -186,8 +198,6 @@ void EvtAddUniqueEventToQueue(const EventType *eventP, UInt32 id, Boolean inPlac
     if (i == module->numEvents) {
       EvtAddEventToQueue(eventP);
     }
-  } else {
-    debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddUniqueEventToQueue id=%d not implemented", id);
   }
 }
 
