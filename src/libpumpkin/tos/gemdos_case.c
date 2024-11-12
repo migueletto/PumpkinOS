@@ -491,7 +491,7 @@
 
     case 74: { // int32_t Mshrink(void *block, int32_t newsiz)
         int valid = 0;
-        uint16_t dummy = ARG16;
+        ARG16; // remove unused 16-bits word from stack
         uint32_t ablock = ARG32;
         void *block = (void *)(memory + ablock);
         valid |= (uint8_t *)block >= data->memory && (uint8_t *)block < data->memory + data->memorySize;

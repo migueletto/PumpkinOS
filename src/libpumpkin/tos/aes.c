@@ -21,7 +21,7 @@
   aes_pb->intout[0] = r
 
 int32_t aes_call(aes_pb_t *aes_pb) {
-  uint8_t *ram = pumpkin_heap_base();
+  //uint8_t *ram = pumpkin_heap_base();
   int32_t i, r = 0;
 
   debug(DEBUG_INFO, "TOS", "AES opcode %d", aes_pb->opcode);
@@ -55,7 +55,7 @@ int32_t aes_call(aes_pb_t *aes_pb) {
     case 11: { // int16_t appl_read(int16_t ap_rid, int16_t ap_rlength, void *ap_rpbuff)
         int16_t ap_rid = aes_pb->intin[0];
         int16_t ap_rlength = aes_pb->intin[1];
-        void *ap_rpbuf = aes_pb->adrin[0] ? (void *)(ram + aes_pb->adrin[0]) : NULL;
+        //void *ap_rpbuf = aes_pb->adrin[0] ? (void *)(ram + aes_pb->adrin[0]) : NULL;
         debug(DEBUG_INFO, "TOS", "AES appl_read(%d %d, 0x%08X)", ap_rid, ap_rlength, aes_pb->adrin[0]);
         AES_RETURN_INT(0); // 0 is returned then an error has occurred, else a positive number is returned
       }
