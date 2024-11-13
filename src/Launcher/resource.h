@@ -5,7 +5,8 @@
 #define EditBmpForm     1005
 #define EditFormForm    1006
 #define EditBinForm     1007
-#define AboutForm       1008
+#define EditImgForm     1008
+#define AboutForm       1009
 
 #define MainMenu        1001
 #define AppListMenu     1101
@@ -40,6 +41,7 @@
 #define objectList  1027
 #define frmpropCtl  1028
 #define objpropCtl  1029
+#define surfaceGad  1030
 
 #define moveBmp     2001
 #define drawBmp     2002

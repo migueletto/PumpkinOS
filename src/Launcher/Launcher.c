@@ -5,6 +5,7 @@
 
 #include "sys.h"
 #include "resedit.h"
+#include "editsurf.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
@@ -13,6 +14,8 @@
 #include "ptr.h"
 #include "vfs.h"
 #include "bytes.h"
+#include "util.h"
+#include "surface.h"
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
@@ -60,7 +63,7 @@ typedef struct {
   UInt16 numRecs;
   UInt16 compat, code, width, height;
   Boolean rsrc, dir, m68k, uptodate;
-  char name[dmDBNameLength];
+  char name[MAX_NAME];
   char *info;
   WinHandle iconWh;
   WinHandle invIconWh;
@@ -87,6 +90,7 @@ typedef struct {
   int  prev, prevX, prevY;
   int num, x[16];
   MenuBarType *mainMenu, *appListMenu;
+  Boolean filterVisible;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -104,7 +108,6 @@ static const dynamic_form_item_t rsrcFilterItems[] = {
 
 static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param);
 static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title);
-UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
 
 static void ErrorDialog(char *msg, Err err, UInt16 num) {
   char cod[64], s[8];
@@ -1148,7 +1151,7 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
     }
     RctSetRectangle(&rect, x+11, y, 4, data->cellHeight);
     WinEraseRectangle(&rect, 0);
-    len = adjustName(buf, MAX_NAME, value, &width, max);
+    len = adjustName(buf, MAX_NAME, value, &width, max - 15);
     width += 15;
     WinPaintChars(buf, len, x+15, y);
   } else {
@@ -1389,18 +1392,13 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
       dbID = pumpkin_get_app_localid();
       if ((myDbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
         if ((frm = FrmInitForm(formId)) != NULL) {
-          if (item->type == formRscType) {
-            DmCloseDatabase(myDbRef);
-          }
           WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
           frm->window.windowBounds.topLeft.x = (swidth - frm->window.windowBounds.extent.x) / 2;
           frm->window.windowBounds.topLeft.y = (sheight - frm->window.windowBounds.extent.y) / 2;
           editor(frm, title, h);
           FrmDeleteForm(frm);
         }
-        if (frm == NULL || item->type != formRscType) {
-          DmCloseDatabase(myDbRef);
-        }
+        DmCloseDatabase(myDbRef);
       }
 
       DmReleaseResource(h);
@@ -1454,6 +1452,38 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
     DmCloseDatabase(dbRef);
   } else {
     OpenErrorDialog(data->name, DmGetLastErr());
+  }
+}
+
+static void editFile(launcher_data_t *data, launcher_item_t *item) {
+  char buf[MAX_NAME];
+  char *ext;
+  uint8_t *img;
+  UInt32 size, nread;
+  FileRef fileRef;
+  surface_t *surface;
+  FormType *frm;
+
+  if ((ext = getext(item->name)) != NULL) {
+    if (!StrCompare(ext, "bmp") || !StrCompare(ext, "png") || !StrCompare(ext, "jpg")) {
+      StrNPrintF(buf, sizeof(buf)-1, "%s%s", data->path, item->name);
+      if (VFSFileOpen(1, buf, vfsModeRead, &fileRef) == errNone) {
+        VFSFileSize(fileRef, &size);
+        if ((img = MemPtrNew(size)) != NULL) {
+          if (VFSFileRead(fileRef, size, img, &nread) == errNone && nread == size) {
+            if ((surface = surface_load_mem(img, size, SURFACE_ENCODING_RGB565)) != NULL) {
+              if ((frm = FrmInitForm(EditImgForm)) != NULL) {
+                editSurface(frm, item->name, surface);
+                FrmDeleteForm(frm);
+              }
+              surface_destroy(surface);
+            }
+          }
+          MemPtrFree(img);
+        }
+        VFSFileClose(fileRef);
+      }
+    }
   }
 }
 
@@ -1788,6 +1818,8 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                     refresh(frm, data);
                     UpdateStatus(frm, data, true);
                   }
+                } else if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+                  editFile(data, &data->item[i]);
                 }
               }
             }
@@ -2069,7 +2101,7 @@ static void LauncherOpenForm(UInt16 formId) {
   }
 }
 
-static void DrawBattery(void) {
+static void DrawBattery(Boolean draw) {
   FormType *frm;
   RectangleType rect;
   RGBColorType rgb, old;
@@ -2078,36 +2110,58 @@ static void DrawBattery(void) {
   frm = FrmGetActiveForm();
   FrmGetFormBounds(frm, &rect);
 
-  battery = pumpkin_get_battery();
+  if (draw) {
+    battery = pumpkin_get_battery();
 
-  rgb.r = 0x00;
-  rgb.g = 0x40;
-  rgb.b = 0xff;
-  WinSetBackColorRGB(&rgb, &old);
-  RctSetRectangle(&rect, (rect.extent.x - BATTERY_WIDTH) / 2, 4, (battery * BATTERY_WIDTH) / 100, 5);
-  WinEraseRectangle(&rect, 0);
+    rgb.r = 0x00;
+    rgb.g = 0x40;
+    rgb.b = 0xff;
+    WinSetBackColorRGB(&rgb, &old);
+    RctSetRectangle(&rect, (rect.extent.x - BATTERY_WIDTH) / 2, 4, (battery * BATTERY_WIDTH) / 100, 5);
+    WinEraseRectangle(&rect, 0);
 
-  if (rect.extent.x < BATTERY_WIDTH) {
-    rgb.r = 0x80;
-    rgb.g = 0x80;
-    rgb.b = 0x80;
-    WinSetBackColorRGB(&rgb, NULL);
-    rect.topLeft.x += rect.extent.x;
-    rect.extent.x = BATTERY_WIDTH - rect.extent.x;
+    if (rect.extent.x < BATTERY_WIDTH) {
+      rgb.r = 0x80;
+      rgb.g = 0x80;
+      rgb.b = 0x80;
+      WinSetBackColorRGB(&rgb, NULL);
+      rect.topLeft.x += rect.extent.x;
+      rect.extent.x = BATTERY_WIDTH - rect.extent.x;
+      WinEraseRectangle(&rect, 0);
+    }
+    WinSetBackColorRGB(&old, NULL);
+
+  } else {
+    RctSetRectangle(&rect, (rect.extent.x - BATTERY_WIDTH) / 2, 4, BATTERY_WIDTH, 5);
     WinEraseRectangle(&rect, 0);
   }
+}
 
-  WinSetBackColorRGB(&old, NULL);
+static void updateFilter(launcher_data_t *data, FormType *frm, Boolean visible) {
+  UInt16 index;
+
+  index = FrmGetObjectIndex(frm, filterCtl);
+  if (visible) {
+    if (!data->filterVisible) {
+      FrmShowObject(frm, index);
+      data->filterVisible = true;
+    }
+  } else {
+    if (data->filterVisible) {
+      FrmHideObject(frm, index);
+      data->filterVisible = false;
+    }
+  }
 }
 
 static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
   RectangleType rect;
   DateTimeType dt;
   UInt32 t, tf;
+  UInt16 index;
   FontID old;
-  UInt16 objIndex;
   Boolean update;
-  int width;
+  int i, len, width, max, ew, w;
 
   update = false;
   t = TimGetSeconds();
@@ -2117,8 +2171,6 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
     data->lastMinute = dt.minute;
   }
 
-  objIndex = FrmGetObjectIndex(frm, filterCtl);
-
   switch (data->mode) {
     case launcher_app:
     case launcher_app_small:
@@ -2126,42 +2178,67 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
         tf = PrefGetPreference(prefTimeFormat);
         TimeToAscii(dt.hour, dt.minute, tf, data->title);
         FrmSetTitle(frm, data->title);
+        DrawBattery(true);
       }
-      FrmHideObject(frm, objIndex);
+      updateFilter(data, frm, false);
       break;
     case launcher_db:
       if (title) FrmSetTitle(frm, "Databases");
-      FrmShowObject(frm, objIndex);
+      updateFilter(data, frm, true);
+      if (update) DrawBattery(true);
       break;
     case launcher_rsrc:
       if (title) FrmSetTitle(frm, data->name);
-      FrmShowObject(frm, objIndex);
+      updateFilter(data, frm, true);
+      if (update) DrawBattery(true);
       break;
     case launcher_rec:
       if (title) FrmSetTitle(frm, data->name);
-      FrmHideObject(frm, objIndex);
+      updateFilter(data, frm, false);
+      if (update) DrawBattery(true);
       break;
     case launcher_file:
       if (title) {
-        FrmGetObjectBounds(frm, objIndex, &rect);
+        index = FrmGetObjectIndex(frm, filterCtl);
+        FrmGetObjectBounds(frm, index, &rect);
         old = FntSetFont(boldFont);
-        adjustName(data->title, MAX_NAME, data->path, &width, rect.topLeft.x - 8);
+
+        len = StrLen(data->path);
+        width = FntCharsWidth(data->path, len);
+        max = rect.topLeft.x + rect.extent.x - 2*FntCharWidth('w');
+        if (width > max) {
+          // width is bigger than available space, build a path that fits available space
+          // but put the ellipses character at the beginning (adjustName puts ellipses at the end)
+          ew = FntCharWidth(chrEllipsis);
+          width = 0;
+          for (i = len-1; i >= 0; i--) {
+            w = FntCharWidth(data->path[i]);
+            if (width + w + ew > max) break;
+            width += w;
+          }
+          data->title[0] = chrEllipsis;
+          data->title[1] = 0;
+          StrNCat(data->title, &data->path[i], MAX_NAME-1);
+        } else {
+          StrNCopy(data->title, data->path, MAX_NAME-1);
+        }
+
         FntSetFont(old);
         FrmSetTitle(frm, data->title);
       }
-      FrmHideObject(frm, objIndex);
+      updateFilter(data, frm, false);
       break;
     case launcher_task:
       if (title) FrmSetTitle(frm, "Tasks");
-      FrmHideObject(frm, objIndex);
+      updateFilter(data, frm, false);
+      if (update) DrawBattery(true);
       break;
     case launcher_registry:
       if (title) FrmSetTitle(frm, "Registry");
-      FrmHideObject(frm, objIndex);
+      updateFilter(data, frm, false);
+      if (update) DrawBattery(true);
       break;
   }
-
-  if (update) DrawBattery();
 }
 
 void setField(FormType *frm, UInt16 fieldId, char *s, Boolean focus) {
@@ -2484,6 +2561,7 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
         frm = FrmGetActiveForm();
         launcherScan(data);
         refresh(frm, data);
+        DrawBattery(false);
         UpdateStatus(frm, data, true);
         frm->mbar = data->mainMenu;
         MenuSetActiveMenu(frm->mbar);
@@ -2627,9 +2705,11 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       switch (data->mode) {
         case launcher_db:
         case launcher_rsrc:
+          data->filterVisible = true;
           break;
         default:
           FrmHideObject(frm, index);
+          data->filterVisible = false;
           break;
       }
       FrmDrawForm(frm);
