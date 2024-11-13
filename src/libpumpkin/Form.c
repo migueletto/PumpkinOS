@@ -565,6 +565,13 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         } else {
           x = 2;
           y = 2;
+
+          // erase right rounded border
+          WinSetBackColor(formFill);
+          RctSetRectangle(&rect, tw+2, 0, 2, th+4);
+          WinEraseRectangle(&rect, 0);
+          WinSetBackColor(formFrame);
+
           RctSetRectangle(&rect, 0, 0, tw+4, th+4);
           WinEraseRectangle(&rect, 1);
           MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
@@ -1452,18 +1459,32 @@ make a copy. The value of newTitle must not be a pointer to a
 stack-based object
 */
 void FrmSetTitle(FormType *formP, Char *newTitle) {
-  UInt16 i;
+  RectangleType old, rect;
+  FormObjectType obj;
+  UInt16 i, width;
 
   if (formP && newTitle) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
-        if (formP->attr.visible) {
-          FrmEraseObject(formP, formP->objects[i].object.title->objIndex, false);
-        }
         formP->objects[i].object.title->text = newTitle;
         if (formP->attr.visible) {
+          obj = formP->objects[i].object;
+          MemMove(&old, &obj.title->rect, sizeof(RectangleType));
+
+          // draw new title
           FrmDrawObject(formP, formP->objects[i].object.title->objIndex, false);
+          MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
+
+          // if new title is shorter than old title
+          if (rect.extent.x < old.extent.x) {
+            // erase excess
+            width = old.extent.x - rect.extent.x;
+            rect.topLeft.x += rect.extent.x;
+            rect.extent.x = width;
+            rect.extent.y -= 2;
+            WinEraseRectangle(&rect, 0);
+          }
         }
         break;
       }
