@@ -937,8 +937,6 @@ static Boolean eventHandler(EventType *event) {
 
 Boolean editForm(FormType *frm, char *title, MemHandle h) {
   form_edit_t data;
-  FormType *previous;
-  EventType event;
   Coord width, height;
   UInt32 density, depth;
   UInt16 index;
@@ -974,22 +972,8 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       index = FrmGetObjectIndex(frm, formGad);
       FrmSetGadgetHandler(frm, index, formGadgetCallback);
       FrmSetGadgetData(frm, index, &data);
-
       FrmSetEventHandler(frm, eventHandler);
-      previous = FrmGetActiveForm();
-      FrmSetActiveForm(frm);
-      MemSet(&event, sizeof(EventType), 0);
-      event.eType = frmOpenEvent;
-      event.data.frmOpen.formID = frm->formId;
-      FrmDispatchEvent(&event);
-
-      do {
-        EvtGetEvent(&event, 500);
-        if (SysHandleEvent(&event)) continue;
-        if (MenuHandleEvent(NULL, &event, &err)) continue;
-        if (eventHandler(&event)) continue;
-        FrmDispatchEvent(&event);
-      } while (event.eType != appStopEvent && !data.stop);
+      FrmDoDialog(frm);
 
       if (data.formP->window.bitmapP) {
         BmpDelete(data.formP->window.bitmapP);
@@ -1000,9 +984,6 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       pumpkin_destroy_form(data.formP);
       freeObjectNames(&data);
       xfree(data.bounds);
-
-      FrmEraseForm(frm);
-      FrmSetActiveForm(previous);
 
       if (data.changed) {
         r = true;

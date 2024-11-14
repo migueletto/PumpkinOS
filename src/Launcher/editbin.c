@@ -267,11 +267,8 @@ static Boolean eventHandler(EventType *event) {
 
 Boolean editBinary(FormType *frm, char *title, MemHandle h) {
   bin_edit_t data;
-  FormType *previous;
-  EventType event;
   UInt16 index;
   UInt8 *p;
-  Err err;
   Boolean r = false;
 
   MemSet(&data, sizeof(bin_edit_t), 0);
@@ -291,23 +288,7 @@ Boolean editBinary(FormType *frm, char *title, MemHandle h) {
 
   FrmSetTitle(frm, title);
   FrmSetEventHandler(frm, eventHandler);
-  previous = FrmGetActiveForm();
-  FrmSetActiveForm(frm);
-  MemSet(&event, sizeof(EventType), 0);
-  event.eType = frmOpenEvent;
-  event.data.frmOpen.formID = frm->formId;
-  FrmDispatchEvent(&event);
-
-  do {
-    EvtGetEvent(&event, 500);
-    if (SysHandleEvent(&event)) continue;
-    if (MenuHandleEvent(NULL, &event, &err)) continue;
-    if (eventHandler(&event)) continue;
-    FrmDispatchEvent(&event);
-  } while (event.eType != appStopEvent && !data.stop);
-
-  FrmEraseForm(frm);
-  FrmSetActiveForm(previous);
+  FrmDoDialog(frm);
 
   if (data.changed) {
     if ((p = (UInt8 *)MemHandleLock(h)) != NULL) {

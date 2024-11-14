@@ -907,11 +907,8 @@ static Boolean eventHandler(EventType *event) {
 
 Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
   bmp_edit_t data;
-  FormType *previous;
   BitmapType *bmp, *aux;
-  EventType event;
   UInt16 index;
-  Err err;
   Boolean r = false;
 
   if ((bmp = (BitmapType *)MemHandleLock(h)) != NULL) {
@@ -942,26 +939,10 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     index = FrmGetObjectIndex(frm, toolsGad);
     FrmSetGadgetHandler(frm, index, toolsGadgetCallback);
     FrmSetGadgetData(frm, index, &data);
-
     FrmSetEventHandler(frm, eventHandler);
-    previous = FrmGetActiveForm();
-    FrmSetActiveForm(frm);
-    MemSet(&event, sizeof(EventType), 0);
-    event.eType = frmOpenEvent;
-    event.data.frmOpen.formID = frm->formId;
-    FrmDispatchEvent(&event);
-
-    do {
-      EvtGetEvent(&event, 500);
-      if (SysHandleEvent(&event)) continue;
-      if (MenuHandleEvent(NULL, &event, &err)) continue;
-      if (eventHandler(&event)) continue;
-      FrmDispatchEvent(&event);
-    } while (event.eType != appStopEvent && !data.stop);
+    FrmDoDialog(frm);
 
     xfree(data.bmps);
-    FrmEraseForm(frm);
-    FrmSetActiveForm(previous);
     MemHandleUnlock(h);
     r = data.dirty;
   }

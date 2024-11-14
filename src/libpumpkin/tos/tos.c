@@ -319,18 +319,15 @@ static void write_screen_color(uint16_t *screen, uint32_t offset, uint16_t color
   }
 }
 
-static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, uint16_t value, int le, int dbl) {
-  uint32_t i, k, x, y, plane, offset, index, factor;
+void tos_write_screen(uint16_t *screen, uint32_t offset, uint16_t value, uint8_t *m, uint16_t *palette, int res, int le, int dbl) {
+  uint32_t i, k, x, y, plane, index, factor;
   uint16_t b, b2, b3, b4, color;
-  uint8_t *m = &data->memory[data->physbase];
 
-  offset = address - data->physbase;
   put2b(value, m, offset);
 
-  switch (data->screen_res) {
+  switch (res) {
     case 0: // 320x200 (4 planes)
       plane = (offset >> 1) & 0x03;
-      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, plane, address);
       switch (plane) {
         case 0:
           b = value;
@@ -366,7 +363,7 @@ static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, u
       offset = y * 320 * factor + x;
       for (i = 0, k = 15*factor; i < 16; i++, k -= factor) {
         index = (b & 1) | ((b2 & 1) << 1) | ((b3 & 1) << 2) | ((b4 & 1) << 3);
-        color = data->pumpkin_color[index];
+        color = palette[index];
         write_screen_color(screen, offset + k, color, le);
         if (dbl) {
           write_screen_color(screen, offset + k + 1, color, le);
@@ -381,7 +378,6 @@ static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, u
       break;
     case 1: // 640x200 (2 planes)
       plane = (offset >> 1) & 0x01;
-      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, plane, address);
       switch (plane) {
         case 0:
           b = value;
@@ -400,7 +396,7 @@ static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, u
       offset = y * 640 + x;
       for (i = 0, k = 30; i < 16; i++, k--) {
         index = (b & 1) | ((b2 & 1) << 1);
-        color = data->pumpkin_color[index];
+        color = palette[index];
         write_screen_color(screen, offset + k, color, le);
         if (dbl) write_screen_color(screen, offset + 640 + k, color, le);
         b  >>= 1;
@@ -408,19 +404,17 @@ static void write_screen(tos_data_t *data, uint16_t *screen, uint32_t address, u
       }
       break;
     case 2: // 640x400 (1 plane)
-      //debug(DEBUG_TRACE, "TOS", "write 0x%04X to screen plane %u at 0x%08X", value, 0, address);
       b = value;
       offset >>= 1;
       y = offset / 40;        // 0 .. 199
       x = (offset % 40) * 16; // 0 .. 624
       for (i = 0, k = 30; i < 16; i++, k--) {
-        color = data->pumpkin_color[b & 1];
+        color = palette[b & 1];
         write_screen_color(screen, offset + k, color, le);
         b >>= 1;
       }
       break;
   }
-  data->screen_updated = 1;
 }
 
 static void write_byte(uint32_t address, uint8_t value) {
@@ -439,7 +433,8 @@ static void write_byte(uint32_t address, uint8_t value) {
       w <<= 8;
       w |= value;
     }
-    write_screen(data, data->screen, address, w, 1, 1);
+    tos_write_screen(data->screen, address - data->physbase, w, &data->memory[data->physbase], data->pumpkin_color, data->screen_res, 1, 1);
+    data->screen_updated = 1;
   } else {
     tos_write_byte(data, address, value);
   }
@@ -451,7 +446,8 @@ static void write_word(uint32_t address, uint16_t value) {
 
   if ((address & 1) == 0) {
     if (address >= data->physbase && address < data->physbase + screenSize) {
-      write_screen(data, data->screen, address, value, 1, 1);
+      tos_write_screen(data->screen, address - data->physbase, value, &data->memory[data->physbase], data->pumpkin_color, data->screen_res, 1, 1);
+      data->screen_updated = 1;
     } else {
       tos_write_byte(data, address    , value >> 8);
       tos_write_byte(data, address + 1, value & 0xFF);
@@ -467,8 +463,9 @@ static void write_long(uint32_t address, uint32_t value) {
 
   if ((address & 1) == 0) {
     if (address >= data->physbase && address < data->physbase + screenSize) {
-      write_screen(data, data->screen, address    , value >> 16, 1, 1);
-      write_screen(data, data->screen, address + 2, value & 0xffff, 1, 1);
+      tos_write_screen(data->screen, address - data->physbase    , value >> 16, &data->memory[data->physbase], data->pumpkin_color, data->screen_res, 1, 1);
+      tos_write_screen(data->screen, address - data->physbase + 2, value & 0xffff, &data->memory[data->physbase], data->pumpkin_color, data->screen_res, 1, 1);
+      data->screen_updated = 1;
     } else {
       tos_write_byte(data, address    ,  value >> 24);
       tos_write_byte(data, address + 1, (value >> 16) & 0xFF);
@@ -919,7 +916,7 @@ static uint32_t tos_bios_systrap(void) {
   return r;
 }
 
-static uint16_t tos_convert_color(uint16_t color) {
+uint16_t tos_convert_color(uint16_t color) {
   uint16_t red, green, blue;
 
   red   = (color & 0x0700) >> 8;

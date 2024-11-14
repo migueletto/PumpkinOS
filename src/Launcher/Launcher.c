@@ -20,8 +20,9 @@
 #include "storage.h"
 #include "pumpkin.h"
 #include "emulation/emupalmosinc.h"
-#include "debug.h"
+#include "tos.h"
 #include "xalloc.h"
+#include "debug.h"
 
 #include "resource.h"
 
@@ -1330,7 +1331,6 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
   LocalID dbID;
   DmOpenRef myDbRef;
   DmOpenRef dbRef;
-  UInt32 swidth, sheight;
   FormType *frm;
   MemHandle h;
   Boolean (*editor)(FormType *frm, char *title, MemHandle h) = NULL;
@@ -1392,9 +1392,6 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
       dbID = pumpkin_get_app_localid();
       if ((myDbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
         if ((frm = FrmInitForm(formId)) != NULL) {
-          WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-          frm->window.windowBounds.topLeft.x = (swidth - frm->window.windowBounds.extent.x) / 2;
-          frm->window.windowBounds.topLeft.y = (sheight - frm->window.windowBounds.extent.y) / 2;
           editor(frm, title, h);
           FrmDeleteForm(frm);
         }
@@ -1424,7 +1421,6 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
   LocalID dbID;
   DmOpenRef myDbRef;
   DmOpenRef dbRef;
-  UInt32 swidth, sheight;
   FormType *frm;
   MemHandle h;
   Boolean changed;
@@ -1437,22 +1433,48 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
 
       if ((myDbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
         if ((frm = FrmInitForm(EditBinForm)) != NULL) {
-          WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-          frm->window.windowBounds.topLeft.x = (swidth - frm->window.windowBounds.extent.x) / 2;
-          frm->window.windowBounds.topLeft.y = (sheight - frm->window.windowBounds.extent.y) / 2;
           StrNPrintF(title, sizeof(title)-1, "Record %d", item->index);
           changed = editBinary(frm, title, h);
           FrmDeleteForm(frm);
         }
         DmCloseDatabase(myDbRef);
       }
-
       DmReleaseRecord(h, item->index, changed);
     }
     DmCloseDatabase(dbRef);
   } else {
     OpenErrorDialog(data->name, DmGetLastErr());
   }
+}
+
+static surface_t *surfaceByExt(char *ext, uint8_t *buf, uint32_t size) {
+  uint16_t *screen, palette[16], w;
+  uint32_t offset, i;
+  uint8_t *m;
+  int len;
+  surface_t *surface = NULL;
+
+  if (!StrCaselessCompare(ext, "bmp") || !StrCaselessCompare(ext, "png") || !StrCaselessCompare(ext, "jpg")) {
+    surface = surface_load_mem(buf, size, SURFACE_ENCODING_RGB565);
+  } else if ((!StrCaselessCompare(ext, "pi1") || !StrCaselessCompare(ext, "pi2") || !StrCaselessCompare(ext, "pi3")) && (size == 32034 || size == 32066)) {
+    switch (ext[2] - '1') {
+      case 0: surface = surface_create(320, 200, SURFACE_ENCODING_RGB565); break;
+      case 1: surface = surface_create(640, 200, SURFACE_ENCODING_RGB565); break;
+      case 2: surface = surface_create(640, 400, SURFACE_ENCODING_RGB565); break;
+    }
+    screen = surface_buffer(surface, &len);
+    for (i = 0; i < 16; i++) {
+      get2b(&w, buf, 2 + i*2);
+      palette[i] = tos_convert_color(w);
+    }
+    m = &buf[34];
+    for (offset = 0; offset < 32000; offset += 2) {
+      get2b(&w, m, offset);
+      tos_write_screen(screen, offset, w, m, palette, ext[2] - '1', 1, 0);
+    }
+  }
+
+  return surface;
 }
 
 static void editFile(launcher_data_t *data, launcher_item_t *item) {
@@ -1465,24 +1487,22 @@ static void editFile(launcher_data_t *data, launcher_item_t *item) {
   FormType *frm;
 
   if ((ext = getext(item->name)) != NULL) {
-    if (!StrCompare(ext, "bmp") || !StrCompare(ext, "png") || !StrCompare(ext, "jpg")) {
-      StrNPrintF(buf, sizeof(buf)-1, "%s%s", data->path, item->name);
-      if (VFSFileOpen(1, buf, vfsModeRead, &fileRef) == errNone) {
-        VFSFileSize(fileRef, &size);
-        if ((img = MemPtrNew(size)) != NULL) {
-          if (VFSFileRead(fileRef, size, img, &nread) == errNone && nread == size) {
-            if ((surface = surface_load_mem(img, size, SURFACE_ENCODING_RGB565)) != NULL) {
-              if ((frm = FrmInitForm(EditImgForm)) != NULL) {
-                editSurface(frm, item->name, surface);
-                FrmDeleteForm(frm);
-              }
-              surface_destroy(surface);
+    StrNPrintF(buf, sizeof(buf)-1, "%s%s", data->path, item->name);
+    if (VFSFileOpen(1, buf, vfsModeRead, &fileRef) == errNone) {
+      VFSFileSize(fileRef, &size);
+      if ((img = MemPtrNew(size)) != NULL) {
+        if (VFSFileRead(fileRef, size, img, &nread) == errNone && nread == size) {
+          if ((surface = surfaceByExt(ext, img, size)) != NULL) {
+            if ((frm = FrmInitForm(EditImgForm)) != NULL) {
+              editSurface(frm, item->name, surface);
+              FrmDeleteForm(frm);
             }
+            surface_destroy(surface);
           }
-          MemPtrFree(img);
         }
-        VFSFileClose(fileRef);
+        MemPtrFree(img);
       }
+      VFSFileClose(fileRef);
     }
   }
 }

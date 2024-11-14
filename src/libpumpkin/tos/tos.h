@@ -76,7 +76,9 @@ typedef struct {
 
 UInt32 TOSMain(void);
 
+uint16_t tos_convert_color(uint16_t color);
 void tos_write_byte(tos_data_t *data, uint32_t address, uint8_t value);
+void tos_write_screen(uint16_t *screen, uint32_t offset, uint16_t value, uint8_t *m, uint16_t *palette, int res, int le, int dbl);
 int32_t vdi_call(vdi_pb_t *vdi_pb);
 int32_t aes_call(aes_pb_t *aes_pb);
 
