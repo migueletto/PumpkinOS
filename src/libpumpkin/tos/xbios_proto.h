@@ -29,7 +29,6 @@ int16_t Setprt(int16_t config);
 int16_t Kbrate(int16_t initial, int16_t repeat);
 int16_t Prtblk(PBDEF *par);
 void Vsync(void);
-int32_t Supexec(void *func);
 void Puntaes(void);
 int16_t Floprate(int16_t devno, int16_t newrate);
 int16_t DMAread(int32_t sector, int16_t count, void *buffer, int16_t devno);

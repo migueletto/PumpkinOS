@@ -11,7 +11,10 @@
 
 #define TosType 'ctos'
 
+#define KEYQUEUE_SIZE 16
+
 #include "heap.h"
+#include "pterm.h"
 
 typedef struct {
   uint8_t *memory;
@@ -38,6 +41,18 @@ typedef struct {
   uint16_t *screen;
   int screen_res;
   int screen_updated;
+  uint32_t modMask, keyMask;
+  uint64_t extKeyMask[2];
+  uint32_t KeyQueue[KEYQUEUE_SIZE];
+  uint32_t KeyQueueWriteIndex;
+  uint32_t KeyQueueReadIndex;
+  uint8_t *key2scan[128];
+  uint8_t shift, ctrl;
+  uint32_t ncols, nrows;
+  uint32_t fwidth, fheight;
+  FontID font;
+  pterm_t *t;
+  pterm_callback_t cb;
 } tos_data_t;
 
 typedef struct {
@@ -76,7 +91,10 @@ typedef struct {
 
 UInt32 TOSMain(void);
 
+int tos_has_key(tos_data_t *data);
+int tos_get_key(tos_data_t *data, uint32_t *scancode);
 uint16_t tos_convert_color(uint16_t color);
+uint32_t tos_read_byte(tos_data_t *data, uint32_t address);
 void tos_write_byte(tos_data_t *data, uint32_t address, uint8_t value);
 void tos_write_screen(uint16_t *screen, uint32_t offset, uint16_t value, uint8_t *m, uint16_t *palette, int res, int le, int dbl);
 int32_t vdi_call(vdi_pb_t *vdi_pb);

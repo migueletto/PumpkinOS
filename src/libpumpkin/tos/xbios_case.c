@@ -73,8 +73,14 @@
           switch (rezz) {
             case 0:
             case 1:
+              data->screen_res = rezz;
+              data->font = tos8x8Font;
+              FntSetFont(data->font);
+              break;
             case 2:
               data->screen_res = rezz;
+              data->font = tos8x16Font;
+              FntSetFont(data->font);
               break;
             default:
               debug(DEBUG_ERROR, "TOS", "GEMDOS Setscreen invalid resolution %d", rezz);
@@ -485,16 +491,9 @@
       break;
 
     case 38: { // int32_t Supexec(void *func)
-        int valid = 0;
-        uint32_t afunc = ARG32;
-        void *func = (void *)(memory + afunc);
-        valid |= (uint8_t *)func >= data->memory && (uint8_t *)func < data->memory + data->memorySize;
-        int32_t res = 0;
-        if (valid) {
-          res = Supexec(func);
-        }
-        m68k_set_reg(M68K_REG_D0, res);
-        debug(DEBUG_TRACE, "TOS", "GEMDOS Supexec(0x%08X): %d", afunc, res);
+        uint32_t func = ARG32;
+        debug(DEBUG_TRACE, "TOS", "GEMDOS Supexec(0x%08X)", func);
+        r = func;
       }
       break;
 

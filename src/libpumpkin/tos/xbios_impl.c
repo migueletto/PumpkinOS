@@ -169,11 +169,6 @@ int16_t Prtblk(PBDEF *par) {
 void Vsync(void) {
 }
 
-int32_t Supexec(void *func) {
-  debug(DEBUG_ERROR, "TOS", "Supexec not implemented");
-  return 0;
-}
-
 void Puntaes(void) {
   debug(DEBUG_ERROR, "TOS", "Puntaes not implemented");
 }

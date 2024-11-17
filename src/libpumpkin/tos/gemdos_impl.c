@@ -570,6 +570,10 @@ int32_t Fsfirst(char *pat, int16_t attr) {
           info.nameBufLen = sizeof(buf)-1;
           if (VFSDirEntryEnumerate(dirRef, &dirEntryIterator, &info) != errNone) break;
           if ((info.attributes & vfsFileAttrDirectory) && !(attr & 0x10)) continue;
+          for (i = 0; info.nameP[i]; i++) {
+            if (info.nameP[i] >= 'a' && info.nameP[i] <= 'z') break;
+          }
+          if (info.nameP[i]) continue;
           list[n] = sys_strdup(info.nameP);
           debug(DEBUG_TRACE, "TOS", "Fsfirst item %d \"%s\"", n, list[n]);
           n++;

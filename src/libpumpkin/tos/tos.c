@@ -6,6 +6,7 @@
 #include "rgb.h"
 #include "plibc.h"
 #include "unzip.h"
+#include "scancodes.h"
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
@@ -106,7 +107,7 @@ static const uint16_t palette[] = {
   0, 0, 0
 };
 
-static uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
+uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
   EventType event;
   Err err;
   uint8_t value = 0;
@@ -132,18 +133,33 @@ static uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
           if (MenuHandleEvent(NULL, &event, &err)) continue;
           if (event.eType == appStopEvent) {
             emupalmos_finish(1);
-          } else if (event.eType == keyDownEvent) {
-            data->ikbd_state = event.data.keyDown.chr;
-            data->ikbd_cmd = 0xFE;
           }
         }
 
         if (data->ikbd_state && data->ikbd_cmd != 0x80) {
           value |= 0x01;
         }
+
+        if (data->KeyQueueReadIndex != data->KeyQueueWriteIndex) {
+          value |= 0x01;
+        }
         break;
       case 0x00FFFC02: // keyboard ACIA data
-        if (data->ikbd_cmd) {
+        if (data->KeyQueueReadIndex != data->KeyQueueWriteIndex && (data->ikbd_cmd == 0 || data->ikbd_state <= 1)) {
+          uint32_t code, scancode;
+          tos_get_key(data, &code);
+          scancode = (code >> 16) & 0xFF;
+          if (scancode) {
+            value = scancode;
+            if ((scancode & 0x7F) == SCAN_LEFTSHIFT) {
+              data->shift = scancode & 0x80 ? 0 : 1;
+            }
+            if ((scancode & 0x7F) == SCAN_CONTROL) {
+              data->ctrl = scancode & 0x80 ? 0 : 1;
+            }
+            debug(DEBUG_TRACE, "TOS", "scancode 0x%02X", value);
+          }
+        } else if (data->ikbd_cmd) {
           Int16 x, y;
           Boolean penDown, right;
 
@@ -211,12 +227,6 @@ static uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
                   break;
               }
               break;
-            case 0xFE:
-              value = data->ikbd_state;
-              debug(DEBUG_TRACE, "TOS", "key 0x%02X", value);
-              data->ikbd_state = 0;
-              data->ikbd_cmd = 0;
-              break;
             default:
               debug(DEBUG_ERROR, "TOS", "unknown ikbd command 0x%02X", data->ikbd_cmd);
               data->ikbd_cmd = 0;
@@ -239,6 +249,9 @@ static uint32_t tos_read_byte(tos_data_t *data, uint32_t address) {
 
   } else if (address < data->memorySize) {
     value = data->memory[address];
+    if (address < sysvarsSize) {
+      debug(DEBUG_INFO, "TOS", "read 0x%02X from sysvar 0x%08X", value, address);
+    }
 
   } else {
     //debug(DEBUG_ERROR, "TOS", "read from unmapped address 0x%08X", address);
@@ -267,6 +280,9 @@ void tos_write_byte(tos_data_t *data, uint32_t address, uint8_t value) {
     }
 
   } else if (address < data->memorySize) {
+    if (address < sysvarsSize) {
+      debug(DEBUG_INFO, "TOS", "write 0x%02X to sysvar 0x%08X", value, address);
+    }
     data->memory[address] = value;
   } else {
     //debug(DEBUG_ERROR, "TOS", "write 0x%02X to unmapped address 0x%08X", value, address);
@@ -451,6 +467,18 @@ static void write_word(uint32_t address, uint16_t value) {
     } else {
       tos_write_byte(data, address    , value >> 8);
       tos_write_byte(data, address + 1, value & 0xFF);
+
+      if ((address & 0xFF000000) == 0xFF000000) {
+        address &= 0x00FFFFFF;
+      }
+      if (address >= 0x00FF8240 && address <= 0x00FF825E) {
+        uint16_t colornum = (address - 0x00FF8240) >> 1;
+        uint16_t rgb = tos_convert_color(value);
+        data->tos_color[colornum] = value;
+        data->pumpkin_color[colornum] = rgb;
+        data->screen_updated = 1;
+        debug(DEBUG_TRACE, "TOS", "palette register %u color 0x%04X rgb565 0x%04X", colornum, value, rgb);
+      }
     }
   } else {
     debug(DEBUG_ERROR, "TOS", "write_word unaligned address 0x%08X", address);
@@ -510,6 +538,187 @@ static void screen_refresh(tos_data_t *data) {
       data->last_refresh = t;
     }
   }
+}
+
+static void tos_put_key(tos_data_t *data, int down, uint32_t scancode, uint32_t key) {
+  if (!down) scancode |= 0x80;
+  uint32_t code = key | (scancode << 16);
+  data->KeyQueue[data->KeyQueueWriteIndex] = code;
+  data->KeyQueueWriteIndex++;
+  data->KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+  debug(1, "XXX", "put_key %s 0x%02X '%c' 0x%04X", down ? "down" : "up", scancode, key, code);
+}
+
+int tos_has_key(tos_data_t *data) {
+  return data->KeyQueueReadIndex != data->KeyQueueWriteIndex;
+}
+
+int tos_get_key(tos_data_t *data, uint32_t *code) {
+  int r = 0;
+
+  if (data->KeyQueueReadIndex != data->KeyQueueWriteIndex) {
+    *code = data->KeyQueue[data->KeyQueueReadIndex];
+    data->KeyQueueReadIndex++;
+    data->KeyQueueReadIndex %= KEYQUEUE_SIZE;
+    debug(1, "XXX", "get_key 0x%04X'", *code);
+    r = 1;
+  }
+
+  return r;
+}
+
+static void process_normal_keys(tos_data_t *data, uint32_t oldMask, uint32_t newMask) {
+  uint32_t diff;
+
+  diff = oldMask ^ newMask;
+  if (diff) {
+    if (diff & keyBitPageDown) {
+      tos_put_key(data, newMask & keyBitPageDown ? 1 : 0, SCAN_DOWNARROW, 0);
+    }
+    if (diff & keyBitPageUp) {
+      tos_put_key(data, newMask & keyBitPageUp ? 1 : 0, SCAN_UPARROW, 0);
+    }
+    if (diff & keyBitLeft) {
+      tos_put_key(data, newMask & keyBitLeft ? 1 : 0, SCAN_LEFTARROW, 0);
+    }
+    if (diff & keyBitRight) {
+      tos_put_key(data, newMask & keyBitRight ? 1 : 0, SCAN_RIGHTARROW, 0);
+    }
+  }
+}
+
+static void process_mod_keys(tos_data_t *data, uint32_t oldMask, uint32_t newMask) {
+  uint32_t diff;
+
+  diff = oldMask ^ newMask;
+  if (diff) {
+/*
+    if (diff & WINDOW_MOD_CTRL) {
+      data->ctrl = newMask & WINDOW_MOD_CTRL ? 1 : 0;
+      tos_put_key(data, data->ctrl, SCAN_CONTROL, 0);
+    }
+    if (diff & WINDOW_MOD_SHIFT) {
+      data->shift = newMask & WINDOW_MOD_SHIFT ? 1 : 0;
+      tos_put_key(data, data->shift, SCAN_LEFTSHIFT, 0);
+    }
+*/
+  }
+}
+
+static void process_ext_keys(tos_data_t *data, uint64_t oldMask, uint64_t newMask, uint16_t offset) {
+  uint8_t key, scancode, shift, down, *e;
+  uint64_t diff;
+  uint16_t i;
+
+  diff = oldMask ^ newMask;
+  if (diff) {
+    for (i = 0; i < 64; i++) {
+      if (diff & 1) {
+        key = offset + i;
+        e = data->key2scan[key];
+        if (e) {
+          shift = e[0];
+          scancode = e[1];
+          down = newMask & 1;
+          if (down) {
+            if (shift) tos_put_key(data, 1, SCAN_LEFTSHIFT, 0);
+            tos_put_key(data, 1, scancode, key);
+          } else {
+            tos_put_key(data, 0, scancode, key);
+            if (shift) tos_put_key(data, 0, SCAN_LEFTSHIFT, 0);
+          }
+        }
+      }
+      newMask >>= 1;
+      diff >>= 1;
+    }
+  }
+}
+
+static void process_keys(tos_data_t *data) {
+  uint32_t keyMask, modMask;
+  uint64_t extKeyMask[2];
+
+  pumpkin_status(NULL, NULL, &keyMask, &modMask, NULL, extKeyMask);
+
+  process_normal_keys(data, data->keyMask, keyMask);
+  data->keyMask = keyMask;
+
+  process_mod_keys(data, data->modMask, modMask);
+  data->modMask = modMask;
+
+  process_ext_keys(data, data->extKeyMask[0], extKeyMask[0], 0);
+  data->extKeyMask[0] = extKeyMask[0];
+
+  process_ext_keys(data, data->extKeyMask[1], extKeyMask[1], 64);
+  data->extKeyMask[1] = extKeyMask[1];
+}
+
+static int tos_pterm_draw(uint8_t col, uint8_t row, uint8_t code, uint32_t fg, uint32_t bg, uint8_t attr, void *_data) {
+  tos_data_t *data = (tos_data_t *)_data;
+  uint32_t x, y;
+    
+  if (col < data->ncols && row < data->nrows) {
+    x = col * data->fwidth;
+    y = row * data->fheight;
+    WinPaintChar(code, x, y);
+  }
+
+  return 0;
+}
+
+static int tos_pterm_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t row2, uint32_t bg, uint8_t attr, void *_data) {
+  tos_data_t *data = (tos_data_t *)_data;
+  RectangleType rect;
+
+  if (col1 < data->ncols && col2 <= data->ncols && row1 < data->nrows && row2 <= data->nrows && col2 >= col1 && row2 >= row1) {
+    RctSetRectangle(&rect, col1 * data->fwidth, row1 * data->fheight, (col2 - col1) * data->fwidth, (row2 - row1) * data->fheight);
+    WinEraseRectangle(&rect, 0);
+  }
+
+  return 0;
+}
+
+static int tos_pterm_scroll(uint8_t row1, uint8_t row2, int16_t dir, void *_data) {
+  tos_data_t *data = (tos_data_t *)_data;
+  RectangleType rect, vacated;
+
+  if (row1 < data->nrows && row2 <= data->nrows && row2 >= row1) {
+    RctSetRectangle(&rect, 0, row1 * data->fheight, data->ncols * data->fwidth, (row2 - row1) * data->fheight);
+    WinScrollRectangle(&rect, dir < 0 ? winUp : winDown, data->fheight, &vacated);
+  }
+
+  return 0;
+}
+
+static int tos_getchar(void *_data) {
+  tos_data_t *data = (tos_data_t *)_data;
+  uint32_t code;
+  int c = 0;
+
+  if (tos_get_key(data, &code)) {
+    if ((code & 0x80) == 0x00) {
+      c = code & 0x7F;
+    }
+  }
+
+  return c;
+}
+
+static int tos_haschar(void *_data) {
+  tos_data_t *data = (tos_data_t *)_data;
+  return tos_has_key(data);
+}
+
+static void tos_putchar(void *_data, char c) {
+  tos_data_t *data = (tos_data_t *)_data;
+  uint8_t b = c;
+
+  pterm_cursor(data->t, 0);
+  pterm_send(data->t, &b, 1);
+}
+
+static void tos_setcolor(void *_data, uint32_t fg, uint32_t bg) {
 }
 
 static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, uint32_t tosSize, int argc, char *argv[]) {
@@ -591,9 +800,17 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       data.physbase  = sysvarsSize + kbdvSize + lineaSize;
       data.logbase   = data.physbase;
       data.screen = sys_malloc(640 * 400 * 2);
+      data.screen_res = 0;
+      data.font = tos8x8Font;
+      FntSetFont(data.font);
+
+      for (i = 0; scan_codes[i+1]; i += 3) {
+        data.key2scan[scan_codes[i+2]] = (uint8_t *)&scan_codes[i];
+      }
 
       for (i = 0, j = 0; i < 16; i++, j += 3) {
         data.tos_color[i] = (palette[j] << 8) | (palette[j+1] << 4) | palette[j+2];
+        //data.tos_color[i] = (palette[j] << 9) | (palette[j+1] << 5) | (palette[j+2] << 1) | 0x0111;
         data.pumpkin_color[i] = rgb565(
           palette[j  ] ? ((palette[j  ] << 5) | 0x1F) : 0,
           palette[j+1] ? ((palette[j+1] << 5) | 0x1F) : 0,
@@ -610,7 +827,8 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
 
       write_long(0x000005A0, 0x00000700); // _p_cookies: pointer to the system Cookie Jar
       write_long(0x00000700, '_VDO');
-      write_long(0x00000704, 0x10000); // Deluxe Paint checks if this value is 0x10000 (STe)
+      //write_long(0x00000704, 0x10000); // Deluxe Paint checks if this value is 0x10000 (STe)
+      write_long(0x00000704, 0);
       write_long(0x00000708, 0);
       write_long(0x0000070C, 0);
 
@@ -692,6 +910,15 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       data.c = VFSAddVolume("/app_card/TOS/C/");
       Dsetdrv(0);
 
+      data.t = pterm_init(80, 25, 1);
+      data.cb.draw = tos_pterm_draw;
+      data.cb.erase = tos_pterm_erase;
+      data.cb.scroll = tos_pterm_scroll;
+      data.cb.data = &data;
+      pterm_callback(data.t, &data.cb);
+
+      pumpkin_setio(tos_getchar, tos_haschar, tos_putchar, tos_setcolor, &data);
+
       pc = textStart;
       a7 = stackStart + stackSize - 16;
       state->stackStart = stackStart;
@@ -724,6 +951,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
         if (m68k_get_reg(NULL, M68K_REG_PC) == 0) break;
         m68k_execute(&state->m68k_state, 100000);
         screen_refresh(&data);
+        process_keys(&data);
       }
       r = 0;
 
@@ -926,6 +1154,16 @@ uint16_t tos_convert_color(uint16_t color) {
   return rgb565(red ? ((red << 5) | 0x1F) : 0, green ? ((green << 5) | 0x1F) : 0, blue ? ((blue << 5) | 0x1F) : 0);
 }
 
+uint16_t xtos_convert_color(uint16_t color) {
+  uint16_t red, green, blue;
+
+  red   = ((color & 0x0700) >> 7) | ((color & 0x0800) >> 11);
+  green = ((color & 0x0070) >> 3) | ((color & 0x0080) >> 7);
+  blue  = ((color & 0x0007) << 1) | ((color & 0x0008) >> 3);
+
+  return rgb565(red ? ((red << 4) | 0x0F) : 0, green ? ((green << 4) | 0x0F) : 0, blue ? ((blue << 4) | 0x0F) : 0);
+}
+
 static uint32_t tos_xbios_systrap(void) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
@@ -1038,6 +1276,7 @@ static uint32_t tos_gem_systrap(void) {
 static uint32_t tos_linea(uint16_t opcode) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
+  uint32_t r = 0;
 
   debug(DEBUG_TRACE, "TOS", "LINEA opcode %d", opcode);
 
@@ -1092,7 +1331,7 @@ static uint32_t tos_linea(uint16_t opcode) {
       break;
   }
 
-  return 0;
+  return r;
 }
 
 uint32_t tos_systrap(uint16_t type) {

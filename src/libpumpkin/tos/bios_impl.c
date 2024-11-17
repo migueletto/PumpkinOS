@@ -32,13 +32,15 @@ void Getmpb(MPB *ptr) {
 }
 
 int16_t Bconstat(int16_t dev) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
   int32_t r = 0;
 
   // returns -1 when there are characters waiting in the buffer, and 0 if this is not the case
 
   switch (dev) {
     case 2: // con: (Console)
-      r = plibc_haschar() ? -1 : 0;
+      r = tos_has_key(data) ? -1 : 0;
       break;
   }
 
@@ -46,17 +48,24 @@ int16_t Bconstat(int16_t dev) {
 }
 
 int32_t Bconin(int16_t dev) {
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  uint32_t code;
   int32_t c = 0;
-
-  // returns the read-in character as an ASCII value in the bits 0..7
 
   switch (dev) {
     case 2: // console
-      // when reading from the console, the bits 16 to 23 contain the scan-code of the relevant key
-      // if, in addition, the corresponding bit of the system variable conterm is set, then the bits 24 to 31 contain the current value of Kbshift
-      c = plibc_getchar();
-      break;
-    case 4: // keyboard port
+      // bits 0-7  : ASCII value (0 for non-ASCII keys)
+      // bits 8-15 : reserved
+      // bits 16-23: scan code
+      // bits 24-31: shift key status
+      if (tos_get_key(data, &code)) {
+        if ((tos_read_byte(data, 0x00000484) & 0x08) == 0) {
+          // return shift key status only if the system variable conterm at 0x484 has bit 3 set
+          code &= 0x00FFFFFF;
+        }
+        c = code;
+      }
       break;
   }
 
@@ -105,7 +114,7 @@ int32_t Bcostat(int16_t dev) {
 }
 
 int32_t Mediach(int16_t dev) {
-  debug(DEBUG_ERROR, "TOS", "Mediach not implemented");
+  // no media has changed
   return 0;
 }
 
@@ -113,13 +122,34 @@ int32_t Drvmap(void) {
   emu_state_t *state = m68k_get_emu_state();
   tos_data_t *data = (tos_data_t *)state->extra;
   int32_t r = 0x01;
+
   if (data->b != 0xffff) r |= 0x2;
   if (data->c != 0xffff) r |= 0x4;
 
   return r;
 }
 
+#define K_RSHIFT   0x01 // Right shift key depressed
+#define K_LSHIFT   0x02 // Left shift key depressed
+#define K_CTRL     0x04 // Control key depressed
+#define K_ALT      0x08 // Alternate key depressed
+#define K_CAPSLOCK 0x10 // Caps-lock engaged
+#define K_CLRHOME  0x20 // Clr/Home key depressed
+#define K_INSERT   0x40 // Insert key depressed
+
 int32_t Kbshift(int16_t mode) {
-  debug(DEBUG_ERROR, "TOS", "Kbshift not implemented");
-  return 0;
+  // allows the user to interrogate or modify the state of the keyboard ‘special’ keys
+
+  emu_state_t *state = m68k_get_emu_state();
+  tos_data_t *data = (tos_data_t *)state->extra;
+  int32_t kstate = 0;
+
+  if (data->shift) kstate |= K_LSHIFT;
+  if (data->ctrl)  kstate |= K_CTRL;
+
+  if (mode != -1) {
+    debug(DEBUG_ERROR, "TOS", "Kbshift modify state (0x%04X) is not supported", (uint16_t)mode);
+  }
+
+  return kstate;
 }

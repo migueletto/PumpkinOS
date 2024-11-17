@@ -33184,7 +33184,11 @@ static void m68k_op_trap(m68k_state_t *m68k_state)
 			REG_PC = r;
 		}
 	} else if ((t == 0x01 || t == 0x02 || t == 0x0d || t == 0x0e) && m68ki_cpu.tos) {
-		tos_systrap(t);
+		uint32_t r = tos_systrap(t);
+		if (r) {
+			m68ki_push_32(REG_PC);
+			REG_PC = r;
+		}
 	} else {
 		m68ki_exception_trapN(EXCEPTION_TRAP_BASE + t);	/* HJB 990403 */
 	}
