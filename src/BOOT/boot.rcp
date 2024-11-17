@@ -888,6 +888,18 @@ BEGIN
   FONT "8x16.txt"  DENSITY 144
 END
 
+FONTFAMILY ID 9014 FONTID 132
+BEGIN
+  FONT "tos4x8.txt"  DENSITY 72
+  FONT "tos8x16.txt" DENSITY 144
+END
+
+FONTFAMILY ID 9015 FONTID 133
+BEGIN
+  FONT "tos4x4.txt" DENSITY 72
+  FONT "tos8x8.txt" DENSITY 144
+END
+
 STRING ID 10000 "Sun Mon Tue Wed Thu Fri Sat "
 STRING ID 10001 "Sunday Monday Tuesday Wednesday Thursday Friday Saturday "
 STRING ID 10002 "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec "

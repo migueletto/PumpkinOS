@@ -264,6 +264,7 @@ struct pumpkin_httpd_t {
 static const int systemFonts[] = {
   stdFont, boldFont, largeFont, symbolFont, symbol11Font, symbol7Font, ledFont, largeBoldFont,
   mono6x10Font, mono8x14Font, mono16x16Font, mono8x16Font,
+  tos8x16Font, tos8x8Font,
   -1
 };
 

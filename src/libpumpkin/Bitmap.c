@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
 
 #include "ColorTable.h"
 
@@ -3281,4 +3282,41 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
   MemPtrFree(p0);
 
   debug(DEBUG_TRACE, "Bitmap", "BmpDecompressBitmapChain end %p", handle);
+}
+
+void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh) {
+  MemHandle hbmp;
+  BitmapType *bmp;
+  FileRef fileRef;
+  UInt16 cols, col, row, x, y;
+  Coord w, h;
+  char buf[256];
+  int i, j, k;
+
+  hbmp = DmGetResource(bitmapRsc, id);
+  bmp = MemHandleLock(hbmp);
+  BmpGetDimensions(bmp, &w, &h, NULL);
+  cols = w / fw;
+  StrPrintF(buf, "f%u.txt", id);
+  VFSFileCreate(1, buf);
+  VFSFileOpen(1, buf, vfsModeWrite, &fileRef);
+  VFSFilePrintF(fileRef, "fontType 36864\nascent 16\ndescent 0\n");
+  for (i = 1; i < 256; i++) {   
+    row = i / cols;
+    col = i % cols;
+    VFSFilePrintF(fileRef, "\nGLYPH %d\n", i);
+    for (j = 0; j < fh; j++) {
+      for (k = 0; k < fw; k++) {
+        y = row * fh + j;
+        x = col * fw + k;
+        buf[k] = BmpGetPixelValue(bmp, x, y) ? '#' : '-';
+      }
+      buf[k++] = '\n';
+      buf[k] = 0;
+      VFSFilePrintF(fileRef, buf);
+    }
+  } 
+  VFSFileClose(fileRef);
+  MemHandleUnlock(hbmp);
+  DmReleaseResource(hbmp);
 }

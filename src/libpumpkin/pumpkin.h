@@ -440,6 +440,7 @@ UInt32 BmpGetMagic(BitmapType *bitmapP);
 BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
 Boolean BmpGetNoDither(const BitmapType *bitmapP);
+void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh);
 
 Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);

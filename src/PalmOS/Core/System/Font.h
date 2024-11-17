@@ -127,6 +127,9 @@ enum fontID {
   mono16x16Font,
   mono8x16Font,
 
+  tos8x16Font,
+  tos8x8Font,
+
 	fntAppFontCustomBase = 0x80	// First available application-defined font ID
 };
 
