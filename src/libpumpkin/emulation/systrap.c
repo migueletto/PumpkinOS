@@ -2085,6 +2085,21 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case sysTrapFrmNewBitmap: {
+      // FormBitmapType *FrmNewBitmap(FormType **formPP, UInt16 ID, UInt16 rscID, Coord x, Coord y)
+      uint32_t formPP = ARG32;
+      uint16_t id = ARG16;
+      uint16_t rscId = ARG16;
+      uint16_t x = ARG16;
+      uint16_t y = ARG16;
+      uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+      FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
+      FormBitmapType *bitmap = FrmNewBitmap(&form, id, rscId, x, y);
+      uint32_t a = emupalmos_trap_out(bitmap);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmNewBitmap(0x%08X, %u, %u, %d, %d): 0x%08X", formPP, id, rscId, x, y, a);
+      m68k_set_reg(M68K_REG_A0, a);
+      }
+      break;
     case sysTrapFrmNewGadget: {
       // FormGadgetType *FrmNewGadget(FormType **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height)
       uint32_t formPP = ARG32;
