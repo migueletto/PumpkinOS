@@ -4442,18 +4442,19 @@ Err MemHandleUnlock(MemHandle h) {
   if (h) {
     handle = (storage_handle_t *)h;
     if (handle->lockCount > 0) {
-      if (handle->htype & STO_INFLATED) {
-        switch (handle->htype & ~STO_INFLATED) {
-          case STO_TYPE_MEM:
-          case STO_TYPE_REC:
-          case STO_TYPE_RES:
-            handle->lockCount--;
-            err = errNone;
-            break;
-          default:
-            debug(DEBUG_ERROR, "STOR", "MemHandleUnlock %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
-            break;
-        }
+      switch (handle->htype & ~STO_INFLATED) {
+        case STO_TYPE_MEM:
+        case STO_TYPE_REC:
+        case STO_TYPE_RES:
+          if (!(handle->htype & STO_INFLATED)) {
+            debug(DEBUG_ERROR, "STOR", "MemHandleUnlock %p type %d not inflated", handle, handle->htype);
+          }
+          handle->lockCount--;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "STOR", "MemHandleUnlock %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
+          break;
       }
     } else {
       debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", (uint32_t)((uint8_t *)h - sto->base));
