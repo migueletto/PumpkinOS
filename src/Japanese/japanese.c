@@ -1,38 +1,33 @@
 #include <PalmOS.h>
 
-#include "pumpkin.h"
 #include "language.h"
-#include "xalloc.h"
 
-#define NUM_FONTS 39
+#define SYSTEM_FONTS  8
+#define NUM_FONTS    44
 
 // To activate Japanese support, compile this and start PumpkinOS with (on Linux):
 // LANG=ja_jp ./pumpkin.sh
 
 typedef struct {
-  MemHandle kh[4];
-  FontTypeV2 *kf[4];
+  MemHandle kh[SYSTEM_FONTS];
+  FontTypeV2 *kf[SYSTEM_FONTS];
   MemHandle h[NUM_FONTS];
   FontTypeV2 *f[NUM_FONTS];
 } japanese_t;
 
-static const int listIds[NUM_FONTS] = {
+static const int systemIds[SYSTEM_FONTS] = {
+  10000, 10001, 10002, 10100, 10101, 10102, 10103, 10003
+};
+
+static const int customIds[NUM_FONTS] = {
   10004, 10005, 10006, 10007,
   10009, 10010, 10011, 10012, 10013, 10014, 10015,
   10016, 10017, 10018, 10019, 10020, 10021, 10022,
   10023, 10024, 10025, 10026, 10027, 10028, 10029,
   10030, 10031, 10032, 10033, 10034, 10035, 10036,
-  10037, 10038, 10039, 10040, 10041, 10042, 10043
+  10037, 10038, 10039, 10040, 10041, 10042, 10043,
+  10044, 10045, 10046, 10047, 10048
 };
-
-/*
-  1129, 1130, 1131, 1132,
-  1136, 1137, 1138, 1139, 1140, 1141, 1142,
-  1143, 1144, 1145, 1146, 1147, 1148, 1149,
-  1150, 1151, 1152, 1153, 1154, 1155, 1156,
-  1157, 1158, 1159, 1224, 1225, 1226, 1227,
-  1228, 1229, 1230, 1231, 1232, 1233, 1234
-*/
 
 static int getIndex(UInt16 c) {
   int index = -1;
@@ -80,6 +75,11 @@ static int getIndex(UInt16 c) {
     case 0xE8: index = 36; break;
     case 0xE9: index = 37; break;
     case 0xEA: index = 38; break;
+    case 0xEB: index = 39; break;
+    case 0xEC: index = 40; break;
+    case 0xED: index = 41; break;
+    case 0xEE: index = 42; break;
+    case 0xEF: index = 43; break;
   }
 
   return index;
@@ -90,12 +90,23 @@ static UInt32 nextChar(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w, void *data) {
 
   c = s[i];
 
-  if (getIndex(c) >= 0) {
-    *w = (c << 8) | s[i+1];
-    n = 2;
-  } else {
-    *w = c;
-    n = 1;
+  switch (FntGetFont()) {
+    case stdFont:
+    case boldFont:
+    case largeFont:
+    case largeBoldFont:
+      if (getIndex(c) >= 0) {
+        *w = (c << 8) | s[i+1];
+        n = 2;
+      } else {
+        *w = c;
+        n = 1;
+      }
+      break;
+    default:
+      *w = c;
+      n = 1;
+      break;
   }
 
   return n;
@@ -103,45 +114,31 @@ static UInt32 nextChar(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w, void *data) {
 
 static UInt8 mapChar(UInt32 w, FontType **f, void *data) {
   japanese_t *japanese = (japanese_t *)data;
-  FontID fontId;
   int index = -1;
 
-  if (w & 0x8000) {
-    index = getIndex(w >> 8);
-
-    if (index >= 0) {
-      // kanji
-      *f = (FontType *)japanese->f[index];
-    } else {
-      // missing kangi
-      *f = FntGetFontPtr();
-    }
-  } else if (w >= 0xA0 && w < 0xE0) {
-    // katakana
-    fontId = FntGetFont();
-
-    if (fontId < 128) {
-      switch (fontId) {
-        case boldFont:
-          *f = (FontType *)japanese->kf[1];
-          break;
-        case largeFont:
-          *f = (FontType *)japanese->kf[2];
-          break;
-        case largeBoldFont:
-          *f = (FontType *)japanese->kf[3];
-          break;
-        default:
-          *f = (FontType *)japanese->kf[0];
-          break;
+  switch (FntGetFont()) {
+    case stdFont:
+    case boldFont:
+    case largeFont:
+    case largeBoldFont:
+      if (w & 0x8000) {
+        index = getIndex(w >> 8);
+        if (index >= 0) {
+          // kanji
+          *f = (FontType *)japanese->f[index];
+        } else {
+          // missing kangi
+          *f = FntGetFontPtr();
+          w = ' ';
+        }
+      } else {
+        // ASCII + katakana
+        *f = FntGetFontPtr();
       }
-    } else {
-      // custom font
+      break;
+    default:
       *f = FntGetFontPtr();
-    }
-  } else {
-    // ASCII
-    *f = FntGetFontPtr();
+      break;
   }
 
   return w & 0xFF;
@@ -152,7 +149,7 @@ static void finish(void *data) {
   int i;
 
   if (japanese) {
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < SYSTEM_FONTS; i++) {
       if (japanese->kh[i]) {
         MemHandleUnlock(japanese->kh[i]);
         DmReleaseResource(japanese->kh[i]);
@@ -165,7 +162,7 @@ static void finish(void *data) {
         DmReleaseResource(japanese->h[i]);
       }
     }
-    xfree(japanese);
+    sys_free(japanese);
   }
 }
 
@@ -174,15 +171,15 @@ Err LanguageSet(language_t *lang) {
   int i;
   Err err = sysErrParamErr;
 
-  if ((japanese = xcalloc(1, sizeof(japanese_t))) != NULL) {
-    for (i = 0; i < 4; i++) {
-      if ((japanese->kh[i] = DmGetResource(fontExtRscType, 10000 + i)) != NULL) {
+  if ((japanese = sys_calloc(1, sizeof(japanese_t))) != NULL) {
+    for (i = 0; i < SYSTEM_FONTS; i++) {
+      if ((japanese->kh[i] = DmGetResource(fontExtRscType, systemIds[i])) != NULL) {
         japanese->kf[i] = MemHandleLock(japanese->kh[i]);
       }
     }
 
     for (i = 0; i < NUM_FONTS; i++) {
-      if ((japanese->h[i] = DmGetResource(fontExtRscType, listIds[i])) != NULL) {
+      if ((japanese->h[i] = DmGetResource(fontExtRscType, customIds[i])) != NULL) {
         japanese->f[i] = MemHandleLock(japanese->h[i]);
       }
     }
