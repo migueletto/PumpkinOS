@@ -4152,13 +4152,13 @@
     case sysTrapErrLongJump: {
       ErrJumpBufP buf = sys_va_arg(ap, ErrJumpBufP);
       Int16 result = sys_va_arg(ap, Int32);
-      ErrLongJump(buf, result);
+      ErrLongJump((void *)buf, result);
       }
       break;
 
     case sysTrapErrSetJump: {
       ErrJumpBufP buf = sys_va_arg(ap, ErrJumpBufP);
-      Int16 ret = ErrSetJump(buf);
+      Int16 ret = ErrSetJump((void *)buf);
       *iret = ret;
       }
       break;
