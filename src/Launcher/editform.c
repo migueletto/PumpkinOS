@@ -21,12 +21,14 @@ typedef struct {
   Int16 selected;
   char *rtitle;
   char title[MAX_TITLE];
-  Boolean changed, stop;
+  Boolean changed;
 } form_edit_t;
 
 static const RGBColorType white  = { 0, 0xff, 0xff, 0xff };
-static const RGBColorType gray   = { 0, 0xe0, 0xe0, 0xe0 };
+static const RGBColorType gray1  = { 0, 0xd0, 0xd0, 0xd0 };
+static const RGBColorType gray2  = { 0, 0xf0, 0xf0, 0xf0 };
 static const RGBColorType red    = { 0, 0xff, 0x80, 0x80 };
+static const RGBColorType purple = { 0, 0x80, 0x00, 0x80 };
 
 static const dynamic_form_item_t formPropertiesItems[] = {
   { "Position:", numPairItem, 0 },
@@ -139,35 +141,40 @@ static const dynamic_form_item_t grfPropertiesItems[] = {
 };
 
 static void drawForm(FormType *current, form_edit_t *data) {
+  FormType *frm;
   RectangleType rect;
-  RGBColorType oldc, rgb;
-  IndexedColorType formFill;
+  RGBColorType oldFormFrame;
+  IndexedColorType back, oldb;
   WinHandle olda, oldd;
-  UInt16 objIndex, index, state, i, j;
+  UInt16 objIndex, index, state, x0, y0, i, j;
 
   if (data->formP) {
-    oldd = WinSetDrawWindow(&data->formP->window);
-    olda = WinGetActiveWindow();
-    WinSetActiveWindow(&data->formP->window);
+    frm = FrmGetActiveForm();
+    x0 = data->formP->window.windowBounds.topLeft.x - frm->window.windowBounds.topLeft.x;
+    y0 = data->formP->window.windowBounds.topLeft.y - frm->window.windowBounds.topLeft.y;
+
+    UIColorGetTableEntryRGB(UIFormFrame, &oldFormFrame);
+    UIColorSetTableEntry(UIFormFrame, &purple);
 
     FrmGetFormBounds(data->formP, &rect);
-    rect.topLeft.x = 0;
-    rect.topLeft.y = 0;
-    formFill = UIColorGetTableEntryIndex(UIFormFill);
-    WinSetBackColor(formFill);
+    rect.topLeft.x = x0;
+    rect.topLeft.y = y0;
+    back = WinRGBToIndex(&gray2);
+    oldb = WinSetBackColor(back);
+    RctInsetRectangle(&rect, -2);
     WinEraseRectangle(&rect, 0);
+    RctInsetRectangle(&rect, 1);
+    WinSetBackColor(oldb);
 
-    for (i = 0; i <= rect.extent.y; i += 4) {
-      for (j = 0; j <= rect.extent.x; j += 4) {
-        WinPaintPixel(j, i);
+    for (i = 0; i < rect.extent.y; i += 4) {
+      for (j = 0; j < rect.extent.x; j += 4) {
+        WinPaintPixel(x0 + j, y0 + i);
       }
     }
 
-    UIColorGetTableEntryRGB(UIFormFrame, &oldc);
-    rgb.r = 0x80;
-    rgb.g = 0x00;
-    rgb.b = 0x80;
-    UIColorSetTableEntry(UIFormFrame, &rgb);
+    oldd = WinSetDrawWindow(&data->formP->window);
+    olda = WinGetActiveWindow();
+    WinSetActiveWindow(&data->formP->window);
 
     state = KbdGrfGetState();
     KbdGrfSetState(GRAFFITI_SHIFT);
@@ -187,19 +194,22 @@ static void drawForm(FormType *current, form_edit_t *data) {
       } else {
         FrmGetObjectBounds(data->formP, objIndex, &data->bounds[objIndex]);
       }
-      RctInsetRectangle(&data->bounds[objIndex], 1);
+      RctInsetRectangle(&data->bounds[objIndex], -1);
     }
     KbdGrfSetState(state);
 
-    if (data->selected >= 0 && data->selected < data->formP->numObjects) {
-      WinSetForeColorRGB(&red, NULL);
-      WinPaintRectangleFrame(1, &data->bounds[data->selected]);
-    }
-
-    UIColorSetTableEntry(UIFormFrame, &oldc);
-
     WinSetActiveWindow(olda);
     WinSetDrawWindow(oldd);
+
+    if (data->selected >= 0 && data->selected < data->formP->numObjects) {
+      WinSetForeColorRGB(&red, NULL);
+      RctCopyRectangle(&data->bounds[data->selected], &rect);
+      rect.topLeft.x += x0;
+      rect.topLeft.y += y0;
+      WinPaintRectangleFrame(1, &rect);
+    }
+
+    UIColorSetTableEntry(UIFormFrame, &oldFormFrame);
   }
 }
 
@@ -227,7 +237,7 @@ static Boolean formGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, voi
 
   switch (cmd) {
     case formGadgetDrawCmd:
-      WinSetForeColorRGB(&gray, &oldf);
+      WinSetForeColorRGB(&gray1, &oldf);
       drawForm(frm, data);
       WinSetForeColorRGB(&oldf, NULL);
       break;
@@ -915,17 +925,6 @@ static Boolean eventHandler(EventType *event) {
           }
           handled = true;
           break;
-        case okBtn:
-          data->stop = true;
-          handled = true;
-          break;
-        case cancelBtn:
-          if (!data->changed || FrmCustomAlert(QuestionAlert, "Discard changes ?", "", "") == 0) {
-            data->changed = false;
-            data->stop = true;
-          }
-          handled = true;
-          break;
       }
       break;
     default:
@@ -964,6 +963,7 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       height = data.formP->window.windowBounds.extent.y;
       WinAdjustCoords(&width, &height);
       data.formP->window.bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+      data.formP->window.density = density;
       data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
       data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
       data.bounds = xcalloc(data.formP->numObjects, sizeof(RectangleType));
