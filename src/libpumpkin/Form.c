@@ -150,7 +150,7 @@ void FrmGotoForm(UInt16 formId) {
 
 static Err FrmInitFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
-  //RectangleType rect;
+  RectangleType rect;
   FormList *p;
   Coord width, height, xmargin, ymargin, w, h;
   UInt32 density, depth;
@@ -182,8 +182,8 @@ static Err FrmInitFormInternal(FormType *formP) {
   formP->window.density = density;
   //dbg_add(0, formP->window.bitmapP);
 
-  //RctSetRectangle(&rect, 0, 0, width, height);
-  //WinSetClipingBounds(formP->wh, &rect);
+  RctSetRectangle(&rect, 0, 0, w, h);
+  WinSetClipingBounds(&formP->window, &rect);
 
   formP->selectedObject = -1;
   formP->activeList = -1;
