@@ -1235,10 +1235,10 @@
         int valid = 0;
         int16_t sig = ARG16;
         uint32_t aact = ARG32;
-        struct sigaction *act = (struct sigaction *)(memory + aact);
+        struct g_sigaction *act = (struct g_sigaction *)(memory + aact);
         valid |= (uint8_t *)act >= data->memory && (uint8_t *)act < data->memory + data->memorySize;
         uint32_t aoact = ARG32;
-        struct sigaction *oact = (struct sigaction *)(memory + aoact);
+        struct g_sigaction *oact = (struct g_sigaction *)(memory + aoact);
         valid |= (uint8_t *)oact >= data->memory && (uint8_t *)oact < data->memory + data->memorySize;
         int32_t res = 0;
         if (valid) {
@@ -1643,7 +1643,7 @@
     case 341: { // int32_t Tgettimeofday(struct timeval *tv, timezone *tzp)
         int valid = 0;
         uint32_t atv = ARG32;
-        struct timeval *tv = (struct timeval *)(memory + atv);
+        struct g_timeval *tv = (struct g_timeval *)(memory + atv);
         valid |= (uint8_t *)tv >= data->memory && (uint8_t *)tv < data->memory + data->memorySize;
         uint32_t atzp = ARG32;
         timezone *tzp = (timezone *)(memory + atzp);
@@ -1660,7 +1660,7 @@
     case 342: { // int32_t Tsettimeofday(struct timeval *tv, timezone *tzp)
         int valid = 0;
         uint32_t atv = ARG32;
-        struct timeval *tv = (struct timeval *)(memory + atv);
+        struct g_timeval *tv = (struct g_timeval *)(memory + atv);
         valid |= (uint8_t *)tv >= data->memory && (uint8_t *)tv < data->memory + data->memorySize;
         uint32_t atzp = ARG32;
         timezone *tzp = (timezone *)(memory + atzp);
@@ -1677,10 +1677,10 @@
     case 343: { // int Tadjtime(struct timeval *delta, struct timeval *olddelta)
         int valid = 0;
         uint32_t adelta = ARG32;
-        struct timeval *delta = (struct timeval *)(memory + adelta);
+        struct g_timeval *delta = (struct g_timeval *)(memory + adelta);
         valid |= (uint8_t *)delta >= data->memory && (uint8_t *)delta < data->memory + data->memorySize;
         uint32_t aolddelta = ARG32;
-        struct timeval *olddelta = (struct timeval *)(memory + aolddelta);
+        struct g_timeval *olddelta = (struct g_timeval *)(memory + aolddelta);
         valid |= (uint8_t *)olddelta >= data->memory && (uint8_t *)olddelta < data->memory + data->memorySize;
         int res = 0;
         if (valid) {
@@ -1732,7 +1732,7 @@
         int valid = 0;
         int16_t handle = ARG16;
         uint32_t aiov = ARG32;
-        struct iovec *iov = (struct iovec *)(memory + aiov);
+        struct g_iovec *iov = (struct g_iovec *)(memory + aiov);
         valid |= (uint8_t *)iov >= data->memory && (uint8_t *)iov < data->memory + data->memorySize;
         int32_t niov = ARG32;
         int32_t res = 0;
@@ -1748,7 +1748,7 @@
         int valid = 0;
         int16_t handle = ARG16;
         uint32_t aiov = ARG32;
-        struct iovec *iov = (struct iovec *)(memory + aiov);
+        struct g_iovec *iov = (struct g_iovec *)(memory + aiov);
         valid |= (uint8_t *)iov >= data->memory && (uint8_t *)iov < data->memory + data->memorySize;
         int32_t niov = ARG32;
         int32_t res = 0;
@@ -1832,7 +1832,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        struct g_sockaddr *name = (struct g_sockaddr *)(memory + aname);
         valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t aanamelen = ARG32;
         uint32_t *anamelen = (uint32_t *)(memory + aanamelen);
@@ -1850,7 +1850,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        struct g_sockaddr *name = (struct g_sockaddr *)(memory + aname);
         valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t anamelen = ARG32;
         int32_t res = 0;
@@ -1866,7 +1866,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aname = ARG32;
-        struct sockaddr *name = (struct sockaddr *)(memory + aname);
+        struct g_sockaddr *name = (struct g_sockaddr *)(memory + aname);
         valid |= (uint8_t *)name >= data->memory && (uint8_t *)name < data->memory + data->memorySize;
         uint32_t anamelen = ARG32;
         int32_t res = 0;
@@ -1892,7 +1892,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t amsg = ARG32;
-        struct msghdr *msg = (struct msghdr *)(memory + amsg);
+        struct g_msghdr *msg = (struct g_msghdr *)(memory + amsg);
         valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         int32_t flags = ARG32;
         int32_t res = 0;
@@ -1908,7 +1908,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t amsg = ARG32;
-        struct msghdr *msg = (struct msghdr *)(memory + amsg);
+        struct g_msghdr *msg = (struct g_msghdr *)(memory + amsg);
         valid |= (uint8_t *)msg >= data->memory && (uint8_t *)msg < data->memory + data->memorySize;
         int32_t flags = ARG32;
         int32_t res = 0;
@@ -1929,7 +1929,7 @@
         int32_t buflen = ARG32;
         int32_t flags = ARG32;
         uint32_t ato = ARG32;
-        struct sockaddr *to = (struct sockaddr *)(memory + ato);
+        struct g_sockaddr *to = (struct g_sockaddr *)(memory + ato);
         valid |= (uint8_t *)to >= data->memory && (uint8_t *)to < data->memory + data->memorySize;
         uint32_t aaddrlen = ARG32;
         uint32_t *addrlen = (uint32_t *)(memory + aaddrlen);
@@ -1952,7 +1952,7 @@
         int32_t buflen = ARG32;
         int32_t flags = ARG32;
         uint32_t ato = ARG32;
-        struct sockaddr *to = (struct sockaddr *)(memory + ato);
+        struct g_sockaddr *to = (struct g_sockaddr *)(memory + ato);
         valid |= (uint8_t *)to >= data->memory && (uint8_t *)to < data->memory + data->memorySize;
         uint32_t addrlen = ARG32;
         int32_t res = 0;
@@ -2006,7 +2006,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aasa = ARG32;
-        struct sockaddr *asa = (struct sockaddr *)(memory + aasa);
+        struct g_sockaddr *asa = (struct g_sockaddr *)(memory + aasa);
         valid |= (uint8_t *)asa >= data->memory && (uint8_t *)asa < data->memory + data->memorySize;
         uint32_t aalen = ARG32;
         uint32_t *alen = (uint32_t *)(memory + aalen);
@@ -2024,7 +2024,7 @@
         int valid = 0;
         int16_t fd = ARG16;
         uint32_t aasa = ARG32;
-        struct sockaddr *asa = (struct sockaddr *)(memory + aasa);
+        struct g_sockaddr *asa = (struct g_sockaddr *)(memory + aasa);
         valid |= (uint8_t *)asa >= data->memory && (uint8_t *)asa < data->memory + data->memorySize;
         uint32_t aalen = ARG32;
         uint32_t *alen = (uint32_t *)(memory + aalen);

@@ -570,10 +570,6 @@ int32_t Fsfirst(char *pat, int16_t attr) {
           info.nameBufLen = sizeof(buf)-1;
           if (VFSDirEntryEnumerate(dirRef, &dirEntryIterator, &info) != errNone) break;
           if ((info.attributes & vfsFileAttrDirectory) && !(attr & 0x10)) continue;
-          for (i = 0; info.nameP[i]; i++) {
-            if (info.nameP[i] >= 'a' && info.nameP[i] <= 'z') break;
-          }
-          if (info.nameP[i]) continue;
           list[n] = sys_strdup(info.nameP);
           debug(DEBUG_TRACE, "TOS", "Fsfirst item %d \"%s\"", n, list[n]);
           n++;
@@ -976,7 +972,7 @@ void Psigpause(int32_t mask) {
   debug(DEBUG_ERROR, "TOS", "Psigpause not implemented");
 }
 
-int32_t Psigaction(int16_t sig, struct sigaction *act, struct sigaction *oact) {
+int32_t Psigaction(int16_t sig, struct g_sigaction *act, struct g_sigaction *oact) {
   debug(DEBUG_ERROR, "TOS", "Psigaction not implemented");
   return 0;
 }
@@ -1124,17 +1120,17 @@ int32_t Ssystem(int16_t mode, int32_t arg1, int32_t arg2) {
   return 0;
 }
 
-int32_t Tgettimeofday(struct timeval *tv, timezone *tzp) {
+int32_t Tgettimeofday(struct g_timeval *tv, timezone *tzp) {
   debug(DEBUG_ERROR, "TOS", "Tgettimeofday not implemented");
   return 0;
 }
 
-int32_t Tsettimeofday(struct timeval *tv, timezone *tzp) {
+int32_t Tsettimeofday(struct g_timeval *tv, timezone *tzp) {
   debug(DEBUG_ERROR, "TOS", "Tsettimeofday not implemented");
   return 0;
 }
 
-int Tadjtime(struct timeval *delta, struct timeval *olddelta) {
+int Tadjtime(struct g_timeval *delta, struct g_timeval *olddelta) {
   debug(DEBUG_ERROR, "TOS", "Tadjtime not implemented");
   return 0;
 }
@@ -1154,12 +1150,12 @@ int32_t Fpoll(POLLFD *fds, uint32_t nfds, uint32_t timeout) {
   return 0;
 }
 
-int32_t Fwritev(int16_t handle, struct iovec *iov, int32_t niov) {
+int32_t Fwritev(int16_t handle, struct g_iovec *iov, int32_t niov) {
   debug(DEBUG_ERROR, "TOS", "Fwritev not implemented");
   return 0;
 }
 
-int32_t Freadv(int16_t handle, struct iovec *iov, int32_t niov) {
+int32_t Freadv(int16_t handle, struct g_iovec *iov, int32_t niov) {
   debug(DEBUG_ERROR, "TOS", "Freadv not implemented");
   return 0;
 }
@@ -1184,17 +1180,17 @@ int32_t Fsocketpair(int32_t domain, int32_t type, int32_t protocol, int16_t *fds
   return 0;
 }
 
-int32_t Faccept(int16_t fd, struct sockaddr *name, uint32_t *anamelen) {
+int32_t Faccept(int16_t fd, struct g_sockaddr *name, uint32_t *anamelen) {
   debug(DEBUG_ERROR, "TOS", "Faccept not implemented");
   return 0;
 }
 
-int32_t Fconnect(int16_t fd, struct sockaddr *name, uint32_t anamelen) {
+int32_t Fconnect(int16_t fd, struct g_sockaddr *name, uint32_t anamelen) {
   debug(DEBUG_ERROR, "TOS", "Fconnect not implemented");
   return 0;
 }
 
-int32_t Fbind(int16_t fd, struct sockaddr *name, uint32_t anamelen) {
+int32_t Fbind(int16_t fd, struct g_sockaddr *name, uint32_t anamelen) {
   debug(DEBUG_ERROR, "TOS", "Fbind not implemented");
   return 0;
 }
@@ -1204,22 +1200,22 @@ int32_t Flisten(int16_t fd, int32_t backlog) {
   return 0;
 }
 
-int32_t Frecvmsg(int16_t fd, struct msghdr *msg, int32_t flags) {
+int32_t Frecvmsg(int16_t fd, struct g_msghdr *msg, int32_t flags) {
   debug(DEBUG_ERROR, "TOS", "Frecvmsg not implemented");
   return 0;
 }
 
-int32_t Fsendmsg(int16_t fd, struct msghdr *msg, int32_t flags) {
+int32_t Fsendmsg(int16_t fd, struct g_msghdr *msg, int32_t flags) {
   debug(DEBUG_ERROR, "TOS", "Fsendmsg not implemented");
   return 0;
 }
 
-int32_t Frecvfrom(int16_t fd, void *buf, int32_t buflen, int32_t flags, struct sockaddr *to, uint32_t *addrlen) {
+int32_t Frecvfrom(int16_t fd, void *buf, int32_t buflen, int32_t flags, struct g_sockaddr *to, uint32_t *addrlen) {
   debug(DEBUG_ERROR, "TOS", "Frecvfrom not implemented");
   return 0;
 }
 
-int32_t Fsendto(int16_t fd, void *buf, int32_t buflen, int32_t flags, struct sockaddr *to, uint32_t addrlen) {
+int32_t Fsendto(int16_t fd, void *buf, int32_t buflen, int32_t flags, struct g_sockaddr *to, uint32_t addrlen) {
   debug(DEBUG_ERROR, "TOS", "Fsendto not implemented");
   return 0;
 }
@@ -1234,12 +1230,12 @@ int32_t Fgetsockopt(int16_t fd, int32_t level, int32_t name, void *val, uint32_t
   return 0;
 }
 
-int32_t Fgetpeername(int16_t fd, struct sockaddr *asa, uint32_t *alen) {
+int32_t Fgetpeername(int16_t fd, struct g_sockaddr *asa, uint32_t *alen) {
   debug(DEBUG_ERROR, "TOS", "Fgetpeername not implemented");
   return 0;
 }
 
-int32_t Fgetsockname(int16_t fd, struct sockaddr *asa, uint32_t *alen) {
+int32_t Fgetsockname(int16_t fd, struct g_sockaddr *asa, uint32_t *alen) {
   debug(DEBUG_ERROR, "TOS", "Fgetsockname not implemented");
   return 0;
 }

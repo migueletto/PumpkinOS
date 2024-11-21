@@ -10,23 +10,23 @@ typedef struct {
   uint8_t dta[256];
 } DTA;
 
-struct sigaction {
+struct g_sigaction {
   int a;
 };
 
-struct sockaddr {
+struct g_sockaddr {
   int a;
 };
 
-struct iovec {
+struct g_iovec {
   int a;
 };
 
-struct timeval {
+struct g_timeval {
   int a;
 };
 
-struct msghdr {
+struct g_msghdr {
   int a;
 };
 
