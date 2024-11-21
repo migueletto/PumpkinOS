@@ -1676,7 +1676,13 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
       case  2:
         offset = y * rowBytes + (x >> 2);
         b = bits[offset];
-        value = (b >> (3 - (x & 0x03))) & 0x03;
+        switch (x & 0x03) {
+          case 0: value = (b >> 6) & 0x03; break;
+          case 1: value = (b >> 4) & 0x03; break;
+          case 2: value = (b >> 2) & 0x03; break;
+          case 3: value =  b       & 0x03; break;
+        }
+        //value = (b >> (3 - (x & 0x03))) & 0x03;
         //value = (b >> ((x & 0x03) << 1)) & 0x03;
         break;
       case  4:
@@ -1941,7 +1947,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
   }
 }
 
-static UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
+UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
   switch (depth) {
     case 1: break;
     case 2: b = b ? 0x03 : 0x00; break;
@@ -1986,7 +1992,7 @@ static UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTab
 0xe6: 0x00,0x00,0x00
 */
 
-static UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
+UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
   switch (depth) {
     case 1: b = b ? 1 : 0; break;
     case 2: break;
@@ -2012,7 +2018,7 @@ static UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTa
   return b;
 }
 
-static UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
+UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
   switch (depth) {
     case 1: b = b ? 1 : 0; break;
     case 2: b = b >> 2; break;
@@ -2052,7 +2058,7 @@ static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b) {
   return 15 - (c >> 4);
 }
 
-static UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
+UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
   RGBColorType rgb;
 
   CtbGetEntry(srcColorTable, b, &rgb);
@@ -2070,7 +2076,7 @@ static UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boole
   return b;
 }
 
-static UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable) {
+UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable) {
   switch (depth) {
     case  1: b = rgbToGray1(r565(b), g565(b), b565(b)); break;
     case  2: b = rgbToGray2(r565(b), g565(b), b565(b)); break;

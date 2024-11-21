@@ -1211,15 +1211,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       UInt32 start, end;
       WinLegacyGetAddr(&start, &end);
       if ((dstP >= start && dstP < end) ||
-          (dstP+numBytes >= start && dstP+numBytes < end) ||
+          (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
           (dstP < start && dstP+numBytes >= end)) {
         debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X) inside screen", dstP, numBytes, value);
         for (uint32_t i = 0; i < numBytes; i++) {
-          if (dstP+i >= start && dstP+i < end) {
-            emupalmos_write_screen(dstP+i, value);
-          } else {
-            m68k_write_memory_8(dstP+i, value);
-          }
+          m68k_write_memory_8(dstP+i, value);
         }
         err = 0;
       } else {
@@ -1237,16 +1233,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       UInt32 start, end;
       WinLegacyGetAddr(&start, &end);
       if ((dstP >= start && dstP < end) ||
-          (dstP+numBytes >= start && dstP+numBytes < end) ||
-          (dstP < start && dstP+numBytes >= end)) {
+          (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
+          (dstP < start && dstP+numBytes >= end) ||
+          (sP >= start && sP < end) ||
+          (sP+numBytes-1 >= start && sP+numBytes-1 < end) ||
+          (sP < start && sP+numBytes >= end)) {
         debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen", dstP, sP, numBytes);
         for (uint32_t i = 0; i < numBytes; i++) {
           uint8_t value = m68k_read_memory_8(sP+i);
-          if (dstP+i >= start && dstP+i < end) {
-            emupalmos_write_screen(dstP+i, value);
-          } else {
-            m68k_write_memory_8(dstP+i, value);
-          }
+          m68k_write_memory_8(dstP+i, value);
         }
         err = 0;
       } else {

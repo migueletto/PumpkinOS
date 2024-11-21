@@ -441,6 +441,11 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
 Boolean BmpGetNoDither(const BitmapType *bitmapP);
 void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh);
+UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
+UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
+UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
+UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault);
+UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 
 Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);

@@ -19,7 +19,7 @@
 
 #define FORM_FILL_ALPHA 0xFF
 
-#define LEGACY_SCREEN_SIZE 160 * 160 / 2
+#define LEGACY_SCREEN_SIZE 160 * 160
 
 typedef struct {
   RGBColorType foreColorRGB;
@@ -49,7 +49,7 @@ typedef struct {
   RGBColorType defaultPalette2[4];
   RGBColorType defaultPalette4[16];
   RGBColorType defaultPalette8[256];
-  UInt8 *legacyScreen;
+  UInt8 legacyDepth;
   int numPush;
 } win_module_t;
 
@@ -106,6 +106,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->height = height;
   module->depth = depth;
   module->depth0 = depth;
+  module->legacyDepth = 1;
 
   module->pattern = whitePattern;
   module->coordSys = kCoordinatesStandard;
@@ -182,7 +183,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->density = module->density;
     directAccessHack(module->displayWindow, 0, 0, width/2, height/2);
     //dbg_add(0, module->displayWindow->bitmapP);
-    module->legacyScreen = pumpkin_heap_alloc(LEGACY_SCREEN_SIZE, "legacy");
   }
 
   module->activeWindow = module->displayWindow;
@@ -217,7 +217,6 @@ int WinFinishModule(Boolean deleteDisplay) {
       //dbg_delete(module->displayWindow->bitmapP);
       if (module->displayWindow->bitmapP) BmpDelete(module->displayWindow->bitmapP);
       pumpkin_heap_free(module->displayWindow, "Window");
-      pumpkin_heap_free(module->legacyScreen, "legacy");
     }
     xfree(module);
   }
@@ -321,7 +320,6 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
       wh->density = BmpGetDensity(bitmapP);
       err = errNone;
     }
-//debug(1, "XXX", "WinCreateBitmapWindow %dx%d bitmap %p: %p", width, height, bitmapP, wh);
   }
 
   if (error) *error = err;
@@ -365,7 +363,6 @@ void WinMoveWindowAddr(WindowType *oldLocationP, WindowType *newLocationP) {
 void WinSetActiveWindow(WinHandle winHandle) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   module->activeWindow = winHandle;
-//debug(1, "XXX", "WinSetActiveWindow %p", module->activeWindow);
 }
 
 WinHandle WinSetDrawWindow(WinHandle winHandle) {
@@ -3181,6 +3178,9 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           BmpDelete(module->displayWindow->bitmapP);
           module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, NULL, &err);
           module->depth = depth;
+          if (depth == 1 || depth == 2 || depth == 4) {
+            module->legacyDepth = depth;
+          }
 
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
             UIColorSetTableEntry(entry, &module->uiColor[entry]);
@@ -3423,37 +3423,130 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
   uint32_t len;
 
-  len = 160 * 160;
+  len = LEGACY_SCREEN_SIZE;
 
   switch (BmpGetBitDepth(bitmapP)) {
     case  1: len /= 8; break;
     case  2: len /= 4; break;
     case  4: len /= 2; break;
+    case 16: len *= 2; break;
   }
 
-  *startAddr = module->legacyScreen - (uint8_t *)pumpkin_heap_base();
+  *startAddr = 0x00002000;
   *endAddr = *startAddr + len;
+}
+
+static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, UInt16 density, UInt8 depth, UInt8 legacyDepth, Coord x, Coord y) {
+  UInt32 value;
+
+  pointTo(module, density, &x, &y);
+  value = BmpGetPixelValue(bitmapP, x, y);
+
+  if (legacyDepth != depth) {
+    switch (depth) {
+      case 1:
+        value = BmpConvertFrom1Bit(value, legacyDepth, NULL, true);
+        break;
+      case 2:
+        value = BmpConvertFrom2Bits(value, legacyDepth, NULL, true);
+        break;
+      case 4:
+        value = BmpConvertFrom4Bits(value, legacyDepth, NULL, true);
+        break;
+      case 8:
+        value = BmpConvertFrom8Bits(value, NULL, true, legacyDepth, NULL, true);
+        break;
+      case 16:
+        value = BmpConvertFrom16Bits(value, legacyDepth, NULL);
+        break;
+    }
+  }
+
+  return value;
 }
 
 UInt8 WinLegacyRead(UInt32 offset) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return offset < LEGACY_SCREEN_SIZE ? module->legacyScreen[offset] : 0;
+  BitmapType *bitmapP;
+  UInt16 i, cols, c, x, y, density, realDepth;
+  UInt8 value = 0;
+
+  if (offset >= LEGACY_SCREEN_SIZE*2) {
+    debug(DEBUG_ERROR, "Window", "legacy read out of bounds %d", offset);
+    return 0;
+  }
+
+  bitmapP = WinGetBitmap(module->displayWindow);
+  realDepth = BmpGetBitDepth(bitmapP);
+  density = BmpGetDensity(bitmapP);
+
+  switch (module->legacyDepth) {
+    case 1:
+      cols = 160 / 8;
+      x = (offset % cols) * 8;
+      y = offset / cols;
+      value = 0;
+      for (i = 0; i < 8; i++, x++) {
+        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 1, x, y);
+        value <<= 1;
+        value |= c;
+      }
+      break;
+    case 2:
+      cols = 160 / 4;
+      x = (offset % cols) * 4;
+      y = offset / cols;
+      value = 0;
+      for (i = 0; i < 8; i += 2, x++) {
+        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 2, x, y);
+        value <<= 2;
+        value |= c;
+      }
+      break;
+    case 4:
+      cols = 160 / 2;
+      x = (offset % cols) * 2;
+      y = offset / cols;
+      value = 0;
+      for (i = 0; i < 8; i += 4, x++) {
+        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 4, x, y);
+        value <<= 4;
+        value |= c;
+      }
+      break;
+  }
+
+  return value;
+}
+
+static void WinLegacyDrawPixel(win_module_t *module, UInt8 depth, UInt16 c, UInt16 x, UInt16 y) {
+  switch (depth) {
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+      module->foreColor = c;
+      WinDrawPixel(x, y);
+      break;
+    case 16:
+      module->foreColor565 = c;
+      WinDrawPixel(x, y);
+      break;
+  }
 }
 
 void WinLegacyWrite(UInt32 offset, UInt8 value) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   UInt8 b;
-  UInt16 i, cols, x, y;
+  UInt16 i, cols, c, x, y, oldColor565, realDepth;
   IndexedColorType oldColor;
   WinHandle oldActive, oldDraw;
 
-  if (offset >= LEGACY_SCREEN_SIZE) {
+  if (offset >= LEGACY_SCREEN_SIZE*2) {
     debug(DEBUG_ERROR, "Window", "legacy write out of bounds %d", offset);
     return;
   }
-
-  module->legacyScreen[offset] = value;
 
   // 160*160 = 25600 pixels
   // 1bpp: 25600/8 =  3200 bytes
@@ -3463,19 +3556,22 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   oldActive = module->activeWindow;
   oldDraw = module->drawWindow;
   oldColor = module->foreColor;
+  oldColor565 = module->foreColor565;
   module->activeWindow = module->displayWindow;
   module->drawWindow = module->displayWindow;
 
   bitmapP = WinGetBitmap(module->displayWindow);
-  switch (BmpGetBitDepth(bitmapP)) {
+  realDepth = BmpGetBitDepth(bitmapP);
+
+  switch (module->legacyDepth) {
     case 1:
       cols = 160 / 8;
-      x = (offset % cols) * 8;
+      x = (offset % cols) * 8 + 7;
       y = offset / cols;
       b = value;
-      for (i = 0; i < 8; i++, x++) {
-        module->foreColor = b & 0x01;
-        WinDrawPixel(x, y);
+      for (i = 0; i < 8; i++, x--) {
+        c = BmpConvertFrom1Bit(b & 0x01, realDepth, NULL, true);
+        WinLegacyDrawPixel(module, realDepth, c, x, y);
         b >>= 1;
       }
       break;
@@ -3485,18 +3581,19 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
       y = offset / cols;
       b = value;
       for (i = 0; i < 8; i += 2, x--) {
-        module->foreColor = b & 0x03;
-        WinDrawPixel(x, y);
+        c = BmpConvertFrom2Bits(b & 0x03, realDepth, NULL, true);
+        WinLegacyDrawPixel(module, realDepth, c, x, y);
         b >>= 2;
       }
       break;
     case 4:
       cols = 160 / 2;
-      x = (offset % cols) * 2;
+      x = (offset % cols) * 2 + 1;
       y = offset / cols;
-      for (i = 0; i < 8; i += 4, x++) {
-        module->foreColor = b & 0x0f;
-        WinDrawPixel(x, y);
+      b = value;
+      for (i = 0; i < 8; i += 4, x--) {
+        c = BmpConvertFrom4Bits(b & 0x0f, realDepth, NULL, true);
+        WinLegacyDrawPixel(module, realDepth, c, x, y);
         b >>= 4;
       }
       break;
@@ -3505,6 +3602,7 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   module->activeWindow = oldActive;
   module->drawWindow = oldDraw;
   module->foreColor = oldColor;
+  module->foreColor565 = oldColor565;
 }
 
 static void WinSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
