@@ -1,0 +1,10 @@
+fontType 36864
+ascent 4
+descent 0
+
+GLYPH 46
+----
+----
+----
+----
+

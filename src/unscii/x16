@@ -1,0 +1,23 @@
+#!/bin/sh
+
+for f in unscii_16_??_high.txt
+do
+  echo $f | awk -F_ '{print $3}'
+done |
+gawk '
+BEGIN {
+  id = 128;
+}
+{
+  resId = 16384 + strtonum("0x" $1);
+  print "FONTFAMILY ID " resId " FONTID " id;
+  print "BEGIN";
+  print "  FONT \"unscii_16_" $1 "_low.txt\"  DENSITY 72";
+  print "  FONT \"unscii_16_" $1 "_high.txt\" DENSITY 144";
+  print "END";
+  print "";
+  id++;
+}
+'
+
+exit 0
