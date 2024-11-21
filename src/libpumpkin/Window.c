@@ -11,12 +11,15 @@
 #include "rgb.h"
 #include "bytes.h"
 #include "pumpkin.h"
+#include "language.h"
 //#include "dbg.h"
 #include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
 
 #define FORM_FILL_ALPHA 0xFF
+
+#define LEGACY_SCREEN_SIZE 160 * 160 / 2
 
 typedef struct {
   RGBColorType foreColorRGB;
@@ -46,6 +49,7 @@ typedef struct {
   RGBColorType defaultPalette2[4];
   RGBColorType defaultPalette4[16];
   RGBColorType defaultPalette8[256];
+  UInt8 *legacyScreen;
   int numPush;
 } win_module_t;
 
@@ -178,6 +182,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->density = module->density;
     directAccessHack(module->displayWindow, 0, 0, width/2, height/2);
     //dbg_add(0, module->displayWindow->bitmapP);
+    module->legacyScreen = pumpkin_heap_alloc(LEGACY_SCREEN_SIZE, "legacy");
   }
 
   module->activeWindow = module->displayWindow;
@@ -212,6 +217,7 @@ int WinFinishModule(Boolean deleteDisplay) {
       //dbg_delete(module->displayWindow->bitmapP);
       if (module->displayWindow->bitmapP) BmpDelete(module->displayWindow->bitmapP);
       pumpkin_heap_free(module->displayWindow, "Window");
+      pumpkin_heap_free(module->legacyScreen, "legacy");
     }
     xfree(module);
   }
@@ -533,6 +539,7 @@ void WinGetBounds(WinHandle winH, RectangleType *rP) {
 // A visible window cannot have its bounds modified.
 void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  RectangleType rect;
   BitmapType *bmp, *old;
   UInt32 density, depth;
   Coord width, height;
@@ -559,6 +566,9 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
       BmpDelete(old);
     }
     directAccessHack(winHandle, winHandle->windowBounds.topLeft.x, winHandle->windowBounds.topLeft.y, winHandle->windowBounds.extent.x, winHandle->windowBounds.extent.y);
+
+    RctSetRectangle(&rect, 0, 0, width, height);
+    WinSetClipingBounds(winHandle, &rect);
   }
 }
 
@@ -1818,14 +1828,14 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 //debug(1, "XXX", "WinBlitBitmap normal");
       }
 
-      debug(DEBUG_TRACE, "Window", "WinBlitBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d",
-        srcX, srcY, w, h, bitmapDensity, dstX, dstY, windowDensity, coordSys, dbl, hlf);
+      debug(DEBUG_TRACE, "Window", "WinBlitBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d, text %d",
+        srcX, srcY, w, h, bitmapDensity, dstX, dstY, windowDensity, coordSys, dbl, hlf, text);
 
       x1 = wh->clippingBounds.left;
       x2 = wh->clippingBounds.right;
       y1 = wh->clippingBounds.top;
       y2 = wh->clippingBounds.bottom;
-      if (!(x1 == 0 && x2 == 0) && windowDensity == kDensityLow) {
+      if (!(x1 == 0 && x2 == 0) && coordSys == kCoordinatesDouble && windowDensity == kDensityLow) {
         x1 = x1 >> 1;
         y1 = y1 >> 1;
         x2 = x2 >> 1;
@@ -1932,16 +1942,14 @@ void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
 static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   FontType *f;
-  FontTypeV2 *f2;
   FontID font;
   UInt16 density;
   Coord x0, y0, w, h;
   UInt16 prev;
   UInt32 wch;
   Boolean v10;
-  RectangleType rect;
   uint16_t ch;
-  uint32_t i, col, mult;
+  uint32_t i, mult;
   int32_t index;
 
   if (module->drawWindow && chars && len > 0) {
@@ -1951,14 +1959,14 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
-    v10 = (font == stdFont || font == boldFont) && pumpkin_is_v10();
+    v10 = (font == stdFont || font == boldFont) && pumpkin_is_v10() && !LanguageGet();
 
     if (f == NULL) {
       debug(DEBUG_ERROR, "Window", "WinDrawCharsC: FntGetFontPtr returned NULL !");
       return;
     }
 
-    if (f->v == 1) {
+    if (FntGetVersion(f) == 1) {
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
 //debug(1, "XXX", "WinDrawCharsC font v1 density %d", density);
 
@@ -1985,19 +1993,9 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         i += pumpkin_next_char(chars, i, len, &wch);
         ch = pumpkin_map_char(wch, &f);
         if (v10 && ch == 0x80) ch = 0x19; // numeric space
-        if (ch >= f->firstChar && ch <= f->lastChar) {
-          col = f->column[ch - f->firstChar];
-          RctSetRectangle(&rect, col, 0, f->width[ch - f->firstChar], f->fRectHeight);
-//debug(1, "XXX", "WinDrawCharsC '%c' rect %d,%d %d,%d at %d,%d", ch, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, x, y);
-          WinBlitBitmap(f->bmp, module->drawWindow, &rect, x, y, module->transferMode, true);
-          x += f->width[ch - f->firstChar];
-        } else {
-          debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
-          x += MISSING_SYMBOL_WIDTH;
-        }
+        x += FntDrawChar(f, wch, ch, 0, 1, x, y);
       }
     } else {
-      f2 = (FontTypeV2 *)f;
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
       prev = module->coordSys;
       mult = 0;
@@ -2005,7 +2003,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
       switch (density) {
         case kDensityLow:
-          if (f2->densityCount >= 1 && f2->densities[0].density == kDensityLow) {
+          if (FntGetDensityCount(f) >= 1 && FntGetDensity(f, 0) == kDensityLow) {
             index = 0; // low density font
             mult = 1;
             if (module->coordSys == kCoordinatesDouble) {
@@ -2020,9 +2018,9 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           }
           break;
         case kDensityDouble:
-          if (f2->densityCount >= 2 && f2->densities[1].density == kDensityDouble) {
+          if (FntGetDensityCount(f) >= 2 && FntGetDensity(f, 1) == kDensityDouble) {
             index = 1; // double density font
-          } else if (f2->densityCount >= 1 && f2->densities[0].density == kDensityDouble) {
+          } else if (FntGetDensityCount(f) >= 1 && FntGetDensity(f, 0) == kDensityDouble) {
             index = 0; // double density font
           } else {
             index = -1;
@@ -2044,25 +2042,15 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           break;
       }
 
-        if (index >= 0) {
-          for (i = 0; i < len;) {
-            i += pumpkin_next_char(chars, i, len, &wch);
-            ch = pumpkin_map_char(wch, &f);
-            f2 = (FontTypeV2 *)f;
-            if (v10 && ch == 0x80) ch = 0x19; // numeric space
-            if (ch >= f2->firstChar && ch <= f2->lastChar) {
-              col = f2->column[ch - f2->firstChar]*mult;
-              RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
-//debug(1, "XXX", "WinDrawCharsC '%c' rect %d,%d %d,%d at %d,%d", ch, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, x, y);
-              WinBlitBitmap(f2->bmp[index], module->drawWindow, &rect, x, y, module->transferMode, true);
-              x += f2->width[ch - f2->firstChar]*mult;
-            } else {
-              debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
-              x += MISSING_SYMBOL_WIDTH;
-            }
-          }
-          WinSetCoordinateSystem(prev);
+      if (index >= 0) {
+        for (i = 0; i < len;) {
+          i += pumpkin_next_char(chars, i, len, &wch);
+          ch = pumpkin_map_char(wch, &f);
+          if (v10 && ch == 0x80) ch = 0x19; // numeric space
+          x += FntDrawChar(f, wch, ch, index, mult, x, y);
         }
+        WinSetCoordinateSystem(prev);
+      }
     }
 
     if (module->drawWindow == module->activeWindow) {
@@ -2176,6 +2164,11 @@ WinDrawOperation WinSetDrawMode(WinDrawOperation newMode) {
   WinDrawOperation prev = module->transferMode;
   module->transferMode = newMode;
   return prev;
+}
+
+WinDrawOperation WinGetDrawMode(void) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  return module->transferMode;
 }
 
 IndexedColorType WinGetForeColor(void) {
@@ -3428,70 +3421,90 @@ void WinSendWindowEvents(WinHandle wh) {
 void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
-  uint8_t *bits = BmpGetBits(bitmapP);
   uint32_t len;
-  Coord width, height;
 
-  BmpGetDimensions(bitmapP, &width, &height, NULL);
-  len = width * height;
+  len = 160 * 160;
 
   switch (BmpGetBitDepth(bitmapP)) {
-    case 1: len /= 8; break;
-    case 2: len /= 4; break;
-    case 4: len /= 2; break;
+    case  1: len /= 8; break;
+    case  2: len /= 4; break;
+    case  4: len /= 2; break;
   }
 
-  *startAddr = bits - (uint8_t *)pumpkin_heap_base();
+  *startAddr = module->legacyScreen - (uint8_t *)pumpkin_heap_base();
   *endAddr = *startAddr + len;
 }
 
-static void WinLegacyWrite(UInt32 offset, UInt32 value, UInt16 n) {
+UInt8 WinLegacyRead(UInt32 offset) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
-  RectangleType rect;
-  WinHandle old;
-  Coord cols, x, y;
-  Coord width, height;
+  return offset < LEGACY_SCREEN_SIZE ? module->legacyScreen[offset] : 0;
+}
 
-  BmpGetDimensions(bitmapP, &width, &height, NULL);
+void WinLegacyWrite(UInt32 offset, UInt8 value) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  BitmapType *bitmapP;
+  UInt8 b;
+  UInt16 i, cols, x, y;
+  IndexedColorType oldColor;
+  WinHandle oldActive, oldDraw;
 
+  if (offset >= LEGACY_SCREEN_SIZE) {
+    debug(DEBUG_ERROR, "Window", "legacy write out of bounds %d", offset);
+    return;
+  }
+
+  module->legacyScreen[offset] = value;
+
+  // 160*160 = 25600 pixels
+  // 1bpp: 25600/8 =  3200 bytes
+  // 2bpp: 25600/4 =  6400 bytes
+  // 4bpp: 25600/2 = 12800 bytes
+
+  oldActive = module->activeWindow;
+  oldDraw = module->drawWindow;
+  oldColor = module->foreColor;
+  module->activeWindow = module->displayWindow;
+  module->drawWindow = module->displayWindow;
+
+  bitmapP = WinGetBitmap(module->displayWindow);
   switch (BmpGetBitDepth(bitmapP)) {
     case 1:
-      cols = width / 8;
+      cols = 160 / 8;
       x = (offset % cols) * 8;
       y = offset / cols;
-      RctSetRectangle(&rect, x, y, 8*n, 1);
+      b = value;
+      for (i = 0; i < 8; i++, x++) {
+        module->foreColor = b & 0x01;
+        WinDrawPixel(x, y);
+        b >>= 1;
+      }
       break;
     case 2:
-      cols = width / 4;
-      x = (offset % cols) * 4;
+      cols = 160 / 4;
+      x = (offset % cols) * 4 + 3;
       y = offset / cols;
-      RctSetRectangle(&rect, x, y, 4*n, 1);
+      b = value;
+      for (i = 0; i < 8; i += 2, x--) {
+        module->foreColor = b & 0x03;
+        WinDrawPixel(x, y);
+        b >>= 2;
+      }
       break;
     case 4:
-      cols = width / 2;
+      cols = 160 / 2;
       x = (offset % cols) * 2;
       y = offset / cols;
-      RctSetRectangle(&rect, x, y, 2*n, 1);
+      for (i = 0; i < 8; i += 4, x++) {
+        module->foreColor = b & 0x0f;
+        WinDrawPixel(x, y);
+        b >>= 4;
+      }
       break;
   }
 
-  old = module->activeWindow;
-  module->activeWindow = module->displayWindow;
-  dirty_region(module, x, y, x + rect.extent.x, y + rect.extent.y);
-  module->activeWindow = old;
-}
-
-void WinLegacyWriteByte(UInt32 offset, UInt8 value) {
-  WinLegacyWrite(offset, value, 1);
-}
-
-void WinLegacyWriteWord(UInt32 offset, UInt16 value) {
-  WinLegacyWrite(offset, value, 2);
-}
-
-void WinLegacyWriteLong(UInt32 offset, UInt32 value) {
-  WinLegacyWrite(offset, value, 4);
+  module->activeWindow = oldActive;
+  module->drawWindow = oldDraw;
+  module->foreColor = oldColor;
 }
 
 static void WinSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
@@ -3532,7 +3545,7 @@ surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect) {
   bitmapP = WinGetBitmap(wh);
 
   if (BmpGetBitDepth(bitmapP) != 16) {
-    debug(DEBUG_ERROR, "Bitmap", "WinCreateSurface supports only 16 bits");
+    debug(DEBUG_ERROR, "Window", "WinCreateSurface supports only 16 bits");
     return NULL;
   }
 

@@ -226,6 +226,13 @@ static int emupalmos_check_address(uint32_t address, int size, int read) {
   return 1;
 }
 
+void emupalmos_write_screen(uint32_t address, uint8_t value) {
+  UInt32 start, end;
+
+  WinLegacyGetAddr(&start, &end);
+  WinLegacyWrite(address - start, value);
+}
+
 uint8_t cpu_read_byte(uint32_t address) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram;
@@ -238,8 +245,13 @@ uint8_t cpu_read_byte(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
-    ram = pumpkin_heap_base();
-    value = READ_BYTE(ram, address);
+    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
+    if (address >= state->screenStart && address < state->screenEnd) {
+      value = WinLegacyRead(address - state->screenStart);
+    } else {
+      ram = pumpkin_heap_base();
+      value = READ_BYTE(ram, address);
+    }
   }
 
   return value;
@@ -261,9 +273,14 @@ uint16_t cpu_read_word(uint32_t address) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
     value = 0;
   } else {
-    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 2, 1)) return 0;
-    value = READ_WORD(ram, address);
+    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
+    if (address >= state->screenStart && address < state->screenEnd) {
+      value = WinLegacyRead(address - state->screenStart) << 8 | WinLegacyRead(address+1 - state->screenStart);
+    } else {
+      ram = pumpkin_heap_base();
+      value = READ_WORD(ram, address);
+    }
   }
 
   return value;
@@ -291,9 +308,15 @@ uint32_t cpu_read_long(uint32_t address) {
       }
     }
   } else {
-    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 4, 1)) return 0;
-    value = READ_LONG(ram, address);
+    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
+    if (address >= state->screenStart && address < state->screenEnd) {
+      value = WinLegacyRead(address - state->screenStart) << 24  | WinLegacyRead(address+1 - state->screenStart) << 16 |
+              WinLegacyRead(address+2 - state->screenStart) << 8 | WinLegacyRead(address+3 - state->screenStart);
+    } else {
+      ram = pumpkin_heap_base();
+      value = READ_LONG(ram, address);
+    }
   }
 
   return value;
@@ -308,14 +331,13 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
-    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 1, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
-      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write 0x%08X = 0x%02X", address, value);
-      WRITE_BYTE(ram, address, value);
-      WinLegacyWriteByte(address - state->screenStart, value);
+      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
+      WinLegacyWrite(address - state->screenStart, value);
     } else {
+      ram = pumpkin_heap_base();
       WRITE_BYTE(ram, address, value);
     }
   }
@@ -330,14 +352,14 @@ void cpu_write_word(uint32_t address, uint16_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
-    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 2, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
-      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write 0x%08X = 0x%04X", address, value);
-      WRITE_WORD(ram, address, value);
-      WinLegacyWriteWord(address - state->screenStart, value);
+      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
+      WinLegacyWrite(address - state->screenStart,     (value >> 8) & 0xff);
+      WinLegacyWrite(address - state->screenStart + 1,  value       & 0xff);
     } else {
+      ram = pumpkin_heap_base();
       WRITE_WORD(ram, address, value);
     }
   }
@@ -352,13 +374,17 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
-    ram = pumpkin_heap_base();
     if (!emupalmos_check_address(address, 4, 0)) return;
-    WRITE_LONG(ram, address, value);
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
-      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write 0x%08X = 0x%08X", address, value);
-      WinLegacyWriteLong(address - state->screenStart, value);
+      debug(DEBUG_INFO, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
+      WinLegacyWrite(address - state->screenStart,     (value >> 24) & 0xff);
+      WinLegacyWrite(address - state->screenStart + 1, (value >> 16) & 0xff);
+      WinLegacyWrite(address - state->screenStart + 2, (value >>  8) & 0xff);
+      WinLegacyWrite(address - state->screenStart + 3,  value        & 0xff);
+    } else {
+      ram = pumpkin_heap_base();
+      WRITE_LONG(ram, address, value);
     }
   }
 }

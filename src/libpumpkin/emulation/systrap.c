@@ -1208,7 +1208,23 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t dstP = ARG32;
       uint32_t numBytes = ARG32;
       uint8_t value = ARG8;
-      err = MemSet(emupalmos_trap_in(dstP, trap, 0), numBytes, value);
+      UInt32 start, end;
+      WinLegacyGetAddr(&start, &end);
+      if ((dstP >= start && dstP < end) ||
+          (dstP+numBytes >= start && dstP+numBytes < end) ||
+          (dstP < start && dstP+numBytes >= end)) {
+        debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X) inside screen", dstP, numBytes, value);
+        for (uint32_t i = 0; i < numBytes; i++) {
+          if (dstP+i >= start && dstP+i < end) {
+            emupalmos_write_screen(dstP+i, value);
+          } else {
+            m68k_write_memory_8(dstP+i, value);
+          }
+        }
+        err = 0;
+      } else {
+        err = MemSet(emupalmos_trap_in(dstP, trap, 0), numBytes, value);
+      }
       debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X): %d", dstP, numBytes, value, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
@@ -1218,7 +1234,24 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t dstP = ARG32;
       uint32_t sP = ARG32;
       int32_t numBytes = ARG32;
-      err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
+      UInt32 start, end;
+      WinLegacyGetAddr(&start, &end);
+      if ((dstP >= start && dstP < end) ||
+          (dstP+numBytes >= start && dstP+numBytes < end) ||
+          (dstP < start && dstP+numBytes >= end)) {
+        debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen", dstP, sP, numBytes);
+        for (uint32_t i = 0; i < numBytes; i++) {
+          uint8_t value = m68k_read_memory_8(sP+i);
+          if (dstP+i >= start && dstP+i < end) {
+            emupalmos_write_screen(dstP+i, value);
+          } else {
+            m68k_write_memory_8(dstP+i, value);
+          }
+        }
+        err = 0;
+      } else {
+        err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
+      }
       debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d): %d", dstP, sP, numBytes, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
