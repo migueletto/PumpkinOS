@@ -9,16 +9,16 @@
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
+#include "language.h"
 #include "debug.h"
 #include "xalloc.h"
 
 typedef struct {
   FontType *fonts[256];
   FontTypeV2 *fontsv2[256];
+  language_t *lang[256];
   FontID currentFont;
 } fnt_module_t;
-
-static void FntSaveFont(FontPtr font, FontID id);
 
 static void adjust(Int16 *r) {
   switch (WinGetRealCoordinateSystem()) {
@@ -139,40 +139,43 @@ Int16 FntCharWidth(Char ch) {
   fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
   UInt8 uc = (UInt8)ch;
   Int16 r = MISSING_SYMBOL_WIDTH;
+
   if (module->fonts[module->currentFont] && uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
     r = module->fonts[module->currentFont]->width[uc - module->fonts[module->currentFont]->firstChar];
   } else if (module->fontsv2[module->currentFont] && uc >= module->fontsv2[module->currentFont]->firstChar && uc <= module->fontsv2[module->currentFont]->lastChar) {
     r = module->fontsv2[module->currentFont]->width[uc - module->fontsv2[module->currentFont]->firstChar];
   }
   adjust(&r);
+
+  return r;
+}
+
+Int16 FntFontCharWidth(FontType *f, Char ch) {
+  FontTypeV2 *f2 = (FontTypeV2 *)f;
+  UInt8 uc = (UInt8)ch;
+  Int16 r = MISSING_SYMBOL_WIDTH;
+
+  if (f->v == 1 && uc >= f->firstChar && uc <= f->lastChar) {
+    r = f->width[uc - f->firstChar];
+  } else if (f->v == 2 && uc >= f2->firstChar && uc <= f2->lastChar) {
+    r = f2->width[uc - f2->firstChar];
+  }
+  adjust(&r);
+
   return r;
 }
 
 Int16 FntCharsWidth(Char const *chars, Int16 len) {
-  fnt_module_t *module = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
-  UInt8 uc;
+  FontType *f;
+  UInt32 wch;
+  char ch;
   Int16 i, r = 0;
 
-  if (module->fonts[module->currentFont]) {
-    for (i = 0; i < len; i++) {
-      uc = (UInt8)chars[i];
-      if (uc >= module->fonts[module->currentFont]->firstChar && uc <= module->fonts[module->currentFont]->lastChar) {
-        r += module->fonts[module->currentFont]->width[uc - module->fonts[module->currentFont]->firstChar];
-      } else {
-        r += MISSING_SYMBOL_WIDTH;
-      }
-    }
-  } else if (module->fontsv2[module->currentFont]) {
-    for (i = 0; i < len; i++) {
-      uc = (UInt8)chars[i];
-      if (uc >= module->fontsv2[module->currentFont]->firstChar && uc <= module->fontsv2[module->currentFont]->lastChar) {
-        r += module->fontsv2[module->currentFont]->width[uc - module->fontsv2[module->currentFont]->firstChar];
-      } else {
-        r += MISSING_SYMBOL_WIDTH;
-      }
-    }
+  for (i = 0; i < len;) {
+    i += pumpkin_next_char((UInt8 *)chars, i, len, &wch);
+    ch = pumpkin_map_char(wch, &f);
+    r += FntFontCharWidth(f, ch);
   }
-  adjust(&r);
 
   return r;
 }
@@ -366,15 +369,20 @@ Err FntDefineFont(FontID font, FontPtr fontP) {
 
 // Given a pixel position, gets the offset of the character displayed at that location.
 Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Boolean *leadingEdge, Int16 *truncWidth) {
+  FontType *f;
   Int16 tw, width, offset = 0;
-
+  UInt32 wch;
+  char ch;
 
   if (pChars && length) {
     if (leadingEdge) *leadingEdge = false;
     if (truncWidth) *truncWidth = FntCharsWidth(pChars, length);
 
-    for (offset = 0, width = 0; offset < length; offset++) {
-      tw = FntCharWidth(pChars[offset]);
+    for (offset = 0, width = 0; offset < length;) {
+      offset += pumpkin_next_char((UInt8 *)pChars, offset, length, &wch);
+      ch = pumpkin_map_char(wch, &f);
+      tw = FntFontCharWidth(f, ch);
+
       if ((width + tw) >= pixelWidth) {
          if (leadingEdge) *leadingEdge = false;
          if (truncWidth) *truncWidth = width;
@@ -388,8 +396,10 @@ Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Bool
 }
 
 void FntCharsInWidth(Char const *string, Int16 *stringWidthP, Int16 *stringLengthP, Boolean *fitWithinWidth) {
+  FontType *f;
+  UInt32 wch;
   int i, tw, lineWidth;
-  char *s;
+  char ch, *s;
 
   if (string && stringWidthP && stringLengthP && fitWithinWidth) {
     for (i = 0; string[i]; i++) {
@@ -398,7 +408,10 @@ void FntCharsInWidth(Char const *string, Int16 *stringWidthP, Int16 *stringLengt
     s = (char *)&string[i];
 
     for (i = 0, lineWidth = 0; i < *stringLengthP && s[i]; i++) {
-      tw = FntCharWidth(s[i]);
+      i += pumpkin_next_char((UInt8 *)s, i, *stringLengthP, &wch);
+      ch = pumpkin_map_char(wch, &f);
+      tw = FntFontCharWidth(f, ch);
+
       if (lineWidth + tw > *stringWidthP) break;
       lineWidth += tw;
     }
@@ -692,7 +705,46 @@ void pumpkin_destroy_fontv2(void *p) {
   }
 }
 
-static void FntSaveFont(FontPtr font, FontID id) {
+void FntSaveFontEx(FontPtr font, FontID id) {
+  BitmapType *bmp;
+  WinHandle wh;
+  RectangleType rect;
+  FontTypeV2 *font2;
+  Coord width, height;
+  UInt16 i, j, k, ch, x, y, w, error;
+  char filename[64];
+
+  if (font) {
+    if (font->v == 1) {
+      width = font->fRectWidth * 16;
+      height = font->fRectHeight * 16;
+      bmp = BmpCreate3(width, height, 0, kDensityLow, 1, false, 0, NULL, &error);
+      wh = WinCreateBitmapWindow(bmp, &error);
+      x = y = 0;
+      for (i = 0, k = 0, ch = 0; i < 16; i++) {
+        x = 0;
+        for (j = 0; j < 16; j++, ch++) {
+          if (ch >= font->firstChar && ch <= font->lastChar) {
+            w = font->width[ch - font->firstChar];
+            RctSetRectangle(&rect, k, 0, w, font->fRectHeight);
+            WinBlitBitmap(font->bmp, wh, &rect, x + (font->fRectWidth - w) / 2, y, winPaint, false);
+            k += w;
+          }
+          x += font->fRectWidth;
+        }
+        y += font->fRectHeight;
+      }
+      StrPrintF(filename, "font_%03d_v1.png", id);
+      pumpkin_save_bitmap(bmp, kDensityLow, 0, 0, width, height, filename);
+      WinDeleteWindow(wh, false);
+      BmpDelete(bmp);
+    } else {
+      font2 = (FontTypeV2 *)font;
+    }
+  }
+}
+
+void FntSaveFont(FontPtr font, FontID id) {
   FontTypeV2 *font2;
   Coord width, height;
   char filename[64];
@@ -728,4 +780,57 @@ void FntSaveFonts(void) {
       FntSaveFont((FontPtr)module->fontsv2[font], font);
     }
   }
+}
+
+UInt16 FntGetVersion(FontType *f) {
+  return f->v;
+}
+
+UInt16 FntGetDensityCount(FontType *f) {
+  FontTypeV2 *f2;
+
+  if (f->v == 1) return 1;
+  f2 = (FontTypeV2 *)f;
+  return f2->densityCount;
+}
+
+UInt16 FntGetDensity(FontType *f, UInt16 index) {
+  FontTypeV2 *f2;
+
+  if (f->v == 1) return kDensityLow;
+  f2 = (FontTypeV2 *)f;
+  return index < f2->densityCount ? f2->densities[index].density : kDensityLow;
+}
+
+UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult, Coord x, Coord y) {
+  FontTypeV2 *f2;
+  RectangleType rect;
+  UInt32 col, width = 0;
+
+  if (f) {
+    if (f->v == 1) {
+      if (ch >= f->firstChar && ch <= f->lastChar) {
+        col = f->column[ch - f->firstChar];
+        RctSetRectangle(&rect, col, 0, f->width[ch - f->firstChar], f->fRectHeight);
+        WinBlitBitmap(f->bmp, WinGetDrawWindow(), &rect, x, y, WinGetDrawMode(), true);
+        width = f->width[ch - f->firstChar];
+      } else {
+        debug(DEBUG_ERROR, "Font", "missing symbol 0x%04X", wch);
+        width = MISSING_SYMBOL_WIDTH;
+      }
+    } else {
+      f2 = (FontTypeV2 *)f;
+      if (ch >= f2->firstChar && ch <= f2->lastChar) {
+        col = f2->column[ch - f2->firstChar]*mult;
+        RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
+        WinBlitBitmap(f2->bmp[index], WinGetDrawWindow(), &rect, x, y, WinGetDrawMode(), true);
+        width = f2->width[ch - f2->firstChar]*mult;
+      } else {
+        debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
+        width = MISSING_SYMBOL_WIDTH;
+      }
+    }
+  }
+
+  return width;
 }

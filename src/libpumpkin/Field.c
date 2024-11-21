@@ -134,15 +134,22 @@ void FldSetActiveField(FieldType *fldP) {
 
 static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt16 y, IndexedColorType normal, IndexedColorType highlight, Boolean checkHighlight) {
   IndexedColorType prev, back;
-  UInt16 i, x;
+  FontType *f;
+  UInt32 wch;
+  UInt16 i, n, x;
+  char ch;
 
   x = fldP->rect.topLeft.x+1;
-  for (i = 0; i < len; i++) {
+
+  for (i = 0; i < len;) {
+    n = pumpkin_next_char((UInt8 *)s, i, len, &wch);
+    ch = pumpkin_map_char(wch, &f);
     back = checkHighlight && (fldP->selFirstPos <= start+i && start+i < fldP->selLastPos) ? highlight : normal;
     prev = WinSetBackColor(back);
-    WinPaintChar((UInt8)s[i], x, fldP->rect.topLeft.y+y);
+    WinPaintChars(&s[i], 1, x, fldP->rect.topLeft.y+y);
     WinSetBackColor(prev);
-    x += FntCharWidth(s[i]);
+    x += FntFontCharWidth(f, ch);
+    i += n;
   }
 }
 
