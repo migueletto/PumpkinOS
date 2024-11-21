@@ -35,7 +35,7 @@ DWORD playMIDIFile(HWND hWndNotify, LPSTR lpszMIDIFileName) {
 
   // The output port is not the MIDI mapper. 
   if (LOWORD(mciStatusParms.dwReturn) != MIDI_MAPPER) {
-    debug(DEBUG_ERROR, "MIDI", "output is not MIDI mapper (%d)", mciStatusParms.dwReturn);
+    debug(DEBUG_ERROR, "MIDI", "output is not MIDI mapper (%llu)", mciStatusParms.dwReturn);
     mciSendCommand(wDeviceID, MCI_CLOSE, 0, 0);
     return mciStatusParms.dwReturn;
   }
