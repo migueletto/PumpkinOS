@@ -14,4 +14,5 @@ typedef Err (*langSetF)(language_t *lang);
 language_t *LanguageInit(UInt32 id);
 int LanguageFinish(language_t *lang);
 
+language_t *LanguageGet(void);
 language_t *LanguageSelect(language_t *lang);

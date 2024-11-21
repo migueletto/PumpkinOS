@@ -40,6 +40,8 @@
 #ifndef DEFAULT_DENSITY
 #define DEFAULT_DENSITY kDensityDouble
 #endif
+//#undef DEFAULT_DENSITY
+//#define DEFAULT_DENSITY kDensityLow
 
 #ifndef DEFAULT_DEPTH
 #define DEFAULT_DEPTH 16
@@ -4537,6 +4539,11 @@ void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename) {
   }
 }
 
+language_t *LanguageGet(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task->lang;
+}
+
 language_t *LanguageSelect(language_t *lang) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   language_t *old;
@@ -4560,7 +4567,7 @@ UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w) {
   return i;
 }
 
-UInt8 pumpkin_map_char(UInt16 w, FontType **f) {
+UInt8 pumpkin_map_char(UInt32 w, FontType **f) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   if (task->lang && task->lang->mapChar) {

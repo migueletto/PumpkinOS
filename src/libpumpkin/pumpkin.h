@@ -356,7 +356,7 @@ int pumpkin_httpd_destroy(pumpkin_httpd_t *h);
 int pumpkin_httpd_status(pumpkin_httpd_t *h);
 
 UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w);
-UInt8 pumpkin_map_char(UInt16 w, FontType **f);
+UInt8 pumpkin_map_char(UInt32 w, FontType **f);
 
 UInt32 pumpkin_s2id(UInt32 *ID, char *s);
 char *pumpkin_id2s(UInt32 ID, char *s);
@@ -388,15 +388,15 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY);
 void WinAdjustCoords(Coord *x, Coord *y);
 void WinAdjustCoordsInv(Coord *x, Coord *y);
 void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr);
-void WinLegacyWriteByte(UInt32 offset, UInt8 value);
-void WinLegacyWriteWord(UInt32 offset, UInt16 value);
-void WinLegacyWriteLong(UInt32 offset, UInt32 value);
+UInt8 WinLegacyRead(UInt32 offset);
+void WinLegacyWrite(UInt32 offset, UInt8 value);
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
 RGBColorType *WinGetPalette(UInt16 n);
+WinDrawOperation WinGetDrawMode(void);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -481,9 +481,16 @@ void RctAbsToRect(const AbsRectType *arP, RectangleType *rP);
 UInt16 RctGetDifference(const RectangleType *a, const RectangleType *b, RectangleType *r);
 void RctGetUnion(const RectangleType *a, const RectangleType *b, RectangleType *r);
 
+UInt16 FntGetVersion(FontType *f);
 FontPtr FntCopyFont(FontPtr f);
 void FntFreeFont(FontPtr f);
+void FntSaveFont(FontPtr f, FontID id);
+void FntSaveFontEx(FontPtr font, FontID id);
 void FntSaveFonts(void);
+UInt16 FntGetDensityCount(FontType *f);
+UInt16 FntGetDensity(FontType *f, UInt16 index);
+UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult, Coord x, Coord y);
+Int16 FntFontCharWidth(FontType *f, Char ch);
 
 Err HwrGetROMToken(UInt16 cardNo, UInt32 token, UInt8 **dataP, UInt16 *sizeP);
 
