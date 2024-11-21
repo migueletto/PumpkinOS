@@ -3099,6 +3099,41 @@ case sysTrapFldSetMaxVisibleLines: {
   debug(DEBUG_TRACE, "EmuPalmOS", "FldSetMaxVisibleLines(fldP=0x%08X, maxLines=%d)", fldP, maxLines);
 }
 break;
+case sysTrapFldNewField: {
+  // FieldType *FldNewField(void **formPP, UInt16 id,
+  //   Coord x, Coord y, Coord width, Coord height,
+  //   FontID font, UInt32 maxChars, Boolean editable, Boolean underlined,
+  //   Boolean singleLine, Boolean dynamicSize, JustificationType justification,
+  //   Boolean autoShift, Boolean hasScrollBar, Boolean numeric)
+  uint32_t formPP = ARG32;
+  uint16_t id = ARG16;
+  int16_t x = ARG16;
+  int16_t y = ARG16;
+  int16_t width = ARG16;
+  int16_t height = ARG16;
+  uint8_t font = ARG8;
+  uint32_t maxChars = ARG32;
+  uint8_t editable = ARG8;
+  uint8_t underlined = ARG8;
+  uint8_t singleLine = ARG8;
+  uint8_t dynamicSize = ARG8;
+  uint8_t justification = ARG8;
+  uint8_t autoShift = ARG8;
+  uint8_t hasScrollBar = ARG8;
+  uint8_t numeric = ARG8;
+  uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+  void *form = emupalmos_trap_in(formP, trap, 0);
+  FieldType *fld = FldNewField(&form, id, x, y, width, height,
+    font, maxChars, editable, underlined,
+    singleLine, dynamicSize, justification,
+    autoShift, hasScrollBar, numeric);
+  uint32_t a = emupalmos_trap_out(fld);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FldNewField(0x%08X, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d): 0x%08X",
+    formPP, id, x, y, width, height, font, maxChars,
+    editable, underlined, singleLine, dynamicSize, justification, autoShift, hasScrollBar, numeric, a);
+  m68k_set_reg(M68K_REG_A0, a);
+}
+break;
 case sysTrapTblDrawTable: {
   // void TblDrawTable(in TableType *tableP)
   uint32_t tableP = ARG32;
