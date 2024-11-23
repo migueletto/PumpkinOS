@@ -2592,7 +2592,8 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   }
 
   if (style == sliderCtl || style == feedbackSliderCtl) {
-    debug(DEBUG_TRACE, "Form",  "slider control id %d style %d attr 0x%04X min %d max %d page %d value %d at (%d,%d,%d,%d)", id, style, attr, minValue, maxValue, pageSize, value, x, y, w, h);
+    debug(DEBUG_TRACE, "Form",  "slider control id %d style %d attr 0x%04X bitmaps %d,%d min %d max %d page %d value %d at (%d,%d,%d,%d)",
+      id, style, attr, bitmapId, selBitmapId, minValue, maxValue, pageSize, value, x, y, w, h);
     if ((sc = pumpkin_heap_alloc(sizeof(SliderControlType), "Control")) != NULL) {
       sc->id = id;
       sc->bounds.topLeft.x = x;
@@ -2601,6 +2602,8 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
       sc->bounds.extent.y = h;
       sc->thumbID = bitmapId;
       sc->backgroundID = selBitmapId;
+      if (sc->thumbID == 0) sc->thumbID = 13350;
+      if (sc->backgroundID == 0) sc->backgroundID = 13351;
       fill_attr(attr, &sc->attr);
       sc->style = style;
       sc->minValue = minValue;
@@ -3115,6 +3118,7 @@ void pumpkin_fix_popups(FormType *form) {
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
   FormType *form;
   ControlType *control;
+  SliderControlType *slider;
   //RectangleType rect;
   uint8_t dummy8, objectType;
   uint16_t dummy16, formId, defaultButton, helpRscId, menuRscId, numObjects;
@@ -3241,7 +3245,12 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
           control->formP = form;
           control->objIndex = j;
 
-          if (control->attr.graphical) {
+          if (control->style == sliderCtl || control->style == feedbackSliderCtl) {
+            slider = (SliderControlType *)control;
+            form->objects[j].object.sliderControl = slider;
+            form->objects[j].id = form->objects[j].object.sliderControl->id;
+            debug(DEBUG_TRACE, "Form",  "object %d is a SliderControl %d bitmaps %d,%d", j, form->objects[j].object.sliderControl->id, form->objects[j].object.sliderControl->thumbID, form->objects[j].object.sliderControl->backgroundID);
+          } else if (control->attr.graphical) {
             form->objects[j].object.graphicControl = control;
             form->objects[j].id = form->objects[j].object.graphicControl->id;
             debug(DEBUG_TRACE, "Form",  "object %d is a GraphicControl %d bitmap %d", j, form->objects[j].object.graphicControl->id, control->bitmapID);
