@@ -380,7 +380,8 @@ static void do_check_free_chunk(void *h, mchunkptr p) {
     assert(aligned_OK(chunk2mem(p)));
 
     if (next->prev_size != sz) {
-      debug(DEBUG_ERROR, "Heap", "do_check_free_chunk p=%p next=%p next->prev_size=%u sz=%u", p, next, (uint32_t)next->prev_size, (uint32_t)sz);
+uint32_t d = (uint8_t *)p - (uint8_t *)heap_base(h);
+      debug(DEBUG_ERROR, "Heap", "do_check_free_chunk p=%p (0x%08X) next=%p next->prev_size=%u sz=%u", p, d, next, (uint32_t)next->prev_size, (uint32_t)sz);
       debug_bytes(DEBUG_ERROR, "Heap", (uint8_t *)p, sz + 16);
     }
     assert(next->prev_size == sz);

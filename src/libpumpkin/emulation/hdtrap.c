@@ -98,7 +98,9 @@ void palmos_highdensitytrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t bitsP = ARG32;
       uint32_t colorTableP = ARG32;
       BitmapType *bitmap = emupalmos_trap_sel_in(bitmapP, sysTrapPinsDispatch, sel, 0);
-      BitmapTypeV3 *bmpV3 = BmpCreateBitmapV3(bitmap, density, emupalmos_trap_sel_in(bitsP, sysTrapPinsDispatch, sel, 2), emupalmos_trap_sel_in(colorTableP, sysTrapPinsDispatch, sel, 3));
+      void *bits = emupalmos_trap_sel_in(bitsP, sysTrapPinsDispatch, sel, 2);
+      ColorTableType *colorTable = emupalmos_trap_sel_in(colorTableP, sysTrapPinsDispatch, sel, 3);
+      BitmapTypeV3 *bmpV3 = BmpCreateBitmapV3(bitmap, density, bits, colorTable);
       uint32_t a = emupalmos_trap_out(bmpV3);
       debug(DEBUG_TRACE, "EmuPalmOS", "BmpCreateBitmapV3(0x%08X, %d, 0x%08X, 0x%08X): 0x%08X", bitmapP, density, bitsP, colorTableP, a);
       m68k_set_reg(M68K_REG_A0, a);

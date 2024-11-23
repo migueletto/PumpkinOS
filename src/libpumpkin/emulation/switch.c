@@ -2676,7 +2676,7 @@ case sysTrapFldGetTextHandle: {
   MemHandle res = FldGetTextHandle(fldP ? s_fldP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FldGetTextHandle(fldP=0x%08X): %p", fldP, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FldGetTextHandle(fldP=0x%08X): 0x%08X", fldP, r_res);
 }
 break;
 case sysTrapFldGetTextPtr: {
