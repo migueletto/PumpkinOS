@@ -359,6 +359,7 @@ Err FntDefineFont(FontID font, FontPtr fontP) {
 
     } else {
       debug(DEBUG_ERROR, "Font", "FntDefineFont: invalid font version %d", fontP->v);
+      debug_bytes(DEBUG_ERROR, "Font", (uint8_t *)fontP, 32);
     }
   } else {
     debug(DEBUG_ERROR, "Font", "FntDefineFont: attempt to define system font %d", font);
