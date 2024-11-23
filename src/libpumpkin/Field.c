@@ -662,11 +662,15 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
     handleSize = textHandle ? MemHandleSize(textHandle) : 0;
     if (handleSize > fldP->maxChars) {
       fldP->maxChars = handleSize;
+      if (fldP->textBuf != NULL) {
+        fldP->textBuf = pumpkin_heap_realloc(fldP->textBuf, fldP->maxChars, "FieldTextBuf");
+        fldP->text = fldP->textBuf;
+      }
     }
 
     if (fldP->textBuf == NULL) {
       fldP->textBuf = pumpkin_heap_alloc(fldP->maxChars, "FieldTextBuf");
-      debug(DEBUG_TRACE, "Field", "FldSetText alloc textBuf=%p size=%d", fldP->textBuf, fldP->maxChars);
+      debug(DEBUG_TRACE, "Field", "FldSetText fld %p alloc textBuf=%p size=%d", fldP, fldP->textBuf, fldP->maxChars);
       fldP->text = fldP->textBuf;
       fldP->textLen = 0;
     }
@@ -699,9 +703,9 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
             len = fldP->maxChars;
             debug(DEBUG_TRACE, "Field", "FldSetText len %d > maxChars %d, len=%d", len, fldP->maxChars, len);
           }
+          debug(DEBUG_TRACE, "Field", "FldSetText MemMove(%p, \"%.*s\", %d)", fldP->text, len, &s[offset], len);
           MemMove(fldP->text, &s[offset], len);
           fldP->textLen = StrLen(&s[offset]);
-          debug(DEBUG_TRACE, "Field", "FldSetText MemMove(%p, %p, %d)", fldP->text, &s[offset], len);
           debug(DEBUG_TRACE, "Field", "FldSetText texLen=%d", fldP->textLen);
         }
         MemHandleUnlock(textHandle);
@@ -1079,6 +1083,7 @@ void FldSetMaxChars(FieldType *fldP, UInt16 maxChars) {
       xmemcpy(aux, fldP->textBuf, old);
       pumpkin_heap_free(fldP->textBuf, "FieldTextBuf");
       fldP->textBuf = aux;
+      debug(DEBUG_TRACE, "Field", "FldSetMaxChars fldP %p alloc textBuf=%p size=%d", fldP, fldP->textBuf, fldP->maxChars);
       fldP->text = fldP->textBuf;
     }
   }
@@ -1093,6 +1098,7 @@ static void FldInsertOneChar(FieldType *fldP, Char c, UInt16 offset) {
   if (fldP->textBuf == NULL) {
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldInsertOneChar allocating %d bytes for textBuf", fldP->maxChars);
     fldP->textBuf = pumpkin_heap_alloc(fldP->maxChars, "FieldTextBuf");
+    debug(DEBUG_TRACE, "Field", "FldInsertOneChar fldP %p alloc textBuf=%p size=%d", fldP, fldP->textBuf, fldP->maxChars);
     fldP->text = fldP->textBuf;
     fldP->textLen = 0;
   }
