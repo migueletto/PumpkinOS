@@ -607,7 +607,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
             if (isDirectColor) {
               BmpV3SetField(newBmp, BitmapV3FieldTransparentValue, transparentValue);
             } else {
-              BmpV3SetField(newBmp, BitmapV3FieldTransparentValue, BmpV2GetField(newBmp, BitmapV2FieldTransparentIndex));
+              BmpV3SetField(newBmp, BitmapV3FieldTransparentValue, BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldTransparentIndex));
             }
           }
           break;
