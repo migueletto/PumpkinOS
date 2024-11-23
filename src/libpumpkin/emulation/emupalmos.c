@@ -453,6 +453,7 @@ void encode_appinfo(uint32_t appInfoP, AppInfoType *appInfo) {
 void decode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a;
+  char buf[256];
 
   MemSet(event, sizeof(EventType), 0);
 
@@ -530,6 +531,13 @@ void decode_event(uint32_t eventP, EventType *event) {
       event->data.ctlSelect.on = m68k_read_memory_8(eventP + 14);
       event->data.ctlSelect.reserved1 = 0;
       event->data.ctlSelect.value = m68k_read_memory_16(eventP + 16);
+      break;
+    case ctlRepeatEvent:
+      event->data.ctlRepeat.controlID = m68k_read_memory_16(eventP + 8);
+      a = m68k_read_memory_32(eventP + 10);
+      event->data.ctlRepeat.pControl = a ? (ControlType *)(ram + a) : NULL;
+      event->data.ctlRepeat.time = m68k_read_memory_32(eventP + 14);
+      event->data.ctlRepeat.value = m68k_read_memory_16(eventP + 18);
       break;
     case lstEnterEvent:
       event->data.lstEnter.listID = m68k_read_memory_16(eventP + 8);
@@ -626,7 +634,8 @@ void decode_event(uint32_t eventP, EventType *event) {
       break;
     default:
       if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
-        debug(DEBUG_ERROR, "EmuPalmOS", "decode event %d (0x%04X) incomplete", event->eType, event->eType);
+        sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
+        emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       }
       break;
   }
@@ -648,6 +657,7 @@ void encode_gadget(uint32_t gadgetP, FormGadgetType *gadget) {
 void encode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a;
+  char buf[256];
 
   m68k_write_memory_16(eventP + 0, event->eType);
   m68k_write_memory_8 (eventP + 2, event->penDown);
@@ -718,6 +728,12 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_8 (eventP + 14, event->data.ctlSelect.on ? 1 : 0);
       m68k_write_memory_8 (eventP + 15, 0); // reserved
       m68k_write_memory_16(eventP + 16, event->data.ctlSelect.value);
+      break;
+    case ctlRepeatEvent:
+      m68k_write_memory_16(eventP +  8, event->data.ctlRepeat.controlID);
+      m68k_write_memory_32(eventP + 10, event->data.ctlRepeat.pControl ? (uint32_t)((uint8_t *)event->data.ctlRepeat.pControl - ram) : 0);
+      m68k_write_memory_32(eventP + 14, event->data.ctlRepeat.time);
+      m68k_write_memory_16(eventP + 18, event->data.ctlRepeat.value);
       break;
     case lstEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.lstEnter.listID);
@@ -807,7 +823,8 @@ void encode_event(uint32_t eventP, EventType *event) {
       break;
     default:
       if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
-        debug(DEBUG_ERROR, "EmuPalmOS", "encode event %d (0x%04X) incomplete", event->eType, event->eType);
+        sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
+        emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       }
       break;
   }

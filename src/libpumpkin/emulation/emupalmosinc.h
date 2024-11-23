@@ -3,6 +3,7 @@
 #define EMUPALMOS_INVALID_TRAP        3
 #define EMUPALMOS_INVALID_XREF        4
 #define EMUPALMOS_HEAP_EXHAUSTED      5
+#define EMUPALMOS_UNDECODED_EVENT     6
 #define EMUPALMOS_GENERIC_ERROR       9
 
 int emupalmos_init(void);
