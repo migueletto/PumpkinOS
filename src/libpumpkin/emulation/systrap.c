@@ -2154,7 +2154,19 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
-
+    case sysTrapFrmNewGsi: {
+      // FrmGraffitiStateType *FrmNewGsi(FormType **formPP, Coord x, Coord y)
+      uint32_t formPP = ARG32;
+      uint16_t x = ARG16;
+      uint16_t y = ARG16;
+      uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+      FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
+      FrmGraffitiStateType *gsi = FrmNewGsi(&form, x, y);
+      uint32_t a = emupalmos_trap_out(gsi);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmNewGsi(0x%08X, %d, %d): 0x%08X", formPP, x, y, a);
+      m68k_set_reg(M68K_REG_A0, a);
+    }
+    break;
     case sysTrapCtlNewControl: {
       // ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, const Char *textP, Coord x, Coord y, Coord width, Coord height, FontID font, UInt8 group, Boolean leftAnchor)
       uint32_t formPP = ARG32;
