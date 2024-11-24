@@ -365,13 +365,13 @@ SEL_TRAP sysTrapExpansionMgr expSlotEnumerate Err ExpSlotEnumerate 2 UInt16_* sl
 SEL_TRAP sysTrapExpansionMgr expSlotLibFind Err ExpSlotLibFind 2 UInt16 slotRefNum UInt16_* slotLibRefNum
 SEL_TRAP sysTrapExpansionMgr expSlotRegister Err ExpSlotRegister 2 UInt16 slotLibRefNum UInt16_* slotRefNum
 SEL_TRAP sysTrapExpansionMgr expSlotUnregister Err ExpSlotUnregister 1 UInt16 slotRefNum
-SEL_TRAP sysTrapFlpDispatch sysFloatAToF FlpDouble FlpAToF 1 const_Char_* s
+#SEL_TRAP sysTrapFlpDispatch sysFloatAToF FlpDouble FlpAToF 1 const_Char_* s
 #SEL_TRAP sysTrapFlpDispatch sysFloatBase10Info Err FlpBase10Info 4 FlpDouble a UInt32_* mantissaP Int16_* exponentP Int16_* signP
 #SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd FlpDouble FlpCorrectedAdd 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
 #SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub FlpDouble FlpCorrectedSub 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-SEL_TRAP sysTrapFlpDispatch sysFloatFToA Err FlpFToA 2 FlpDouble a Char_* s
-SEL_TRAP sysTrapFlpDispatch sysFloatVersion UInt32 FlpVersion 0
-SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_add FlpDouble _d_add 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpDispatch sysFloatFToA Err FlpFToA 2 FlpDouble a Char_* s
+#SEL_TRAP sysTrapFlpDispatch sysFloatVersion UInt32 FlpVersion 0
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_add FlpDouble _d_add 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmp Int32 _d_cmp 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmpe Int32 _d_cmpe 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_div FlpDouble _d_div 2 FlpDouble a FlpDouble b
@@ -467,7 +467,7 @@ SEL_TRAP sysTrapHostControl hostSelectorExgLibOpen Err HostExgLibOpen 1 UInt16 l
 SEL_TRAP sysTrapHostControl hostSelectorExgLibPut Err HostExgLibPut 2 UInt16 libRefNum void_* exgSocketP
 SEL_TRAP sysTrapHostControl hostSelectorExgLibReceive UInt32 HostExgLibReceive 5 UInt16 libRefNum void_* exgSocketP void_* bufP const_UInt32 bufSize Err_* errP
 SEL_TRAP sysTrapHostControl hostSelectorExgLibRequest Err HostExgLibRequest 2 UInt16 libRefNum void_* exgSocketP
-SEL_TRAP sysTrapHostControl hostSelectorExgLibSend UInt32 HostExgLibSend 5 UInt16 libRefNum void_* exgSocketP const_void_*_const bufP const_UInt32 bufLen Err_* errP
+SEL_TRAP sysTrapHostControl hostSelectorExgLibSend UInt32 HostExgLibSend 5 UInt16 libRefNum void_* exgSocketP const_void_* bufP const_UInt32 bufLen Err_* errP
 SEL_TRAP sysTrapHostControl hostSelectorExgLibSleep Err HostExgLibSleep 1 UInt16 libRefNum
 SEL_TRAP sysTrapHostControl hostSelectorExgLibWake Err HostExgLibWake 1 UInt16 libRefNum
 SEL_TRAP sysTrapHostControl hostSelectorExportFile HostErrType HostExportFile 3 const_char_* fileName long cardNum const_char_* dbName
@@ -936,7 +936,7 @@ SYS_TRAP sysTrapEncDES 0 Err EncDES 4 UInt8_* srcP UInt8_* keyP UInt8_* dstP Boo
 SYS_TRAP sysTrapEncDigestMD4 0 Err EncDigestMD4 3 UInt8_* strP UInt16 strLen UInt8 digestP[16]
 SYS_TRAP sysTrapEncDigestMD5 0 Err EncDigestMD5 3 UInt8_* strP UInt16 strLen UInt8 digestP[16]
 SYS_TRAP sysTrapErrAlertCustom 0 UInt16 ErrAlertCustom 4 Err errCode Char_* errMsgP Char_* preMsgP Char_* postMsgP
-SYS_TRAP sysTrapErrDisplayFileLineMsg 0 void ErrDisplayFileLineMsg 3 const_Char_*_const filename UInt16 lineNo const_Char_*_const msg
+SYS_TRAP sysTrapErrDisplayFileLineMsg 0 void ErrDisplayFileLineMsg 3 const_Char_* filename UInt16 lineNo const_Char_* msg
 SYS_TRAP sysTrapErrExceptionList 0 MemPtr_* ErrExceptionList 0
 SYS_TRAP sysTrapErrLongJump 0 void ErrLongJump 2 ErrJumpBuf buf Int16 result
 SYS_TRAP sysTrapErrSetJump 0 Int16 ErrSetJump 1 ErrJumpBuf buf
@@ -1006,10 +1006,10 @@ SYS_TRAP sysTrapFileTell 0 Int32 FileTell 3 FileHand stream Int32_* fileSizeP Er
 SYS_TRAP sysTrapFileTruncate 0 Err FileTruncate 2 FileHand stream Int32 newSize
 SYS_TRAP sysTrapFileWrite 0 Int32 FileWrite 5 FileHand stream const_void_* dataP Int32 objSize Int32 numObj Err_* errP
 SYS_TRAP sysTrapFind 0 void Find 1 GoToParamsPtr goToP
-SYS_TRAP sysTrapFindDrawHeader 0 Boolean FindDrawHeader 2 FindParamsPtr findParams Char_const_* title
+SYS_TRAP sysTrapFindDrawHeader 0 Boolean FindDrawHeader 2 FindParamsPtr findParams const_Char_* title
 SYS_TRAP sysTrapFindGetLineBounds 0 void FindGetLineBounds 2 const_FindParamsType_* findParams RectanglePtr r
 SYS_TRAP sysTrapFindSaveMatch 0 Boolean FindSaveMatch 7 FindParamsPtr findParams UInt16 recordNum UInt16 pos UInt16 fieldNum UInt32 appCustom UInt16 cardNo LocalID dbID
-SYS_TRAP sysTrapFindStrInStr 0 Boolean FindStrInStr 3 Char_const_* strToSearch Char_const_* strToFind UInt16_* posP
+SYS_TRAP sysTrapFindStrInStr 0 Boolean FindStrInStr 3 const_Char_* strToSearch const_Char_* strToFind UInt16_* posP
 SYS_TRAP sysTrapFldCalcFieldHeight 0 UInt16 FldCalcFieldHeight 2 const_Char_* chars UInt16 maxWidth
 SYS_TRAP sysTrapFldCompactText 0 void FldCompactText 1 FieldType_* fldP
 SYS_TRAP sysTrapFldCopy 0 void FldCopy 1 const_FieldType_* fldP
@@ -1067,20 +1067,20 @@ SYS_TRAP sysTrapFntAverageCharWidth 0 Int16 FntAverageCharWidth 0
 SYS_TRAP sysTrapFntBaseLine 0 Int16 FntBaseLine 0
 SYS_TRAP sysTrapFntCharHeight 0 Int16 FntCharHeight 0
 SYS_TRAP sysTrapFntCharWidth 0 Int16 FntCharWidth 1 Char ch
-SYS_TRAP sysTrapFntCharsInWidth 0 void FntCharsInWidth 4 Char_const_* string Int16_* stringWidthP Int16_* stringLengthP Boolean_* fitWithinWidth
-SYS_TRAP sysTrapFntCharsWidth 0 Int16 FntCharsWidth 2 Char_const_* chars Int16 len
+SYS_TRAP sysTrapFntCharsInWidth 0 void FntCharsInWidth 4 const_Char_* string Int16_* stringWidthP Int16_* stringLengthP Boolean_* fitWithinWidth
+SYS_TRAP sysTrapFntCharsWidth 0 Int16 FntCharsWidth 2 const_Char_* chars Int16 len
 SYS_TRAP sysTrapFntDefineFont 0 Err FntDefineFont 2 FontID font FontType_* fontP
 SYS_TRAP sysTrapFntDescenderHeight 0 Int16 FntDescenderHeight 0
 SYS_TRAP sysTrapFntGetFont 0 FontID FntGetFont 0
 SYS_TRAP sysTrapFntGetFontPtr 0 FontType_* FntGetFontPtr 0
-SYS_TRAP sysTrapFntGetScrollValues 0 void FntGetScrollValues 5 Char_const_* chars UInt16 width UInt16 scrollPos UInt16_* linesP UInt16_* topLine
+SYS_TRAP sysTrapFntGetScrollValues 0 void FntGetScrollValues 5 const_Char_* chars UInt16 width UInt16 scrollPos UInt16_* linesP UInt16_* topLine
 SYS_TRAP sysTrapFntLineHeight 0 Int16 FntLineHeight 0
-SYS_TRAP sysTrapFntLineWidth 0 Int16 FntLineWidth 2 Char_const_* pChars UInt16 length
+SYS_TRAP sysTrapFntLineWidth 0 Int16 FntLineWidth 2 const_Char_* pChars UInt16 length
 SYS_TRAP sysTrapFntSetFont 0 FontID FntSetFont 1 FontID font
 SYS_TRAP sysTrapFntWCharWidth 0 Int16 FntWCharWidth 1 WChar iChar
-SYS_TRAP sysTrapFntWidthToOffset 0 Int16 FntWidthToOffset 5 Char_const_* pChars UInt16 length Int16 pixelWidth Boolean_* leadingEdge Int16_* truncWidth
-SYS_TRAP sysTrapFntWordWrap 0 UInt16 FntWordWrap 2 Char_const_* chars UInt16 maxWidth
-SYS_TRAP sysTrapFntWordWrapReverseNLines 0 void FntWordWrapReverseNLines 4 Char_const_*_const chars UInt16 maxWidth UInt16_* linesToScrollP UInt16_* scrollPosP
+SYS_TRAP sysTrapFntWidthToOffset 0 Int16 FntWidthToOffset 5 const_Char_* pChars UInt16 length Int16 pixelWidth Boolean_* leadingEdge Int16_* truncWidth
+SYS_TRAP sysTrapFntWordWrap 0 UInt16 FntWordWrap 2 const_Char_* chars UInt16 maxWidth
+SYS_TRAP sysTrapFntWordWrapReverseNLines 0 void FntWordWrapReverseNLines 4 const_Char_* chars UInt16 maxWidth UInt16_* linesToScrollP UInt16_* scrollPosP
 SYS_TRAP sysTrapFontSelect 0 FontID FontSelect 1 FontID fontID
 SYS_TRAP sysTrapFrmActiveState 0 Err FrmActiveState 2 FormActiveStateType_* stateP Boolean save
 SYS_TRAP sysTrapFrmAddSpaceForObject 0 Err FrmAddSpaceForObject 4 FormType_*_* formPP MemPtr_* objectPP FormObjectKind objectKind UInt16 objectSize
@@ -1191,10 +1191,10 @@ SYS_TRAP sysTrapHwrGetROMToken 0 Err SysGetROMToken 4 UInt16 cardNo UInt32 token
 #SYS_TRAP sysTrapImcReadFieldNoSemicolon 0 Char_* ImcReadFieldNoSemicolon 4 void_* inputStream GetCharF inputFunc UInt16_* c const_UInt16 maxChars
 #SYS_TRAP sysTrapImcReadFieldQuotablePrintable 0 Char_* ImcReadFieldQuotablePrintable 6 void_* inputStream GetCharF inputFunc UInt16_* c const_Char stopAt const_Boolean quotedPrintable const_UInt16 maxChars
 #SYS_TRAP sysTrapImcReadPropertyParameter 0 void ImcReadPropertyParameter 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* nameP Char_* valueP
-#SYS_TRAP sysTrapImcReadWhiteSpace 0 void ImcReadWhiteSpace 4 void_* inputStream GetCharF inputFunc const_UInt16_*_const charAttrP UInt16_* c
+#SYS_TRAP sysTrapImcReadWhiteSpace 0 void ImcReadWhiteSpace 4 void_* inputStream GetCharF inputFunc const_UInt16_* charAttrP UInt16_* c
 #SYS_TRAP sysTrapImcSkipAllPropertyParameters 0 void ImcSkipAllPropertyParameters 5 void_* inputStream GetCharF inputFunc UInt16_* cP Char_* identifierP Boolean_* quotedPrintableP
-#SYS_TRAP sysTrapImcStringIsAscii 0 Boolean ImcStringIsAscii 1 const_Char_*_const stringP
-#SYS_TRAP sysTrapImcWriteNoSemicolon 0 void ImcWriteNoSemicolon 3 void_* outputStream PutStringF outputFunc const_Char_*_const stringP
+#SYS_TRAP sysTrapImcStringIsAscii 0 Boolean ImcStringIsAscii 1 const_Char_* stringP
+#SYS_TRAP sysTrapImcWriteNoSemicolon 0 void ImcWriteNoSemicolon 3 void_* outputStream PutStringF outputFunc const_Char_* stringP
 #SYS_TRAP sysTrapImcWriteQuotedPrintable 0 void ImcWriteQuotedPrintable 4 void_* outputStream PutStringF outputFunc const_Char_* stringP const_Boolean noSemicolons
 SYS_TRAP sysTrapInsPtCheckBlink 0 void InsPtCheckBlink 0
 SYS_TRAP sysTrapInsPtEnable 0 void InsPtEnable 1 Boolean enableIt
@@ -1430,7 +1430,7 @@ SYS_TRAP sysTrapSysAppStartup 0 Err SysAppStartup 3 SysAppInfoPtr_* appInfoPP Me
 SYS_TRAP sysTrapSysBatteryDialog 0 void SysBatteryDialog 0
 SYS_TRAP sysTrapSysBatteryInfo 0 UInt16 SysBatteryInfo 7 Boolean set UInt16_* warnThresholdP UInt16_* criticalThresholdP Int16_* maxTicksP SysBatteryKind_* kindP Boolean_* pluggedIn UInt8_* percentP
 SYS_TRAP sysTrapSysBatteryInfoV20 0 UInt16 SysBatteryInfoV20 6 Boolean set UInt16_* warnThresholdP UInt16_* criticalThresholdP Int16_* maxTicksP SysBatteryKind_* kindP Boolean_* pluggedIn
-SYS_TRAP sysTrapSysBinarySearch 0 Boolean SysBinarySearch 8 void_const_* baseP UInt16 numOfElements Int16 width SearchFuncPtr searchF void_const_* searchData Int32 other Int32_* position Boolean findFirst
+SYS_TRAP sysTrapSysBinarySearch 0 Boolean SysBinarySearch 8 const_void_* baseP UInt16 numOfElements Int16 width SearchFuncPtr searchF const_void_* searchData Int32 other Int32_* position Boolean findFirst
 SYS_TRAP sysTrapSysBroadcastActionCode 0 Err SysBroadcastActionCode 2 UInt16 cmd MemPtr cmdPBP
 SYS_TRAP sysTrapSysColdBoot 0 void SysColdBoot 5 void_* card0P UInt32 card0Size void_* card1P UInt32 card1Size UInt32 sysCardHeaderOffset
 SYS_TRAP sysTrapSysCopyStringResource 0 void SysCopyStringResource 2 Char_* string Int16 theID

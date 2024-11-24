@@ -216,7 +216,6 @@ static void getp(uint32_t addr, char *a, char *buf) {
       sys_sprintf(buf, "L['%s']", st);
     } else if (!sys_strcmp(a, "frmp")) {
       W = m68k_read_memory_16(addr+104);
-      W = sys_be16toh(W);
       sys_sprintf(buf, "Form[%u]", W);
     } else if (!sys_strcmp(a, "fobjp")) {
       sys_sprintf(buf, "FormObj");
@@ -225,15 +224,12 @@ static void getp(uint32_t addr, char *a, char *buf) {
       sys_sprintf(buf, "Control[%u]", W);
     } else if (!sys_strcmp(a, "lstp")) {
       W = m68k_read_memory_16(addr);
-      W = sys_be16toh(W);
       sys_sprintf(buf, "List[%u]", W);
     } else if (!sys_strcmp(a, "fldp")) {
       W = m68k_read_memory_16(addr);
-      W = sys_be16toh(W);
       sys_sprintf(buf, "Field[%u]", W);
     } else if (!sys_strcmp(a, "tblp")) {
       W = m68k_read_memory_16(addr);
-      W = sys_be16toh(W);
       sys_sprintf(buf, "Table[%u]", W);
     } else if (!sys_strcmp(a, "sclp")) {
       W = m68k_read_memory_16(addr+8);
@@ -289,7 +285,7 @@ static void getp(uint32_t addr, char *a, char *buf) {
   }
 }
 
-static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, int isoutput) {
+static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, int returning) {
   int8_t b;
   uint8_t B;
   int16_t w;
@@ -297,13 +293,13 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, i
   int32_t l;
   uint32_t L;
   char st[8];
-  int output;
+  int input_param;
 
   if (a[0] == 'o') {
-    output = 1;
+    input_param = 0;
     a++;
   } else {
-    output = 0;
+    input_param = 1;
   }
 
   if (a[1] == 0) switch (a[0]) {
@@ -362,7 +358,7 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, i
       break;
   } else {
     L = ARG32;
-    if (isoutput || !output) {
+    if (returning || input_param) {
       getp(L, a, buf);
     } else {
       sys_strcpy(buf, L ? "addr" : "NULL");
@@ -374,7 +370,7 @@ static uint32_t getarg(char *a, uint32_t sp, uint16_t idx, char *buf, int max, i
 
 #define doarg(n) \
   if (allTraps[trap].nArgs > n-1) { \
-    idx = getarg(allTraps[trap].arg[n-1], sp, idx, buf, sizeof(buf)-1, isoutput); \
+    idx = getarg(allTraps[trap].arg[n-1], sp, idx, buf, sizeof(buf)-1, returning); \
     if (sys_strlen(line) + 1 + sys_strlen(buf) + 1 < sizeof(line)) { \
       sys_strcat(line, " "); \
       sys_strcat(line, buf); \
@@ -464,20 +460,22 @@ static char *spaces(uint32_t n) {
 }
 
 void trapHook(uint32_t pc, emu_state_t *state) {
-  uint16_t trap, idx, instruction;
+  uint16_t trap, idx, instruction, selector;
   uint32_t sp, d;
   char line[512];
   char buf[128];
-  int isoutput, ret;
+  char *name;
+  int returning, ret;
 
   if (state->stackp && pc == state->stack[state->stackp-1]) {
     state->stackp--;
     trap = state->stackt[state->stackp];
 
     if (allTraps[trap].name) {
+      name = trapName(trap, &selector, 1);
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
-      isoutput = 1;
+      returning = 1;
       sys_memset(line, 0, sizeof(line));
       doargs();
       if (allTraps[trap].rType[1]) {
@@ -488,9 +486,9 @@ void trapHook(uint32_t pc, emu_state_t *state) {
         ret = getret(allTraps[trap].rType, buf);
       }
       if (ret) {
-        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s : %s", state->stackp, spaces(state->stackp), allTraps[trap].name, line, buf);
+        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s : %s", state->stackp, spaces(state->stackp), name, line, buf);
       } else {
-        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s", state->stackp, spaces(state->stackp), allTraps[trap].name, line);
+        debug(DEBUG_TRACE, "Trap", "[%d] %sreturn %s%s", state->stackp, spaces(state->stackp), name, line);
       }
     } else {
       debug(DEBUG_TRACE, "Trap", "[%d] %sreturn unknown 0x%04X", state->stackp, spaces(state->stackp), trap);
@@ -513,9 +511,10 @@ void trapHook(uint32_t pc, emu_state_t *state) {
       state->stack[state->stackp++] = pc+4;
 
       if (allTraps[trap].name) {
-        isoutput = 0;
+        name = trapName(trap, &selector, 1);
+        returning = 0;
         doargs();
-        debug(DEBUG_TRACE, "Trap", "[%d] %s%s%s", state->stackp-1, spaces(state->stackp-1), allTraps[trap].name, line);
+        debug(DEBUG_TRACE, "Trap", "[%d] %s%s%s", state->stackp-1, spaces(state->stackp-1), name, line);
       } else {
         debug(DEBUG_TRACE, "Trap", "[%d] %sunknown 0x%04X", state->stackp-1, spaces(state->stackp-1), trap);
       }
