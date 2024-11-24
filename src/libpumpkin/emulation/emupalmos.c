@@ -476,6 +476,10 @@ void decode_event(uint32_t eventP, EventType *event) {
       event->data.keyDown.keyCode = m68k_read_memory_16(eventP + 10);
       event->data.keyDown.modifiers = m68k_read_memory_16(eventP + 12);
       break;
+    case modKeyDownEvent:
+    case modKeyUpEvent:
+      event->data.keyDown.modifiers = m68k_read_memory_16(eventP + 12);
+      break;
     case penUpEvent:
       event->data.penUp.start.x = m68k_read_memory_16(eventP + 8);
       event->data.penUp.start.y = m68k_read_memory_16(eventP + 10);
@@ -676,6 +680,10 @@ void encode_event(uint32_t eventP, EventType *event) {
     case keyDownEvent:
       m68k_write_memory_16(eventP +  8, event->data.keyDown.chr);
       m68k_write_memory_16(eventP + 10, event->data.keyDown.keyCode);
+      m68k_write_memory_16(eventP + 12, event->data.keyDown.modifiers);
+      break;
+    case modKeyDownEvent:
+    case modKeyUpEvent:
       m68k_write_memory_16(eventP + 12, event->data.keyDown.modifiers);
       break;
     case penUpEvent:
