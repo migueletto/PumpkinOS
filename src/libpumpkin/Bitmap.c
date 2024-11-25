@@ -2468,11 +2468,6 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
         WinSetBackColorRGB(NULL, &rgb);
         BmpSetBit16(offset, dataSize, rgb565(rgb.r, rgb.g, rgb.b), dbl);
       }
-/*
-      if (b != 0xffff) {
-        BmpSetBit16(offset, dataSize, b, dbl);
-      }
-*/
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
       get2_16(&old, bits, offset);
@@ -2817,14 +2812,8 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       srcTransp = (srcPixel == srcTransparentValue);
     } else if (mode == winMask || mode == winOverlay) {
       // source bitmap is not transparent but mode is winMask or winOverlay
-      // assume the transparent color is white
-      // I am not sure this is correct, but transparency in SimCity only works with this hack
-      switch (dstDepth) {
-        case  8: srcTransp = (srcPixel == 0x00); break;
-        case 16: srcTransp = (srcPixel == 0xffff); break;
-        case 24: srcTransp = (srcPixel == 0xffffff); break;
-        case 32: srcTransp = (srcPixel == 0xffffff); break;
-      }
+      // use the transparent color anyway
+      srcTransp = (srcPixel == srcTransparentValue);
     }
 
     if (text) {
