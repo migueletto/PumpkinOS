@@ -159,9 +159,13 @@ void FldDrawField(FieldType *fldP) {
   WinDrawOperation prev;
   UInt16 start, len, th, x, y, j;
   FontID old;
+  FormType *formP;
+  WinHandle wh;
 
   IN;
   if (fldP) {
+    formP = (FormType *)fldP->formP;
+    wh = WinSetDrawWindow(&formP->window);
     fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
     fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
     fieldText = UIColorGetTableEntryIndex(UIFieldText);
@@ -217,23 +221,29 @@ void FldDrawField(FieldType *fldP) {
     WinSetTextColor(oldt);
     FntSetFont(old);
     fldP->attr.visible = 1;
+    WinSetDrawWindow(wh);
   }
   OUTV;
 }
 
 void FldEraseField(FieldType *fldP) {
   IndexedColorType formFill, oldb;
+  FormType *formP;
+  WinHandle wh;
 
   IN;
   if (fldP) {
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldEraseField field %d", fldP->id);
     if (fldP->attr.visible) {
+      formP = (FormType *)fldP->formP;
+      wh = WinSetDrawWindow(&formP->window);
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldEraseField field %d is visible", fldP->id);
       formFill = UIColorGetTableEntryIndex(UIFormFill);
       oldb = WinSetBackColor(formFill);
       WinEraseRectangle(&fldP->rect, 0);
       WinSetBackColor(oldb);
       fldP->attr.visible = 0;
+      WinSetDrawWindow(wh);
     }
   }
   OUTV;
@@ -1396,6 +1406,7 @@ FieldType *FldNewField(void **formPP, UInt16 id,
           formP->objects[fldP->objIndex].object.field = fldP;
           formP->objects[fldP->objIndex].object.field->formP = formP;
         }
+        fldP->formP = formP;
       }
     }
   }
