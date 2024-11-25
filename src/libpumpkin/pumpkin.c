@@ -1369,8 +1369,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   SelTimeInitModule();
   SysFatalAlertInit();
 
-  FrmCenterDialogs(true);
-
   if (i == 0) {
     pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
     if (prefs.value[pBackgroundImage] & 0xFFFF) {
