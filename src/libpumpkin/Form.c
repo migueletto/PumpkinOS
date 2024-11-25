@@ -182,7 +182,7 @@ static Err FrmInitFormInternal(FormType *formP) {
   formP->window.density = density;
   //dbg_add(0, formP->window.bitmapP);
 
-  RctSetRectangle(&rect, 0, 0, w, h);
+  RctSetRectangle(&rect, 0, 0, width, height);
   WinSetClipingBounds(&formP->window, &rect);
 
   formP->selectedObject = -1;
@@ -1629,7 +1629,6 @@ UInt16 FrmDoDialog(FormType *formP) {
   10007: stop
 */
 static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
-  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormType *previous, *formP;
   RectangleType rect;
   UInt16 bitmapID, len, tw, th, x;
@@ -1681,10 +1680,6 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
         if (tw < 36) tw = 36;
         CtlNewControl((void **)&formP, 1000+i, buttonCtl, alert->button[i], x, formH - th - 6, tw, th, stdFont, 0, true);
         x += tw + 6;
-      }
-
-      if (module->centerDialogs) {
-        FrmCenterForm(formP);
       }
 
       previous = FrmGetActiveForm();
@@ -3205,7 +3200,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     formAttr.orientationTrigger = (flags & 0x00000040) ? 1 : 0;
     formAttr.reserved2          = 0;
 
-    debug(DEBUG_TRACE, "Fmrm", "form id %d attr usable %d save %d", formId, formAttr.usable, formAttr.saveBehind);
+    debug(DEBUG_TRACE, "Form", "form id %d attr usable %d save %d", formId, formAttr.usable, formAttr.saveBehind);
     debug(DEBUG_TRACE, "Form", "form id %d wflags dialog %d modal %d", formId, windowFlags.dialog, windowFlags.modal);
     debug(DEBUG_TRACE, "Form", "form id %d defbtn %d, help %d, menu %d", formId, defaultButton, helpRscId, menuRscId);
 
