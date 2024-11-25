@@ -92,6 +92,7 @@ static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {
   win_module_t *module;
+  RectangleType rect;
   UInt16 i, entry;
   Err err;
 
@@ -181,6 +182,10 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->windowFlags.freeBitmap = true;
     module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, NULL, &err);
     module->displayWindow->density = module->density;
+
+    RctSetRectangle(&rect, 0, 0, width/2, height/2);
+    WinSetClipingBounds(module->displayWindow, &rect);
+
     directAccessHack(module->displayWindow, 0, 0, width/2, height/2);
     //dbg_add(0, module->displayWindow->bitmapP);
   }
@@ -640,11 +645,7 @@ void WinResetClip(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
-//debug(1, "XXX", "WinResetClip %p", module->drawWindow);
-    module->drawWindow->clippingBounds.left = 0;
-    module->drawWindow->clippingBounds.right = 0;
-    module->drawWindow->clippingBounds.top = 0;
-    module->drawWindow->clippingBounds.bottom = 0;
+    WinSetClipingBounds(module->drawWindow, &module->drawWindow->windowBounds);
   }
 }
 
