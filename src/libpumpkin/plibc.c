@@ -25,13 +25,13 @@ static const FileRef stdinFileRef  = &dummy0;
 static const FileRef stdoutFileRef = &dummy1;
 static const FileRef stderrFileRef = &dummy2;
 
-static const PLIBC_FILE fplibc_stdin  = { 0, 0 };
-static const PLIBC_FILE fplibc_stdout = { 1, 0 };
-static const PLIBC_FILE fplibc_stderr = { 2, 0 };
+static PLIBC_FILE fplibc_stdin  = { 0, 0 };
+static PLIBC_FILE fplibc_stdout = { 1, 0 };
+static PLIBC_FILE fplibc_stderr = { 2, 0 };
 
-const PLIBC_FILE *plibc_stdin  = &fplibc_stdin;
-const PLIBC_FILE *plibc_stdout = &fplibc_stdout;
-const PLIBC_FILE *plibc_stderr = &fplibc_stderr;
+PLIBC_FILE *plibc_stdin  = &fplibc_stdin;
+PLIBC_FILE *plibc_stdout = &fplibc_stdout;
+PLIBC_FILE *plibc_stderr = &fplibc_stderr;
 
 int plibc_init(void) {
   fd_t **table = pumpkin_gettable(MAX_FDS);

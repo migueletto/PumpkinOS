@@ -13,9 +13,9 @@
 
 typedef struct PLIBC_FILE PLIBC_FILE;
 
-extern const PLIBC_FILE *plibc_stdin;
-extern const PLIBC_FILE *plibc_stdout;
-extern const PLIBC_FILE *plibc_stderr;
+extern PLIBC_FILE *plibc_stdin;
+extern PLIBC_FILE *plibc_stdout;
+extern PLIBC_FILE *plibc_stderr;
 
 enum { PLIBC_SEEK_SET, PLIBC_SEEK_CUR, PLIBC_SEEK_END };
 
