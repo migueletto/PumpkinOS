@@ -1084,7 +1084,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
       bitmapDepth = BmpGetBitDepth(bitmapP);
 
-      switch (version = BmpGetVersion(bitmapP)) {
+      switch (version) {
         case 0:
           debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", version, width, height, 1, kDensityLow);
           if (best == NULL) {
