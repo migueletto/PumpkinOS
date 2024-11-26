@@ -1083,8 +1083,8 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
     case frmCloseEvent:
       // Erases the form and releases any memory allocated for it.
       if (formP == module->currentForm) {
-        WinSetActiveWindow(NULL);
-        WinSetDrawWindow(NULL);
+        WinSetActiveWindow(WinGetDisplayWindow());
+        WinSetDrawWindow(WinGetDisplayWindow());
         module->currentForm = NULL;
         MenuSetActiveMenu(NULL);
       }
