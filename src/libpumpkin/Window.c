@@ -816,7 +816,7 @@ static void WinAdjustCoordEnd(Coord *c, UInt16 cs) {
   }
 }
 
-static void dirty_region(win_module_t *module, Coord x1, Coord y1, Coord x2, Coord y2) {
+static void dirty_region(win_module_t *module, WinHandle wh, Coord x1, Coord y1, Coord x2, Coord y2) {
   Coord xx1, yy1, xx2, yy2, aux;
 
 //debug(1, "XXX", "dirty_region (%d,%d,%d,%d) ...", x1, y1, x2, y2);
@@ -840,7 +840,7 @@ static void dirty_region(win_module_t *module, Coord x1, Coord y1, Coord x2, Coo
   WinAdjustCoordEnd(&yy2, module->coordSys);
 //debug(1, "XXX", "dirty_region adjusted (%d,%d,%d,%d)", xx1, yy1, xx2, yy2);
 
-  pumpkin_screen_dirty(module->activeWindow, xx1, yy1, xx2-xx1+1, yy2-yy1+1);
+  pumpkin_screen_dirty(wh, xx1, yy1, xx2-xx1+1, yy2-yy1+1);
 //debug(1, "XXX", "dirty_region done");
 }
 
@@ -1070,7 +1070,8 @@ void WinEraseWindow(void) {
       draw_hline(module, rect.topLeft.x, rect.topLeft.x + rect.extent.x - 1, y, blackPattern);
     }
     WinSetForeColorRGB(&fore, NULL);
-    if (module->drawWindow == module->activeWindow) dirty_region(module, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
   }
 }
 
@@ -1085,7 +1086,8 @@ void WinPaintPixel(Coord x, Coord y) {
     bitmapP = WinGetBitmap(module->displayWindow);
     d = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
     WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
-    if (module->drawWindow == module->activeWindow) dirty_region(module, x, y, x, y);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x, y, x, y);
+    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x, y, x, y);
   }
 }
 
@@ -1159,7 +1161,8 @@ void WinPaintLine(Coord x1, Coord y1, Coord x2, Coord y2) {
     draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
 
-  if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
+  if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+  else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
 }
 
 void WinPaintLines(UInt16 numLines, WinLineType lines[]) {
@@ -1320,6 +1323,8 @@ void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   module->pattern = oldp;
 }
 
+void emupalmos_debug(int on);
+
 void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   PatternType oldp = WinGetPatternType();
@@ -1378,7 +1383,8 @@ void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   } else {
     draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
-  if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
+  if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+  else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
 }
 
 void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
@@ -1412,7 +1418,8 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
       draw_hline(module, x1+d, x2-d, y, module->pattern);
       d++;
     }
-    if (module->drawWindow == module->activeWindow) dirty_region(module, x1, y1, x2, y2);
+    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
   }
 }
 
@@ -2051,12 +2058,11 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       }
     }
 
-    if (module->drawWindow == module->activeWindow) {
-      w = FntCharsWidth((char *)chars, len);
-      h = FntCharHeight();
-      if (w > 0) {
-        dirty_region(module, x0, y0, x0+w-1, y0+h-1);
-      }
+    w = FntCharsWidth((char *)chars, len);
+    h = FntCharHeight();
+    if (w > 0) {
+      if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x0, y0, x0+w-1, y0+h-1);
+      else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x0, y0, x0+w-1, y0+h-1);
     }
   }
 }
