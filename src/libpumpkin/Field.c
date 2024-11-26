@@ -160,12 +160,14 @@ void FldDrawField(FieldType *fldP) {
   UInt16 start, len, th, x, y, j;
   FontID old;
   FormType *formP;
-  WinHandle wh;
+  WinHandle oldd, olda;
 
   IN;
   if (fldP) {
     formP = (FormType *)fldP->formP;
-    wh = WinSetDrawWindow(&formP->window);
+    oldd = WinSetDrawWindow(&formP->window);
+    olda = WinGetActiveWindow();
+    WinSetActiveWindow(&formP->window);
     fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
     fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
     fieldText = UIColorGetTableEntryIndex(UIFieldText);
@@ -221,7 +223,8 @@ void FldDrawField(FieldType *fldP) {
     WinSetTextColor(oldt);
     FntSetFont(old);
     fldP->attr.visible = 1;
-    WinSetDrawWindow(wh);
+    WinSetDrawWindow(oldd);
+    WinSetActiveWindow(olda);
   }
   OUTV;
 }
