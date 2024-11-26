@@ -4963,7 +4963,7 @@ MemPtr MemLocalIDToLockedPtr(LocalID local, UInt16 cardNo) {
 
   if (local < (sto->size - sizeof(storage_handle_t))) {
     h = (storage_handle_t *)(sto->base + local);
-    if (h->htype == (STO_TYPE_MEM | STO_INFLATED) && h->lockCount < 14) {
+    if ((h->htype == (STO_TYPE_MEM | STO_INFLATED) || h->htype == (STO_TYPE_REC | STO_INFLATED)) && h->lockCount < 14) {
       h->lockCount++;
       p = h->buf;
       err = errNone;
