@@ -346,9 +346,9 @@ void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Bo
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
 
-void pumpkin_set_v10(void);
+void pumpkin_set_osversion(int v);
+int pumpkin_get_osversion(void);
 void pumpkin_set_m68k(int m68k);
-int pumpkin_is_v10(void);
 int pumpkin_is_m68k(void);
 
 pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker, char *root, void *data, Boolean (*idle)(void *data));
@@ -381,8 +381,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
 void WinRestoreRectangle(WinHandle srcWin, const RectangleType *dstRect);
 void WinSetClipingBounds(WinHandle win, const RectangleType *rP);
-UInt8 WinSetBackAlpha(UInt8 alpha);
-UInt8 WinGetBackAlpha(void);
 void WinSendWindowEvents(WinHandle wh);
 void WinSetDisplayExtent(Coord extentX, Coord extentY);
 void WinAdjustCoords(Coord *x, Coord *y);
@@ -397,6 +395,7 @@ void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
 RGBColorType *WinGetPalette(UInt16 n);
 WinDrawOperation WinGetDrawMode(void);
+void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);

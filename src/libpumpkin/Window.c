@@ -17,8 +17,6 @@
 #include "debug.h"
 #include "xalloc.h"
 
-#define FORM_FILL_ALPHA 0xFF
-
 #define LEGACY_SCREEN_SIZE 160 * 160
 
 typedef struct {
@@ -31,7 +29,6 @@ typedef struct {
   UInt16 foreColor565;
   UInt16 backColor565;
   UInt16 textColor565;
-  UInt8 foreAlpha, backAlpha;
   WinDrawOperation transferMode;
   PatternType pattern;
   UInt8 patternData[8];
@@ -41,6 +38,7 @@ typedef struct {
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
+  Coord x1, y1, x2, y2;
   DrawStateType state[DrawStateStackSize];
   UInt8 fullCcolorTable[2 + 256 * 4];
   ColorTableType *colorTable;
@@ -193,9 +191,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->activeWindow = module->displayWindow;
   module->drawWindow = module->displayWindow;
   WinEraseWindow();
-
-  module->foreAlpha = 0xFF;
-  module->backAlpha = 0xFF;
 
   return 0;
 }
@@ -799,6 +794,10 @@ void WinAdjustCoordsInv(Coord *x, Coord *y) {
   pointFrom(module, module->density, x, y);
 }
 
+#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
+#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
+
+#if 0
 static void WinAdjustCoordEnd(Coord *c, UInt16 cs) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
@@ -844,9 +843,6 @@ static void dirty_region(win_module_t *module, WinHandle wh, Coord x1, Coord y1,
 //debug(1, "XXX", "dirty_region done");
 }
 
-#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
-#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
-
 static Boolean WinPutBit(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 b, WinDrawOperation mode, Boolean checked) {
   Boolean r = false;
 
@@ -880,10 +876,32 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
   }
 }
+#endif
 
-#if 0
-static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+#define DIRTY_BEGIN \
+  module->x1 = 999; \
+  module->x2 = 0; \
+  module->y1 = 999; \
+  module->y2 = 0
+
+#define DIRTY_END \
+  if (module->x1 <= module->x2 && module->y1 <= module->y2) { \
+    pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1); \
+  }
+
+static void WinPutBit(win_module_t *module, UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation mode, Boolean dbl) {
+  BmpPutBit(b, false, WinGetBitmap(wh), x, y, mode, dbl);
+  if (wh == module->displayWindow) {
+    int i = dbl ? 1 : 0;
+    if (x < module->x1) module->x1 = x;
+    if (x+i > module->x2) module->x2 = x+i;
+    if (y < module->y1) module->y1 = y;
+    if (y+i > module->y2) module->y2 = y+i;
+    //pumpkin_screen_dirty(wh, x, y, w, w);
+  }
+}
+
+static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
   Coord cx, cy, x0, y0;
   Boolean dbl;
 
@@ -894,7 +912,7 @@ static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowCol
 
     if (CLIPW_OK(wh, cx, cy)) {
       dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
-      BmpPutBit(windowColor, false, WinGetBitmap(wh), cx, cy, mode, dbl);
+      WinPutBit(module, windowColor, wh, cx, cy, mode, dbl);
 
       if (wh == module->activeWindow && wh != module->displayWindow) {
         cx = x;
@@ -907,14 +925,13 @@ static void newWinPutBitDisplay(WinHandle wh, Coord x, Coord y, UInt32 windowCol
           x0 <<= 1;
           y0 <<= 1;
         }
-        BmpPutBit(windowColor, false, WinGetBitmap(module->displayWindow), x0 + cx, y0 + cy, mode, dbl);
+        WinPutBit(module, displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl);
       }
     }
   } else {
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
   }
 }
-#endif
 
 static UInt32 getColor(win_module_t *module, UInt16 depth, Boolean back) {
   UInt32 c = 0;
@@ -1043,18 +1060,6 @@ static void draw_gline(win_module_t *module, int x1, int y1, int x2, int y2, Pat
   }
 }
 
-UInt8 WinGetBackAlpha(void) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->backAlpha;
-}
-
-UInt8 WinSetBackAlpha(UInt8 alpha) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  UInt8 old = module->backAlpha;
-  module->backAlpha = alpha;
-  return old;
-}
-
 void WinEraseWindow(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RGBColorType back, fore;
@@ -1062,6 +1067,7 @@ void WinEraseWindow(void) {
   Coord y;
 
   if (module->drawWindow) {
+    DIRTY_BEGIN;
     WinGetBounds(module->drawWindow, &rect);
     WinSetBackColorRGB(NULL, &back);
     WinSetForeColorRGB(&back, &fore);
@@ -1070,8 +1076,9 @@ void WinEraseWindow(void) {
       draw_hline(module, rect.topLeft.x, rect.topLeft.x + rect.extent.x - 1, y, blackPattern);
     }
     WinSetForeColorRGB(&fore, NULL);
-    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
-    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    //if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    //else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, rect.topLeft.x, rect.topLeft.y, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + rect.extent.y - 1);
+    DIRTY_END;
   }
 }
 
@@ -1081,13 +1088,15 @@ void WinPaintPixel(Coord x, Coord y) {
   UInt32 c, d;
 
   if (module->drawWindow) {
+    DIRTY_BEGIN;
     bitmapP = WinGetBitmap(module->drawWindow);
     c = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
     bitmapP = WinGetBitmap(module->displayWindow);
     d = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
     WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
-    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x, y, x, y);
-    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x, y, x, y);
+    //if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x, y, x, y);
+    //else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x, y, x, y);
+    DIRTY_END;
   }
 }
 
@@ -1153,6 +1162,7 @@ void WinPaintPixels(UInt16 numPoints, PointType pts[]) {
 void WinPaintLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
+  DIRTY_BEGIN;
   if (y1 == y2) {
     draw_hline(module, x1, x2, y2, module->pattern);
   } else if (x1 == x2) {
@@ -1160,9 +1170,9 @@ void WinPaintLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   } else {
     draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
-
-  if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
-  else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+  //if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+  //else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+  DIRTY_END;
 }
 
 void WinPaintLines(UInt16 numLines, WinLineType lines[]) {
@@ -1335,27 +1345,12 @@ void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RGBColorType back, fore;
-  UInt8 alpha;
-  Boolean f = false;
 
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   WinSetBackColorRGB(NULL, &back);
   WinSetForeColorRGB(&back, &fore);
-
-  if (module->foreColor == UIColorGetTableEntryIndex(UIFormFill)) {
-    alpha = module->foreAlpha;
-    module->foreAlpha = FORM_FILL_ALPHA;
-    f = true;
-  }
-
   WinPaintRectangle(rP, cornerDiam);
-
-  if (f) {
-    module->foreAlpha = alpha;
-  }
-
   WinSetForeColorRGB(&fore, NULL);
   WinSetDrawMode(prev);
 }
@@ -1376,6 +1371,7 @@ void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
+  DIRTY_BEGIN;
   if (y1 == y2) {
     draw_hline(module, x1, x2, y2, module->pattern);
   } else if (x1 == x2) {
@@ -1383,8 +1379,9 @@ void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   } else {
     draw_gline(module, x1, y1, x2, y2, module->pattern);
   }
-  if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
-  else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+  //if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+  //else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+  DIRTY_END;
 }
 
 void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
@@ -1392,6 +1389,7 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   Coord x1, y1, x2, y2, y, d, aux;
 
   if (rP) {
+    DIRTY_BEGIN;
     x1 = rP->topLeft.x;
     y1 = rP->topLeft.y;
     x2 = x1 + rP->extent.x - 1;
@@ -1418,8 +1416,9 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
       draw_hline(module, x1+d, x2-d, y, module->pattern);
       d++;
     }
-    if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
-    else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+    //if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x1, y1, x2, y2);
+    //else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x1, y1, x2, y2);
+    DIRTY_END;
   }
 }
 
@@ -1701,13 +1700,13 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       bitmapDepth = BmpGetBitDepth(best);
       bitmapEndianness = BmpGetLittleEndianBits(best);
       bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
-      dither = !BmpGetNoDither(best);
+      //dither = !BmpGetNoDither(best);
 
       displayBitmap = WinGetBitmap(module->displayWindow);
       displayDepth = BmpGetBitDepth(displayBitmap);
 
-      if (bitmapDensity == windowDensity && windowDepth == 1 && bitmapDepth > 1 && dither && mode == winPaint && !text) {
 #if 0
+      if (bitmapDensity == windowDensity && windowDepth == 1 && bitmapDepth > 1 && dither && mode == winPaint && !text) {
         debug(DEBUG_TRACE, "Window", "WinBlitBitmap dithering %d bpp bitmap", bitmapDepth);
         surface_t *src = BmpCreateSurfaceBitmap(best);
         surface_t *dst = BmpCreateSurfaceBitmap(windowBitmap);
@@ -1723,8 +1722,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         if (delete) BmpDelete(best);
         pumpkin_screen_dirty(wh, dstX, dstY, rect->extent.x, rect->extent.y);
         return;
-#endif
       }
+#endif
 
 #ifndef ANDROID
       if (bitmapEndianness == windowEndianness && bitmapDensity == windowDensity && bitmapDepth == windowDepth && bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
@@ -1870,12 +1869,27 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
           w <<= 1;
           h <<= 1;
         }
-//debug(1, "XXX", "dirty %p %d,%d,%d,%d", wh, dstX, dstY, w, h);
         pumpkin_screen_dirty(wh, dstX, dstY, w, h);
       }
 
       if (delete) BmpDelete(best);
     }
+  }
+}
+
+void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  Coord x0, y0;
+
+  x0 = wh->windowBounds.topLeft.x;
+  y0 = wh->windowBounds.topLeft.y;
+
+  if (module->coordSys == kCoordinatesStandard) {
+    *x += x0;
+    *y += y0;
+  } else if (module->coordSys == kCoordinatesDouble) {
+    *x += x0 << 1;
+    *y += y0 << 1;
   }
 }
 
@@ -1897,6 +1911,10 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
 
   debug(DEBUG_TRACE, "Window", "WinCopyRectangle srcWin=%p %d,%d,%d,%d -> dstWin=%p %d,%d (mode %d)", srcWin, srcRect->topLeft.x, srcRect->topLeft.y, srcRect->extent.x, srcRect->extent.y, dstWin, dstX, dstY, mode);
   WinBlitBitmap(WinGetBitmap(srcWin), dstWin, srcRect, dstX, dstY, mode, false);
+  if (dstWin == module->activeWindow && dstWin != module->displayWindow) {
+    WinConvertToDisplay(dstWin, &dstX, &dstY);
+    //WinBlitBitmap(WinGetBitmap(srcWin), module->displayWindow, srcRect, dstX, dstY, mode, false);
+  }
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
@@ -1932,8 +1950,11 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
       }
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
-      //if (bitmapDensity == kDensityLow) WinScaleRectangle(&rect);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
+      if (module->drawWindow == module->activeWindow && module->drawWindow != module->displayWindow) {
+        WinConvertToDisplay(module->drawWindow, &x, &y);
+        //WinBlitBitmap(best, module->displayWindow, &rect, x, y, module->transferMode, false);
+      }
     }
   }
 }
@@ -1949,7 +1970,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   FontType *f;
   FontID font;
   UInt16 density;
-  Coord x0, y0, w, h;
+  //Coord x0, y0, w, h;
   UInt16 prev;
   UInt32 wch;
   Boolean v10;
@@ -1959,12 +1980,12 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
   if (module->drawWindow && chars && len > 0) {
 //debug(1, "XXX", "WinDrawCharsC(\"%.*s\", %d, %d)", len, chars, x, y);
-    x0 = x;
-    y0 = y;
+    //x0 = x;
+    //y0 = y;
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
-    v10 = (font == stdFont || font == boldFont) && pumpkin_is_v10() && !LanguageGet();
+    v10 = (font == stdFont || font == boldFont) && pumpkin_get_osversion() == 1 && !LanguageGet();
 
     if (f == NULL) {
       debug(DEBUG_ERROR, "Window", "WinDrawCharsC: FntGetFontPtr returned NULL !");
@@ -2058,12 +2079,14 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       }
     }
 
+/*
     w = FntCharsWidth((char *)chars, len);
     h = FntCharHeight();
     if (w > 0) {
       if (module->drawWindow == module->activeWindow) dirty_region(module, module->activeWindow, x0, y0, x0+w-1, y0+h-1);
       else if (module->drawWindow == module->displayWindow) dirty_region(module, module->displayWindow, x0, y0, x0+w-1, y0+h-1);
     }
+*/
   }
 }
 
@@ -2217,6 +2240,7 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   if (foreColor >= 0 && foreColor < numEntries) {
     CtbGetEntry(colorTable, foreColor, &module->foreColorRGB);
     setColors(fore, module, foreColor);
+//debug(1, "XXX", "WinSetForeColor %d 0x%04X %d,%d,%d", module->foreColor, module->foreColor565, module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetForeColor invalid color %d for depth %d (max %d)", foreColor, module->depth, numEntries-1);
   }
@@ -3427,19 +3451,25 @@ void WinSendWindowEvents(WinHandle wh) {
 
 void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *bitmapP = WinGetBitmap(module->displayWindow);
-  uint32_t len;
+  BitmapType *bitmapP;
+  UInt32 len;
 
-  len = LEGACY_SCREEN_SIZE;
+  bitmapP = WinGetBitmap(module->displayWindow);
 
-  switch (BmpGetBitDepth(bitmapP)) {
-    case  1: len /= 8; break;
-    case  2: len /= 4; break;
-    case  4: len /= 2; break;
-    case 16: len *= 2; break;
+  if (pumpkin_get_osversion() <= 3) {
+    len = LEGACY_SCREEN_SIZE;
+    switch (module->legacyDepth) {
+      case  1: len /= 8; break;
+      case  2: len /= 4; break;
+      case  4: len /= 2; break;
+      case 16: len *= 2; break;
+    }
+  } else {
+    BmpGetSizes(bitmapP, &len, NULL);
   }
 
-  *startAddr = 0x00002000;
+  //*startAddr = 0x00002000;
+  *startAddr = (uint8_t *)BmpGetBits(bitmapP) - (uint8_t *)pumpkin_heap_base();
   *endAddr = *startAddr + len;
 }
 
@@ -3476,10 +3506,12 @@ UInt8 WinLegacyRead(UInt32 offset) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   UInt16 i, cols, c, x, y, density, realDepth;
+  UInt32 start, end;
   UInt8 value = 0;
 
-  if (offset >= LEGACY_SCREEN_SIZE*2) {
-    debug(DEBUG_ERROR, "Window", "legacy read out of bounds %d", offset);
+  WinLegacyGetAddr(&start, &end);
+  if (offset >= end - start) {
+    debug(DEBUG_ERROR, "Window", "legacy read out of bounds %d (max %d)", offset, end - start);
     return 0;
   }
 
@@ -3487,40 +3519,64 @@ UInt8 WinLegacyRead(UInt32 offset) {
   realDepth = BmpGetBitDepth(bitmapP);
   density = BmpGetDensity(bitmapP);
 
-  switch (module->legacyDepth) {
-    case 1:
-      cols = 160 / 8;
-      x = (offset % cols) * 8;
-      y = offset / cols;
-      value = 0;
-      for (i = 0; i < 8; i++, x++) {
-        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 1, x, y);
-        value <<= 1;
-        value |= c;
-      }
-      break;
-    case 2:
-      cols = 160 / 4;
-      x = (offset % cols) * 4;
-      y = offset / cols;
-      value = 0;
-      for (i = 0; i < 8; i += 2, x++) {
-        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 2, x, y);
-        value <<= 2;
-        value |= c;
-      }
-      break;
-    case 4:
-      cols = 160 / 2;
-      x = (offset % cols) * 2;
-      y = offset / cols;
-      value = 0;
-      for (i = 0; i < 8; i += 4, x++) {
-        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 4, x, y);
-        value <<= 4;
-        value |= c;
-      }
-      break;
+  if (pumpkin_get_osversion() <= 3) {
+    switch (module->legacyDepth) {
+      case 1:
+        cols = 160 / 8;
+        x = (offset % cols) * 8;
+        y = offset / cols;
+        value = 0;
+        for (i = 0; i < 8; i++, x++) {
+          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 1, x, y);
+          value <<= 1;
+          value |= c;
+        }
+        break;
+      case 2:
+        cols = 160 / 4;
+        x = (offset % cols) * 4;
+        y = offset / cols;
+        value = 0;
+        for (i = 0; i < 8; i += 2, x++) {
+          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 2, x, y);
+          value <<= 2;
+          value |= c;
+        }
+        break;
+      case 4:
+        cols = 160 / 2;
+        x = (offset % cols) * 2;
+        y = offset / cols;
+        value = 0;
+        for (i = 0; i < 8; i += 4, x++) {
+          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 4, x, y);
+          value <<= 4;
+          value |= c;
+        }
+        break;
+    }
+  } else {
+    switch (realDepth) {
+      case 8:
+        cols = 160;
+        x = offset % cols;
+        y = offset / cols;
+        density = BmpGetDensity(bitmapP);
+        value = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        break;
+      case 16:
+        cols = 160 * 2;
+        x = (offset % cols) / 2;
+        y = offset / cols;
+        density = BmpGetDensity(bitmapP);
+        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        if ((offset % 2) == 0) {
+          value = c >> 8;
+        } else {
+          value = c & 0xff;
+        }
+        break;
+    }
   }
 
   return value;
@@ -3546,12 +3602,15 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   UInt8 b;
-  UInt16 i, cols, c, x, y, oldColor565, realDepth;
+  UInt16 i, cols, c, oldColor565, realDepth, density;
+  UInt32 start, end;
+  Coord x, y;
   IndexedColorType oldColor;
   WinHandle oldActive, oldDraw;
 
-  if (offset >= LEGACY_SCREEN_SIZE*2) {
-    debug(DEBUG_ERROR, "Window", "legacy write out of bounds %d", offset);
+  WinLegacyGetAddr(&start, &end);
+  if (offset >= end - start) {
+    debug(DEBUG_ERROR, "Window", "legacy write out of bounds %d (max %d)", offset, end - start);
     return;
   }
 
@@ -3570,40 +3629,64 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   bitmapP = WinGetBitmap(module->displayWindow);
   realDepth = BmpGetBitDepth(bitmapP);
 
-  switch (module->legacyDepth) {
-    case 1:
-      cols = 160 / 8;
-      x = (offset % cols) * 8 + 7;
-      y = offset / cols;
-      b = value;
-      for (i = 0; i < 8; i++, x--) {
-        c = BmpConvertFrom1Bit(b & 0x01, realDepth, NULL, true);
+  if (pumpkin_get_osversion() <= 3) {
+    switch (module->legacyDepth) {
+      case 1:
+        cols = 160 / 8;
+        x = (offset % cols) * 8 + 7;
+        y = offset / cols;
+        b = value;
+        for (i = 0; i < 8; i++, x--) {
+          c = BmpConvertFrom1Bit(b & 0x01, realDepth, NULL, true);
+          WinLegacyDrawPixel(module, realDepth, c, x, y);
+          b >>= 1;
+        }
+        break;
+      case 2:
+        cols = 160 / 4;
+        x = (offset % cols) * 4 + 3;
+        y = offset / cols;
+        b = value;
+        for (i = 0; i < 8; i += 2, x--) {
+          c = BmpConvertFrom2Bits(b & 0x03, realDepth, NULL, true);
+          WinLegacyDrawPixel(module, realDepth, c, x, y);
+          b >>= 2;
+        }
+        break;
+      case 4:
+        cols = 160 / 2;
+        x = (offset % cols) * 2 + 1;
+        y = offset / cols;
+        b = value;
+        for (i = 0; i < 8; i += 4, x--) {
+          c = BmpConvertFrom4Bits(b & 0x0f, realDepth, NULL, true);
+          WinLegacyDrawPixel(module, realDepth, c, x, y);
+          b >>= 4;
+        }
+        break;
+    }
+  } else {
+    switch (realDepth) {
+      case 8:
+        cols = 160;
+        x = offset % cols;
+        y = offset / cols;
+        WinLegacyDrawPixel(module, realDepth, value, x, y);
+        break;
+      case 16:
+        cols = 160 * 2;
+        x = (offset % cols) / 2;
+        y = offset / cols;
+        density = BmpGetDensity(bitmapP);
+        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        if ((offset % 2) == 0) {
+          c = (c & 0x00ff) | (value << 8);
+        } else {
+          c = (c & 0xff00) | value;
+        }
         WinLegacyDrawPixel(module, realDepth, c, x, y);
-        b >>= 1;
-      }
-      break;
-    case 2:
-      cols = 160 / 4;
-      x = (offset % cols) * 4 + 3;
-      y = offset / cols;
-      b = value;
-      for (i = 0; i < 8; i += 2, x--) {
-        c = BmpConvertFrom2Bits(b & 0x03, realDepth, NULL, true);
-        WinLegacyDrawPixel(module, realDepth, c, x, y);
-        b >>= 2;
-      }
-      break;
-    case 4:
-      cols = 160 / 2;
-      x = (offset % cols) * 2 + 1;
-      y = offset / cols;
-      b = value;
-      for (i = 0; i < 8; i += 4, x--) {
-        c = BmpConvertFrom4Bits(b & 0x0f, realDepth, NULL, true);
-        WinLegacyDrawPixel(module, realDepth, c, x, y);
-        b >>= 4;
-      }
-      break;
+        break;
+    }
   }
 
   module->activeWindow = oldActive;

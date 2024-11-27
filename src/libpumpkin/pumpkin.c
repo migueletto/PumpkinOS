@@ -125,7 +125,7 @@ typedef struct {
   int penX, penY, buttons;
   int nativeKeys;
   int lockable;
-  int v10;
+  int osversion;
   int m68k;
   char name[dmDBNameLength];
   uint32_t alarm_time;
@@ -1125,6 +1125,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         pumpkin_set_compat(creator, appCompatOk, 0);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
+            pumpkin_set_osversion(5);
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
@@ -3933,14 +3934,17 @@ UInt16 *SysLibGetDispatch68K(UInt16 refNum) {
   return dispatch;
 }
 
-void pumpkin_set_v10(void) {
+void pumpkin_set_osversion(int v) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  task->v10 = 1;
+  if (task) {
+    task->osversion = v;
+    debug(DEBUG_INFO, PUMPKINOS, "set os version %d", v);
+  }
 }
 
-int pumpkin_is_v10(void) {
+int pumpkin_get_osversion(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  return task->v10;
+  return task ? task->osversion : 0;
 }
 
 void pumpkin_set_m68k(int m68k) {

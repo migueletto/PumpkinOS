@@ -396,6 +396,9 @@ Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Bool
   return offset;
 }
 
+// Finds the length in bytes of the characters from a specified string that fit within a passed width.
+// Trailing spaces or tabs are stripped by this function.
+
 void FntCharsInWidth(Char const *string, Int16 *stringWidthP, Int16 *stringLengthP, Boolean *fitWithinWidth) {
   FontType *f;
   UInt32 wch;
@@ -403,16 +406,16 @@ void FntCharsInWidth(Char const *string, Int16 *stringWidthP, Int16 *stringLengt
   char ch, *s;
 
   if (string && stringWidthP && stringLengthP && fitWithinWidth) {
-    for (i = 0; string[i]; i++) {
+    for (i = *stringLengthP-1; i >= 0; i--) {
       if (string[i] != ' ' || string[i] != '\t') break;
     }
-    s = (char *)&string[i];
+    s = (char *)string;
+    *stringLengthP = i + 1;
 
-    for (i = 0, lineWidth = 0; i < *stringLengthP && s[i]; i++) {
+    for (i = 0, lineWidth = 0; i < *stringLengthP && s[i];) {
       i += pumpkin_next_char((UInt8 *)s, i, *stringLengthP, &wch);
       ch = pumpkin_map_char(wch, &f);
       tw = FntFontCharWidth(f, ch);
-
       if (lineWidth + tw > *stringWidthP) break;
       lineWidth += tw;
     }
@@ -804,16 +807,25 @@ UInt16 FntGetDensity(FontType *f, UInt16 index) {
 }
 
 UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult, Coord x, Coord y) {
+  WinHandle drawWindow, activeWindow, displayWindow;
   FontTypeV2 *f2;
   RectangleType rect;
   UInt32 col, width = 0;
 
   if (f) {
+    drawWindow = WinGetDrawWindow();
+    activeWindow = WinGetActiveWindow();
+    displayWindow = WinGetDisplayWindow();
+
     if (f->v == 1) {
       if (ch >= f->firstChar && ch <= f->lastChar) {
         col = f->column[ch - f->firstChar];
         RctSetRectangle(&rect, col, 0, f->width[ch - f->firstChar], f->fRectHeight);
-        WinBlitBitmap(f->bmp, WinGetDrawWindow(), &rect, x, y, WinGetDrawMode(), true);
+        WinBlitBitmap(f->bmp, drawWindow, &rect, x, y, WinGetDrawMode(), true);
+        if (drawWindow == activeWindow && drawWindow != displayWindow) {
+          WinConvertToDisplay(drawWindow, &x, &y);
+          //WinBlitBitmap(f->bmp, displayWindow, &rect, x, y, WinGetDrawMode(), true);
+        }
         width = f->width[ch - f->firstChar];
       } else {
         debug(DEBUG_ERROR, "Font", "missing symbol 0x%04X", wch);
@@ -824,7 +836,11 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
       if (ch >= f2->firstChar && ch <= f2->lastChar) {
         col = f2->column[ch - f2->firstChar]*mult;
         RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
-        WinBlitBitmap(f2->bmp[index], WinGetDrawWindow(), &rect, x, y, WinGetDrawMode(), true);
+        WinBlitBitmap(f2->bmp[index], drawWindow, &rect, x, y, WinGetDrawMode(), true);
+        if (drawWindow == activeWindow && drawWindow != displayWindow) {
+          WinConvertToDisplay(drawWindow, &x, &y);
+          //WinBlitBitmap(f2->bmp[index], displayWindow, &rect, x, y, WinGetDrawMode(), true);
+        }
         width = f2->width[ch - f2->firstChar]*mult;
       } else {
         debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);

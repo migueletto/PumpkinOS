@@ -2314,7 +2314,7 @@ case sysTrapFntCharsInWidth: {
   if (stringWidthP) m68k_write_memory_16(stringWidthP, l_stringWidthP);
   if (stringLengthP) m68k_write_memory_16(stringLengthP, l_stringLengthP);
   if (fitWithinWidth) m68k_write_memory_8(fitWithinWidth, l_fitWithinWidth);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FntCharsInWidth(string=0x%08X [%s], stringWidthP=0x%08X [%d], stringLengthP=0x%08X [%d], fitWithinWidth=0x%08X)", string, s_string, stringWidthP, l_stringWidthP, stringLengthP, l_stringLengthP, fitWithinWidth);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FntCharsInWidth(string=0x%08X [%s], stringWidthP=0x%08X [%d], stringLengthP=0x%08X [%d], fitWithinWidth=0x%08X [%d])", string, s_string, stringWidthP, l_stringWidthP, stringLengthP, l_stringLengthP, fitWithinWidth, l_fitWithinWidth);
 }
 break;
 case sysTrapFntDescenderHeight: {
