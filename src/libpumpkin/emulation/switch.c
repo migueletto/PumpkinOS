@@ -1852,7 +1852,7 @@ case sysTrapWinDrawChars: {
   int16_t x = ARG16;
   int16_t y = ARG16;
   if (s_chars) WinDrawChars(s_chars, len, x, y);
-  debug(DEBUG_TRACE, "EmuPalmOS", "WinDrawChars(chars=0x%08X %p [%s], len=%d, x=%d, y=%d)", chars, s_chars, s_chars, len, x, y);
+  debug(DEBUG_TRACE, "EmuPalmOS", "WinDrawChars(chars=0x%08X %p [%.*s], len=%d, x=%d, y=%d)", chars, s_chars, len, s_chars, len, x, y);
 }
 break;
 case sysTrapWinPaintChar: {
@@ -2278,7 +2278,7 @@ case sysTrapFntCharsWidth: {
   int16_t len = ARG16;
   Int16 res = s_chars ? FntCharsWidth(s_chars, len) : 0;
   m68k_set_reg(M68K_REG_D0, res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FntCharsWidth(chars=0x%08X [%s], len=%d): %d", chars, s_chars, len, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FntCharsWidth(chars=0x%08X [%.*s], len=%d): %d", chars, len, s_chars, len, res);
 }
 break;
 case sysTrapFntWidthToOffset: {
