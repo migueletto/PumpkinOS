@@ -269,7 +269,7 @@ uint16_t cpu_read_word(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (address >= state->screenStart && address < state->screenEnd - 1) {
       value = WinLegacyRead(address - state->screenStart);
       value <<= 8;
       value |= WinLegacyRead(address - state->screenStart + 1);
@@ -294,6 +294,7 @@ uint32_t cpu_read_long(uint32_t address) {
     if (state->m68k_state.s_m68ki_cpu.palmos) {
       switch (address) {
         case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
+          pumpkin_set_osversion(10, 1);
           WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
           value = state->screenStart;
           debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
@@ -307,7 +308,7 @@ uint32_t cpu_read_long(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (address >= state->screenStart && address < state->screenEnd - 3) {
       value = WinLegacyRead(address - state->screenStart);
       value <<= 24;
       b = WinLegacyRead(address - state->screenStart + 1);
@@ -359,7 +360,7 @@ void cpu_write_word(uint32_t address, uint16_t value) {
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (address >= state->screenStart && address < state->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
       WinLegacyWrite(address - state->screenStart,     (value >> 8) & 0xff);
       WinLegacyWrite(address - state->screenStart + 1,  value       & 0xff);
@@ -381,7 +382,7 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (address >= state->screenStart && address < state->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
       WinLegacyWrite(address - state->screenStart,     (value >> 24) & 0xff);
       WinLegacyWrite(address - state->screenStart + 1, (value >> 16) & 0xff);

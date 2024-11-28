@@ -72,6 +72,7 @@ uint32_t palmos_systrap(uint16_t trap) {
   if (palmos_systrap_gen(trap)) {
     debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X end (gen)", trap);
     pumpkin_debug_check();
+    pumpkin_trace(trap);
     return 0;
   }
 
@@ -2982,6 +2983,7 @@ uint32_t palmos_systrap(uint16_t trap) {
   }
 
   debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X end (int)", trap);
+  pumpkin_trace(trap);
 
   //pumpkin_debug_check();
   return r;

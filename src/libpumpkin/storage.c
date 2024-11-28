@@ -2757,7 +2757,7 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
       mutex_unlock(sto->mutex);
     }
   }
-  pumpkin_set_osversion(2);
+  pumpkin_set_osversion(20, 0);
 
   StoCheckErr(err);
   return pos;
@@ -2765,7 +2765,7 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
 
 UInt16 DmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other) {
   UInt16 r = DmFindSortPosition(dbP, newRecord, NULL, compar, other);
-  pumpkin_set_osversion(1);
+  pumpkin_set_osversion(10, 1);
   return r;
 }
 

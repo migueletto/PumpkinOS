@@ -538,7 +538,7 @@ UInt16 SysBatteryInfo(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalThres
     if (pluggedIn) *pluggedIn = true;
     if (percentP) *percentP = pumpkin_get_battery();
   }
-  pumpkin_set_osversion(3);
+  pumpkin_set_osversion(30, 0);
 
   return 370;
 }
@@ -551,7 +551,7 @@ UInt16 SysBatteryInfoV20(Boolean set, UInt16 *warnThresholdP, UInt16 *criticalTh
     if (kindP) *kindP = sysBatteryKindLiIon;
     if (pluggedIn) *pluggedIn = true;
   }
-  pumpkin_set_osversion(2);
+  pumpkin_set_osversion(20, 0);
 
   return 370;
 }

@@ -284,6 +284,8 @@ void *pumpkin_get_data(void);
 void pumpkin_set_subdata(void *data);
 void *pumpkin_get_subdata(void);
 
+void pumpkin_trace(uint16_t trap);
+
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
 BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t type, int chain, uint32_t *dsize);
@@ -346,7 +348,7 @@ void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Bo
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
 
-void pumpkin_set_osversion(int v);
+void pumpkin_set_osversion(int version, int overwrite);
 int pumpkin_get_osversion(void);
 void pumpkin_set_m68k(int m68k);
 int pumpkin_is_m68k(void);

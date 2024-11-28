@@ -91,7 +91,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         case sysFtrNumWinVersion:
-          pumpkin_set_osversion(4);
+          pumpkin_set_osversion(40, 0);
           *valueP = pumpkin_default_density() == kDensityDouble ? 4 : 3;
           err = errNone;
           break;

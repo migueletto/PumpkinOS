@@ -1855,14 +1855,16 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             }
             break;
           case 4:
+            colorTable = BmpGetColortable(bitmapP);
+            if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
             offset = sy * rowBytes + sx / 2;
             for (i = 0; i < h; i++, offset += rowBytes) {
               offsetb = (sx % 2) << 2;
               k = 0;
               for (j = 0; j < w; j++) {
                 b = (bits[offset + k] & (0xf << (4-offsetb))) >> (4-offsetb);
-                gray = gray4values[b];
-                c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
+                BmpIndexToRGB(b, &red, &green, &blue, colorTable);
+                c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
                 surface->setpixel(surface->data, x+j, y+i, c);
                 offsetb += 4;
                 if (offsetb == 8) {
@@ -2227,12 +2229,14 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winErase:        // write backColor if the source pixel is transparent
       if (transp) {
-        BmpSetBit2(offset, mask, dataSize, 0x03, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit2(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winMask:         // write backColor if the source pixel is not transparent
       if (!transp) {
-        BmpSetBit2(offset, mask, dataSize, 0x03, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit2(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
@@ -2245,7 +2249,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       }
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
-      BmpSetBit2(offset, mask, dataSize, b ^ 0x03, dbl);
+      BmpSetBit2(offset, mask, dataSize, b ^ mask, dbl);
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
@@ -2265,17 +2269,12 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
     bits[offset] |= (b); \
   }
 
-#define BmpSetBit4pd(offset, dataSize, b) \
-  if (offset < dataSize) { \
-    bits[offset] = b; \
-  }
-
 #define BmpSetBit4(offset, mask, dataSize, b, dbl) \
+  BmpSetBit4p(offset, mask, dataSize, b); \
   if (dbl) { \
-    BmpSetBit4pd(offset, dataSize, b); \
-    BmpSetBit4pd(offset+rowBytes, dataSize, b); \
-  } else { \
-    BmpSetBit4p(offset, mask, dataSize, b); \
+    BmpSetBit4p(offset, mask>>4, dataSize, b>>4); \
+    BmpSetBit4p(offset+rowBytes, mask, dataSize, b); \
+    BmpSetBit4p(offset+rowBytes, mask>>4, dataSize, b>>4); \
   }
 
 static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
@@ -2283,32 +2282,13 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   UInt32 offset, shift, dataSize;
   UInt16 rowBytes;
 
-  // even column -> 4 MSB, odd column -> 4 LSB
-  // b = 0x03
-  // dx = 0 (even)
-  // shift = (0 & 1) ? 0 : 4
-  // shift = 0 ? 0 : 4
-  // shift = 4
-  // b = 0x03 << 4
-  // b = 0x30
-  // mask = (0x0F << 4)
-  // mask = 0xF0
-  // bits[offset] &= ~(0xF0)
-  // bits[offset] &= 0x0F
-  // bits[offset] |= 0x30
-
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
   bits = BmpGetBits(dst);
   offset = dy * rowBytes + (dx >> 1);
-  if (dbl) {
-    b |= b << 4;
-    mask = 0;
-  } else {
-    shift = (dx & 0x01) ? 0 : 4;
-    b = b << shift;
-    mask = (0x0F << shift);
-  }
+  shift = (dx & 0x01) ? 0 : 4;
+  b = b << shift;
+  mask = (0x0F << shift);
 
   switch (mode) {
     case winPaint:        // write color-matched source pixels to the destination
@@ -2319,12 +2299,14 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winErase:        // write backColor if the source pixel is transparent
       if (transp) {
-        BmpSetBit4(offset, mask, dataSize, 0x0F, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit4(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winMask:         // write backColor if the source pixel is not transparent
       if (!transp) {
-        BmpSetBit4(offset, mask, dataSize, 0x0F, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit4(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
@@ -2337,7 +2319,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       }
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
-      BmpSetBit4(offset, mask, dataSize, b ^ 0x0f, dbl);
+      BmpSetBit4(offset, mask, dataSize, b ^ mask, dbl);
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.

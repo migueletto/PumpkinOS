@@ -126,6 +126,7 @@ typedef struct {
   int nativeKeys;
   int lockable;
   int osversion;
+  int tracing;
   int m68k;
   char name[dmDBNameLength];
   uint32_t alarm_time;
@@ -1125,7 +1126,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         pumpkin_set_compat(creator, appCompatOk, 0);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
-            pumpkin_set_osversion(5);
+            pumpkin_set_osversion(50, 1);
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
@@ -1168,6 +1169,8 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
     } else {
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
+//pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+//task->tracing = 1;
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
         r = pumpkin_pilotmain(request->name, emupalmos_main, request->code, request->param, request->flags);
@@ -3934,11 +3937,62 @@ UInt16 *SysLibGetDispatch68K(UInt16 refNum) {
   return dispatch;
 }
 
-void pumpkin_set_osversion(int v) {
+void pumpkin_trace(uint16_t trap) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task && task->tracing) {
+    switch (trap) {
+      case sysTrapWinCopyRectangle:
+      case sysTrapWinDrawBitmap:
+      case sysTrapWinDrawChar:
+      case sysTrapWinDrawChars:
+      case sysTrapWinDrawGrayLine:
+      case sysTrapWinDrawGrayRectangleFrame:
+      case sysTrapWinDrawInvertedChars:
+      case sysTrapWinDrawLine:
+      case sysTrapWinDrawPixel:
+      case sysTrapWinDrawRectangle:
+      case sysTrapWinDrawRectangleFrame:
+      case sysTrapWinDrawTruncChars:
+      case sysTrapWinDrawWindowFrame:
+      case sysTrapWinEraseChars:
+      case sysTrapWinEraseLine:
+      case sysTrapWinErasePixel:
+      case sysTrapWinEraseRectangle:
+      case sysTrapWinEraseRectangleFrame:
+      case sysTrapWinEraseWindow:
+      case sysTrapWinFillLine:
+      case sysTrapWinFillRectangle:
+      case sysTrapWinInvertChars:
+      case sysTrapWinInvertLine:
+      case sysTrapWinInvertPixel:
+      case sysTrapWinInvertRectangle:
+      case sysTrapWinInvertRectangleFrame:
+      case sysTrapWinPaintBitmap:
+      case sysTrapWinPaintChar:
+      case sysTrapWinPaintChars:
+      case sysTrapWinPaintLine:
+      case sysTrapWinPaintLines:
+      case sysTrapWinPaintPixel:
+      case sysTrapWinPaintPixels:
+      case sysTrapWinPaintRectangle:
+      case sysTrapWinPaintRectangleFrame:
+      case sysTrapWinRestoreBits:
+      case sysTrapWinScrollRectangle:
+        debug(DEBUG_INFO, PUMPKINOS, "tracing 0x%04X", trap);
+        SysTaskDelay(20);
+        break;
+    }
+  }
+}
+
+void pumpkin_set_osversion(int version, int overwrite) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   if (task) {
-    task->osversion = v;
-    debug(DEBUG_INFO, PUMPKINOS, "set os version %d", v);
+    if (version > task->osversion || overwrite) {
+      task->osversion = version;
+      debug(DEBUG_INFO, PUMPKINOS, "set os version %d", version);
+    }
   }
 }
 

@@ -824,7 +824,7 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         WinBlitBitmap(f->bmp, drawWindow, &rect, x, y, WinGetDrawMode(), true);
         if (drawWindow == activeWindow && drawWindow != displayWindow) {
           WinConvertToDisplay(drawWindow, &x, &y);
-          //WinBlitBitmap(f->bmp, displayWindow, &rect, x, y, WinGetDrawMode(), true);
+          WinBlitBitmap(f->bmp, displayWindow, &rect, x, y, WinGetDrawMode(), true);
         }
         width = f->width[ch - f->firstChar];
       } else {
@@ -839,7 +839,7 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         WinBlitBitmap(f2->bmp[index], drawWindow, &rect, x, y, WinGetDrawMode(), true);
         if (drawWindow == activeWindow && drawWindow != displayWindow) {
           WinConvertToDisplay(drawWindow, &x, &y);
-          //WinBlitBitmap(f2->bmp[index], displayWindow, &rect, x, y, WinGetDrawMode(), true);
+          WinBlitBitmap(f2->bmp[index], displayWindow, &rect, x, y, WinGetDrawMode(), true);
         }
         width = f2->width[ch - f2->firstChar]*mult;
       } else {
