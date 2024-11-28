@@ -38,7 +38,7 @@ typedef struct {
   edit_mode_t mode;
   UInt8 color1, color2, color4, color8;
   RGBColorType rgb;
-  Boolean down, drag, transpPixel, stop;
+  Boolean down, drag, transpPixel;
 } bmp_edit_t;
 
 static const UInt8 gray1[2]  = {0xff, 0x00};
@@ -827,10 +827,6 @@ static Boolean eventHandler(EventType *event) {
       data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
 
       switch (event->data.ctlSelect.controlID) {
-        case okBtn:
-          data->stop = true;
-          handled = true;
-          break;
         case nextCtl:
         case prevCtl:
           changed = false;
