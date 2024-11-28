@@ -284,6 +284,15 @@ void *pumpkin_get_data(void);
 void pumpkin_set_subdata(void *data);
 void *pumpkin_get_subdata(void);
 
+typedef enum {
+  dirtyRegionDisable,
+  dirtyRegionEnable,
+  dirtyRegionBegin,
+  dirtyRegionEnd
+} dirty_region_e;
+
+void pumpkin_dirty_region_mode(dirty_region_e d);
+
 void pumpkin_trace(uint16_t trap);
 
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);

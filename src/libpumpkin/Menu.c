@@ -330,6 +330,8 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             pd = &menuP->menus[menuP->selectedMenu];
             if (RctPtInRectangle(event->screenX, event->screenY, &pd->titleBounds)) {
               debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp inside pullDown %d", menuP->selectedMenu);
+              pumpkin_dirty_region_mode(dirtyRegionBegin);
+              pumpkin_dirty_region_mode(dirtyRegionDisable);
               if (menuP->selectedMenu == menuP->curMenu) {
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp selected is current");
                 if (pd->hidden) {
@@ -354,6 +356,8 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 menu_show_pd(menuP, pd);
                 pd->hidden = 0;
               }
+              pumpkin_dirty_region_mode(dirtyRegionEnable);
+              pumpkin_dirty_region_mode(dirtyRegionEnd);
               handled = true;
             }
             menuP->selectedMenu = -1;
@@ -423,6 +427,9 @@ void MenuDrawMenu(MenuBarType *menuP) {
 
   if (!menuP) return;
 
+  pumpkin_dirty_region_mode(dirtyRegionBegin);
+  pumpkin_dirty_region_mode(dirtyRegionDisable);
+
   debug(DEBUG_TRACE, "Menu", "MenuDrawMenu");
   menuP->savedActiveWin = WinGetActiveWindow();
 
@@ -457,6 +464,9 @@ void MenuDrawMenu(MenuBarType *menuP) {
 
   WinSetBackColor(oldb);
   WinSetActiveWindow(menuP->barWin);
+
+  pumpkin_dirty_region_mode(dirtyRegionEnable);
+  pumpkin_dirty_region_mode(dirtyRegionEnd);
 }
 
 void MenuEraseStatus(MenuBarType *menuP) {

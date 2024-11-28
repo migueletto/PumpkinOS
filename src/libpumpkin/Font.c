@@ -822,10 +822,12 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         col = f->column[ch - f->firstChar];
         RctSetRectangle(&rect, col, 0, f->width[ch - f->firstChar], f->fRectHeight);
         WinBlitBitmap(f->bmp, drawWindow, &rect, x, y, WinGetDrawMode(), true);
+/*
         if (drawWindow == activeWindow && drawWindow != displayWindow) {
           WinConvertToDisplay(drawWindow, &x, &y);
           WinBlitBitmap(f->bmp, displayWindow, &rect, x, y, WinGetDrawMode(), true);
         }
+*/
         width = f->width[ch - f->firstChar];
       } else {
         debug(DEBUG_ERROR, "Font", "missing symbol 0x%04X", wch);
@@ -837,10 +839,12 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         col = f2->column[ch - f2->firstChar]*mult;
         RctSetRectangle(&rect, col, 0, f2->width[ch - f2->firstChar]*mult, f2->fRectHeight*mult);
         WinBlitBitmap(f2->bmp[index], drawWindow, &rect, x, y, WinGetDrawMode(), true);
+/*
         if (drawWindow == activeWindow && drawWindow != displayWindow) {
           WinConvertToDisplay(drawWindow, &x, &y);
           WinBlitBitmap(f2->bmp[index], displayWindow, &rect, x, y, WinGetDrawMode(), true);
         }
+*/
         width = f2->width[ch - f2->firstChar]*mult;
       } else {
         debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
