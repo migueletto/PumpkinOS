@@ -67,7 +67,7 @@ uint32_t palmos_systrap(uint16_t trap) {
   // MathLib seems to use trap numbers like 0x0306 instead of 0xA306.
   trap = (trap & 0x0FFF) | 0xA000;
   s = trapName(trap, &selector, 0);
-  debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X begin (%s)", trap, s ? s : "unknown");
+  debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X begin (%s) pc=0x%08X", trap, s ? s : "unknown", m68k_get_reg(NULL, M68K_REG_PC));
 
   if (palmos_systrap_gen(trap)) {
     debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X end (gen)", trap);

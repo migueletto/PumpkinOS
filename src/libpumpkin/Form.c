@@ -1195,7 +1195,6 @@ void FrmDrawForm(FormType *formP) {
   if (formP) {
     debug(DEBUG_TRACE, "Form", "FrmDrawForm %d", formP->formId);
     pumpkin_dirty_region_mode(dirtyRegionBegin);
-    pumpkin_dirty_region_mode(dirtyRegionDisable);
 
     // if this is not done, SimCity draws scrollbars in white
     formFill = UIColorGetTableEntryIndex(UIFormFill);
@@ -1229,7 +1228,6 @@ void FrmDrawForm(FormType *formP) {
     WinSetDrawWindow(oldd);
     WinSetActiveWindow(olda);
 
-    pumpkin_dirty_region_mode(dirtyRegionEnable);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }

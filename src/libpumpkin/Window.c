@@ -37,7 +37,7 @@ typedef struct {
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
-  int dirty_region_disabled;
+  int dirty_level;
   Coord x1, y1, x2, y2;
   DrawStateType state[DrawStateStackSize];
   UInt8 fullCcolorTable[2 + 256 * 4];
@@ -806,23 +806,21 @@ void pumpkin_dirty_region_mode(dirty_region_e d) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   switch (d) {
-    case dirtyRegionDisable:
-      module->dirty_region_disabled++;
-      break;
-    case dirtyRegionEnable:
-      if (module->dirty_region_disabled) module->dirty_region_disabled--;
-      break;
     case dirtyRegionBegin:
-      if (!module->dirty_region_disabled) {
+      if (module->dirty_level == 0) {
         module->x1 = 32767;
         module->x2 = 0;
         module->y1 = 32767;
         module->y2 = 0;
       }
+      module->dirty_level++;
       break;
     case dirtyRegionEnd:
-      if (!module->dirty_region_disabled && module->x1 <= module->x2 && module->y1 <= module->y2) {
-        pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
+      module->dirty_level--;
+      if (module->dirty_level == 0) {
+        if (module->x1 <= module->x2 && module->y1 <= module->y2) {
+          pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2, module->y2);
+        }
       }
       break;
   }
@@ -833,6 +831,7 @@ static void pumpkin_dirty_region_coords(win_module_t *module, Coord x1, Coord y1
   if (x2 > module->x2) module->x2 = x2;
   if (y1 < module->y1) module->y1 = y1;
   if (y2 > module->y2) module->y2 = y2;
+//debug(1, "XXX", "coords %d %d %d %d", x1, y1, x2, y2);
 }
 
 static void WinPutBit(win_module_t *module, UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation mode, Boolean dbl) {
@@ -851,7 +850,8 @@ static void WinCopyBit(win_module_t *module, BitmapType *src, Coord sx, Coord sy
   }
 }
 
-#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
+//#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
+#define CLIP_OK(left,right,top,bottom,x,y) (((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 
 static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
@@ -1178,6 +1178,8 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
   cornerDiam = (cornerDiam + 1) / 2;
 
   if (rP && cornerDiam >= 0 && rP->extent.x > 0 && rP->extent.y > 0) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     x1 = rP->topLeft.x;
     y1 = rP->topLeft.y;
     x2 = x1 + rP->extent.x - 1;
@@ -1209,6 +1211,7 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
           }
         }
       }
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
       return;
     }
 
@@ -1266,6 +1269,8 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
       }
       d++;
     }
+
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
 

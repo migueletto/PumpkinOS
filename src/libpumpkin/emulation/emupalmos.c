@@ -1572,6 +1572,8 @@ static void print_regs(void) {
 }
 */
 
+//static int aaa = 0;
+
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
@@ -1597,6 +1599,9 @@ static int cpu_instr_callback(unsigned int pc) {
     emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
     return -1;
   }
+
+//if (pc == 0x0006BED8) aaa = 1;
+//else if (pc == 0x0006BEDA) aaa = 0;
 
   if (debug_on) {
     instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68020);

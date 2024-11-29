@@ -285,8 +285,6 @@ void pumpkin_set_subdata(void *data);
 void *pumpkin_get_subdata(void);
 
 typedef enum {
-  dirtyRegionDisable,
-  dirtyRegionEnable,
   dirtyRegionBegin,
   dirtyRegionEnd
 } dirty_region_e;
