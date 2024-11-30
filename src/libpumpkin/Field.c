@@ -154,7 +154,7 @@ static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt
 }
 
 void FldDrawField(FieldType *fldP) {
-  RectangleType rect, aux;
+  RectangleType rect, aux, clip;
   IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt;
   WinDrawOperation prev;
   UInt16 start, len, th, x, y, j;
@@ -194,10 +194,11 @@ void FldDrawField(FieldType *fldP) {
         len = fldP->lines[fldP->top + j].length;
 
         // draw line of text, except the LAST line of pixels, using winPaint
+        WinGetClip(&clip);
         WinSetClip(&aux);
         FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, fieldBackHigh,
           fldP->selLastPos > fldP->selFirstPos && fldP->selFirstPos <= (start + len) && fldP->selLastPos > start);
-        WinResetClip();
+        WinSetClip(&clip);
 
         // draw the LAST line of pixels, using winOverlay, so that letters like "j" and "g"
         // are drawn on top of the gray line
@@ -206,7 +207,7 @@ void FldDrawField(FieldType *fldP) {
         prev = WinSetDrawMode(winOverlay);
         FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, 0, false);
         WinSetDrawMode(prev);
-        WinResetClip();
+        WinSetClip(&clip);
 
         // erase the remainder of the Field width
         x = len ? FntCharsWidth(&fldP->text[start], len) : 0;
