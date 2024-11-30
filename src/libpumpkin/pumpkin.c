@@ -33,15 +33,12 @@
 #include "calibrate.h"
 #include "color.h"
 #include "rgb.h"
-//#include "dbg.h"
 #include "debug.h"
 #include "xalloc.h"
 
 #ifndef DEFAULT_DENSITY
 #define DEFAULT_DENSITY kDensityDouble
 #endif
-//#undef DEFAULT_DENSITY
-//#define DEFAULT_DENSITY kDensityLow
 
 #ifndef DEFAULT_DEPTH
 #define DEFAULT_DEPTH 16
@@ -1249,7 +1246,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   LocalID dbID;
   UInt32 language;
   UInt16 size, depth;
-  //char screator[8];
+  char screator[8];
   uint32_t color;
   int j, ptr;
 
@@ -1353,20 +1350,21 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   language = PrefGetPreference(prefLanguage);
   task->lang = LanguageInit(language);
 
-/*
   switch (creator) {
-    case 'BiKD':
-      pumpkin_id2s(creator, screator);
-      debug(DEBUG_INFO, PUMPKINOS, "forcing 8bpp display for %s", screator);
+    // XXX take these creators from the registry
+    case 'MePt':
       depth = 8;
       break;
     default:
       depth = DEFAULT_DEPTH;
       break;
   }
-*/
 
-  depth = DEFAULT_DEPTH;
+  if (depth != DEFAULT_DEPTH) {
+    pumpkin_id2s(creator, screator);
+    debug(DEBUG_INFO, PUMPKINOS, "forcing 8bpp display for %s", screator);
+  }
+
   UicInitModule();
   WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
   FntInitModule(DEFAULT_DENSITY);
@@ -2414,7 +2412,6 @@ int pumpkin_sys_event(void) {
 
   for (;;) {
     if (thread_must_end()) return -1;
-    //dbg_poll();
     paused = pumpkin_is_paused();
     wait = paused ? 100 : 1;
     ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2);
