@@ -3578,6 +3578,8 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   realDepth = BmpGetBitDepth(bitmapP);
 
   if (pumpkin_get_osversion() <= 30) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     switch (module->legacyDepth) {
       case 1:
         cols = 160 / 8;
@@ -3613,6 +3615,8 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
         }
         break;
     }
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
+
   } else {
     switch (realDepth) {
       case 8:
