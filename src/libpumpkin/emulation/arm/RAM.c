@@ -40,6 +40,10 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 				break;
 			
 			case 4:
+//{
+//uint32_t value = sys_htole32(*(uint32_t*)bufP);
+//debug(1, "XXX", "write 0x%08X 0x%08X", value, pa);
+//}
 			
 				*((uint32_t*)addr) = sys_htole32(*(uint32_t*)bufP);
 				break;
@@ -82,6 +86,10 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 			case 4:
 			
 				*(uint32_t*)bufP = sys_le32toh(*((uint32_t*)addr));
+//{
+//uint32_t value = *(uint32_t*)bufP;
+//debug(1, "XXX", "read  0x%08X 0x%08X", value, pa);
+//}
 				break;
 			
 			case 64:

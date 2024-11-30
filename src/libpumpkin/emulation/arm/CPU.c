@@ -1867,7 +1867,7 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 	    //uint32_t r1 = cpu->regs[1];
 	    //uint32_t r12 = cpu->regs[12];
       //char buf[64];
-      //sys_snprintf(buf, sizeof(buf)-1, "r1=0x%08X r12=0x%08X", r1, r12);
+      //sys_snprintf(buf, sizeof(buf)-1, "(r1=0x%08X r12=0x%08X)", r1, r12);
       disasm(pc, instr, NULL);
     }
 		cpu->regs[REG_NO_PC] += 4;
