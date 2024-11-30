@@ -17,7 +17,6 @@
 #include "m68k/m68kcpu.h"
 #include "emupalmos.h"
 #include "trapnames.h"
-//#include "dbg.h"
 #include "debug.h"
 
 // not mapped:
@@ -901,7 +900,6 @@ uint32_t palmos_systrap(uint16_t trap) {
       UInt16 error;
       BitmapType *bitmap = (BitmapType *)emupalmos_trap_in(bitmapP, trap, 0);
       WinHandle wh = WinCreateBitmapWindow(bitmap, &error);
-      //if (wh) dbg_add(1, wh->bitmapP);
       if (errorP) m68k_write_memory_16(errorP, error);
       uint32_t w = emupalmos_trap_out(wh);
       debug(DEBUG_TRACE, "EmuPalmOS", "WinCreateBitmapWindow(0x%08X, 0x%08X [%d]): 0x%08X", bitmapP, errorP, error, w);
@@ -917,7 +915,6 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(errorP, trap, 3);
       UInt16 error;
       WinHandle wh = WinCreateOffscreenWindow(width, height, format, errorP ? &error : NULL);
-      //if (wh) dbg_add(1, wh->bitmapP);
       if (errorP) m68k_write_memory_16(errorP, error);
       uint32_t w = emupalmos_trap_out(wh);
       debug(DEBUG_TRACE, "EmuPalmOS", "WinCreateOffscreenWindow(%d, %d, %d, 0x%08X [%d]): 0x%08X", width, height, format, errorP, error, w);
@@ -929,7 +926,6 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t w = ARG32;
       uint8_t eraseIt = ARG8;
       WinHandle wh = (WinHandle)emupalmos_trap_in(w, trap, 0);
-      //if (wh) dbg_delete(wh->bitmapP);
       debug(DEBUG_TRACE, "EmuPalmOS", "WinDeleteWindow(0x%08X, %d) ...", w, eraseIt);
       WinDeleteWindow(wh, eraseIt);
       debug(DEBUG_TRACE, "EmuPalmOS", "WinDeleteWindow(0x%08X, %d)", w, eraseIt);
