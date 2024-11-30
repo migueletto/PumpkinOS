@@ -208,7 +208,7 @@ void palmos_highdensitytrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       if (xP) m68k_write_memory_16(xP, x);
       if (yP) m68k_write_memory_16(yP, y);
       if (downP) m68k_write_memory_8(downP, down);
-      debug(DEBUG_TRACE, "EmuPalmOS", "EvtGetPenNative(0x%08X, 0x%08X, 0x%08X, 0x%08X)", w, xP, yP, downP);
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtGetPenNative(0x%08X, 0x%08X [%d], 0x%08X [%d], 0x%08X [%d])", w, xP, x, yP, y, downP, down);
     }
       break;
     case HDSelectorWinScaleCoord: {
