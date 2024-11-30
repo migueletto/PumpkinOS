@@ -2173,9 +2173,9 @@ case sysTrapBmpGetDimensions: {
   uint32_t bitmapP = ARG32;
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   uint32_t widthP = ARG32;
-  Coord l_widthP;
+  Coord l_widthP = 0;
   uint32_t heightP = ARG32;
-  Coord l_heightP;
+  Coord l_heightP = 0;
   uint32_t rowBytesP = ARG32;
   UInt16 l_rowBytesP;
   BmpGetDimensions(bitmapP ? l_bitmapP : NULL, widthP ? &l_widthP : NULL, heightP ? &l_heightP : NULL, rowBytesP ? &l_rowBytesP : NULL);
