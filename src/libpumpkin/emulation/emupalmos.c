@@ -453,7 +453,7 @@ void encode_appinfo(uint32_t appInfoP, AppInfoType *appInfo) {
 
 void decode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
-  uint32_t a;
+  uint32_t a, i;
   char buf[256];
 
   MemSet(event, sizeof(EventType), 0);
@@ -641,6 +641,11 @@ void decode_event(uint32_t eventP, EventType *event) {
       if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
+      } else {
+        // 68K PalmOS EventType is 24 bytes long
+        for (i = 0; i < 24; i++) {
+          event->data.buffer[i] = m68k_read_memory_8 (eventP + 8 + i);
+        }
       }
       break;
   }
@@ -661,7 +666,7 @@ void encode_gadget(uint32_t gadgetP, FormGadgetType *gadget) {
 
 void encode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
-  uint32_t a;
+  uint32_t a, i;
   char buf[256];
 
   m68k_write_memory_16(eventP + 0, event->eType);
@@ -834,6 +839,10 @@ void encode_event(uint32_t eventP, EventType *event) {
       if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
         sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
+      } else {
+        for (i = 0; i < 24; i++) {
+          m68k_write_memory_8 (eventP + 8 + i, event->data.buffer[i]);
+        }
       }
       break;
   }
@@ -1510,7 +1519,7 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   armSetReg(state->arm, 2, callAddr);
 
   for (; !emupalmos_finished();) {
-    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr, 0)) break;
   }
 
   pumpkin_heap_free(returnAddr, "returnAddr");
