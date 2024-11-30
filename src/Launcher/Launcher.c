@@ -2361,7 +2361,7 @@ Int16 getControlValue(FormType *frm, UInt16 ctlId) {
 }
 
 void showDynamicForm(const dynamic_form_item_t *items, char *title, void (*callback)(FormType *frm, dynamic_form_phase_t phase, void *data), void *data) {
-  FormType *previous, *formP;
+  FormType *formP;
   UInt16 formW, formH, x, y, width, height, id;
   UInt8 group;
   FontID old;
@@ -2430,14 +2430,12 @@ void showDynamicForm(const dynamic_form_item_t *items, char *title, void (*callb
     width = FntCharsWidth("<Cancel>", 8);
     CtlNewControl((void **)&formP, 3002, buttonCtl, "Cancel", x, y, width, height+2, stdFont, 0, true);
      
-    previous = FrmGetActiveForm();
     callback(formP, setProperties, data);
     r = FrmDoDialog(formP);
     if (r == 3001) {
       callback(formP, getProperties, data);
     }
     FrmDeleteForm(formP);
-    FrmSetActiveForm(previous);
     callback(formP, finishForm, data);
   }
 }
