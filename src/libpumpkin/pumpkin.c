@@ -1242,13 +1242,14 @@ void pumpkin_calibrate(int restore) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *name, int width, int height, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
   LocalID dbID;
   UInt32 language;
-  UInt16 size;
+  UInt16 size, depth;
+  //char screator[8];
   uint32_t color;
   int j, ptr;
 
@@ -1352,8 +1353,22 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, char *
   language = PrefGetPreference(prefLanguage);
   task->lang = LanguageInit(language);
 
+/*
+  switch (creator) {
+    case 'BiKD':
+      pumpkin_id2s(creator, screator);
+      debug(DEBUG_INFO, PUMPKINOS, "forcing 8bpp display for %s", screator);
+      depth = 8;
+      break;
+    default:
+      depth = DEFAULT_DEPTH;
+      break;
+  }
+*/
+
+  depth = DEFAULT_DEPTH;
   UicInitModule();
-  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, DEFAULT_DEPTH, NULL);
+  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
   FntInitModule(DEFAULT_DENSITY);
   FrmInitModule();
   InsPtInitModule();
@@ -1542,7 +1557,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 1, texture, name, width, height, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 1, texture, 0, name, width, height, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -1584,7 +1599,7 @@ static int pumpkin_launch_action(void *arg) {
   }
   thread_set_name(name);
 
-  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->request.name, data->width, data->height, data->x, data->y) == 0) {
+  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
