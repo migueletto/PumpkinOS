@@ -1180,20 +1180,25 @@ Err DmDatabaseSize(UInt16 cardNo, LocalID dbID, UInt32 *numRecordsP, UInt32 *tot
   storage_db_t *db;
   storage_handle_t *h;
   uint32_t i, n;
+  DmOpenRef dbRef;
   Err err = dmErrInvalidParam;
 
   if (dbID < (sto->size - sizeof(storage_db_t))) {
-    db = (storage_db_t *) (sto->base + dbID);
-    if (numRecordsP) *numRecordsP = db->numRecs;
-    if (dataBytesP || totalBytesP) {
-      for (i = 0, n = 0; i < db->numRecs; i++) {
-        h = db->elements[i];
-        n += h->size;
+    // it is necessary to open the database, otherwise the records would not be mapped
+    if ((dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadOnly)) != NULL) {
+      db = (storage_db_t *) (sto->base + dbID);
+      if (numRecordsP) *numRecordsP = db->numRecs;
+      if (dataBytesP || totalBytesP) {
+        for (i = 0, n = 0; i < db->numRecs; i++) {
+          h = db->elements[i];
+          n += h->size;
+        }
+        if (dataBytesP) *dataBytesP = n;
+        if (totalBytesP) *totalBytesP = n + 84; // XXX fictional header size
       }
-      if (dataBytesP) *dataBytesP = n;
-      if (totalBytesP) *totalBytesP = n + 84; // XXX fictional header size
+      DmCloseDatabase(dbRef);
+      err = errNone;
     }
-    err = errNone;
   }
 
   StoCheckErr(err);
