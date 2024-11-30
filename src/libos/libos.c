@@ -92,9 +92,6 @@ static int libos_action(void *arg) {
     if (data->wp->title) {
       data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
     }
-    if (data->dia) {
-      //dbg_init(data->wp, encoding);
-    }
   }
 
   debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
@@ -123,7 +120,6 @@ static int libos_action(void *arg) {
     EventLoop(data);
     debug(DEBUG_INFO, PUMPKINOS, "event loop end");
   }
-  //dbg_finish();
 
   sys_free(data);
   thread_end(PUMPKINOS, thread_get_handle());

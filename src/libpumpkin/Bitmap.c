@@ -2708,7 +2708,6 @@ void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, Wi
           BmpCopyBit32(b, transp, dst, dx, dy, mode, dbl);
           break;
     }
-    //dbg_update(dst);
   }
 }
 
@@ -2833,7 +2832,6 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         BmpCopyBit32(dstPixel, srcTransp, dst, dx, dy, mode, dbl);
         break;
     }
-    //dbg_update(dst);
   }
 }
 
