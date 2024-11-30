@@ -964,6 +964,10 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       WinAdjustCoords(&width, &height);
       data.formP->window.bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
       data.formP->window.density = density;
+      data.formP->window.clippingBounds.left = 0;
+      data.formP->window.clippingBounds.right = width-1;
+      data.formP->window.clippingBounds.top = 0;
+      data.formP->window.clippingBounds.bottom = height-1;
       data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
       data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
       data.bounds = xcalloc(data.formP->numObjects, sizeof(RectangleType));
