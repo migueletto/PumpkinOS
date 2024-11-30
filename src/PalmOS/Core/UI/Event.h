@@ -332,7 +332,7 @@ typedef struct EventType {
 			RectangleType newBounds;
 			} winDisplayChanged;
 
-    UInt32 buffer[16];
+    UInt32 buffer[24];
       } data;
 
 } EventType;
