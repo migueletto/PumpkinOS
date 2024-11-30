@@ -103,6 +103,8 @@ struct ArmCpu {
 	struct ArmCP15 *cp15;
 	
 	struct stub *debugStub;
+
+  int disasm;
 };
 
 static uint32_t cpuPrvClz(uint32_t val)
@@ -1861,8 +1863,12 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
     debug(DEBUG_ERROR, "ARM", "cpuPrvCycleArm pc=0x%08X mem error", pc);
 		cpuPrvHandleMemErr(cpu, pc, 4, 0, 1, fsr);
 	} else {
-    if (debug_getsyslevel("ARM") == DEBUG_TRACE) {
-      disasm(pc, instr);
+    if (cpu->disasm) {
+	    //uint32_t r1 = cpu->regs[1];
+	    //uint32_t r12 = cpu->regs[12];
+      //char buf[64];
+      //sys_snprintf(buf, sizeof(buf)-1, "r1=0x%08X r12=0x%08X", r1, r12);
+      disasm(pc, instr, NULL);
     }
 		cpu->regs[REG_NO_PC] += 4;
 		cpuPrvExecInstr(cpu, instr, 0, privileged, 0);
@@ -2209,6 +2215,10 @@ void cpuDeinit(struct ArmCpu *cpu) {
 
 uint32_t cpuReg(struct ArmCpu *cpu, uint8_t reg) {
   return cpu->regs[reg];
+}
+
+void cpuDisasm(struct ArmCpu *cpu, int disasm) {
+  cpu->disasm = disasm;
 }
 
 void cpuCycle(struct ArmCpu *cpu) {
