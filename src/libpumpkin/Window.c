@@ -625,7 +625,6 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
       if (x2 > x1) x2++;
       if (y2 > y1) y2++;
     }
-//debug(1, "XXX", "WinSetClipingBounds %p (%d,%d,%d,%d)", wh, x1, y1, x2, y2);
 
     debug(DEBUG_TRACE, "Window", "WinSetClipingBounds (%d,%d,%d,%d) -> (%d,%d,%d,%d)",
       rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, x1, y1, x2, y2);
@@ -819,7 +818,7 @@ void pumpkin_dirty_region_mode(dirty_region_e d) {
       module->dirty_level--;
       if (module->dirty_level == 0) {
         if (module->x1 <= module->x2 && module->y1 <= module->y2) {
-          pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2, module->y2);
+          pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
         }
       }
       break;
@@ -842,8 +841,8 @@ static void WinPutBit(win_module_t *module, UInt32 b, WinHandle wh, Coord x, Coo
   }
 }
 
-static void WinCopyBit(win_module_t *module, BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
-  BmpCopyBit(src, sx, sy, WinGetBitmap(wh), dx, dy, mode, dbl, text, tc, bc);
+static void WinCopyBit(win_module_t *module, BitmapType *src, Coord sx, Coord sy, WinHandle wh, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
+  BmpCopyBit(src, sx, sy, dst, dx, dy, mode, dbl, text, tc, bc);
   if (wh == module->displayWindow) {
     int i = dbl ? 1 : 0;
     pumpkin_dirty_region_coords(module, dx, dy, dx+i, dy+i);
@@ -1446,16 +1445,17 @@ void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
   }
 }
 
-void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Coord dstX, Coord dstY) {
+void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord dstX, Coord dstY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *dstBmp;
   UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
-  RectangleType dstRect, aux, clip, intersection, *dirtyRect;
+  RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
   UInt16 depth;
   Boolean clipping;
   Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
   UInt8 *srcBits, *dstBits;
 
+  MemMove(&srcRect, rect, sizeof(RectangleType));
   dstBmp = WinGetBitmap(dst);
   depth = BmpGetBitDepth(srcBmp);
   dirtyRect = NULL;
@@ -1482,29 +1482,37 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
     BmpGetDimensions(dstBmp, &dstWidth, &dstHeight, NULL);
     clipping = (dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top);
 
-    if (srcRect == NULL && dstX == 0 && dstY == 0 && srcSize == dstSize && !clipping) {
+    if (rect == NULL && dstX == 0 && dstY == 0 && srcSize == dstSize && !clipping) {
       // copy the whole window (best case)
       MemMove(dstBits, srcBits, dstSize);
       RctSetRectangle(&dstRect, 0, 0, dstWidth, dstHeight);
       dirtyRect = &dstRect;
 
     } else {
-      if (srcRect == NULL) {
+      if (rect == NULL) {
         // if srcRect is null, use the whole src window
         RctSetRectangle(&aux, 0, 0, srcWidth, srcHeight);
-        srcRect = &aux;
+        MemMove(&srcRect, &aux, sizeof(RectangleType));
       }
 
       // check limits on srcRect
-      if (srcRect->topLeft.x + srcRect->extent.x > srcWidth) {
-        srcRect->extent.x = srcWidth - srcRect->topLeft.x;
+      if (srcRect.topLeft.x < 0) {
+        srcRect.extent.x += srcRect.topLeft.x;
+        srcRect.topLeft.x = 0;
       }
-      if (srcRect->topLeft.y + srcRect->extent.y > srcHeight) {
-        srcRect->extent.y = srcHeight - srcRect->topLeft.y;
+      if (srcRect.topLeft.y < 0) {
+        srcRect.extent.y += srcRect.topLeft.y;
+        srcRect.topLeft.y = 0;
+      }
+      if (srcRect.topLeft.x + srcRect.extent.x > srcWidth) {
+        srcRect.extent.x = srcWidth - srcRect.topLeft.x;
+      }
+      if (srcRect.topLeft.y + srcRect.extent.y > srcHeight) {
+        srcRect.extent.y = srcHeight - srcRect.topLeft.y;
       }
 
       // set dstRect with same width and height from srcRect
-      RctSetRectangle(&dstRect, dstX, dstY, srcRect->extent.x, srcRect->extent.y);
+      RctSetRectangle(&dstRect, dstX, dstY, srcRect.extent.x, srcRect.extent.y);
 
       // check limits on dstRect
       if (dstRect.topLeft.x < 0) {
@@ -1525,10 +1533,10 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
       }
 
       // srcRect and dstRect must have same width and height
-      dstRect.extent.x = minValue(dstRect.extent.x, srcRect->extent.x);
-      dstRect.extent.y = minValue(dstRect.extent.y, srcRect->extent.y);
-      srcRect->extent.x = dstRect.extent.x;
-      srcRect->extent.y = dstRect.extent.y;
+      dstRect.extent.x = minValue(dstRect.extent.x, srcRect.extent.x);
+      dstRect.extent.y = minValue(dstRect.extent.y, srcRect.extent.y);
+      srcRect.extent.x = dstRect.extent.x;
+      srcRect.extent.y = dstRect.extent.y;
 
       if (clipping) {
         // destination window has an active clipping region, compute intersection
@@ -1537,59 +1545,68 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *srcRect, Co
         // adjust srcRect
         dx = intersection.topLeft.x - dstRect.topLeft.x;
         dy = intersection.topLeft.y - dstRect.topLeft.y;
-        srcRect->topLeft.x += dx;
-        srcRect->topLeft.y += dy;
+        srcRect.topLeft.x += dx;
+        srcRect.topLeft.y += dy;
         RctCopyRectangle(&intersection, &dstRect);
-        srcRect->extent.x = dstRect.extent.x;
-        srcRect->extent.y = dstRect.extent.y;
+        srcRect.extent.x = dstRect.extent.x;
+        srcRect.extent.y = dstRect.extent.y;
+
+        if (srcRect.topLeft.x < 0) {
+          srcRect.extent.x += srcRect.topLeft.x;
+          srcRect.topLeft.x = 0;
+        }
+        if (srcRect.topLeft.y < 0) {
+          srcRect.extent.y += srcRect.topLeft.y;
+          srcRect.topLeft.y = 0;
+        }
       }
 
       if (dstRect.extent.x > 0 && dstRect.extent.y > 0) {
         dirtyRect = &dstRect;
 
         if (srcWidth == dstWidth &&
-            srcRect->topLeft.x == 0 && srcRect->extent.x == srcWidth &&
+            srcRect.topLeft.x == 0 && srcRect.extent.x == srcWidth &&
             dstRect.topLeft.x == 0 && dstRect.extent.x == dstWidth) {
 
           // copy a full width rectangle (2nd best case)
           srcLineSize = srcWidth * pixelSize;
-          srcOffset = srcRect->topLeft.y * srcLineSize;
+          srcOffset = srcRect.topLeft.y * srcLineSize;
           dstOffset = dstRect.topLeft.y * srcLineSize;
           srcBits += srcOffset;
           dstBits += dstOffset;
-          len = srcRect->extent.y * srcLineSize;
+          len = srcRect.extent.y * srcLineSize;
           MemMove(dstBits, srcBits, len);
 
         } else {
           // copy an arbitraty rectangle (generic case)
-          if (srcRect->topLeft.y < 0) {
-            srcRect->extent.y += srcRect->topLeft.y;
-            srcRect->topLeft.y = 0;
+          if (srcRect.topLeft.y < 0) {
+            srcRect.extent.y += srcRect.topLeft.y;
+            srcRect.topLeft.y = 0;
           }
-          if (srcRect->topLeft.x < 0) {
-            srcRect->extent.x += srcRect->topLeft.x;
-            srcRect->topLeft.x = 0;
+          if (srcRect.topLeft.x < 0) {
+            srcRect.extent.x += srcRect.topLeft.x;
+            srcRect.topLeft.x = 0;
           }
-          if (srcRect->extent.x > 0 && srcRect->extent.y > 0) {
+          if (srcRect.extent.x > 0 && srcRect.extent.y > 0) {
             srcLineSize = srcWidth * pixelSize;
             dstLineSize = dstWidth * pixelSize;
-            len = srcRect->extent.x * pixelSize;
-            if (srcBmp == dstBmp && dstRect.topLeft.y > srcRect->topLeft.y) {
-              srcOffset = (srcRect->topLeft.y + srcRect->extent.y) * srcLineSize + srcRect->topLeft.x * pixelSize;
+            len = srcRect.extent.x * pixelSize;
+            if (srcBmp == dstBmp && dstRect.topLeft.y > srcRect.topLeft.y) {
+              srcOffset = (srcRect.topLeft.y + srcRect.extent.y) * srcLineSize + srcRect.topLeft.x * pixelSize;
               dstOffset = (dstRect.topLeft.y  + dstRect.extent.y)  * dstLineSize + dstRect.topLeft.x  * pixelSize;
               srcBits += srcOffset;
               dstBits += dstOffset;
-              for (y = 0; y < srcRect->extent.y; y++) {
+              for (y = 0; y < srcRect.extent.y; y++) {
                 srcBits -= srcLineSize;
                 dstBits -= dstLineSize;
                 MemMove(dstBits, srcBits, len);
               }
             } else {
-              srcOffset = srcRect->topLeft.y * srcLineSize + srcRect->topLeft.x * pixelSize;
+              srcOffset = srcRect.topLeft.y * srcLineSize + srcRect.topLeft.x * pixelSize;
               dstOffset = dstRect.topLeft.y  * dstLineSize + dstRect.topLeft.x  * pixelSize;
               srcBits += srcOffset;
               dstBits += dstOffset;
-              for (y = 0; y < srcRect->extent.y; y++) {
+              for (y = 0; y < srcRect.extent.y; y++) {
                 MemMove(dstBits, srcBits, len);
                 srcBits += srcLineSize;
                 dstBits += dstLineSize;
@@ -1629,11 +1646,11 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   BitmapType *windowBitmap, *displayBitmap;
   RectangleType srcRect;
   UInt16 windowDensity, bitmapDensity, displayDensity, bitmapDepth, windowDepth, displayDepth;
-  UInt32 tcw, bcw, tcd, bcd, transparentValue;
+  UInt32 tcw, bcw, tcd, bcd, transparentValue, t1, t2;
   Coord i, j, iw, id, remwx, remwy, remdx, remdy;
   Coord x1, y1, x2, y2, wx, wy, dx, dy, dx0, wx0, x0, y0;
   BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, delete, dblw, dbld, hlfw, hlfd;
+  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd;
 
   if (bitmapP && wh && rect) {
     windowBitmap = WinGetBitmap(wh);
@@ -1645,6 +1662,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     displayDepth = BmpGetBitDepth(displayBitmap);
     displayDensity = BmpGetDensity(displayBitmap);
     displayEndianness = BmpGetLittleEndianBits(displayBitmap);
+    blitDisplay = wh == module->activeWindow && wh != module->displayWindow;
 
     compression = BmpGetCompressionType(bitmapP);
     delete = false;
@@ -1708,10 +1726,16 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
 
       // it is possible to use fast copy
+      t1 = sys_get_clock();
       WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
-      if (wh == module->activeWindow && wh != module->displayWindow) {
+      if (blitDisplay) {
         WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
       }
+      t2 = sys_get_clock();
+      debug(DEBUG_INFO, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
+        (uint32_t)(t2 - t1),
+        mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, bitmapDepth, bitmapDensity, text, bitmapTransp,
+        wx, wy, windowDepth, windowDensity, dx, dy, displayDepth, displayDensity, blitDisplay);
 
       if (delete) BmpDelete(bitmapP);
       return;
@@ -1745,10 +1769,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     remwx = remwy = 0;
     remdx = remdy = 0;
-    debug(DEBUG_TRACE, "Window", "WinBlitBitmap %d bmp=(%d,%d,%d,%d dp=%d dn=%d txt=%d) win=(%d,%d, dp=%d dn=%d) disp=(%d,%d, dp=%d dn=%d) cp=%d",
-      mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, bitmapDepth, bitmapDensity, text,
-      wx, wy, windowDepth, windowDensity, dx, dy, displayDepth, displayDensity,
-      wh == module->activeWindow && wh != module->displayWindow);
 
     tcw = windowDepth == 16 ? module->textColor565 : module->textColor;
     bcw = windowDepth == 16 ? module->backColor565 : module->backColor;
@@ -1757,14 +1777,15 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
+    t1 = sys_get_clock();
     for (i = 0; i < srcRect.extent.y; i++) {
       wx = wx0;
       dx = dx0;
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
-          WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw);
-          if (wh == module->activeWindow && wh != module->displayWindow) {
-            WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd);
+          WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, windowBitmap, wx, wy, mode, dblw, text, tcw, bcw);
+          if (blitDisplay) {
+            WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, displayBitmap, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd);
           }
         }
         switch (iw) {
@@ -1789,50 +1810,16 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         case 2: dy += 2; break;
       }
     }
+    t2 = sys_get_clock();
+    debug(DEBUG_INFO, "Window", "WinBlitBitmap normal %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
+      (uint32_t)(t2 - t1),
+      mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, bitmapDepth, bitmapDensity, text, bitmapTransp,
+      wx, wy, windowDepth, windowDensity, dx, dy, displayDepth, displayDensity, blitDisplay);
 
     pumpkin_dirty_region_mode(dirtyRegionEnd);
     if (delete) BmpDelete(bitmapP);
   }
 }
-
-#if 0
-void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *windowBitmap, *displayBitmap, *best;
-  RectangleType srcRect;
-  UInt16 windowDensity, bitmapDensity, displayDensity, bitmapDepth, coordSys, windowDepth, displayDepth;
-  UInt32 tc, bc, tcd, bcd, transparentValue;
-  Coord i, j, srcX, srcY, id, jd, dstX, dstY, w, h, ax, ay;
-  Coord srcX0, srcY0, dstX0, dstY0, srcIncX, dstIncX, srcIncY, dstIncY;
-  Coord x0, y0, x1, y1, x2, y2, dx, dy;
-  BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, delete, dbl, hlf, dbld;
-
-  if (bitmapP && wh && rect) {
-    windowBitmap = WinGetBitmap(wh);
-    windowDensity = BmpGetDensity(windowBitmap);
-    windowDepth = BmpGetBitDepth(windowBitmap);
-    windowEndianness = BmpGetLittleEndianBits(windowBitmap);
-
-    displayBitmap = WinGetBitmap(module->displayWindow);
-    displayDepth = BmpGetBitDepth(displayBitmap);
-    displayDensity = BmpGetDensity(displayBitmap);
-    displayEndianness = BmpGetLittleEndianBits(displayBitmap);
-
-    if ((best = bitmapP) != NULL) {
-      compression = BmpGetCompressionType(best);
-      delete = false;
-
-      if (compression != BitmapCompressionTypeNone) {
-        best = BmpDecompressBitmap(best);
-        delete = true;
-      }
-
-      bitmapDensity = BmpGetDensity(best);
-      bitmapDepth = BmpGetBitDepth(best);
-      bitmapEndianness = BmpGetLittleEndianBits(best);
-      bitmapTransp = BmpGetTransparentValue(best, &transparentValue);
-      //dither = !BmpGetNoDither(best);
 
 #if 0
       if (bitmapDensity == windowDensity && windowDepth == 1 && bitmapDepth > 1 && dither && mode == winPaint && !text) {
@@ -1852,168 +1839,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         pumpkin_screen_dirty(wh, dstX, dstY, rect->extent.x, rect->extent.y);
         return;
       }
-#endif
-
-      if (bitmapEndianness == windowEndianness && bitmapDensity == windowDensity && bitmapDepth == windowDepth &&
-          bitmapEndianness == displayEndianness && bitmapDensity == displayDensity && bitmapDepth == displayDepth &&
-          bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
-
-        // it is possible to use fast copy
-        RctCopyRectangle(rect, &srcRect);
-        coordSys = module->coordSys;
-        if (bitmapDensity == kDensityDouble && coordSys == kCoordinatesStandard) {
-          WinSetCoordinateSystem(kCoordinatesDouble);
-          x0 = WinScaleCoord(wh->windowBounds.topLeft.x, false);
-          y0 = WinScaleCoord(wh->windowBounds.topLeft.y, false);
-          x = WinScaleCoord(x, false);
-          y = WinScaleCoord(y, false);
-          WinScaleRectangle(&srcRect);
-//debug(1, "XXX", "WinBlitBitmap fastcopy coord double scale");
-        } else if (bitmapDensity == kDensityLow && coordSys == kCoordinatesDouble) {
-          WinSetCoordinateSystem(kCoordinatesStandard);
-          x0 = WinUnscaleCoord(wh->windowBounds.topLeft.x, false);
-          y0 = WinUnscaleCoord(wh->windowBounds.topLeft.y, false);
-          x = WinUnscaleCoord(x, false);
-          y = WinUnscaleCoord(y, false);
-          WinUnscaleRectangle(&srcRect);
-//debug(1, "XXX", "WinBlitBitmap fastcopy coord standard unscale");
-        }
-
-        WinCopyBitmap(best, wh, &srcRect, x, y);
-        if (wh == module->activeWindow && wh != module->displayWindow) {
-          WinCopyBitmap(best, module->displayWindow, &srcRect, x0 + x, y0 + y);
-        }
-        WinSetCoordinateSystem(coordSys);
-
-        if (delete) BmpDelete(best);
-        return;
-      }
-
-      dbl = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
-      hlf = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
-//debug(1, "XXX", "WinBlitBitmap dbl %d hlf %d", dbl, hlf);
-      dbld = displayDensity == kDensityLow && displayDensity == kDensityDouble;
-
-      ax = wh->windowBounds.topLeft.x;
-      ay = wh->windowBounds.topLeft.y;
-      srcX = rect->topLeft.x;
-      srcY = rect->topLeft.y;
-      w = rect->extent.x;
-      h = rect->extent.y;
-      dstX = x;
-      dstY = y;
-      coordSys = module->coordSys;
-//debug(1, "XXX", "WinBlitBitmap dst %d,%d coord %d", dstX, dstY, coordSys);
-
-      if (bitmapDensity == kDensityLow && coordSys == kCoordinatesDouble) {
-        srcX >>= 1;
-        srcY >>= 1;
-        w >>= 1;
-        h >>= 1;
-      } else if (bitmapDensity == kDensityDouble && coordSys == kCoordinatesStandard) {
-        srcX <<= 1;
-        srcY <<= 1;
-        w <<= 1;
-        h <<= 1;
-      }
-
-      srcY0 = (srcY < dstY) ? h-1 : 0;
-      srcX0 = (srcX < dstX) ? w-1 : 0;
-
-      if (hlf) {
-        srcIncX = (srcX < dstX) ? -2 : 2;
-        srcIncY = (srcY < dstY) ? -2 : 2;
-      } else {
-        srcIncX = (srcX < dstX) ? -1 : 1;
-        srcIncY = (srcY < dstY) ? -1 : 1;
-      }
-
-      if (windowDensity == kDensityDouble) {
-        ax <<= 1;
-        ay <<= 1;
-      }
-
-      if (windowDensity == kDensityLow && coordSys == kCoordinatesDouble) {
-        dstX >>= 1;
-        dstY >>= 1;
-//debug(1, "XXX", "WinBlitBitmap window density low coord double dst >> %d,%d", dstX, dstY);
-      } else if (windowDensity == kDensityDouble && coordSys == kCoordinatesStandard) {
-        dstX <<= 1;
-        dstY <<= 1;
-//debug(1, "XXX", "WinBlitBitmap window density double coord standard dst << %d,%d", dstX, dstY);
-      }
-
-      if (dbl) {
-        dstY0 = srcY0*2;
-        dstX0 = srcX0*2;
-        dstIncX = srcIncX*2;
-        dstIncY = srcIncY*2;
-//debug(1, "XXX", "WinBlitBitmap dbl");
-      } else if (hlf) {
-        dstY0 = srcY0/2;
-        dstX0 = srcX0/2;
-        dstIncX = srcIncX/2;
-        dstIncY = srcIncY/2;
-//debug(1, "XXX", "WinBlitBitmap hlf");
-      } else {
-        dstY0 = srcY0;
-        dstX0 = srcX0;
-        dstIncX = srcIncX;
-        dstIncY = srcIncY;
-//debug(1, "XXX", "WinBlitBitmap normal");
-      }
-
-      debug(DEBUG_TRACE, "Window", "WinBlitBitmap (%d,%d,%d,%d) density %d to (%d,%d) density %d, coordsys %d, dbl %d, hlf %d, text %d",
-        srcX, srcY, w, h, bitmapDensity, dstX, dstY, windowDensity, coordSys, dbl, hlf, text);
-
-      x1 = wh->clippingBounds.left;
-      x2 = wh->clippingBounds.right;
-      y1 = wh->clippingBounds.top;
-      y2 = wh->clippingBounds.bottom;
-      if (!(x1 == 0 && x2 == 0) && coordSys == kCoordinatesDouble && windowDensity == kDensityLow) {
-        x1 = x1 >> 1;
-        y1 = y1 >> 1;
-        x2 = x2 >> 1;
-        y2 = y2 >> 1;
-      }
-//debug(1, "XXX", "window %p clipping %d %d %d %d", wh, x1, x2, y1, y2);
-
-      tc = windowDepth == 16 ? module->textColor565 : module->textColor;
-      bc = windowDepth == 16 ? module->backColor565 : module->backColor;
-      tcd = displayDepth == 16 ? module->textColor565 : module->textColor;
-      bcd = displayDepth == 16 ? module->backColor565 : module->backColor;
-
-      for (i = srcY0, id = dstY0; i >= 0 && i < h; i += srcIncY, id += dstIncY) {
-        for (j = srcX0, jd = dstX0; j >= 0 && j < w; j += srcIncX, jd += dstIncX) {
-          if (CLIP_OK(x1, x2, y1, y2, dstX + jd, dstY + id)) {
-            //BmpCopyBit(best, srcX + j, srcY + i, windowBitmap, dstX + jd, dstY + id, mode, dbl, text, tc, bc);
-            WinCopyBit(module, best, srcX + j, srcY + i, wh, dstX + jd, dstY + id, mode, dbl, text, tc, bc);
-            if (wh == module->activeWindow && wh != module->displayWindow) {
-              //BmpCopyBit(best, srcX + j, srcY + i, displayBitmap, ax + dstX + jd, ay + dstY + id, mode, dbl, text, tcd, bcd);
-              dx = wh->windowBounds.topLeft.x + dstX + jd;
-              dy = wh->windowBounds.topLeft.y + dstY + id;
-              WinCopyBit(module, best, srcX + j, srcY + i, module->displayWindow, dx, dy, mode, dbld, text, tcd, bcd);
-            }
-          }
-        }
-      }
-
-/*
-      if (wh == module->displayWindow) {
-        if (dbl) {
-          w <<= 1;
-          h <<= 1;
-        }
-        pumpkin_dirty_region_mode(dirtyRegionBegin);
-        pumpkin_dirty_region_coords(module, dstX, dstY, dstX+w-1, dstY+h-1);
-        pumpkin_dirty_region_mode(dirtyRegionEnd);
-      }
-*/
-
-      if (delete) BmpDelete(best);
-    }
-  }
-}
 #endif
 
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y) {
@@ -2050,10 +1875,6 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
 
   debug(DEBUG_TRACE, "Window", "WinCopyRectangle srcWin=%p %d,%d,%d,%d -> dstWin=%p %d,%d (mode %d)", srcWin, srcRect->topLeft.x, srcRect->topLeft.y, srcRect->extent.x, srcRect->extent.y, dstWin, dstX, dstY, mode);
   WinBlitBitmap(WinGetBitmap(srcWin), dstWin, srcRect, dstX, dstY, mode, false);
-  if (dstWin == module->activeWindow && dstWin != module->displayWindow) {
-    //WinConvertToDisplay(dstWin, &dstX, &dstY);
-    //WinBlitBitmap(WinGetBitmap(srcWin), module->displayWindow, srcRect, dstX, dstY, mode, false);
-  }
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
@@ -2090,10 +1911,6 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
-      if (module->drawWindow == module->activeWindow && module->drawWindow != module->displayWindow) {
-        //WinConvertToDisplay(module->drawWindow, &x, &y);
-        //WinBlitBitmap(best, module->displayWindow, &rect, x, y, module->transferMode, false);
-      }
     }
   }
 }

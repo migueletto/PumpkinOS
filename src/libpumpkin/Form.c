@@ -8,7 +8,6 @@
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
-//#include "dbg.h"
 #include "AppRegistry.h"
 #include "storage.h"
 #include "debug.h"
@@ -180,7 +179,6 @@ static Err FrmInitFormInternal(FormType *formP) {
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
   formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, NULL, &err);
   formP->window.density = density;
-  //dbg_add(0, formP->window.bitmapP);
 
   RctSetRectangle(&rect, 0, 0, width, height);
   WinSetClipingBounds(&formP->window, &rect);
@@ -331,6 +329,8 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   Boolean erase = false;
 
   if (formP && objIndex < formP->numObjects) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     obj = formP->objects[objIndex].object;
 
     switch (formP->objects[objIndex].objectType) {
@@ -426,6 +426,8 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
       WinEraseRectangle(&rect, 0);
       WinSetBackColor(oldb);
     }
+
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
 
@@ -443,6 +445,8 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   Boolean formVisible;
 
   if (formP && objIndex < formP->numObjects) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     obj = formP->objects[objIndex].object;
     formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
@@ -622,6 +626,8 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         debug(DEBUG_ERROR, "Form", "FrmDrawObject type %d not supported", formP->objects[objIndex].objectType);
         break;
     }
+
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
 
@@ -1111,7 +1117,6 @@ static void FrmDeleteFormInternal(FormType *formP) {
   }
 
   if (formP->window.bitmapP) {
-    //dbg_delete(formP->window.bitmapP);
     debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal BmpDelete %p", formP->window.bitmapP);
     BmpDelete(formP->window.bitmapP);
   }
@@ -2358,6 +2363,7 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
 
     formP->window.windowFlags.modal = modal;
     formP->window.windowFlags.enabled = true;
+
     formP->window.windowBounds.topLeft.x = x;
     formP->window.windowBounds.topLeft.y = y;
     formP->window.windowBounds.extent.x = width;
