@@ -3048,7 +3048,7 @@ static int decompress_bitmap_scanline(uint8_t *p, uint8_t *dp, uint16_t rowBytes
 }
 
 static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coord width, Coord height, UInt16 rowBytes, UInt8 *compressed, UInt8 *decompressed) {
-  int i, error = -1;
+  int error = -1;
 
   switch (version) {
     case 0:
@@ -3056,8 +3056,9 @@ static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coor
       // XXX Starship's tAIB.1000 icon has two leading zeros before the compressed size.
       // Skip the leading zeros here: I am not sure why it is happening and if this is the right fix.
       // Besides, the compressed size is little endian (?), or it is just 1 byte followed by a zero.
-      for (i = 0; compressed[i] == 0x00; i++);
-      compressed += i;
+      if (compressed[0] == 0x00 && compressed[1] == 0x00) {
+        compressed += 2;
+      }
       compressed += 2;
       break;
     case 2:
