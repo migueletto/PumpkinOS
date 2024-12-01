@@ -1734,7 +1734,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
       }
       t2 = sys_get_clock();
-      debug(DEBUG_INFO, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
+      debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
         (uint32_t)(t2 - t1),
         mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, bitmapDepth, bitmapDensity, text, bitmapTransp,
         wx, wy, windowDepth, windowDensity, dx, dy, displayDepth, displayDensity, blitDisplay);
@@ -1813,7 +1813,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
     }
     t2 = sys_get_clock();
-    debug(DEBUG_INFO, "Window", "WinBlitBitmap normal %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
+    debug(DEBUG_TRACE, "Window", "WinBlitBitmap normal %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
       (uint32_t)(t2 - t1),
       mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, bitmapDepth, bitmapDensity, text, bitmapTransp,
       wx, wy, windowDepth, windowDensity, dx, dy, displayDepth, displayDensity, blitDisplay);
