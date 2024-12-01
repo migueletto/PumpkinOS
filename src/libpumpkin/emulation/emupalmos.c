@@ -1180,16 +1180,16 @@ static int cpu_instr_callback(unsigned int pc);
 // unsigned long Call68KFuncType(const void *emulStateP, unsigned long trapOrFunction, const void *argsOnStackP, unsigned long argsSizeAndwantA0)
 static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint32_t argsOnStackP, uint32_t argsSizeAndwantA0) {
   uint8_t *ram = pumpkin_heap_base();
-  //void *emulState;
-  void *argsOnStack;
+  uint8_t *emulState;
+  uint8_t *argsOnStack;
   m68ki_cpu_core old_cpu, aux_cpu;
-  uint32_t argsSize, wantA0, a4, a5, sp, r = 0;
+  uint32_t argsSize, wantA0, selector, a4, a5, sp, r = 0;
   m68k_state_t *m68k_state;
 
   debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func(0x%08X, 0x%08X, 0x%08X, 0x%08x)", emulStateP, trapOrFunction, argsOnStackP, argsSizeAndwantA0);
 
   // emulStateP: Pointer to the PACE emulation state. Supply the pointer that was passed to your ARM function by PACE.
-  //emulState = emulStateP ? ram + emulStateP : NULL;
+  emulState = emulStateP ? ram + emulStateP : NULL;
 
   // argsOnStackP: Native (little-endian) pointer to a block of memory to be copied to the 68K stack prior to the function call. This memory normally contains the arguments for the 68K function being called. Call68KFuncType pops these values from the 68K stack before returning.
   argsOnStack = argsOnStackP ? ram + argsOnStackP : NULL;
@@ -1206,6 +1206,12 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     sp -= argsSize;
     xmemcpy(ram + sp, argsOnStack, argsSize);
     m68k_set_reg(M68K_REG_SP, sp);
+
+    if (emulState) {
+      // ARM apps store the syscall selector at offset 0x0C of emulState
+      get4l(&selector, emulState, 0x0C);
+      m68k_set_reg(M68K_REG_D2, selector);
+    }
 
     palmos_systrap(0xA000 | trapOrFunction);
     r = m68k_get_reg(NULL, wantA0 ? M68K_REG_A0 : M68K_REG_D0);
@@ -1473,8 +1479,8 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
 #ifdef ARMEMU
 uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint8_t *stack, *call68KAddr, *returnAddr;
-  uint32_t stackAddr, callAddr, retAddr, sysAddr;
+  uint8_t *emulState, *stack, *call68KAddr, *returnAddr;
+  uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
 
   // r9 = x
@@ -1497,6 +1503,9 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   call68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
   callAddr = call68KAddr - ram;
 
+  emulState = pumpkin_heap_alloc(0x100, "emulState");
+  emulStateAddr = emulState - ram;
+
   stack = pumpkin_heap_alloc(stackSize, "stack");
   stackAddr = stack - ram;
 
@@ -1514,7 +1523,7 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
-  armSetReg(state->arm, 0, 0); // emulStateP == NULL
+  armSetReg(state->arm, 0, emulStateAddr);
   armSetReg(state->arm, 1, userData);
   armSetReg(state->arm, 2, callAddr);
 
@@ -1522,6 +1531,7 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
     if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr, 0)) break;
   }
 
+  pumpkin_heap_free(emulState, "emulState");
   pumpkin_heap_free(returnAddr, "returnAddr");
   pumpkin_heap_free(call68KAddr, "call68kAddr");
   pumpkin_heap_free(stack, "stack");
@@ -1581,8 +1591,6 @@ static void print_regs(void) {
 }
 */
 
-//static int aaa = 0;
-
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
@@ -1608,9 +1616,6 @@ static int cpu_instr_callback(unsigned int pc) {
     emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
     return -1;
   }
-
-//if (pc == 0x0006BED8) aaa = 1;
-//else if (pc == 0x0006BEDA) aaa = 0;
 
   if (debug_on) {
     instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68020);

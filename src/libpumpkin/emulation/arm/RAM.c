@@ -30,11 +30,18 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 		switch (size) {
 			
 			case 1:
-		
+//{
+//uint8_t value = *(uint8_t*)bufP;
+//debug(1, "XXX", "write byte 0x%02X to 0x%08X", value, pa);
+//}
 				*((uint8_t*)addr) = *(uint8_t*)bufP;	//our memory system is little-endian
 				break;
 			
 			case 2:
+//{
+//uint16_t value = sys_htole16(*(uint16_t*)bufP);
+//debug(1, "XXX", "write word 0x%04X to 0x%08X", value, pa);
+//}
 			
 				*((uint16_t*)addr) = sys_htole16(*(uint16_t*)bufP);	//our memory system is little-endian
 				break;
@@ -42,7 +49,7 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 			case 4:
 //{
 //uint32_t value = sys_htole32(*(uint32_t*)bufP);
-//debug(1, "XXX", "write 0x%08X 0x%08X", value, pa);
+//debug(1, "XXX", "write long 0x%08X to 0x%08X", value, pa);
 //}
 			
 				*((uint32_t*)addr) = sys_htole32(*(uint32_t*)bufP);
