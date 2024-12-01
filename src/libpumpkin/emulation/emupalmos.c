@@ -294,7 +294,7 @@ uint32_t cpu_read_long(uint32_t address) {
     if (state->m68k_state.s_m68ki_cpu.palmos) {
       switch (address) {
         case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
-          pumpkin_set_osversion(10, 1);
+          pumpkin_set_osversion(10);
           WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
           value = state->screenStart;
           debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);

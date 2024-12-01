@@ -36,14 +36,6 @@
 #include "debug.h"
 #include "xalloc.h"
 
-#ifndef DEFAULT_DENSITY
-#define DEFAULT_DENSITY kDensityDouble
-#endif
-
-#ifndef DEFAULT_DEPTH
-#define DEFAULT_DEPTH 16
-#endif
-
 #define MAX_SEARCH_ORDER   16
 #define MAX_NOTIF_QUEUE    8
 #define MAX_NOTIF_REGISTER 256
@@ -70,7 +62,8 @@
 
 #define MAX_PLUGINS 256
 
-#define FONT_BASE   9000
+#define FONT_DOUBLE_BASE 9000
+#define FONT_LOW_BASE    9100
 
 #define CRASH_LOG   "crash.log"
 #define COMPAT_LIST "log/compat.txt"
@@ -208,8 +201,9 @@ typedef struct {
   int spawner;
   int encoding;
   int width, height, full_height;
-  int depth, mono;
+  int density, depth, hdepth, mono;
   int fullrefresh;
+  int osversion;
   int locked;
   int dragging;
   int lastX, lastY;
@@ -238,7 +232,7 @@ typedef struct {
   AppRegistryType *registry;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
-  FontTypeV2 *fontPtr[128];
+  FontType *fontPtr[128];
   event_t events[MAX_EVENTS];
   int nev, iev, oev;
   calibration_t calibration;
@@ -490,28 +484,33 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt
   pumpkin_module.num_notif++;
 }
 
-FontTypeV2 *pumpkin_get_font(FontID fontId) {
-  FontTypeV2 *fontv2 = NULL;
+FontType *pumpkin_get_font(FontID fontId) {
+  FontType *font = NULL;
 
   if (fontId >= 0 && fontId < 128 && pumpkin_module.fontPtr[fontId]) {
-    fontv2 = pumpkin_module.fontPtr[fontId];
+    font = pumpkin_module.fontPtr[fontId];
   }
 
-  return fontv2;
+  return font;
 }
 
 static void pumpkin_load_fonts(void) {
-  UInt16 index, fontId, resId;
+  UInt16 index, resId;
+  FontID fontId;
+  DmResType type;
   MemHandle handle;
   FontPtr f;
 
+  type = pumpkin_module.density == kDensityLow ? fontRscType : fontExtRscType;
+
   for (index = 0; systemFonts[index] >= 0; index++) {
     fontId = systemFonts[index];
-    resId = FONT_BASE + fontId;
+    resId = pumpkin_module.density == kDensityLow ? FONT_LOW_BASE : FONT_DOUBLE_BASE;
+    resId += fontId;
 
-    if ((handle = DmGetResource(fontExtRscType, resId)) != NULL) {
+    if ((handle = DmGetResource(type, resId)) != NULL) {
       if ((f = MemHandleLock(handle)) != NULL) {
-        pumpkin_module.fontPtr[fontId] = (FontTypeV2 *)FntCopyFont(f);
+        pumpkin_module.fontPtr[fontId] = FntCopyFont(f);
         MemHandleUnlock(handle);
       }
       DmReleaseResource(handle);
@@ -586,6 +585,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.dragging = -1;
   pumpkin_module.nextTaskId = 1;
   pumpkin_module.battery = 100;
+  pumpkin_module.osversion = 50;
 
   StoRemoveLocks(APP_STORAGE);
 
@@ -727,7 +727,7 @@ void pumpkin_http_abort(int handle) {
 }
 
 int pumpkin_set_single(int depth) {
-  pumpkin_module.depth = depth;
+  pumpkin_module.hdepth = depth;
   pumpkin_set_encoding(depth);
   pumpkin_module.single = 1;
 
@@ -739,9 +739,9 @@ int pumpkin_single_enabled(void) {
 }
 
 int pumpkin_set_dia(int depth) {
-  pumpkin_module.depth = depth;
+  pumpkin_module.hdepth = depth;
   pumpkin_set_encoding(depth);
-  pumpkin_module.dia = dia_init(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.encoding, depth, DEFAULT_DENSITY == kDensityDouble);
+  pumpkin_module.dia = dia_init(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.encoding, depth, pumpkin_module.density == kDensityDouble);
 
   return pumpkin_module.dia ? 0 : -1;
 }
@@ -804,31 +804,66 @@ static void pumpkin_image_background(RGBColorType *rgb, UInt16 id, UInt16 mode) 
   }
 }
 
+void pumpkin_set_density(int density) {
+  switch (density) {
+    case kDensityLow:
+      pumpkin_module.density = density;
+      break;
+    default:
+      pumpkin_module.density = kDensityDouble;
+      break;
+  }
+  debug(DEBUG_INFO, PUMPKINOS, "screen density is %d", pumpkin_module.density);
+}
+
+int pumpkin_get_density(void) {
+  return pumpkin_module.density;
+}
+
 void pumpkin_set_depth(int depth) {
+  switch (depth) {
+    case  1:
+    case  2:
+    case  4:
+    case  8:
+      pumpkin_module.depth = depth;
+      break;
+    default:
+      pumpkin_module.depth = 16;
+      break;
+  }
+  debug(DEBUG_INFO, PUMPKINOS, "screen depth is %d", pumpkin_module.depth);
+}
+
+void pumpkin_set_host_depth(int depth) {
   PumpkinPreferencesType prefs;
+  UInt32 border;
 
   if (depth > 0) {
-    pumpkin_module.depth = depth;
+    pumpkin_module.hdepth = depth;
     pumpkin_set_encoding(depth);
+    debug(DEBUG_INFO, PUMPKINOS, "host screen depth is %d", pumpkin_module.hdepth);
   }
   pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
+  border = prefs.value[pBorderWidth];
+  if (pumpkin_module.density == kDensityLow) border /= 2;
 
   if (pumpkin_module.mono) {
-    wman_set_border(pumpkin_module.wm, pumpkin_module.depth, prefs.value[pBorderWidth],
+    wman_set_border(pumpkin_module.wm, pumpkin_module.hdepth, border,
       prefs.color[pMonoSelectedBorder].r,   prefs.color[pMonoSelectedBorder].g,   prefs.color[pMonoSelectedBorder].b,
       prefs.color[pMonoLockedBorder].r,     prefs.color[pMonoLockedBorder].g,     prefs.color[pMonoLockedBorder].b,
       prefs.color[pMonoUnselectedBorder].r, prefs.color[pMonoUnselectedBorder].g, prefs.color[pMonoUnselectedBorder].b);
 
-    wman_set_background(pumpkin_module.wm, pumpkin_module.depth,
+    wman_set_background(pumpkin_module.wm, pumpkin_module.hdepth,
       prefs.color[pMonoBackground].r, prefs.color[pMonoBackground].g, prefs.color[pMonoBackground].b);
 
   } else {
-    wman_set_border(pumpkin_module.wm, pumpkin_module.depth, prefs.value[pBorderWidth],
+    wman_set_border(pumpkin_module.wm, pumpkin_module.hdepth, border,
       prefs.color[pColorSelectedBorder].r,   prefs.color[pColorSelectedBorder].g,   prefs.color[pColorSelectedBorder].b,
       prefs.color[pColorLockedBorder].r,     prefs.color[pColorLockedBorder].g,     prefs.color[pColorLockedBorder].b,
       prefs.color[pColorUnselectedBorder].r, prefs.color[pColorUnselectedBorder].g, prefs.color[pColorUnselectedBorder].b);
 
-    wman_set_background(pumpkin_module.wm, pumpkin_module.depth,
+    wman_set_background(pumpkin_module.wm, pumpkin_module.hdepth,
       prefs.color[pColorBackground].r, prefs.color[pColorBackground].g, prefs.color[pColorBackground].b);
   }
 }
@@ -946,7 +981,7 @@ int pumpkin_dia_kbd(void) {
 
   if (pumpkin_module.dia) {
     dia_get_graffiti_dimension(pumpkin_module.dia, &dw, &dh);
-    prev = WinSetCoordinateSystem(DEFAULT_DENSITY == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
+    prev = WinSetCoordinateSystem(pumpkin_module.density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
     lower_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
     upper_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
     number_wh = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
@@ -1123,7 +1158,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         pumpkin_set_compat(creator, appCompatOk, 0);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
-            pumpkin_set_osversion(50, 1);
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
             pilot_main = sys_lib_defsymbol(lib, "PilotMain", 1);
             if (pilot_main == NULL) {
@@ -1151,6 +1185,8 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_ERROR, PUMPKINOS, "database '%s' not found", request->name);
       }
     }
+
+    pumpkin_set_osversion(pumpkin_module.osversion);
 
     if (pilot_main) {
       pumpkin_set_m68k(0);
@@ -1218,7 +1254,7 @@ void pumpkin_calibrate(int restore) {
     debug(DEBUG_INFO, "TOUCH", "calibrating touch screen");
     dx = pumpkin_module.width;
     dy = pumpkin_module.full_height;
-    calibrate(pumpkin_module.wp, pumpkin_module.w, DEFAULT_DEPTH, dx, dy, &pumpkin_module.calibration);
+    calibrate(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.depth, dx, dy, &pumpkin_module.calibration);
 
     debug(DEBUG_INFO, "TOUCH", "calibration parameters a=%d b=%d c=%d d=%d e=%d f=%d div=%d",
       pumpkin_module.calibration.a, pumpkin_module.calibration.b, pumpkin_module.calibration.c,
@@ -1356,18 +1392,18 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       depth = 8;
       break;
     default:
-      depth = DEFAULT_DEPTH;
+      depth = pumpkin_module.depth;
       break;
   }
 
-  if (depth != DEFAULT_DEPTH) {
+  if (depth != pumpkin_module.depth) {
     pumpkin_id2s(creator, screator);
     debug(DEBUG_INFO, PUMPKINOS, "forcing 8bpp display for %s", screator);
   }
 
   UicInitModule();
-  WinInitModule(DEFAULT_DENSITY, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
-  FntInitModule(DEFAULT_DENSITY);
+  WinInitModule(pumpkin_module.density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
+  FntInitModule(pumpkin_module.density);
   FrmInitModule();
   InsPtInitModule();
   FldInitModule();
@@ -1747,7 +1783,7 @@ int pumpkin_launch(launch_request_t *request) {
       data->creator = creator;
       data->width = APP_SCREEN_WIDTH;
       data->height = APP_SCREEN_HEIGHT;
-      if (pumpkin_default_density() == kDensityLow) {
+      if (pumpkin_module.density == kDensityLow) {
         data->width /= 2;
         data->height /= 2;
       }
@@ -1755,6 +1791,11 @@ int pumpkin_launch(launch_request_t *request) {
       if (MULTI_THREAD) {
         data->x = (pumpkin_module.width - data->width) / 2;
         data->y = (pumpkin_module.height - data->height) / 2;
+
+        if (!AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
+          debug(DEBUG_INFO, PUMPKINOS, "recreating registry");
+          StoRegistryCreate(pumpkin_module.registry, creator);
+        }
 
         if (AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
           data->width = s.width;
@@ -1773,9 +1814,7 @@ int pumpkin_launch(launch_request_t *request) {
         data->height = pumpkin_module.height;
       }
       if (data->width >= pumpkin_module.width || data->height >= pumpkin_module.height) {
-        //data->width = pumpkin_module.width;
-        //data->height = pumpkin_module.height;
-        if (pumpkin_module.dia) data->height -= (DEFAULT_DENSITY == kDensityDouble) ? 160 : 80; // XXX
+        if (pumpkin_module.dia) data->height -= (pumpkin_module.density == kDensityDouble) ? 160 : 80; // XXX
       }
 
       data->index = index;
@@ -2427,9 +2466,9 @@ int pumpkin_sys_event(void) {
         if (pumpkin_module.refresh) {
           if (pumpkin_module.background) {
             bits = surface_buffer(pumpkin_module.background, &len);
-            wman_set_image_background(pumpkin_module.wm, pumpkin_module.depth, bits);
+            wman_set_image_background(pumpkin_module.wm, pumpkin_module.hdepth, bits);
           } else {
-            pumpkin_set_depth(0);
+            pumpkin_set_host_depth(0);
           }
         }
 
@@ -3233,7 +3272,7 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 //debug(1, "XXX", "pumpkin_screen_dirty (%d,%d,%d,%d) ...", x, y, w, h);
   if (wh) {
     WinGetPosition(wh, &sx, &sy);
-    switch (DEFAULT_DENSITY) {
+    switch (pumpkin_module.density) {
       case kDensityDouble: sx *= 2; sy *= 2; break;
       default: break;
     }
@@ -3804,10 +3843,6 @@ char *pumpkin_id2s(UInt32 ID, char *s) {
   return s;
 }
 
-int pumpkin_default_density(void) {
-  return DEFAULT_DENSITY;
-}
-
 Boolean SysLibNewRefNum68K(UInt32 type, UInt32 creator, UInt16 *refNum) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   char buf[8], buf2[8];
@@ -3998,19 +4033,34 @@ void pumpkin_trace(uint16_t trap) {
   }
 }
 
-void pumpkin_set_osversion(int version, int overwrite) {
+void pumpkin_set_osversion(int version) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  if (task) {
-    if (version > task->osversion || overwrite) {
-      task->osversion = version;
-      debug(DEBUG_INFO, PUMPKINOS, "set os version %d", version);
-    }
+
+  if (version < 0) {
+    pumpkin_module.osversion = -version;
+    debug(DEBUG_INFO, PUMPKINOS, "set global os version %d", pumpkin_module.osversion);
+  } else if (task) {
+    task->osversion = version;
+    debug(DEBUG_INFO, PUMPKINOS, "set task os version %d", task->osversion);
   }
 }
 
 int pumpkin_get_osversion(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  return task ? task->osversion : 0;
+  AppRegistryOSVersion osv;
+  int osversion;
+
+  if (task) {
+    if (AppRegistryGet(pumpkin_module.registry, task->creator, appRegistryOSVersion, 0, &osv)) {
+      osversion = osv.osversion;
+    } else {
+      osversion = task->osversion;
+    }
+  } else {
+    osversion = pumpkin_module.osversion;
+  }
+
+  return osversion;
 }
 
 void pumpkin_set_m68k(int m68k) {

@@ -473,8 +473,6 @@ Int16 PrefGetAppPreferences(UInt32 creator, UInt16 id, void *prefs, UInt16 *pref
     }
   }
 
-  pumpkin_set_osversion(20, 0);
-
   return version;
 }
 
@@ -489,21 +487,18 @@ void PrefSetAppPreferences(UInt32 creator, UInt16 id, Int16 version, const void 
       xfree(p);
     }
   }
-  pumpkin_set_osversion(20, 0);
 }
 
 Boolean PrefGetAppPreferencesV10(UInt32 type, Int16 version, void *prefs, UInt16 prefsSize) {
   Int16 vnum;
 
   vnum = PrefGetAppPreferences(type, 1, prefs, &prefsSize, true);
-  pumpkin_set_osversion(10, 1);
 
   return vnum == version;
 }
 
 void PrefSetAppPreferencesV10(UInt32 creator, Int16 version, void *prefs, UInt16 prefsSize) {
   PrefSetAppPreferences(creator, 1, version, prefs, prefsSize, true);
-  pumpkin_set_osversion(10, 1);
 }
 
 DmOpenRef PrefOpenPreferenceDB(Boolean saved) {
@@ -515,15 +510,12 @@ DmOpenRef PrefOpenPreferenceDB(Boolean saved) {
   if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, saved ? sysFileTSavedPreferences : sysFileTPreferences, sysFileCSystem, false, &cardNo, &dbID) == errNone) {
     dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadWrite);
   }
-  pumpkin_set_osversion(20, 0);
 
   return dbRef;
 }
 
 DmOpenRef PrefOpenPreferenceDBV10(void) {
-  DmOpenRef dbRef = PrefOpenPreferenceDB(false);
-  pumpkin_set_osversion(10, 1);
-  return dbRef;
+  return PrefOpenPreferenceDB(false);
 }
 
 char *PrefCountryName(UInt32 i) {

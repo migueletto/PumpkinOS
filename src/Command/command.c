@@ -655,7 +655,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
   FormType *formP;
   RectangleType rect;
   RGBColorType oldb;
-  UInt32 swidth, sheight;
+  UInt32 density, swidth, sheight;
   FontID font, old;
   Coord x, y;
   Boolean handled = false;
@@ -691,7 +691,8 @@ static Boolean MainFormHandleEvent(EventType *event) {
       RctSetRectangle(&rect, 0, 0, swidth, sheight);
       WinSetBounds(wh, &rect);
 
-      font = idata->prefs.font - 9000;
+      WinScreenGetAttribute(winScreenDensity, &density);
+      font = idata->prefs.font - ((density == kDensityLow) ? 9100 : 9000);
       idata->font = font;
       old = FntSetFont(font);
       idata->fwidth = FntCharWidth('A');
@@ -850,7 +851,7 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
         index = FrmGetObjectIndex(formP, sel);
         ctl = (ControlType *)FrmGetObjectPtr(formP, index);
         CtlSetValue(ctl, 1);
-        index = FrmGetObjectIndex(formP, lbl8x8);
+        index = FrmGetObjectIndex(formP, lbl6x10);
         FrmHideObject(formP, index);
       } else {
         index = FrmGetObjectIndex(formP, sel6x10);
@@ -892,6 +893,9 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
             } else if (ctlSelected(formP, sel8x16)) {
               idata->prefs.font = font8x16Id;
             }
+            old = FntSetFont(idata->prefs.font - 9000);
+          } else {
+            old = FntSetFont(idata->prefs.font - 9100);
           }
           PrefSetAppPreferences(AppID, 1, 1, &idata->prefs, sizeof(command_prefs_t), true);
           color = RGBToLong(&idata->prefs.foreground);
@@ -899,7 +903,6 @@ static Boolean PrefsFormHandleEvent(EventType *event) {
           color = RGBToLong(&idata->prefs.background);
           pterm_setbg(idata->t, color);
 
-          old = FntSetFont(idata->prefs.font - 9000);
           width = FntCharWidth('A') * 2;
           height = FntCharHeight() * 2;
           FntSetFont(old);
@@ -1870,9 +1873,11 @@ static Err StartApplication(void *param) {
   plibc_init();
   plibc_dup(2); // reserve file desriptor 3 (2 is duplicated to 3)
 
+  WinScreenGetAttribute(winScreenDensity, &density);
+
   prefsSize = sizeof(command_prefs_t);
   if (PrefGetAppPreferences(AppID, 1, &idata->prefs, &prefsSize, true) == noPreferenceFound) {
-    idata->prefs.font = font8x14Id;
+    idata->prefs.font = density == kDensityLow ? font6x10Idl : font8x14Id;
     idata->prefs.foreground = defaultForeground;
     idata->prefs.background = defaultBackground;
     idata->prefs.highlight  = defaultHighlight;
@@ -1886,12 +1891,11 @@ static Err StartApplication(void *param) {
   VFSChangeDir(idata->volume, "/");
   VFSCurrentDir(idata->volume, idata->cwd, MAXCMD);
 
-  WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  WinScreenGetAttribute(winScreenDensity, &density);
-  if (density != kDensityDouble) idata->prefs.font = font16x16Id;
-  font = idata->prefs.font - 9000;
+  font = idata->prefs.font - ((density == kDensityLow) ? 9100 : 9000);
   idata->font = font;
   old = FntSetFont(font);
+
+  WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
   idata->fwidth = FntCharWidth('A');
   idata->fheight = FntCharHeight();
   FntSetFont(old);

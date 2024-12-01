@@ -44,7 +44,6 @@ static UInt32 sdup(char *s) {
 
 void CategoryCreateListV10(DmOpenRef db, ListType *lst, UInt16 currentCategory, Boolean showAll) {
   CategoryCreateList(db, lst, currentCategory, showAll, false, 0, categoryHideEditCategory, true);
-  pumpkin_set_osversion(10, 1);
 }
 
 void CategoryCreateList(DmOpenRef db, ListType *listP, UInt16 currentCategory, Boolean showAll, Boolean showUneditables, UInt8 numUneditableCategories, UInt32 editingStrID, Boolean resizeList) {
@@ -114,13 +113,11 @@ void CategoryCreateList(DmOpenRef db, ListType *listP, UInt16 currentCategory, B
       }
     }
   }
-  pumpkin_set_osversion(20, 0);
   OUTV;
 }
 
 void CategoryFreeListV10(DmOpenRef db, ListType *lst) {
   CategoryFreeList(db, lst, true, categoryHideEditCategory);
-  pumpkin_set_osversion(10, 1);
 }
 
 void CategoryFreeList(DmOpenRef db, ListType *listP, Boolean showAll, UInt32 editingStrID) {
@@ -128,7 +125,6 @@ void CategoryFreeList(DmOpenRef db, ListType *listP, Boolean showAll, UInt32 edi
   if (db && listP) {
     LstFreeListChoices(listP);
   }
-  pumpkin_set_osversion(20, 0);
   OUTV;
 }
 
@@ -177,15 +173,11 @@ void CategoryGetName(DmOpenRef db, UInt16 index, Char *name) {
 }
 
 Boolean CategoryEditV10(DmOpenRef db, UInt16 *category) {
-  Boolean r = CategoryEdit(db, category, categoryDefaultEditCategoryString, 0);
-  pumpkin_set_osversion(10, 1);
-  return r;
+  return CategoryEdit(db, category, categoryDefaultEditCategoryString, 0);
 }
 
 Boolean CategoryEditV20(DmOpenRef db, UInt16 *category, UInt32 titleStrID) {
-  Boolean r = CategoryEdit(db, category, titleStrID, 0);
-  pumpkin_set_osversion(20, 1);
-  return r;
+  return CategoryEdit(db, category, titleStrID, 0);
 }
 
 // This function both displays the Edit Categories dialog and handles
@@ -238,15 +230,12 @@ Boolean CategoryEdit(DmOpenRef db, UInt16 *category, UInt32 titleStrID, UInt8 nu
 
   FrmDeleteForm(frm);
   FrmSetActiveForm(previous);
-  pumpkin_set_osversion(30, 0);
 
   return r;
 }
 
 Boolean CategorySelectV10(DmOpenRef db, const FormType *formP, UInt16 ctlID, UInt16 lstID, Boolean title, UInt16 *categoryP, Char *categoryName) {
-  Boolean r = CategorySelect(db, formP, ctlID, lstID, title, categoryP, categoryName, 0, categoryHideEditCategory);
-  pumpkin_set_osversion(10, 1);
-  return r;
+  return CategorySelect(db, formP, ctlID, lstID, title, categoryP, categoryName, 0, categoryHideEditCategory);
 }
 
 Boolean CategorySelect(DmOpenRef db, const FormType *formP, UInt16 ctlID, UInt16 lstID, Boolean title, UInt16 *categoryP, Char *categoryName, UInt8 numUneditableCategories, UInt32 editingStrID) {
@@ -304,7 +293,6 @@ Boolean CategorySelect(DmOpenRef db, const FormType *formP, UInt16 ctlID, UInt16
       }
     }
   }
-  pumpkin_set_osversion(20, 0);
   OUTV;
 
   return r;

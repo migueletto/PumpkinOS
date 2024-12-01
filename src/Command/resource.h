@@ -19,7 +19,7 @@
 #define bgCtl     1007
 #define hlCtl     1008
 #define dflBtn    1009
-#define lbl8x8    1010
+#define lbl6x10   1010
 
 #define frmScrpID 1000
 #define frmScrpMenu 2001

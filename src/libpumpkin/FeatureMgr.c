@@ -60,6 +60,7 @@ Err FtrInit(void) {
 Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
+  Int32 osversion;
   Err err = ftrErrNoSuchFeature;
 
   *valueP = 0;
@@ -68,11 +69,8 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
     case sysFileCSystem:
       switch (featureNum) {
         case sysFtrNumROMVersion:
-          if (pumpkin_default_density() == kDensityDouble) {
-            *valueP = sysMakeROMVersion(5, 0, 0, sysROMStageRelease, 0);
-          } else {
-            *valueP = sysMakeROMVersion(4, 0, 0, sysROMStageRelease, 0);
-          }
+          osversion = pumpkin_get_osversion();
+          *valueP = sysMakeROMVersion(osversion / 10, osversion % 10, 0, sysROMStageRelease, 0);
           err = errNone;
           break;
         case sysFtrNumProcessorID:
@@ -100,8 +98,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         case sysFtrNumWinVersion:
-          pumpkin_set_osversion(40, 0);
-          *valueP = pumpkin_default_density() == kDensityDouble ? 4 : 3;
+          *valueP = pumpkin_get_density() == kDensityDouble ? 4 : 3;
           err = errNone;
           break;
         case sysFtrNumOEMCompanyID:

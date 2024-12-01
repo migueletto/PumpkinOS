@@ -20,8 +20,23 @@ pumpkin = pit.loadlib("libos")
 pumpkin.init()
 
 pumpkin.start {
-  width  = 1024,
-  height = 768,
-  depth  = 16,
+  density  = 144,
+  width    = 1024,
+  height   = 768,
+  hdepth   = 16,
+  depth    = 16,
   launcher = "Launcher"
 }
+
+--[[
+pumpkin.start {
+  density  = 72,
+  xfactor  = 2,
+  yfactor  = 2,
+  width    = 512,
+  height   = 384,
+  hdepth   = 16,
+  depth    = 8,
+  launcher = "Launcher"
+}
+]]--

@@ -790,7 +790,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       palmos_serialtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapHighDensityDispatch:
-      palmos_highdensitytrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      if (pumpkin_get_density() == kDensityDouble) {
+        palmos_highdensitytrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      } else {
+        emupalmos_panic("high density trap called on low density system", EMUPALMOS_INVALID_TRAP);
+      }
       break;
     case sysTrapOmDispatch:
       palmos_omtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));

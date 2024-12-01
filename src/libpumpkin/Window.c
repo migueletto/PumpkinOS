@@ -174,8 +174,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow = displayWindow;
   } else {
     module->displayWindow = pumpkin_heap_alloc(sizeof(WindowType), "Window");
-    module->displayWindow->windowBounds.extent.x = width/2;
-    module->displayWindow->windowBounds.extent.y = height/2;
     module->displayWindow->windowFlags.freeBitmap = true;
     module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, NULL, &err);
     module->displayWindow->density = module->density;
@@ -188,6 +186,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
       width >>= 1;
       height >>= 1;
     }
+    module->displayWindow->windowBounds.extent.x = width;
+    module->displayWindow->windowBounds.extent.y = height;
     directAccessHack(module->displayWindow, 0, 0, width, height);
   }
 
@@ -1678,6 +1678,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     bitmapTransp = BmpGetTransparentValue(bitmapP, &transparentValue);
 
     RctCopyRectangle(rect, &srcRect);
+
     if (bitmapDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
       module->coordSys = kCoordinatesDouble;
       WinScaleRectangle(&srcRect);
@@ -1698,7 +1699,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       wx = x;
       wy = y;
     }
-    wx0 = wx;
 
     if (displayDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
       module->coordSys = kCoordinatesDouble;
@@ -1712,6 +1712,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       dx = x;
       dy = y;
     }
+
+    wx0 = wx;
     dx0 = dx;
 
     x0 = wh->windowBounds.topLeft.x;
@@ -1926,7 +1928,6 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   FontType *f;
   FontID font;
   UInt16 density;
-  //Coord x0, y0, w, h;
   UInt16 prev;
   UInt32 wch;
   Boolean v10;
@@ -1936,8 +1937,6 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
   if (module->drawWindow && chars && len > 0) {
 //debug(1, "XXX", "WinDrawCharsC(\"%.*s\", %d, %d)", len, chars, x, y);
-    //x0 = x;
-    //y0 = y;
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
@@ -1960,15 +1959,6 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
             y >>= 1;
           }
           break;
-/*
-        case kDensityDouble:
-          if (module->coordSys == kCoordinatesStandard) {
-//debug(1, "XXX", "WinDrawCharsC window density double font density low coord standard x:%d->%d, y:%d->%d", x, x<<1, y, y<<1);
-            x <<= 1;
-            y <<= 1;
-          }
-          break;
-*/
       }
 
       for (i = 0; i < len;) {
@@ -2458,34 +2448,36 @@ void WinScreenUnlock(void) {
 
 UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  UInt16 prev;
+  UInt16 prev = kCoordinatesStandard;
 
-  debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem %d", coordSys);
-  prev = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
+  if (module->density == kDensityDouble) {
+    debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem %d", coordSys);
+    prev = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
 
-  switch (coordSys) {
-     case kCoordinatesNative:
-       switch (module->density) {
-         case kDensityLow:       module->coordSys = kCoordinatesStandard;  break;
-         case kDensityDouble:    module->coordSys = kCoordinatesDouble;    break;
-       }
-       module->nativeCoordSys = true;
-       break;
-     case kCoordinatesStandard:
-       module->coordSys = coordSys;
-       module->nativeCoordSys = false;
-       break;
-     case kCoordinatesDouble:
-       if (module->density == kDensityDouble) {
+    switch (coordSys) {
+       case kCoordinatesNative:
+         switch (module->density) {
+           case kDensityLow:       module->coordSys = kCoordinatesStandard;  break;
+           case kDensityDouble:    module->coordSys = kCoordinatesDouble;    break;
+         }
+         module->nativeCoordSys = true;
+         break;
+       case kCoordinatesStandard:
          module->coordSys = coordSys;
          module->nativeCoordSys = false;
-       }
-       break;
-     default:
-       debug(DEBUG_ERROR, "Window", "WinSetCoordinateSystem %d unsupported", coordSys);
-       break;
-  }
+         break;
+       case kCoordinatesDouble:
+         if (module->density == kDensityDouble) {
+           module->coordSys = coordSys;
+           module->nativeCoordSys = false;
+         }
+         break;
+       default:
+         debug(DEBUG_ERROR, "Window", "WinSetCoordinateSystem %d unsupported", coordSys);
+         break;
+    }
 //debug(1, "XXX", "WinSetCoordinateSystem new=%d (%d), prev=%d", module->coordSys, coordSys, prev);
+  }
 
   return prev;
 }
@@ -2967,7 +2959,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
         // observer that the color palette has changed.
 
         case winPaletteSet:
-          if (tableP) {
+          if (tableP && module->depth >= 8) {
             if (startIndex == WinUseTableIndexes) {
               for (i = 0; i < paletteEntries; i++) {
                 index = tableP[i].index;
@@ -3437,7 +3429,7 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   *endAddr = *startAddr + len;
 }
 
-static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, UInt16 density, UInt8 depth, UInt8 legacyDepth, Coord x, Coord y) {
+static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, ColorTableType *colorTable, Boolean isSrcDefault, UInt16 density, UInt8 depth, UInt8 legacyDepth, Coord x, Coord y) {
   UInt32 value;
 
   pointTo(module, density, &x, &y);
@@ -3455,7 +3447,7 @@ static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, UInt1
         value = BmpConvertFrom4Bits(value, legacyDepth, NULL, true);
         break;
       case 8:
-        value = BmpConvertFrom8Bits(value, NULL, true, legacyDepth, NULL, true);
+        value = BmpConvertFrom8Bits(value, colorTable, isSrcDefault, legacyDepth, NULL, true);
         break;
       case 16:
         value = BmpConvertFrom16Bits(value, legacyDepth, NULL);
@@ -3471,6 +3463,8 @@ static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, UInt1
 UInt8 WinLegacyRead(UInt32 offset) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
+  ColorTableType *colorTable, *srcColorTable;
+  Boolean isSrcDefault;
   UInt16 i, cols, c, density, realDepth;
   Coord x, y;
   UInt8 value = 0;
@@ -3480,6 +3474,11 @@ UInt8 WinLegacyRead(UInt32 offset) {
   density = BmpGetDensity(bitmapP);
 
   if (pumpkin_get_osversion() <= 30) {
+    colorTable = pumpkin_defaultcolorTable();
+    srcColorTable = BmpGetColortable(bitmapP);
+    if (srcColorTable == NULL) srcColorTable = colorTable;
+    isSrcDefault = srcColorTable == colorTable;
+
     switch (module->legacyDepth) {
       case 1:
         cols = 160 / 8;
@@ -3487,7 +3486,7 @@ UInt8 WinLegacyRead(UInt32 offset) {
         y = offset / cols;
         value = 0;
         for (i = 0; i < 8; i++, x++) {
-          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 1, x, y);
+          c = WinLegacyGetPixel(module, bitmapP, colorTable, isSrcDefault, density, realDepth, 1, x, y);
           value <<= 1;
           value |= c;
         }
@@ -3498,7 +3497,7 @@ UInt8 WinLegacyRead(UInt32 offset) {
         y = offset / cols;
         value = 0;
         for (i = 0; i < 8; i += 2, x++) {
-          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 2, x, y);
+          c = WinLegacyGetPixel(module, bitmapP, colorTable, isSrcDefault, density, realDepth, 2, x, y);
           value <<= 2;
           value |= c;
         }
@@ -3509,7 +3508,7 @@ UInt8 WinLegacyRead(UInt32 offset) {
         y = offset / cols;
         value = 0;
         for (i = 0; i < 8; i += 4, x++) {
-          c = WinLegacyGetPixel(module, bitmapP, density, realDepth, 4, x, y);
+          c = WinLegacyGetPixel(module, bitmapP, colorTable, isSrcDefault, density, realDepth, 4, x, y);
           value <<= 4;
           value |= c;
         }
@@ -3522,14 +3521,14 @@ UInt8 WinLegacyRead(UInt32 offset) {
         x = offset % cols;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
-        value = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        value = WinLegacyGetPixel(module, bitmapP, NULL, false, density, realDepth, realDepth, x, y);
         break;
       case 16:
         cols = 160 * 2;
         x = (offset % cols) / 2;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
-        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        c = WinLegacyGetPixel(module, bitmapP, NULL, false, density, realDepth, realDepth, x, y);
         if ((offset % 2) == 0) {
           value = c >> 8;
         } else {
@@ -3630,7 +3629,7 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
         x = (offset % cols) / 2;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
-        c = WinLegacyGetPixel(module, bitmapP, density, realDepth, realDepth, x, y);
+        c = WinLegacyGetPixel(module, bitmapP, NULL, true, density, realDepth, realDepth, x, y);
         if ((offset % 2) == 0) {
           c = (c & 0x00ff) | (value << 8);
         } else {

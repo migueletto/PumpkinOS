@@ -11,8 +11,8 @@
 #define MAX_STR 64
 
 typedef struct {
-  int width, height, depth, mono, xfactor, yfactor, rotate;
-  int software, fullscreen, fullrefresh, dia, single;
+  int width, height, density, hdepth, depth, mono, xfactor, yfactor, rotate;
+  int software, fullscreen, fullrefresh, dia, single, osversion;
   char launcher[MAX_STR];
   char driver[MAX_STR];
   window_provider_t *wp;
@@ -80,7 +80,7 @@ static int libos_action(void *arg) {
   if (data->wp) {
     debug(DEBUG_INFO, PUMPKINOS, "creating window");
 
-    encoding = data->depth == 16 ? ENC_RGB565 : ENC_RGBA;
+    encoding = data->hdepth == 16 ? ENC_RGB565 : ENC_RGBA;
     height = data->dia ? ((data->height - BUTTONS_HEIGHT) * 2) / 3 : data->height;
     if ((data->w = data->wp->create(encoding, &data->width, &data->height, data->xfactor, data->yfactor, data->rotate,
           data->fullscreen, data->software, data->driver, data->wp->data)) == NULL) {
@@ -94,6 +94,12 @@ static int libos_action(void *arg) {
     }
   }
 
+  if (data->osversion > 0) {
+    pumpkin_set_osversion(-data->osversion);
+  }
+  pumpkin_set_density(data->density);
+  pumpkin_set_depth(data->depth);
+
   debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
   pumpkin_deploy_files("/app_install");
   pumpkin_load_plugins();
@@ -102,11 +108,11 @@ static int libos_action(void *arg) {
   pumpkin_set_mono(data->mono);
 
   if (data->dia) {
-    pumpkin_set_dia(data->depth);
+    pumpkin_set_dia(data->hdepth);
   } else if (data->single) {
-    pumpkin_set_single(data->depth);
+    pumpkin_set_single(data->hdepth);
   } else {
-    pumpkin_set_depth(data->depth);
+    pumpkin_set_host_depth(data->hdepth);
   }
 
   pumpkin_set_spawner(thread_get_handle());
@@ -129,9 +135,9 @@ static int libos_action(void *arg) {
 }
 
 typedef enum {
-  PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DEPTH, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
+  PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
   PARAM_FULLSCREEN, PARAM_DIA, PARAM_SINGLE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
-  PARAM_DRIVER, PARAM_LAUNCHER
+  PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION
 } param_id_t;
 
 typedef struct {
@@ -143,6 +149,8 @@ typedef struct {
 static param_t params[] = {
   { PARAM_WIDTH,       SCRIPT_ARG_INTEGER, "width"       },
   { PARAM_HEIGHT,      SCRIPT_ARG_INTEGER, "height"      },
+  { PARAM_DENSITY,     SCRIPT_ARG_INTEGER, "density"     },
+  { PARAM_HDEPTH,      SCRIPT_ARG_INTEGER, "hdepth"      },
   { PARAM_DEPTH,       SCRIPT_ARG_INTEGER, "depth"       },
   { PARAM_XFACTOR,     SCRIPT_ARG_INTEGER, "xfactor"     },
   { PARAM_YFACTOR,     SCRIPT_ARG_INTEGER, "yfactor"     },
@@ -154,11 +162,12 @@ static param_t params[] = {
   { PARAM_FULLREFRESH, SCRIPT_ARG_BOOLEAN, "fullrefresh" },
   { PARAM_DRIVER,      SCRIPT_ARG_LSTRING, "driver"      },
   { PARAM_LAUNCHER,    SCRIPT_ARG_LSTRING, "launcher"    },
+  { PARAM_OSVERSION,   SCRIPT_ARG_LSTRING, "palmos"      },
   { 0, 0, NULL }
 };
 
 static int libos_start(int pe) {
-  script_int_t width, height, depth;
+  script_int_t width, height, hdepth;
   script_arg_t k, v;
   script_ref_t obj;
   libos_t *data;
@@ -176,6 +185,8 @@ static int libos_start(int pe) {
       // set some default values
       data->width = 1024;
       data->height = 680;
+      data->density = kDensityDouble;
+      data->hdepth = 16;
       data->depth = 16;
       data->xfactor = 1;
       data->yfactor = 1;
@@ -190,6 +201,8 @@ static int libos_start(int pe) {
             switch (params[i].id) {
               case PARAM_WIDTH:       data->width       = v.value.i; break;
               case PARAM_HEIGHT:      data->height      = v.value.i; break;
+              case PARAM_DENSITY:     data->density     = v.value.i; break;
+              case PARAM_HDEPTH:      data->hdepth      = v.value.i; break;
               case PARAM_DEPTH:       data->depth       = v.value.i; break;
               case PARAM_XFACTOR:     data->xfactor     = v.value.i; break;
               case PARAM_YFACTOR:     data->yfactor     = v.value.i; break;
@@ -199,6 +212,7 @@ static int libos_start(int pe) {
               case PARAM_SINGLE:      data->single      = v.value.i; break;
               case PARAM_SOFTWARE:    data->software    = v.value.i; break;
               case PARAM_FULLREFRESH: data->fullrefresh = v.value.i; break;
+              case PARAM_OSVERSION:   data->osversion   = v.value.i; break;
               case PARAM_DRIVER:
                 sys_strncpy(data->driver, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
                 break;
@@ -214,7 +228,7 @@ static int libos_start(int pe) {
 
     } else if (script_get_integer(pe, 0, &width) == 0 &&
                script_get_integer(pe, 1, &height) == 0 &&
-               script_get_integer(pe, 2, &depth) == 0 &&
+               script_get_integer(pe, 2, &hdepth) == 0 &&
                script_get_boolean(pe, 3, &fullscreen) == 0 &&
                script_get_boolean(pe, 4, &dia) == 0 &&
                script_get_boolean(pe, 5, &single) == 0 &&
@@ -223,7 +237,9 @@ static int libos_start(int pe) {
       // using old style parameters
       data->width = width;
       data->height = height;
-      data->depth = depth;
+      data->density = kDensityDouble;
+      data->hdepth = hdepth;
+      data->depth = 16;
       data->fullscreen = fullscreen;
       data->dia = dia;
       data->single = single;
@@ -231,21 +247,21 @@ static int libos_start(int pe) {
     }
 
     if (data->dia) {
-      data->width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
+      data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
       data->height = (data->width * 3 ) / 2 + BUTTONS_HEIGHT;
     } else if (data->single) {
-      data->width = pumpkin_default_density() == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
+      data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
       data->height = data->width;
     }
 
-    if (data->depth < 16) {
-      data->mono = data->depth;
-      data->depth = 16;
+    if (data->hdepth < 16) {
+      data->mono = data->hdepth;
+      data->hdepth = 16;
     } else {
       data->mono = 0;
     }
 
-    if (data->width > 0 && data->height > 0 && (data->depth == 16 || data->depth == 32)) {
+    if (data->width > 0 && data->height > 0 && (data->hdepth == 16 || data->hdepth == 32)) {
       if (thread_needs_run()) {
         r = thread_begin("LIBOS", libos_action, data);
         thread_run();

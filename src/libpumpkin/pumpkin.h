@@ -75,6 +75,8 @@ extern "C" {
 #define GRAFFITI_PUNCT  16
 #define GRAFFITI_SYMBOL 17
 
+#define font6x10Idl 9110
+
 #define font6x10Id  9010
 #define font8x14Id  9011
 #define font16x16Id 9012
@@ -212,6 +214,9 @@ int pumpkin_single_enabled(void);
 int pumpkin_set_dia(int depth);
 void pumpkin_set_display(int ptr, int width, int height);
 void pumpkin_set_input(int num, int width, int height);
+void pumpkin_set_density(int density);
+int pumpkin_get_density(void);
+void pumpkin_set_host_depth(int hdepth);
 void pumpkin_set_depth(int depth);
 void pumpkin_refresh_desktop(void);
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b);
@@ -275,7 +280,6 @@ int pumpkin_extkey_down(int key, uint64_t *extKeyMask);
 void pumpkin_screen_dirty(WinHandle win, int x, int y, int w, int h);
 void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1);
 int pumpkin_change_display(int width, int height);
-int pumpkin_default_density(void);
 void pumpkin_calibrate(int restore);
 ColorTableType *pumpkin_defaultcolorTable(void);
 
@@ -340,7 +344,7 @@ void pumpkin_load_plugins(void);
 pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id);
 void pumpkin_enum_plugins(UInt32 type, void (*callback)(pumpkin_plugin_t *plugin, void *data), void *data);
 
-FontTypeV2 *pumpkin_get_font(FontID font);
+FontType *pumpkin_get_font(FontID font);
 
 int pumpkin_clipboard_add_text(char *text, int length);
 int pumpkin_clipboard_append_text(char *text, int length);
@@ -355,7 +359,7 @@ void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Bo
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
 
-void pumpkin_set_osversion(int version, int overwrite);
+void pumpkin_set_osversion(int version);
 int pumpkin_get_osversion(void);
 void pumpkin_set_m68k(int m68k);
 int pumpkin_is_m68k(void);

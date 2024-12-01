@@ -7,6 +7,8 @@ typedef enum {
   appRegistryNotification,
   appRegistrySavedPref,
   appRegistryUnsavedPref,
+  appRegistryOSVersion,
+  appRegistryDepth,
   appRegistryLast
 } AppRegistryID;
 
@@ -28,6 +30,14 @@ typedef struct {
   UInt32 notifyType;
   UInt32 priority;
 } AppRegistryNotification;
+
+typedef struct {
+  UInt16 osversion;
+} AppRegistryOSVersion;
+
+typedef struct {
+  UInt16 depth;
+} AppRegistryDepth;
 
 enum {
   appCompatUnknown,

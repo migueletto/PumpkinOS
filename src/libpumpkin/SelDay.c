@@ -296,13 +296,10 @@ Boolean SelectDay(const SelectDayType selectDayBy, Int16 *month, Int16 *day, Int
   }
   FrmDeleteForm(frm);
   FrmSetActiveForm(previous);
-  pumpkin_set_osversion(20, 0);
 
   return r;
 }
 
 Boolean SelectDayV10(Int16 *month, Int16 *day, Int16 *year, const Char *title) {
-  Boolean r = SelectDay(selectDayByDay, month, day, year, title);
-  pumpkin_set_osversion(10, 1);
-  return r;
+  return SelectDay(selectDayByDay, month, day, year, title);
 }

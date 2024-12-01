@@ -6,6 +6,7 @@ int StoInit(char *path, mutex_t *mutex);
 int StoRefresh(void);
 int StoFinish(void);
 int StoDeleteFile(char *path);
+void StoRegistryCreate(AppRegistryType *ar, UInt32 creator);
 int StoDeployFile(char *path, AppRegistryType *ar);
 int StoDeployFiles(char *path, AppRegistryType *ar);
 int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar);

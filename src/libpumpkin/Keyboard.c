@@ -519,12 +519,10 @@ void SysKeyboardDialog(KeyboardType kbd) {
       }
     }
   }
-  pumpkin_set_osversion(20, 0);
 }
 
 void SysKeyboardDialogV10(void) {
   SysKeyboardDialog(kbdDefault);
-  pumpkin_set_osversion(10, 1);
 }
 
 KeyboardStatus *KeyboardStatusNew(UInt16 keyboardID) {

@@ -228,6 +228,38 @@ static UInt16 AppRegistryPositionCallback(AppRegistryEntry *e, void *d, UInt16 s
   return sizeof(AppRegistryPosition);
 }
 
+static UInt16 AppRegistryOSVersionCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
+  AppRegistryOSVersion *p1 = (AppRegistryOSVersion *)e->data;
+  AppRegistryOSVersion *p2 = (AppRegistryOSVersion *)d;
+  char st[8];
+
+  if (set) {
+    pumpkin_id2s(e->creator, st);
+    debug(DEBUG_INFO, "AppReg", "updating os version %d for '%s'", p2->osversion, st);
+    p1->osversion = p2->osversion;
+  } else {
+    p2->osversion = p1->osversion;
+  }
+
+  return sizeof(AppRegistryOSVersion);
+}
+
+static UInt16 AppRegistryDepthCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
+  AppRegistryDepth *p1 = (AppRegistryDepth *)e->data;
+  AppRegistryDepth *p2 = (AppRegistryDepth *)d;
+  char st[8];
+
+  if (set) {
+    pumpkin_id2s(e->creator, st);
+    debug(DEBUG_INFO, "AppReg", "updating depth %d for '%s'", p2->depth, st);
+    p1->depth = p2->depth;
+  } else {
+    p2->depth = p1->depth;
+  }
+
+  return sizeof(AppRegistryDepth);
+}
+
 static UInt16 AppRegistryCompatCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
   AppRegistryCompat *c1 = (AppRegistryCompat *)e->data;
   AppRegistryCompat *c2 = (AppRegistryCompat *)d;
@@ -337,6 +369,12 @@ void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt1
     case appRegistryNotification:
       AppRegistryProcess(ar, creator, id, seq, AppRegistryNotificationCallback, p, sizeof(AppRegistryNotification), true);
       break;
+    case appRegistryOSVersion:
+      AppRegistryProcess(ar, creator, id, seq, AppRegistryOSVersionCallback, p, sizeof(AppRegistryOSVersion), true);
+      break;
+    case appRegistryDepth:
+      AppRegistryProcess(ar, creator, id, seq, AppRegistryDepthCallback, p, sizeof(AppRegistryDepth), true);
+      break;
     default:
       break;
   }
@@ -358,6 +396,12 @@ Boolean AppRegistryGet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UI
       break;
     case appRegistryPosition:
       r = AppRegistryProcess(ar, creator, id, seq, AppRegistryPositionCallback, p, sizeof(AppRegistryPosition), false);
+      break;
+    case appRegistryOSVersion:
+      r = AppRegistryProcess(ar, creator, id, seq, AppRegistryOSVersionCallback, p, sizeof(AppRegistryOSVersion), false);
+      break;
+    case appRegistryDepth:
+      r = AppRegistryProcess(ar, creator, id, seq, AppRegistryDepthCallback, p, sizeof(AppRegistryDepth), false);
       break;
     default:
       break;
@@ -424,6 +468,12 @@ void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt1
         case appRegistrySavedPref:
         case appRegistryUnsavedPref:
           callback(ar->registry[i].creator, ar->registry[i].seq, index, ar->registry[i].id, ar->registry[i].data, ar->registry[i].size, data);
+          break;
+        case appRegistryOSVersion:
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryOSVersion, ar->registry[i].data, 0, data);
+          break;
+        case appRegistryDepth:
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryDepth, ar->registry[i].data, 0, data);
           break;
         default:
           break;

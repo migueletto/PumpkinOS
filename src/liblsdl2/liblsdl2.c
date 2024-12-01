@@ -373,8 +373,8 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
         }
         break;
       case SDL_MOUSEMOTION:
-        window->x = ev.motion.x;
-        window->y = ev.motion.y;
+        window->x = ev.motion.x / window->xfactor;
+        window->y = ev.motion.y / window->yfactor;
         *arg1 = window->x;
         *arg2 = window->y;
         r = WINDOW_MOTION;
@@ -696,6 +696,7 @@ static int libsdl_video_setup(libsdl_window_t *window) {
     debug(DEBUG_INFO, "SDL", "set window border");
     SDL_SetWindowBordered(window->window, SDL_TRUE);
     if (window->xfactor > 1 || window->yfactor > 1) {
+      SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
       SDL_RenderSetLogicalSize(window->renderer, w, h);
     }
   }
@@ -935,10 +936,10 @@ static int libsdl_window_draw_texture_rect(window_t *_window, texture_t *texture
   window = (libsdl_window_t *)_window;
 
   if (window && texture && w > 0 && h > 0) {
-    src.x = tx * window->xfactor;
-    src.y = ty * window->yfactor;
-    src.w = w * window->xfactor;
-    src.h = h * window->yfactor;
+    src.x = tx;
+    src.y = ty;
+    src.w = w;
+    src.h = h;
 
     dst.x = x * window->xfactor;
     dst.y = y * window->yfactor;

@@ -2762,16 +2762,13 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
       mutex_unlock(sto->mutex);
     }
   }
-  pumpkin_set_osversion(20, 0);
 
   StoCheckErr(err);
   return pos;
 }
 
 UInt16 DmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other) {
-  UInt16 r = DmFindSortPosition(dbP, newRecord, NULL, compar, other);
-  pumpkin_set_osversion(10, 1);
-  return r;
+  return DmFindSortPosition(dbP, newRecord, NULL, compar, other);
 }
 
 UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordInfo, UInt32 compar, Int16 other) {
@@ -3974,7 +3971,7 @@ int StoDeleteFile(char *name) {
   return StoVfsUnlink(sto->session, name);
 }
 
-static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
+void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
   AppRegistryCompat c;
   AppRegistrySize s;
   AppRegistryPosition p;
@@ -3991,22 +3988,25 @@ static void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
   pumpkin_get_window(&swidth, &sheight);
   width = APP_SCREEN_WIDTH;
   height = APP_SCREEN_HEIGHT;
+  if (pumpkin_get_density() == kDensityLow) {
+    width /= 2;
+    height /= 2;
+  }
 
   if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
     if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
       if ((ptr = MemHandleLock(h)) != NULL) {
         get2b(&width, ptr, 0);
         get2b(&height, ptr, 2);
+        if (pumpkin_get_density() == kDensityLow) {
+          width /= 2;
+          height /= 2;
+        }
         MemHandleUnlock(h);
       }
       DmReleaseResource(h);
     }
     DmCloseDatabase(dbRef);
-  }
-
-  if (pumpkin_default_density() == kDensityLow) {
-    width /= 2;
-    height /= 2;
   }
 
   s.width = width;
