@@ -18,7 +18,7 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 	uint8_t *addr = (uint8_t*)ram->buf;
 	
 	pa -= ram->adr;
-	if (pa >= ram->sz) {
+	if (pa > ram->sz - size) {
 		debug(DEBUG_ERROR, "EmuPalmOS", "invalid address 0x%08X (arm)", pa);
 		return 0;
 	}
@@ -28,39 +28,31 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 	if (write) {
 		//debug(DEBUG_TRACE, "Heap", "write %p to %p", addr, addr + size - 1);
 		switch (size) {
-			
 			case 1:
 //{
 //uint8_t value = *(uint8_t*)bufP;
 //debug(1, "XXX", "write byte 0x%02X to 0x%08X", value, pa);
 //}
-				*((uint8_t*)addr) = *(uint8_t*)bufP;	//our memory system is little-endian
+				*addr = *(uint8_t*)bufP;	//our memory system is little-endian
 				break;
-			
 			case 2:
 //{
 //uint16_t value = sys_htole16(*(uint16_t*)bufP);
 //debug(1, "XXX", "write word 0x%04X to 0x%08X", value, pa);
 //}
-			
 				*((uint16_t*)addr) = sys_htole16(*(uint16_t*)bufP);	//our memory system is little-endian
 				break;
-			
 			case 4:
 //{
 //uint32_t value = sys_htole32(*(uint32_t*)bufP);
 //debug(1, "XXX", "write long 0x%08X to 0x%08X", value, pa);
 //}
-			
 				*((uint32_t*)addr) = sys_htole32(*(uint32_t*)bufP);
 				break;
-			
 			case 8:
-			
 				*((uint32_t*)(addr + 0)) = sys_htole32(((uint32_t*)bufP)[0]);
 				*((uint32_t*)(addr + 4)) = sys_htole32(((uint32_t*)bufP)[1]);
 				break;
-			
 			case 32:
 				*((uint32_t*)(addr + 0)) = sys_htole32(((uint32_t*)bufP)[0]);
 				*((uint32_t*)(addr + 4)) = sys_htole32(((uint32_t*)bufP)[1]);
@@ -71,34 +63,24 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 				*((uint32_t*)(addr + 24)) = sys_htole32(((uint32_t*)bufP)[6]);
 				*((uint32_t*)(addr + 28)) = sys_htole32(((uint32_t*)bufP)[7]);
 				break;
-			
 			default:
-			
 				return 0;
 		}
-	}
-	else {
+	} else {
 		switch (size) {
-			
 			case 1:
-				
 				*(uint8_t*)bufP = *((uint8_t*)addr);
 				break;
-			
 			case 2:
-			
 				*(uint16_t*)bufP = sys_le16toh(*((uint16_t*)addr));
 				break;
-			
 			case 4:
-			
 				*(uint32_t*)bufP = sys_le32toh(*((uint32_t*)addr));
 //{
 //uint32_t value = *(uint32_t*)bufP;
 //debug(1, "XXX", "read  0x%08X 0x%08X", value, pa);
 //}
 				break;
-			
 			case 64:
 				((uint32_t*)bufP)[ 8] = sys_le32toh(*((uint32_t*)(addr + 32)));
 				((uint32_t*)bufP)[ 9] = sys_le32toh(*((uint32_t*)(addr + 36)));
@@ -110,14 +92,12 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 				((uint32_t*)bufP)[15] = sys_le32toh(*((uint32_t*)(addr + 60)));
 				//fallthrough
 			case 32:
-			
 				((uint32_t*)bufP)[4] = sys_le32toh(*((uint32_t*)(addr + 16)));
 				((uint32_t*)bufP)[5] = sys_le32toh(*((uint32_t*)(addr + 20)));
 				((uint32_t*)bufP)[6] = sys_le32toh(*((uint32_t*)(addr + 24)));
 				((uint32_t*)bufP)[7] = sys_le32toh(*((uint32_t*)(addr + 28)));
 				//fallthrough
 			case 16:
-				
 				((uint32_t*)bufP)[2] = sys_le32toh(*((uint32_t*)(addr +  8)));
 				((uint32_t*)bufP)[3] = sys_le32toh(*((uint32_t*)(addr + 12)));
 				//fallthrough
@@ -125,9 +105,7 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 				((uint32_t*)bufP)[0] = sys_le32toh(*((uint32_t*)(addr +  0)));
 				((uint32_t*)bufP)[1] = sys_le32toh(*((uint32_t*)(addr +  4)));
 				break;
-			
 			default:
-			
 				return 0;
 		}
 	}
