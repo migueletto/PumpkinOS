@@ -2959,7 +2959,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
         // observer that the color palette has changed.
 
         case winPaletteSet:
-          if (tableP && module->depth >= 8) {
+          if (tableP && module->depth0 >= 8) {
             if (startIndex == WinUseTableIndexes) {
               for (i = 0; i < paletteEntries; i++) {
                 index = tableP[i].index;
