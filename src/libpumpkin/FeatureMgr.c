@@ -106,10 +106,14 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         case sysFtrNumOEMCompanyID:
-          *valueP = 1;
+          *valueP = 'Palm';
           err = errNone;
           break;
         case sysFtrNumOEMDeviceID:
+          *valueP = 1;
+          err = errNone;
+          break;
+        case sysFtrNumOEMHALID:
           *valueP = 1;
           err = errNone;
           break;
