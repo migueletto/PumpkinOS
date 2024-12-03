@@ -1861,8 +1861,11 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (srcWin == NULL) {
-    debug(DEBUG_ERROR, "Window", "WinCopyRectangle srcWin is NULL");
-    return;
+    srcWin = module->drawWindow;
+    if (srcWin == NULL) {
+      debug(DEBUG_ERROR, "Window", "WinCopyRectangle drawWindow is NULL");
+      return;
+    }
   }
 
   if (dstWin == NULL) {
