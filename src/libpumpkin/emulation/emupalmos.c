@@ -115,8 +115,6 @@ static const uint8_t SysLibLoad_code[] = {
 0x30, 0x03, 0x4c, 0xee, 0x0c, 0xf8, 0xff, 0xac, 0x4e, 0x5e, 0x4e, 0x75,
 };
 
-static int debug_on;
-
 void emupalmos_finish(int f) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->m68k_state.finish = f;
@@ -139,6 +137,12 @@ void emupalmos_panic(char *msg, int code) {
   creator = pumpkin_get_app_creator();
   pumpkin_set_compat(creator, appCompatCrash, code);
   pumpkin_crash_log(creator, code, msg);
+}
+
+void emupalmos_disasm(int disasm) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  state->disasm = disasm;
+  armDisasm(state->arm, disasm);
 }
 
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg) {
@@ -1528,7 +1532,7 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   armSetReg(state->arm, 2, callAddr);
 
   for (; !emupalmos_finished();) {
-    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr, 0)) break;
+    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   pumpkin_heap_free(emulState, "emulState");
@@ -1617,7 +1621,7 @@ static int cpu_instr_callback(unsigned int pc) {
     return -1;
   }
 
-  if (debug_on) {
+  if (state->disasm) {
     instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68020);
     make_hex(buf2, pc, instr_size);
     for (i = 0; i <= M68K_REG_D7; i++) {
@@ -1689,18 +1693,9 @@ static void emupalmos_destroy(emu_state_t *state) {
   }
 }
 
-int emupalmos_debug_on(void) {
-  return debug_on;
-}
-
-void emupalmos_debug(int on) {
-  debug_on = 1;
-}
-
 int emupalmos_init(void) {
   m68k_init_once();
   allTrapsInit();
-  debug_on = debug_getsyslevel("M68K") == DEBUG_TRACE;
 
   return 0;
 }

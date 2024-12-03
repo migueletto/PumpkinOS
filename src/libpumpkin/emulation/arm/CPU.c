@@ -1864,10 +1864,14 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 		cpuPrvHandleMemErr(cpu, pc, 4, 0, 1, fsr);
 	} else {
     if (cpu->disasm) {
-	    //uint32_t r11 = cpu->regs[11];
-      //char buf[64];
-      //sys_snprintf(buf, sizeof(buf)-1, "(r11=0x%08X)", r11);
-      disasm(pc, instr, NULL);
+	    uint32_t r0 = cpu->regs[0];
+	    uint32_t r1 = cpu->regs[1];
+	    uint32_t r2 = cpu->regs[2];
+	    uint32_t r12 = cpu->regs[12];
+	    uint32_t r14 = cpu->regs[14];
+      char buf[256];
+      sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r12=%08X LR=%08X)", r0, r1, r2, r12, r14);
+      disasm(pc, instr, buf);
     }
 		cpu->regs[REG_NO_PC] += 4;
 		cpuPrvExecInstr(cpu, instr, 0, privileged, 0);

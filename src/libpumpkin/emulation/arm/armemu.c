@@ -50,10 +50,12 @@ void armSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
  cpuSetReg(arm->cpu, reg, value);
 }
 
-int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr, int disasm) {
-  uint32_t i, r, pc, a0, a1, a2, a3;
-
+void armDisasm(arm_emu_t *arm, int disasm) {
   cpuDisasm(arm->cpu, disasm);
+}
+
+int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr) {
+  uint32_t i, r, pc, a0, a1, a2, a3;
 
   for (i = 0; i < n && !emupalmos_finished(); i++) {
     pc = armGetReg(arm, 15);

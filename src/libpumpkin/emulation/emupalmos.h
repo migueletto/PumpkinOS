@@ -88,6 +88,7 @@ typedef struct {
   void (*write_word)(uint32_t address, uint16_t value);
   void (*write_long)(uint32_t address, uint32_t value);
   void *extra;
+  int disasm;
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);
@@ -147,9 +148,6 @@ void palmos_netlibtrap(uint16_t trap);
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg);
 uint32_t emupalmos_trap_out(void *address);
-
-int emupalmos_debug_on(void);
-void emupalmos_debug(int on);
 
 emu_state_t *emupalmos_install(void);
 void emupalmos_deinstall(emu_state_t *oldState);
