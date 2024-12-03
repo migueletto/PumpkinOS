@@ -5,6 +5,7 @@
 #include "pwindow.h"
 #include "vfs.h"
 #include "pumpkin.h"
+#include "navigator.h"
 #include "xalloc.h"
 #include "debug.h"
 
@@ -236,6 +237,19 @@ static void adjustCoords(Coord *x, Coord *y) {
    }
 }
 
+static int sendKeyDown(UInt16 eType, UInt16 chr, UInt16 keyCode, UInt16 modifiers) {
+  EventType event;
+
+  MemSet(&event, sizeof(EventType), 0);
+  event.eType = eType;
+  event.data.keyDown.chr = chr;
+  event.data.keyDown.keyCode = keyCode;
+  event.data.keyDown.modifiers = modifiers;
+  EvtAddEventToQueue(&event);
+
+  return 1;
+}
+
 int EvtPumpEvents(Int32 timeoutUs) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   EventType event;
@@ -303,7 +317,17 @@ int EvtPumpEvents(Int32 timeoutUs) {
     }
 
     if (ev == MSG_KEYDOWN || ev == MSG_KEYUP) {
-      if (key != WINDOW_KEY_SHIFT && key != WINDOW_KEY_CTRL && key != WINDOW_KEY_LALT) continue;
+      switch (key) {
+        case WINDOW_KEY_SHIFT:
+        case WINDOW_KEY_CTRL:
+        case WINDOW_KEY_LALT:
+        case WINDOW_KEY_LEFT:
+        case WINDOW_KEY_RIGHT:
+        case WINDOW_KEY_F9:
+          break;
+        default:
+          continue;
+      }
     }
 
     if (ev == MSG_MOTION) {
@@ -363,88 +387,123 @@ int EvtPumpEvents(Int32 timeoutUs) {
 
   switch (ev) {
     case MSG_KEYDOWN:
+      switch (key) {
+        case WINDOW_KEY_SHIFT:
+          r = sendKeyDown(modKeyDownEvent, 0, 0, shiftKeyMask);
+          break;
+        case WINDOW_KEY_CTRL:
+          r = sendKeyDown(modKeyDownEvent, 0, 0, controlKeyMask);
+          break;
+        case WINDOW_KEY_LALT:
+          r = sendKeyDown(modKeyDownEvent, 0, 0, optionKeyMask);
+          break;
+        case WINDOW_KEY_LEFT:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeLeft | navBitLeft, commandKeyMask);
+          break;
+        case WINDOW_KEY_RIGHT:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeRight | navBitRight, commandKeyMask);
+          break;
+        case WINDOW_KEY_F9:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeSelect | navBitSelect, commandKeyMask);
+          break;
+       }
+       break;
     case MSG_KEYUP:
       switch (key) {
-        case WINDOW_KEY_SHIFT: event.data.keyDown.modifiers |= shiftKeyMask; break;
-        case WINDOW_KEY_CTRL:  event.data.keyDown.modifiers |= controlKeyMask; break;
-        case WINDOW_KEY_LALT:  event.data.keyDown.modifiers |= optionKeyMask; break;
-      }
-      if (event.data.keyDown.modifiers) {
-        event.eType = ev == MSG_KEYDOWN ? modKeyDownEvent : modKeyUpEvent;
-        EvtAddEventToQueue(&event);
-      }
-      break;
+        case WINDOW_KEY_SHIFT:
+          r = sendKeyDown(modKeyUpEvent, 0, 0, shiftKeyMask);
+          break;
+        case WINDOW_KEY_CTRL:
+          r = sendKeyDown(modKeyUpEvent, 0, 0, controlKeyMask);
+          break;
+        case WINDOW_KEY_LALT:
+          r = sendKeyDown(modKeyUpEvent, 0, 0, optionKeyMask);
+          break;
+        case WINDOW_KEY_LEFT:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeLeft, commandKeyMask);
+          break;
+        case WINDOW_KEY_RIGHT:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeRight, commandKeyMask);
+          break;
+        case WINDOW_KEY_F9:
+          r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeSelect, commandKeyMask);
+          break;
+       }
+       break;
+
     case MSG_KEY:
       native = pumpkin_get_native_keys();
+      event.data.keyDown.chr = 0;
+      event.data.keyDown.keyCode = 0;
+      event.data.keyDown.modifiers = 0;
 
       switch (key) {
+        case 13:
+          event.data.keyDown.chr = 10;
+          break;
         case WINDOW_KEY_F1:
-          key = vchrHard1;
+          event.data.keyDown.chr = vchrHard1;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F2:
-          key = vchrHard2;
+          event.data.keyDown.chr = vchrHard2;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F3:
-          key = vchrHard3;
+          event.data.keyDown.chr = vchrHard3;
            event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F4:
-          key = vchrHard4;
+          event.data.keyDown.chr = vchrHard4;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F5:
           if (native) {
-            key = vchrHard5;
+            event.data.keyDown.chr = vchrHard5;
           } else {
-            key = vchrMenu;
+            event.data.keyDown.chr = vchrMenu;
           }
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F6:
-          key = vchrHard6;
+          event.data.keyDown.chr = vchrHard6;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F7:
-          key = vchrHard7;
+          event.data.keyDown.chr = vchrHard7;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_F8:
-          key = vchrHard8;
+          event.data.keyDown.chr = vchrHard8;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
+/*
         case WINDOW_KEY_F9:
-          key = vchrHard9;
+          event.data.keyDown.chr = vchrHard9;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
+*/
         case WINDOW_KEY_F10:
-          key = vchrHard10;
+          event.data.keyDown.chr = vchrHard10;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_UP:
-          key = vchrPageUp;
+          event.data.keyDown.chr = vchrPageUp;
           break;
         case WINDOW_KEY_DOWN:
-          key = vchrPageDown;
-          break;
-        case WINDOW_KEY_LEFT:
-          key = vchrRockerLeft;
-          break;
-        case WINDOW_KEY_RIGHT:
-          key = vchrRockerRight;
+          event.data.keyDown.chr = vchrPageDown;
           break;
         case WINDOW_KEY_INS:
-          key = vchrNativeInsert;
+          event.data.keyDown.chr = vchrNativeInsert;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_DEL:
-          key = vchrNativeDelete;
+          event.data.keyDown.chr = vchrNativeDelete;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_HOME:
           if (native) {
-            key = vchrNativeHome;
+            event.data.keyDown.chr = vchrNativeHome;
             event.data.keyDown.modifiers |= commandKeyMask;
           } else {
             debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents keyDownEvent vchrLaunch");
@@ -453,32 +512,38 @@ int EvtPumpEvents(Int32 timeoutUs) {
           }
           break;
         case WINDOW_KEY_END:
-          key = vchrNativeEnd;
+          event.data.keyDown.chr = vchrNativeEnd;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_PGUP:
-          key = vchrNativePgUp;
+          event.data.keyDown.chr = vchrNativePgUp;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_PGDOWN:
-          key = vchrNativePgDown;
+          event.data.keyDown.chr = vchrNativePgDown;
           event.data.keyDown.modifiers |= commandKeyMask;
           break;
         case WINDOW_KEY_CUSTOM:
-          key = mods;
+          event.data.keyDown.chr = mods;
           event.data.keyDown.modifiers |= commandKeyMask;
+          break;
+        case WINDOW_KEY_LEFT:
+        case WINDOW_KEY_RIGHT:
+        case WINDOW_KEY_F9:
+          break;
+        default:
+          event.data.keyDown.chr = key;
           break;
       }
 
-      event.eType = keyDownEvent;
-      if (key == 13) key = 10;
-      event.data.keyDown.chr = key;   // ascii code
-      event.data.keyDown.keyCode = 0; // XXX virtual key code
-      if (mods & WINDOW_MOD_SHIFT) event.data.keyDown.modifiers |= shiftKeyMask;
-      if (mods & WINDOW_MOD_CTRL)  event.data.keyDown.modifiers |= controlKeyMask;
-      if (mods & WINDOW_MOD_LALT)  event.data.keyDown.modifiers |= optionKeyMask;
-      EvtAddEventToQueue(&event);
-      r = 1;
+      if (event.data.keyDown.chr) {
+        event.eType = keyDownEvent;
+        if (mods & WINDOW_MOD_SHIFT) event.data.keyDown.modifiers |= shiftKeyMask;
+        if (mods & WINDOW_MOD_CTRL)  event.data.keyDown.modifiers |= controlKeyMask;
+        if (mods & WINDOW_MOD_LALT)  event.data.keyDown.modifiers |= optionKeyMask;
+        EvtAddEventToQueue(&event);
+        r = 1;
+      }
       break;
 
     case MSG_BUTTON:

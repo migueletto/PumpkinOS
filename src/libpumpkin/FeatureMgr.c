@@ -20,6 +20,10 @@
 #define sysFtrNumUIHardwareHasJogBack   0x00000004   // device has a jog wheel with a 'back' button
 #define sysFtrNumUIHardwareHasKbd       0x00000008   // device has a dedicated keyboard
 
+#define navFtrCreator  'fway'      // Creator ID for 5-Way navigator
+#define navFtrVersion  0           // Feature id for 5-Way
+#define navVersion     0x00010000  // Version for 5-Way
+
 typedef struct {
   UInt32 creator;
   UInt16 featureNum;
@@ -121,7 +125,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           break;
         case sysFtrNumUIHardwareFlags:
           // XXX check if device has a keyboard (a Raspberry PI with just a touch screen should not set these flags)
-          *valueP = sysFtrNumUIHardwareHas5Way | sysFtrNumUIHardwareHasKbd;
+          *valueP = sysFtrNumUIHardwareHas5Way /*| sysFtrNumUIHardwareHasKbd*/;
           err = errNone;
           break;
         case sysFtrNumDmAutoBackup:
@@ -129,7 +133,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         case sysFtrNumFiveWayNavVersion:
-          *valueP = 1;
+          *valueP = navVersion;
           err = errNone;
           break;
         default:
@@ -186,6 +190,18 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
             err = ftrErrNoSuchFeature;
             break;
         }
+      }
+      break;
+    case navFtrCreator:
+      switch (featureNum) {
+        case navFtrVersion:
+          *valueP = navVersion;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet navFtrCreator %d not defined", featureNum);
+          err = ftrErrNoSuchFeature;
+          break;
       }
       break;
     default:
