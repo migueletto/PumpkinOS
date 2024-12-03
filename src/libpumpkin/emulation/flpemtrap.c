@@ -332,6 +332,18 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       debug(DEBUG_TRACE, "FlpEm", "_d_flt(%f, %f): %d", a.f, b.f, res);
     }
       break;
+    case sysFloatEm_f_fle: {
+      // Int32 _f_fle(FlpFloat, FlpFloat)
+      flp_float_t a;
+      a.i = ARG32;
+      flp_float_t b;
+      b.i = ARG32;
+      Int32 res;
+      res = (a.f <= b.f);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "FlpEm", "_d_fle(%f, %f): %d", a.f, b.f, res);
+    }
+      break;
     case sysFloatEm_f_fgt: {
       // Int32 _f_fgt(FlpFloat, FlpFloat)
       flp_float_t a;
