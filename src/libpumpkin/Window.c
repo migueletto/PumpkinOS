@@ -1281,8 +1281,6 @@ void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   module->pattern = oldp;
 }
 
-void emupalmos_debug(int on);
-
 void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   PatternType oldp = WinGetPatternType();
@@ -3321,13 +3319,21 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
   debug(DEBUG_TRACE, "Window", "WinDrawCharBox: drawn %d, total %d", drawn, total);
 }
 
+// Get the current status of the pen using a window’s active coordinate system.
+
 void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* pPenDown) {
   WinHandle old;
+  BitmapType *bitmapP;
+  UInt16 coordSys, density;
 
   if (winH) {
     old = WinGetActiveWindow();
     WinSetActiveWindow(winH);
+    bitmapP = WinGetBitmap(winH);
+    density = BmpGetDensity(bitmapP);
+    coordSys = WinSetCoordinateSystem(density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
     EvtGetPen(pScreenX, pScreenY, pPenDown);
+    WinSetCoordinateSystem(coordSys);
     WinSetActiveWindow(old);
   }
 }
