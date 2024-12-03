@@ -167,7 +167,7 @@ static storage_handle_t *StoPtrRecoverHandle(void *p) {
           h = NULL;
         }
       } else {
-        debug(DEBUG_ERROR, "STOR", "StoPtrRecoverHandle invalid handle %p for pointer %p", h, p);
+        debug(DEBUG_INFO, "STOR", "StoPtrRecoverHandle invalid handle %p for pointer %p", h, p);
         h = NULL;
       }
     } else {
@@ -1215,7 +1215,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
   char buf[VFS_PATH];
   Err err = dmErrInvalidParam;
 
-  if (nameP && creator) {
+  if (nameP) {
     if (mutex_lock(sto->mutex) == 0) {
       for (db = sto->list; db; db = db->next) {
         if (sys_strcmp(nameP, db->name) == 0) {
