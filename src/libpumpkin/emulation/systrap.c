@@ -2352,6 +2352,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtAddEventToQueue(0x%08X [0x%04X])", eventP, event.eType);
       }
       break;
+    case sysTrapEvtEnqueueKey: {
+      // Err EvtEnqueueKey(WChar ascii, UInt16 keycode, UInt16 modifiers)
+      uint16_t ascii = ARG16;
+      uint16_t keycode = ARG16;
+      uint16_t modifiers = ARG16;
+      err = EvtEnqueueKey(ascii, keycode, modifiers);
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtEnqueueKey(0x%04X, 0x%04X, 0x%04X): %d", ascii, keycode, modifiers, err);
+      }
+      break;
     case sysTrapEvtEventAvail: {
       // Boolean EvtEventAvail(void)
       Boolean res = EvtEventAvail();
