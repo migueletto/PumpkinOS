@@ -1908,6 +1908,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     state = emupalmos_new();
     oldState = pumpkin_get_local_storage(emu_key);
     pumpkin_set_local_storage(emu_key, state);
+    emupalmos_disasm(debug_getsyslevel("DISASM") == DEBUG_TRACE);
 
     paramBlock = getParamBlock(launchCode, param, ram);
     paramBlockStart = paramBlock ? paramBlock - ram : 0;
@@ -1962,6 +1963,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       state = emupalmos_new();
       oldState = pumpkin_get_local_storage(emu_key);
       pumpkin_set_local_storage(emu_key, state);
+      emupalmos_disasm(debug_getsyslevel("DISASM") == DEBUG_TRACE);
 
       codeStart = code1 - ram;
       codeSize = MemHandleSize(hCode1);
