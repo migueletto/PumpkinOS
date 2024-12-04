@@ -1,13 +1,7 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
-#include "sys.h"
-#include "thread.h"
-#include "pwindow.h"
-#include "vfs.h"
-#include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 #define MAX_FEATURES 32
 
@@ -28,6 +22,7 @@ typedef struct {
   UInt32 creator;
   UInt16 featureNum;
   UInt32 value;
+  Boolean ptr;
 } feature_t;
 
 typedef struct {
@@ -38,7 +33,7 @@ typedef struct {
 int FtrInitModule(void) {
   ftr_module_t *module;
 
-  if ((module = xcalloc(1, sizeof(ftr_module_t))) == NULL) {
+  if ((module = sys_calloc(1, sizeof(ftr_module_t))) == NULL) {
     return -1;
   }
 
@@ -51,7 +46,7 @@ int FtrFinishModule(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
 
   if (module) {
-    xfree(module);
+    sys_free(module);
   }
 
   return 0;
@@ -61,13 +56,14 @@ Err FtrInit(void) {
   return errNone;
 }
 
-Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
+static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *ptr) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Int32 osversion;
   Err err = ftrErrNoSuchFeature;
 
   *valueP = 0;
+  if (ptr) *ptr = false;
 
   switch (creator) {
     case sysFileCSystem:
@@ -110,7 +106,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
           err = errNone;
           break;
         case sysFtrNumOEMDeviceID:
-          *valueP = 1;
+          *valueP = 'Pmpk';
           err = errNone;
           break;
         case sysFtrNumOEMHALID:
@@ -213,6 +209,7 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
         for (i = 0; i < module->numFeatures; i++) {
           if (module->features[i].creator == creator && module->features[i].featureNum == featureNum) {
             *valueP = module->features[i].value;
+            if (ptr) *ptr = module->features[i].ptr;
             err = errNone;
             break;
           }
@@ -224,10 +221,15 @@ Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
   return err;
 }
 
+Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
+  return FtrGetEx(creator, featureNum, valueP, NULL);
+}
+
 // A feature that you define in this manner remains defined until the
 // next system reset or until you explicitly undefine the feature with FtrUnregister.
+// XXX on PumpkinOS they are not persisted.
 
-Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
+static Err FtrSetEx(UInt32 creator, UInt16 featureNum, UInt32 newValue, Boolean ptr) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Err err = memErrNotEnoughSpace;
@@ -235,6 +237,7 @@ Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
   for (i = 0; i < module->numFeatures; i++) {
     if (module->features[i].creator == creator && module->features[i].featureNum == featureNum) {
       module->features[i].value = newValue;
+      module->features[i].ptr = ptr;
       err = errNone;
       break;
     }
@@ -244,11 +247,16 @@ Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
     module->features[i].creator = creator;
     module->features[i].featureNum = featureNum;
     module->features[i].value = newValue;
+    module->features[i].ptr = ptr;
     module->numFeatures++;
     err = errNone;
   }
 
   return err;
+}
+
+Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue) {
+  return FtrSetEx(creator, featureNum, newValue, false);
 }
 
 Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
@@ -263,6 +271,7 @@ Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
           module->features[i].creator = module->features[module->numFeatures-1].creator;
           module->features[i].featureNum = module->features[module->numFeatures-1].featureNum;
           module->features[i].value = module->features[module->numFeatures-1].value;
+          module->features[i].ptr = module->features[module->numFeatures-1].ptr;
         }
         module->numFeatures++;
         err = errNone;
@@ -274,22 +283,68 @@ Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
   return err;
 }
 
+// This function is intended for system use only.
 Err FtrGetByIndex(UInt16 index, Boolean romTable, UInt32 *creatorP, UInt16 *numP, UInt32 *valueP) {
   debug(DEBUG_ERROR, "Feature", "FtrGetByIndex not implemented");
   return sysErrParamErr;
 }
 
 Err FtrPtrNew(UInt32 creator, UInt16 featureNum, UInt32 size, void **newPtrP) {
-  debug(DEBUG_ERROR, "Feature", "FtrPtrNew not implemented");
-  return sysErrParamErr;
+  UInt8 *p, *ram;
+  UInt32 value;
+  Err err = memErrInvalidParam;
+
+  if ((p = MemPtrNew(size)) != NULL) {
+    ram = pumpkin_heap_base();
+    value = p - ram;
+    if ((err = FtrSetEx(creator, featureNum, value, true)) == errNone) {
+      *newPtrP = p;
+      err = errNone;
+    } else {
+      MemPtrFree(p);
+    }
+  }
+
+  return err;
 }
 
 Err FtrPtrFree(UInt32 creator, UInt16 featureNum) {
-  debug(DEBUG_ERROR, "Feature", "FtrPtrFree not implemented");
-  return sysErrParamErr;
+  UInt8 *p, *ram;
+  UInt32 value;
+  Boolean ptr;
+  Err err = memErrInvalidParam;
+
+  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
+    if (ptr) {
+      ram = pumpkin_heap_base();
+      p = ram + value;
+      MemPtrFree(p);
+      err = FtrUnregister(creator, featureNum);
+    } else {
+      err = memErrInvalidParam;
+    }
+  }
+
+  return err;
 }
 
 Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPtrP) {
-  debug(DEBUG_ERROR, "Feature", "FtrPtrResize not implemented");
-  return sysErrParamErr;
+  UInt8 *p, *ram;
+  UInt32 value;
+  Boolean ptr;
+  Err err = memErrInvalidParam;
+
+  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
+    if (ptr) {
+      ram = pumpkin_heap_base();
+      p = ram + value;
+      if ((err = MemPtrResize(p, newSize)) == errNone) {
+        *newPtrP = p;
+      }
+    } else {
+      err = memErrInvalidParam;
+    }
+  }
+
+  return err;
 }
