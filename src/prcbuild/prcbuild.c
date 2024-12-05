@@ -9,7 +9,7 @@
 
 #include "pdb.h"
 
-#define MAX_RSRC 1024
+#define MAX_RSRC 8192
 
 static int prcbuild(char *filename, char *type, char *creator, char *name, char *rsrc[], int num) {
   pdb_t *pdb;
