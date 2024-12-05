@@ -40,6 +40,18 @@
 #include "pilrc.h"
 #include "bitmap.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_PSD
+#define STBI_NO_TGA
+#define STBI_NO_HDR
+#define STBI_NO_PIC
+#define STBI_NO_PNM
+#define STBI_NO_BMP
+#define STBI_NO_GIF
+#define STBI_NO_JPEG
+#define STBI_NO_LINEAR
+#include "stb_image.h"
+
 typedef unsigned char PILRC_BYTE;                /* b */
 typedef unsigned short PILRC_USHORT;             /* us */
 typedef unsigned int PILRC_ULONG;                /* ul */
@@ -249,6 +261,8 @@ static int BMP_GetBits24bpp(BITMAPINFO *, int, PILRC_BYTE *,
                             int, int, int, int *, int *, int *, int *);
 static int BMP_GetBits32bpp(BITMAPINFO *, int, PILRC_BYTE *,
                             int, int, int, int *, int *, int *, int *);
+static int BMP_GetBits32bppPng(BITMAPINFO *, int, PILRC_BYTE *,
+                            int, int, int, int *, int *, int *, int *);
 
 static void BMP_SetBits1bpp(int, PILRC_BYTE *, int, int, int);
 static void BMP_SetBits2bpp(int, PILRC_BYTE *, int, int, int, int);
@@ -258,7 +272,7 @@ static void BMP_SetBits16bpp(int, PILRC_BYTE *, int, int, int, int);
 static void BMP_SetBits24bpp(int, PILRC_BYTE *, int, int, int, int);
 static void BMP_SetBits32bpp(int, PILRC_BYTE *, int, int, int, int);
 
-static void BMP_ConvertWindowsBitmap(RCBITMAP *, PILRC_BYTE *, int, BOOL, int *, int);
+static void BMP_ConvertWindowsBitmap(RCBITMAP *, PILRC_BYTE *, long, int, BOOL, int *, int, int);
 static void BMP_ConvertTextBitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertX11Bitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertPNMBitmap(RCBITMAP *, PILRC_BYTE *, int, int, BOOL, int *);
@@ -984,6 +998,32 @@ BMP_GetBits32bpp(BITMAPINFO * pbmi,
   return -1;                                     // no index, direct color
 }
 
+static int
+BMP_GetBits32bppPng(BITMAPINFO * pbmi,
+                    int cx,
+                    PILRC_BYTE * pb,
+                    int x,
+                    int y,
+                    int cBitsAlign,
+                    int *a,
+                    int *r,
+                    int *g,
+                    int *b)
+{
+  int cbRow;
+
+  cbRow = BMP_CbRow(cx, 32, cBitsAlign);
+  pb += cbRow * y + (x * 4);
+
+  // return the values we need
+  *r = pb[0];
+  *g = pb[1];
+  *b = pb[2];
+  *a = pb[3];
+
+  return -1;                                     // no index, direct color
+}
+
 /**
  * Convert a Microsoft Windows BMP file to Palm Computing resource data.
  *
@@ -996,13 +1036,14 @@ BMP_GetBits32bpp(BITMAPINFO * pbmi,
 static void
 BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
                          PILRC_BYTE * pbResData,
+                         long size,
                          int bitmaptype,
                          BOOL colortable,
                          int *transparencyData,
-                         int density)
+                         int density, int png)
 {
   PILRC_BYTE *pbSrc;
-  int i, x, y, dx, dy, colorDat;
+  int i, x, y, dx, dy, colorDat, icomp;
   int cbRow, cbHeader, cbits, cbitsPel, numClrs;
   BITMAPINFO *pbmi;
   BITMAPINFOHEADER bmi;
@@ -1019,24 +1060,41 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
   int dstPalette[256][3] = { {0, 0, 0} };
   int dstPaletteSize = 0;
 
-  pbmi = (BITMAPINFO *) (pbResData + sizeof(BITMAPFILEHEADER));
-  memcpy(&bmi, pbmi, sizeof(BITMAPINFOHEADER));
+  if (png) {
+    if (bitmaptype != rwBitmapColor32k)
+      ErrorLine("Pilrc supports only 32-bits Bitmaps for PNG files ");
 
-  cbHeader = LLoadX86(bmi.biSize);
-  dx = LLoadX86(bmi.biWidth);
-  dy = LLoadX86(bmi.biHeight);
-  cbits = WLoadX86(bmi.biBitCount);
-  numClrs = LLoadX86(bmi.biClrUsed);
-  if (numClrs == 0)
-    numClrs = 1 << cbits;                        // MSPaint DONT set this
-  if (numClrs > 256)
-    numClrs = 0;                                 // direct color FIX
-  pbSrc = ((PILRC_BYTE *) pbmi) + cbHeader + (sizeof(RGBQUAD) * numClrs);
-  cbitsPel = -1;
-  colorDat = 0;
+    pbSrc = stbi_load_from_memory(pbResData, size, &dx, &dy, &icomp, 4);
 
-  if ((bmi.biCompression == BI_RLE4) || (bmi.biCompression == BI_RLE8))
-    ErrorLine("Pilrc does not support compressed '.bmp' files ");
+    if (pbSrc == NULL)
+      ErrorLine("Pilrc failed to load PNG image ");
+    if (icomp != 4)
+      ErrorLine("Pilrc supports only 32-bits PNG images ");
+
+    cbits = 32;
+    numClrs = 0;
+    cbitsPel = -1;
+    colorDat = 0;
+  } else {
+    pbmi = (BITMAPINFO *) (pbResData + sizeof(BITMAPFILEHEADER));
+    memcpy(&bmi, pbmi, sizeof(BITMAPINFOHEADER));
+
+    cbHeader = LLoadX86(bmi.biSize);
+    dx = LLoadX86(bmi.biWidth);
+    dy = LLoadX86(bmi.biHeight);
+    cbits = WLoadX86(bmi.biBitCount);
+    numClrs = LLoadX86(bmi.biClrUsed);
+    if (numClrs == 0)
+      numClrs = 1 << cbits;                        // MSPaint DONT set this
+    if (numClrs > 256)
+      numClrs = 0;                                 // direct color FIX
+    pbSrc = ((PILRC_BYTE *) pbmi) + cbHeader + (sizeof(RGBQUAD) * numClrs);
+    cbitsPel = -1;
+    colorDat = 0;
+
+    if ((bmi.biCompression == BI_RLE4) || (bmi.biCompression == BI_RLE8))
+      ErrorLine("Pilrc does not support compressed '.bmp' files ");
+  }
 
   // check the format of the bitmap
   switch (cbits)
@@ -1074,14 +1132,18 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
       break;
 
     case 32:
-      if (bmi.biCompression == BI_BITFIELDS)
-      {
-        pbSrc += 12;                             // MiR 1st July 2002, for 16bpp bitmaps the bitmap body data 
-        // starts at pbmi + cbHeader + 12
-        WarningLine
-          ("32 bits bitmap don't use default color mask. It's not supported by PilRC.");
+      if (png) {
+        getBits = BMP_GetBits32bppPng;
+      } else {
+        if (bmi.biCompression == BI_BITFIELDS)
+        {
+          pbSrc += 12;                             // MiR 1st July 2002, for 16bpp bitmaps the bitmap body data 
+          // starts at pbmi + cbHeader + 12
+          WarningLine
+            ("32 bits bitmap don't use default color mask. It's not supported by PilRC.");
+        }
+        getBits = BMP_GetBits32bpp;
       }
-      getBits = BMP_GetBits32bpp;
       break;
 
     default:
@@ -1385,7 +1447,8 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
     for (x = 0; x < dx; x++)
     {
 
-      int yT = (dy > 0) ? dy - y - 1 : y;
+      //int yT = (dy > 0) ? dy - y - 1 : y;
+      int yT = (png) ? y : dy - y - 1;
       int w, a, r, g, b;
 
       // whats the (r,g,b) tupile at the index?
@@ -1479,6 +1542,8 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
   rcbmp->cx = (int)dx;
   rcbmp->cy = (int)dy;
   rcbmp->cbRow = (int)cbRow;
+
+  if (png && pbSrc) stbi_image_free(pbSrc);
 }
 
 /*
@@ -2820,8 +2885,16 @@ void DumpBitmap(const char *fileName,
   memset(&rcbmp, 0, sizeof(RCBITMAP));
   if (FSzEqI(pchExt, "bmp"))
   {
-    BMP_ConvertWindowsBitmap(&rcbmp, pBMPData, bitmaptype, colortable,
-                             transparencyData, density);
+    BMP_ConvertWindowsBitmap(&rcbmp, pBMPData, size, bitmaptype, colortable,
+                             transparencyData, density, 0);
+    BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
+                           directColor, multibit, bootScreen, density,
+                             transparencyData);
+  }
+  else if (FSzEqI(pchExt, "png"))
+  {
+    BMP_ConvertWindowsBitmap(&rcbmp, pBMPData, size, bitmaptype, colortable,
+                             transparencyData, density, 1);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
                            directColor, multibit, bootScreen, density,
                              transparencyData);
