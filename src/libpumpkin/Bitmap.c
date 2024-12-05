@@ -2584,7 +2584,7 @@ static void BmpCopyBit24(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
   }
 }
 
-#define BmpSetBit32p(offset, dataSize, b) if (offset+3 < dataSize) put4l(b, bits, offset)
+#define BmpSetBit32p(offset, dataSize, b) if (offset+3 < dataSize) put4_32(b, bits, offset)
 
 #define BmpSetBit32(offset, dataSize, b, dbl) \
   BmpSetBit32p(offset, dataSize, b); \
@@ -2600,9 +2600,12 @@ static void BmpCopyBit32(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
   UInt16 rowBytes;
   UInt32 old, fg, bg;
   UInt32 offset, dataSize;
+  Boolean le, leBits;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
+  le = BmpLittleEndian(dst);
+  leBits = BmpGetCommonFlag(dst, BitmapFlagLittleEndian);
   bits = BmpGetBits(dst);
   offset = dy * rowBytes + dx*4;
 
@@ -2717,6 +2720,8 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value) {
 
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
   ColorTableType *srcColorTable, *dstColorTable, *colorTable;
+  UInt32 srcAlpha, srcRed, srcGreen, srcBlue;
+  UInt32 dstRed, dstGreen, dstBlue;
   UInt8 srcDepth, dstDepth, *bits;
   UInt32 srcPixel, dstPixel, offset;
   UInt32 srcTransparentValue, dstTransparentValue;
@@ -2785,16 +2790,65 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
       case 32:
         get4_32(&srcPixel, bits, sy * srcRowBytes + sx*4);
-        dstPixel = (dstDepth == 32) ? srcPixel : BmpConvertFrom32Bits(srcPixel, dstDepth, dstColorTable);
+        srcAlpha = a32(srcPixel);
+        if (srcAlpha == 255) {
+          srcTransp = false;
+          dstPixel = (dstDepth == 32) ? srcPixel : BmpConvertFrom32Bits(srcPixel, dstDepth, dstColorTable);
+        } else if (srcAlpha == 0) {
+          srcTransp = true;
+          dstPixel = BmpGetPixelValue(dst, dx, dy);
+        } else if (dstDepth >= 16) {
+          srcTransp = false;
+          srcRed   = r32(srcPixel);
+          srcGreen = g32(srcPixel);
+          srcBlue  = b32(srcPixel);
+          dstPixel = BmpGetPixelValue(dst, dx, dy);
+          switch (dstDepth) {
+            case 16:
+              dstRed   = r565(dstPixel);
+              dstGreen = g565(dstPixel);
+              dstBlue  = b565(dstPixel);
+              break;
+            case 24:
+              dstRed   = r24(dstPixel);
+              dstGreen = g24(dstPixel);
+              dstBlue  = b24(dstPixel);
+              break;
+            case 32:
+              dstRed   = r32(dstPixel);
+              dstGreen = g32(dstPixel);
+              dstBlue  = b32(dstPixel);
+              break;
+          }
+          dstRed   = ((srcRed   * srcAlpha) + (dstRed   * (255 - srcAlpha))) / 255;
+          dstGreen = ((srcGreen * srcAlpha) + (dstGreen * (255 - srcAlpha))) / 255;
+          dstBlue  = ((srcBlue  * srcAlpha) + (dstBlue  * (255 - srcAlpha))) / 255;
+          switch (dstDepth) {
+            case 16:
+              dstPixel = rgb565(dstRed, dstGreen, dstBlue);
+              break;
+            case 24:
+              dstPixel = rgb24(dstRed, dstGreen, dstBlue);
+              break;
+            case 32:
+              dstPixel = rgba32(dstRed, dstGreen, dstBlue, a32(dstPixel));
+              break;
+          }
+        } else {
+          srcTransp = true;
+          dstPixel = BmpGetPixelValue(dst, dx, dy);
+        }
         break;
     }
 
-    if (srcTransp) {
-      srcTransp = (srcPixel == srcTransparentValue);
-    } else if (mode == winMask || mode == winOverlay) {
-      // source bitmap is not transparent but mode is winMask or winOverlay
-      // use the transparent color anyway
-      srcTransp = (srcPixel == srcTransparentValue);
+    if (srcDepth != 32) {
+      if (srcTransp) {
+        srcTransp = (srcPixel == srcTransparentValue);
+      } else if (mode == winMask || mode == winOverlay) {
+        // source bitmap is not transparent but mode is winMask or winOverlay
+        // use the transparent color anyway
+        srcTransp = (srcPixel == srcTransparentValue);
+      }
     }
 
     if (text) {
@@ -3295,4 +3349,62 @@ void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh) {
   VFSFileClose(fileRef);
   MemHandleUnlock(hbmp);
   DmReleaseResource(hbmp);
+}
+
+BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
+  BitmapType *rotated = NULL;
+  Coord width, height, newWidth, newHeight, cx, cy, x, y, m, n, j, k;
+  UInt16 density, depth, error;
+  UInt32 transparentValue, color;
+  Boolean hasTransparency;
+  double radians, dsin, dcos;
+
+  while (angle < 0) angle += 360;
+  while (angle >= 360) angle -= 360;
+
+  BmpGetDimensions(bitmapP, &width, &height, NULL);
+  density = BmpGetDensity(bitmapP);
+  depth = BmpGetBitDepth(bitmapP);
+  hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
+debug(1, "XXX", "transp %d %d 0x%04X", depth, hasTransparency, transparentValue);
+
+  if (angle == 0) {
+    rotated = BmpCreate3(width, height, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+
+    for (x = 0; x < width; x++) {
+      for (y = 0; y < height; y++) {
+        color = BmpGetPixelValue(bitmapP, x, y);
+debug(1, "XXX", "pixel %d,%d 0x%08X", x, y, color);
+        BmpSetPixel(rotated, x, y, color);
+      }
+    }
+
+  } else {
+    radians = -angle * sys_pi() / 180.0;
+    dcos = sys_cos(radians);
+    dsin = sys_sin(radians);
+    newWidth = width > height ? width : height;
+    newHeight = newWidth;
+    cx = newWidth / 2;
+    cy = newHeight / 2;
+    rotated = BmpCreate3(newWidth, newHeight, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+
+    for (x = 0; x < newWidth; x++) {
+      for (y = 0; y < newHeight; y++) {
+        m = x - cx;
+        n = y - cy;
+        j = (Coord)sys_floor((m * dcos - n * dsin) + cx + 0.5);
+        k = (Coord)sys_floor((n * dcos + m * dsin) + cy + 0.5);
+        if (j >= 0 && j < width && k >= 0 && k < height){
+          color = BmpGetPixelValue(bitmapP, j, k);
+        } else {
+          color = rgba32(0, 0, 0, 0);
+        }
+        //alpha = a32(color);
+        BmpPutBit(color, false, rotated, x, y, winPaint, false);
+      }
+    }
+  }
+
+  return rotated;
 }
