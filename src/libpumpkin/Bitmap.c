@@ -3366,7 +3366,6 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
   density = BmpGetDensity(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
   hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
-debug(1, "XXX", "transp %d %d 0x%04X", depth, hasTransparency, transparentValue);
 
   if (angle == 0) {
     rotated = BmpCreate3(width, height, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
@@ -3374,7 +3373,6 @@ debug(1, "XXX", "transp %d %d 0x%04X", depth, hasTransparency, transparentValue)
     for (x = 0; x < width; x++) {
       for (y = 0; y < height; y++) {
         color = BmpGetPixelValue(bitmapP, x, y);
-debug(1, "XXX", "pixel %d,%d 0x%08X", x, y, color);
         BmpSetPixel(rotated, x, y, color);
       }
     }
