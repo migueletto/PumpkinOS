@@ -3362,6 +3362,7 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
   while (angle < 0) angle += 360;
   while (angle >= 360) angle -= 360;
 
+  bitmapP = skipEmptySlot(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
   density = BmpGetDensity(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
@@ -3396,10 +3397,9 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
         if (j >= 0 && j < width && k >= 0 && k < height){
           color = BmpGetPixelValue(bitmapP, j, k);
         } else {
-          color = rgba32(0, 0, 0, 0);
+          color = depth == 32 ? rgba32(0, 0, 0, 0) : transparentValue;
         }
-        //alpha = a32(color);
-        BmpPutBit(color, false, rotated, x, y, winPaint, false);
+        BmpSetPixel(rotated, x, y, color);
       }
     }
   }
