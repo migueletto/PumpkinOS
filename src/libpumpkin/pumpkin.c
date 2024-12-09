@@ -2197,7 +2197,7 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
       *y = screen->y0;
       *w = screen->x1 - screen->x0 + 1;
       *h = screen->y1 - screen->y0 + 1;
-      debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) update texture %d,%d %d,%d", i, pumpkin_module.tasks[i].name, *x, *y, *w, *h);
+      debug(DEBUG_TRACE, PUMPKINOS, "task %d (%s) update texture %d,%d %d,%d", i, pumpkin_module.tasks[i].name, *x, *y, *w, *h);
       pumpkin_module.wp->update_texture_rect(pumpkin_module.w, pumpkin_module.tasks[i].texture, raw, *x, *y, *w, *h);
       screen->x0 = pumpkin_module.tasks[i].width;
       screen->y0 = pumpkin_module.tasks[i].height;
@@ -3253,14 +3253,14 @@ surface_t *pumpkin_screen_lock(void **scr) {
   return surface;
 }
 
-void pumpkin_screen_unlock(void *scr, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+void pumpkin_screen_unlock(void *scr, int x0, int y0, int x1, int y1) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen = (task_screen_t *)scr;
 
-  screen->x0 = x0;
-  screen->y0 = y0;
-  screen->x1 = x1;
-  screen->y1 = y1;
+  if (x0 < screen->x0) screen->x0 = x0;
+  if (y0 < screen->y0) screen->y0 = y0;
+  if (x1 > screen->x1) screen->x1 = x1;
+  if (y1 > screen->y1) screen->y1 = y1;
 
   if (screen->x0 < 0) screen->x0 = 0;
   else if (screen->x0 >= task->width) screen->x0 = task->width-1;
@@ -3274,7 +3274,6 @@ void pumpkin_screen_unlock(void *scr, uint16_t x0, uint16_t y0, uint16_t x1, uin
 
   screen->dirty = 1;
 
-//debug(1, "XXX", "pumpkin_screen_unlock %d %d %d %d -> %d %d %d %d", x0, y0, x1, y1, screen->x0, screen->y0, screen->x1, screen->y1);
   ptr_unlock(task->screen_ptr, TAG_SCREEN);
 }
 
