@@ -1907,6 +1907,9 @@ RCPFILE;
 
        rwTransparency,
        rwTransparencyIndex,
+       rwThreshold,
+       rwLittleEndian,
+       rwMixColor,
        rwNoColorTable,
        rwColorTable,
 
@@ -2253,6 +2256,9 @@ RWT;
 
        {"transparency", "transparent", rwTransparency},
        {"transparencyIndex", "transparentindex", rwTransparencyIndex},
+       {"threshold", "threshold", rwThreshold},
+       {"littleendian", "littleendian", rwLittleEndian},
+       {"mixcolor", "mixcolor", rwMixColor},
        {"colortable", "colourtable", rwColorTable},
        {"nocolortable", "nocolourtable", rwNoColorTable},
        {"nocompress", NULL, rwNoCompress},

@@ -268,11 +268,11 @@ static void BMP_SetBits1bpp(int, PILRC_BYTE *, int, int, int);
 static void BMP_SetBits2bpp(int, PILRC_BYTE *, int, int, int, int);
 static void BMP_SetBits4bpp(int, PILRC_BYTE *, int, int, int, int);
 static void BMP_SetBits8bpp(int, PILRC_BYTE *, int, int, int, int);
-static void BMP_SetBits16bpp(int, PILRC_BYTE *, int, int, int, int);
+static void BMP_SetBits16bpp(int, PILRC_BYTE *, int, int, int, int, int);
 static void BMP_SetBits24bpp(int, PILRC_BYTE *, int, int, int, int);
 static void BMP_SetBits32bpp(int, PILRC_BYTE *, int, int, int, int);
 
-static void BMP_ConvertWindowsBitmap(RCBITMAP *, PILRC_BYTE *, long, int, BOOL, int *, int, int);
+static void BMP_ConvertWindowsBitmap(RCBITMAP *, PILRC_BYTE *, long, int, BOOL, int *, int, int *, int, int, int);
 static void BMP_ConvertTextBitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertX11Bitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertPNMBitmap(RCBITMAP *, PILRC_BYTE *, int, int, BOOL, int *);
@@ -758,15 +758,20 @@ BMP_SetBits16bpp(int cx,
                  int x,
                  int y,
                  int bits,
-                 int cBitsAlign)
+                 int cBitsAlign,
+                 int littleEndian)
 {
   int cbRow;
 
   cbRow = BMP_CbRow(cx, 16, cBitsAlign);
   pb += cbRow * y + (x * 2);
-  *pb = (PILRC_BYTE) ((bits & 0xFF00) >> 8);     // 5-6-5 (r-g-b) bit
-  // layout
-  *(pb + 1) = (PILRC_BYTE) (bits & 0xFF);
+  if (littleEndian) {
+    *pb = (PILRC_BYTE) (bits & 0xFF);
+    *(pb + 1) = (PILRC_BYTE) ((bits & 0xFF00) >> 8);     // 5-6-5 (r-g-b) bit
+  } else {
+    *pb = (PILRC_BYTE) ((bits & 0xFF00) >> 8);     // 5-6-5 (r-g-b) bit
+    *(pb + 1) = (PILRC_BYTE) (bits & 0xFF);
+  }
 }
 
 /**
@@ -1040,7 +1045,11 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
                          int bitmaptype,
                          BOOL colortable,
                          int *transparencyData,
-                         int density, int png)
+                         int density,
+                         int *mixColor,
+                         int threshold,
+                         int littleEndian,
+                         int png)
 {
   PILRC_BYTE *pbSrc;
   int i, x, y, dx, dy, colorDat, icomp;
@@ -1061,9 +1070,6 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
   int dstPaletteSize = 0;
 
   if (png) {
-    if (bitmaptype != rwBitmapColor32k)
-      ErrorLine("Pilrc supports only 32-bits Bitmaps for PNG files ");
-
     pbSrc = stbi_load_from_memory(pbResData, size, &dx, &dy, &icomp, 4);
 
     if (pbSrc == NULL)
@@ -1453,6 +1459,18 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
 
       // whats the (r,g,b) tupile at the index?
       w = getBits(pbmi, dx, pbSrc, x, yT, 32, &a, &r, &g, &b);
+      if (png && a <= threshold && transparencyData[0] == rwTransparency &&
+          (bitmaptype == rwBitmapColor256 || bitmaptype == rwBitmapColor16k || bitmaptype == rwBitmapColor24k)) {
+        if (a == 0) {
+          r = transparencyData[1];
+          g = transparencyData[2];
+          b = transparencyData[3];
+        } else if (a < 255) {
+          r = ((r * a) + (mixColor[0] * (255 - a))) / 255;
+          g = ((g * a) + (mixColor[1] * (255 - a))) / 255;
+          b = ((b * a) + (mixColor[2] * (255 - a))) / 255;
+        }
+      }
 
       // what type of bitmap are we dealing with?
       switch (bitmaptype)
@@ -1512,7 +1530,7 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
                          (((int)g & 0xFC) << 3) |       // 0000011111100000
                          (((int)b & 0xF8) >> 3));       // 0000000000011111
 
-            BMP_SetBits16bpp(dx, (rcbmp->pbBits + colorDat), x, y, pixel, 16);
+            BMP_SetBits16bpp(dx, (rcbmp->pbBits + colorDat), x, y, pixel, 16, littleEndian);
           }
           break;
 
@@ -2788,7 +2806,11 @@ void DumpBitmap(const char *fileName,
            int *transparencyData,
            BOOL multibit,
            BOOL bootScreen,
-           int density)
+           int density,
+           int *mixColor,
+           int threshold,
+           int littleEndian)
+
 {
   PILRC_BYTE *pBMPData;
   const char *pchExt;
@@ -2886,7 +2908,7 @@ void DumpBitmap(const char *fileName,
   if (FSzEqI(pchExt, "bmp"))
   {
     BMP_ConvertWindowsBitmap(&rcbmp, pBMPData, size, bitmaptype, colortable,
-                             transparencyData, density, 0);
+                             transparencyData, density, mixColor, threshold, littleEndian, 0);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
                            directColor, multibit, bootScreen, density,
                              transparencyData);
@@ -2894,7 +2916,7 @@ void DumpBitmap(const char *fileName,
   else if (FSzEqI(pchExt, "png"))
   {
     BMP_ConvertWindowsBitmap(&rcbmp, pBMPData, size, bitmaptype, colortable,
-                             transparencyData, density, 1);
+                             transparencyData, density, mixColor, threshold, littleEndian, 1);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
                            directColor, multibit, bootScreen, density,
                              transparencyData);

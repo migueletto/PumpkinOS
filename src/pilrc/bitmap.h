@@ -52,7 +52,11 @@ extern void DumpBitmap(const char *fileName,
                        int *transparencyData,
                        BOOL multibit,
                        BOOL bootscreen,
-                       int density);
+                       int density,
+                       int *mixColor,
+                       int threshold,
+                       int littleEndian
+);
 
 /* Note that the palettes set by the following functions are only used
    when DumpBitmap() is called with a bitmaptype of rwBitmapColor16 or

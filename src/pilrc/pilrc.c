@@ -3811,6 +3811,9 @@ typedef struct BMPDEF
   int bitmapType;
   int nColors;
   int palette[256][3];
+  int mixColor[3];
+  int threshold;
+  int littleEndian;
   BOOL haspalette;
   BOOL colortable;
 } BMPDEF;
@@ -3855,7 +3858,7 @@ DumpBMPDEFs(int nfiles, BMPDEF *bm, int iconid, BOOL isbootscreen)
       SetUserPalette(&bm[i]);
       DumpBitmap(bm[i].pchFileName, iconid, bm[i].compress,
 		 bm[i].bitmapType, bm[i].colortable, bm[i].transparencyData,
-		 (flag & 0xfe) != 0, isbootscreen, kSingleDensity);
+		 (flag & 0xfe) != 0, isbootscreen, kSingleDensity, bm[i].mixColor, bm[i].threshold, bm[i].littleEndian);
     }
 }
 
@@ -3899,7 +3902,7 @@ DumpMultidensityBMPDEFs(int flag, BMPDEF *bm, int iconid, BOOL isbootscreen)
 
       DumpBitmap(bm[i].pchFileName, iconid, bm[i].compress, bm[i].bitmapType,
 		 bm[i].colortable, bm[i].transparencyData,
-		 (nbrRemaining > 0), isbootscreen, bm[i].density);
+		 (nbrRemaining > 0), isbootscreen, bm[i].density, bm[i].mixColor, bm[i].threshold, bm[i].littleEndian);
     }
 }
 
@@ -4047,6 +4050,20 @@ ParseBitmapAttrs(BMPDEF *attr, FamilyItemAttr *eachAttr)
 	attr->transparencyData[1] = WGetConst("transparency index");
 	break;
 
+      case rwMixColor:
+	attr->mixColor[0] = WGetConst("mix red value");
+	attr->mixColor[1] = WGetConst("mix green value");
+	attr->mixColor[2] = WGetConst("mix blue value");
+	break;
+
+      case rwThreshold:
+	attr->threshold = WGetConst("transparency threshold");
+	break;
+
+      case rwLittleEndian:
+	attr->littleEndian = 1;
+	break;
+
       case rwBitmapDensity:
 	attr->density = WGetConst("bitmap density");
 	switch (attr->density)
@@ -4134,6 +4151,11 @@ ParseDumpBitmap(RW kind, BOOL begin_allowed)
   defattr.colortable = fFalse;
   defattr.transparencyData[0] = 0;
   defattr.density = kSingleDensity;
+  defattr.mixColor[0] = 0;
+  defattr.mixColor[1] = 0;
+  defattr.mixColor[2] = 0;
+  defattr.threshold = 0;
+  defattr.littleEndian = 0;
   defattr.bpp = 0;
 
   for (i = 0; i < MAXDEPTH; i++)
