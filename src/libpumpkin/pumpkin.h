@@ -279,6 +279,8 @@ void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32
 int pumpkin_extkey_down(int key, uint64_t *extKeyMask);
 void pumpkin_screen_dirty(WinHandle win, int x, int y, int w, int h);
 void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1);
+surface_t *pumpkin_screen_lock(void **scr);
+void pumpkin_screen_unlock(void *scr, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 int pumpkin_change_display(int width, int height);
 void pumpkin_calibrate(int restore);
 ColorTableType *pumpkin_defaultcolorTable(void);
