@@ -3379,7 +3379,7 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
     }
 
   } else {
-    radians = -angle * sys_pi() / 180.0;
+    radians = angle * sys_pi() / 180.0;
     dcos = sys_cos(radians);
     dsin = sys_sin(radians);
     newWidth = width > height ? width : height;
