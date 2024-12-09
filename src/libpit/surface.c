@@ -287,16 +287,43 @@ static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
 }
 
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
-  uint32_t color, c1, c2, transp;
-  int i, j, red, green, blue, alpha, transparent;
+  uint32_t color, c1, c2, transp, src_pitch, dst_pitch, n;
+  int i, j, size, red, green, blue, alpha, transparent, len1, len2;
+  uint8_t *p1, *p2;
 
   transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
 
   if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
-    for (i = 0; i < h; i++) {
-      for (j = 0; j < w; j++) {
-        color = src->getpixel(src->data, src_x + j, src_y + i);
-        if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+    if (!transparent && src->getbuffer && dst->getbuffer &&
+        (src->encoding == SURFACE_ENCODING_ARGB || src->encoding == SURFACE_ENCODING_RGB565 || src->encoding == SURFACE_ENCODING_GRAY)) {
+      switch (src->encoding) {
+        case SURFACE_ENCODING_ARGB:   size = 4; break;
+        case SURFACE_ENCODING_RGB565: size = 2; break;
+        case SURFACE_ENCODING_GRAY:   size = 1; break;
+      }
+      p1 = src->getbuffer(src->data, &len1);
+      p2 = dst->getbuffer(dst->data, &len2);
+      src_pitch = src->width * size;
+      dst_pitch = dst->width * size;
+      if (dst_y < 0) {
+        src_y += dst_y;
+        h += dst_y;
+        dst_y = 0;
+      }
+      p1 += src_y * src_pitch + src_x * size;
+      p2 += dst_y * dst_pitch + dst_x * size;
+      n = w * size;
+      for (i = 0; i < h; i++) {
+        sys_memcpy(p2, p1, n);
+        p1 += src_pitch;
+        p2 += dst_pitch;
+      }
+    } else {
+      for (i = 0; i < h; i++) {
+        for (j = 0; j < w; j++) {
+          color = src->getpixel(src->data, src_x + j, src_y + i);
+          if (color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+        }
       }
     }
 
