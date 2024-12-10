@@ -291,6 +291,7 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
   int i, j, size, red, green, blue, alpha, transparent, len1, len2;
   uint8_t *p1, *p2;
 
+  if (src == NULL || dst == NULL || w <= 0 || h <= 0 || w > src->width || h > src->height) return;
   if (dst_y+h < 0 || dst_y >= dst->height) return;
   if (dst_x+w < 0 || dst_x >= dst->width) return;
 
@@ -308,13 +309,23 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
       p2 = dst->getbuffer(dst->data, &len2);
       src_pitch = src->width * size;
       dst_pitch = dst->width * size;
+
+      if (dst_x < 0) {
+        src_x -= dst_x;
+        w += dst_x;
+        dst_x = 0;
+      } else if (dst_x+w >= dst->width) {
+        w = dst->width - dst_x;
+      }
+
       if (dst_y < 0) {
-        src_y += dst_y;
+        src_y -= dst_y;
         h += dst_y;
         dst_y = 0;
       } else if (dst_y+h >= dst->height) {
         h = dst->height - dst_y;
       }
+
       p1 += src_y * src_pitch + src_x * size;
       p2 += dst_y * dst_pitch + dst_x * size;
       n = w * size;
