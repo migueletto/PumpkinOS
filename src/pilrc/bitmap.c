@@ -1459,9 +1459,9 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
 
       // whats the (r,g,b) tupile at the index?
       w = getBits(pbmi, dx, pbSrc, x, yT, 32, &a, &r, &g, &b);
-      if (png && a <= threshold && transparencyData[0] == rwTransparency &&
+      if (png && a <= threshold &&
           (bitmaptype == rwBitmapColor256 || bitmaptype == rwBitmapColor16k || bitmaptype == rwBitmapColor24k)) {
-        if (a == 0) {
+        if (a == 0 && transparencyData[0] == rwTransparency) {
           r = transparencyData[1];
           g = transparencyData[2];
           b = transparencyData[3];
