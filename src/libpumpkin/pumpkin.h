@@ -461,6 +461,7 @@ UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Bo
 UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault);
 UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle);
+BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal);
 
 Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);

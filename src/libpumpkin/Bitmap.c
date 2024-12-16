@@ -3406,3 +3406,27 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
 
   return rotated;
 }
+
+BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal) {
+  BitmapType *flipped = NULL;
+  Coord width, height, x, y;
+  UInt16 density, depth, error;
+  UInt32 transparentValue, color;
+  Boolean hasTransparency;
+
+  bitmapP = skipEmptySlot(bitmapP);
+  BmpGetDimensions(bitmapP, &width, &height, NULL);
+  density = BmpGetDensity(bitmapP);
+  depth = BmpGetBitDepth(bitmapP);
+  hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
+  flipped = BmpCreate3(width, height, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+
+  for (x = 0; x < width; x++) {
+    for (y = 0; y < height; y++) {
+      color = BmpGetPixelValue(bitmapP, x, y);
+      BmpSetPixel(flipped, horizontal ? width - x - 1 : x, vertical ? height - y - 1 : y, color);
+    }
+  }
+
+  return flipped;
+}
