@@ -1279,6 +1279,8 @@ typedef struct RCBitmapFlagsType
 
   p_int indirectColorTable;                      /* u  *//* if true, color table pointer follows BitmapType structure */
   p_int noDither;                                /* u  *//* if true, blitter does not dither */
+
+  p_int littleEndian;                            /* u *//* true if pixel data is little endian */
   //p_int reserved;                 /* zu8 */ 
 }
 RCBitmapFlagsType;
@@ -1309,7 +1311,8 @@ typedef struct RCBITMAP
 }
 RCBITMAP;
 
-#define szRCBITMAP "w,w,w,uuuuuuuuzu8,b,b,w,b,b,zw"
+//#define szRCBITMAP "w,w,w,uuuuuuuuzu8,b,b,w,b,b,zw"
+#define szRCBITMAP "w,w,w,uuuuuuuuuzu7,b,b,w,b,b,zw"
 
 /*
  * RMa add support for density > 1
@@ -1350,7 +1353,8 @@ typedef struct RCBITMAP_V3
 }
 RCBITMAP_V3;
 
-#define szRCBITMAP_V3 "w,w,w,uuuuuuuuzu8,b,b,b,b,zb,b,w,l,l"
+//#define szRCBITMAP_V3 "w,w,w,uuuuuuuuzu8,b,b,b,b,zb,b,w,l,l"
+#define szRCBITMAP_V3 "w,w,w,uuuuuuuuuzu7,b,b,b,b,zb,b,w,l,l"
 
 /*-----------------------------------------------------------------------------
 |	FONT

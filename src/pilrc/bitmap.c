@@ -277,10 +277,10 @@ static void BMP_ConvertTextBitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertX11Bitmap(RCBITMAP *, PILRC_BYTE *, int);
 static void BMP_ConvertPNMBitmap(RCBITMAP *, PILRC_BYTE *, int, int, BOOL, int *);
 static void BMP_CompressBitmap(RCBITMAP *, int, int, BOOL, BOOL);
-static void BMP_CompressDumpBitmap(RCBITMAP *, int, int, BOOL, BOOL, BOOL, BOOL, int, int *);
+static void BMP_CompressDumpBitmap(RCBITMAP *, int, int, BOOL, BOOL, BOOL, BOOL, int, int *, int);
 static void BMP_InvalidExtension(const char *);
 
-static void BMP_FillBitmapV3Header(RCBITMAP *, RCBITMAP_V3 *, int *, int);
+static void BMP_FillBitmapV3Header(RCBITMAP *, RCBITMAP_V3 *, int *, int, int);
                                                                 // *INDENT-ON*
 
 // 
@@ -1447,6 +1447,10 @@ BMP_ConvertWindowsBitmap(RCBITMAP * rcbmp,
       break;
   }
 
+  if (littleEndian) {
+    rcbmp->flags.littleEndian = fTrue;
+  }
+
   // convert from .bmp to binary format
   for (y = 0; y < dy; y++)
   {
@@ -2492,7 +2496,7 @@ static void
 BMP_FillBitmapV3Header(RCBITMAP * rcbmp,
                        RCBITMAP_V3 * rcbmpv3,
                        int *transparencyData,
-                       int density)
+                       int density, int littleEndian)
 {
   if ((rcbmp) && (rcbmpv3))
   {
@@ -2546,6 +2550,12 @@ BMP_FillBitmapV3Header(RCBITMAP * rcbmp,
         rcbmpv3->transparentValue |= (transparencyData[2] << 8) & 0x0000FF00;
         rcbmpv3->transparentValue |= (transparencyData[3] << 0) & 0x000000FF;
       }
+      if (littleEndian) {
+        rcbmpv3->transparentValue = ((rcbmpv3->transparentValue & 0x000000FF) << 24) |
+                                    ((rcbmpv3->transparentValue & 0x0000FF00) <<  8) |
+                                    ((rcbmpv3->transparentValue & 0x00FF0000) >>  8) |
+                                    ((rcbmpv3->transparentValue & 0xFF000000) >> 24);
+      }
     }
     rcbmpv3->nextDepthOffset = rcbmp->nextDepthOffset;
     rcbmpv3->cbDst = rcbmp->cbDst;
@@ -2574,7 +2584,8 @@ BMP_CompressDumpBitmap(RCBITMAP * rcbmp,
                        BOOL multibit,
                        BOOL bootScreen,
                        int density,
-                       int *transparencyData)
+                       int *transparencyData,
+                       int littleEndian)
 {
   int stdIconSize_x;
   int stdIconSize_y;
@@ -2700,7 +2711,7 @@ BMP_CompressDumpBitmap(RCBITMAP * rcbmp,
     {
       RCBITMAP_V3 rcbmpv3;
 
-      BMP_FillBitmapV3Header(rcbmp, &rcbmpv3, transparencyData, density);
+      BMP_FillBitmapV3Header(rcbmp, &rcbmpv3, transparencyData, density, littleEndian);
       CbEmitStruct(&rcbmpv3, szRCBITMAP_V3, NULL, fTrue);
     }
     else
@@ -2752,7 +2763,7 @@ BMP_CompressDumpBitmap(RCBITMAP * rcbmp,
       RCBITMAP_V3 rcbmpv3;
       BOOL savedValue = vfLE32;
 
-      BMP_FillBitmapV3Header(rcbmp, &rcbmpv3, transparencyData, density);
+      BMP_FillBitmapV3Header(rcbmp, &rcbmpv3, transparencyData, density, littleEndian);
       CbEmitStruct(&rcbmpv3, szRCBITMAP_V3, NULL, fTrue);
     DumpBytes(rcbmp->pbBits, rcbmp->cbDst);
 
@@ -2911,7 +2922,7 @@ void DumpBitmap(const char *fileName,
                              transparencyData, density, mixColor, threshold, littleEndian, 0);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
                            directColor, multibit, bootScreen, density,
-                             transparencyData);
+                             transparencyData, littleEndian);
   }
   else if (FSzEqI(pchExt, "png"))
   {
@@ -2919,21 +2930,21 @@ void DumpBitmap(const char *fileName,
                              transparencyData, density, mixColor, threshold, littleEndian, 1);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, colortable,
                            directColor, multibit, bootScreen, density,
-                             transparencyData);
+                             transparencyData, littleEndian);
   }
   else if (FSzEqI(pchExt, "pbitm"))
   {
     BMP_ConvertTextBitmap(&rcbmp, pBMPData, size);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, fFalse,
                            directColor, multibit, bootScreen, density,
-                           transparencyData);
+                           transparencyData, littleEndian);
   }
   else if (FSzEqI(pchExt, "xbm"))
   {
     BMP_ConvertX11Bitmap(&rcbmp, pBMPData, size);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, fFalse,
                            directColor, multibit, bootScreen, density,
-                           transparencyData);
+                           transparencyData, littleEndian);
   }
   else if (FSzEqI(pchExt, "pbm") || FSzEqI(pchExt, "pgm")
            || FSzEqI(pchExt, "ppm") || FSzEqI(pchExt, "pnm"))
@@ -2942,7 +2953,7 @@ void DumpBitmap(const char *fileName,
                          transparencyData);
     BMP_CompressDumpBitmap(&rcbmp, isIcon, compress, fFalse,
                            directColor, multibit, bootScreen, density,
-                           transparencyData);
+                           transparencyData, littleEndian);
   }
   else
   {
