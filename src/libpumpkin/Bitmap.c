@@ -436,12 +436,13 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   UInt8 v8, version;
   UInt16 v16;
   UInt32 v32;
-  Boolean le;
+  Boolean le, leBits;
 
   if (bmp) {
     bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
+    leBits = BmpGetCommonFlag(bmp, BitmapFlagLittleEndian);
 
     if (version == 3) {
         switch (selector) {
@@ -473,6 +474,13 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             }
             break;
           case BitmapV3FieldTransparentValue:
+            if (set) {
+              put4_32(value, (UInt8 *)bmp, selector);
+            } else {
+              get4_32(&v32, (UInt8 *)bmp, selector);
+              value = v32;
+            }
+            break;
           case BitmapV3FieldNextBitmapOffset:
             if (set) {
               put4(value, (UInt8 *)bmp, selector);
