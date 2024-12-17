@@ -3356,7 +3356,7 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
   Coord width, height, newWidth, newHeight, cx, cy, x, y, m, n, j, k;
   UInt16 density, depth, error;
   UInt32 transparentValue, color;
-  Boolean hasTransparency;
+  Boolean leBits, hasTransparency;
   double radians, dsin, dcos;
 
   while (angle < 0) angle += 360;
@@ -3364,12 +3364,14 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
 
   bitmapP = skipEmptySlot(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
+  leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
   density = BmpGetDensity(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
   hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
 
   if (angle == 0) {
     rotated = BmpCreate3(width, height, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+    BmpSetCommonFlag(rotated, BitmapFlagLittleEndian, leBits);
 
     for (x = 0; x < width; x++) {
       for (y = 0; y < height; y++) {
@@ -3387,6 +3389,7 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
     cx = newWidth / 2;
     cy = newHeight / 2;
     rotated = BmpCreate3(newWidth, newHeight, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+    BmpSetCommonFlag(rotated, BitmapFlagLittleEndian, leBits);
 
     for (x = 0; x < newWidth; x++) {
       for (y = 0; y < newHeight; y++) {
@@ -3412,14 +3415,16 @@ BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal) {
   Coord width, height, x, y;
   UInt16 density, depth, error;
   UInt32 transparentValue, color;
-  Boolean hasTransparency;
+  Boolean leBits, hasTransparency;
 
   bitmapP = skipEmptySlot(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
+  leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
   density = BmpGetDensity(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
   hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
   flipped = BmpCreate3(width, height, 0, density, depth, hasTransparency, transparentValue, NULL, &error);
+  BmpSetCommonFlag(flipped, BitmapFlagLittleEndian, leBits);
 
   for (x = 0; x < width; x++) {
     for (y = 0; y < height; y++) {
