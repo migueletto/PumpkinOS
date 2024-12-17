@@ -338,7 +338,7 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
       for (i = 0; i < h; i++) {
         for (j = 0; j < w; j++) {
           color = src->getpixel(src->data, src_x + j, src_y + i);
-          if (color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
         }
       }
     }
