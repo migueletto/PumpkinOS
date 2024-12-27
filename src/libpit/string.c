@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "sys.h"
 
 int sys_atoi(const char *s) {
@@ -162,34 +164,19 @@ char *sys_strncat(char *dest, const char *src, sys_size_t n) {
 }
 
 int sys_memcmp(const void *vl, const void *vr, sys_size_t n) {
-  const unsigned char *l=vl, *r=vr;
-  for (; n && *l == *r; n--, l++, r++);
-  return n ? *l-*r : 0;
+  return memcmp(vl, vr, n);
 }
 
 void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
-  return sys_memmove(dest, src, n);
+  return memcpy(dest, src, n);
 }
 
 void *sys_memmove(void *dest, const void *src, sys_size_t n) {
-  char *d = dest;
-  const char *s = src;
-
-  if (d == s) return d;
-
-  if (d < s) {
-    for (; n; n--) *d++ = *s++;
-  } else {
-    while (n) n--, d[n] = s[n];
-  }
-
-  return dest;
+  return memmove(dest, src,  n);
 }
 
 void *sys_memset(void *dest, int c, sys_size_t n) {
-  unsigned char *s = dest;
-  for (; n; n--, s++) *s = c;
-  return dest;
+  return memset(dest, c, n);
 }
 
 static char *twobyte_strstr(const unsigned char *h, const unsigned char *n) {
