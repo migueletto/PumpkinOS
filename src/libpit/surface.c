@@ -287,18 +287,19 @@ static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
 }
 
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
-  uint32_t color, c1, c2, transp, src_pitch, dst_pitch, n;
-  int i, j, size, red, green, blue, alpha, transparent, len1, len2;
+  uint32_t color, c1, c2, src_transp, dst_transp, src_pitch, dst_pitch, n;
+  int i, j, size, red, green, blue, alpha, src_transparent, dst_transparent, len1, len2;
   uint8_t *p1, *p2;
 
   if (src == NULL || dst == NULL || w <= 0 || h <= 0 || w > src->width || h > src->height) return;
   if (dst_y+h < 0 || dst_y >= dst->height) return;
   if (dst_x+w < 0 || dst_x >= dst->width) return;
 
-  transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
+  src_transparent = src->gettransp ? src->gettransp(src->data, &src_transp) : 0;
+  dst_transparent = dst->gettransp ? dst->gettransp(dst->data, &dst_transp) : 0;
 
   if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
-    if (!transparent && src->getbuffer && dst->getbuffer &&
+    if (!src_transparent && src->getbuffer && dst->getbuffer &&
         (src->encoding == SURFACE_ENCODING_ARGB || src->encoding == SURFACE_ENCODING_RGB565 || src->encoding == SURFACE_ENCODING_GRAY)) {
       switch (src->encoding) {
         case SURFACE_ENCODING_ARGB:   size = 4; break;
@@ -338,7 +339,21 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
       for (i = 0; i < h; i++) {
         for (j = 0; j < w; j++) {
           color = src->getpixel(src->data, src_x + j, src_y + i);
-          if (!transparent || color != transp) dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          if (!src_transparent) {
+            dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          } else {
+            if (!dst_transparent) {
+              if (color != src_transp) {
+                dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+              }
+            } else {
+              if (color != src_transp) {
+                dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+              } else {
+                dst->setpixel(dst->data, dst_x + j, dst_y + i, dst_transp);
+              }
+            }
+          }
         }
       }
     }
@@ -350,7 +365,7 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
     for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
         color = src->getpixel(src->data, src_x + j, src_y + i);
-        if (!transparent || color != transp) {
+        if (!src_transparent || color != src_transp) {
           src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
           if (alpha == 0xff) {
             color = dst->color_rgb(dst->data, red, green, blue, alpha);
@@ -853,6 +868,42 @@ int surface_scale(surface_t *src, surface_t *dst) {
     } else {
       debug(DEBUG_ERROR, "SURFACE", "can only scale either up or down");
     }
+  }
+
+  return r;
+}
+
+int surface_rotate(surface_t *src, surface_t *dst, double angle) {
+  double dcos, dsin;
+  uint32_t color, transp;
+  int x, y, cx, cy, m, n, j, k, transparent, r = -1;
+
+  if (src && dst) {
+    dcos = sys_cos(angle);
+    dsin = sys_sin(angle);
+    cx = src->width / 2;
+    cy = src->height / 2;
+    transparent = src->gettransp ? src->gettransp(src->data, &transp) : 0;
+  
+    for (x = 0; x < dst->width; x++) {
+      for (y = 0; y < dst->height; y++) {
+        m = x - cx;
+        n = y - cy;
+        j = (int)sys_floor((m * dcos - n * dsin) + cx + 0.5);
+        k = (int)sys_floor((n * dcos + m * dsin) + cy + 0.5);
+        if (j >= 0 && j < src->width && k >= 0 && k < src->height) {
+          color = src->getpixel(src->data, j, k);
+        } else {
+          if (transparent) {
+            color = transp;
+          } else {
+            color = src->color_rgb(src->data, 0, 0, 0, 0);
+          }
+        }
+        dst->setpixel(dst->data, x, y, color);
+      }
+    }
+    r = 0;
   }
 
   return r;
