@@ -7,7 +7,6 @@
 #include "pumpkin.h"
 #include "surface.h"
 #include "fontstd.h"
-#include "palette.h"
 #include "renderer.h"
 #include "debug.h"
 
