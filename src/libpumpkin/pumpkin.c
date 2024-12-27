@@ -2811,17 +2811,32 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
       switch (ev) {
         case WINDOW_KEYDOWN:
           pumpkin_set_key(arg1);
-          ev = 0;
+          if (pumpkin_module.dia) {
+            ev = 0;
+          } else {
+            *key = arg1;
+            *mods = pumpkin_module.modMask;
+            *buttons = 0;
+            ev = MSG_KEYDOWN;
+          }
           break;
         case WINDOW_KEYUP:
           if (arg1 == WINDOW_KEY_F10) {
             save_screen();
             ev = 0;
           } else {
-            *key = pumpkin_reset_key(arg1);
-            *mods = pumpkin_module.modMask;
-            *buttons = 0;
-            ev = MSG_KEY;
+            if (pumpkin_module.dia) {
+              *key = pumpkin_reset_key(arg1);
+              *mods = pumpkin_module.modMask;
+              *buttons = 0;
+              ev = MSG_KEY;
+            } else {
+              *key = arg1;
+              *mods = 0;
+              *buttons = 0;
+              ev = MSG_KEYUP;
+              put_event(MSG_KEY, pumpkin_reset_key(arg1), pumpkin_module.modMask, 0);
+            }
           }
           break;
         case WINDOW_BUTTONDOWN:
