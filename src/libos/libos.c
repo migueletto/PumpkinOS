@@ -214,9 +214,11 @@ static int libos_start(int pe) {
               case PARAM_FULLREFRESH: data->fullrefresh = v.value.i; break;
               case PARAM_OSVERSION:   data->osversion   = v.value.i; break;
               case PARAM_DRIVER:
+                sys_memset(data->driver, 0, MAX_STR);
                 sys_strncpy(data->driver, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
                 break;
               case PARAM_LAUNCHER:
+                sys_memset(data->launcher, 0, MAX_STR);
                 sys_strncpy(data->launcher, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
                 break;
             }
@@ -249,9 +251,6 @@ static int libos_start(int pe) {
     if (data->dia) {
       data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
       data->height = (data->width * 3 ) / 2 + BUTTONS_HEIGHT;
-    } else if (data->single) {
-      data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-      data->height = data->width;
     }
 
     if (data->hdepth < 16) {
