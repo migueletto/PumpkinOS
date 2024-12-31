@@ -348,7 +348,7 @@ static void video_out(cz80_data_t *cz80, uint16_t port, uint8_t b) {
 }
 
 static void cz80_io_out(cz80_data_t *cz80, uint16_t port, uint8_t b) {
-  debug(DEBUG_TRACE, "CZ80", "out 0x%04X, 0x%02X", port, b);
+  debug(DEBUG_TRACE, "CZ80", "out 0x%04X 0x%02X", port, b);
 
   switch (port & 0xF0) {
     case 0x00: // video
@@ -481,8 +481,6 @@ static uint8_t clock_in(cz80_data_t *cz80, uint16_t port) {
 static uint8_t cz80_io_in(cz80_data_t *cz80, uint16_t port) {
   uint8_t b;
 
-  debug(DEBUG_TRACE, "CZ80", "in 0x%04X", port);
-
   switch (port & 0xF0) {
     case 0x00: // video
       b = video_in(cz80, port & 0x1F);
@@ -499,6 +497,8 @@ static uint8_t cz80_io_in(cz80_data_t *cz80, uint16_t port) {
     default:
       b = 0;
   }
+
+  debug(DEBUG_TRACE, "CZ80", "in 0x%04X 0x%02X", port, b);
 
   return b;
 }
@@ -617,7 +617,7 @@ static void cz80_callback(void *data, uint32_t cycles) {
   edt = cz80->frame * HOST_PERIOD;
 
   if (dt < edt) {
-    debug(DEBUG_TRACE, "CZ80", "frame %d, sleep %llu", cz80->frame, edt - dt);
+    debug(DEBUG_TRACE, "CZ80", "frame %d, sleep %u", cz80->frame, (uint32_t)(edt - dt));
     //sys_usleep(edt - dt);
   }
 
