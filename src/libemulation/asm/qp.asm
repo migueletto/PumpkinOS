@@ -44,6 +44,35 @@ include "io.inc"
 	org 140H
 	io_out 22H
 	ret
+	ds      150H - $
+
+	org 150H
+	ret
+	ds      160H - $
+	org 160H
+	ret
+	ds      170H - $
+	org 170H
+	ret
+	ds      180H - $
+	org 180H
+	ret
+	ds      190H - $
+	org 190H
+	ret
+	ds      1A0H - $
+	org 1A0H
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	org 1B0H
+	ret
+	ds      1C0H - $
+	org 1C0H
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,8,4,5
+	org 1D0H
+  db "CZ80",0
+	ds      1F0H - $
+	org 1F0H
+  db 27,91,50,74,0
 	ds      200H - $
 
 ; 15. Moveto: 0200 - 022E
@@ -76,3 +105,20 @@ include "io.inc"
 	ld a,l
 	iob_out 04H
 	ret
+	ds      22FH - $
+
+	org 22FH
+  db 0FFH
+
+	org 230H
+	ds      270H - $
+
+	org 270H
+  ret
+  db 0,0
+  ret
+  db 0,0
+  ret
+  db 0,0
+  ret
+  db 0,0
