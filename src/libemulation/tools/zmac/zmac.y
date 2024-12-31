@@ -258,6 +258,7 @@
 #endif
 
 #include "mio.h"
+#include "y.tab.h"
 
 /*
  * DEBUG turns on pass reporting.

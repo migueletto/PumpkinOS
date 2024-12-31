@@ -18,5 +18,9 @@ doc.inl: doc.c doc.txt
 	$(CC) -Wall -DMK_DOC -o doc doc.c
 	./doc >/dev/null
 
+zmac.c:
+	yacc -d zmac.y 
+	mv -f y.tab.c zmac.c
+
 clean:
-	rm -f zmac doc zmac.exe doc.exe zmac.c doc.inl $(DEP)
+	rm -f zmac doc zmac.exe doc.exe zmac.c doc.inl y.tab.h $(DEP)
