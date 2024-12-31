@@ -32,7 +32,6 @@ typedef struct {
   uint32_t rowBytes;
   uint8_t *buffer;
   surface_t *surface;
-  void *udata;
 } buffer_surface_t;
 
 static font_t *getfont(int font) {
@@ -288,9 +287,15 @@ static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
 
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
   uint32_t color, c1, c2, src_transp, dst_transp, src_pitch, dst_pitch, n;
-  int i, j, size, red, green, blue, alpha, src_transparent, dst_transparent, len1, len2;
+  int i, j, size, red, green, blue, alpha, src_transparent, dst_transparent, len1, len2, vflip;
   uint8_t *p1, *p2;
 
+  if (h < 0) {
+    vflip = 1;
+    h = -h;
+  } else {
+    vflip = 0;
+  }
   if (src == NULL || dst == NULL || w <= 0 || h <= 0 || w > src->width || h > src->height) return;
   if (dst_y+h < 0 || dst_y >= dst->height) return;
   if (dst_x+w < 0 || dst_x >= dst->width) return;
@@ -338,7 +343,7 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
     } else {
       for (i = 0; i < h; i++) {
         for (j = 0; j < w; j++) {
-          color = src->getpixel(src->data, src_x + j, src_y + i);
+          color = src->getpixel(src->data, src_x + j, vflip ? h - (src_y + i) - 1 : src_y + i);
           if (!src_transparent) {
             dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
           } else {
