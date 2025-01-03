@@ -81,6 +81,10 @@ typedef struct {
   conn_filter_t *tcp;
   conn_filter_t *telnet;
   conn_filter_t *modem;
+
+  conn_filter_t *remote;
+  void *dial_callback;
+  void *dial_data;
 } cz80_data_t;
 
 static uint8_t colors[] = {
@@ -170,6 +174,11 @@ static int term_erase(uint8_t col1, uint8_t row1, uint8_t col2, uint8_t row2, ui
 
 static void sock_close(cz80_data_t *cz80) {
   modem_set(cz80->modem, NULL);
+
+  if (cz80->remote) {
+    cz80->remote->close(cz80->remote);
+    cz80->remote = NULL;
+  }
 
   if (cz80->telnet) {
     telnet_client_close(cz80->telnet);
@@ -512,6 +521,10 @@ static int cz80_option(computer_t *c, char *name, char *value) {
     cz80->font = sys_atoi(value);
     cz80->char_width = surface_font_width(NULL, cz80->font);
     cz80->char_height = surface_font_height(NULL, cz80->font);
+  } else if (!sys_strcmp(name, "dial_data")) {
+    cz80->dial_data = value;
+  } else if (!sys_strcmp(name, "dial_callbak")) {
+    cz80->dial_callback = value;
   }
 
   return 0;
@@ -646,6 +659,15 @@ static int modem_dial(void *p, char *number) {
   char address[64];
   int ip1, ip2, ip3, ip4, port;
   int i, sock, r = -1;
+  conn_filter_t *(*dial_callback)(void *data, char *number);
+
+  if (cz80->dial_callback && cz80->dial_data) {
+    dial_callback = cz80->dial_callback;
+    cz80->remote = dial_callback(cz80->dial_data, number);
+    modem_set(cz80->modem, cz80->remote);
+    
+    return cz80->telnet ? 0 : -1;
+  }
 
   if (number) {
     // dial
