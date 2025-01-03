@@ -6,11 +6,11 @@ wait_key:
 	io_in SIOA_C
 	and 1
 	jp nz,got_key
-	io_in SIOC_C
+	io_in SIOB_C
 	and 1
 	jp z,wait_key
-	io_in SIOC_D
-        io_out SIOA_D
+	io_in SIOB_D
+  io_out SIOA_D
 	jp wait_key
 got_key:
 	io_in SIOA_D
@@ -18,10 +18,10 @@ got_key:
 	jp z,exit
 	cp 13
 	jp nz,notcr
-        io_out SIOC_D
+  io_out SIOB_D
 	ld a,10
 notcr:
-        io_out SIOC_D
+  io_out SIOB_D
 	jp wait_key
 exit:
 	jp 0
