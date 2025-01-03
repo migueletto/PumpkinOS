@@ -1,7 +1,7 @@
 #include "sys.h"
 #include "filter.h"
 #include "modem.h"
-#include "xalloc.h"
+#include "debug.h"
 
 #define MAX_BUF  256
 #define MAX_CMD  64
@@ -320,7 +320,7 @@ static int modem_filter_write(conn_filter_t *filter, uint8_t *buf, int n) {
 static modem_t *modem_init(void *p, int (*dial)(void *p, char *number)) {
   modem_t *modem;
 
-  if ((modem = xcalloc(1, sizeof(modem_t))) != NULL) {
+  if ((modem = sys_calloc(1, sizeof(modem_t))) != NULL) {
     modem->n = 0;
     modem->echo = 1;
     modem->plus = 0;
@@ -338,7 +338,7 @@ static modem_t *modem_init(void *p, int (*dial)(void *p, char *number)) {
 conn_filter_t *modem_filter(conn_filter_t *next, void *p, int (*dial)(void *p, char *number)) {
   conn_filter_t *filter;
 
-  if ((filter = xcalloc(1, sizeof(conn_filter_t))) != NULL) {
+  if ((filter = sys_calloc(1, sizeof(conn_filter_t))) != NULL) {
     filter->peek = modem_filter_peek;
     filter->read = modem_filter_read;
     filter->write = modem_filter_write;
@@ -354,8 +354,8 @@ void modem_close(conn_filter_t *filter) {
 
   if (filter) {
     modem = (modem_t *)filter->data;
-    if (modem) xfree(modem);
-    xfree(filter);
+    if (modem) sys_free(modem);
+    sys_free(filter);
   }
 }
 
