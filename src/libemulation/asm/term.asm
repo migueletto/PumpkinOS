@@ -10,13 +10,13 @@ wait_key:
 	and 1
 	jp z,wait_key
 	io_in SIOB_D
-        io_out SIOA_D
+  io_out SIOA_D
 	jp wait_key
 got_key:
 	io_in SIOA_D
 	cp 3
 	jp z,exit
-        io_out SIOB_D
+  io_out SIOB_D
 	jp wait_key
 exit:
 	jp 0
