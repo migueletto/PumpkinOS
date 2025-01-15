@@ -257,7 +257,7 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
 }
 
 static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
-  uint8_t r1, g1, b1, r2, g2, b2, alpha;
+  uint32_t r1, g1, b1, r2, g2, b2, alpha;
 
   alpha = c2 >> 24;
 
@@ -268,12 +268,12 @@ static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
     case 0xFF:
       break;
     default:
-      r2 = c2 >> 16;
-      g2 = c2 >> 8;
-      b2 = c2;
-      r1 = c1 >> 16;
-      g1 = c1 >> 8;
-      b1 = c1;
+      r2 = (c2 >> 16) & 0xff;
+      g2 = (c2 >> 8) & 0xff;
+      b2 = c2 & 0xff;
+      r1 = (c1 >> 16) & 0xff;
+      g1 = (c1 >> 8) & 0xff;
+      b1 = c1 & 0xff;
       r2 = ((r2 * alpha) + (r1 * (255 - alpha))) / 255;
       g2 = ((g2 * alpha) + (g1 * (255 - alpha))) / 255;
       b2 = ((b2 * alpha) + (b1 * (255 - alpha))) / 255;
@@ -304,10 +304,23 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
   dst_transparent = dst->gettransp ? dst->gettransp(dst->data, &dst_transp) : 0;
 
   if (dst->encoding == src->encoding && src->encoding != SURFACE_ENCODING_PALETTE) {
-    if (!src_transparent && src->getbuffer && dst->getbuffer &&
-        (src->encoding == SURFACE_ENCODING_ARGB || src->encoding == SURFACE_ENCODING_RGB565 || src->encoding == SURFACE_ENCODING_GRAY)) {
+    if (src->encoding == SURFACE_ENCODING_ARGB) {
+      for (i = 0; i < h; i++) {
+        for (j = 0; j < w; j++) {
+          color = src->getpixel(src->data, src_x + j, vflip ? h - (src_y + i) - 1 : src_y + i);
+          src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
+          if (alpha == 0xff) {
+            dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          } else {
+            c2 = dst->getpixel(dst->data, dst_x + j, dst_y + i);
+            color = surface_mix_rgb(c2, color);
+            dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+          }
+        }
+      }
+    } else if (!src_transparent && src->getbuffer && dst->getbuffer &&
+        (src->encoding == SURFACE_ENCODING_RGB565 || src->encoding == SURFACE_ENCODING_GRAY)) {
       switch (src->encoding) {
-        case SURFACE_ENCODING_ARGB:   size = 4; break;
         case SURFACE_ENCODING_RGB565: size = 2; break;
         case SURFACE_ENCODING_GRAY:   size = 1; break;
       }
@@ -442,16 +455,18 @@ static void bsurface_setpixel_direct(void *data, int x, int y, uint32_t color) {
   buffer_surface_t *b = (buffer_surface_t *)data;
   uint32_t *p32;
 
-  switch (b->encoding) {
-    case SURFACE_ENCODING_MONO:
-    case SURFACE_ENCODING_GRAY:
-    case SURFACE_ENCODING_PALETTE:
-    case SURFACE_ENCODING_RGB565:
-      bsurface_setpixel(data, x, y, color);
-      break;
-    case SURFACE_ENCODING_ARGB:
-      SETPIXEL32_direct(x, y, color)
-      break;
+  if (x >= 0 && x < b->width && y >= 0 && y < b->height) {
+    switch (b->encoding) {
+      case SURFACE_ENCODING_MONO:
+      case SURFACE_ENCODING_GRAY:
+      case SURFACE_ENCODING_PALETTE:
+      case SURFACE_ENCODING_RGB565:
+        bsurface_setpixel(data, x, y, color);
+        break;
+      case SURFACE_ENCODING_ARGB:
+        SETPIXEL32_direct(x, y, color)
+        break;
+    }
   }
 }
 
@@ -717,7 +732,7 @@ surface_t *surface_create(int width, int height, int encoding) {
       surface->encoding = encoding;
       surface->data = b;
       surface->setarea = bsurface_setarea;
-      surface->setpixel = bsurface_setpixel;
+      surface->setpixel = encoding == SURFACE_ENCODING_ARGB ? bsurface_setpixel_direct : bsurface_setpixel;
       surface->getpixel = bsurface_getpixel;
       surface->color_rgb = bsurface_color_rgb;
       surface->rgb_color = bsurface_rgb_color;
@@ -899,7 +914,7 @@ int surface_rotate(surface_t *src, surface_t *dst, double angle) {
         if (j >= 0 && j < src->width && k >= 0 && k < src->height) {
           color = src->getpixel(src->data, j, k);
         } else {
-          if (transparent) {
+          if (src->encoding != SURFACE_ENCODING_ARGB && transparent) {
             color = transp;
           } else {
             color = src->color_rgb(src->data, 0, 0, 0, 0);

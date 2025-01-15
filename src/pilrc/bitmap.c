@@ -823,10 +823,10 @@ BMP_SetBits32bpp(int cx,
 
   cbRow = BMP_CbRow(cx, 32, cBitsAlign);
   pb += cbRow * y + (x * 4);
-  pb[0] = (PILRC_BYTE) ((bits & 0xFF000000) >> 24); // alpha
-  pb[1] = (PILRC_BYTE) ((bits & 0x00FF0000) >> 16); // red
-  pb[2] = (PILRC_BYTE) ((bits & 0x0000FF00) >> 8);  // green
-  pb[3] = (PILRC_BYTE) (bits & 0xFF);               // blue
+  pb[3] = (PILRC_BYTE) ((bits & 0xFF000000) >> 24); // alpha
+  pb[2] = (PILRC_BYTE) ((bits & 0x00FF0000) >> 16); // red
+  pb[1] = (PILRC_BYTE) ((bits & 0x0000FF00) >> 8);  // green
+  pb[0] = (PILRC_BYTE) (bits & 0xFF);               // blue
 }
 
 /**

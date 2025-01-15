@@ -197,9 +197,6 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
 #define get2_16(a,p,i) (le || leBits) ? get2l(a, p, i) : get2b(a, p, i)
 #define put2_16(a,p,i) { if (le || leBits) put2l(a, p, i); else put2b(a, p, i); }
 
-#define get4_32(a,p,i) (le || leBits) ? get4l(a, p, i) : get4b(a, p, i)
-#define put4_32(a,p,i) { if (le || leBits) put4l(a, p, i); else put4b(a, p, i); }
-
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
   UInt8 v8, version;
   UInt16 v16;
@@ -475,9 +472,9 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             break;
           case BitmapV3FieldTransparentValue:
             if (set) {
-              put4_32(value, (UInt8 *)bmp, selector);
+              put4(value, (UInt8 *)bmp, selector);
             } else {
-              get4_32(&v32, (UInt8 *)bmp, selector);
+              get4(&v32, (UInt8 *)bmp, selector);
               value = v32;
             }
             break;
@@ -1713,7 +1710,7 @@ UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y) {
         break;
       case 32:
         offset = y * rowBytes + x*4;
-        get4_32(&value, bits, offset);
+        get4b(&value, bits, offset);
         break;
     }
   }
@@ -1766,17 +1763,9 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
         BmpGetDimensions(bitmapP, NULL, NULL, &rowBytes);
         bits = BmpGetBits(bitmapP);
         offset = y * rowBytes + x*4;
-        if (BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian)) {
-          // little-endian: B G R A
-          rgbP->r = bits[offset + 2];
-          rgbP->g = bits[offset + 1];
-          rgbP->b = bits[offset];
-        } else {
-          // big-endian: A R G B
-          rgbP->r = bits[offset + 1];
-          rgbP->g = bits[offset + 2];
-          rgbP->b = bits[offset + 3];
-        }
+        rgbP->r = bits[offset + 1];
+        rgbP->g = bits[offset + 2];
+        rgbP->b = bits[offset + 3];
         break;
     }
 
@@ -1932,19 +1921,10 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             offset = sy * rowBytes + sx*4;
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 4) {
-                if (BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian)) {
-                  // little-endian: B G R A
-                  alpha = bits[offset + k + 3];
-                  red   = bits[offset + k + 2];
-                  green = bits[offset + k + 1];
-                  blue  = bits[offset + k];
-                } else {
-                  // big-endian: A R G B
-                  alpha = bits[offset + k];
-                  red   = bits[offset + k + 1];
-                  green = bits[offset + k + 2];
-                  blue  = bits[offset + k + 3];
-                }
+                alpha = bits[offset + k];
+                red   = bits[offset + k + 1];
+                green = bits[offset + k + 2];
+                blue  = bits[offset + k + 3];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, useTransp ? alpha : 0xff);
                 surface->setpixel(surface->data, x+j, y+i, c);
               }
@@ -2592,7 +2572,7 @@ static void BmpCopyBit24(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
   }
 }
 
-#define BmpSetBit32p(offset, dataSize, b) if (offset+3 < dataSize) put4_32(b, bits, offset)
+#define BmpSetBit32p(offset, dataSize, b) if (offset+3 < dataSize) put4b(b, bits, offset)
 
 #define BmpSetBit32(offset, dataSize, b, dbl) \
   BmpSetBit32p(offset, dataSize, b); \
@@ -2639,10 +2619,9 @@ static void BmpCopyBit32(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
       rgb.r = r32(b);
       rgb.g = g32(b);
       rgb.b = b32(b);
-      // little-endian
-      rgb.r ^= bits[offset+2];
-      rgb.g ^= bits[offset+1];
-      rgb.b ^= bits[offset];
+      rgb.r ^= bits[offset+1];
+      rgb.g ^= bits[offset+2];
+      rgb.b ^= bits[offset+3];
       b = rgb32(rgb.r, rgb.g, rgb.b);
       BmpSetBit32(offset, dataSize, b, dbl);
       break;
@@ -2797,7 +2776,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         dstPixel = (dstDepth == 24) ? srcPixel : BmpConvertFrom24Bits(srcPixel, dstDepth, dstColorTable);
         break;
       case 32:
-        get4_32(&srcPixel, bits, sy * srcRowBytes + sx*4);
+        get4b(&srcPixel, bits, sy * srcRowBytes + sx*4);
         srcAlpha = a32(srcPixel);
         if (srcAlpha == 255) {
           srcTransp = false;
@@ -3008,7 +2987,7 @@ row 3:
 00 00 : end marker
 */
 
-static int decompress_bitmap_rle(uint8_t *p, uint8_t *dp, uint16_t dsize) {
+static int decompress_bitmap_rle(uint8_t *p, uint8_t *dp, uint32_t dsize) {
   uint8_t len, b;
   int i, j, k;
 
@@ -3017,6 +2996,7 @@ static int decompress_bitmap_rle(uint8_t *p, uint8_t *dp, uint16_t dsize) {
   for (i = 0, j = 0;;) {
     i += get1(&len, p, i);
     i += get1(&b, p, i);
+    debug(DEBUG_TRACE, "Bitmap", "RLE len %d code %d", len, b);
 
     for (k = 0; k < len && j < dsize; k++) {
       dp[j++] = b;
@@ -3079,6 +3059,51 @@ static int decompress_bitmap_packbits8(uint8_t *p, uint8_t *dp, uint32_t dsize) 
   return i;
 }
 
+static int decompress_bitmap_packbits16(uint8_t *p, uint16_t *dp, uint32_t dsize) {
+  uint8_t len;
+  uint16_t w;
+  int8_t count;
+  int i, j, k;
+
+  debug(DEBUG_TRACE, "Bitmap", "PackBits16 bitmap decompressing");
+
+  for (i = 0, j = 0;;) {
+    i += get1((uint8_t *)&count, p, i);
+    debug(DEBUG_TRACE, "Bitmap", "PackBits16 index %d code %d", i-1, count);
+
+    if (count >= -127 && count <= -1) {
+      // encoded run packet
+      len = (uint8_t)(-count) + 1;
+      i += get2l(&w, p, i);
+      debug(DEBUG_TRACE, "Bitmap", "PackBits16 %d bytes encoded run packet 0x%04X", len, w);
+
+      for (k = 0; k < len && j < dsize; k++) {
+        dp[j++] = w;
+      }
+
+    } else if (count >= 0 && count <= 127) {
+      // literal run packet
+      len = (uint8_t)count + 1;
+      debug(DEBUG_TRACE, "Bitmap", "PackBits16 %d bytes literal run packet", len);
+
+      for (k = 0; k < len && j < dsize; k++) {
+        i += get2l(&w, p, i);
+        dp[j++] = w;
+      }
+
+    } else {
+      debug(DEBUG_TRACE, "Bitmap", "PackBits16 code -128 ignored");
+    }
+
+    if (j == dsize) {
+      debug(DEBUG_TRACE, "Bitmap", "PackBits16 bitmap decompressed %d bytes into %d bytes", i, dsize*2);
+      break;
+    }
+  }
+
+  return i;
+}
+
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 static int decompress_bitmap_scanline(uint8_t *p, uint8_t *dp, uint16_t rowBytes, uint16_t width, uint16_t height) {
@@ -3109,7 +3134,7 @@ static int decompress_bitmap_scanline(uint8_t *p, uint8_t *dp, uint16_t rowBytes
   return 0;
 }
 
-static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coord width, Coord height, UInt16 rowBytes, UInt8 *compressed, UInt8 *decompressed) {
+static int BmpDecompress(UInt16 version, BitmapCompressionType compression, UInt16 depth, Coord width, Coord height, UInt16 rowBytes, UInt8 *compressed, UInt8 *decompressed) {
   int error = -1;
 
   switch (version) {
@@ -3139,7 +3164,9 @@ static int BmpDecompress(UInt16 version, BitmapCompressionType compression, Coor
       error = decompress_bitmap_rle(compressed, decompressed, rowBytes * height);
       break;
     case BitmapCompressionTypePackBits:
-      error = decompress_bitmap_packbits8(compressed, decompressed, rowBytes * height);
+      error = depth == 16 ?
+        decompress_bitmap_packbits16(compressed, (uint16_t *)decompressed, (rowBytes * height) / 2) :
+        decompress_bitmap_packbits8(compressed, decompressed, rowBytes * height);
       break;
     default:
       debug(DEBUG_ERROR, "Bitmap", "invalid compression type %u", compression);
@@ -3176,7 +3203,7 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP) {
       BmpGetDimensions(newBmp, &width, &height, &rowBytes);
       compressed = BmpGetBits(bitmapP);
       decompressed = BmpGetBits(newBmp);
-      if (BmpDecompress(version, compression, width, height, rowBytes, compressed, decompressed) != 0) {
+      if (BmpDecompress(version, compression, depth, width, height, rowBytes, compressed, decompressed) != 0) {
         BmpDelete(newBmp);
         newBmp = NULL;
       }
@@ -3293,7 +3320,7 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
       if (compression == BitmapCompressionTypeNone) {
         MemMove(p + headerSize, (UInt8 *)oldBmp[i] + headerSize, rowBytes * height);
       } else {
-        BmpDecompress(version, compression, width, height, rowBytes, (UInt8 *)oldBmp[i] + headerSize, p + headerSize);
+        BmpDecompress(version, compression, depth, width, height, rowBytes, (UInt8 *)oldBmp[i] + headerSize, p + headerSize);
         BmpSetCommonFlag((BitmapType *)p, BitmapFlagCompressed, 0);
       }
 
