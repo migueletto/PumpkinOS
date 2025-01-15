@@ -633,6 +633,8 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 void pumpkin_sound_init(void);
 void pumpkin_sound_finish(void);
 
+int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data);
+
 typedef enum {
   BT_LIB = 1,
   CPM_LIB,

@@ -822,10 +822,12 @@ int pumpkin_get_density(void) {
 
 void pumpkin_set_depth(int depth) {
   switch (depth) {
-    case  1:
-    case  2:
-    case  4:
-    case  8:
+    case   1:
+    case   2:
+    case   4:
+    case   8:
+    case  16:
+    case  32:
       pumpkin_module.depth = depth;
       break;
     default:
@@ -1581,6 +1583,16 @@ void *pumpkin_get_subdata(void) {
   return task->subdata;
 }
 
+int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data) {
+  int r = -1;
+
+  if (pumpkin_module.single && pumpkin_module.wp->shader) {
+    r = pumpkin_module.wp->shader(pumpkin_module.w, 0, vertex_shader, vlen, fragment_shader, flen, getvar, data);
+  }
+
+  return r;
+}
+
 // called directly by libos if DIA or single app mode
 int pumpkin_launcher(char *name, int width, int height) {
   LocalID dbID;
@@ -1606,6 +1618,7 @@ int pumpkin_launcher(char *name, int width, int height) {
       extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
       request.pilot_main = LauncherPilotMain;
 #endif
+
       StrNCopy(request.name, name, dmDBNameLength);
       request.code = sysAppLaunchCmdNormalLaunch;
       pumpkin_launch_sub(&request, 1);

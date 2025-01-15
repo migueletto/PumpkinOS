@@ -1,4 +1,11 @@
 #include <SDL2/SDL.h>
+
+#ifdef SDL_OPENGL
+#define GL_GLEXT_PROTOTYPES
+#include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_opengl_glext.h>
+#endif
+
 #ifdef SDL_MIXER
 #include <SDL2/SDL_mixer.h>
 #endif
@@ -17,6 +24,9 @@
 #define SDL_BUTTON2   2
 
 #define MAX_DRIVER 128
+
+#define MAX_SHADER 16
+#define MAX_VARS   16
 
 struct texture_t {
   SDL_Texture *t;
@@ -41,6 +51,13 @@ typedef struct {
   SDL_Texture *background;
   libsdl_keymap_t keymap[0x1000];
   int64_t shift_up;
+  int opengl;
+#ifdef SDL_OPENGL
+  GLuint programId[MAX_SHADER];
+  texture_t *texture;
+  float (*getvar)(char *name, void *data);
+  void *data;
+#endif
 } libsdl_window_t;
 
 static libsdl_keymap_t keymap[] = {
@@ -166,9 +183,14 @@ static void libsdl_render_info(char *label, SDL_RendererInfo *info) {
 static int libsdl_init_video(void) {
   SDL_RendererInfo info;
   SDL_Cursor *cursor;
-  int i, n, r = -1;
+  int flags, i, n, r = -1;
+ 
+  flags = SDL_INIT_VIDEO;
+#ifdef SDL_OPENGL
+  flags |= SDL_VIDEO_OPENGL;
+#endif
 
-  if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+  if (SDL_InitSubSystem(flags) != 0) {
     debug(DEBUG_ERROR, "SDL", "init video failed: %s", SDL_GetError());
 
   } else {
@@ -670,9 +692,12 @@ static int libsdl_video_setup(libsdl_window_t *window) {
     return -1;
   }
 
+SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+
   debug(DEBUG_INFO, "SDL", "creating renderer");
   // index of the rendering driver to initialize, or -1 to initialize the first one supporting the requested flags.
-  window->renderer = SDL_CreateRenderer(window->window, i, window->software ? SDL_RENDERER_SOFTWARE : 0);
+  //window->renderer = SDL_CreateRenderer(window->window, i, window->software ? SDL_RENDERER_SOFTWARE : 0);
+  window->renderer = SDL_CreateRenderer(window->window, i, window->software ? SDL_RENDERER_SOFTWARE : SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   if (window->renderer == NULL) {
     SDL_DestroyWindow(window->window);
     window->window = NULL;
@@ -797,14 +822,90 @@ static window_t *libsdl_window_create(int encoding, int *width, int *height, int
   return (window_t *)window;
 }
 
+#ifdef SDL_OPENGL
+static void presentBackBuffer(libsdl_window_t *window, texture_t *t, GLuint programId) {
+  GLint oldProgramId, numUniforms, index, size, loc;
+ 	GLenum type;
+ 	GLsizei length;
+  GLfloat minx, miny, maxx, maxy;
+  GLfloat minu, maxu, minv, maxv;
+  GLfloat value;
+  char var[256];
+  PFNGLUSEPROGRAMPROC glUseProgram;
+
+  glUseProgram = (PFNGLUSEPROGRAMPROC)SDL_GL_GetProcAddress("glUseProgram");
+
+  SDL_SetRenderTarget(window->renderer, NULL);
+  SDL_RenderClear(window->renderer);
+
+  if (programId != 0) {
+    glGetIntegerv(GL_CURRENT_PROGRAM, &oldProgramId);
+    glUseProgram(programId);
+  }
+
+  if (window->getvar) {
+    glGetProgramiv(programId, GL_ACTIVE_UNIFORMS, &numUniforms);
+    for (index = 0; index < numUniforms; index++) {
+      glGetActiveUniform(programId, index, sizeof(var), &length, &size, &type, var);
+      if (type == GL_FLOAT && sys_strcmp(var, "u_texture") != 0) {
+        value = window->getvar(var, window->data);
+        debug(DEBUG_TRACE, "SDL", "shader var \"%s\" = %f", var, value);
+        glUniform1f(index, value);
+      }
+    }
+  }
+
+  //glEnable(GL_BLEND);
+  //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glActiveTexture(GL_TEXTURE0);
+  SDL_GL_BindTexture(t->t, NULL, NULL);
+  loc = glGetUniformLocation(programId, "u_texture");
+  glUniform1i(loc, 0);
+
+  minx = -1.0f;
+  maxx = 1.0f;
+  miny = 1.0f;
+  maxy = -1.0f;
+
+  minu = 0.0f;
+  maxu = 1.0f;
+  minv = 0.0f;
+  maxv = 1.0f;
+
+  glBegin(GL_TRIANGLE_STRIP);
+  glTexCoord2f(minu, minv);
+  glVertex2f(minx, miny);
+  glTexCoord2f(maxu, minv);
+  glVertex2f(maxx, miny);
+  glTexCoord2f(minu, maxv);
+  glVertex2f(minx, maxy);
+  glTexCoord2f(maxu, maxv);
+  glVertex2f(maxx, maxy);
+  glEnd();
+
+  SDL_GL_SwapWindow(window->window);
+
+  if (programId != 0) {
+    glUseProgram(oldProgramId);
+  }
+}
+#endif
+
 static int libsdl_window_render(window_t *_window) {
-  libsdl_window_t *window;
+  libsdl_window_t *window = (libsdl_window_t *)_window;
   int r = -1;
 
-  window = (libsdl_window_t *)_window;
-
   if (window) {
-    SDL_RenderPresent(window->renderer);
+#ifdef SDL_OPENGL
+    if (window->opengl && window->texture) {
+      presentBackBuffer(window, window->texture, window->programId[0]);
+    } else {
+#endif
+      SDL_RenderPresent(window->renderer);
+#ifdef SDL_OPENGL
+    }
+#endif
     r = 0;
   }
 
@@ -936,6 +1037,13 @@ static int libsdl_window_draw_texture_rect(window_t *_window, texture_t *texture
   window = (libsdl_window_t *)_window;
 
   if (window && texture && w > 0 && h > 0) {
+#ifdef SDL_OPENGL
+    if (window->opengl) {
+      window->texture = texture;
+      return 0;
+    }
+#endif
+
     src.x = tx;
     src.y = ty;
     src.w = w;
@@ -1075,6 +1183,121 @@ static int libsdl_window_update(window_t *_window, int x, int y, int width, int 
   return 0;
 }
 
+#ifdef SDL_OPENGL
+static GLuint compileShader(const char *source, GLint len, GLuint shaderType) {
+  GLuint result;
+  GLint shaderCompiled, logLength;
+  GLchar *log;
+  char *type;
+  PFNGLCREATESHADERPROC glCreateShader;
+  PFNGLSHADERSOURCEPROC glShaderSource;
+  PFNGLCOMPILESHADERPROC glCompileShader;
+  PFNGLGETSHADERIVPROC glGetShaderiv;
+  PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+  PFNGLDELETESHADERPROC glDeleteShader;
+
+  glCreateShader = (PFNGLCREATESHADERPROC)SDL_GL_GetProcAddress("glCreateShader");
+  glShaderSource = (PFNGLSHADERSOURCEPROC)SDL_GL_GetProcAddress("glShaderSource");
+  glCompileShader = (PFNGLCOMPILESHADERPROC)SDL_GL_GetProcAddress("glCompileShader");
+  glGetShaderiv = (PFNGLGETSHADERIVPROC)SDL_GL_GetProcAddress("glGetShaderiv");
+  glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)SDL_GL_GetProcAddress("glGetShaderInfoLog");
+  glDeleteShader = (PFNGLDELETESHADERPROC)SDL_GL_GetProcAddress("glDeleteShader");
+  result = 0;
+
+  if (glCreateShader && glShaderSource && glCompileShader && glGetShaderiv && glGetShaderInfoLog && glDeleteShader) {
+    type = shaderType == GL_VERTEX_SHADER ? "vertex" : "fragment";
+    result = glCreateShader(shaderType);
+    glShaderSource(result, 1, &source, &len);
+    glCompileShader(result);
+
+    glGetShaderiv(result, GL_INFO_LOG_LENGTH, &logLength);
+    if (logLength > 0) {
+      log = (GLchar *)sys_malloc(logLength);
+      glGetShaderInfoLog(result, logLength, &logLength, log);
+      debug(DEBUG_INFO, "SDL", "%s shader compilation log: %s", type, log);
+      sys_free(log);
+    }
+
+    shaderCompiled = GL_FALSE;
+    glGetShaderiv(result, GL_COMPILE_STATUS, &shaderCompiled);
+    if (!shaderCompiled) {
+      debug(DEBUG_ERROR, "SDL", "error compiling %s shader: %d", type, result);
+      glDeleteShader(result);
+      result = 0;
+    } else {
+      debug(DEBUG_INFO, "SDL", "%s shader compiled successfully", type);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SDL", "compileShader: one or more OpenGL functions are not available");
+  }
+
+  return result;
+}
+
+static int libsdl_window_shader(window_t *_window, int i, char *vertex, int vlen, char *fragment, int flen, float (*getvar)(char *name, void *data), void *data) {
+  libsdl_window_t *window = (libsdl_window_t *)_window;
+  GLint logLen, linkStatus, validateStatus;
+  GLuint vtxShaderId, fragShaderId;
+  char *log;
+  int r = -1;
+  PFNGLCREATEPROGRAMPROC glCreateProgram;
+  PFNGLLINKPROGRAMPROC glLinkProgram;
+  PFNGLVALIDATEPROGRAMPROC glValidateProgram;
+  PFNGLGETPROGRAMIVPROC glGetProgramiv;
+  PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+  PFNGLATTACHSHADERPROC glAttachShader;
+  PFNGLDELETESHADERPROC glDeleteShader;
+
+  glCreateProgram = (PFNGLCREATEPROGRAMPROC)SDL_GL_GetProcAddress("glCreateProgram");
+  glLinkProgram = (PFNGLLINKPROGRAMPROC)SDL_GL_GetProcAddress("glLinkProgram");
+  glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)SDL_GL_GetProcAddress("glValidateProgram");
+  glGetProgramiv = (PFNGLGETPROGRAMIVPROC)SDL_GL_GetProcAddress("glGetProgramiv");
+  glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)SDL_GL_GetProcAddress("glGetProgramInfoLog");
+  glAttachShader = (PFNGLATTACHSHADERPROC)SDL_GL_GetProcAddress("glAttachShader");
+  glDeleteShader = (PFNGLDELETESHADERPROC)SDL_GL_GetProcAddress("glDeleteShader");
+
+  if (glCreateProgram && glLinkProgram && glValidateProgram && glGetProgramiv && glGetProgramInfoLog && glAttachShader && glDeleteShader) {
+    window->programId[i] = glCreateProgram();
+    vtxShaderId = compileShader(vertex, vlen, GL_VERTEX_SHADER);
+    fragShaderId = compileShader(fragment, flen, GL_FRAGMENT_SHADER);
+
+    if (vtxShaderId && fragShaderId) {
+      glAttachShader(window->programId[i], vtxShaderId);
+      glAttachShader(window->programId[i], fragShaderId);
+      glLinkProgram(window->programId[i]);
+      glGetProgramiv(window->programId[i], GL_LINK_STATUS, &linkStatus);
+      glValidateProgram(window->programId[i]);
+      glGetProgramiv(window->programId[i], GL_VALIDATE_STATUS, &validateStatus);
+      window->getvar = getvar;
+      window->data = data;
+      debug(DEBUG_INFO, "SDL", "program link status %d, validate status %d", linkStatus, validateStatus);
+      window->opengl = linkStatus && validateStatus;
+      r = window->opengl ? 0 : -1;
+
+      glGetProgramiv(window->programId[i], GL_INFO_LOG_LENGTH, &logLen);
+      if (logLen > 0) {
+        log = (char *)sys_malloc(logLen * sizeof(char));
+        glGetProgramInfoLog(window->programId[i], logLen, &logLen, log);
+        debug(DEBUG_INFO, "SDL", "shader program log: %s", log);
+        sys_free(log);
+      }
+    }
+
+    if (vtxShaderId) {
+      glDeleteShader(vtxShaderId);
+    }
+
+    if (fragShaderId) {
+      glDeleteShader(fragShaderId);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SDL", "libsdl_window_shader: one or more OpenGL functions are not available");
+  }
+
+  return r;
+}
+#endif
+
 static int libsdl_window_destroy(window_t *window) {
   return libsdl_video_close((libsdl_window_t *)window);
 }
@@ -1164,6 +1387,9 @@ int liblsdl2_load(void) {
   window_provider.draw_texture_rect = libsdl_window_draw_texture_rect;
   window_provider.update_texture_rect = libsdl_window_update_texture_rect;
   window_provider.show_cursor = libsdl_window_show_cursor;
+#ifdef SDL_OPENGL
+  window_provider.shader = libsdl_window_shader;
+#endif
 
   xmemset(&audio_provider, 0, sizeof(audio_provider));
   audio_provider.mixer_init = libsdl_mixer_init;

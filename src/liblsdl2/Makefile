@@ -1,6 +1,7 @@
 include ../common.mak
 
 PROGRAM=$(BIN)/liblsdl2$(SOEXT)
+#CUSTOMFLAGS=-DSDL_OPENGL
 
 OBJS=liblsdl2.o
 
