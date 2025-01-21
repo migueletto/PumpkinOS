@@ -285,6 +285,28 @@ static uint32_t surface_mix_rgb(uint32_t c1, uint32_t c2) {
   return c2;
 }
 
+#define MIN(a,b) (a) < (b) ? (a) : (b)
+
+void surface_draw_alpha(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
+  int i, j, red, green, blue, alpha, a;
+  uint32_t color;
+
+  for (i = 0; i < h; i++) {
+    for (j = 0; j < w; j++) {
+      color = src->getpixel(src->data, src_x + j, src_y + i);
+      src->rgb_color(src->data, color, &red, &green, &blue, &alpha);
+      alpha = 255 - alpha;
+      if (alpha < 255) {
+        color = dst->getpixel(dst->data, dst_x + j, dst_y + i);
+        dst->rgb_color(dst->data, color, &red, &green, &blue, &a);
+        alpha = MIN(alpha, a);
+        color = dst->color_rgb(dst->data, red, green, blue, alpha);
+        dst->setpixel(dst->data, dst_x + j, dst_y + i, color);
+      }
+    }
+  }
+}
+
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h) {
   uint32_t color, c1, c2, src_transp, dst_transp, src_pitch, dst_pitch, n;
   int i, j, size, red, green, blue, alpha, src_transparent, dst_transparent, len1, len2, vflip;
