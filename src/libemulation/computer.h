@@ -10,6 +10,7 @@ typedef struct computer_t {
 
   int (*set_window)(struct computer_t *c, window_provider_t *wp, int fullscreen);
   int (*set_surface)(struct computer_t *c, int ptr, surface_t *surface);
+  int (*set_color)(struct computer_t *c, int index, uint8_t red, uint8_t green, uint8_t blue);
   int (*set_display)(struct computer_t *c, int display);
   int (*set_filter)(struct computer_t *c, conn_filter_t *filter);
 

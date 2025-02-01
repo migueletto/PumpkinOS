@@ -752,6 +752,19 @@ static int cz80_set_surface(struct computer_t *c, int ptr, surface_t *surface) {
   return 0;
 }
 
+static int cz80_set_color(struct computer_t *c, int index, uint8_t red, uint8_t green, uint8_t blue) {
+  cz80_data_t *cz80;
+  int r = -1;
+
+  if (c && index >= 0 && index < 16) {
+    cz80 = (cz80_data_t *)c->data;
+    cz80->c[index] = surface_color_rgb(cz80->surface->encoding, NULL, 0, red, green, blue, 0xFF);
+    r = 0;
+  }
+
+  return r;
+}
+
 computer_t *cz80_init(vfs_session_t *session) {
   cz80_data_t *cz80;
   computer_t *c = NULL;
@@ -774,6 +787,7 @@ computer_t *cz80_init(vfs_session_t *session) {
       cz80->cb.reply = term_reply;
 
       c->set_surface = cz80_set_surface;
+      c->set_color = cz80_set_color;
       c->disk = cz80_disk;
       c->option = cz80_option;
       c->run = cz80_run;
