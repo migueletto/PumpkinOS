@@ -2932,6 +2932,10 @@ int sys_tmpname(char *buf, int max) {
 }
 #endif
 
+int sys_mkstempfile(char *buf) {
+  return mkstemp(buf);
+}
+
 int sys_mkstemp(void) {
   char buf[32];
   int fd;

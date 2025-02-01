@@ -287,6 +287,8 @@ int sys_list_symbols(char *libname);
 
 int sys_tmpname(char *buf, int max);
 
+int sys_mkstempfile(char *buf);
+
 int sys_mkstemp(void);
 
 void *sys_malloc(sys_size_t size);
