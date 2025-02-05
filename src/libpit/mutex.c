@@ -230,6 +230,38 @@ int cond_timedwait(cond_t *c, mutex_t *m, int us) {
   return r;
 }
 
+#if defined(EMSCRIPTEN)
+
+sema_t *semaphore_create_named(char *name, int count) {
+  return NULL;
+}
+
+int semaphore_remove_named(char *name) {
+  return -1;
+}
+
+sema_t *semaphore_create(int count) {
+  return NULL;
+}
+
+int semaphore_destroy(sema_t *sem) {
+  return -1;
+}
+
+int semaphore_post(sema_t *sem) {
+  return -1;
+}
+
+int semaphore_wait(sema_t *sem, int block) {
+  return -1;
+}
+
+int semaphore_timedwait(sema_t *sem, int us) {
+  return -1;
+}
+
+#else
+
 #ifndef O_CREAT 
 #define O_CREAT 0
 #endif
@@ -390,3 +422,5 @@ int semaphore_remove_named(char *name) {
 
   return r;
 }
+
+#endif

@@ -122,6 +122,7 @@ int script_returned_value(script_arg_t *ret);
 
 int ext_script_init(void);
 script_priv_t *ext_script_create(void);
+char *ext_script_engine_ext(void);
 uint32_t ext_script_engine_id(void);
 int ext_script_run(script_priv_t *priv, char *filename, int argc, char *argv[], int str);
 int ext_script_destroy(script_priv_t *priv);
@@ -137,6 +138,9 @@ script_ref_t ext_script_create_function_data(script_priv_t *priv, int pe, int (*
 script_ref_t ext_script_dup_ref(script_priv_t *priv, script_ref_t ref);
 int ext_script_remove_ref(script_priv_t *priv, script_ref_t ref);
 int ext_script_push_value(script_priv_t *priv, script_arg_t *value);
+int ext_script_get_last_error(script_priv_t *priv, char *buf, int max);
+int ext_script_get_stack(script_priv_t *priv);
+int ext_script_set_stack(script_priv_t *priv, int index);
 
 #define PIT_LIB_FUNCTION(lname,name) static int lib_function_##name(int pe) { char *lib = #lname; char *func = #name; int iarg = 0, err = 0, r = -1;
 #define PIT_LIB_PARAM_F(name)        script_arg_t arg##name; script_ref_t name; err += script_get_named_value(pe, iarg++, SCRIPT_ARG_FUNCTION, lib, func, #name, 0, &arg##name); name = err ? 0 : arg##name.value.r;

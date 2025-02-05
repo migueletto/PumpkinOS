@@ -1,48 +1,52 @@
 include ../common.mak
 include ../commonp.mak
 
-PROGRAM=$(BIN)/libpumpkin$(SOEXT)
-
 CRDATE := $(shell date +%s)
-
-GPSLIB=GPSLib68K.o
-
-GPDLIB=GPDLib.o
-
-PALMOS=$(SRC)/PalmOS
 
 CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I./dlmalloc -DARMEMU
 
-ARMOBJS=emulation/arm/armem.o emulation/arm/armemu.o emulation/arm/CPU.o emulation/arm/icache.o emulation/arm/MMU.o emulation/arm/RAM.o \
-        emulation/arm/pxa_IC.o emulation/arm/cp15.o
+GPSLIB_SOURCE=GPSLib68K.c
 
-DARMOBJS=emulation/darm/armv7.o emulation/darm/armv7-tbl.o emulation/darm/darm.o emulation/darm/darm-tbl.o emulation/darm/thumb.o \
-         emulation/darm/thumb2.o emulation/darm/thumb2-decoder.o emulation/darm/thumb2-tbl.o emulation/darm/thumb-tbl.o
+GPDLIB_SOURCE=GPDLib.c
 
-EMUOBJS=emulation/emupalmos.o emulation/omtrap.o emulation/pinstrap.o emulation/hdtrap.o emulation/serialtrap.o emulation/fstrap.o emulation/intltrap.o \
-        emulation/flpemtrap.o emulation/flptrap.o emulation/accessortrap.o emulation/expansiontrap.o emulation/netlibtrap.o emulation/gpdlibtrap.o emulation/systrap.o \
-        emulation/trapnames.o emulation/m68k/m68kcpu.o emulation/m68k/m68kdasm.o emulation/softfloat/softfloat.o emulation/m68k/m68kops.o emulation/disasm.o \
-        $(ARMOBJS) $(DARMOBJS)
+ARM_SOURCE=emulation/arm/armem.c emulation/arm/armemu.c emulation/arm/CPU.c emulation/arm/icache.c emulation/arm/MMU.c emulation/arm/RAM.c \
+        emulation/arm/pxa_IC.c emulation/arm/cp15.c
 
-TOSOBJS=tos/tos.o tos/gemdos_impl.o tos/bios_impl.o tos/xbios_impl.o tos/vdi.o tos/aes.o
+DARM_SOURCE=emulation/darm/armv7.c emulation/darm/armv7-tbl.c emulation/darm/darm.c emulation/darm/darm-tbl.c emulation/darm/thumb.c \
+         emulation/darm/thumb2.c emulation/darm/thumb2-decoder.c emulation/darm/thumb2-tbl.c emulation/darm/thumb-tbl.c
 
-ifeq ($(OSNAME),Android)
-LAUNCHEROBJS=$(SRC)/Launcher/Launcher.o $(SRC)/Launcher/editbin.o $(SRC)/Launcher/editbmp.o $(SRC)/Launcher/editform.o $(SRC)/Launcher/editstr.o
-endif
+EMU_SOURCE=emulation/emupalmos.c emulation/omtrap.c emulation/pinstrap.c emulation/hdtrap.c emulation/serialtrap.c emulation/fstrap.c emulation/intltrap.c \
+        emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/netlibtrap.c emulation/gpdlibtrap.c emulation/systrap.c \
+        emulation/trapnames.c emulation/m68k/m68kcpu.c emulation/m68k/m68kdasm.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
+        $(ARM_SOURCE) $(DARM_SOURCE)
 
-GLUE=BmpGlue.o CtlGlue.o DateGlue.o FldGlue.o FntGlue.o FrmGlue.o LstGlue.o MemGlue.o TblGlue.o TxtGlue.o WinGlue.o
+TOS_SOURCE=tos/tos.c tos/gemdos_impl.c tos/bios_impl.c tos/xbios_impl.c tos/vdi.c tos/aes.c
 
-OBJS=pumpkin.o pumpkin_syscall.o storage.o script.o fill.o AboutBox.o AddressSortLib.o AlarmMgr.o AttentionMgr.o Bitmap.o ColorTable.o BtLib.o Category.o Clipboard.o ConnectionMgr.o ConsoleMgr.o Control.o CPMLib68KInterface.o Crc.o DateTime.o Day.o DebugMgr.o DLServer.o Encrypt.o md5.o sha1.o ErrorBase.o Event.o ExgLib.o ExgMgr.o ExpansionMgr.o FatalAlert.o FeatureMgr.o Field.o FileStream.o Find.o FixedMath.o FloatMgr.o Font.o FontSelect.o Form.o FSLib.o Graffiti.o GraffitiReference.o GraffitiShift.o HAL.o HostControl.o IMCUtils.o INetMgr.o InsPoint.o IntlMgr.o IrLib.o Keyboard.o KeyMgr.o Launcher.o List.o LocaleMgr.o Localize.o Lz77Mgr.o Menu.o ModemMgr.o NetBitUtils.o NetMgr.o OverlayMgr.o Password.o PceNativeCall.o PdiLib.o PenInputMgr.o PenMgr.o PhoneLookup.o Preferences.o PrivateRecords.o Progress.o Rect.o ScrollBar.o SelTime.o SelDay.o SelTimeZone.o SerialLinkMgr.o SerialMgr.o SerialMgrOld.o SerialSdrv.o SerialVdrv.o SlotDrvrLib.o SoundMgr.o SslLib.o StringMgr.o SysEvtMgr.o SystemMgr.o SysUtils.o Table.o TelephonyMgr.o TextMgr.o TextServicesMgr.o TimeMgr.o UDAMgr.o UIColor.o UIControls.o UIResources.o VFSMgr.o Window.o Chat.o dlheap.o dlmalloc/dlm.o grail.o wav.o dia.o wman.o peditor.o syntax.o edit.o AppRegistry.o language.o calibrate.o unzip.o junzip.o puff.o plibc.o dosbox.o $(GLUE) $(GPSLIB) $(GPDLIB) $(EMUOBJS) $(TOSOBJS) $(LAUNCHEROBJS)
+GLUE_SOURCE=BmpGlue.c CtlGlue.c DateGlue.c FldGlue.c FntGlue.c FrmGlue.c LstGlue.c MemGlue.c TblGlue.c TxtGlue.c WinGlue.c
 
+SOURCE=pumpkin.c pumpkin_syscall.c storage.c script.c fill.c AboutBox.c AddressSortLib.c AlarmMgr.c AttentionMgr.c Bitmap.c ColorTable.c BtLib.c Category.c Clipboard.c ConnectionMgr.c ConsoleMgr.c Control.c CPMLib68KInterface.c Crc.c DateTime.c Day.c DebugMgr.c DLServer.c Encrypt.c md5.c sha1.c ErrorBase.c Event.c ExgLib.c ExgMgr.c ExpansionMgr.c FatalAlert.c FeatureMgr.c Field.c FileStream.c Find.c FixedMath.c FloatMgr.c Font.c FontSelect.c Form.c FSLib.c Graffiti.c GraffitiReference.c GraffitiShift.c HAL.c HostControl.c IMCUtils.c INetMgr.c InsPoint.c IntlMgr.c IrLib.c Keyboard.c KeyMgr.c Launcher.c List.c LocaleMgr.c Localize.c Lz77Mgr.c Menu.c ModemMgr.c NetBitUtils.c NetMgr.c OverlayMgr.c Password.c PceNativeCall.c PdiLib.c PenInputMgr.c PenMgr.c PhoneLookup.c Preferences.c PrivateRecords.c Progress.c Rect.c ScrollBar.c SelTime.c SelDay.c SelTimeZone.c SerialLinkMgr.c SerialMgr.c SerialMgrOld.c SerialSdrv.c SerialVdrv.c SlotDrvrLib.c SoundMgr.c SslLib.c StringMgr.c SysEvtMgr.c SystemMgr.c SysUtils.c Table.c TelephonyMgr.c TextMgr.c TextServicesMgr.c TimeMgr.c UDAMgr.c UIColor.c UIControls.c UIResources.c VFSMgr.c Window.c Chat.c dlheap.c dlmalloc/dlm.c grail.c wav.c dia.c wman.c peditor.c syntax.c edit.c AppRegistry.c language.c calibrate.c unzip.c junzip.c puff.c plibc.c dosbox.c $(GLUE_SOURCE) $(GPSLIB_SOURCE) $(GPDLIB_SOURCE) $(EMU_SOURCE) $(TOS_SOURCE)
+
+ifeq ($(OSNAME),Emscripten)
+
+PROGRAM=$(BIN)/libpumpkin$(SOEXT)
+OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
-ifeq ($(OSNAME),Android)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) $(OSLDEFS) -Wl,-soname,libpumpkin$(SOEXT) -L$(BIN) -lpit -lm
+	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE $(OBJS)
+
+emulation/systrap.wasm: emulation/systrap.c emulation/switch.c
+	$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm
+
 else
+
+PROGRAM=$(BIN)/libpumpkin$(SOEXT)
+OBJS=$(SOURCE:%.c=%.o)
+$(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) -L$(BIN) -lpit -lm
-endif
 
 emulation/systrap.o: emulation/systrap.c emulation/switch.c
 	$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
+
+endif
 
 clean:
 	rm -f $(PROGRAM) $(OBJS)

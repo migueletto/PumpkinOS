@@ -902,6 +902,7 @@ static int libsdl_window_render(window_t *_window) {
       presentBackBuffer(window, window->texture, window->programId[0]);
     } else {
 #endif
+//debug(1, "XXX", "SDL_RenderPresent");
       SDL_RenderPresent(window->renderer);
 #ifdef SDL_OPENGL
     }

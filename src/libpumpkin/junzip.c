@@ -171,7 +171,7 @@ int jzReadData(JZFile *zip, JZFileHeader *header, void *buffer) {
                 header->uncompressedSize || zip->error(zip))
             return Z_ERRNO;
     } else if(header->compressionMethod == 8) { // Deflate - using puff()
-        sys_size_t destlen = header->uncompressedSize,
+        uint32_t destlen = header->uncompressedSize,
                       sourcelen = header->compressedSize;
         uint8_t *comp = (uint8_t *)sys_malloc(sourcelen);
         if(comp == NULL) return Z_ERRNO; // couldn't allocate

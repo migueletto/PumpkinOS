@@ -1,16 +1,27 @@
 include ../common.mak
 
-PROGRAM=$(BIN)/libpit$(SOEXT)
-
 CUSTOMFLAGS=-I$(SRC)/font
 
-OBJS=main.o sig.o threadudp.o mutex.o sys.o ctype.o bsearch.o printf.o string.o ptr.o debug.o script.o builtin.o list.o sock.o io.o loadfile.o util.o bytes.o ts.o yuv.o graphic.o vfont.o surface.o time.o timeutc.o media.o xalloc.o endianness.o gps.o vfs.o vfslocal.o filter.o telnet.o ctelnet.o login.o pterm.o bmp.o httpc.o httpd.o template.o findargs.o rgb.o
+SOURCE=main.c sig.c sys.c threadudp.c mutex.c ctype.c bsearch.c printf.c string.c ptr.c debug.c script.c builtin.c list.c sock.c io.c loadfile.c util.c bytes.c ts.c yuv.c graphic.c vfont.c surface.c time.c timeutc.c media.c xalloc.c endianness.c gps.c vfs.c vfslocal.c filter.c telnet.c ctelnet.c login.c pterm.c bmp.c httpc.c httpd.c template.c findargs.c rgb.c
 
+ifeq ($(OSNAME),Emscripten)
+
+PROGRAM=$(BIN)/libpit$(SOEXT)
+OBJS=$(SOURCE:%.c=%.wasm)
+$(PROGRAM): $(OBJS)
+	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE $(OBJS)
+
+else
+
+PROGRAM=$(BIN)/libpit$(SOEXT)
+OBJS=$(SOURCE:%.c=%.o)
 $(PROGRAM): $(OBJS)
 ifeq ($(OSNAME),Android)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) $(OSLDEFS) -Wl,-soname,libpit$(SOEXT) -lm
 else
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -lpthread $(EXTLIBS) -lm
+endif
+
 endif
 
 clean:

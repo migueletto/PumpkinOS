@@ -127,9 +127,21 @@ LUAPLAT=linux
 OS=Android
 OSDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -DANDROID -DSOEXT=\"$(SOEXT)\"
 CC=$(NDK)/bin/clang
+else ifeq ($(OSNAME),Emscripten)
+SYS_OS=5
+SOEXT=.wasm
+LUAPLAT=linux
+OS=Emscripten
+OSDEFS=$(MBITS) -DEMSCRIPTEN -DSOEXT=\"$(SOEXT)\"
 else
 $(error Unknown OS $(OSNAME))
 endif
 
+EM_CC=emcc
+EM_AR=emar
+
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
 CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -O2 -g -fPIC -fno-stack-protector $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" $(CUSTOMFLAGS) $(SYSDEFS)
+
+%.wasm : %.c
+	$(EM_CC) $(CFLAGS) -c -o $@ $<

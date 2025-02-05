@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "sys.h"
 #include "main.h"
 #include "sig.h"
@@ -51,6 +53,7 @@ int pit_main(int argc, char *argv[], void (*callback)(int pe, void *data), void 
             break;
           default:
             err = 1;
+            break;
         }
       } else {
         err = 1;

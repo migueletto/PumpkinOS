@@ -66,7 +66,7 @@ void dlmalloc_init_state(void *h);
 #ifndef USE_DL_PREFIX
 void*  malloc(size_t);
 #else
-void*  dlmalloc(void *h, size_t);
+void*  dlmalloc(void *h, sys_size_t);
 #endif
 
 /*
@@ -94,7 +94,7 @@ void     dlfree(void *h, void*);
 #ifndef USE_DL_PREFIX
 void*  calloc(size_t, size_t);
 #else
-void*  dlcalloc(void *h, size_t, size_t);
+void*  dlcalloc(void *h, sys_size_t, sys_size_t);
 #endif
 
 /*
@@ -127,7 +127,7 @@ void*  dlcalloc(void *h, size_t, size_t);
 #ifndef USE_DL_PREFIX
 void*  realloc(void*, size_t);
 #else
-void*  dlrealloc(void *h, void*, size_t);
+void*  dlrealloc(void *h, void*, sys_size_t);
 #endif
 
 /*
@@ -146,7 +146,7 @@ void*  dlrealloc(void *h, void*, size_t);
 #ifndef USE_DL_PREFIX
 void*  memalign(size_t, size_t);
 #else
-void*  dlmemalign(void *, size_t, size_t);
+void*  dlmemalign(void *, sys_size_t, sys_size_t);
 #endif
 
 
@@ -160,7 +160,7 @@ void*  dlmemalign(void *, size_t, size_t);
 #ifndef USE_DL_PREFIX
 void*  valloc(size_t);
 #else
-void*  dlvalloc(void *, size_t);
+void*  dlvalloc(void *, sys_size_t);
 #endif
 
 
@@ -220,7 +220,7 @@ void*  dlvalloc(void *, size_t);
 #ifndef USE_DL_PREFIX
 void** independent_calloc(size_t, size_t, void**);
 #else
-void** dlindependent_calloc(void *, size_t, size_t, void**);
+void** dlindependent_calloc(void *, sys_size_t, sys_size_t, void**);
 #endif
 
 /*
@@ -286,7 +286,7 @@ void** dlindependent_calloc(void *, size_t, size_t, void**);
 #ifndef USE_DL_PREFIX
 void** independent_comalloc(size_t, size_t*, void**);
 #else
-void** dlindependent_comalloc(void *, size_t, size_t*, void**);
+void** dlindependent_comalloc(void *, sys_size_t, sys_size_t*, void**);
 #endif
 
 
@@ -299,7 +299,7 @@ void** dlindependent_comalloc(void *, size_t, size_t*, void**);
 #ifndef USE_DL_PREFIX
 void*  pvalloc(size_t);
 #else
-void*  dlpvalloc(void *, size_t);
+void*  dlpvalloc(void *, sys_size_t);
 #endif
 
 /*
@@ -346,7 +346,7 @@ void     dlcfree(void *, void*);
 #ifndef USE_DL_PREFIX
 int      malloc_trim(size_t);
 #else
-int      dlmalloc_trim(void *, size_t);
+int      dlmalloc_trim(void *, sys_size_t);
 #endif
 
 
@@ -368,7 +368,7 @@ int      dlmalloc_trim(void *, size_t);
 #ifndef USE_DL_PREFIX
 size_t   malloc_usable_size(void*);
 #else
-size_t   dlmalloc_usable_size(void*);
+sys_size_t   dlmalloc_usable_size(void*);
 #endif
 
 

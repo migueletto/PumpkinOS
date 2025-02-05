@@ -36,6 +36,7 @@ static mutex_t *mutex;
 static unsigned int num_threads;
 static thread_ps_t ps[MAX_PS_THREADS];
 
+#ifndef EMSCRIPTEN
 static double thread_usage(void) {
   int64_t tt, pt;
   double p;
@@ -50,6 +51,7 @@ static double thread_usage(void) {
 
   return p;
 }
+#endif
 
 static void dummy_destructor(void *value) {
 }
@@ -170,8 +172,6 @@ int thread_get_handle(void) {
 
 int thread_must_end(void) {
   thread_arg_t *targ;
-  double p;
-  uint64_t t;
 
   if (thread_get_flags(FLAG_FINISH)) {
     debug(DEBUG_INFO, "THREAD", "thread must end (flag)");
@@ -181,7 +181,11 @@ int thread_must_end(void) {
   if (local == NULL) return 0;
   targ = (thread_arg_t *)thread_get(local);
 
+#ifndef EMSCRIPTEN
   if (targ == NULL || targ->sock <= 0 || sys_peek(targ->sock) != -1) {
+    double p;
+    uint64_t t;
+
     if (targ) {
       t = sys_time();
       if ((t - targ->last_usage) >= 15) {
@@ -196,6 +200,9 @@ int thread_must_end(void) {
 
     return 0;
   }
+#else
+  return 0;
+#endif
 
   debug(DEBUG_INFO, "THREAD", "thread port %d must end", targ->port);
   return 1;

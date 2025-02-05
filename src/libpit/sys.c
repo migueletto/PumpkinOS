@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <ws2tcpip.h>
@@ -39,7 +39,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#ifdef SERENITY
+#if defined(SERENITY)
 #include <sys/select.h>
 #include <sys/statvfs.h>
 #else
@@ -62,7 +62,7 @@
 #define EN_US "en_US"
 
 struct sys_dir_t {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   int first;
   HANDLE handle;
   WIN32_FIND_DATA ffd;
@@ -77,7 +77,7 @@ struct sys_dir_t {
 #endif
 
 void sys_init(void) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   WORD version;
   WSADATA data;
   int err;
@@ -90,7 +90,7 @@ void sys_init(void) {
 }
 
 static int socket_select(int socket, uint32_t us, int nf) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   TIMEVAL tv;
 #else
   struct timeval tv;
@@ -117,7 +117,7 @@ static int socket_select(int socket, uint32_t us, int nf) {
   return r;
 }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
 #define TAG_FD "SYS_FD"
 
 #define FD_FILE   1
@@ -344,7 +344,7 @@ Optionally, a dot . follows the name of the character encoding such as UTF-8, or
 int sys_country(char *country, int len) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   char buf[32];
   GEOID myGEO = GetUserGeoID(GEOCLASS_NATION);
   if (GetGeoInfoA(myGEO, GEO_ISO2, buf, sizeof(buf), 0)) {
@@ -376,7 +376,7 @@ int sys_country(char *country, int len) {
 int sys_language(char *language, int len) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   char buf[32];
   LCID lcid = GetUserDefaultLCID();
   if (GetLocaleInfoA(lcid, LOCALE_SISO639LANGNAME, buf, sizeof(buf))) {
@@ -420,19 +420,22 @@ uint32_t sys_get_pid(void) {
 }
 
 uint32_t sys_get_tid(void) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return GetCurrentThreadId();
 #endif
-#ifdef LINUX
+#if defined(LINUX)
   return syscall(SYS_gettid);
 #endif
-#ifdef SERENITY
+#if defined(SERENITY)
   return gettid();
+#endif
+#if defined(EMSCRIPTEN)
+  return 0;
 #endif
 }
 
 int sys_errno(void) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   int err;
   err = GetLastError();
   if (!err) err = WSAGetLastError();
@@ -443,7 +446,7 @@ int sys_errno(void) {
 }
 
 void sys_strerror(int err, char *msg, int len) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   int i;
 
   msg[0] = 0;
@@ -460,7 +463,7 @@ void sys_strerror(int err, char *msg, int len) {
 #endif
 }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
 static void normalize_path(const char *src, char *dst, int len) {
   int i;
 
@@ -479,7 +482,7 @@ sys_dir_t *sys_opendir(const char *pathname) {
     return NULL;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   normalize_path(pathname, dir->buf, FILE_PATH);
 
   int len = sys_strlen(dir->buf);
@@ -507,7 +510,7 @@ sys_dir_t *sys_opendir(const char *pathname) {
 }
 
 int sys_readdir(sys_dir_t *dir, char *name, int len) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   if (dir->first) {
     dir->first = 0;
   } else {
@@ -533,7 +536,7 @@ int sys_closedir(sys_dir_t *dir) {
   int r = -1;
 
   if (dir) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
     FindClose(dir->handle);
     r = 0;
 #else
@@ -550,7 +553,7 @@ int sys_chdir(char *path) {
   int r = -1;
 
   if (path) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
     normalize_path(path, buf, FILE_PATH);
     r = chdir(buf);
 #else
@@ -571,7 +574,7 @@ int sys_getcwd(char *buf, int len) {
 int sys_open(const char *pathname, int flags) {
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   char buf[FILE_PATH];
   HANDLE handle;
   DWORD access = 0;
@@ -614,7 +617,7 @@ int sys_open(const char *pathname, int flags) {
 int sys_create(const char *pathname, int flags, uint32_t mode) {
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   char buf[FILE_PATH];
   HANDLE handle;
   DWORD access = 0;
@@ -658,7 +661,7 @@ int sys_create(const char *pathname, int flags, uint32_t mode) {
 // return  0: fd is not set within tv
 // return  1, fd is set
 int sys_select(int fd, uint32_t us) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
   DWORD available;
   int r = -1;
@@ -734,7 +737,7 @@ int sys_fdisset(int n, sys_fdset_t *fds) {
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
   fd_set rfds, wfds, efds;
   int r, i, isset;
-#ifdef WINDOWS
+#if defined(WINDOWS)
   TIMEVAL tv;
   fd_t *f;
   int map[FDSET_SIZE];
@@ -748,7 +751,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
     tv.tv_usec = timeout->tv_usec;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   for (i = 0; i < FDSET_SIZE; i++) {
     map[i] = 0;
   }
@@ -759,7 +762,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
     FD_ZERO(&rfds);
     for (i = 0; i < FDSET_SIZE; i++) {
       if (sys_fdisset(i, readfds)) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
         if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
           if (f->type == FD_SOCKET) {
             FD_SET(f->socket, &rfds);
@@ -778,7 +781,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
     FD_ZERO(&wfds);
     for (i = 0; i < FDSET_SIZE; i++) {
       if (sys_fdisset(i, writefds)) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
         if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
           if (f->type == FD_SOCKET) {
             FD_SET(f->socket, &wfds);
@@ -797,7 +800,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
     FD_ZERO(&efds);
     for (i = 0; i < FDSET_SIZE; i++) {
       if (sys_fdisset(i, exceptfds)) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
         if (i > 0 && (f = ptr_lock(i, TAG_FD)) != NULL) {
           if (f->type == FD_SOCKET) {
             FD_SET(f->socket, &efds);
@@ -817,7 +820,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   if (readfds) {
     sys_fdzero(readfds);
     for (i = 0; i < FDSET_SIZE; i++) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
       s = map[i];
       isset = s > 0 && FD_ISSET(s, &rfds);
 #else
@@ -834,7 +837,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   if (writefds) {
     sys_fdzero(writefds);
     for (i = 0; i < FDSET_SIZE; i++) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
       s = map[i];
       isset = s > 0 && FD_ISSET(s, &wfds);
 #else
@@ -851,7 +854,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   if (exceptfds) {
     sys_fdzero(exceptfds);
     for (i = 0; i < FDSET_SIZE; i++) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
       s = map[i];
       isset = s > 0 && FD_ISSET(s, &efds);
 #else
@@ -877,7 +880,7 @@ int sys_read_timeout(int fd, uint8_t *buf, int len, int *nread, uint32_t us) {
 
   *nread = 0;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   DWORD nbread;
   fd_t *f;
 
@@ -945,7 +948,7 @@ int sys_write(int fd, uint8_t *buf, int len) {
     return -1;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
@@ -986,7 +989,7 @@ int sys_write(int fd, uint8_t *buf, int len) {
 int64_t sys_seek(int fd, int64_t offset, sys_seek_t whence) {
   int64_t r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
   LONG high;
   DWORD method, pos;
@@ -1033,7 +1036,7 @@ int64_t sys_seek(int fd, int64_t offset, sys_seek_t whence) {
 int sys_truncate(int fd, int64_t offset) {
   int64_t r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
@@ -1056,7 +1059,7 @@ int sys_truncate(int fd, int64_t offset) {
 }
 
 int sys_pipe(int *fd) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   HANDLE r, w;
   int fd0, fd1;
 
@@ -1115,7 +1118,7 @@ int sys_peek(int fd) {
 int sys_fstat(int fd, sys_stat_t *st) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   BY_HANDLE_FILE_INFORMATION info;
   fd_t *f;
 
@@ -1169,7 +1172,7 @@ int sys_stat(const char *pathname, sys_stat_t *st) {
   int r = -1;
 
   if (pathname && st) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
     normalize_path(pathname, buf, FILE_PATH);
 #else
     sys_strncpy(buf, pathname, FILE_PATH);
@@ -1199,7 +1202,7 @@ int sys_stat(const char *pathname, sys_stat_t *st) {
 int sys_statfs(const char *pathname, sys_statfs_t *st) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   char buf[FILE_PATH];
   ULARGE_INTEGER lpTotalNumberOfBytes;
   ULARGE_INTEGER lpTotalNumberOfFreeBytes;
@@ -1211,7 +1214,7 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
     r = 0;
   }
 #endif
-#ifdef LINUX
+#if defined(LINUX) || defined(EMSCRIPTEN)
   struct statfs sb;
 
   if (statfs(pathname, &sb) == 0) {
@@ -1220,7 +1223,7 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
     r = 0;
   }
 #endif
-#ifdef SERENITY
+#if defined(SERENITY)
   struct statvfs sb;
 
   if (statvfs(pathname, &sb) == 0) {
@@ -1234,7 +1237,7 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
 int sys_close(int fd) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   r = ptr_free(fd, TAG_FD);
 #else
   if (fd != -1) {
@@ -1249,7 +1252,7 @@ int sys_rename(const char *pathname1, const char *pathname2) {
   char buf1[FILE_PATH], buf2[FILE_PATH];
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   normalize_path(pathname1, buf1, FILE_PATH);
   normalize_path(pathname2, buf2, FILE_PATH);
   r = rename(buf1, buf2);
@@ -1270,7 +1273,7 @@ int sys_unlink(const char *pathname) {
   char buf[FILE_PATH];
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   normalize_path(pathname, buf, FILE_PATH);
   r = unlink(buf);
 #else
@@ -1289,7 +1292,7 @@ int sys_rmdir(const char *pathname) {
   char buf[FILE_PATH];
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   normalize_path(pathname, buf, FILE_PATH);
   r = rmdir(buf);
 #else
@@ -1308,7 +1311,7 @@ int sys_mkdir(const char *pathname) {
   char buf[FILE_PATH];
   int r;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   DWORD err;
   normalize_path(pathname, buf, FILE_PATH);
   if (!CreateDirectory(buf, NULL)) {
@@ -1329,7 +1332,7 @@ int sys_mkdir(const char *pathname) {
 }
 
 int sys_serial_open(char *device, char *word, int baud) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   HANDLE handle, eventr, eventw;
   COMMTIMEOUTS timeouts;
   DCB dcb;
@@ -1459,7 +1462,7 @@ int sys_serial_open(char *device, char *word, int baud) {
 }
 
 int sys_serial_baud(int serial, int baud) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   debug(DEBUG_ERROR, "SYS", "sys_serial_baud not implemented on windows");
   return -1;
 #else
@@ -1482,28 +1485,28 @@ int sys_serial_baud(int serial, int baud) {
     case  19200: baud = B19200; break;
     case  38400: baud = B38400; break;
     case  57600: baud = B57600; break;
-#ifdef B115200
+#if defined(B115200)
     case 115200: baud = B115200; break;
 #endif
-#ifdef B230400
+#if defined(B230400)
     case 230400: baud = B230400; break;
 #endif
-#ifdef B460800
+#if defined(B460800)
     case 460800: baud = B460800; break;
 #endif
-#ifdef B921600
+#if defined(B921600)
     case 921600: baud = B921600; break;
 #endif
-#ifdef B1000000
+#if defined(B1000000)
     case 1000000: baud = B1000000; break;
 #endif
-#ifdef B2000000
+#if defined(B2000000)
     case 2000000: baud = B2000000; break;
 #endif
-#ifdef B3000000
+#if defined(B3000000)
     case 3000000: baud = B3000000; break;
 #endif
-#ifdef B4000000
+#if defined(B4000000)
     case 4000000: baud = B4000000; break;
 #endif
 
@@ -1531,7 +1534,7 @@ int sys_serial_baud(int serial, int baud) {
 }
 
 int sys_serial_word(int serial, char *word) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   debug(DEBUG_ERROR, "SYS", "sys_serial_word not implemented on windows");
   return -1;
 #else
@@ -1595,7 +1598,7 @@ int sys_serial_word(int serial, char *word) {
 }
 
 void *sys_tty_raw(int fd) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return NULL;
 #else
   struct termios term;
@@ -1616,7 +1619,7 @@ void *sys_tty_raw(int fd) {
 }
 
 int sys_tty_restore(int fd, void *p) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return 0;
 #else
   int r = -1;
@@ -1631,7 +1634,7 @@ int sys_tty_restore(int fd, void *p) {
 }
 
 int sys_termsize(int fd, int *cols, int *rows) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return -1;
 #else
   struct winsize ws;
@@ -1650,7 +1653,7 @@ int sys_termsize(int fd, int *cols, int *rows) {
 }
 
 int sys_isatty(int fd) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return 0;
 #else
   return isatty(fd);
@@ -1658,7 +1661,7 @@ int sys_isatty(int fd) {
 }
 
 int sys_daemonize(void) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return -1;
 #else
   pid_t pid;
@@ -1784,7 +1787,7 @@ int sys_get_clock_ts(sys_timespec_t *ts) {
 int64_t sys_get_process_time(void) {
   int64_t ts = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   FILETIME creationTime, exitTime, kernelTime, userTime;
   if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     ts = ((((int64_t)userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime) / 10;
@@ -1792,7 +1795,8 @@ int64_t sys_get_process_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetProcessTimes failed");
   }
 #else
-#ifdef LINUX
+#if defined(LINUX)
+debug(1, "XXX", "gettime CLOCK_PROCESS_CPUTIME_ID");
   ts = gettime(CLOCK_PROCESS_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_PROCESS_CPUTIME_ID is not implemented");
@@ -1805,7 +1809,7 @@ int64_t sys_get_process_time(void) {
 int64_t sys_get_thread_time(void) {
   int64_t ts = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   FILETIME creationTime, exitTime, kernelTime, userTime;
   if (GetThreadTimes(GetCurrentThread(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     ts = ((((int64_t)userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime) / 10;
@@ -1813,7 +1817,8 @@ int64_t sys_get_thread_time(void) {
     debug(DEBUG_ERROR, "SYS", "GetThreadTimes failed");
   }
 #else
-#ifdef LINUX
+#if defined(LINUX)
+debug(1, "XXX", "gettime CLOCK_THREAD_CPUTIME_ID");
   ts = gettime(CLOCK_THREAD_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_THREAD_CPUTIME_ID is not implemented");
@@ -1824,7 +1829,7 @@ int64_t sys_get_thread_time(void) {
 }
 
 int sys_set_thread_name(char *name) {
-#ifdef LINUX
+#if defined(LINUX)
   pthread_setname_np(pthread_self(), name);
 #endif
   return 0;
@@ -1861,7 +1866,7 @@ void sys_unblock_signals(void) {
 }
 
 void sys_install_handler(int signum, void (*handler)(int)) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   signal(signum, handler);
 #else
   struct sigaction action;
@@ -1884,7 +1889,7 @@ void *sys_lib_load(char *libname, int *first_load) {
 
   *first_load = 0;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   normalize_path(libname, buf, FILE_PATH-1);
   len = sys_strlen(buf);
   if (sys_strstr(buf, ".dll") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
@@ -1919,7 +1924,7 @@ void *sys_lib_load(char *libname, int *first_load) {
   dlerror();
 
 /* XXX RTLD_NODELETE can cause problems since global variables are not reinitialized
-#ifdef RTLD_NODELETE
+#if defined(RTLD)_NODELETE
 #define NODELETE RTLD_NODELETE
 #else
 #define NODELETE 0
@@ -1927,7 +1932,7 @@ void *sys_lib_load(char *libname, int *first_load) {
 */
 #define NODELETE 0
 
-#ifdef RTLD_NOLOAD
+#if defined(RTLD_NOLOAD)
   lib = dlopen(buf, RTLD_NOW | RTLD_NOLOAD);
 #else
   lib = NULL;
@@ -1956,7 +1961,7 @@ void *sys_lib_load(char *libname, int *first_load) {
 void *sys_lib_defsymbol(void *lib, char *name, int mandatory) {
   void *sym;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   sym = (void *)GetProcAddress((HMODULE)lib, name);
 
   if (sym == NULL && mandatory) {
@@ -1975,7 +1980,7 @@ void *sys_lib_defsymbol(void *lib, char *name, int mandatory) {
 }
 
 int sys_lib_close(void *lib) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return FreeLibrary((HMODULE)lib);
 #else
   return dlclose(lib);
@@ -2355,7 +2360,7 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
 }
 
 int sys_socket_open_connect_timeout(char *host, int port, int type, uint32_t us) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   int sock;
 
   if ((sock = sys_tcpip_connect(host, port, type, us)) == -1) {
@@ -2379,7 +2384,7 @@ int sys_socket_open(int type, int ipv6) {
     return -1;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return fd_open(FD_SOCKET, NULL, NULL, NULL, sock);
 #else
   return sock;
@@ -2395,7 +2400,7 @@ int sys_socket_connect(int sock, char *host, int port) {
     return -1;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(sock, TAG_FD)) == NULL) {
@@ -2466,7 +2471,7 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
   }
 #endif
 
-#ifdef SERENITY
+#if defined(SERENITY)
   if (port == 0) {
     // XXX if port==0, bind() should pick a randon port number, but
     // SerenityOS does not do that. So we do the hard and inneficient way.
@@ -2517,7 +2522,7 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
 }
 
 int sys_socket_binds(int sock, char *host, int *port) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
   int r = -1;
 
@@ -2564,7 +2569,7 @@ int sys_socket_bind(char *host, int *port, int type) {
     }
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return fd_open(FD_SOCKET, NULL, NULL, NULL, sock);
 #else
   return sock;
@@ -2610,7 +2615,7 @@ static int sys_tcpip_bind_connect(char *src_host, int src_port, char *host, int 
 }
 
 int sys_socket_bind_connect(char *src_host, int src_port, char *host, int port, int type) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   int sock;
 
   if ((sock = sys_tcpip_bind_connect(src_host, src_port, host, port, type)) == -1) {
@@ -2680,7 +2685,7 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timev
 }
 
 int sys_socket_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
   int csock = -1;
 
@@ -2719,7 +2724,7 @@ static int sys_tcpip_sendto(int sock, char *host, int port, unsigned char *buf, 
 int sys_socket_sendto(int sock, char *host, int port, unsigned char *buf, int n) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(sock, TAG_FD)) == NULL) {
@@ -2784,7 +2789,7 @@ static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigne
 int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, sys_timeval_t *tv) {
   int r = -1;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(sock, TAG_FD)) == NULL) {
@@ -2831,7 +2836,7 @@ int sys_setsockopt(int sock, int level, int optname, const void *optval, int opt
       return -1;
   }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if ((f = ptr_lock(sock, TAG_FD)) == NULL) {
@@ -2853,7 +2858,7 @@ int sys_setsockopt(int sock, int level, int optname, const void *optval, int opt
 int sys_socket_shutdown(int sock, int dir) {
   int r = -1, d = 0;
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
   fd_t *f;
 
   if (dir & SYS_SHUTDOWN_RD) d |= SD_RECEIVE;
@@ -2878,7 +2883,7 @@ int sys_socket_shutdown(int sock, int dir) {
 }
 
 int sys_fork_exec(char *filename, char *argv[], int fd) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return -1;
 #else
   char *envp[] = { NULL };
@@ -2913,7 +2918,7 @@ int sys_fork_exec(char *filename, char *argv[], int fd) {
 #endif
 }
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
 int sys_tmpname(char *buf, int max) {
   char *t;
   int n, r = -1;
@@ -3063,7 +3068,7 @@ int sys_sscanf(const char *str, const char *format, ...) {
 }
 
 sys_size_t sys_getpagesize(void) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   return 4096; // XXX
 #else
   return sysconf(_SC_PAGE_SIZE);
@@ -3081,7 +3086,7 @@ void sys_longjmp(sys_jmp_buf env, int val) {
 /*
 // link with -ldbghelp
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
 static BOOL CALLBACK EnumSymProc(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {
   UNREFERENCED_PARAMETER(UserContext);
   debug(DEBUG_INFO, "SYS", "symbol %08X %4u %s", pSymInfo->Address, SymbolSize, pSymInfo->Name);
@@ -3090,7 +3095,7 @@ static BOOL CALLBACK EnumSymProc(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID 
 #endif
 
 int sys_list_symbols(char *libname) {
-#ifdef WINDOWS
+#if defined(WINDOWS)
   HANDLE hProcess = GetCurrentProcess();
   DWORD64 BaseOfDll;
   char *Mask = "*";

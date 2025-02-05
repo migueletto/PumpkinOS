@@ -2868,13 +2868,58 @@ static void CheckNotifications(void) {
   }
 }
 
-static void EventLoop(launcher_data_t *data) {
+#include <emscripten.h>
+#include <emscripten/html5.h>
+
+static void callback_func(void *userData) {
+  launcher_data_t *data = (launcher_data_t *)userData;
   EventType event;
   Err err;
+
+  CheckNotifications();
+  EvtGetEvent(&event, 30);
+  if (SysHandleEvent(&event)) return;
+  if (MenuHandleEvent(NULL, &event, &err)) return;
+  if (ApplicationHandleEvent(&event)) return;
+  FrmDispatchEvent(&event);
+
+  if (event.eType) {
+    debug(DEBUG_INFO, "Launcher", "event %d", event.eType);
+  }
+}
+
+static EM_BOOL cb(double time, void *userData) {
+  launcher_data_t *data = (launcher_data_t *)userData;
+  EventType event;
+  Err err;
+
+  CheckNotifications();
+  EvtGetEvent(&event, 30);
+  if (SysHandleEvent(&event)) return true;
+  if (MenuHandleEvent(NULL, &event, &err)) return true;
+  if (ApplicationHandleEvent(&event)) return true;
+  FrmDispatchEvent(&event);
+
+  if (event.eType) {
+    debug(DEBUG_INFO, "Launcher", "event %d", event.eType);
+  }
+
+  if (event.eType == appStopEvent || data->finish) return false;
+
+  return true;
+}
+
+static void EventLoop(launcher_data_t *data) {
+  //EventType event;
+  //Err err;
 
   data->finish = false;
   data->top = true;
   debug(DEBUG_INFO, "Launcher", "event loop begin");
+  //emscripten_request_animation_frame_loop(cb, data);
+  emscripten_set_main_loop_arg(callback_func, data, 0, 1);
+
+/*
   do {
     CheckNotifications();
     EvtGetEvent(&event, 30);
@@ -2883,6 +2928,7 @@ static void EventLoop(launcher_data_t *data) {
     if (ApplicationHandleEvent(&event)) continue;
     FrmDispatchEvent(&event);
   } while (event.eType != appStopEvent && !data->finish);
+*/
   debug(DEBUG_INFO, "Launcher", "event loop end");
 }
 

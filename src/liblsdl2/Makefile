@@ -1,9 +1,19 @@
 include ../common.mak
 
-PROGRAM=$(BIN)/liblsdl2$(SOEXT)
 #CUSTOMFLAGS=-DSDL_OPENGL
 
-OBJS=liblsdl2.o
+SOURCE=liblsdl2.c
+
+ifeq ($(OSNAME),Emscripten)
+
+CUSTOMFLAGS=-s USE_SDL=2
+
+PROGRAM=$(BIN)/liblsdl2$(SOEXT)
+OBJS=$(SOURCE:%.c=%.wasm)
+$(PROGRAM): $(OBJS)
+	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE -s USE_SDL=2 $(OBJS)
+
+else
 
 ifeq ($(OSNAME),Msys)
 #LIBSDL=-lSDL2 -lversion -limm32 -lgdi32 -lsetupapi -lwinmm -lole32 -loleaut32 -lSDL2_mixer
@@ -20,8 +30,12 @@ ifeq ($(OSNAME),serenity)
 LIBSDL=-lSDL2
 endif
 
+PROGRAM=$(BIN)/liblsdl2$(SOEXT)
+OBJS=$(SOURCE:%.c=%.o)
 $(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBSDL)
+
+endif
 
 clean:
 	rm -f $(PROGRAM) $(OBJS)

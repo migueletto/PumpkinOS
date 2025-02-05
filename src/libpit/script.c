@@ -909,15 +909,23 @@ script_ref_t script_loadlib(int pe, char *libname) {
   return obj;
 }
 
+#ifndef EMSCRIPTEN
 #define ENGINE_SYMBOL(sym) engine->dl_##sym = sys_lib_defsymbol(engine->lib, #sym, 1); err += ((engine->dl_##sym) == NULL) ? 1 : 0
+#else
+#define ENGINE_SYMBOL(sym) engine->dl_##sym = sym
+#endif
 
 script_engine_t *script_load_engine(char *libname) {
   script_engine_t *engine;
+#ifndef EMSCRIPTEN
   int first_load, err = -1;
+#endif
 
   if ((engine = xcalloc(1, sizeof(script_engine_t))) != NULL) {
+#ifndef EMSCRIPTEN
     if ((engine->lib = sys_lib_load(libname, &first_load)) != NULL) {
       err = 0;
+#endif
       ENGINE_SYMBOL(ext_script_init);
       ENGINE_SYMBOL(ext_script_engine_id);
       ENGINE_SYMBOL(ext_script_engine_ext);
@@ -939,6 +947,7 @@ script_engine_t *script_load_engine(char *libname) {
       ENGINE_SYMBOL(ext_script_push_value);
       ENGINE_SYMBOL(ext_script_get_stack);
       ENGINE_SYMBOL(ext_script_set_stack);
+#ifndef EMSCRIPTEN
     }
 
     if (err) {
@@ -946,6 +955,7 @@ script_engine_t *script_load_engine(char *libname) {
       xfree(engine);
       engine = NULL;
     }
+#endif
   }
 
   return engine;
