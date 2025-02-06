@@ -10,10 +10,10 @@ SOURCE=lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c \
        lmathlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c loadlib.c linit.c \
        script_lua.c
 
-PROGRAM=$(BIN)/libscriptlua$(SOEXT)
+PROGRAM=$(BIN)/libscriptlua.a
 OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
-	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE $(OBJS)
+	$(EM_AR) -cru $(PROGRAM) $(OBJS)
 
 clean:
 	rm -f $(PROGRAM) $(OBJS)

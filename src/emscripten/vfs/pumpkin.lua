@@ -14,11 +14,10 @@ pumpkin = pit.loadlib("libos")
 pumpkin.init()
 
 pumpkin.start {
-  single      = true,
   fullrefresh = true,
   density     = 144,
-  width       = 320,
-  height      = 320,
+  width       = 1024,
+  height      = 768,
   hdepth      = 16,
   depth       = 16,
   launcher    = "Launcher"

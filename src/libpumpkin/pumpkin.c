@@ -2808,10 +2808,6 @@ static void save_screen(void) {
   }
 }
 
-#ifdef EMSCRIPTEN
-#include <emscripten/emscripten.h>
-#endif
-
 static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
   int x, y, w, h, tmp;
@@ -2825,10 +2821,6 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
   } else {
     wait = usec/1000;
     if (usec && !wait) wait = 1;
-
-#ifdef EMSCRIPTEN
-    emscripten_sleep(0);
-#endif
 
     if ((ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2)) > 0) {
       switch (ev) {
@@ -5292,3 +5284,17 @@ const char *pumpkin_error_msg(Err err) {
 
   return s;
 }
+
+#if defined(EMSCRIPTEN)
+
+#include <emscripten.h>
+#include <emscripten/html5.h>
+
+void pumpkin_set_loop(void (*callback)(void *), void *data) {
+  emscripten_cancel_main_loop();
+  if (callback) {
+    emscripten_set_main_loop_arg(callback, data, 0, 1);
+  }
+}
+
+#endif

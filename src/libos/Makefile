@@ -5,10 +5,10 @@ SOURCE=libos.c
 
 ifeq ($(OSNAME),Emscripten)
 
-PROGRAM=$(BIN)/libos$(SOEXT)
+PROGRAM=$(BIN)/libos.a
 OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
-	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE $(OBJS)
+	$(EM_AR) -cru $(PROGRAM) $(OBJS)
 
 else
 

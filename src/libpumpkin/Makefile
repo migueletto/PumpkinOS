@@ -28,10 +28,14 @@ SOURCE=pumpkin.c pumpkin_syscall.c storage.c script.c fill.c AboutBox.c AddressS
 
 ifeq ($(OSNAME),Emscripten)
 
-PROGRAM=$(BIN)/libpumpkin$(SOEXT)
+LAUNCHER=$(SRC)/Launcher
+LAUNCHER_SOURCE=$(LAUNCHER)/Launcher.c $(LAUNCHER)/editstr.c $(LAUNCHER)/editbmp.c $(LAUNCHER)/editform.c $(LAUNCHER)/editbin.c $(LAUNCHER)/editsurf.c
+LAUNCHER_OBJS=$(LAUNCHER_SOURCE:%.c=%.wasm)
+
+PROGRAM=$(BIN)/libpumpkin.a
 OBJS=$(SOURCE:%.c=%.wasm)
-$(PROGRAM): $(OBJS)
-	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE $(OBJS)
+$(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
+	$(EM_AR) -cru $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
 
 emulation/systrap.wasm: emulation/systrap.c emulation/switch.c
 	$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm

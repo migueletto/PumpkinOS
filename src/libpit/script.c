@@ -828,6 +828,8 @@ script_ref_t script_loadlib(int pe, char *libname) {
     return -1;
   }
 
+  debug(DEBUG_INFO, "SCRIPT", "loading library %s", libname);
+
   len = sys_strlen(libname);
   idot = islash = -1;
   for (i = len-1; i > 0; i--) {
@@ -857,6 +859,22 @@ script_ref_t script_loadlib(int pe, char *libname) {
   module[len] = 0;
   debug(DEBUG_TRACE, "SCRIPT", "module name %s", module);
 
+#ifdef EMSCRIPTEN
+  if (!sys_strcmp(libname, "libos")) {
+    extern int libos_init(int pe, script_ref_t obj);
+    load_f = NULL;
+    unload_f = NULL;
+    init_f = libos_init;
+  } else if (!sys_strcmp(libname, "liblsdl2")) {
+    extern int liblsdl2_load(void);
+    extern int liblsdl2_init(int pe, script_ref_t obj);
+    load_f = liblsdl2_load;
+    init_f = liblsdl2_init;
+    unload_f = NULL;
+  }
+  first_load = 1;
+  lib = NULL;
+#else
   if ((lib = sys_lib_load(libnameext, &first_load)) == NULL) {
     return -1;
   }
@@ -867,6 +885,7 @@ script_ref_t script_loadlib(int pe, char *libname) {
   load_f = sys_lib_defsymbol(lib, lname, 0);
   init_f = sys_lib_defsymbol(lib, iname, 0);
   unload_f = sys_lib_defsymbol(lib, uname, 0);
+#endif
 
   if (first_load && load_f && load_f() == -1) {
     return -1;

@@ -128,11 +128,14 @@ OS=Android
 OSDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -DANDROID -DSOEXT=\"$(SOEXT)\"
 CC=$(NDK)/bin/clang
 else ifeq ($(OSNAME),Emscripten)
+EMSC=$(SRC)/emscripten
+BIN=$(EMSC)
+VFS=$(EMSC)/vfs
 SYS_OS=5
 SOEXT=.wasm
 LUAPLAT=linux
 OS=Emscripten
-OSDEFS=$(MBITS) -DEMSCRIPTEN -DSOEXT=\"$(SOEXT)\"
+OSDEFS=$(MBITS) -DEMSCRIPTEN -DSOEXT=\"$(SOEXT)\" -pthread
 else
 $(error Unknown OS $(OSNAME))
 endif

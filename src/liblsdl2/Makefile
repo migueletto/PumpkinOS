@@ -8,10 +8,10 @@ ifeq ($(OSNAME),Emscripten)
 
 CUSTOMFLAGS=-s USE_SDL=2
 
-PROGRAM=$(BIN)/liblsdl2$(SOEXT)
+PROGRAM=$(BIN)/liblsdl2.a
 OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
-	$(EM_CC) -o $(PROGRAM) -s SIDE_MODULE -s USE_SDL=2 $(OBJS)
+	$(EM_AR) -cru $(PROGRAM) $(OBJS)
 
 else
 

@@ -22,58 +22,94 @@ typedef struct {
   secure_provider_t *secure;
 } libos_t;
 
-static void EventLoop(libos_t *data) {
+static int LoopIteration(void) {
   client_request_t *creq;
-  launch_request_t request;
   SysNotifyParamType notify;
   unsigned char *buf;
   unsigned int len;
   int r;
+
+  debug(DEBUG_TRACE, PUMPKINOS, "receiving messsage ...");
+  if ((r = thread_server_read_timeout(1000, &buf, &len)) == -1) {
+    debug(DEBUG_ERROR, PUMPKINOS, "failed to receive messsage");
+    return -1;
+  }
+
+  if (r == 1) {
+    debug(DEBUG_TRACE, PUMPKINOS, "received messsage");
+
+    if (buf) {
+      if (len == sizeof(client_request_t)) {
+        creq = (client_request_t *)buf;
+        debug(DEBUG_INFO, PUMPKINOS, "client request %d", creq->type);
+        switch (creq->type) {
+          case MSG_LAUNCH:
+            debug(DEBUG_INFO, PUMPKINOS, "received launch message");
+            pumpkin_local_refresh();
+            pumpkin_launch(&creq->data.launch);
+            break;
+          case MSG_DEPLOY:
+            debug(DEBUG_INFO, PUMPKINOS, "received deploy message");
+            MemSet(&notify, sizeof(notify), 0);
+            notify.notifyType = sysNotifySyncFinishEvent;
+            notify.broadcaster = sysNotifyBroadcasterCode;
+            SysNotifyBroadcast(&notify);
+            break;
+          default:
+            debug(DEBUG_ERROR, PUMPKINOS, "invalid client request type %d", creq->type);
+            break;
+        }
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "invalid client request size %d", len);
+      }
+      sys_free(buf);
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "null buffer");
+    }
+  } else {
+    debug(DEBUG_TRACE, PUMPKINOS, "no messsage");
+  }
+
+  if (pumpkin_sys_event() == -1)  {
+    debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_sys_event failed");
+    return -1;
+  }
+
+  return 0;
+}
+
+#if defined(EMSCRIPTEN)
+static void callback(void *data) {
+  LoopIteration();
+}
+#endif
+
+static void EventLoop(libos_t *data) {
+  launch_request_t request;
 
   debug(DEBUG_INFO, PUMPKINOS, "starting launcher");
   sys_memset(&request, 0, sizeof(request));
   sys_strncpy(request.name, data->launcher, dmDBNameLength-1);
   request.code = sysAppLaunchCmdNormalLaunch;
   request.opendb = 1;
+#if defined(EMSCRIPTEN)
+  extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
+  request.pilot_main = LauncherPilotMain;
+#endif
   pumpkin_launch(&request);
 
+#if defined(EMSCRIPTEN)
+  pumpkin_set_loop(callback, NULL);
+#else
   for (; !thread_get_flags(FLAG_FINISH);) {
-    if ((r = thread_server_read_timeout(1000, &buf, &len)) == -1) break;
-    if (r == 1) {
-      if (buf) {
-        if (len == sizeof(client_request_t)) {
-          creq = (client_request_t *)buf;
-          switch (creq->type) {
-            case MSG_LAUNCH:
-              debug(DEBUG_INFO, PUMPKINOS, "received launch message");
-              pumpkin_local_refresh();
-              pumpkin_launch(&creq->data.launch);
-              break;
-            case MSG_DEPLOY:
-              debug(DEBUG_INFO, PUMPKINOS, "received deploy message");
-              MemSet(&notify, sizeof(notify), 0);
-              notify.notifyType = sysNotifySyncFinishEvent;
-              notify.broadcaster = sysNotifyBroadcasterCode;
-              SysNotifyBroadcast(&notify);
-              break;
-            default:
-              debug(DEBUG_ERROR, PUMPKINOS, "invalid client request type %d", creq->type);
-              break;
-          }
-        } else {
-          debug(DEBUG_ERROR, PUMPKINOS, "invalid client request size %d", len);
-        }
-        sys_free(buf);
-      }
-    }
-
-    if (pumpkin_sys_event() == -1) break;
+    if (LoopIteration() == -1) break;
   }
+#endif
 }
 
 static int libos_action(void *arg) {
   libos_t *data;
-  int encoding, height;
+  int encoding, height = 0;
 
   data = (libos_t *)arg;
 

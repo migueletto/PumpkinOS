@@ -2444,11 +2444,13 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
     return -1;
   }
 
+#ifndef EMSCRIPTEN
   reuse = 1;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) == -1) {
     debug_errno("SYS", "setsockopt SO_REUSEADDR");
     return -1;
   }
+#endif
 
   socklen = sizeof(type);
   if (getsockopt(sock, SOL_SOCKET, SO_TYPE, (char *)&type, &socklen) == 0 && type == SOCK_DGRAM) {
@@ -2584,12 +2586,14 @@ static int sys_tcpip_bind_connect(char *src_host, int src_port, char *host, int 
     return -1;
   }
 
+#ifndef EMSCRIPTEN
   reuse = 1;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) == -1) {
     debug_errno("SYS", "setsockopt SO_REUSEADDR");
     closesocket(sock);
     return -1;
   }
+#endif
 
   if ((src_ipv6 = sys_tcpip_fill_addr(&src_addr, src_host, src_port, &len, 0)) == -1) {
     closesocket(sock);

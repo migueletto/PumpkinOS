@@ -2,7 +2,7 @@
 
 if [ $# -lt 2 ]; then
   echo "usage: $0 <OS> <BITS> [ <TARGET> ]"
-  echo " <OS> must be Msys, GNU/Linux or Serenity"
+  echo " <OS> must be Msys, GNU/Linux, Serenity or Emscripten"
   echo " <BITS> must be 64 or 32"
   echo " <TARGET> must be empty or clean"
   exit 0
@@ -17,6 +17,8 @@ ROOT=$DIR/..
 PATH=$ROOT/bin:$PATH
 export LD_LIBRARY_PATH=$ROOT/bin
 
+MODULES=libpit lua $SDL2 libpumpkin libos libshell $GUI BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+
 if [ $OSNAME = "Msys" ]; then
   SDL2=
   GUI=windows
@@ -30,6 +32,10 @@ elif [ $OSNAME = "Serenity" ]; then
   fi
   SDL2=liblsdl2
   GUI=linux
+elif [ $OSNAME = "Emscripten" ]; then
+  SDL2=liblsdl2
+  GUI=emscripten
+  DIRS=libpit lua $SDL2 libpumpkin libos $GUI BOOT
 else
   echo "Invalid OS parameter"
   exit 1
@@ -52,7 +58,7 @@ do
   fi
 done
 
-for dir in libpit lua $SDL2 libpumpkin libos libshell $GUI BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+for dir in $MODULES
 do
   if [ -d $dir ]; then
     cd $dir
