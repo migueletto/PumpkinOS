@@ -22,21 +22,21 @@ typedef struct {
   secure_provider_t *secure;
 } libos_t;
 
-static int LoopIteration(void) {
+static int LoopIteration(uint32_t dt) {
   client_request_t *creq;
   SysNotifyParamType notify;
   unsigned char *buf;
   unsigned int len;
   int r;
 
-  debug(DEBUG_TRACE, PUMPKINOS, "receiving messsage ...");
-  if ((r = thread_server_read_timeout(1000, &buf, &len)) == -1) {
-    debug(DEBUG_ERROR, PUMPKINOS, "failed to receive messsage");
+  debug(DEBUG_TRACE, PUMPKINOS, "receiving message ...");
+  if ((r = thread_server_read_timeout(dt, &buf, &len)) == -1) {
+    debug(DEBUG_ERROR, PUMPKINOS, "failed to receive message");
     return -1;
   }
 
   if (r == 1) {
-    debug(DEBUG_TRACE, PUMPKINOS, "received messsage");
+    debug(DEBUG_TRACE, PUMPKINOS, "received message");
 
     if (buf) {
       if (len == sizeof(client_request_t)) {
@@ -67,7 +67,7 @@ static int LoopIteration(void) {
       debug(DEBUG_ERROR, PUMPKINOS, "null buffer");
     }
   } else {
-    debug(DEBUG_TRACE, PUMPKINOS, "no messsage");
+    debug(DEBUG_TRACE, PUMPKINOS, "no message");
   }
 
   if (pumpkin_sys_event() == -1)  {
@@ -80,7 +80,7 @@ static int LoopIteration(void) {
 
 #if defined(EMSCRIPTEN)
 static void callback(void *data) {
-  LoopIteration();
+  LoopIteration(0);
 }
 #endif
 
@@ -99,10 +99,10 @@ static void EventLoop(libos_t *data) {
   pumpkin_launch(&request);
 
 #if defined(EMSCRIPTEN)
-  pumpkin_set_loop(callback, NULL);
+  pumpkin_set_loop(callback, data);
 #else
   for (; !thread_get_flags(FLAG_FINISH);) {
-    if (LoopIteration() == -1) break;
+    if (LoopIteration(1000) == -1) break;
   }
 #endif
 }
