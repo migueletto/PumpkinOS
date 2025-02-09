@@ -1839,6 +1839,7 @@ int pumpkin_launch(launch_request_t *request) {
       wman_add(pumpkin_module.wm, data->taskId, data->texture, data->x, data->y, data->width, data->height);
       debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\" with launchCode %d", request->name, request->code);
       r = thread_begin(TAG_APP, pumpkin_launch_action, data);
+
       if (r == -1) {
         pumpkin_module.tasks[index].reserved = 0;
       }
@@ -2476,7 +2477,7 @@ int pumpkin_sys_event(void) {
   if (mutex_lock(mutex) == 0) {
     now = sys_get_clock();
 
-    if ((now - pumpkin_module.lastUpdate) > 50000) {
+    if ((now - pumpkin_module.lastUpdate) > 200000) {
       if (pumpkin_module.num_tasks > 0) {
         if (pumpkin_module.refresh) {
           if (pumpkin_module.background) {

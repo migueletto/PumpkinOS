@@ -453,12 +453,11 @@ static int thread_read_queue(int queue, uint32_t usec, unsigned char **rbuf, uns
     if (usec == 0) return 0;
 
     if (usec >= 100) {
-      dt = usec / 4;
       n = 4;
     } else {
-      dt = usec;
       n = 1;
     }
+    dt = usec / n;
 
     for (i = 0; i < n; i++) {
       sys_usleep(dt);
