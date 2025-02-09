@@ -53,4 +53,4 @@ emulation/systrap.o: emulation/systrap.c emulation/switch.c
 endif
 
 clean:
-	rm -f $(PROGRAM) $(OBJS)
+	rm -f $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
