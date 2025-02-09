@@ -16,8 +16,8 @@ pumpkin.init()
 pumpkin.start {
   fullrefresh = true,
   density     = 144,
-  width       = 1024,
-  height      = 768,
+  width       = 800,
+  height      = 600,
   hdepth      = 16,
   depth       = 16,
   launcher    = "Launcher"
