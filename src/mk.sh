@@ -17,25 +17,21 @@ ROOT=$DIR/..
 PATH=$ROOT/bin:$PATH
 export LD_LIBRARY_PATH=$ROOT/bin
 
-MODULES=libpit lua $SDL2 libpumpkin libos libshell $GUI BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+MODULES="libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook"
 
 if [ $OSNAME = "Msys" ]; then
-  SDL2=
-  GUI=windows
+  EXTRA="windows"
 elif [ $OSNAME = "GNU/Linux" ]; then
-  SDL2=liblsdl2
-  GUI=linux
+  EXTRA="liblsdl2 linux"
 elif [ $OSNAME = "Serenity" ]; then
   if [ -z "$SERENITY" ]; then
     echo "Environment variable SERENITY must point to SerenityOS home directory"
     exit 1
   fi
-  SDL2=liblsdl2
-  GUI=linux
+  EXTRA="liblsdl2 linux"
 elif [ $OSNAME = "Emscripten" ]; then
-  SDL2=liblsdl2
-  GUI=emscripten
-  DIRS=libpit lua $SDL2 libpumpkin libos $GUI BOOT
+  MODULES="libpit lua libpumpkin libos BOOT Launcher"
+  EXTRA="liblsdl2 emscripten"
 else
   echo "Invalid OS parameter"
   exit 1
@@ -58,7 +54,7 @@ do
   fi
 done
 
-for dir in $MODULES
+for dir in $MODULES $EXTRA
 do
   if [ -d $dir ]; then
     cd $dir

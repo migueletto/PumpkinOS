@@ -8,11 +8,11 @@ SOURCE=main.c
 OBJS=$(SOURCE:%.c=%.wasm)
 MODULES=libpit.a libpumpkin.a libscriptlua.a liblsdl2.a libos.a
 
-$(PROGRAM).zip: $(PROGRAM).html
-	zip $(PROGRAM).zip $(PROGRAM).wasm $(PROGRAM).data $(PROGRAM).html $(PROGRAM).js $(PROGRAM).worker.js
+$(PROGRAM).zip: $(PROGRAM).html coi-serviceworker.js
+	zip $(PROGRAM).zip $(PROGRAM).wasm $(PROGRAM).data $(PROGRAM).html $(PROGRAM).js $(PROGRAM).worker.js coi-serviceworker.js
 
-$(PROGRAM).html: $(OBJS) $(MODULES) template.html
-	$(EM_CC) -o $(PROGRAM).html -s ALLOW_MEMORY_GROWTH=1 -s USE_SDL=2 -s PTHREAD_POOL_SIZE=8 -pthread --preload-file vfs $(OBJS) $(MODULES)
+$(PROGRAM).html: $(OBJS) $(MODULES) template.html vfs/pumpkin.lua
+	$(EM_CC) -o $(PROGRAM).js -s ALLOW_MEMORY_GROWTH=1 -s USE_SDL=2 -s PTHREAD_POOL_SIZE=4 -pthread --preload-file vfs $(OBJS) $(MODULES)
 	cp template.html $(PROGRAM).html
 
 clean:
