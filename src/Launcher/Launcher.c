@@ -2884,7 +2884,11 @@ static void EventLoop(launcher_data_t *data) {
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (ApplicationHandleEvent(&event)) continue;
     FrmDispatchEvent(&event);
+#ifdef EMSCRIPTEN
+  } while (1);
+#else
   } while (event.eType != appStopEvent && !data->finish);
+#endif
 
   debug(DEBUG_INFO, "Launcher", "event loop end");
 }
