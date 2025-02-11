@@ -16,8 +16,6 @@ word size en endianness, however, records created by ToDoList and DateBook are n
 These applications were tested just to the point where I could create and edit a few records. There are still some quirks, and some functions were not tested at all.
 The goal here is just to offer a view of what to expect from PumpkinOS in the future.
 
-I am planing to setup a bug tracker to document enhancements and bugs.
-
 ## Licensing
 PumpkinOS is licensed under the GPL v3.
 The license directory contains information on specific licenses of the various components used in PumpkinOS.
@@ -67,7 +65,6 @@ Open a WSL terminal and follow the same instructions for a Linux build.
 
 ## Running
 On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. PumpkinOS will open on a new window.
-On WSL you may need to run a X-Window Manager, otherwise the PumpkinOS window will not have a border.
 
 When you run PumpkinOS, all PRCs inside vfs/app_install will be removed and expanded into folders inside vfs/app_storage.
 Please keep in mind that everything is pretty much experimental at this stage, so expect a few issues here and there.
@@ -86,5 +83,3 @@ If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WS
 On Linux and WSL edit pumpkin.sh and change the last line to:
 
     gdb --args ./pumpkin -d 1 -f pumpkin.log -s libscriptlua.so ./script/pumpkin_linux.lua
-
-I am writing a full Wiki article on source level debuging PumpkinOS.
