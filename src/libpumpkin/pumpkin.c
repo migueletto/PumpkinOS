@@ -110,6 +110,7 @@ typedef struct {
   int reserved;
   script_ref_t obj;
   int screen_ptr;
+  BitmapType *display;
   int dx, dy;
   int width, height;
   int new_width, new_height;
@@ -1426,6 +1427,12 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   SelTimeInitModule();
   SysFatalAlertInit();
 
+  if (pumpkin_module.fullrefresh) {
+    pumpkin_module.tasks[i].display = WinGetBitmap(WinGetDisplayWindow());
+  } else {
+    pumpkin_module.tasks[i].display = NULL;
+  }
+
   if (i == 0) {
     pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
     if (prefs.value[pBackgroundImage] & 0xFFFF) {
@@ -2203,6 +2210,9 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
     }
 
     if (screen->dirty) {
+      if (pumpkin_module.fullrefresh) {
+        BmpDrawSurface(pumpkin_module.tasks[i].display, screen->x0, screen->y0, screen->x1 - screen->x0 + 1, screen->y1 - screen->y0 + 1, screen->surface, screen->x0, screen->y0, true);
+      }
       if (pumpkin_module.mono) {
         surface_dither(screen->msurface, 0, 0, screen->surface, 0, 0, screen->surface->width, screen->surface->height, pumpkin_module.mono);
         raw = (uint8_t *)screen->surface->getbuffer(screen->msurface->data, &len);
@@ -2477,7 +2487,7 @@ int pumpkin_sys_event(void) {
   if (mutex_lock(mutex) == 0) {
     now = sys_get_clock();
 
-    if ((now - pumpkin_module.lastUpdate) > 200000) {
+    if ((now - pumpkin_module.lastUpdate) > 50000) {
       if (pumpkin_module.num_tasks > 0) {
         if (pumpkin_module.refresh) {
           if (pumpkin_module.background) {
@@ -3347,8 +3357,10 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 
     if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
 //debug(1, "XXX", "pumpkin_screen_dirty BmpDrawSurface (%d,%d,%d,%d) %d,%d", x, y, w, h, sx+x, sy+y);
-      bmp = WinGetBitmap(wh);
-      BmpDrawSurface(bmp, x, y, w, h, screen->surface, sx+x, sy+y, true);
+      if (!pumpkin_module.fullrefresh) {
+        bmp = WinGetBitmap(wh);
+        BmpDrawSurface(bmp, x, y, w, h, screen->surface, sx+x, sy+y, true);
+      }
 
       x += sx;
       y += sy;
@@ -5296,6 +5308,15 @@ void pumpkin_set_loop(void (*callback)(void *), void *data) {
   if (callback) {
     emscripten_set_main_loop_arg(callback, data, 0, 1);
   }
+}
+
+void pumpkin_send_deploy(void) {
+  client_request_t creq;
+
+  debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
+  sys_memset(&creq, 0, sizeof(client_request_t));
+  creq.type = MSG_DEPLOY;
+  thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
 }
 
 #endif

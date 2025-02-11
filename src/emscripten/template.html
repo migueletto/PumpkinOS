@@ -6,7 +6,27 @@
 </head>
 
 <body>
-  <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    function dragoverHandler(ev) {
+      ev.preventDefault();
+    }
+    function dropHandler(ev) {
+      ev.preventDefault();
+      [...ev.dataTransfer.files].forEach((file, i) => {
+        reader = new FileReader();
+        reader.onload = function (ev) {
+          view = new Uint8Array(ev.target.result);
+          console.log('received ' + file.name);
+          FS.writeFile('/vfs/app_install/' + file.name, view);
+          Module.ccall('pumpkin_send_deploy', null, null, null);
+        }
+        reader.readAsArrayBuffer(file);
+      });
+    }
+  </script>
+  <div style="text-align:center;" ondrop="dropHandler(event)" ondragover="dragoverHandler(event)">
+    <canvas id="canvas" width="800" height="600" style="box-shadow: 0px 0px 5px 5px rgb(80,128,176);" oncontextmenu="event.preventDefault()"></canvas>
+  </div>
   <script type='text/javascript'>
     var Module = {
       canvas: (function() { return document.getElementById('canvas'); })()
