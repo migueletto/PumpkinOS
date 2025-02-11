@@ -1728,6 +1728,15 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
   return r;
 }
 
+void pumpkin_send_deploy(void) {
+  client_request_t creq;
+
+  debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
+  sys_memset(&creq, 0, sizeof(client_request_t));
+  creq.type = MSG_DEPLOY;
+  thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+}
+
 int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
   AppRegistrySize s;
@@ -2476,7 +2485,13 @@ int pumpkin_sys_event(void) {
   void *bits;
 
   for (;;) {
-    if (thread_must_end()) return -1;
+    if (thread_must_end()) {
+      if (pumpkin_module.fullrefresh) {
+        wman_clear(pumpkin_module.wm);
+        pumpkin_module.wp->render(pumpkin_module.w);
+      }
+      return -1;
+    }
     paused = pumpkin_is_paused();
     wait = paused ? 100 : 1;
     ev = pumpkin_module.wp->event2(pumpkin_module.w, wait, &arg1, &arg2);
@@ -5297,26 +5312,3 @@ const char *pumpkin_error_msg(Err err) {
 
   return s;
 }
-
-#if defined(EMSCRIPTEN)
-
-#include <emscripten.h>
-#include <emscripten/html5.h>
-
-void pumpkin_set_loop(void (*callback)(void *), void *data) {
-  emscripten_cancel_main_loop();
-  if (callback) {
-    emscripten_set_main_loop_arg(callback, data, 0, 1);
-  }
-}
-
-void pumpkin_send_deploy(void) {
-  client_request_t creq;
-
-  debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
-  sys_memset(&creq, 0, sizeof(client_request_t));
-  creq.type = MSG_DEPLOY;
-  thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
-}
-
-#endif

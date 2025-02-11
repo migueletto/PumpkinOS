@@ -1,16 +1,24 @@
 #include <PalmOS.h>
 
+#if defined(EMSCRIPTEN)
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
+
 #include "sys.h"
 #include "script.h"
 #include "thread.h"
 #include "media.h"
 #include "pumpkin.h"
 #include "secure.h"
+#include "vfont.h"
+#include "vfs.h"
 #include "debug.h"
 
 #define MAX_STR 64
 
 typedef struct {
+  int pe;
   int width, height, density, hdepth, depth, mono, xfactor, yfactor, rotate;
   int software, fullscreen, fullrefresh, dia, single, osversion;
   char launcher[MAX_STR];
@@ -79,8 +87,52 @@ static int LoopIteration(uint32_t dt) {
 }
 
 #if defined(EMSCRIPTEN)
-static void callback(void *data) {
-  LoopIteration(0);
+static void set_main_loop(void (*callback)(void *), void *data) {
+  emscripten_cancel_main_loop();
+  if (callback) {
+    emscripten_set_main_loop_arg(callback, data, 0, 1);
+  }
+}
+
+void cexit(void) {
+  emscripten_force_exit(0);
+}
+
+static void callback(void *_data) {
+  libos_t *data = (libos_t *)_data;
+  script_engine_t *engine;
+  int pe;
+
+  if (LoopIteration(0) == -1 || thread_get_flags(FLAG_FINISH)) {
+    debug(DEBUG_INFO, PUMPKINOS, "event loop end");
+    set_main_loop(NULL, NULL);
+    pe = data->pe;
+
+    // libos_action finalizer
+    sys_free(data);
+    thread_end(PUMPKINOS, thread_get_handle());
+    sys_set_finish(0);
+
+    // pit_main finalizer
+    sys_usleep(1000);
+    thread_wait_all();
+    vfont_finish(pe);
+    engine = script_get_engine(pe);
+    script_destroy(pe);
+    script_finish(engine);
+    vfs_finish();
+    debug(DEBUG_INFO, "MAIN", "%s stopping", SYSTEM_NAME);
+    thread_close();
+    debug_close();
+
+    // call cexit after IndexedDB is saved
+    EM_ASM(
+      FS.syncfs(false, function (err) {
+        console.log('save IndexedDB');
+        ccall('cexit', 'v');
+      });
+    );
+  }
 }
 #endif
 
@@ -99,7 +151,8 @@ static void EventLoop(libos_t *data) {
   pumpkin_launch(&request);
 
 #if defined(EMSCRIPTEN)
-  pumpkin_set_loop(callback, data);
+  set_main_loop(callback, data);
+  // not reached
 #else
   for (; !thread_get_flags(FLAG_FINISH);) {
     if (LoopIteration(1000) == -1) break;
@@ -212,6 +265,7 @@ static int libos_start(int pe) {
   int i, r = -1;
 
   if ((data = sys_calloc(1, sizeof(libos_t))) != NULL) {
+    data->pe = pe;
     data->wp = script_get_pointer(pe, WINDOW_PROVIDER);
     data->secure = script_get_pointer(pe, SECURE_PROVIDER);
 
