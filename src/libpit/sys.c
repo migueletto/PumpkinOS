@@ -1796,7 +1796,6 @@ int64_t sys_get_process_time(void) {
   }
 #else
 #if defined(LINUX)
-debug(1, "XXX", "gettime CLOCK_PROCESS_CPUTIME_ID");
   ts = gettime(CLOCK_PROCESS_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_PROCESS_CPUTIME_ID is not implemented");
@@ -1818,7 +1817,6 @@ int64_t sys_get_thread_time(void) {
   }
 #else
 #if defined(LINUX)
-debug(1, "XXX", "gettime CLOCK_THREAD_CPUTIME_ID");
   ts = gettime(CLOCK_THREAD_CPUTIME_ID);
 #else
   debug(DEBUG_ERROR, "SYS", "CLOCK_THREAD_CPUTIME_ID is not implemented");
