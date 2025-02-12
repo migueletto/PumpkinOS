@@ -6,14 +6,19 @@ PRC=$(VFS)/app_install/$(PROGRAM).prc
 
 ifeq ($(OSNAME),Emscripten)
 
-DLIB=
-OBJS=
+$(PROGRAM).prc: res
+	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
+	cp $(PROGRAM).prc $(PRC)
 
 else
 
 SOURCE=Launcher.c editstr.c editbmp.c editform.c editbin.c editsurf.c
 CUSTOMPFLAGS=-I$(LIBPUMPKIN)/tos
 OBJS=$(SOURCE:%.c=%.o)
+
+$(PROGRAM).prc: $(DLIB) res
+	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
+	cp $(PROGRAM).prc $(PRC)
 
 $(PROGRAM).dlib: $(OBJS)
 	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) -L$(BIN) -lpumpkin -lpit
@@ -22,10 +27,6 @@ $(DLIB): $(PROGRAM).dlib
 	cp $(PROGRAM).dlib $(DLIB)
 
 endif
-
-$(PROGRAM).prc: $(DLIB) res
-	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
-	cp $(PROGRAM).prc $(PRC)
 
 res: resource.rcp
 	$(PILRC) resource.rcp
