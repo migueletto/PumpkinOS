@@ -197,6 +197,7 @@ static int libsdl_init_video(void) {
     if ((n = SDL_GetNumRenderDrivers()) == -1) {
       debug(DEBUG_ERROR, "SDL", "SDL_GetNumRenderDrivers failed: %s", SDL_GetError());
     } else {
+      debug(DEBUG_INFO, "SDL", "%d driver(s) found", n);
       for (i = 0; i < n; i++) {
         if (SDL_GetRenderDriverInfo(i, &info) == -1) {
           debug(DEBUG_ERROR, "SDL", "SDL_GetRenderDriverInfo %d failed: %s", i, SDL_GetError());
@@ -368,6 +369,7 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
   SDL_Event ev;
   int has_ev, r = 0;
 
+wait = 0;
   has_ev = wait < 0 ? SDL_WaitEvent(&ev) : SDL_WaitEventTimeout(&ev, wait);
 
   if (has_ev) {
@@ -692,7 +694,7 @@ static int libsdl_video_setup(libsdl_window_t *window) {
     return -1;
   }
 
-SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+  //SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 
   debug(DEBUG_INFO, "SDL", "creating renderer");
   // index of the rendering driver to initialize, or -1 to initialize the first one supporting the requested flags.
@@ -902,7 +904,6 @@ static int libsdl_window_render(window_t *_window) {
       presentBackBuffer(window, window->texture, window->programId[0]);
     } else {
 #endif
-//debug(1, "XXX", "SDL_RenderPresent");
       SDL_RenderPresent(window->renderer);
 #ifdef SDL_OPENGL
     }
