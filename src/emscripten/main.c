@@ -12,8 +12,10 @@ void cmain(void) {
     "vfs/pumpkin.lua",
     NULL
   };
+  int n;
 
-  pit_main(8, args, NULL, NULL);
+  for (n = 0; args[n]; n++);
+  pit_main(n, args, NULL, NULL);
   // not reached: under Emscripten, pit_main never returns.
   // cleanup is handled by libos.
 }
