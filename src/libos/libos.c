@@ -20,7 +20,7 @@
 typedef struct {
   int pe;
   int width, height, density, hdepth, depth, mono, xfactor, yfactor, rotate;
-  int software, fullscreen, fullrefresh, dia, single, osversion;
+  int software, fullscreen, fullrefresh, dia, single_app, single_thread, osversion;
   char launcher[MAX_STR];
   char driver[MAX_STR];
   window_provider_t *wp;
@@ -30,7 +30,7 @@ typedef struct {
   secure_provider_t *secure;
 } libos_t;
 
-static int LoopIteration(uint32_t dt) {
+static int LoopIteration(libos_t *data, uint32_t dt) {
   client_request_t *creq;
   SysNotifyParamType notify;
   unsigned char *buf;
@@ -103,7 +103,7 @@ static void callback(void *_data) {
   script_engine_t *engine;
   int pe;
 
-  if (LoopIteration(0) == -1 || thread_get_flags(FLAG_FINISH)) {
+  if (LoopIteration(data, 0) == -1 || thread_get_flags(FLAG_FINISH)) {
     debug(DEBUG_INFO, PUMPKINOS, "event loop end");
     set_main_loop(NULL, NULL);
     pe = data->pe;
@@ -155,7 +155,7 @@ static void EventLoop(libos_t *data) {
   // not reached
 #else
   for (; !thread_get_flags(FLAG_FINISH);) {
-    if (LoopIteration(1000) == -1) break;
+    if (LoopIteration(data, 1000) == -1) break;
   }
 #endif
 }
@@ -179,7 +179,7 @@ static int libos_action(void *arg) {
     }
     pumpkin_set_window(data->w, data->width, height, data->height);
     if (data->wp->title) {
-      data->wp->title(data->w, data->single ? data->launcher : PUMPKINOS);
+      data->wp->title(data->w, data->single_app ? data->launcher : PUMPKINOS);
     }
   }
 
@@ -195,19 +195,11 @@ static int libos_action(void *arg) {
 
   pumpkin_set_secure(data->secure);
   pumpkin_set_mono(data->mono);
-
-  if (data->dia) {
-    pumpkin_set_dia(data->hdepth);
-  } else if (data->single) {
-    pumpkin_set_single(data->hdepth);
-  } else {
-    pumpkin_set_host_depth(data->hdepth);
-  }
-
+  pumpkin_set_mode(data->single_app, data->single_thread, data->dia, data->hdepth);
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
 
-  if (data->dia || data->single) {
+  if (data->single_app) {
     debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->launcher);
     pumpkin_launcher(data->launcher, data->width, height);
   } else {
@@ -225,7 +217,7 @@ static int libos_action(void *arg) {
 
 typedef enum {
   PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
-  PARAM_FULLSCREEN, PARAM_DIA, PARAM_SINGLE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
+  PARAM_FULLSCREEN, PARAM_DIA, PARAM_SINGLEAPP, PARAM_SINGLETHREAD, PARAM_SOFTWARE, PARAM_FULLREFRESH,
   PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION
 } param_id_t;
 
@@ -236,22 +228,23 @@ typedef struct {
 } param_t;
 
 static param_t params[] = {
-  { PARAM_WIDTH,       SCRIPT_ARG_INTEGER, "width"       },
-  { PARAM_HEIGHT,      SCRIPT_ARG_INTEGER, "height"      },
-  { PARAM_DENSITY,     SCRIPT_ARG_INTEGER, "density"     },
-  { PARAM_HDEPTH,      SCRIPT_ARG_INTEGER, "hdepth"      },
-  { PARAM_DEPTH,       SCRIPT_ARG_INTEGER, "depth"       },
-  { PARAM_XFACTOR,     SCRIPT_ARG_INTEGER, "xfactor"     },
-  { PARAM_YFACTOR,     SCRIPT_ARG_INTEGER, "yfactor"     },
-  { PARAM_ROTATE,      SCRIPT_ARG_INTEGER, "rotate"      },
-  { PARAM_FULLSCREEN,  SCRIPT_ARG_BOOLEAN, "fullscreen"  },
-  { PARAM_DIA,         SCRIPT_ARG_BOOLEAN, "dia"         },
-  { PARAM_SINGLE,      SCRIPT_ARG_BOOLEAN, "single"      },
-  { PARAM_SOFTWARE,    SCRIPT_ARG_BOOLEAN, "software"    },
-  { PARAM_FULLREFRESH, SCRIPT_ARG_BOOLEAN, "fullrefresh" },
-  { PARAM_DRIVER,      SCRIPT_ARG_LSTRING, "driver"      },
-  { PARAM_LAUNCHER,    SCRIPT_ARG_LSTRING, "launcher"    },
-  { PARAM_OSVERSION,   SCRIPT_ARG_LSTRING, "palmos"      },
+  { PARAM_WIDTH,        SCRIPT_ARG_INTEGER, "width"        },
+  { PARAM_HEIGHT,       SCRIPT_ARG_INTEGER, "height"       },
+  { PARAM_DENSITY,      SCRIPT_ARG_INTEGER, "density"      },
+  { PARAM_HDEPTH,       SCRIPT_ARG_INTEGER, "hdepth"       },
+  { PARAM_DEPTH,        SCRIPT_ARG_INTEGER, "depth"        },
+  { PARAM_XFACTOR,      SCRIPT_ARG_INTEGER, "xfactor"      },
+  { PARAM_YFACTOR,      SCRIPT_ARG_INTEGER, "yfactor"      },
+  { PARAM_ROTATE,       SCRIPT_ARG_INTEGER, "rotate"       },
+  { PARAM_FULLSCREEN,   SCRIPT_ARG_BOOLEAN, "fullscreen"   },
+  { PARAM_DIA,          SCRIPT_ARG_BOOLEAN, "dia"          },
+  { PARAM_SINGLEAPP,    SCRIPT_ARG_BOOLEAN, "singleapp"    },
+  { PARAM_SINGLETHREAD, SCRIPT_ARG_BOOLEAN, "singlethread" },
+  { PARAM_SOFTWARE,     SCRIPT_ARG_BOOLEAN, "software"     },
+  { PARAM_FULLREFRESH,  SCRIPT_ARG_BOOLEAN, "fullrefresh"  },
+  { PARAM_DRIVER,       SCRIPT_ARG_LSTRING, "driver"       },
+  { PARAM_LAUNCHER,     SCRIPT_ARG_LSTRING, "launcher"     },
+  { PARAM_OSVERSION,    SCRIPT_ARG_LSTRING, "palmos"       },
   { 0, 0, NULL }
 };
 
@@ -261,7 +254,7 @@ static int libos_start(int pe) {
   script_ref_t obj;
   libos_t *data;
   char *launcher = NULL;
-  int fullscreen, dia, single;
+  int fullscreen, dia, single_app;
   int i, r = -1;
 
   if ((data = sys_calloc(1, sizeof(libos_t))) != NULL) {
@@ -273,6 +266,9 @@ static int libos_start(int pe) {
       // using new style parameters
 
       // set some default values
+      data->single_app = 0;
+      data->single_thread = 0;
+      data->dia = 0;
       data->width = 1024;
       data->height = 680;
       data->density = kDensityDouble;
@@ -289,20 +285,21 @@ static int libos_start(int pe) {
         if (script_object_get(pe, obj, &k, &v) == 0) {
           if (v.type == params[i].type) {
             switch (params[i].id) {
-              case PARAM_WIDTH:       data->width       = v.value.i; break;
-              case PARAM_HEIGHT:      data->height      = v.value.i; break;
-              case PARAM_DENSITY:     data->density     = v.value.i; break;
-              case PARAM_HDEPTH:      data->hdepth      = v.value.i; break;
-              case PARAM_DEPTH:       data->depth       = v.value.i; break;
-              case PARAM_XFACTOR:     data->xfactor     = v.value.i; break;
-              case PARAM_YFACTOR:     data->yfactor     = v.value.i; break;
-              case PARAM_ROTATE:      data->rotate      = v.value.i; break;
-              case PARAM_FULLSCREEN:  data->fullscreen  = v.value.i; break;
-              case PARAM_DIA:         data->dia         = v.value.i; break;
-              case PARAM_SINGLE:      data->single      = v.value.i; break;
-              case PARAM_SOFTWARE:    data->software    = v.value.i; break;
-              case PARAM_FULLREFRESH: data->fullrefresh = v.value.i; break;
-              case PARAM_OSVERSION:   data->osversion   = v.value.i; break;
+              case PARAM_WIDTH:        data->width         = v.value.i; break;
+              case PARAM_HEIGHT:       data->height        = v.value.i; break;
+              case PARAM_DENSITY:      data->density       = v.value.i; break;
+              case PARAM_HDEPTH:       data->hdepth        = v.value.i; break;
+              case PARAM_DEPTH:        data->depth         = v.value.i; break;
+              case PARAM_XFACTOR:      data->xfactor       = v.value.i; break;
+              case PARAM_YFACTOR:      data->yfactor       = v.value.i; break;
+              case PARAM_ROTATE:       data->rotate        = v.value.i; break;
+              case PARAM_FULLSCREEN:   data->fullscreen    = v.value.i; break;
+              case PARAM_DIA:          data->dia           = v.value.i; break;
+              case PARAM_SINGLEAPP:    data->single_app    = v.value.i; break;
+              case PARAM_SINGLETHREAD: data->single_thread = v.value.i; break;
+              case PARAM_SOFTWARE:     data->software      = v.value.i; break;
+              case PARAM_FULLREFRESH:  data->fullrefresh   = v.value.i; break;
+              case PARAM_OSVERSION:    data->osversion     = v.value.i; break;
               case PARAM_DRIVER:
                 sys_memset(data->driver, 0, MAX_STR);
                 sys_strncpy(data->driver, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
@@ -323,7 +320,7 @@ static int libos_start(int pe) {
                script_get_integer(pe, 2, &hdepth) == 0 &&
                script_get_boolean(pe, 3, &fullscreen) == 0 &&
                script_get_boolean(pe, 4, &dia) == 0 &&
-               script_get_boolean(pe, 5, &single) == 0 &&
+               script_get_boolean(pe, 5, &single_app) == 0 &&
                script_get_string(pe,  6, &launcher) == 0) {
 
       // using old style parameters
@@ -334,8 +331,14 @@ static int libos_start(int pe) {
       data->depth = 16;
       data->fullscreen = fullscreen;
       data->dia = dia;
-      data->single = single;
+      data->single_app = single_app;
+      data->single_thread = 0;
       sys_strncpy(data->launcher, launcher, MAX_STR);
+    }
+
+    if (!data->single_app) {
+      data->single_thread = 0;
+      data->dia = 0;
     }
 
     if (data->dia) {
@@ -352,7 +355,7 @@ static int libos_start(int pe) {
 
     if (data->width > 0 && data->height > 0 && (data->hdepth == 16 || data->hdepth == 32)) {
       if (thread_needs_run()) {
-        r = thread_begin("LIBOS", libos_action, data);
+        r = thread_begin(PUMPKINOS, libos_action, data);
         thread_run();
       } else {
         // Calling in the same thread. As a result, the script engine will remain locked.
