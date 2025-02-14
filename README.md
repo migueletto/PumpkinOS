@@ -63,6 +63,18 @@ Again, you must clone the repository and compile it using:
 On Windows 11 and recent releases of Windows 10, it is also possible to build PumpkinOS on WSL (Windows Subsystem for Linux, version 2). 
 Open a WSL terminal and follow the same instructions for a Linux build.
 
+The adventurous ones can also build PumpkinOS using Emscripten (details on how to install Emscripten are beyond the scope of this readme, however):
+
+    cd PumpkinOS/src
+    ./mk.sh Emscripten 32
+
+This command will create a pumpkin.zip file inside the src/emscripten folder. This zip file contains everything you need to deploy PumpkinOS on a web server.
+If you have a standard apache2 web server on Linux, for example, you can create the folder /var/www/html/pumpkin and extrat the zip file there.
+Then point your browser to the URL /pumpkin/pumpkin.html on your server and hopefully PumpkinOS will show up.
+This is still very experimental, and there are a few caveats: depending on the (lack) of integration between the OS, browser, and GPU,
+you may experience unexpected fallback to software rendering, high CPU usage and browser lockups.
+Running the browser in private mode will prevent the application to run. Accessing the application with HTTP (instead of HTTPS) on a non-localhost server will also cause it to not load.
+
 ## Running
 On 64-bits Windows, run pumpkin.bat. On 32-bits Windows, run pumpkin32.bat. On Linux or WSL, run pumpkin.sh. PumpkinOS will open on a new window.
 
