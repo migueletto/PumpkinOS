@@ -1,0 +1,305 @@
+#include "sys.h"
+#include "script.h"
+#include "pwindow.h"
+#include "debug.h"
+#include "raylib.h"
+
+#define MAX_DRAW 256
+
+struct texture_t {
+  int width, height;
+  Texture2D texture;
+  uint32_t *aux;
+};
+
+typedef struct {
+  texture_t *texture;
+  Rectangle src;
+  Vector2 pos;
+} texture_draw_t;
+
+typedef struct {
+  int width, height;
+  int x, y, buttons;
+  texture_draw_t draw[MAX_DRAW];
+  int ndraw;
+} libray_window_t;
+
+static window_provider_t window_provider;
+
+static window_t *libray_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate,
+     int fullscreen, int software, char *driver, void *data) {
+
+  libray_window_t *window;
+
+  if ((window = sys_calloc(1, sizeof(libray_window_t))) != NULL) {
+    window->width = *width;
+    window->height = *height;
+    InitWindow(window->width, window->height, "");
+  }
+
+  return (window_t *)window;
+}
+
+static int libray_window_render(window_t *_window) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int i, r = -1;
+
+  if (window) {
+    BeginDrawing();
+    ClearBackground(WHITE);
+    for (i = 0; i < window->ndraw; i++) {
+      DrawTextureRec(window->draw[i].texture->texture, window->draw[i].src, window->draw[i].pos, WHITE);
+    }
+    EndDrawing();
+    window->ndraw = 0;
+    r = 0;
+  }
+
+  return r;
+}
+
+static int libray_window_erase(window_t *_window, uint32_t bg) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int r = -1;
+
+  if (window) {
+    BeginDrawing();
+    ClearBackground(WHITE);
+    EndDrawing();
+    r = 0;
+  }
+
+  return r;
+}
+
+static texture_t *libray_window_create_texture(window_t *_window, int width, int height) {
+  Image image;
+  texture_t *texture = NULL;
+
+  if ((texture = sys_calloc(1, sizeof(texture_t))) != NULL) {
+    image = GenImageColor(width, height, WHITE);
+    texture->width = width;
+    texture->height = height;
+    texture->texture = LoadTextureFromImage(image);
+    texture->aux = sys_calloc(width * height, sizeof(uint32_t));
+    UnloadImage(image);
+  }
+
+  return texture;
+}
+
+static int libray_window_destroy_texture(window_t *_window, texture_t *texture) {
+  int r = -1;
+
+  if (texture) {
+    UnloadTexture(texture->texture);
+    sys_free(texture->aux);
+    sys_free(texture);
+    r = 0;
+  }
+
+  return r;
+}
+
+static int libray_window_background(window_t *_window, uint32_t *raw, int width, int height) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int r = -1;
+
+  if (window && raw) {
+  }
+
+  return r;
+}
+
+static int libray_window_update_texture(window_t *_window, texture_t *texture, uint8_t *src) {
+  int r = -1;
+
+  if (texture && src) {
+    UpdateTexture(texture->texture, src);
+    r = 0;
+  }
+
+  return r;
+}
+
+static int libray_window_update_texture_rect(window_t *_window, texture_t *texture, uint8_t *src, int tx, int ty, int w, int h) {
+  Rectangle rec;
+  uint32_t *p;
+  int i, k, len, r = -1;
+
+  if (texture && src) {
+    if (tx == 0 && ty == 0 && w == texture->width && h == texture->height) {
+      return libray_window_update_texture(_window, texture, src);
+    }
+    p = (uint32_t *)src;
+    p += ty * texture->width + tx;
+    len = w * sizeof(uint32_t);
+    for (i = 0, k = 0; i < h; i++) {
+      sys_memcpy(&texture->aux[k], p, len);
+      k += w;
+      p += texture->width;
+    }
+    rec.x = tx;
+    rec.y = ty;
+    rec.width = w;
+    rec.height = h;
+    UpdateTextureRec(texture->texture, rec, texture->aux);
+    r = 0;
+  }
+
+  return r;
+}
+
+static int libray_window_draw_texture_rect(window_t *_window, texture_t *texture, int tx, int ty, int w, int h, int x, int y) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int r = -1;
+
+  if (window && texture && w > 0 && h > 0) {
+    if (window->ndraw < MAX_DRAW) {
+      window->draw[window->ndraw].texture = texture;
+      window->draw[window->ndraw].src.x = tx;
+      window->draw[window->ndraw].src.y = ty;
+      window->draw[window->ndraw].src.width = w;
+      window->draw[window->ndraw].src.height = h;
+      window->draw[window->ndraw].pos.x = x;
+      window->draw[window->ndraw].pos.y = y;
+      window->ndraw++;
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
+static int libray_window_draw_texture(window_t *_window, texture_t *texture, int x, int y) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int r = -1;
+
+  if (window && texture) {
+    if (window->ndraw < MAX_DRAW) {
+      window->draw[window->ndraw].texture = texture;
+      window->draw[window->ndraw].src.x = 0;
+      window->draw[window->ndraw].src.y = 0;
+      window->draw[window->ndraw].src.width = texture->width;
+      window->draw[window->ndraw].src.height = texture->height;
+      window->draw[window->ndraw].pos.x = x;
+      window->draw[window->ndraw].pos.y = y;
+      window->ndraw++;
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
+static void libray_window_status(window_t *_window, int *x, int *y, int *buttons) {
+  libray_window_t *window = (libray_window_t *)_window;
+  *x = window->x;
+  *y = window->y;
+  *buttons = window->buttons;
+}
+
+static void libray_window_title(window_t *window, char *title) {
+}
+
+static char *libray_window_clipboard(window_t *window, char *clipboard, int len) {
+  return NULL;
+}
+
+static int libray_window_event(window_t *window, int wait, int remove, int *key, int *mods, int *buttons) {
+  return 0;
+}
+
+static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg2) {
+  libray_window_t *window = (libray_window_t *)_window;
+  int leftDown, rightDown, x, y, key;
+
+  if (window) {
+    leftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    rightDown = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+
+    if (leftDown && !(window->buttons & 1)) {
+      window->buttons |= 1;
+      *arg1 = 1;
+      return WINDOW_BUTTONDOWN;
+    }
+
+    if (!leftDown && (window->buttons & 1)) {
+      window->buttons &= ~1;
+      *arg1 = 1;
+      return WINDOW_BUTTONUP;
+    }
+
+    if (rightDown && !(window->buttons & 2)) {
+      window->buttons |= 2;
+      *arg1 = 2;
+      return WINDOW_BUTTONDOWN;
+    }
+
+    if (!rightDown && (window->buttons & 2)) {
+      window->buttons &= ~2;
+      *arg1 = 2;
+      return WINDOW_BUTTONUP;
+    }
+
+    x = GetMouseX();
+    y = GetMouseY();
+
+    if (x != window->x || y != window->y) {
+      *arg1 = window->x = x;
+      *arg2 = window->y = y;
+      return WINDOW_MOTION;
+    }
+
+    key = GetCharPressed();
+
+    if (key) {
+    }
+  }
+
+  return 0;
+}
+
+static int libray_window_update(window_t *_window, int x, int y, int width, int height) {
+  return 0;
+}
+
+static int libray_window_destroy(window_t *window) {
+  CloseWindow();
+  return 0;
+}
+
+int libray_load(void) {
+  sys_memset(&window_provider, 0, sizeof(window_provider));
+  window_provider.create = libray_window_create;
+  window_provider.event = libray_window_event;
+  window_provider.destroy = libray_window_destroy;
+  window_provider.erase = libray_window_erase;
+  window_provider.render = libray_window_render;
+  window_provider.background = libray_window_background;
+  window_provider.create_texture = libray_window_create_texture;
+  window_provider.destroy_texture = libray_window_destroy_texture;
+  window_provider.update_texture = libray_window_update_texture;
+  window_provider.draw_texture = libray_window_draw_texture;
+  window_provider.status = libray_window_status;
+  window_provider.title = libray_window_title;
+  window_provider.clipboard = libray_window_clipboard;
+  window_provider.event2 = libray_window_event2;
+  window_provider.update = libray_window_update;
+  window_provider.draw_texture_rect = libray_window_draw_texture_rect;
+  window_provider.update_texture_rect = libray_window_update_texture_rect;
+
+  return 0;
+}
+
+int libray_init(int pe, script_ref_t obj) {
+  debug(DEBUG_INFO, "LIBRAY", "registering provider %s", WINDOW_PROVIDER);
+  script_set_pointer(pe, WINDOW_PROVIDER, &window_provider);
+
+  script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
+  script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
+  script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+
+  return 0;
+}

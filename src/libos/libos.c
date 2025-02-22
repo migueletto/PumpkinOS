@@ -19,7 +19,7 @@
 
 typedef struct {
   int pe;
-  int width, height, density, hdepth, depth, mono, xfactor, yfactor, rotate;
+  int width, height, density, hdepth, depth, abgr, mono, xfactor, yfactor, rotate;
   int software, fullscreen, fullrefresh, dia, single_app, single_thread, osversion;
   char launcher[MAX_STR];
   char driver[MAX_STR];
@@ -195,6 +195,7 @@ static int libos_action(void *arg) {
 
   pumpkin_set_secure(data->secure);
   pumpkin_set_mono(data->mono);
+  pumpkin_set_abgr(data->abgr);
   pumpkin_set_mode(data->single_app, data->single_thread, data->dia, data->hdepth);
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
@@ -216,7 +217,7 @@ static int libos_action(void *arg) {
 }
 
 typedef enum {
-  PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
+  PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_ABGR, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
   PARAM_FULLSCREEN, PARAM_DIA, PARAM_SINGLEAPP, PARAM_SINGLETHREAD, PARAM_SOFTWARE, PARAM_FULLREFRESH,
   PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION
 } param_id_t;
@@ -233,6 +234,7 @@ static param_t params[] = {
   { PARAM_DENSITY,      SCRIPT_ARG_INTEGER, "density"      },
   { PARAM_HDEPTH,       SCRIPT_ARG_INTEGER, "hdepth"       },
   { PARAM_DEPTH,        SCRIPT_ARG_INTEGER, "depth"        },
+  { PARAM_ABGR,         SCRIPT_ARG_BOOLEAN, "abgr"         },
   { PARAM_XFACTOR,      SCRIPT_ARG_INTEGER, "xfactor"      },
   { PARAM_YFACTOR,      SCRIPT_ARG_INTEGER, "yfactor"      },
   { PARAM_ROTATE,       SCRIPT_ARG_INTEGER, "rotate"       },
@@ -274,6 +276,7 @@ static int libos_start(int pe) {
       data->density = kDensityDouble;
       data->hdepth = 16;
       data->depth = 16;
+      data->abgr = 0;
       data->xfactor = 1;
       data->yfactor = 1;
       sys_strncpy(data->launcher, "Launcher", MAX_STR);
@@ -290,6 +293,7 @@ static int libos_start(int pe) {
               case PARAM_DENSITY:      data->density       = v.value.i; break;
               case PARAM_HDEPTH:       data->hdepth        = v.value.i; break;
               case PARAM_DEPTH:        data->depth         = v.value.i; break;
+              case PARAM_ABGR:         data->abgr          = v.value.i; break;
               case PARAM_XFACTOR:      data->xfactor       = v.value.i; break;
               case PARAM_YFACTOR:      data->yfactor       = v.value.i; break;
               case PARAM_ROTATE:       data->rotate        = v.value.i; break;

@@ -211,6 +211,7 @@ int pumpkin_get_spawner(void);
 void pumpkin_set_window(window_t *w, int width, int height, int full_height);
 void pumpkin_get_window(int *width, int *height);
 void pumpkin_set_mode(int single_app, int single_thread, int dia, int depth);
+void pumpkin_set_abgr(int abgr);
 int pumpkin_single_enabled(void);
 void pumpkin_set_display(int ptr, int width, int height);
 void pumpkin_set_input(int num, int width, int height);

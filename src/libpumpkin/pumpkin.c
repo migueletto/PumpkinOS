@@ -199,7 +199,7 @@ typedef struct {
   int paused;
   int launched;
   int spawner;
-  int encoding;
+  int encoding, abgr;
   int width, height, full_height;
   int density, depth, hdepth, mono;
   int fullrefresh;
@@ -703,7 +703,7 @@ static void pumpkin_set_encoding(int depth) {
       pumpkin_module.encoding = SURFACE_ENCODING_RGB565;
       break;
     case 32:
-      pumpkin_module.encoding = SURFACE_ENCODING_ARGB;
+      pumpkin_module.encoding = pumpkin_module.abgr ? SURFACE_ENCODING_ABGR : SURFACE_ENCODING_ARGB;
       break;
     default:
       pumpkin_module.encoding = SURFACE_ENCODING_RGB565;
@@ -750,14 +750,28 @@ static void pumpkin_set_host_depth(int depth) {
       prefs.color[pMonoBackground].r, prefs.color[pMonoBackground].g, prefs.color[pMonoBackground].b);
 
   } else {
-    wman_set_border(pumpkin_module.wm, pumpkin_module.hdepth, border,
-      prefs.color[pColorSelectedBorder].r,   prefs.color[pColorSelectedBorder].g,   prefs.color[pColorSelectedBorder].b,
-      prefs.color[pColorLockedBorder].r,     prefs.color[pColorLockedBorder].g,     prefs.color[pColorLockedBorder].b,
-      prefs.color[pColorUnselectedBorder].r, prefs.color[pColorUnselectedBorder].g, prefs.color[pColorUnselectedBorder].b);
+    if (pumpkin_module.abgr) {
+      wman_set_border(pumpkin_module.wm, pumpkin_module.hdepth, border,
+        prefs.color[pColorSelectedBorder].b,   prefs.color[pColorSelectedBorder].g,   prefs.color[pColorSelectedBorder].r,
+        prefs.color[pColorLockedBorder].b,     prefs.color[pColorLockedBorder].g,     prefs.color[pColorLockedBorder].r,
+        prefs.color[pColorUnselectedBorder].b, prefs.color[pColorUnselectedBorder].g, prefs.color[pColorUnselectedBorder].r);
+      
+      wman_set_background(pumpkin_module.wm, pumpkin_module.hdepth,
+        prefs.color[pColorBackground].b, prefs.color[pColorBackground].g, prefs.color[pColorBackground].r);
+    } else {
+      wman_set_border(pumpkin_module.wm, pumpkin_module.hdepth, border,
+        prefs.color[pColorSelectedBorder].r,   prefs.color[pColorSelectedBorder].g,   prefs.color[pColorSelectedBorder].b,
+        prefs.color[pColorLockedBorder].r,     prefs.color[pColorLockedBorder].g,     prefs.color[pColorLockedBorder].b,
+        prefs.color[pColorUnselectedBorder].r, prefs.color[pColorUnselectedBorder].g, prefs.color[pColorUnselectedBorder].b);
 
-    wman_set_background(pumpkin_module.wm, pumpkin_module.hdepth,
-      prefs.color[pColorBackground].r, prefs.color[pColorBackground].g, prefs.color[pColorBackground].b);
+      wman_set_background(pumpkin_module.wm, pumpkin_module.hdepth,
+        prefs.color[pColorBackground].r, prefs.color[pColorBackground].g, prefs.color[pColorBackground].b);
+    }
   }
+}
+
+void pumpkin_set_abgr(int abgr) {
+  pumpkin_module.abgr = abgr;
 }
 
 void pumpkin_set_mode(int single_app, int single_thread, int dia, int depth) {

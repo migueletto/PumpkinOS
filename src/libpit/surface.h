@@ -8,6 +8,7 @@
 #define SURFACE_ENCODING_GRAY    3  // Y (8 bits)
 #define SURFACE_ENCODING_MONO    4  // Y (1 bit)
 #define SURFACE_ENCODING_PALETTE 5
+#define SURFACE_ENCODING_ABGR    6  // A B G R
 
 #define SURFACE_EVENT_MOTION      3
 #define SURFACE_EVENT_KEYDOWN     4
