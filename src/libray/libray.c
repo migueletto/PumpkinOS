@@ -24,6 +24,7 @@ typedef struct {
   int x, y, buttons;
   int numKeyDown;
   uint8_t keyDown[512];
+  uint16_t charDown[512];
   texture_draw_t draw[MAX_DRAW];
   int ndraw;
 } libray_window_t;
@@ -216,31 +217,34 @@ static int libray_window_event(window_t *window, int wait, int remove, int *key,
 
 int mapKey(int key) {
   switch (key) {
-    case KEY_RIGHT:     key = WINDOW_KEY_RIGHT; break;
-    case KEY_LEFT:      key = WINDOW_KEY_LEFT; break;
-    case KEY_DOWN:      key = WINDOW_KEY_DOWN; break;
-    case KEY_UP:        key = WINDOW_KEY_UP; break;
-    case KEY_PAGE_UP:   key = WINDOW_KEY_PGUP; break;
-    case KEY_PAGE_DOWN: key = WINDOW_KEY_PGDOWN; break;
-    case KEY_HOME:      key = WINDOW_KEY_HOME; break;
-    case KEY_END:       key = WINDOW_KEY_END; break;
-    case KEY_INSERT:    key = WINDOW_KEY_INS; break;
-    case KEY_F1:        key = WINDOW_KEY_F1; break;
-    case KEY_F2:        key = WINDOW_KEY_F2; break;
-    case KEY_F3:        key = WINDOW_KEY_F3; break;
-    case KEY_F4:        key = WINDOW_KEY_F4; break;
-    case KEY_F5:        key = WINDOW_KEY_F5; break;
-    case KEY_F6:        key = WINDOW_KEY_F6; break;
-    case KEY_F7:        key = WINDOW_KEY_F7; break;
-    case KEY_F8:        key = WINDOW_KEY_F8; break;
-    case KEY_F9:        key = WINDOW_KEY_F9; break;
-    case KEY_F10:       key = WINDOW_KEY_F10; break;
-    case KEY_F11:       key = WINDOW_KEY_F11; break;
-    case KEY_F12:       key = WINDOW_KEY_F12; break;
-    case KEY_ENTER:     key = 13; break;
-    default:
-      if (key >= 'A' && key <= 'Z') key += 32;
-      break;
+    case KEY_LEFT_SHIFT:    key = WINDOW_KEY_SHIFT; break;
+    case KEY_RIGHT_SHIFT:   key = WINDOW_KEY_SHIFT; break;
+    case KEY_LEFT_CONTROL:  key = WINDOW_KEY_CTRL; break;
+    case KEY_RIGHT_CONTROL: key = WINDOW_KEY_RCTRL; break;
+    case KEY_RIGHT:         key = WINDOW_KEY_RIGHT; break;
+    case KEY_LEFT:          key = WINDOW_KEY_LEFT; break;
+    case KEY_DOWN:          key = WINDOW_KEY_DOWN; break;
+    case KEY_UP:            key = WINDOW_KEY_UP; break;
+    case KEY_PAGE_UP:       key = WINDOW_KEY_PGUP; break;
+    case KEY_PAGE_DOWN:     key = WINDOW_KEY_PGDOWN; break;
+    case KEY_HOME:          key = WINDOW_KEY_HOME; break;
+    case KEY_END:           key = WINDOW_KEY_END; break;
+    case KEY_INSERT:        key = WINDOW_KEY_INS; break;
+    case KEY_F1:            key = WINDOW_KEY_F1; break;
+    case KEY_F2:            key = WINDOW_KEY_F2; break;
+    case KEY_F3:            key = WINDOW_KEY_F3; break;
+    case KEY_F4:            key = WINDOW_KEY_F4; break;
+    case KEY_F5:            key = WINDOW_KEY_F5; break;
+    case KEY_F6:            key = WINDOW_KEY_F6; break;
+    case KEY_F7:            key = WINDOW_KEY_F7; break;
+    case KEY_F8:            key = WINDOW_KEY_F8; break;
+    case KEY_F9:            key = WINDOW_KEY_F9; break;
+    case KEY_F10:           key = WINDOW_KEY_F10; break;
+    case KEY_F11:           key = WINDOW_KEY_F11; break;
+    case KEY_F12:           key = WINDOW_KEY_F12; break;
+    case KEY_BACKSPACE:     key = 8; break;
+    case KEY_TAB:           key = 9; break;
+    case KEY_ENTER:         key = 13; break;
   }
 
   return key;
@@ -254,7 +258,10 @@ static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg
   if (window) {
     for (i = 0;;) {
       if (thread_must_end()) return -1;
-      if (i > 0) sys_usleep(100);
+      if (i > 0) {
+        sys_usleep(100);
+        PollInputEvents();
+      }
 
       leftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
       rightDown = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
@@ -293,9 +300,10 @@ static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg
       }
 
       if (window->numKeyDown > 0) {
-        for (keyCode = 0; keyCode < 512; keyCode++) {
+        for (keyCode = 1; keyCode < 512; keyCode++) {
           if (window->keyDown[keyCode] && !IsKeyDown(keyCode)) {
-            key = mapKey(keyCode);
+            key = window->charDown[keyCode];
+            debug(2, "RAYLIB", "key up   '%c' %d (code %d)", key >= 32 && key < 127 ? key : ' ', key, keyCode);
             window->keyDown[keyCode] = 0;
             window->numKeyDown--;
             *arg1 = key;
@@ -304,10 +312,19 @@ static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg
         }
       }
 
+      key = GetCharPressed();
       keyCode = GetKeyPressed();
-      key = mapKey(keyCode);
+
+      if (key && keyCode) {
+        key = mapKey(key);
+        debug(2, "RAYLIB", "key down '%c' %d (code %d) C", key >= 32 && key < 127 ? key : ' ', key, keyCode);
+      } else if (keyCode) {
+        key = mapKey(keyCode);
+        debug(2, "RAYLIB", "key down '%c' %d (code %d)", key >= 32 && key < 127 ? key : ' ', key, keyCode);
+      }
 
       if (key) {
+        window->charDown[keyCode] = key;
         window->keyDown[keyCode] = 1;
         window->numKeyDown++;
         *arg1 = key;
