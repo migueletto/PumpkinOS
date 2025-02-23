@@ -1,4 +1,5 @@
 #include "sys.h"
+#include "thread.h"
 #include "script.h"
 #include "pwindow.h"
 #include "debug.h"
@@ -21,6 +22,8 @@ typedef struct {
 typedef struct {
   int width, height;
   int x, y, buttons;
+  int numKeyDown;
+  uint8_t keyDown[512];
   texture_draw_t draw[MAX_DRAW];
   int ndraw;
 } libray_window_t;
@@ -211,50 +214,110 @@ static int libray_window_event(window_t *window, int wait, int remove, int *key,
   return 0;
 }
 
+int mapKey(int key) {
+  switch (key) {
+    case KEY_RIGHT:     key = WINDOW_KEY_RIGHT; break;
+    case KEY_LEFT:      key = WINDOW_KEY_LEFT; break;
+    case KEY_DOWN:      key = WINDOW_KEY_DOWN; break;
+    case KEY_UP:        key = WINDOW_KEY_UP; break;
+    case KEY_PAGE_UP:   key = WINDOW_KEY_PGUP; break;
+    case KEY_PAGE_DOWN: key = WINDOW_KEY_PGDOWN; break;
+    case KEY_HOME:      key = WINDOW_KEY_HOME; break;
+    case KEY_END:       key = WINDOW_KEY_END; break;
+    case KEY_INSERT:    key = WINDOW_KEY_INS; break;
+    case KEY_F1:        key = WINDOW_KEY_F1; break;
+    case KEY_F2:        key = WINDOW_KEY_F2; break;
+    case KEY_F3:        key = WINDOW_KEY_F3; break;
+    case KEY_F4:        key = WINDOW_KEY_F4; break;
+    case KEY_F5:        key = WINDOW_KEY_F5; break;
+    case KEY_F6:        key = WINDOW_KEY_F6; break;
+    case KEY_F7:        key = WINDOW_KEY_F7; break;
+    case KEY_F8:        key = WINDOW_KEY_F8; break;
+    case KEY_F9:        key = WINDOW_KEY_F9; break;
+    case KEY_F10:       key = WINDOW_KEY_F10; break;
+    case KEY_F11:       key = WINDOW_KEY_F11; break;
+    case KEY_F12:       key = WINDOW_KEY_F12; break;
+    case KEY_ENTER:     key = 13; break;
+    default:
+      if (key >= 'A' && key <= 'Z') key += 32;
+      break;
+  }
+
+  return key;
+}
+
 static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   libray_window_t *window = (libray_window_t *)_window;
-  int leftDown, rightDown, x, y, key;
+  int leftDown, rightDown, x, y, keyCode, key, i;
+  uint32_t n = wait > 0 ? wait * 10 : 0; // n = (ms * 1000) / 100
 
   if (window) {
-    leftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    rightDown = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+    for (i = 0;;) {
+      if (thread_must_end()) return -1;
+      if (i > 0) sys_usleep(100);
 
-    if (leftDown && !(window->buttons & 1)) {
-      window->buttons |= 1;
-      *arg1 = 1;
-      return WINDOW_BUTTONDOWN;
-    }
+      leftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+      rightDown = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
 
-    if (!leftDown && (window->buttons & 1)) {
-      window->buttons &= ~1;
-      *arg1 = 1;
-      return WINDOW_BUTTONUP;
-    }
+      if (leftDown && !(window->buttons & 1)) {
+        window->buttons |= 1;
+        *arg1 = 1;
+        return WINDOW_BUTTONDOWN;
+      }
 
-    if (rightDown && !(window->buttons & 2)) {
-      window->buttons |= 2;
-      *arg1 = 2;
-      return WINDOW_BUTTONDOWN;
-    }
+      if (!leftDown && (window->buttons & 1)) {
+        window->buttons &= ~1;
+        *arg1 = 1;
+        return WINDOW_BUTTONUP;
+      }
 
-    if (!rightDown && (window->buttons & 2)) {
-      window->buttons &= ~2;
-      *arg1 = 2;
-      return WINDOW_BUTTONUP;
-    }
+      if (rightDown && !(window->buttons & 2)) {
+        window->buttons |= 2;
+        *arg1 = 2;
+        return WINDOW_BUTTONDOWN;
+      }
 
-    x = GetMouseX();
-    y = GetMouseY();
+      if (!rightDown && (window->buttons & 2)) {
+        window->buttons &= ~2;
+        *arg1 = 2;
+        return WINDOW_BUTTONUP;
+      }
 
-    if (x != window->x || y != window->y) {
-      *arg1 = window->x = x;
-      *arg2 = window->y = y;
-      return WINDOW_MOTION;
-    }
+      x = GetMouseX();
+      y = GetMouseY();
 
-    key = GetCharPressed();
+      if (x != window->x || y != window->y) {
+        *arg1 = window->x = x;
+        *arg2 = window->y = y;
+        return WINDOW_MOTION;
+      }
 
-    if (key) {
+      if (window->numKeyDown > 0) {
+        for (keyCode = 0; keyCode < 512; keyCode++) {
+          if (window->keyDown[keyCode] && !IsKeyDown(keyCode)) {
+            key = mapKey(keyCode);
+            window->keyDown[keyCode] = 0;
+            window->numKeyDown--;
+            *arg1 = key;
+            return WINDOW_KEYUP;
+          }
+        }
+      }
+
+      keyCode = GetKeyPressed();
+      key = mapKey(keyCode);
+
+      if (key) {
+        window->keyDown[keyCode] = 1;
+        window->numKeyDown++;
+        *arg1 = key;
+        return WINDOW_KEYDOWN;
+      }
+
+      if (wait == 0) break;
+      i++;
+      if (wait < 0) continue;
+      if (i == n) break;
     }
   }
 
