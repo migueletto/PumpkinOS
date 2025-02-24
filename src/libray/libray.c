@@ -78,8 +78,8 @@ static int libray_window_erase(window_t *_window, uint32_t bg) {
 }
 
 static texture_t *libray_window_create_texture(window_t *_window, int width, int height) {
+  texture_t *texture;
   Image image;
-  texture_t *texture = NULL;
 
   if ((texture = sys_calloc(1, sizeof(texture_t))) != NULL) {
     image = GenImageColor(width, height, WHITE);
@@ -107,13 +107,7 @@ static int libray_window_destroy_texture(window_t *_window, texture_t *texture) 
 }
 
 static int libray_window_background(window_t *_window, uint32_t *raw, int width, int height) {
-  libray_window_t *window = (libray_window_t *)_window;
-  int r = -1;
-
-  if (window && raw) {
-  }
-
-  return r;
+  return -1;
 }
 
 static int libray_window_update_texture(window_t *_window, texture_t *texture, uint8_t *src) {
@@ -205,10 +199,21 @@ static void libray_window_status(window_t *_window, int *x, int *y, int *buttons
 }
 
 static void libray_window_title(window_t *window, char *title) {
+  SetWindowTitle(title);
 }
 
 static char *libray_window_clipboard(window_t *window, char *clipboard, int len) {
-  return NULL;
+  char *s;
+
+  if (clipboard != NULL && len > 0) {
+    if ((s = sys_calloc(1, len + 1)) != NULL) {
+      sys_memcpy(s, clipboard, len);
+      SetClipboardText(s);
+      sys_free(s);
+    }
+  }
+
+  return (char *)GetClipboardText();
 }
 
 static int libray_window_event(window_t *window, int wait, int remove, int *key, int *mods, int *buttons) {
@@ -258,10 +263,8 @@ static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg
   if (window) {
     for (i = 0;;) {
       if (thread_must_end()) return -1;
-      if (i > 0) {
-        sys_usleep(100);
-        PollInputEvents();
-      }
+      if (i > 0) sys_usleep(100);
+      PollInputEvents();
 
       leftDown = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
       rightDown = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
@@ -315,20 +318,22 @@ static int libray_window_event2(window_t *_window, int wait, int *arg1, int *arg
       key = GetCharPressed();
       keyCode = GetKeyPressed();
 
-      if (key && keyCode) {
-        key = mapKey(key);
-        debug(2, "RAYLIB", "key down '%c' %d (code %d) C", key >= 32 && key < 127 ? key : ' ', key, keyCode);
-      } else if (keyCode) {
-        key = mapKey(keyCode);
-        debug(2, "RAYLIB", "key down '%c' %d (code %d)", key >= 32 && key < 127 ? key : ' ', key, keyCode);
-      }
+      if (keyCode > 0 && keyCode < 512) {
+        if (key) {
+          key = mapKey(key);
+          debug(2, "RAYLIB", "key down '%c' %d (code %d) C", key >= 32 && key < 127 ? key : ' ', key, keyCode);
+        } else {
+          key = mapKey(keyCode);
+          debug(2, "RAYLIB", "key down '%c' %d (code %d)", key >= 32 && key < 127 ? key : ' ', key, keyCode);
+        }
 
-      if (key) {
-        window->charDown[keyCode] = key;
-        window->keyDown[keyCode] = 1;
-        window->numKeyDown++;
-        *arg1 = key;
-        return WINDOW_KEYDOWN;
+        if (key) {
+          window->charDown[keyCode] = key;
+          window->keyDown[keyCode] = 1;
+          window->numKeyDown++;
+          *arg1 = key;
+          return WINDOW_KEYDOWN;
+        }
       }
 
       if (wait == 0) break;
@@ -373,13 +378,28 @@ int libray_load(void) {
   return 0;
 }
 
+static void traceLogCallback(int level, const char *fmt, va_list ap) {
+  switch (level) {
+    case LOG_DEBUG:   level = DEBUG_TRACE; break;
+    case LOG_INFO:    level = DEBUG_INFO;  break;
+    case LOG_WARNING: level = DEBUG_INFO;  break;
+    case LOG_ERROR:   level = DEBUG_ERROR; break;
+    case LOG_FATAL:   level = DEBUG_ERROR; break;
+    default: return;
+  }
+
+  debugva_full("", "", 0, level, "RAYLIB", fmt, ap);
+}
+
 int libray_init(int pe, script_ref_t obj) {
-  debug(DEBUG_INFO, "LIBRAY", "registering provider %s", WINDOW_PROVIDER);
+  debug(DEBUG_INFO, "RAYLIB", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &window_provider);
 
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
   script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+
+  SetTraceLogCallback(traceLogCallback);
 
   return 0;
 }
