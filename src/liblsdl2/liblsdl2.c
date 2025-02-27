@@ -369,7 +369,6 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
   SDL_Event ev;
   int has_ev, r = 0;
 
-wait = 0;
   has_ev = wait < 0 ? SDL_WaitEvent(&ev) : SDL_WaitEventTimeout(&ev, wait);
 
   if (has_ev) {

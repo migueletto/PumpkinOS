@@ -1198,7 +1198,7 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+  if (pumpkin_get_mode() == 0) {
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) StrNPrintF(buf, sizeof(buf)-1, "%u", item->size);
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
@@ -1213,7 +1213,7 @@ static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, i
 
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Name", item ? item->name : NULL, x, y, 28 * FntCharWidth('a'), false, inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+  if (pumpkin_get_mode() == 0) {
     x = printColumn(data, item, "Type", item ? pumpkin_id2s(item->type, buf) : NULL, x, y, 6 * FntCharWidth('w'), false, inverted);
     x = printColumn(data, item, "Creat.", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 7 * FntCharWidth('w'), false, inverted);
     if (item) StrNPrintF(buf, sizeof(buf)-1, "%u", item->numRecs);
@@ -1254,9 +1254,7 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
 static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
   char buf[128], *s;
   UInt16 bmpId;
-  int dia;
 
-  dia = pumpkin_dia_enabled() || pumpkin_single_enabled();
   firstColumn(data, x, y, inverted);
   x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
   if (item) StrNPrintF(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
@@ -1305,7 +1303,7 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
     x = printBmpColumn(data, item, NULL, buf, bmpId, x, y, 32 * FntCharWidth('w'), inverted);
 
   } else {
-    x = printColumn(data, item, dia ? "Compat." : "Compatibility", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
+    x = printColumn(data, item, pumpkin_get_mode() == 0 ? "Compatibility" : "Compat.", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
   }
 
   lastColumn(data, x, y);
@@ -1320,7 +1318,7 @@ static void printResource(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printColumn(data, item, "ID", item ?  buf : NULL, x, y, 6 * FntCharWidth('0'), true, inverted);
   if (item) StrNPrintF(buf, sizeof(buf)-1, "%u", item->size);
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
-  if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+  if (pumpkin_get_mode() == 0) {
     x = spaceColumn(data, x, y, 10);
     x = printColumn(data, item, "Contents", item ? (item->info ? item->info : "Unknown") : NULL, x, y, data->cellWidth - (x - data->x[0]), false, inverted);
   }
@@ -1779,7 +1777,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printResource(data, &data->item[i], x, y, true);
               } else {
                 printResource(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+                if (pumpkin_get_mode() == 0) {
                   editResource(data, &data->item[i]);
                 }
               }
@@ -1800,7 +1798,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printRecord(data, &data->item[i], x, y, true);
               } else {
                 printRecord(data, &data->item[i], x, y, false);
-                if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+                if (pumpkin_get_mode() == 0) {
                   editRecord(data, &data->item[i]);
                 }
               }
@@ -1838,7 +1836,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                     refresh(frm, data);
                     UpdateStatus(frm, data, true);
                   }
-                } else if (!pumpkin_dia_enabled() && !pumpkin_single_enabled()) {
+                } else if (pumpkin_get_mode() == 0) {
                   editFile(data, &data->item[i]);
                 }
               }
@@ -2650,6 +2648,7 @@ static void resize(FormType *frm, launcher_data_t *data) {
   wh = FrmGetWindowHandle(frm);
   RctSetRectangle(&rect, 0, 0, swidth, sheight);
   WinSetBounds(wh, &rect); 
+  WinSetClipingBounds(&frm->window, &rect);
 
   // filter button
   objIndex = FrmGetObjectIndex(frm, filterCtl);
@@ -2706,15 +2705,18 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       break;
 
     case frmOpenEvent:
+    case frmUpdateEvent:
       frm = FrmGetActiveForm();
       data->mainMenu = frm->mbar;
       gadIndex = FrmGetObjectIndex(frm, iconsGad);
       FrmGetObjectBounds(frm, gadIndex, &data->gadRect);
       sclIndex = FrmGetObjectIndex(frm, iconsScl);
       FrmGetObjectBounds(frm, sclIndex, &data->sclRect);
-      FrmSetDIAPolicyAttr(frm, frmDIAPolicyCustom);
-      PINSetInputTriggerState(pinInputTriggerEnabled);
-      PINSetInputAreaState(pinInputAreaOpen);
+      if (event->eType == frmOpenEvent) {
+        FrmSetDIAPolicyAttr(frm, frmDIAPolicyCustom);
+        PINSetInputTriggerState(pinInputTriggerEnabled);
+        PINSetInputAreaState(pinInputAreaOpen);
+      }
       launcherScan(data);
       resize(frm, data);
       FrmSetGadgetHandler(frm, gadIndex, ItemsGadgetCallback);
@@ -2739,7 +2741,8 @@ static Boolean MainFormHandleEvent(EventPtr event) {
     case winDisplayChangedEvent:
       frm = FrmGetActiveForm();
       resize(frm, data);
-      FrmDrawForm(frm);
+      data->lastMinute = -1;
+      FrmUpdateForm(MainForm, 0);
       handled = true;
       break;
 
@@ -2964,11 +2967,6 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
     default:
       debug(DEBUG_INFO, "Launcher", "launch code %d ignored", cmd);
       return 0;
-  }
-
-  if (pumpkin_dia_enabled() || pumpkin_single_enabled()) {
-    pumpkin_set_spawner(thread_get_handle());
-    pumpkin_dia_kbd();
   }
 
   switch (SYS_OS) {

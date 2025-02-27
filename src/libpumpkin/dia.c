@@ -87,7 +87,7 @@ static void update_area(dia_t *dia, RectangleType *r, UInt16 y0) {
     r->topLeft.x, r->topLeft.y,
     r->extent.x,  r->extent.y,
     r->topLeft.x, y0 + r->topLeft.y);
-  if (dia->wp->render) dia->wp->render(dia->w);
+  //if (dia->wp->render) dia->wp->render(dia->w);
 }
 
 static void dia_invert_button(dia_t *dia, int i) {
@@ -146,7 +146,7 @@ dia_t *dia_init(window_provider_t *wp, window_t *w, int encoding, int depth, int
   dia_t *dia = NULL;
   RGBColorType fg, bg;
 
-  debug(DEBUG_INFO, "DIA", "setting DIA");
+  debug(DEBUG_INFO, "DIA", "init DIA");
 
   if ((dia = xcalloc(1, sizeof(dia_t))) != NULL) {
     dia->wp = wp;
@@ -212,8 +212,6 @@ static void dia_draw_bmp(UInt16 resID, Coord x, Coord y) {
 void dia_set_wh(dia_t *dia, int mode, WinHandle wh, RectangleType *bounds) {
   WinHandle old;
   UInt16 prev;
-  RGBColorType fg, bg;
-  RectangleType rect;
   Err err;
 
   switch (mode) {
@@ -233,17 +231,11 @@ void dia_set_wh(dia_t *dia, int mode, WinHandle wh, RectangleType *bounds) {
 
   prev = WinSetCoordinateSystem(dia->dbl ? kCoordinatesDouble : kCoordinatesStandard);
   if (dia->wh == NULL) {
-    dia->wh = WinCreateOffscreenWindow(dia->width, dia->graffiti_height, nativeFormat, &err);
-    old = WinSetDrawWindow(dia->wh);
-    WinPushDrawState();
-    dia_color(&fg, &bg);
-    WinSetTextColorRGB(&fg, NULL);
-    WinSetBackColorRGB(&bg, NULL);
-    RctSetRectangle(&rect, 0, 0, dia->width, dia->graffiti_height);
-    WinEraseRectangle(&rect, 0);
-    WinPopDrawState();
-    dia_draw_bmp(32501, 0, dia->alpha_height);
-    WinSetDrawWindow(old);
+    if ((dia->wh = WinCreateOffscreenWindow(dia->width, dia->graffiti_height, nativeFormat, &err)) != NULL) {
+      old = WinSetDrawWindow(dia->wh);
+      dia_draw_bmp(32501, 0, dia->alpha_height);
+      WinSetDrawWindow(old);
+    }
   }
 
   if (dia->graffiti_wh == NULL) {
@@ -324,18 +316,18 @@ static void dia_set_mode(dia_t *dia, int mode) {
   }
 
   dia->mode = mode;
-  dia->graffiti_dirty = true;
-  dia->first = true;
+  dia->graffiti_dirty = 1;
+  dia->first = 1;
 }
 
 void dia_set_graffiti_state(dia_t *dia, uint16_t state) {
   dia->graffiti_state = state;
-  dia->graffiti_dirty = true;
+  dia->graffiti_dirty = 1;
 }
 
 void dia_refresh(dia_t *dia) {
-  dia->graffiti_dirty = true;
-  dia->first = true;
+  dia->graffiti_dirty = 1;
+  dia->first = 1;
 }
 
 int dia_update(dia_t *dia) {
@@ -350,7 +342,7 @@ int dia_update(dia_t *dia) {
 
   if (dia->graffiti_drawn && (now - dia->graffiti_t0) > 500000) {
     dia->graffiti_drawn = 0;
-    dia->first = true;
+    dia->first = 1;
   }
 
   if (dia->first) {
@@ -427,6 +419,7 @@ int dia_finish(dia_t *dia) {
   int r = -1;
 
   if (dia) {
+    debug(DEBUG_INFO, "DIA", "finish DIA");
     if (dia->graffiti) dia->wp->destroy_texture(dia->w, dia->graffiti);
     if (dia->surface) surface_destroy(dia->surface);
 

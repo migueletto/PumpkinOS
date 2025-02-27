@@ -218,9 +218,10 @@ typedef struct {
   int task_order[MAX_TASKS];
   pumpkin_task_t tasks[MAX_TASKS];
   int num_tasks;
-  int single_app;
-  int single_thread;
+  int mode;
+  language_t *lang;
   dia_t *dia;
+  int dia_kbd;
   wman_t *wm;
   int dragged, render;
   int refresh;
@@ -536,7 +537,7 @@ int pumpkin_set_local_storage(local_storage_key_t key, void *p) {
   int r = -1;
 
   if (key >= 0 && key < last_key) {
-    if (task && !pumpkin_module.single_thread) {
+    if (task && pumpkin_module.mode != 1) {
       task->local_storage[key] = p;
     } else {
       pumpkin_module.local_storage[key] = p;
@@ -552,7 +553,7 @@ void *pumpkin_get_local_storage(local_storage_key_t key) {
   void *p = NULL;
 
   if (key >= 0 && key < last_key) {
-    if (task && !pumpkin_module.single_thread) {
+    if (task && pumpkin_module.mode != 1) {
       p = task->local_storage[key];
     } else {
       p = pumpkin_module.local_storage[key];
@@ -774,29 +775,84 @@ void pumpkin_set_abgr(int abgr) {
   pumpkin_module.abgr = abgr;
 }
 
-void pumpkin_set_mode(int single_app, int single_thread, int dia, int depth) {
-  if (!single_app) {
-    single_thread = 0;
-    dia = 0;
+static void pumpkin_dia_kbd(void) {
+  WinHandle lower_wh, upper_wh, number_wh;
+  UInt16 prev;
+  int dw, dh;
+  Err err;
+  RectangleType bounds[256];
+
+  dia_get_graffiti_dimension(pumpkin_module.dia, &dw, &dh);
+  prev = WinSetCoordinateSystem(pumpkin_module.density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
+  lower_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
+  upper_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
+  number_wh = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
+  WinSetCoordinateSystem(prev);
+
+  if (KbdDrawKeyboard(kbdAlpha, false, lower_wh, bounds) == errNone) {
+    dia_set_wh(pumpkin_module.dia, DIA_MODE_LOWER, lower_wh, bounds);
+  } else {
+    WinDeleteWindow(lower_wh, false);
   }
+  if (KbdDrawKeyboard(kbdAlpha, true, upper_wh, bounds) == errNone) {
+    dia_set_wh(pumpkin_module.dia, DIA_MODE_UPPER, upper_wh, bounds);
+  } else {
+    WinDeleteWindow(upper_wh, false);
+  }
+  if (KbdDrawKeyboard(kbdNumbersAndPunc, false, number_wh, bounds) == errNone) {
+    dia_set_wh(pumpkin_module.dia, DIA_MODE_NUMBER, number_wh, bounds);
+  } else {
+    WinDeleteWindow(number_wh, false);
+  }
+}
 
-  pumpkin_module.single_app = single_app;
-  pumpkin_module.single_thread = single_thread;
+void pumpkin_set_mode(int mode, int dia, int depth) {
+  LocalID dbID;
+  DmOpenRef dbRef;
+  uint32_t language;
 
-  if (single_app) {
+  if (mode < 0 || mode > 2) mode = 0;
+  pumpkin_module.mode = mode;
+
+  if (mode == 0) {
+    pumpkin_set_host_depth(depth);
+    dia = 0;
+  } else {
     pumpkin_module.hdepth = depth;
     pumpkin_set_encoding(depth);
-  } else {
-    pumpkin_set_host_depth(depth);
   }
 
   if (dia) {
     pumpkin_module.dia = dia_init(pumpkin_module.wp, pumpkin_module.w, pumpkin_module.encoding, depth, pumpkin_module.density == kDensityDouble);
   }
+
+  if (pumpkin_module.mode == 2) {
+    dbID = DmFindDatabase(0, BOOT_NAME);
+    dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly);
+    language = PrefGetPreference(prefLanguage);
+    pumpkin_module.lang = LanguageInit(language);
+    UicInitModule();
+    WinInitModule(pumpkin_module.density, pumpkin_module.width, pumpkin_module.height, pumpkin_module.depth, NULL);
+    FntInitModule(pumpkin_module.density);
+    FrmInitModule();
+    KeyboardInitModule();
+    if (dia) {
+      pumpkin_dia_kbd();
+    }
+    DmCloseDatabase(dbRef);
+    debug(DEBUG_INFO, PUMPKINOS, "mode 2 inited");
+
+    if (pumpkin_module.wp->average) {
+      UInt16 size = 0;
+      if (PrefGetAppPreferences('toch', 1, &pumpkin_module.calibration, &size, true) == noPreferenceFound) {
+        pumpkin_calibrate(0);
+      }
+    }
+  }
 }
 
-int pumpkin_single_enabled(void) {
-  return pumpkin_module.single_app;
+int pumpkin_get_mode(void) {
+  return pumpkin_module.mode;
 }
 
 int pumpkin_dia_enabled(void) {
@@ -993,42 +1049,6 @@ int pumpkin_dia_get_taskbar_dimension(int *width, int *height) {
   return r;
 }
 
-int pumpkin_dia_kbd(void) {
-  WinHandle lower_wh, upper_wh, number_wh;
-  UInt16 prev;
-  int dw, dh;
-  Err err;
-  RectangleType bounds[256];
-  int r = -1;
-
-  if (pumpkin_module.dia) {
-    dia_get_graffiti_dimension(pumpkin_module.dia, &dw, &dh);
-    prev = WinSetCoordinateSystem(pumpkin_module.density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
-    lower_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
-    upper_wh  = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
-    number_wh = WinCreateOffscreenWindow(dw, dh, nativeFormat, &err);
-    WinSetCoordinateSystem(prev);
-
-    if (KbdDrawKeyboard(kbdAlpha, false, lower_wh, bounds) == errNone) {
-      dia_set_wh(pumpkin_module.dia, DIA_MODE_LOWER, lower_wh, bounds);
-    } else {
-      WinDeleteWindow(lower_wh, false);
-    }
-    if (KbdDrawKeyboard(kbdAlpha, true, upper_wh, bounds) == errNone) {
-      dia_set_wh(pumpkin_module.dia, DIA_MODE_UPPER, upper_wh, bounds);
-    } else {
-      WinDeleteWindow(upper_wh, false);
-    }
-    if (KbdDrawKeyboard(kbdNumbersAndPunc, false, number_wh, bounds) == errNone) {
-      dia_set_wh(pumpkin_module.dia, DIA_MODE_NUMBER, number_wh, bounds);
-    } else {
-      WinDeleteWindow(number_wh, false);
-    }
-  }
-
-  return r;
-}
-
 int pumpkin_global_finish(void) {
   int i;
 
@@ -1143,7 +1163,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
         pilotMain(code, param, flags);
 
-        if (code != sysAppLaunchCmdNormalLaunch || pumpkin_module.single_app) {
+        if (code != sysAppLaunchCmdNormalLaunch || pumpkin_module.mode != 0) {
           task->dbID = oldDbID;
           task->creator = oldCreator;
         }
@@ -1294,6 +1314,8 @@ void pumpkin_calibrate(int restore) {
       dia_refresh(pumpkin_module.dia);
       dia_update(pumpkin_module.dia);
     }
+  } else {
+    debug(DEBUG_ERROR, "TOUCH", "average function is not implemented in window provider");
   }
 }
 
@@ -1387,7 +1409,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   sys_strncpy(task->name, name, dmDBNameLength-1);
 
   thread_set(task_key, task);
-  if (!pumpkin_module.single_thread) {
+  if (pumpkin_module.mode != 1) {
     task->heap = heap_init(NULL, HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   } else {
@@ -1458,7 +1480,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.render = 1;
   mutex_unlock(mutex);
 
-  if (pumpkin_module.wp->average) {
+  if (pumpkin_module.mode == 1 && pumpkin_module.wp->average) {
     size = 0;
     if (PrefGetAppPreferences('toch', 1, &pumpkin_module.calibration, &size, true) == noPreferenceFound) {
       pumpkin_calibrate(0);
@@ -1534,7 +1556,7 @@ static int pumpkin_local_finish(UInt32 creator) {
   VFSFinishModule();
   GPSFinishModule();
   SysFinishModule();
-  if (!pumpkin_module.single_thread) {
+  if (pumpkin_module.mode != 1) {
     SysUFinishModule();
   }
   EvtFinishModule();
@@ -1559,7 +1581,7 @@ static int pumpkin_local_finish(UInt32 creator) {
     if (task->serial[i]) pumpkin_heap_free(task->serial[i], "serial_descr");
   }
 
-  if (!pumpkin_module.single_thread) {
+  if (pumpkin_module.mode != 1) {
     StoFinish();
     heap_finish(task->heap);
   }
@@ -1606,7 +1628,7 @@ void *pumpkin_get_subdata(void) {
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data) {
   int r = -1;
 
-  if (pumpkin_module.single_thread && pumpkin_module.wp->shader) {
+  if (pumpkin_module.mode == 1 && pumpkin_module.wp->shader) {
     r = pumpkin_module.wp->shader(pumpkin_module.w, 0, vertex_shader, vlen, fragment_shader, flen, getvar, data);
   }
 
@@ -1623,7 +1645,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 1, texture, 0, name, width, height, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -1830,7 +1852,7 @@ int pumpkin_launch(launch_request_t *request) {
         data->height /= 2;
       }
 
-      if (!pumpkin_module.single_app) {
+      if (pumpkin_module.mode == 0) {
         data->x = (pumpkin_module.width - data->width) / 2;
         data->y = (pumpkin_module.height - data->height) / 2;
 
@@ -1844,7 +1866,8 @@ int pumpkin_launch(launch_request_t *request) {
           data->height = s.height;
           debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
         }
-        if (AppRegistryGet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p)) {
+
+        if (pumpkin_module.mode == 0 && AppRegistryGet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p)) {
           data->x = p.x;
           data->y = p.y;
           debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry", data->x, data->y);
@@ -1854,9 +1877,6 @@ int pumpkin_launch(launch_request_t *request) {
       if (data->width == 0 || data->height == 0) {
         data->width = pumpkin_module.width;
         data->height = pumpkin_module.height;
-      }
-      if (data->width >= pumpkin_module.width || data->height >= pumpkin_module.height) {
-        if (pumpkin_module.dia) data->height -= (pumpkin_module.density == kDensityDouble) ? 160 : 80; // XXX
       }
 
       data->index = index;
@@ -1889,7 +1909,7 @@ int pumpkin_is_launched(void) {
   int r = 0;
 
   if (mutex_lock(mutex) == 0) {
-    r = (pumpkin_module.single_app) ? pumpkin_module.launched : 1;
+    r = pumpkin_module.mode == 1 ? pumpkin_module.launched : 1;
     mutex_unlock(mutex);
   }
 
@@ -2007,7 +2027,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
       return r;
   }
 
-  if (thread_get_handle() == pumpkin_module.spawner) {
+  if (pumpkin_module.mode != 0 || thread_get_handle() == pumpkin_module.spawner) {
     debug(DEBUG_INFO, PUMPKINOS, "spawning \"%s\" with launchCode %d", name, cmd);
     win_module = WinReinitModule(NULL);
     frm_module = FrmReinitModule(NULL);
@@ -2206,16 +2226,33 @@ static int pumpkin_changed_display(pumpkin_task_t *task, task_screen_t *screen, 
 
 static int draw_task(int i, int *x, int *y, int *w, int *h) {
   task_screen_t *screen;
+  pumpkin_task_t *task;
   uint8_t *raw;
+  uint16_t prev;
   int width, height, len, updated = 0;
+  EventType event;
 
   if ((screen = ptr_lock(pumpkin_module.tasks[i].screen_ptr, TAG_SCREEN))) {
     if (pumpkin_module.dia) {
       if (dia_get_main_dimension(pumpkin_module.dia, &width, &height) == 0) {
         if (width != pumpkin_module.tasks[i].width || height != pumpkin_module.tasks[i].height) {
-          debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
+          debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed from %dx%d to %dx%d", i, pumpkin_module.tasks[i].name,
+              pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, width, height);
           if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
-            pumpkin_forward_msg(i, MSG_DISPLAY, width, height, 0);
+            if (pumpkin_module.mode == 2) {
+              pumpkin_forward_msg(i, MSG_DISPLAY, width, height, 0);
+            } else {
+              task = (pumpkin_task_t *)thread_get(task_key);
+              task->width = width;
+              task->height = height;
+              prev = WinSetCoordinateSystem(kCoordinatesDouble);
+              WinSetDisplayExtent(width, height);
+              WinSetCoordinateSystem(prev);
+              MemSet(&event, sizeof(EventType), 0);
+              event.eType = winDisplayChangedEvent;
+              RctSetRectangle(&event.data.winDisplayChanged.newBounds, 0, 0, width, height);
+              EvtAddEventToQueue(&event);
+            }
           }
         }
       }
@@ -2223,7 +2260,8 @@ static int draw_task(int i, int *x, int *y, int *w, int *h) {
                pumpkin_module.tasks[i].height != pumpkin_module.tasks[i].new_height) {
       width = pumpkin_module.tasks[i].new_width;
       height = pumpkin_module.tasks[i].new_height;
-      debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed to %dx%d", i, pumpkin_module.tasks[i].name, width, height);
+      debug(DEBUG_INFO, PUMPKINOS, "task %d (%s) display changed from %dx%d to %dx%d", i, pumpkin_module.tasks[i].name,
+          pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, width, height);
       if (pumpkin_changed_display(&pumpkin_module.tasks[i], screen, width, height) == 0) {
         pumpkin_forward_msg(i, MSG_DISPLAY, width, height, 0);
       }
@@ -2288,7 +2326,7 @@ void pumpkin_forward_msg(int i, int ev, int a1, int a2, int a3) {
   unsigned int len;
   uint32_t carg[4];
 
-  if (pumpkin_module.single_thread) {
+  if (pumpkin_module.mode == 1) {
     put_event(ev, a1, a2, a3);
   } else {
     carg[0] = ev;
@@ -2566,8 +2604,11 @@ int pumpkin_sys_event(void) {
         }
       }
 
-      if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
-        pumpkin_module.render = 1;
+      if (pumpkin_module.dia) {
+        if (dia_update(pumpkin_module.dia)) {
+          if (pumpkin_module.mode == 2) dia_refresh(pumpkin_module.dia);
+          pumpkin_module.render = 1;
+        }
       }
 
       if (pumpkin_module.render) {
@@ -2651,7 +2692,7 @@ int pumpkin_sys_event(void) {
             pumpkin_module.buttonMask |= arg1;
             pumpkin_module.dragging = -1;
             if (i != -1 && i == pumpkin_module.current_task) {
-              if (pumpkin_module.single_app) {
+              if (pumpkin_module.mode == 1) {
                 pumpkin_forward_msg(i, MSG_MOTION, tx, ty, 0);
                 pumpkin_module.tasks[i].penX = tx;
                 pumpkin_module.tasks[i].penY = ty;
@@ -2758,14 +2799,6 @@ void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   int i;
 
-/*
-  if (thread_get_handle() == pumpkin_module.spawner) {
-    if (pumpkin_sys_event() == -1) {
-      pumpkin_set_finish(1);
-      sys_set_finish(1);
-    }
-  }
-*/
   thread_yield(0);
 
   if (x) *x = 0;
@@ -2842,7 +2875,7 @@ static void save_screen(void) {
   }
 }
 
-static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
+static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
   int x, y, w, h, tmp;
   uint64_t now;
@@ -2946,6 +2979,11 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
   now = sys_get_clock();
 
   if ((now - pumpkin_module.lastUpdate) > 50000) {
+    if (pumpkin_module.dia && !pumpkin_module.dia_kbd) {
+      pumpkin_dia_kbd();
+      pumpkin_module.dia_kbd = 1;
+    }
+
     if (pumpkin_module.fullrefresh) {
       draw_task(0, &x, &y, &w, &h);
       wman_update(pumpkin_module.wm, 0, 0, 0, pumpkin_module.tasks[0].width, pumpkin_module.tasks[0].height);
@@ -2956,6 +2994,7 @@ static int pumpkin_event_single_thread(int *key, int *mods, int *buttons, uint8_
     }
 
     if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
+      if (pumpkin_module.fullrefresh) dia_refresh(pumpkin_module.dia);
       pumpkin_module.render = 1;
     }
 
@@ -2981,14 +3020,6 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
   uint32_t *arg, reply;
   int r, client, ev = 0;
 
-/*
-  if (thread_get_handle() == pumpkin_module.spawner) {
-    if (pumpkin_sys_event() == -1) {
-      pumpkin_set_finish(1);
-      sys_set_finish(1);
-    }
-  }
-*/
   pumpkin_alarm_check();
 
   if ((r = thread_server_read_timeout_from(usec, &buf, &len, &client)) == 1) {
@@ -3086,8 +3117,8 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
 }
 
 int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
-  return pumpkin_module.single_thread ?
-    pumpkin_event_single_thread(key, mods, buttons, data, n, usec) :
+  return pumpkin_module.mode == 1 ?
+    pumpkin_event_single_app(key, mods, buttons, data, n, usec) :
     pumpkin_event_multi_thread(key, mods, buttons, data, n, usec);
 }
 
@@ -3844,7 +3875,7 @@ void pumpkin_fatal_error(int finish) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_fatal_error finish=%d", finish);
-  if (finish || pumpkin_module.single_thread) {
+  if (finish || pumpkin_module.mode == 1) {
     sys_set_finish(finish);
     sys_exit(finish);
   }
@@ -4769,9 +4800,12 @@ language_t *LanguageSelect(language_t *lang) {
 
 UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  language_t *lang;
 
-  if (task->lang && task->lang->nextChar) {
-    i = task->lang->nextChar(s, i, len, w, task->lang->data);
+  lang = task && task->lang ? task->lang : pumpkin_module.lang;
+
+  if (lang && lang->nextChar) {
+    i = lang->nextChar(s, i, len, w, lang->data);
   } else {
    *w = s[i];
     i = 1;
@@ -4782,9 +4816,12 @@ UInt32 pumpkin_next_char(UInt8 *s, UInt32 i, UInt32 len, UInt32 *w) {
 
 UInt8 pumpkin_map_char(UInt32 w, FontType **f) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  language_t *lang;
 
-  if (task->lang && task->lang->mapChar) {
-    return task->lang->mapChar(w, f, task->lang->data);
+  lang = task && task->lang ? task->lang : pumpkin_module.lang;
+
+  if (lang && lang->mapChar) {
+    return lang->mapChar(w, f, lang->data);
   }
 
   *f = FntGetFontPtr();

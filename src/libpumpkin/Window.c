@@ -849,7 +849,6 @@ static void WinCopyBit(win_module_t *module, BitmapType *src, Coord sx, Coord sy
   }
 }
 
-//#define CLIP_OK(left,right,top,bottom,x,y) ((left == 0 && right == 0) || ((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
 #define CLIP_OK(left,right,top,bottom,x,y) (((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
 #define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 

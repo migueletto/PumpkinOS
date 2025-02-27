@@ -63,13 +63,15 @@ void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int hei
   uint8_t *raw;
   uint32_t red, white, black;
   int lcdx[3], lcdy[3], tpx[3], tpy[3];
-  int i, x, y, radius, len, font, fw, fh, r;
+  int i, tx, ty, x, y, radius, len, font, fw, fh, encoding, r;
 
-  if ((surface = surface_create(width, height, SURFACE_ENCODING_RGB565)) != NULL) {
+  encoding = pumpkin_get_encoding();
+
+  if ((surface = surface_create(width, height, encoding)) != NULL) {
     texture = wp->create_texture(w, width, height);
-    white = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0xff, 0xff, 0xff);
-    black = surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0x00, 0x00, 0x00, 0xff);
-    red = depth >= 8 ? surface_color_rgb(SURFACE_ENCODING_RGB565, NULL, 0, 0xff, 0x00, 0x00, 0xff) : black;
+    white = surface_color_rgb(encoding, NULL, 0, 0xff, 0xff, 0xff, 0xff);
+    black = surface_color_rgb(encoding, NULL, 0, 0x00, 0x00, 0x00, 0xff);
+    red = depth >= 8 ? surface_color_rgb(encoding, NULL, 0, 0xff, 0x00, 0x00, 0xff) : black;
     raw = (uint8_t *)surface->getbuffer(surface->data, &len);
     surface_rectangle(surface, 0, 0, width-1, height-1, 1, white);
     radius = width / 10;
@@ -77,15 +79,16 @@ void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int hei
     font = 6;
     fw = surface_font_chars_width(NULL, font, (char *)msg, sys_strlen(msg));
     fh = surface_font_height(NULL, font);
-    x = (width - fw) / 2;
-    y = height / 2 + radius + fh;
-    surface_print(surface, x, y, (char *)msg, NULL, font, black, white);
+    tx = (width - fw) / 2;
+    ty = height / 2 + radius + fh;
+    surface_print(surface, tx, ty, (char *)msg, NULL, font, black, white);
     wp->update_texture_rect(w, texture, raw, 0, 0, width, height);
     wp->draw_texture_rect(w, texture, 0, 0, width, height, 0, 0);
     if (wp->render) wp->render(w);
 
     for (i = 0; i < 3;) {
       debug(DEBUG_INFO, "TOUCH", "calibrating point %d", i+1);
+      wp->draw_texture_rect(w, texture, 0, 0, width, height, 0, 0);
       drawTarget(i, red, width, height, radius, &x, &y, surface);
       wp->update_texture_rect(w, texture, raw, x - radius, y - radius, radius*2, radius*2);
       wp->draw_texture_rect(w, texture, x - radius, y - radius, radius*2, radius*2, x - radius, y - radius);
