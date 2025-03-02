@@ -19,6 +19,7 @@
 #include "audio.h"
 #include "media.h"
 #include "ptr.h"
+#include "average.h"
 #include "pumpkin.h"
 #include "xalloc.h"
 #include "debug.h"
@@ -552,6 +553,10 @@ static int window_show_cursor(window_t *window, int show) {
   return 0;
 }
 
+static int window_average(window_t *window, int *x, int *y, int ms) {
+  return average_click(&wp, window, x, y, ms);
+}
+
 static int audio_mixer_init(void) {
   return 0;
 }
@@ -769,6 +774,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.event2 = window_event2;
   wp.status = window_status;
   wp.show_cursor = window_show_cursor;
+  wp.average = window_average;
   wp.data = hInstance;
 
   ap.create = audio_create;

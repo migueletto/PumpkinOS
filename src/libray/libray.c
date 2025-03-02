@@ -2,6 +2,7 @@
 #include "thread.h"
 #include "script.h"
 #include "pwindow.h"
+#include "average.h"
 #include "debug.h"
 #include "raylib.h"
 
@@ -355,31 +356,8 @@ static int libray_window_destroy(window_t *window) {
   return 0;
 }
 
-// fake "average" function just for testing the UI
-static int libray_window_average(window_t *_window, int *x, int *y, int ms) {
-  int arg1, arg2;
-
-  for (;;) {
-    if (thread_must_end()) return -1;
-
-    switch (libray_window_event2(_window, 1, &arg1, &arg2)) {
-      case WINDOW_BUTTONUP:
-        return 1;
-      case WINDOW_MOTION:
-        *x = arg1;
-        *y = arg2;
-        break;
-      case 0:
-        if (ms == -1) continue;
-        if (ms == 0) return 0;
-        ms--;
-        break;
-      case -1:
-        return -1;
-    }
-  }
-
-  return -1;
+static int libray_window_average(window_t *window, int *x, int *y, int ms) {
+  return average_click(&window_provider, window, x, y, ms);
 }
 
 static int libray_calib(int pe) {
