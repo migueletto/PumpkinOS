@@ -785,6 +785,7 @@ void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *p
   int x, y;
   uint32_t buttonMask;
 
+  EvtPumpEvents(0);
   pumpkin_status(&x, &y, NULL, NULL, &buttonMask, NULL);
   *pScreenX = x;
   *pScreenY = y;
