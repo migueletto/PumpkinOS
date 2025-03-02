@@ -216,26 +216,33 @@ static void getp(uint32_t addr, char *a, char *buf) {
       sys_sprintf(buf, "L['%s']", st);
     } else if (!sys_strcmp(a, "frmp")) {
       W = m68k_read_memory_16(addr+104);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "Form[%u]", W);
     } else if (!sys_strcmp(a, "fobjp")) {
       sys_sprintf(buf, "FormObj");
     } else if (!sys_strcmp(a, "ctlp")) {
       W = m68k_read_memory_16(addr);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "Control[%u]", W);
     } else if (!sys_strcmp(a, "lstp")) {
       W = m68k_read_memory_16(addr);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "List[%u]", W);
     } else if (!sys_strcmp(a, "fldp")) {
       W = m68k_read_memory_16(addr);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "Field[%u]", W);
     } else if (!sys_strcmp(a, "tblp")) {
       W = m68k_read_memory_16(addr);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "Table[%u]", W);
     } else if (!sys_strcmp(a, "sclp")) {
       W = m68k_read_memory_16(addr+8);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "ScrollBar[%u]", W);
     } else if (!sys_strcmp(a, "gadp")) {
       W = m68k_read_memory_16(addr);
+      W = sys_htobe16(W);
       sys_sprintf(buf, "Gadget[%u]", W);
     } else if (!sys_strcmp(a, "evtp")) {
       char *name;

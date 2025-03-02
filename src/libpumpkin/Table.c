@@ -577,7 +577,9 @@ void TblSetRowUsable(TableType *tableP, Int16 row, Boolean usable) {
       }
     }
     tableP->rowAttrs[row].usable = usable;
-    tableP->attr.usable = usable;
+    if (usable) {
+      tableP->attr.usable = usable;
+    }
   }
 }
 
@@ -895,6 +897,9 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
     i = row * tableP->numColumns + column;
     item = &tableP->items[i];
 
+    tableP->currentRow = row;
+    tableP->currentColumn = column;
+
     switch (item->itemType) {
       case textTableItem:
       case textWithNoteTableItem:
@@ -933,7 +938,9 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
           }
         }
 
+        tableP->currentField.formP = FrmGetActiveForm();
         FldDrawField(&tableP->currentField);
+        FldSetActiveField(&tableP->currentField);
 //debug(1, "XXX", "table %d TblGrabFocus editing=true", tableP->id);
         tableP->attr.editing = true;
       default:
@@ -984,6 +991,7 @@ void TblReleaseFocus(TableType *tableP) {
 //debug(1, "XXX", "table %d TblReleaseFocus editing=false", tableP->id);
     tableP->attr.editing = false;
     tableP->attr.selected = false;
+    tableP->currentField.formP = NULL;
   }
 }
 
