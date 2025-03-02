@@ -1433,11 +1433,16 @@ static int StoMapRecords(storage_t *sto, storage_db_t *db) {
         if (sys_sscanf((char *)rec, "%08X.%02X\n", &uniqueID, &attr) == 2) {
           if (uniqueID > max) max = uniqueID;
           storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, attr & ATTR_MASK, uniqueID, buf);
-          if ((f2 = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-            if ((ent = vfs_fstat(f2)) != NULL) {
-              StoAddRec(sto, db, uniqueID, attr, ent->size);
+          if (attr & dmRecAttrDelete) {
+            debug(DEBUG_INFO, "STOR", "removing deleted record %s", buf);
+            StoVfsUnlink(sto->session, buf);
+          } else {
+            if ((f2 = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+              if ((ent = vfs_fstat(f2)) != NULL) {
+                StoAddRec(sto, db, uniqueID, attr, ent->size);
+              }
+              vfs_close(f2);
             }
-            vfs_close(f2);
           }
         }
       }
@@ -1686,7 +1691,6 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           }
           db->mode = 0;
           StoWriteHeader(sto, db);
-
 
           if (db->elements) {
             xfree(db->elements);
