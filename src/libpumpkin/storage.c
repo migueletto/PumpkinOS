@@ -308,7 +308,7 @@ static int StoInflateRec(storage_t *sto, storage_db_t *db, storage_handle_t *h) 
     debug(DEBUG_TRACE, "STOR", "reading record at %p", h->buf);
     storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
     if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-      if (vfs_read(f, h->buf, h->size) == h->size) {
+      if (vfs_read(f, h->buf, h->size) > 0) {
         h->d.rec.attr &= ~dmRecAttrDirty;
         h->d.rec.attr |= dmRecAttrBusy;
         h->lockCount = 0;
@@ -1210,7 +1210,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
   storage_db_t *db, *existing = NULL;
   SysNotifyParamType notify;
   SysNotifyDBCreatedType dbCreated;
-  LocalID dbID;
+  LocalID dbID = 0;
   vfs_file_t *f;
   char buf[VFS_PATH];
   Err err = dmErrInvalidParam;
@@ -3394,6 +3394,10 @@ Err DmSet(void *recordP, UInt32 offset, UInt32 bytes, UInt8 value) {
             b = (uint8_t *)h->buf;
             attr = &h->d.rec.attr;
             break;
+          case STO_TYPE_RES:
+            b = (uint8_t *)h->buf;
+            attr = &h->d.res.attr;
+            break;
           default:
             debug(DEBUG_ERROR, "STOR", "DmSet %p unexpected handle type %d", h, h->htype & ~STO_INFLATED);
             break;
@@ -3402,7 +3406,7 @@ Err DmSet(void *recordP, UInt32 offset, UInt32 bytes, UInt8 value) {
         if (b) {
           r = (uint8_t *)recordP;
           if ((r + offset) >= b && (r + offset + bytes) <= (b + h->size)) {
-            xmemset(r + offset, 0, bytes);
+            xmemset(r + offset, value, bytes);
             if (attr) *attr |= dmRecAttrDirty;
             err = errNone;
           }
@@ -3725,6 +3729,7 @@ Err DmSeekRecordInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 offset, Int16 d
   DmOpenType *dbRef;
   Err err = dmErrSeekFailed;
 
+//debug(1, "XXX", "DmSeekRecordInCategory index=%d (%p), offset=%d, direction=%d, category=%u", indexP ? *indexP : 0, indexP, offset, direction, category);
   if (dbP && indexP) {
 //debug(1, "XXX", "seek begin offset=%d", offset);
       dbRef = (DmOpenType *)dbP;
@@ -3772,6 +3777,7 @@ Err DmSeekRecordInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 offset, Int16 d
             }
           }
           } else {
+//debug(1, "XXX", "seek index %d >= %d", *indexP, db->numRecs);
             err = dmErrIndexOutOfRange;
           }
         } else {
