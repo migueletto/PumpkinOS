@@ -1537,7 +1537,7 @@ static void columnClicked(launcher_data_t *data, int x, int y, Boolean enter) {
 }
 
 static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
-  launcher_data_t *data, *oldData;
+  launcher_data_t *data;
   EventType *event;
   RectangleType rect;
   WinDrawOperation mode;
@@ -1707,10 +1707,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
             } else {
               data->top = false;
               flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
-              oldData = pumpkin_get_data();
               SysAppLaunchEx(0, data->item[i].dbID, flags, sysAppLaunchCmdNormalLaunch, NULL, &result, data->item[i].pilot_main);
-              data = oldData;
-              pumpkin_set_data(data);
               printApp(data, &data->item[i], x, y, false);
             }
           }
@@ -2519,7 +2516,6 @@ static void deleteApplication(launcher_item_t *item) {
 }
 
 static void MenuEvent(UInt16 id, launcher_data_t *data) {
-  launcher_data_t *oldData;
   FormPtr frm;
   UInt16 flags;
   UInt32 result;
@@ -2613,9 +2609,7 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       if (data->mode == launcher_app_small && data->prev >= 0 && data->item[data->prev].creator != AppID) {
         data->top = false;
         flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
-        oldData = data;
         SysAppLaunchEx(0, data->item[data->prev].dbID, flags, sysAppLaunchCmdNormalLaunch, NULL, &result, data->item[data->prev].pilot_main);
-        pumpkin_set_data(oldData);
       }
       break;
     case delCmd:

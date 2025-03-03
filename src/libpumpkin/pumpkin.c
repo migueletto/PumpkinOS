@@ -2153,9 +2153,17 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   launch_request_t request;
   char name[dmDBNameLength];
   UInt32 type;
+  void *oldData;
   int r = -1;
 
   debug(DEBUG_INFO, PUMPKINOS, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
+
+  if (pumpkin_module.mode == 1) {
+    oldData = task->data;
+    WinPushDrawState();
+  } else {
+    oldData = NULL;
+  }
 
   if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, NULL) == errNone) {
     if (dbID != task->dbID) {
@@ -2173,6 +2181,11 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
       *resultP = pumpkin_launch_sub(&request, 0);
       r = 0;
     }
+  }
+
+  if (pumpkin_module.mode == 1) {
+    task->data = oldData;
+    WinPopDrawState();
   }
 
   return (r == 0) ? errNone : sysErrParamErr;
