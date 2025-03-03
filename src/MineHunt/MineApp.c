@@ -43,6 +43,11 @@ PUMPKIN_API;
 static GameType	gGame;
 static MinePrefType	gMinePref;
 
+static UInt32 kMaxRows;
+static UInt32 kMaxColumns;
+static UInt32 kVisibleRows;
+static UInt32 kVisibleColumns;
+
 static WinHandle gOffscreenBoardWinH = 0;			// window for drawing offscreen board 
 static WinHandle gGrayPieces = 0;					// window used for drawing gray piece bitmaps
 static WinHandle gColorPieces[lastSquareGraphic];	// array of windows used for drawing color piece bitmaps
@@ -2220,13 +2225,28 @@ Done:
 static void LoadGameBoard()
 {
 	Int16  version;
+  UInt32 width, height;
+  UInt32 auxMaxRows, auxMaxColumns;
 	UInt16 size = sizeof(gMinePref);
 	
 	// Try loading a saved game board - if that fails, generate a new one
-	version = PrefGetAppPreferences(kMineAppCreator, 0, &gMinePref, &size, false);
+	version = PrefGetAppPreferences(kMineAppCreator, 0, &gMinePref, &size, true);
 
-	if ((version == kMineAppVersionNum) && (gMinePref.signature == minePrefSignature))
+  // calculate the board size (rows x columns) based on screen dimensions
+	WinScreenMode(winScreenModeGet, &width, &height, NULL, NULL);
+  auxMaxRows = (height - kBoardOriginY) / kPieceBitmapHeight;
+  auxMaxColumns = (width - kBoardOriginX) / kPieceBitmapWidth;
+  if (auxMaxRows > 32) auxMaxRows = 32;
+  if (auxMaxColumns > 32) auxMaxColumns = 32;
+
+	if ((version == kMineAppVersionNum) && (gMinePref.signature == minePrefSignature) &&
+       gMinePref.kMaxRows == auxMaxRows && gMinePref.kMaxColumns == auxMaxColumns)
 		{
+    kMaxRows = auxMaxRows;
+    kMaxColumns = auxMaxColumns;
+    kVisibleRows = kMaxRows;
+    kVisibleColumns = kMaxColumns;
+
 		// don't let prefs overwrite gGame if user is starting a new game
  		if (gGame.state == gameRestart)
 	 		{
@@ -2247,13 +2267,19 @@ static void LoadGameBoard()
 		}
 	else	// generate the prefs and a new board
 		{
+    kMaxRows = auxMaxRows;
+    kMaxColumns = auxMaxColumns;
+    kVisibleRows = kMaxRows;
+    kVisibleColumns = kMaxColumns;
+
 		gMinePref.signature = minePrefSignature;
 		gMinePref.difficulty = defaultDifficulty;
 		gMinePref.classicLook = true;
-		//gMinePref.autoScroll = true;
 		gMinePref.autoScroll = false;
 		NewGameBoard(numShuffleMoves);
 		gMinePref.game = gGame;
+		gMinePref.kMaxRows = auxMaxRows;
+		gMinePref.kMaxColumns = auxMaxColumns;
 		}
 }
 
@@ -2282,7 +2308,7 @@ static void SaveGameBoard()
 	gMinePref.game = gGame;
 	
 	// Save our preferences to the Preferences database
-	PrefSetAppPreferences(kMineAppCreator, 0, kMineAppVersionNum, &gMinePref, sizeof(gMinePref), false);
+	PrefSetAppPreferences(kMineAppCreator, 0, kMineAppVersionNum, &gMinePref, sizeof(gMinePref), true);
 }
 
 

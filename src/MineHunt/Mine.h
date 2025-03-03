@@ -23,17 +23,11 @@
  *
  ***********************************************************************/
 #define kMineAppCreator			'mine'
-#define kMineAppVersionNum		0x0306	// increment when GameType or MinePrefType structs change
+#define kMineAppVersionNum		0x0307	// increment when GameType or MinePrefType structs change
 
 // Define the minimum OS version supported (0S version 3.5)
 #define kMinVersion				sysMakeROMVersion(3, 5, 0, sysROMStageRelease, 0)
 
-#define kMaxRows				20
-#define kMaxColumns				21
-//#define kVisibleRows			9
-//#define kVisibleColumns			10
-#define kVisibleRows			20
-#define kVisibleColumns			21
 #define kPieceBitmapWidth		15
 #define kPieceBitmapHeight		15
 #define kScrollingIncrement		3		// scroll by increments of 1/5 of a row or column
@@ -143,7 +137,7 @@ typedef struct GameType
 	GameStateType	state;				// playing state of game
 	
 	// state of each of the pieces in the game board			
-	GamePieceType	piece[kMaxRows][kMaxColumns];	
+	GamePieceType	piece[32][32];	
 	
 	Int16			minesLeft;			// number of mines left to uncover
 	UInt8			numMines;			// number of mines
@@ -190,6 +184,8 @@ typedef struct MinePrefType
 	DifficultyType	difficulty;			// difficulty level
 	Boolean			classicLook;
 	Boolean			autoScroll;
+  UInt32 kMaxRows;
+  UInt32 kMaxColumns;
 	} MinePrefType;
 
 #define	minePrefSignature	'MiNe'	
