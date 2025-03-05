@@ -344,6 +344,10 @@ Err SysTaskDelay(Int32 delay) {
   int64_t t0, t;
 
   if (delay > 0) {
+    if (pumpkin_get_mode() == 1) {
+      EvtPumpEvents(0);
+    }
+
     usec = delay * 10000;
 
     if (thread_needs_run()) {

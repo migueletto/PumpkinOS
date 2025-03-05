@@ -2027,7 +2027,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
       return r;
   }
 
-  if (pumpkin_module.mode != 0 || thread_get_handle() == pumpkin_module.spawner) {
+  if (pumpkin_module.mode != 0) {
     debug(DEBUG_INFO, PUMPKINOS, "spawning \"%s\" with launchCode %d", name, cmd);
     win_module = WinReinitModule(NULL);
     frm_module = FrmReinitModule(NULL);
@@ -2153,17 +2153,9 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   launch_request_t request;
   char name[dmDBNameLength];
   UInt32 type;
-  void *oldData;
   int r = -1;
 
   debug(DEBUG_INFO, PUMPKINOS, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
-
-  if (pumpkin_module.mode == 1) {
-    oldData = task->data;
-    WinPushDrawState();
-  } else {
-    oldData = NULL;
-  }
 
   if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, NULL) == errNone) {
     if (dbID != task->dbID) {
@@ -2181,11 +2173,6 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
       *resultP = pumpkin_launch_sub(&request, 0);
       r = 0;
     }
-  }
-
-  if (pumpkin_module.mode == 1) {
-    task->data = oldData;
-    WinPopDrawState();
   }
 
   return (r == 0) ? errNone : sysErrParamErr;
@@ -2888,10 +2875,40 @@ static void save_screen(void) {
   }
 }
 
+static void pumpkin_update_single_app(void) {
+  int x, y, w, h;
+  uint64_t now;
+
+  now = sys_get_clock();
+
+  if ((now - pumpkin_module.lastUpdate) > 50000) {
+    if (pumpkin_module.fullrefresh) {
+      draw_task(0, &x, &y, &w, &h);
+      wman_update(pumpkin_module.wm, 0, 0, 0, pumpkin_module.tasks[0].width, pumpkin_module.tasks[0].height);
+      pumpkin_module.render = 1;
+    } else if (draw_task(0, &x, &y, &w, &h)) {
+      wman_update(pumpkin_module.wm, 0, x, y, w, h);
+      pumpkin_module.render = 1;
+    }
+
+    if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
+      if (pumpkin_module.fullrefresh) dia_refresh(pumpkin_module.dia);
+      pumpkin_module.render = 1;
+    }
+
+    if (pumpkin_module.render) {
+      if (pumpkin_module.wp->render) {
+        pumpkin_module.wp->render(pumpkin_module.w);
+      }
+      pumpkin_module.render = 0;
+    }
+    pumpkin_module.lastUpdate = now;
+  }
+}
+
 static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   int ev, arg1, arg2, wait;
-  int x, y, w, h, tmp;
-  uint64_t now;
+  int x, y, tmp;
 
   if ((ev = get_event(&arg1, &arg2, &tmp)) != 0) {
     *key = arg1;
@@ -2989,36 +3006,11 @@ static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *
     }
   }
 
-  now = sys_get_clock();
-
-  if ((now - pumpkin_module.lastUpdate) > 50000) {
-    if (pumpkin_module.dia && !pumpkin_module.dia_kbd) {
-      pumpkin_dia_kbd();
-      pumpkin_module.dia_kbd = 1;
-    }
-
-    if (pumpkin_module.fullrefresh) {
-      draw_task(0, &x, &y, &w, &h);
-      wman_update(pumpkin_module.wm, 0, 0, 0, pumpkin_module.tasks[0].width, pumpkin_module.tasks[0].height);
-      pumpkin_module.render = 1;
-    } else if (draw_task(0, &x, &y, &w, &h)) {
-      wman_update(pumpkin_module.wm, 0, x, y, w, h);
-      pumpkin_module.render = 1;
-    }
-
-    if (pumpkin_module.dia && dia_update(pumpkin_module.dia)) {
-      if (pumpkin_module.fullrefresh) dia_refresh(pumpkin_module.dia);
-      pumpkin_module.render = 1;
-    }
-
-    if (pumpkin_module.render) {
-      if (pumpkin_module.wp->render) {
-        pumpkin_module.wp->render(pumpkin_module.w);
-      }
-      pumpkin_module.render = 0;
-    }
-    pumpkin_module.lastUpdate = now;
+  if (pumpkin_module.dia && !pumpkin_module.dia_kbd) {
+    pumpkin_dia_kbd();
+    pumpkin_module.dia_kbd = 1;
   }
+  pumpkin_update_single_app();
 
   return ev;
 }
@@ -3452,6 +3444,10 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 
       screen->dirty = 1;
       ptr_unlock(task->screen_ptr, TAG_SCREEN);
+    }
+
+    if (pumpkin_module.mode == 1 && pumpkin_module.launched) {
+      pumpkin_update_single_app();
     }
   }
 
