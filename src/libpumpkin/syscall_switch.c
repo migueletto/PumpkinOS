@@ -7840,7 +7840,8 @@
     case sysTrapStrPrintF: {
       Char *s = sys_va_arg(ap, Char *);
       const Char *formatStr = sys_va_arg(ap, Char *);
-      Int16 ret = StrPrintF(s, formatStr, ap);
+      void *ap2 = sys_va_arg(ap, void *);
+      Int16 ret = StrVPrintF(s, formatStr, ap2);
       *iret = ret;
       }
       break;
@@ -7864,7 +7865,8 @@
     case sysTrapStrVPrintF: {
       Char *s = sys_va_arg(ap, Char *);
       const Char *formatStr = sys_va_arg(ap, Char *);
-      Int16 ret = StrVPrintF(s, formatStr, ap);
+      void *ap2 = sys_va_arg(ap, void *);
+      Int16 ret = StrVPrintF(s, formatStr, ap2);
       *iret = ret;
       }
       break;
