@@ -27,16 +27,3 @@ pumpkin.start {
   depth    = 16,
   launcher = "Launcher"
 }
-
---[[
-pumpkin.start {
-  density  = 72,
-  xfactor  = 2,
-  yfactor  = 2,
-  width    = 512,
-  height   = 384,
-  hdepth   = 16,
-  depth    = 8,
-  launcher = "Launcher"
-}
-]]--
