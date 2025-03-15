@@ -3,7 +3,7 @@
 FORM MainForm 0 0 160 160
 USABLE
 NOFRAME
-MENUID MainForm
+MENUID MainMenu
 BEGIN
   TITLE "Pumpkin"
   GADGET    ID iconsGad     0 15 153 145
