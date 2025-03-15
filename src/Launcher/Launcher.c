@@ -2629,7 +2629,9 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       }
       break;
     case forkCmd:
-      pumpkin_fork();
+      if (pumpkin_get_mode() == 0) {
+        pumpkin_fork();
+      }
       break;
     case aboutCmd:
       LauncherOpenForm(AboutForm);
