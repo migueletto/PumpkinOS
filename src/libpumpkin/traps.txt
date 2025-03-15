@@ -275,7 +275,7 @@ NET_LIB netLibTrapSocketOpen 0 NetSocketRef NetLibSocketOpen 6 UInt16 libRefnum 
 NET_LIB netLibTrapSocketOptionGet 0 Int16 NetLibSocketOptionGet 8 UInt16 libRefnum NetSocketRef socket UInt16 level UInt16 option void_* optValueP UInt16_* optValueLenP Int32 timeout Err_* errP
 NET_LIB netLibTrapSocketOptionSet 0 Int16 NetLibSocketOptionSet 8 UInt16 libRefnum NetSocketRef socket UInt16 level UInt16 option void_* optValueP UInt16 optValueLen Int32 timeout Err_* errP
 NET_LIB netLibTrapSocketShutdown 0 Int16 NetLibSocketShutdown 5 UInt16 libRefnum NetSocketRef socket Int16 direction Int32 timeout Err_* errP
-NET_LIB netLibTrapTracePrintF 0 Err NetLibTracePrintF 3 UInt16 libRefNum const_Char_* formatStr ... ap
+#NET_LIB netLibTrapTracePrintF 0 Err NetLibTracePrintF 3 UInt16 libRefNum const_Char_* formatStr ... ap
 NET_LIB netLibTrapTracePutS 0 Err NetLibTracePutS 2 UInt16 libRefNum Char_* strP
 NET_LIB sysLibTrapClose 0 Err NetLibClose 2 UInt16 libRefnum UInt16 immediate
 NET_LIB sysLibTrapOpen 0 Err NetLibOpen 2 UInt16 libRefnum UInt16_* netIFErrsP
@@ -365,67 +365,67 @@ SEL_TRAP sysTrapExpansionMgr expSlotEnumerate Err ExpSlotEnumerate 2 UInt16_* sl
 SEL_TRAP sysTrapExpansionMgr expSlotLibFind Err ExpSlotLibFind 2 UInt16 slotRefNum UInt16_* slotLibRefNum
 SEL_TRAP sysTrapExpansionMgr expSlotRegister Err ExpSlotRegister 2 UInt16 slotLibRefNum UInt16_* slotRefNum
 SEL_TRAP sysTrapExpansionMgr expSlotUnregister Err ExpSlotUnregister 1 UInt16 slotRefNum
-#SEL_TRAP sysTrapFlpDispatch sysFloatAToF FlpDouble FlpAToF 1 const_Char_* s
-#SEL_TRAP sysTrapFlpDispatch sysFloatBase10Info Err FlpBase10Info 4 FlpDouble a UInt32_* mantissaP Int16_* exponentP Int16_* signP
-#SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd FlpDouble FlpCorrectedAdd 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-#SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub FlpDouble FlpCorrectedSub 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
-#SEL_TRAP sysTrapFlpDispatch sysFloatFToA Err FlpFToA 2 FlpDouble a Char_* s
-#SEL_TRAP sysTrapFlpDispatch sysFloatVersion UInt32 FlpVersion 0
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_add FlpDouble _d_add 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpDispatch sysFloatAToF FlpDouble FlpAToF 1 const_Char_* s
+SEL_TRAP sysTrapFlpDispatch sysFloatBase10Info Err FlpBase10Info 4 FlpDouble a UInt32_* mantissaP Int16_* exponentP Int16_* signP
+SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedAdd FlpDouble FlpCorrectedAdd 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
+SEL_TRAP sysTrapFlpDispatch sysFloatCorrectedSub FlpDouble FlpCorrectedSub 3 FlpDouble firstOperand FlpDouble secondOperand Int16 howAccurate
+SEL_TRAP sysTrapFlpDispatch sysFloatFToA Err FlpFToA 2 FlpDouble a Char_* s
+SEL_TRAP sysTrapFlpDispatch sysFloatVersion UInt32 FlpVersion 0
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_add FlpDouble _d_add 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmp Int32 _d_cmp 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_cmpe Int32 _d_cmpe 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_div FlpDouble _d_div 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtof FlpFloat _d_dtof 1 FlpDouble a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoi Int32 _d_dtoi 1 FlpDouble a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoll sfpe_long_long _d_dtoll 1 FlpDouble a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_div FlpDouble _d_div 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtof FlpFloat _d_dtof 1 FlpDouble a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoi Int32 _d_dtoi 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoll Int64 _d_dtoll 1 FlpDouble a
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoq FlpLongDouble _d_dtoq 1 FlpDouble a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtou UInt32 _d_dtou 1 FlpDouble a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoull sfpe_unsigned_long_long _d_dtoull 1 FlpDouble a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_feq Int32 _d_feq 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fge Int32 _d_fge 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fgt Int32 _d_fgt 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fle Int32 _d_fle 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_flt Int32 _d_flt 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fne Int32 _d_fne 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtou UInt32 _d_dtou 1 FlpDouble a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_dtoull UInt64 _d_dtoull 1 FlpDouble a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_feq Int32 _d_feq 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fge Int32 _d_fge 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fgt Int32 _d_fgt 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fle Int32 _d_fle 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_flt Int32 _d_flt 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fne Int32 _d_fne 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_for Int32 _d_for 2 FlpDouble a FlpDouble b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_fun Int32 _d_fun 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_itod FlpDouble _d_itod 1 Int32 a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_lltod FlpDouble _d_lltod 1 sfpe_long_long a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_mul FlpDouble _d_mul 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_neg FlpDouble _d_neg 1 FlpDouble a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_itod FlpDouble _d_itod 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_lltod FlpDouble _d_lltod 1 Int64 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_mul FlpDouble _d_mul 2 FlpDouble a FlpDouble b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_neg FlpDouble _d_neg 1 FlpDouble a
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_qtod FlpDouble _d_qtod 1 const_FlpLongDouble_* a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_sub FlpDouble _d_sub 2 FlpDouble a FlpDouble b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_ulltod FlpDouble _d_ulltod 1 sfpe_unsigned_long_long a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_utod FlpDouble _d_utod 1 UInt32 a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_add FlpFloat _f_add 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_sub FlpDouble _d_sub 2 FlpDouble a FlpDouble b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_ulltod FlpDouble _d_ulltod 1 UInt64 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_d_utod FlpDouble _d_utod 1 UInt32 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_add FlpFloat _f_add 2 FlpFloat a FlpFloat b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmp Int32 _f_cmp 2 FlpFloat a FlpFloat b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_cmpe Int32 _f_cmpe 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_div FlpFloat _f_div 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_feq Int32 _f_feq 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fge Int32 _f_fge 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fgt Int32 _f_fgt 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fle Int32 _f_fle 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_flt Int32 _f_flt 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fne Int32 _f_fne 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_div FlpFloat _f_div 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_feq Int32 _f_feq 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fge Int32 _f_fge 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fgt Int32 _f_fgt 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fle Int32 _f_fle 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_flt Int32 _f_flt 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fne Int32 _f_fne 2 FlpFloat a FlpFloat b
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_for Int32 _f_for 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftod FlpDouble _f_ftod 1 FlpFloat a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoi Int32 _f_ftoi 1 FlpFloat a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoll sfpe_long_long _f_ftoll 1 FlpFloat a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftod FlpDouble _f_ftod 1 FlpFloat a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoi Int32 _f_ftoi 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoll Int64 _f_ftoll 1 FlpFloat a
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoq FlpLongDouble _f_ftoq 1 FlpFloat a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftou UInt32 _f_ftou 1 FlpFloat a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoull sfpe_unsigned_long_long _f_ftoull 1 FlpFloat a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftou UInt32 _f_ftou 1 FlpFloat a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ftoull UInt64 _f_ftoull 1 FlpFloat a
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_fun Int32 _f_fun 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_itof FlpFloat _f_itof 1 Int32 a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_lltof FlpFloat _f_lltof 1 sfpe_long_long a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_mul FlpFloat _f_mul 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_neg FlpFloat _f_neg 1 FlpFloat a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_itof FlpFloat _f_itof 1 Int32 a
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_lltof FlpFloat _f_lltof 1 Int64 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_mul FlpFloat _f_mul 2 FlpFloat a FlpFloat b
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_neg FlpFloat _f_neg 1 FlpFloat a
 #SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_qtof FlpFloat _f_qtof 1 const_FlpLongDouble_* a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_sub FlpFloat _f_sub 2 FlpFloat a FlpFloat b
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ulltof FlpFloat _f_ulltof 1 sfpe_unsigned_long_long a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_utof FlpFloat _f_utof 1 UInt32 a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_get_fpscr Int32 _fp_get_fpscr 0
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_round Int32 _fp_round 1 Int32 a
-#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_set_fpscr void _fp_set_fpscr 1 Int32 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_sub FlpFloat _f_sub 2 FlpFloat a FlpFloat b
+#SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_ulltof FlpFloat _f_ulltof 1 UInt64 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_f_utof FlpFloat _f_utof 1 UInt32 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_get_fpscr Int32 _fp_get_fpscr 0
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_round Int32 _fp_round 1 Int32 a
+SEL_TRAP sysTrapFlpEmDispatch sysFloatEm_fp_set_fpscr void _fp_set_fpscr 1 Int32 a
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpCreateBitmapV3 BitmapTypeV3_* BmpCreateBitmapV3 4 const_BitmapType_* bitmapP UInt16 density const_void_* bitsP const_ColorTableType_* colorTableP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetCompressionType BitmapCompressionType BmpGetCompressionType 1 const_BitmapType_* bitmapP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetDensity UInt16 BmpGetDensity 1 const_BitmapType_* bitmapP
@@ -479,12 +479,12 @@ SEL_TRAP sysTrapHostControl hostSelectorFGetC long HostFGetC 1 HostFILEType_* fi
 SEL_TRAP sysTrapHostControl hostSelectorFGetPos long HostFGetPos 2 HostFILEType_* fileP long_* posP
 SEL_TRAP sysTrapHostControl hostSelectorFGetS char_* HostFGetS 3 char_* s long n HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFOpen HostFILEType_* HostFOpen 2 const_char_* name const_char_* mode
-SEL_TRAP sysTrapHostControl hostSelectorFPrintF long HostFPrintF 3 HostFILEType_* fileP const_char_* fmt ... ap
+#SEL_TRAP sysTrapHostControl hostSelectorFPrintF long HostFPrintF 3 HostFILEType_* fileP const_char_* fmt ... ap
 SEL_TRAP sysTrapHostControl hostSelectorFPutC long HostFPutC 2 long c HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFPutS long HostFPutS 2 const_char_* s HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFRead long HostFRead 4 void_* buffer long size long count HostFILEType_* fileP
 SEL_TRAP sysTrapHostControl hostSelectorFReopen HostFILEType_* HostFReopen 3 const_char_* name const_char_* mode HostFILEType_* fileP
-SEL_TRAP sysTrapHostControl hostSelectorFScanF long HostFScanF 3 HostFILEType_* fileP const_char_* fmt ... ap
+#SEL_TRAP sysTrapHostControl hostSelectorFScanF long HostFScanF 3 HostFILEType_* fileP const_char_* fmt ... ap
 SEL_TRAP sysTrapHostControl hostSelectorFSeek long HostFSeek 3 HostFILEType_* fileP long offset long origin
 SEL_TRAP sysTrapHostControl hostSelectorFSetPos long HostFSetPos 2 HostFILEType_* fileP long_* pos
 SEL_TRAP sysTrapHostControl hostSelectorFTell long HostFTell 1 HostFILEType_* fileP
@@ -551,8 +551,8 @@ SEL_TRAP sysTrapHostControl hostSelectorTmpNam char_* HostTmpNam 1 char_* nameP
 SEL_TRAP sysTrapHostControl hostSelectorTraceClose void HostTraceClose 0
 SEL_TRAP sysTrapHostControl hostSelectorTraceInit void HostTraceInit 0
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputB void HostTraceOutputB 3 UInt16 a const_void_* b HostSizeType c
-SEL_TRAP sysTrapHostControl hostSelectorTraceOutputT void HostTraceOutputT 3 UInt16 a const_char_* b ... ap
-SEL_TRAP sysTrapHostControl hostSelectorTraceOutputTL void HostTraceOutputTL 3 UInt16 a const_char_* b ... ap
+#SEL_TRAP sysTrapHostControl hostSelectorTraceOutputT void HostTraceOutputT 3 UInt16 a const_char_* b ... ap
+#SEL_TRAP sysTrapHostControl hostSelectorTraceOutputTL void HostTraceOutputTL 3 UInt16 a const_char_* b ... ap
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputVT void HostTraceOutputVT 3 UInt16 a const_char_* b char_* va
 SEL_TRAP sysTrapHostControl hostSelectorTraceOutputVTL void HostTraceOutputVTL 3 UInt16 a const_char_* b char_* va
 SEL_TRAP sysTrapHostControl hostSelectorTruncate long HostTruncate 2 const_char_* a long b
@@ -598,8 +598,8 @@ SEL_TRAP sysTrapOmDispatch omGetSystemLocale void OmGetSystemLocale 1 LmLocaleTy
 SEL_TRAP sysTrapOmDispatch omLocaleToOverlayDBName Err OmLocaleToOverlayDBName 3 const_Char_* baseDBName const_LmLocaleType_* targetLocale Char_* overlayDBName
 SEL_TRAP sysTrapOmDispatch omOverlayDBNameToLocale Err OmOverlayDBNameToLocale 2 const_Char_* overlayDBName LmLocaleType_* overlayLocale
 SEL_TRAP sysTrapOmDispatch omSetSystemLocale Err OmSetSystemLocale 1 const_LmLocaleType_* systemLocale
-SEL_TRAP sysTrapPinsDispatch pinFrmGetDIAPolicyAttr UInt16 FrmGetDIAPolicyAttr 1 FormPtr formP
-SEL_TRAP sysTrapPinsDispatch pinFrmSetDIAPolicyAttr Err FrmSetDIAPolicyAttr 2 FormPtr formP UInt16 diaPolicy
+SEL_TRAP sysTrapPinsDispatch pinFrmGetDIAPolicyAttr UInt16 FrmGetDIAPolicyAttr 1 FormType_* formP
+SEL_TRAP sysTrapPinsDispatch pinFrmSetDIAPolicyAttr Err FrmSetDIAPolicyAttr 2 FormType_* formP UInt16 diaPolicy
 SEL_TRAP sysTrapPinsDispatch pinPINGetInputAreaState UInt16 PINGetInputAreaState 0
 SEL_TRAP sysTrapPinsDispatch pinPINGetInputTriggerState UInt16 PINGetInputTriggerState 0
 SEL_TRAP sysTrapPinsDispatch pinPINSetInputAreaState Err PINSetInputAreaState 1 UInt16 state
@@ -641,7 +641,7 @@ SEL_TRAP sysTrapSerialDispatch sysSerialSleep Err SrmSleep 0
 SEL_TRAP sysTrapSerialDispatch sysSerialWake Err SrmWake 0
 SEL_TRAP sysTrapTsmDispatch tsmGetFepMode TsmFepModeType TsmGetFepMode 1 void_* nullParam
 SEL_TRAP sysTrapTsmDispatch tsmSetFepMode TsmFepModeType TsmSetFepMode 2 void_* nullParam TsmFepModeType inNewMode
-SEL_TRAP sysTrapUdaMgrDispatch sysUdaControl Err UDAControl 3 UDAObjectType_* ioObject UInt16 parameter ... ap
+#SEL_TRAP sysTrapUdaMgrDispatch sysUdaControl Err UDAControl 3 UDAObjectType_* ioObject UInt16 parameter ... ap
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeReaderNew UDAReaderType_* UDAExchangeReaderNew 1 ExgSocketType_* socket
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeWriterNew UDAWriterType_* UDAExchangeWriterNew 2 ExgSocketType_* socket UDABufferSize bufferSize
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaMemoryReaderNew UDAReaderType_* UDAMemoryReaderNew 2 const_UInt8_* bufferP UDABufferSize bufferSizeInBytes
@@ -1602,7 +1602,7 @@ SYS_TRAP sysTrapWinCreateWindow 0 WinHandle WinCreateWindow 5 const_RectangleTyp
 SYS_TRAP sysTrapWinDeleteWindow 0 void WinDeleteWindow 2 WinHandle winHandle Boolean eraseIt
 SYS_TRAP sysTrapWinDisableWindow 0 void WinDisableWindow 1 WinHandle winHandle
 SYS_TRAP sysTrapWinDisplayToWindowPt 0 void WinDisplayToWindowPt 2 Coord_* extentX Coord_* extentY
-SYS_TRAP sysTrapWinDrawBitmap 0 void WinDrawBitmap 3 BitmapPtr bitmapP Coord x Coord y
+SYS_TRAP sysTrapWinDrawBitmap 0 void WinDrawBitmap 3 BitmapType_* bitmapP Coord x Coord y
 SYS_TRAP sysTrapWinDrawChar 0 void WinDrawChar 3 WChar theChar Coord x Coord y
 SYS_TRAP sysTrapWinDrawChars 0 void WinDrawChars 4 const_Char_* chars Int16 len Coord x Coord y
 SYS_TRAP sysTrapWinDrawGrayLine 0 void WinDrawGrayLine 4 Coord x1 Coord y1 Coord x2 Coord y2

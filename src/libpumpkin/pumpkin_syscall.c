@@ -16,6 +16,7 @@
 #include <LstGlue.h>
 #include <TblGlue.h>
 #include <WinGlue.h>
+#include <FloatMgr.h>
 
 #include <CPMLib.h>
 #include <GPSLib68K.h>
@@ -34,6 +35,17 @@ int pumpkin_system_call(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *
   if (lib == 0) {
     switch (id) {
 #include "syscall_switch.c"
+      case sysTrapStrPrintF:
+      case sysTrapStrVPrintF: {
+        Char *s = sys_va_arg(ap, void *);
+        const Char *formatStr = sys_va_arg(ap, void *);
+        void *p = sys_va_arg(ap, void *);
+        sys_va_list ap2;
+        sys_memcpy(&ap2, p, sizeof(sys_va_list));
+        Int16 ret = StrVPrintF(s, formatStr, ap2);
+        *iret = ret;
+        }
+        break;
       default:
         debug(DEBUG_ERROR, PUMPKINOS, "invalid syscall 0x%04X %d", id, sel);
         r = -1;

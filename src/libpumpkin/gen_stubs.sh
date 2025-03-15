@@ -117,6 +117,6 @@ symbol[$5] {
   print "}";
   print "";
 }
-' syscalls_stubs.txt ../libpumpkin/traps.txt
+' $1 $2
 
 exit 0

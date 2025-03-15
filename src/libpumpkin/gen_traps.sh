@@ -15,11 +15,16 @@
 awk -v trap=$1 '
 BEGIN {
   insel = "";
+  ptrType["DmOpenRef"] = 1;
+  ptrType["FileRef"] = 1;
+  ptrType["FileHand"] = 1;
+  ptrType["ErrJumpBufP"] = 1;
 }
 /^#/ {
   next;
 }
 $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
+  if ($2 == "sysTrapStrPrintF" || $2 == "sysTrapStrVPrintF") next;
   if ($1 == "SEL_TRAP") {
     if (insel && insel != $2) {
       print "    }";
@@ -48,14 +53,17 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   nargs = 0 + $6;
   for (i = 0; i < nargs; i++) {
     atype = $(7 + i*2);
-    if (atype == "sys_va_list" || atype == "...") break;
-    if (atype == "ErrJumpBuf") atype = "ErrJumpBufP";
-    if (atype != "sys_va_list") {
+    arg = $(7 + i*2 + 1);
+    if (atype == "ErrJumpBuf") {
+      atype = "ErrJumpBufP";
+    } else if (atype == "sys_va_list" || atype == "...") {
+      atype = "void *";
+      arg = "ap2";
+    } else {
       gsub("_", " ", atype);
     }
     s = "      " atype;
     if (!(atype ~ /[*]$/)) s = s " ";
-    arg = $(7 + i*2 + 1);
     pos = index(arg, "[");
     if (pos > 0) {
       arg = "*" substr(arg, 1, pos-1);
@@ -67,10 +75,14 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
     if (atype == "GetCharF" || atype == "PutStringF") {
       arg = "*" arg;
       atype = "void *";
-    } else if (atype == "UInt8" || atype == "UInt16" || atype == "Boolean" || atype == "IndexedColorType" || atype == "FrameType" || atype == "WChar" || atype == "Err" || atype == "UIPickColorStartType" || atype == "SndSysBeepType" || atype == "SndSmfCmdEnum" || atype == "DmResID" || atype == "AttnLevelType" || atype == "FileOrigin" || atype == "UDABufferSize" || atype == "TsmFepModeType" || atype == "OmSelector" || atype == "LmLocaleSettingChoice" || atype == "TranslitOpType" || atype == "CharEncodingType" || atype == "IntlSelector") {
+    } else if (atype == "UIntPtr") {
+      atype = "UIntPtr";
+    } else if (atype ~ /[*]$/ || atype ~ /Ptr$/ || atype ~ /Handle$/ || atype ~ /Callback/ || ptrType[atype]) {
+      atype = "void *";
+    } else if (atype == "FlpDouble") {
+      atype = "UInt64";
+    } else if (atype != "DateType" && atype != "UIntPtr") {
       atype = "UInt32";
-    } else if (atype == "Char" || atype == "Int8" || atype == "Int16" || atype == "Coord" || atype == "SndStreamWidth" || atype == "SndSampleType" || atype == "SndStreamMode") {
-      atype = "Int32";
     }
     s = s arg " = sys_va_arg(ap, " atype ");";
     print s;
@@ -88,6 +100,7 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   if (nargs > 0) {
     for (i = 0; i < nargs; i++) {
       arg = $(7 + i*2 + 1);
+      if (arg == "ap") arg = "ap2";
       pos = index(arg, "[");
       if (pos > 0) arg = substr(arg, 1, pos-1);
       if (i > 0) s = s ", ";
@@ -97,10 +110,12 @@ $1 == trap || ($1 !~ /LIB$/ && trap == "0") {
   s = s ");";
   print s;
   if (rtype != "void") {
-    if (rtype ~ /[*]$/ || rtype == "MemHandle" || rtype == "MemPtr" || rtype == "WinHandle" || rtype == "DmOpenRef" || rtype == "FileHand" || rtype == "NetHostInfoPtr" || rtype == "NetServInfoPtr") {
+    if (rtype == "UIntPtr") {
+      print "      *iret = ret;";
+    } else if (rtype ~ /[*]$/ || rtype ~ /Ptr$/ || rtype ~ /Handle$/ || rtype ~ /Callback/ || ptrType[rtype]) {
       print "      *pret = (void *)ret;";
     } else if (rtype == "FlpDouble") {
-      print "      uint64_t *d = (uint64_t *)(&ret);";
+      print "      UInt64 *d = (UInt64 *)(&ret);";
       print "      *iret = *d;";
     } else {
       print "      *iret = ret;";
