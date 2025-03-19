@@ -434,6 +434,7 @@ Err SndInterruptSmfIrregardless(void) {
 Err SndStreamDelete(SndStreamRef channel) {
   Err err = sndErrBadParam;
 
+  debug(DEBUG_TRACE, "Sound", "SndStreamDelete(%d)", channel);
   if (channel > 0) {
     ptr_free(channel, TAG_SOUND);
     err = errNone;
@@ -607,6 +608,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
 
       if (freeArg) {
         debug(DEBUG_INFO, "Sound", "pumpkin_sound_finish");
+        ptr_free(arg->ptr, TAG_SOUND);
         pumpkin_sound_finish();
         xfree(arg);
       }
@@ -621,6 +623,8 @@ Err SndStreamStart(SndStreamRef channel) {
   SndStreamType *snd;
   SndStreamArg *arg;
   Err err = sndErrBadParam;
+
+  debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d)", channel);
 
   if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
     if (snd->started) {
@@ -655,6 +659,7 @@ Err SndStreamStart(SndStreamRef channel) {
 Err SndStreamPause(SndStreamRef channel, Boolean pause) {
   Err err;
 
+  debug(DEBUG_TRACE, "Sound", "SndStreamPause(%d, %d)", channel, pause);
   if (pause) {
     err = SndStreamStop(channel);
   } else {
@@ -668,6 +673,7 @@ Err SndStreamStop(SndStreamRef channel) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
 
+  debug(DEBUG_TRACE, "Sound", "SndStreamStop(%d)", channel);
   if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
     snd->stopped = true;
     ptr_unlock(channel, TAG_SOUND);
@@ -762,6 +768,8 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   snd_param_t param;
   Err err = sndErrBadParam;
 
+  debug(DEBUG_TRACE, "Sound", "SndPlayResource(%p, %d, 0x%08X)", sndP, volume, flags);
+
   if (sndP && flags == sndFlagSync) {
     param.size = MemPtrSize(sndP);
 
@@ -783,9 +791,9 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
             for (; !param.finished && !thread_must_end();) {
               SysTaskDelay(5);
             }
-          } else {
+          } //else {
             SndStreamDelete(sound);
-          }
+          //}
         }
       }
     } else {
@@ -826,7 +834,9 @@ Err SndPlayFile(FileRef f, Int32 volume, UInt32 flags) {
   snd_param_t param;
   Err err = sndErrBadParam;
 
-  if (f && flags == sndFlagSync && VFSFileTell(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
+  debug(DEBUG_TRACE, "Sound", "SndPlayFile(%p, %d, 0x%08X)", f, volume, flags);
+
+  if (f && flags == sndFlagSync && VFSFileSize(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
     if (WavFileHeader(f, &rate, &type, &width)) {
       param.finished = false;
       param.f = f;
@@ -844,9 +854,9 @@ Err SndPlayFile(FileRef f, Int32 volume, UInt32 flags) {
           for (; !param.finished && !thread_must_end();) {
             SysTaskDelay(5);
           }
-        } else {
+        } //else {
           SndStreamDelete(sound);
-        }
+        //}
       }
     } else {
       err = sndErrFormat;
@@ -901,6 +911,7 @@ void SndStreamRefDestructor(void *p) {
   SndStreamType *snd = (SndStreamType *)p;
 
   if (snd) {
+    debug(DEBUG_TRACE, "Sound", "SndStreamRefDestructor(%p)", snd);
     if (snd->audio) {
       module->ap->destroy(snd->audio);
     }
@@ -992,6 +1003,7 @@ static Err SndStreamCreateInternal(
     debug(DEBUG_ERROR, "Sound", "SndStreamCreate invalid arguments");
   }
 
+  debug(DEBUG_TRACE, "Sound", "SndStreamCreateInternal(%d): %d", *channel, err);
   return err;
 }
 
