@@ -14,6 +14,8 @@ pumpkin = pit.loadlib("libos")
 pumpkin.init()
 
 pumpkin.start {
+  mode        = 2,
+  dia         = true,
   fullrefresh = true,
   density     = 144,
   width       = 800,
