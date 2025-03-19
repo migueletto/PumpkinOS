@@ -1039,7 +1039,7 @@ static int adjustName(char *buf, int size, char *name, int *width, int max) {
   len = StrLen(buf);
   *width = FntCharsWidth(buf, len);
   if (*width >= max) {
-    len = FntWidthToOffset(buf, len, max - FntCharWidth(chrEllipsis), NULL, NULL);
+    len = FntWidthToOffset(buf, len, max - FntCharWidth(chrEllipsis) - 1, NULL, NULL);
     buf[len++] = chrEllipsis;
     buf[len] = 0;
     *width = FntCharsWidth(buf, len);
