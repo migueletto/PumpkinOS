@@ -2626,6 +2626,17 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "SndSysBeepType(%d)", beepID);
       }
       break;
+    case sysTrapSndPlayResource: {
+      // Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags)
+      uint32_t sndP = ARG32;
+      int32_t volume = ARG32;
+      uint32_t flags = ARG32;
+      void *sndPtr = (void *)emupalmos_trap_in(sndP, trap, 0);
+      Err res = SndPlayResource(sndPtr, volume, flags);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndPlayResource(0x%08X, %d, 0x%08X): %d", sndP, volume, flags, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case sysTrapSysKeyboardDialogV10: {
       // void SysKeyboardDialogV10(void)
       SysKeyboardDialogV10();

@@ -52,6 +52,7 @@ typedef struct {
   UInt32 size;
   UInt32 pos;
   UInt32 sampleSize;
+  Boolean async;
   Boolean finished;
 } snd_param_t;
 
@@ -626,7 +627,7 @@ Err SndStreamStart(SndStreamRef channel) {
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d)", channel);
 
-  if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+  if (channel > 0 && module->ap && module->ap->start && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
     if (snd->started) {
       snd->stopped = false;
       err = errNone;
@@ -744,6 +745,7 @@ static Err SndPlayResourceCallback(void *userdata, SndStreamRef sound, void *buf
   Err err = sndErrBadParam;
 
   if (param && buffer) {
+    sys_memset(buffer, 0, numberofframes * param->sampleSize);
     n = numberofframes;
     if (n > (param->size - param->pos)) n = param->size - param->pos;
     if (n > 0) {
@@ -754,46 +756,90 @@ static Err SndPlayResourceCallback(void *userdata, SndStreamRef sound, void *buf
   }
 
   if (err != errNone) {
-    param->finished = true;
+    if (param->async) {
+      debug(DEBUG_TRACE, "Sound", "SndPlayResourceCallback async finish");
+      sys_free(param->buffer);
+      param->buffer = NULL;
+      sys_free(param);
+    } else {
+      debug(DEBUG_TRACE, "Sound", "SndPlayResourceCallback sync finish");
+      param->finished = true;
+    }
   }
 
   return err;
 }
 
 Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
+  MemHandle h;
   SndStreamRef sound;
   SndStreamWidth width;
   SndSampleType type;
   UInt32 rate;
-  snd_param_t param;
+  UInt8 *snd;
+  snd_param_t *param;
   Err err = sndErrBadParam;
 
   debug(DEBUG_TRACE, "Sound", "SndPlayResource(%p, %d, 0x%08X)", sndP, volume, flags);
 
-  if (sndP && flags == sndFlagSync) {
-    param.size = MemPtrSize(sndP);
+  if (sndP) {
+    param = sys_calloc(1, sizeof(snd_param_t));
+    snd = (UInt8 *)sndP;
+    h = MemPtrRecoverHandle(snd);
 
-    if (param.size >= WAV_HEADER_SIZE) {
-      if (WavBufferHeader((UInt8 *)sndP, &rate, &type, &width)) {
-        param.finished = false;
-        param.buffer = ((UInt8 *)sndP) + WAV_HEADER_SIZE;
-        param.pos = 0;
-        param.sampleSize = 1;
-        if (width == sndStereo) param.sampleSize <<= 1;
-        if (type == sndInt16) param.sampleSize <<= 1;
-        else if (type == sndInt32 || type == sndFloat) param.sampleSize <<= 2;
-        param.size -= WAV_HEADER_SIZE;
-        param.size /= param.sampleSize;
+    if (h) {
+      param->size = MemHandleSize(h);
+      debug(DEBUG_TRACE, "Sound", "SndPlayResource handle size %d", param->size);
+    } else {
+      // the game Joggle locks a resource and calls SndPlayResource passing not the locked pointer,
+      // but pointer+4. Therefore, if MemPtrRecoverHandle fails, we try pointer-4.
+      h = MemPtrRecoverHandle(snd - 4);
+      if (h) {
+        param->size = MemHandleSize(h) - 4;
+        debug(DEBUG_TRACE, "Sound", "SndPlayResource handle size (-4) %d", param->size);
+      } else {
+        debug(DEBUG_ERROR, "Sound", "SndPlayResource sndP is not a handle");
+      }
+    }
 
-        if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayResourceCallback, &param, 0, false) == errNone) {
+    if (param->size >= WAV_HEADER_SIZE) {
+      if (WavBufferHeader(snd, &rate, &type, &width)) {
+        param->finished = false;
+        param->size -= WAV_HEADER_SIZE;
+        param->buffer = sys_calloc(1, param->size);
+        sys_memcpy(param->buffer, snd + WAV_HEADER_SIZE, param->size);
+        param->pos = 0;
+        param->sampleSize = 1;
+        if (width == sndStereo) param->sampleSize <<= 1;
+        if (type == sndInt16) param->sampleSize <<= 1;
+        else if (type == sndInt32 || type == sndFloat) param->sampleSize <<= 2;
+        param->size /= param->sampleSize;
+        param->async = flags == sndFlagAsync;
+        debug(DEBUG_TRACE, "Sound", "SndPlayResource %d samples of size %d", param->size, param->sampleSize);
+
+        if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayResourceCallback, param, 0, false) == errNone) {
           SndStreamSetVolume(sound, volume);
           if (SndStreamStart(sound) == errNone) {
-            for (; !param.finished && !thread_must_end();) {
-              SysTaskDelay(5);
+            if (flags == sndFlagAsync) {
+              debug(DEBUG_TRACE, "Sound", "SndPlayResource async");
+            } else {
+              debug(DEBUG_TRACE, "Sound", "SndPlayResource sync loop begin");
+              for (; !param->finished && !thread_must_end();) {
+                SysTaskDelay(5);
+              }
+              sys_free(param->buffer);
+              sys_free(param);
+              debug(DEBUG_TRACE, "Sound", "SndPlayResource sync loop end");
             }
-          } //else {
+            err = errNone;
+          } else {
             SndStreamDelete(sound);
-          //}
+            sys_free(param->buffer);
+            sys_free(param);
+          }
+        } else {
+          sys_free(param->buffer);
+          sys_free(param);
         }
       }
     } else {
@@ -814,13 +860,21 @@ static Err SndPlayFileCallback(void *userdata, SndStreamRef sound, void *buffer,
     if (n > (param->size - param->pos)) n = param->size - param->pos;
     if (n > 0) {
       if ((err = VFSFileRead(param->f, n * param->sampleSize, buffer, &nread)) == errNone) {
-        param->pos += nread / param->sampleSize;;
+        param->pos += nread / param->sampleSize;
       }
     }
   }
 
   if (err != errNone) {
-    param->finished = true;
+    VFSFileClose(param->f);
+    if (param->async) {
+      debug(DEBUG_TRACE, "Sound", "SndPlayFileCallback async finish");
+      sys_free(param);
+    } else {
+      debug(DEBUG_TRACE, "Sound", "SndPlayFileCallback sync finish");
+      param->f = NULL;
+      param->finished = true;
+    }
   }
 
   return err;
@@ -831,32 +885,45 @@ Err SndPlayFile(FileRef f, Int32 volume, UInt32 flags) {
   SndStreamWidth width;
   SndSampleType type;
   UInt32 rate, size;
-  snd_param_t param;
+  snd_param_t *param;
   Err err = sndErrBadParam;
 
   debug(DEBUG_TRACE, "Sound", "SndPlayFile(%p, %d, 0x%08X)", f, volume, flags);
 
-  if (f && flags == sndFlagSync && VFSFileSize(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
+  if (f && VFSFileSize(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
     if (WavFileHeader(f, &rate, &type, &width)) {
-      param.finished = false;
-      param.f = f;
-      param.pos = 0;
-      param.sampleSize = 1;
-      if (width == sndStereo) param.sampleSize <<= 1;
-      if (type == sndInt16) param.sampleSize <<= 1;
-      else if (type == sndInt32 || type == sndFloat) param.sampleSize <<= 2;
-      param.size -= WAV_HEADER_SIZE;
-      param.size /= param.sampleSize;
+      param = sys_calloc(1, sizeof(snd_param_t));
+      param->finished = false;
+      param->f = f;
+      param->pos = 0;
+      param->sampleSize = 1;
+      if (width == sndStereo) param->sampleSize <<= 1;
+      if (type == sndInt16) param->sampleSize <<= 1;
+      else if (type == sndInt32 || type == sndFloat) param->sampleSize <<= 2;
+      param->size -= WAV_HEADER_SIZE;
+      param->size /= param->sampleSize;
+      param->async = flags == sndFlagAsync;
 
-      if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayFileCallback, &param, 0, false) == errNone) {
+      if (SndStreamCreate(&sound, sndOutput, rate, type, width, SndPlayFileCallback, param, 0, false) == errNone) {
         SndStreamSetVolume(sound, volume);
         if (SndStreamStart(sound) == errNone) {
-          for (; !param.finished && !thread_must_end();) {
-            SysTaskDelay(5);
+          if (flags == sndFlagAsync) {
+            debug(DEBUG_TRACE, "Sound", "SndPlayFile async");
+          } else {
+            debug(DEBUG_TRACE, "Sound", "SndPlayFile sync loop begin");
+            for (; !param->finished && !thread_must_end();) {
+              SysTaskDelay(5);
+            }
+            sys_free(param);
+            debug(DEBUG_TRACE, "Sound", "SndPlayFile sync loop end");
           }
-        } //else {
+          err = errNone;
+        } else {
           SndStreamDelete(sound);
-        //}
+          sys_free(param);
+        }
+      } else {
+        sys_free(param);
       }
     } else {
       err = sndErrFormat;
@@ -912,7 +979,7 @@ void SndStreamRefDestructor(void *p) {
 
   if (snd) {
     debug(DEBUG_TRACE, "Sound", "SndStreamRefDestructor(%p)", snd);
-    if (snd->audio) {
+    if (snd->audio && module->ap && module->ap->destroy) {
       module->ap->destroy(snd->audio);
     }
     xfree(snd);
@@ -937,7 +1004,7 @@ static Err SndStreamCreateInternal(
   int ptr, pcm, samplesize;
   Err err = sndErrBadParam;
 
-  if (module->ap && channel && format == sndFormatPCM && (func || vfunc) && mode == sndOutput) {
+  if (module->ap && module->ap->create && channel && format == sndFormatPCM && (func || vfunc) && mode == sndOutput) {
     switch (type) {
       case sndInt8:
         pcm = PCM_S8;
@@ -991,7 +1058,7 @@ static Err SndStreamCreateInternal(
             *channel = ptr;
             err = errNone;
           } else {
-            module->ap->destroy(snd->audio);
+            if (module->ap->destroy) module->ap->destroy(snd->audio);
             xfree(snd);
           }
         } else {
