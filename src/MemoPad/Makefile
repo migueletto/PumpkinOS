@@ -22,7 +22,7 @@ $(STUBS).o: $(STUBS).c
 
 $(STUBS).c: $(OBJS)
 	$(NM) $(OBJS) | sort | uniq > $(STUBS).txt
-	$(LIBPUMPKIN)/gen_stubs.sh > $(STUBS).c
+	$(LIBPUMPKIN)/gen_stubs.sh $(STUBS).txt ../libpumpkin/traps.txt > $(STUBS).c
 
 clean:
 	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(PROGRAM) $(OBJS) $(DLIB) $(STUBS).c $(STUBS).o $(STUBS).txt
