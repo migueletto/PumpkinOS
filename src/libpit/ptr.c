@@ -149,7 +149,7 @@ static void *ptr_access(const char *file, const char *func, int line, int id, ch
   if (mutex_lock(mutex) == 0) {
     if (index > 0 && index < MAX_PTRS) {
       if (table[index].used) {
-        if (!table[index].delete) {
+        if (!table[index].delete || op == OP_UNLOCK) {
           if (table[index].id == id) {
             p = (generic_t *)table[index].p;
 
@@ -222,7 +222,7 @@ static void *ptr_access(const char *file, const char *func, int line, int id, ch
         break;
       case OP_UNLOCK:
         mutex_unlock(ptr_mutex);
-        debug_full(file, func, line, DEBUG_TRACE, "PTR", "unlocked handle %d (%d) (%s) locking=%d", id, index, tag, locking);
+        debug_full(file, func, line, DEBUG_TRACE, "PTR", "unlocked handle %d (%d) (%s) locking=%d delete=%d", id, index, tag, locking, delete);
         break;
       case OP_WAIT:
         debug_full(file, func, line, DEBUG_TRACE, "PTR", "waiting handle %d (%d) (%s) locking=%d us=%d", id, index, tag, locking, arg);

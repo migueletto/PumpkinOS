@@ -594,7 +594,7 @@ static int sendBuffer(HWAVEOUT hwo, WAVEHDR *hdr, void *buffer, uint32_t len, vo
   hdr->dwLoops = 0;
 
   if ((res = waveOutPrepareHeader(hwo, hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
-    debug(DEBUG_TRACE, "Windows", "sending %d bytes", len);
+    debug(DEBUG_TRACE, "Windows", "waveOutWrite sending %d bytes", len);
     if ((res = waveOutWrite(hwo, hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
       r = 0;
     } else {
@@ -628,6 +628,7 @@ static void CALLBACK waveOutCallback(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstan
   win_audio_t *audio;
   WAVEHDR *hdr;
 
+  debug(DEBUG_TRACE, "Windows", "waveOutCallback msg %d (OPEN=%d CLOSE=%d DONE=%d)", uMsg, WOM_OPEN, WOM_CLOSE, WOM_DONE);
   if (uMsg == WOM_DONE) {
     hdr = (WAVEHDR *)dwParam1;
     if (hdr) {
@@ -647,6 +648,7 @@ static void audio_destructor(void *p) {
   if (audio) {
     if (audio->hwo) {
       if (audio->buffer) xfree(audio->buffer);
+      debug(DEBUG_TRACE, "Windows", "audio_destructor waveOutClose");
       waveOutClose(audio->hwo);
     }
     xfree(audio);
@@ -688,7 +690,9 @@ static audio_t audio_create(int pcm, int channels, int rate, void *data) {
       audio->bsize *= channels;
       debug(DEBUG_INFO, "Windows", "sample size %d", audio->bsize);
       audio->bsize *= rate;
-      audio->bsize /= 20;
+      if (audio->bsize > 1024) {
+        audio->bsize = 1024;
+      }
       audio->buffer = xcalloc(1, audio->bsize);
       debug(DEBUG_INFO, "Windows", "buffer size %d", audio->bsize);
 
@@ -723,10 +727,8 @@ static int audio_start(audio_t _audio, int (*getaudio)(void *buffer, int len, vo
       audio->data = data;
 
       r = sendAudio(audio, 0);
-      if (r > 0) {
-        r = sendAudio(audio, 1);
-        if (r > 0) r = 0;
-      }
+      debug(DEBUG_TRACE, "Windows", "audio_start first get %d", r);
+      if (r > 0) r = 0;
     } else {
       debug(DEBUG_ERROR, "Windows", "audio_start invalid params");
     }

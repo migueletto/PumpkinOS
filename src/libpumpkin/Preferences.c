@@ -329,7 +329,8 @@ UInt32 PrefGetPreference(SystemPreferencesChoice choice) {
     case prefHardCradle2CharAppCreator: value = prefs.hardCradle2CharAppCreator; break;
     case prefAnimationLevel: value = prefs.animationLevel; break;
     case prefSysSoundVolume: value = prefs.sysSoundVolume; break;
-    case prefGameSoundVolume: value = prefs.gameSoundVolume; break;
+    //case prefGameSoundVolume: value = prefs.gameSoundVolume; break;
+    case prefGameSoundVolume: value = 1024; break;
     case prefAlarmSoundVolume: value = prefs.alarmSoundVolume; break;
     case prefBeamReceive: value = prefs.beamReceive; break;
     case prefCalibrateDigitizerAtReset: value = prefs.calibrateDigitizerAtReset; break;
