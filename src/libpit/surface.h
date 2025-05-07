@@ -38,7 +38,7 @@ typedef struct {
   uint32_t (*color_rgb)(void *data, int red, int green, int blue, int alpha);
   void (*rgb_color)(void *data, uint32_t color, int *red, int *green, int *blue, int *alpha);
   int (*event)(void *data, uint32_t us, int *arg1, int *arg2);
-  void (*update)(void *data);
+  void (*update)(void *data, int y0, int y1);
   void (*settitle)(void *data, char *title);
   void (*setoption)(void *data, int op, int value);
   void (*destroy)(void *data);
@@ -59,7 +59,7 @@ void surface_polygon(surface_t *surface, point_t *points, int n, int filled, uin
 void surface_curve(surface_t *surface, int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color);
 void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h);
 void surface_draw_alpha(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_x, int src_y, int w, int h);
-void surface_update(surface_t *surface);
+void surface_update(surface_t *surface, int y0, int y1);
 int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2);
 void surface_settitle(surface_t *surface, char *title);
 void *surface_buffer(surface_t *surface, int *len);

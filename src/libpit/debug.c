@@ -1,6 +1,8 @@
+#if !defined(KERNEL)
 #include <stdio.h>
+#endif
 
-#ifdef ANDROID
+#if defined(ANDROID)
 #include <android/log.h>
 #endif
 
@@ -18,8 +20,10 @@ typedef struct {
   int level;
 } debug_sys_t;
 
+#if !defined(KERNEL)
 static FILE *fd = NULL;
 static mutex_t *mutex;
+#endif
 static int level = DEBUG_ERROR;
 static debug_sys_t sys_level[MAX_SYS];
 static int nlevels = 0;
@@ -31,6 +35,7 @@ static int inited = 0;
 static char level_name[] = { 'E', 'I', 'T' };
 
 int debug_init(char *filename) {
+#if !defined(KERNEL)
   mutex = mutex_create("debug");
   if (filename) {
     if (!sys_strcmp(filename, "stdout")) fd = stdout;
@@ -40,16 +45,19 @@ int debug_init(char *filename) {
     fd = stderr;
   }
   if (fd == NULL) fd = stderr;
+#endif
   inited = 1;
   return 0;
 }
 
 int debug_close(void) {
+#if !defined(KERNEL)
   if (fd && fd != stderr && fd != stdout) {
     fclose(fd);
     fd = NULL;
   }
   mutex_destroy(mutex);
+#endif
 
   return 0;
 }
@@ -178,6 +186,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     thread_get_name(thread_name, sizeof(thread_name));
 
     sys_timeofday(&tv);
+
     ts = tv.tv_sec;
     us = tv.tv_usec;
     utctime(&ts, &tm);
@@ -232,7 +241,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
       default: _level = ANDROID_LOG_INFO;
     }
     __android_log_buf_write(LOG_ID_MAIN, _level, "pit", tmp);
-#else
+#elif !defined(KERNEL)
     mutex_lock_only(mutex);
     fwrite((uint8_t *)tmp, 1, s - tmp, fd);
     fflush(fd);

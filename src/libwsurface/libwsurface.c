@@ -176,7 +176,9 @@ static int libwsurface_window_event2(window_t *_window, int wait, int *arg1, int
 
   if (window && surface_ptr != -1) {
     if ((surface = ptr_lock(surface_ptr, TAG_SURFACE)) != NULL) {
-      ev = surface->event(surface->data, wait <= 0 ? wait : wait*1000, arg1, arg2);
+      if (surface->event) {
+        ev = surface->event(surface->data, wait <= 0 ? wait : wait*1000, arg1, arg2);
+      }
       ptr_unlock(surface_ptr, TAG_SURFACE);
 
       switch (ev) {
@@ -197,7 +199,10 @@ static int libwsurface_window_event2(window_t *_window, int wait, int *arg1, int
   return ev;
 }
 
-static int libwsurface_window_erase(window_t *_window, uint32_t bg) {
+#if !defined(KERNEL)
+static
+#endif
+int libwsurface_window_erase(window_t *_window, uint32_t bg) {
   libwsurface_window_t *window = (libwsurface_window_t *)_window;
   surface_t *surface;
   uint32_t c;

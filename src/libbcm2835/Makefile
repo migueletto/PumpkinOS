@@ -4,6 +4,7 @@ OBJS=bcm2835.o
 
 ifeq ($(OSNAME),Kernel)
 
+#CUSTOMFLAGS=-DBAREMETAL
 PROGRAM=$(BIN)/libbcm2835.a
 $(PROGRAM): $(OBJS)
 	$(AR) -cr $(PROGRAM) $(OBJS)

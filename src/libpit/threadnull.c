@@ -271,7 +271,7 @@ void thread_get_name(char *name, int len) {
 
   s = (char *)thread_get(tname);
   if (s == NULL) {
-    s = "???";
+    s = "MAIN";
   }
 
   for (i = 0; s[i] && i < len-1; i++) {

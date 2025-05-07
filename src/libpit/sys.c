@@ -57,12 +57,15 @@
 
 #if defined(KERNEL)
 #include "ff.h"
+#include "bcm2835.h"
 #endif
 
 #include "sys.h"
 #include "thread.h"
 #include "endianness.h"
 #include "ptr.h"
+#include "qsort.h"
+#include "vsnprintf.h"
 #include "debug.h"
 
 #define EN_US "en_US"
@@ -419,12 +422,11 @@ static int fd_write(fd_t *f, uint8_t *buf, int n) {
 #endif
 
 void sys_usleep(uint32_t us) {
+#if defined(KERNEL) && defined(RPI)
+  bcm2835_delayMicroseconds(us);
+#else
   usleep(us);
-}
-
-uint64_t sys_time(void) {
-  time_t t;
-  return time(&t);
+#endif
 }
 
 char *sys_getenv(char *name) {
@@ -2029,13 +2031,36 @@ int sys_daemonize(void) {
 #endif
 }
 
+static int my_clock_gettime(clockid_t clockid, struct timespec *tp) {
+#if defined(KERNEL) && defined(RPI)
+  uint64_t t = bcm2835_st_read();
+  tp->tv_sec = t / 1000000;
+  t = t % 1000000;;
+  tp->tv_nsec = t * 1000;
+  return 0;
+#else
+  return clock_gettime(clockid, tp);
+#endif
+}
+
+uint64_t sys_time(void) {
+#if defined(KERNEL) && defined(RPI)
+  struct timespec t;
+  my_clock_gettime(CLOCK_REALTIME, &t);
+  return t.tv_sec;
+#else
+  time_t t;
+  return time(&t);
+#endif
+}
+
 #ifndef WINDOWS
 #if _POSIX_TIMERS > 0
 static int64_t gettime(int type) {
   struct timespec tp;
   int64_t ts = -1;
 
-  if (clock_gettime(type, &tp) == 0) {
+  if (my_clock_gettime(type, &tp) == 0) {
     ts = ((int64_t)tp.tv_sec) * 1000000 + ((int64_t)tp.tv_nsec) / 1000;
   } else {
     debug_errno("SYS", "clock_gettime");
@@ -2072,10 +2097,10 @@ int sys_get_clock_ts(sys_timespec_t *ts) {
   int r;
 
 #if WINDOWS
-  r = clock_gettime(CLOCK_REALTIME, &t);
+  r = my_clock_gettime(CLOCK_REALTIME, &t);
 #else
 #if _POSIX_TIMERS > 0
-  r = clock_gettime(CLOCK_REALTIME, &t);
+  r = my_clock_gettime(CLOCK_REALTIME, &t);
 #else
   debug(DEBUG_ERROR, "SYS", "clock_gettime is not implemented");
   r = -1;
@@ -3341,72 +3366,17 @@ double sys_fabs(double x) {
   return x < 0 ? -x : x;
 }
 
-double sys_floor(double x) {
-  return floor(x);
-}
-
-double sys_ceil(double x) {
-  return ceil(x);
-}
-
-double sys_log(double x) {
-  return log(x);
-}
-
-double sys_exp(double x) {
-  return exp(x);
-}
-
-double sys_sqrt(double x) {
-  return sqrt(x);
-}
-
-double sys_pow(double x, double y) {
-  return pow(x, y);
-}
-
-double sys_sin(double x) {
-  return sin(x);
-}
-
-double sys_cos(double x) {
-  return cos(x);
-}
-
-double sys_pi(void) {
-  return M_PI;
-}
-
-double sys_atan2(double y, double x) {
-  return atan2(y, x);
-}
-
-double sys_modf(double x, double *iptr) {
-  return modf(x, iptr);
-}
-
-int sys_isnan(double x) {
-  return isnan(x);
-}
-
-int sys_isinf(double x) {
-  return isinf(x);
-}
-
-int sys_signbit(double x) {
-  return signbit(x);
-}
-
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
-  return qsort(base, nmemb, size, compar);
+  return my_qsort(base, nmemb, size, compar);
 }
 
 int sys_vsprintf(char *str, const char *format, sys_va_list ap) {
-  return vsprintf(str, format, ap);
+  // XXX 256 is wrong, but vsprintf is broken anyway
+  return sys_vsnprintf(str, 256, format, ap);
 }
 
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap) {
-  return vsnprintf(str, size, format, ap);
+  return my_vsnprintf(str, size, format, ap);
 }
 
 int sys_sscanf(const char *str, const char *format, ...) {
@@ -3429,11 +3399,17 @@ sys_size_t sys_getpagesize(void) {
 }
 
 int sys_setjmp(sys_jmp_buf env) {
+#if !defined(KERNEL)
   return setjmp(env);
+#else
+  return 0;
+#endif
 }
 
 void sys_longjmp(sys_jmp_buf env, int val) {
+#if !defined(KERNEL)
   longjmp(env, val);
+#endif
 }
 
 /*

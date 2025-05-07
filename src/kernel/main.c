@@ -8,6 +8,7 @@
 #include "pfont.h"
 #include "graphic.h"
 #include "surface.h"
+#include "pwindow.h"
 #include "script.h"
 #include "debug.h"
 #ifdef RPI
@@ -32,6 +33,7 @@ extern void surface_destructor(void *p);
 extern int libwsurface_load(void);
 extern int libwsurface_init(int pe, script_ref_t obj);
 extern void libwsurface_set_surface(int ptr);
+extern int libwsurface_window_erase(window_t *_window, uint32_t bg);
 
 #else
 
@@ -39,6 +41,15 @@ extern int liblsdl2_load(void);
 extern int liblsdl2_init(int pe, script_ref_t obj);
 
 #endif
+
+static void test(const char *fmt, ...) {
+  sys_va_list ap;
+  char buf[256];
+
+  sys_va_start(ap, fmt);
+  sys_vsnprintf(buf, sizeof(buf), fmt, ap);
+  sys_va_end(ap);
+}
 
 int main(int argc, char *argv[]) {
 #ifdef RPI
@@ -73,7 +84,6 @@ int main(int argc, char *argv[]) {
   libwsurface_load();
   libwsurface_init(0, 0);
 
-  //s = libili9486_create_surface(0, 536, 537, 16000000, 320, 480, spip, gpiop);
   s = libili9486_create_surface(0, 24, 25, 16000000, 320, 480, spip, gpiop);
   ptr = ptr_new(s, surface_destructor);
   libwsurface_set_surface(ptr);
@@ -84,7 +94,9 @@ int main(int argc, char *argv[]) {
 
   vfs_local_mount("./vfs/", "/");
   libos_app_init(0);
+  //test("Teste %d %.3f [%s] %p", 123, sys_pi(), "abc", s);
   libos_start(0);
+  libwsurface_window_erase(NULL, 0);
 
 #ifdef RPI
   ptr_free(ptr, s->tag);

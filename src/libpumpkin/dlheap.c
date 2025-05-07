@@ -61,6 +61,12 @@ heap_t *heap_init(uint8_t *base, uint32_t size, void *_wp) {
     return NULL;
   }
 
+  uint64_t p = (uint64_t)heap->start;
+  if (p & 0xf) {
+    p = (p + 0xf) & ~0xf;
+    heap->start = (uint8_t *)p;
+  }
+
   heap->size = size;
   heap->end = (void *)(heap->start + size);
   heap->state = xcalloc(1, dlmalloc_state_size());

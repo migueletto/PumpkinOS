@@ -1195,14 +1195,18 @@ unsigned int m68k_context_size()
 unsigned int m68k_get_context(void* dst)
 {
   M68K_GET_STATE;
-	if(dst) *(m68ki_cpu_core*)dst = m68ki_cpu;
+	//if(dst) *(m68ki_cpu_core*)dst = m68ki_cpu;
+  if (dst) {
+    sys_memcpy(dst, &m68ki_cpu, sizeof(m68ki_cpu_core));
+  }
 	return sizeof(m68ki_cpu_core);
 }
 
 void m68k_set_context(void* src)
 {
   M68K_GET_STATE;
-	if(src) m68ki_cpu = *(m68ki_cpu_core*)src;
+	//if(src) m68ki_cpu = *(m68ki_cpu_core*)src;
+  sys_memcpy(&m68ki_cpu, src, sizeof(m68ki_cpu_core));
 }
 
 /* ======================================================================== */

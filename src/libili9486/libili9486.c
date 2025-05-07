@@ -29,14 +29,17 @@ static void *libili9486_getbuffer(void *data, int *len) {
   return ili9486->buf;
 }
 
-static void libili9486_update(void *data) {
+static void libili9486_update(void *data, int y0, int y1) {
   libili9486_t *ili9486 = (libili9486_t *)data;
   int total, dy, y;
+
+  ili9486->y0 = y0;
+  ili9486->y1 = y1;
 
   if (ili9486->y0 < ili9486->y1) {
     total = ili9486->y1 - ili9486->y0 + 1;
     for (y = 0; total > 0; y += dy) {
-      dy = total < 64 ? total : 64;
+      dy = total < 256 ? total : 256;
       ili9486_draw(ili9486->spip, ili9486->spi, ili9486->gpiop, ili9486->gpio, ili9486->rs_pin, &ili9486->buf[(ili9486->y0 + y) * ili9486->width], 0, ili9486->y0 + y, ili9486->width, dy, ili9486->aux);
       total -= dy;
     }

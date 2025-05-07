@@ -417,6 +417,9 @@ void surface_draw(surface_t *dst, int dst_x, int dst_y, surface_t *src, int src_
         p1 += src_pitch;
         p2 += dst_pitch;
       }
+      if (dst->update) {
+        dst->update(dst->data, dst_y, dst_y + h - 1);
+      }
     } else {
       for (i = 0; i < h; i++) {
         for (j = 0; j < w; j++) {
@@ -765,8 +768,8 @@ int surface_event(surface_t *surface, uint32_t us, int *arg1, int *arg2) {
   return surface && surface->event ? surface->event(surface->udata ? surface->udata : surface->data, us, arg1, arg2) : 0;
 }
 
-void surface_update(surface_t *surface) {
-  if (surface && surface->update) surface->update(surface->udata ? surface->udata : surface->data);
+void surface_update(surface_t *surface, int y0, int y1) {
+  if (surface && surface->update) surface->update(surface->udata ? surface->udata : surface->data, y0, y1);
 }
 
 void *surface_buffer(surface_t *surface, int *len) {

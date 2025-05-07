@@ -1638,9 +1638,9 @@ int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int fle
 
 // called directly by libos if DIA or single app mode
 int pumpkin_launcher(char *name, int width, int height) {
+  pumpkin_task_t *task;
   LocalID dbID;
   UInt32 creator;
-  pumpkin_task_t *task;
   texture_t *texture;
   launch_request_t request;
 

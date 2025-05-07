@@ -51,7 +51,11 @@ static int libspi_open(int pe) {
         if ((ptr = ptr_new(spi, spi_destructor)) != -1) {
           r = script_push_integer(pe, ptr);
         } else {
+#if defined LINUX
           spi_close(spi->spi);
+#elif defined RPI
+          spi_bcm_close(spi->spi);
+#endif
           sys_free(spi);
         }
       } else {
