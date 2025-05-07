@@ -55,18 +55,19 @@
 #include <netdb.h>
 #endif
 
-#if defined(KERNEL)
-#include "ff.h"
-#include "bcm2835.h"
-#endif
-
 #include "sys.h"
 #include "thread.h"
 #include "endianness.h"
 #include "ptr.h"
+#include "debug.h"
+
+#if defined(KERNEL)
+#include "ff.h"
+#include "bcm2835.h"
 #include "qsort.h"
 #include "vsnprintf.h"
-#include "debug.h"
+#include "vsscanf.h"
+#endif
 
 #define EN_US "en_US"
 
@@ -3354,11 +3355,11 @@ int sys_mkstemp(void) {
 }
 #endif
 
-double sys_strtod(const char *nptr, char **endptr) {
-  return strtod(nptr, endptr);
+int sys_abs(int x) {
+  return x < 0 ? -x : x;
 }
 
-int sys_abs(int x) {
+long double sys_fabsl(long double x) {
   return x < 0 ? -x : x;
 }
 
@@ -3366,8 +3367,18 @@ double sys_fabs(double x) {
   return x < 0 ? -x : x;
 }
 
+#if !defined(KERNEL)
+double sys_strtod(const char *s, char **p) {
+  return strtod(s, p);
+}
+#endif
+
 void sys_qsort(void *base, sys_size_t nmemb, sys_size_t size, int (*compar)(const void *, const void *)) {
+#if defined(KERNEL)
   return my_qsort(base, nmemb, size, compar);
+#else
+  return qsort(base, nmemb, size, compar);
+#endif
 }
 
 int sys_vsprintf(char *str, const char *format, sys_va_list ap) {
@@ -3376,7 +3387,11 @@ int sys_vsprintf(char *str, const char *format, sys_va_list ap) {
 }
 
 int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap) {
+#if defined(KERNEL)
   return my_vsnprintf(str, size, format, ap);
+#else
+  return vsnprintf(str, size, format, ap);
+#endif
 }
 
 int sys_sscanf(const char *str, const char *format, ...) {
@@ -3384,7 +3399,12 @@ int sys_sscanf(const char *str, const char *format, ...) {
   int r;
 
   sys_va_start(ap, format);
+#if defined(KERNEL)
+  //r = my_vsscanf(str, format, ap);
   r = vsscanf(str, format, ap);
+#else
+  r = vsscanf(str, format, ap);
+#endif
   sys_va_end(ap);
 
   return r;

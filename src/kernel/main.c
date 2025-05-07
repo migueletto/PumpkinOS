@@ -42,15 +42,6 @@ extern int liblsdl2_init(int pe, script_ref_t obj);
 
 #endif
 
-static void test(const char *fmt, ...) {
-  sys_va_list ap;
-  char buf[256];
-
-  sys_va_start(ap, fmt);
-  sys_vsnprintf(buf, sizeof(buf), fmt, ap);
-  sys_va_end(ap);
-}
-
 int main(int argc, char *argv[]) {
 #ifdef RPI
   gpio_provider_t *gpiop;
@@ -94,8 +85,14 @@ int main(int argc, char *argv[]) {
 
   vfs_local_mount("./vfs/", "/");
   libos_app_init(0);
-  //test("Teste %d %.3f [%s] %p", 123, sys_pi(), "abc", s);
-  libos_start(0);
+
+  char c1, c2, c3, c4;
+  uint32_t u;
+  int d;
+  int r = sys_sscanf("MBAR.4D424152.1001", "%c%c%c%c.%08X.%d", &c1, &c2, &c3, &c4, &u, &d);
+  debug(1, "XXX", "%d", r);
+
+  //libos_start(0);
   libwsurface_window_erase(NULL, 0);
 
 #ifdef RPI

@@ -4,7 +4,15 @@
 #include <limits.h>
 #include <float.h>
 
+#include "ldshape.h"
+
 #define NL_ARGMAX 64
+
+typedef struct {
+  char *buf;
+  sys_size_t pos;
+  sys_size_t size;
+} printf_buf_t;
 
 /* Some useful macros */
 
@@ -25,6 +33,7 @@
 
 /* State machine to accept length modifiers + conversion specifiers.
  * Result is 0 on failure, or an argument type to pop on success. */
+
 
 enum {
 	BARE, LPRE, LLPRE, HPRE, HHPRE, BIGLPRE,
@@ -92,15 +101,9 @@ static const unsigned char states[]['z'-'A'+1] = {
 	}
 };
 
-typedef struct {
-  char *buf;
-  sys_size_t i, size;
-} printf_buf_t;
-
 #define OOB(x) ((unsigned)(x)-'A' > 'z'-'A')
 
-union arg
-{
+union arg {
 	uintmax_t i;
 	long double f;
 	void *p;
@@ -129,83 +132,11 @@ static void pop_arg(union arg *arg, int type, sys_va_list *ap) {
 	}
 }
 
-static void out(printf_buf_t *f, const char *s, sys_size_t l) {
-  sys_size_t i;
-
-  if (f && s) {
-    for (i = 0; i < l && f->i < f->size; f->i++, i++) {
-      f->buf[f->i] = s[i];
-    }
-  }
-}
-
-static void pad(printf_buf_t *f, char c, int w, int l, int fl) {
-	char pad[256];
-	if (fl & (LEFT_ADJ | ZERO_PAD) || l >= w) return;
-	l = w - l;
-	sys_memset(pad, c, l>sizeof pad ? sizeof pad : l);
-	for (; l >= sizeof pad; l -= sizeof pad)
-		out(f, pad, sizeof pad);
-	out(f, pad, l);
-}
-
-#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __LITTLE_ENDIAN
-union ldshape {
-  long double f;
-  struct {
-    uint64_t m;
-    uint16_t se;
-  } i;
-};
-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
-/* This is the m68k variant of 80-bit long double, and this definition only works
- * on archs where the alignment requirement of uint64_t is <= 4. */
-union ldshape {
-  long double f;
-  struct {
-    uint16_t se;
-    uint16_t pad;
-    uint64_t m;
-  } i;
-};
-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __LITTLE_ENDIAN
-union ldshape {
-  long double f;
-  struct {
-    uint64_t lo;
-    uint32_t mid;
-    uint16_t top;
-    uint16_t se;
-  } i;
-  struct {
-    uint64_t lo;
-    uint64_t hi;
-  } i2;
-};
-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
-union ldshape {
-  long double f;
-  struct {
-    uint16_t se;
-    uint16_t top;
-    uint32_t mid;
-    uint64_t lo;
-  } i;
-  struct {
-    uint64_t hi;
-    uint64_t lo;
-  } i2;
-};
-#else
-#error Unsupported long double representation
-#endif
-
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
 static double frexp(double x, int *e) {
   union { double d; uint64_t i; } y = { x };
   int ee = y.i>>52 & 0x7ff;
-  
+
   if (!ee) {
     if (x) {
       x = frexp(x*0x1p64, e);
@@ -214,13 +145,13 @@ static double frexp(double x, int *e) {
     return x;
   } else if (ee == 0x7ff) {
     return x;
-  } 
-    
+  }
+
   *e = ee - 0x3fe;
   y.i &= 0x800fffffffffffffull;
   y.i |= 0x3fe0000000000000ull;
   return y.d;
-} 
+}
 
 static long double frexpl(long double x, int *e) {
   return frexp(x, e);
@@ -246,6 +177,24 @@ static long double frexpl(long double x, int *e) {
   return u.f;
 }
 #endif
+
+static void out(printf_buf_t *f, const char *s, sys_size_t l) {
+  sys_size_t i;
+
+  for (i = 0; i < l && f->pos < f->size; i++) {
+    f->buf[f->pos++] = s[i];
+  }
+}
+
+static void pad(printf_buf_t *f, char c, int w, int l, int fl) {
+	char pad[256];
+	if (fl & (LEFT_ADJ | ZERO_PAD) || l >= w) return;
+	l = w - l;
+	sys_memset(pad, c, l>sizeof pad ? sizeof pad : l);
+	for (; l >= sizeof pad; l -= sizeof pad)
+		out(f, pad, sizeof pad);
+	out(f, pad, l);
+}
 
 static const char xdigits[16] = {
 	"0123456789ABCDEF"
@@ -294,8 +243,7 @@ static int fmt_fp(printf_buf_t *f, long double y, int w, int p, int fl, int t) {
 		prefix+=6;
 	} else prefix++, pl=0;
 
-/*
-	if (!isfinite(y)) {
+	if (!sys_isfinite(y)) {
 		char *s = (t&32)?"inf":"INF";
 		if (y!=y) s=(t&32)?"nan":"NAN";
 		pad(f, ' ', w, 3+pl, fl&~ZERO_PAD);
@@ -304,7 +252,6 @@ static int fmt_fp(printf_buf_t *f, long double y, int w, int p, int fl, int t) {
 		pad(f, ' ', w, 3+pl, fl^LEFT_ADJ);
 		return MAX(w, 3+pl);
 	}
-*/
 
 	y = frexpl(y, &e2) * 2;
 	if (y) e2--;
@@ -539,8 +486,6 @@ static int printf_core(printf_buf_t *f, const char *fmt, sys_va_list *ap, union 
 	const char *prefix;
 	int t, pl;
 	uint16_t wc[2];
-	//uint16_t *ws;
-	//char mb[4];
 
 	for (;;) {
 		/* This error is only specified for snprintf, but since it's
@@ -620,12 +565,14 @@ static int printf_core(printf_buf_t *f, const char *fmt, sys_va_list *ap, union 
 		if (st==NOARG) {
 			if (argpos>=0) goto inval;
 		} else {
-      if (argpos>=0) {
-        if (!f) nl_type[argpos]=st;
-        else arg=nl_arg[argpos];
-      } else if (f) pop_arg(&arg, st, ap);
-      else return 0;
+			if (argpos>=0) {
+				if (!f) nl_type[argpos]=st;
+				else arg=nl_arg[argpos];
+			} else if (f) pop_arg(&arg, st, ap);
+			else return 0;
 		}
+
+		if (!f) continue;
 
 		z = buf + sizeof(buf);
 		prefix = "-+   0X0x";
@@ -742,7 +689,7 @@ static int printf_core(printf_buf_t *f, const char *fmt, sys_va_list *ap, union 
 		l = w;
 	}
 
-  if (f) return cnt;
+	if (f) return cnt;
 	if (!l10n) return 0;
 
 	for (i=1; i<=NL_ARGMAX && nl_type[i]; i++)
@@ -752,36 +699,37 @@ static int printf_core(printf_buf_t *f, const char *fmt, sys_va_list *ap, union 
 	return 1;
 
 inval:
+	return -1;
 overflow:
 	return -1;
 }
 
-int my_vsnprintf(char *buf, sys_size_t size, const char *fmt, sys_va_list ap) {
+int my_vsnprintf(char *str, sys_size_t size, const char *fmt, sys_va_list ap) {
   printf_buf_t f;
-  sys_va_list ap2;
-  int nl_type[NL_ARGMAX+1];
-  union arg nl_arg[NL_ARGMAX+1];
-  int i, ret;
+	sys_va_list ap2;
+	int nl_type[NL_ARGMAX+1] = {0};
+	union arg nl_arg[NL_ARGMAX+1];
+	int i, ret;
 
-  if (!buf) return -1;
+  if (str == NULL || fmt == NULL || size <= 0) return -1;
 
   for (i = 0; i <= NL_ARGMAX; i++) {
-    nl_type[i] = 0;
+	  nl_type[i] = 0;
   }
 
-  sys_va_copy(ap2, ap);
-  if (printf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) {
-    sys_va_end(ap2);
-    return -1;
-  }
+	/* the copy allows passing va_list* even if va_list is an array */
+	sys_va_copy(ap2, ap);
+	if (printf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) {
+		sys_va_end(ap2);
+		return -1;
+	}
 
-  f.buf = buf;
-  f.i = 0;
+  f.buf = str;
+  f.pos = 0;
   f.size = size - 1;
-  ret = printf_core(&f, fmt, &ap2, nl_arg, nl_type);
-  sys_va_end(ap2);
+	ret = printf_core(&f, fmt, &ap2, nl_arg, nl_type);
+	sys_va_end(ap2);
+  f.buf[f.pos] = 0;
 
-  buf[f.i] = 0;
-
-  return ret;
+	return ret;
 }

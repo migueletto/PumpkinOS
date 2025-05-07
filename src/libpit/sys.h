@@ -365,6 +365,8 @@ double sys_floor(double x);
 
 double sys_ceil(double x);
 
+long double sys_fabsl(long double x);
+
 double sys_fabs(double x);
 
 double sys_log(double x);
@@ -383,11 +385,15 @@ double sys_atan2(double y, double x);
 
 double sys_pi(void);
 
+long double sys_fmodl(long double x, long double y);
+
 double sys_modf(double x, double *iptr);
 
 int sys_isnan(double x);
 
 int sys_isinf(double x);
+
+int sys_isfinite(double x);
 
 int sys_signbit(double x);
 
