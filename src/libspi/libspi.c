@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "script.h"
 #include "pspi.h"
+#include "spi_bcm.h"
 #include "ptr.h"
 #include "debug.h"
 
@@ -15,7 +16,11 @@ typedef struct {
   spi_t *spi;
 } libspi_t;
 
-static spi_provider_t provider;
+#if defined LINUX
+static spi_provider_t provider_sys;
+#elif defined RPI
+static spi_provider_t provider_bcm;
+#endif
 
 static void spi_destructor(void *p) {
   libspi_t *spi;
@@ -100,18 +105,39 @@ static int libspi_transfer(int pe) {
 }
 
 int libspi_load(void) {
-  sys_memset(&provider, 0, sizeof(spi_provider_t));
-  provider.open = spi_open;
-  provider.close = spi_close;
-  provider.transfer = spi_transfer;
+#if defined LINUX
+  sys_memset(&provider_sys, 0, sizeof(spi_provider_t));
+  provider_sys.open = spi_open;
+  provider_sys.close = spi_close;
+  provider_sys.transfer = spi_transfer;
+#elif defined RPI
+  spi_bcm_begin();
+  sys_memset(&provider_bcm, 0, sizeof(spi_provider_t));
+  provider_bcm.open = spi_bcm_open;
+  provider_bcm.close = spi_bcm_close;
+  provider_bcm.transfer = spi_bcm_transfer;
+#endif
+
+  return 0;
+}
+
+int libspi_unload(void) {
+#if defined RPI
+  spi_bcm_end();
+#endif
 
   return 0;
 }
 
 int libspi_init(int pe, script_ref_t obj) {
   if (script_get_pointer(pe, SPI_PROVIDER) == NULL) {
+#if defined LINUX
     debug(DEBUG_INFO, "SPI", "registering %s", SPI_PROVIDER);
-    script_set_pointer(pe, SPI_PROVIDER, &provider);
+    script_set_pointer(pe, SPI_PROVIDER, &provider_sys);
+#elif defined RPI
+    debug(DEBUG_INFO, "SPI", "registering %s", SPI_PROVIDER);
+    script_set_pointer(pe, SPI_PROVIDER, &provider_bcm);
+#endif
   }
 
   script_add_function(pe, obj, "open",     libspi_open);

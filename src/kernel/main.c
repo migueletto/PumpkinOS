@@ -24,6 +24,7 @@ extern int libgpio_load(void);
 extern int gpio_select(int pe, char *type);
 
 extern int libspi_load(void);
+extern int libspi_unload(void);
 extern int libspi_init(int pe, script_ref_t obj);
 
 extern surface_t *libili9486_create_surface(int spi_cs, int rs_pin, int rst_pin, int spi_speed, int width, int height, spi_provider_t *spip, gpio_provider_t *gpiop);
@@ -61,7 +62,7 @@ int main(int argc, char *argv[]) {
 #ifdef RPI
   bcm2835_init();
   libgpio_load();
-  gpio_select(0, "sys");
+  gpio_select(0, "bcm");
 
   libspi_load();
   libspi_init(0, 0);
@@ -72,7 +73,8 @@ int main(int argc, char *argv[]) {
   libwsurface_load();
   libwsurface_init(0, 0);
 
-  s = libili9486_create_surface(0, 536, 537, 16000000, 320, 480, spip, gpiop);
+  //s = libili9486_create_surface(0, 536, 537, 16000000, 320, 480, spip, gpiop);
+  s = libili9486_create_surface(0, 24, 25, 16000000, 320, 480, spip, gpiop);
   ptr = ptr_new(s, surface_destructor);
   libwsurface_set_surface(ptr);
 #else
@@ -86,6 +88,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef RPI
   ptr_free(ptr, s->tag);
+  libspi_unload();
   bcm2835_close();
 #endif
 

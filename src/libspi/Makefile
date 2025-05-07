@@ -1,6 +1,12 @@
 include ../common.mak
 
+ifeq ($(RPI),1)
+CUSTOMFLAGS=-I$(SRC)/libbcm2835
+LIBS=-lbcm2835
+OBJS=libspi.o spi_bcm.o
+else
 OBJS=libspi.o spi.o
+endif
 
 ifeq ($(OSNAME),Kernel)
 

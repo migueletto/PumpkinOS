@@ -3,7 +3,7 @@
 #include "pit_io.h"
 #include "debug.h"
 
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
@@ -20,7 +20,7 @@ struct spi_t {
 
 spi_t *spi_open(int modeh, int cs, int speedh, void *data) {
   spi_t *spi;
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
   char buf[64];
   uint8_t mode, bits;
   uint32_t speed;
@@ -104,7 +104,7 @@ spi_t *spi_open(int modeh, int cs, int speedh, void *data) {
 
 int spi_close(spi_t *spi) {
   if (spi) {
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
     if (spi->fd) {
       sys_close(spi->fd);
     }
@@ -116,7 +116,7 @@ int spi_close(spi_t *spi) {
 }
 
 int spi_transfer(spi_t *spi, uint8_t *txbuf, uint8_t *rxbuf, int len) {
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
 /*
   struct spi_ioc_transfer xfer[2];
 

@@ -20,10 +20,10 @@ typedef struct {
 } libgpio_t;
 
 static gpio_provider_t provider_mem;
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
 static gpio_provider_t provider_sys;
 #endif
-#ifdef RPI
+#if defined(RPI)
 static gpio_provider_t provider_bcm;
 #endif
 
