@@ -2120,6 +2120,7 @@ static void LauncherOpenForm(UInt16 formId) {
 }
 
 static void DrawBattery(Boolean draw) {
+#if defined(ANDROID)
   FormType *frm;
   RectangleType rect;
   RGBColorType rgb, old;
@@ -2153,6 +2154,7 @@ static void DrawBattery(Boolean draw) {
     RctSetRectangle(&rect, (rect.extent.x - BATTERY_WIDTH) / 2, 4, BATTERY_WIDTH, 5);
     WinEraseRectangle(&rect, 0);
   }
+#endif
 }
 
 static void updateFilter(launcher_data_t *data, FormType *frm, Boolean visible) {
