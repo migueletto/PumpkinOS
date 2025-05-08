@@ -86,13 +86,7 @@ int main(int argc, char *argv[]) {
   vfs_local_mount("./vfs/", "/");
   libos_app_init(0);
 
-  char c1, c2, c3, c4;
-  uint32_t u;
-  int d;
-  int r = sys_sscanf("MBAR.4D424152.1001", "%c%c%c%c.%08X.%d", &c1, &c2, &c3, &c4, &u, &d);
-  debug(1, "XXX", "%d", r);
-
-  //libos_start(0);
+  libos_start(0);
   libwsurface_window_erase(NULL, 0);
 
 #ifdef RPI

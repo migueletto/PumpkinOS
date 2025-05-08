@@ -3400,8 +3400,7 @@ int sys_sscanf(const char *str, const char *format, ...) {
 
   sys_va_start(ap, format);
 #if defined(KERNEL)
-  //r = my_vsscanf(str, format, ap);
-  r = vsscanf(str, format, ap);
+  r = my_vsscanf(str, format, ap);
 #else
   r = vsscanf(str, format, ap);
 #endif
