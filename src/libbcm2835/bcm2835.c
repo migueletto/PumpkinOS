@@ -2059,10 +2059,6 @@ int bcm2835_init(void) {
     /* else we are prob on RPi 1 with BCM2835, and use the hardwired defaults */
 #endif
 
-    bcm2835_peripherals_base = BCM2835_RPI4_PERI_BASE;
-    bcm2835_peripherals_size = BCM2835_RPI4_PERI_SIZE;
-    pud_type_rpi4 = 1;
-
     /* Now get ready to map the peripherals block 
      * If we are not root, try for the new /dev/gpiomem interface and accept
      * the fact that we can only access GPIO
@@ -2082,6 +2078,21 @@ int bcm2835_init(void) {
 #endif
 
 #if defined(BAREMETAL)
+#if BAREMETAL == 0 || BAREMETAL == 1
+    bcm2835_peripherals_base = BCM2835_PERI_BASE;
+    bcm2835_peripherals_size = BCM2835_PERI_SIZE;
+#elif BAREMETAL == 2 || BAREMETAL == 3
+    bcm2835_peripherals_base = BCM2835_RPI2_PERI_BASE;
+    bcm2835_peripherals_size = BCM2835_PERI_SIZE;
+#elif BAREMETAL == 4
+    bcm2835_peripherals_base = BCM2835_RPI4_PERI_BASE;
+    bcm2835_peripherals_size = BCM2835_RPI4_PERI_SIZE;
+    pud_type_rpi4 = 1;
+// XXX find out address base and size for RPI5
+#else
+#error "invalid RPI model"
+#endif
+
     bcm2835_peripherals = (uint32_t *)bcm2835_peripherals_base;
 #else
       /* Open the master /dev/mem device */
