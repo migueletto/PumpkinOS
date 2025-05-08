@@ -177,6 +177,8 @@ int sys_signbit(double x) {
 
 #else
 
+#include <math.h>
+
 double sys_floor(double x) {
   return floor(x);
 }
