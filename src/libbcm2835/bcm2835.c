@@ -2077,14 +2077,13 @@ int bcm2835_init(void) {
     {
 #endif
 
-#if defined(BAREMETAL)
-#if BAREMETAL == 0 || BAREMETAL == 1
+#if RPI == 0 || RPI == 1
     bcm2835_peripherals_base = BCM2835_PERI_BASE;
     bcm2835_peripherals_size = BCM2835_PERI_SIZE;
-#elif BAREMETAL == 2 || BAREMETAL == 3
+#elif RPI == 2 || RPI == 3
     bcm2835_peripherals_base = BCM2835_RPI2_PERI_BASE;
     bcm2835_peripherals_size = BCM2835_PERI_SIZE;
-#elif BAREMETAL == 4
+#elif RPI == 4
     bcm2835_peripherals_base = BCM2835_RPI4_PERI_BASE;
     bcm2835_peripherals_size = BCM2835_RPI4_PERI_SIZE;
     pud_type_rpi4 = 1;
@@ -2093,6 +2092,7 @@ int bcm2835_init(void) {
 #error "invalid RPI model"
 #endif
 
+#if defined(BAREMETAL)
     bcm2835_peripherals = (uint32_t *)bcm2835_peripherals_base;
 #else
       /* Open the master /dev/mem device */

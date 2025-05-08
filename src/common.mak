@@ -80,8 +80,8 @@ AR=ar
 NM=nm -j -u
 
 ifneq (,$(wildcard /boot/firmware/config.txt))
-RPI=1
-RPI_DEFS=-DRPI
+RPI=4
+RPI_DEFS=-DRPI=$(RPI)
 endif
 
 ifeq ($(OSNAME),)

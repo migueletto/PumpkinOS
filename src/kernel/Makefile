@@ -6,7 +6,7 @@ PROGRAM=pumpkin
 
 CUSTOMFLAGS=-g -I$(SRC)/libfatfs -I$(SRC)/font -I$(SRC)/libbcm2835
 
-ifeq ($(RPI),1)
+ifdef RPI
 EXTRA_MODULES=$(BIN)/libbcm2835.a
 else
 EXTRA_MODULES=$(BIN)/liblsdl2.a
