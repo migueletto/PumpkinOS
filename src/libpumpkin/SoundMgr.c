@@ -402,75 +402,38 @@ Err SndStreamDelete(SndStreamRef channel) {
   return err;
 }
 
-static float getSample(int pcm, void *buffer, UInt32 i) {
-  Int8 *s8;
-  UInt8 *u8;
-  Int16 *s16;
-  Int32 *s32;
-  float *flt;
-  float sample = 0;
+static Int32 getSample(int pcm, uint8_t *buffer, UInt32 i) {
+  UInt8 u8;
+  Int16 s16;
+  Int32 sample = 0;
 
   switch (pcm) {
-    case PCM_S8:
-      s8 = (Int8 *)buffer;
-      sample = s8[i];
-      break;
     case PCM_U8:
-      u8 = (UInt8 *)buffer;
-      sample = u8[i];
+      u8 = buffer[i];
+      sample = (u8 >= 128) ? (u8 & 0x7F) << 24 : (u8 << 24) | 0x80000000;
       break;
     case PCM_S16:
-      s16 = (Int16 *)buffer;
-      sample = s16[i];
+      s16 = ((int16_t *)buffer)[i];
+      sample = s16 << 16;
       break;
     case PCM_S32:
-      s32 = (Int32 *)buffer;
-      sample = s32[i];
-      break;
-    case PCM_FLT:
-      flt = (float *)buffer;
-      sample = flt[i];
+      sample = ((int32_t *)buffer)[i];
       break;
   }
 
   return sample;
 }
 
-void putSample(int pcm, void *buffer, UInt32 i, float sample) {
-  Int8 *s8;
-  UInt8 *u8;
-  Int16 *s16;
-  Int32 *s32;
-  float *flt;
-
+void putSample(int pcm, uint8_t *buffer, UInt32 i, Int32 sample) {
   switch (pcm) {
-    case PCM_S8:
-      s8 = (Int8 *)buffer;
-      if (sample < -128) sample = -128;
-      else if (sample > 127) sample = 127;
-      s8[i] = (Int8)sample;
-      break;
     case PCM_U8:
-      u8 = (UInt8 *)buffer;
-      if (sample < 0) sample = 0;
-      else if (sample > 255) sample = 255;
-      u8[i] = (UInt8)sample;
+      buffer[i] = sample >= 0 ? (sample >> 24) | 0x80 : (sample >> 24) & 0x7F;
       break;
     case PCM_S16:
-      s16 = (Int16 *)buffer;
-      if (sample < -32768) sample = -32768;
-      else if (sample > 32767) sample = 32767;
-      s16[i] = (Int16)sample;
+      ((int16_t *)buffer)[i] = sample >> 16;
       break;
     case PCM_S32:
-      s32 = (Int32 *)buffer;
-      if (sample < INT32_MIN) sample = INT32_MIN;
-      else if (sample > INT32_MAX) sample = INT32_MAX;
-      s32[i] = (Int32)sample;
-      break;
-    case PCM_FLT:
-      flt = (float *)buffer;
-      flt[i] = sample;
+      ((int32_t *)buffer)[i] = sample;
       break;
   }
 }
@@ -500,8 +463,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
     if ((snd = ptr_lock(arg->ptr, TAG_SOUND)) != NULL) {
       thread_get_name(tname, sizeof(tname)-1);
       if (snd->first && !sys_strcmp(tname, "Audio")) {
-        debug(DEBUG_INFO, "Sound", "pumpkin_sound_init");
-        pumpkin_sound_init();
+        debug(DEBUG_INFO, "Sound", "pumpkin_audio_task_init");
+        pumpkin_audio_task_init();
         snd->first = false;
         inited = true;
       }
@@ -576,8 +539,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
 
       if (freeArg) {
         if (inited) {
-          debug(DEBUG_INFO, "Sound", "pumpkin_sound_finish");
-          pumpkin_sound_finish();
+          debug(DEBUG_INFO, "Sound", "pumpkin_audio_task_finish");
+          pumpkin_audio_task_finish();
         }
         debug(DEBUG_TRACE, "Sound", "free arg=%p ptr=%d", arg, arg->ptr);
         sys_free(arg);
@@ -592,6 +555,7 @@ Err SndStreamStart(SndStreamRef channel) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd;
   SndStreamArg *arg;
+  int handle;
   Err err = sndErrBadParam;
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d)", channel);
@@ -600,14 +564,14 @@ Err SndStreamStart(SndStreamRef channel) {
     if (snd->started) {
       snd->stopped = false;
       err = errNone;
-    } else {
+    } else if ((handle = pumpkin_audio_get(NULL, NULL, NULL)) > 0) {
       if ((arg = sys_calloc(1, sizeof(SndStreamArg))) != NULL) {
         arg->ptr = channel;
         snd->first = true;
         snd->started = true;
         snd->stopped = false;
         debug(DEBUG_TRACE, "Sound", "starting audio arg=%p ptr=%d", arg, arg->ptr);
-        if (module->ap->start(snd->audio, SndGetAudio, arg) == 0) {
+        if (module->ap->start(handle, snd->audio, SndGetAudio, arg) == 0) {
           debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d) ok", channel);
           err = errNone;
         } else {
@@ -747,50 +711,18 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
 }
 
 /*
-static Err SndPlayBufferCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
-  snd_param_t *param = (snd_param_t *)userdata;
-  UInt32 n;
-  Err err = sndErrBadParam;
-
-  if (param && buffer) {
-    sys_memset(buffer, 0, numberofframes * param->sampleSize);
-    n = numberofframes;
-    if (n > (param->size - param->pos)) n = param->size - param->pos;
-    debug(DEBUG_TRACE, "Sound", "SndPlayBufferCallback frames=%d size=%d pos=%d n=%d", numberofframes, param->size, param->pos, n);
-    if (n > 0) {
-      sys_memcpy(buffer, &param->buffer[param->pos], n * param->sampleSize);
-      param->pos += n;
-      err = errNone;
-    }
-  }
-
-  if (err != errNone) {
-    if (param->async) {
-      debug(DEBUG_TRACE, "Sound", "SndPlayBufferCallback async finish");
-      sys_free(param->buffer);
-      param->buffer = NULL;
-      sys_free(param);
-    } else {
-      debug(DEBUG_TRACE, "Sound", "SndPlayBufferCallback sync finish");
-      param->finished = true;
-    }
-  }
-
-  return err;
-}
-*/
-
-/*
 static void save_buffer(uint8_t *buffer, uint32_t size) {
   FileRef fileRef;
   UInt32 n;
   char name[32];
   static int i = 0;
+if (i == 0) {
   sys_sprintf(name, "snd%02d.raw", i++);
   VFSFileCreate(1, name);
   VFSFileOpen(1, name, vfsModeWrite, &fileRef);
   VFSFileWrite(fileRef, size, buffer, &n);
   VFSFileClose(fileRef);
+}
 }
 */
 
@@ -824,6 +756,7 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
           debug(DEBUG_ERROR, "Sound", "SndPlayBuffer sndP is not a handle");
         }
       }
+//save_buffer(snd, param->size);
     } else {
       // sndP is a memory buffer (not a locked handle)
       param->size = size;
@@ -847,7 +780,6 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
         param->size /= param->sampleSize;
         param->async = flags == sndFlagAsync;
         debug(DEBUG_TRACE, "Sound", "SndPlayBuffer %d samples of size %d", param->size, param->sampleSize);
-//save_buffer(param->buffer, param->size * param->sampleSize);
 
         if (SndStreamCreateExtended(&param->channel, sndOutput, sndFormatPCM, rate, type, width, SndVariableBufferCallback, param, 0, false) == errNone) {
           SndStreamSetVolume(param->channel, volume);
@@ -1131,9 +1063,6 @@ static Err SndStreamCreateInternal(
   if (module->ap && module->ap->create && channel && format == sndFormatPCM && (func || vfunc) && mode == sndOutput) {
     switch (type) {
       case sndInt8:
-        pcm = PCM_S8;
-        samplesize = 1;
-        break;
       case sndUInt8:
         pcm = PCM_U8;
         samplesize = 1;
@@ -1144,10 +1073,6 @@ static Err SndStreamCreateInternal(
         break;
       case sndInt32:
         pcm = PCM_S32;
-        samplesize = 4;
-        break;
-      case sndFloat:
-        pcm = PCM_FLT;
         samplesize = 4;
         break;
       default:

@@ -19,7 +19,6 @@
 #include "ptr.h"
 #include "average.h"
 #include "debug.h"
-#include "xalloc.h"
 
 #define SDL_BUTTON1   1
 #define SDL_BUTTON2   2
@@ -71,6 +70,10 @@ typedef struct {
   uint8_t *buffer;
   uint32_t bsize;
 } sdl_audio_t;
+
+typedef struct {
+  int pcm, channels, rate;
+} sdl_audio_arg_t;
 
 static libsdl_keymap_t keymap[] = {
   { '\'', WINDOW_MOD_SHIFT, '"' },
@@ -157,7 +160,6 @@ static libsdl_keymap_t keymap[] = {
 
 static window_provider_t window_provider;
 static audio_provider_t audio_provider;
-static int handle;
 
 static int libsdl_init_audio(void) {
   const char *name;
@@ -255,9 +257,9 @@ static char *libsdl_clipboard(libsdl_window_t *window, char *clipboard, int len)
 
   if (clipboard != NULL && len > 0) {
     if ((s = sys_calloc(1, len + 1)) != NULL) {
-      xmemcpy(s, clipboard, len);
+      sys_memcpy(s, clipboard, len);
       SDL_SetClipboardText(s);  // SDL_SetClipboardText puts UTF-8 text into the clipboard
-      xfree(s);
+      sys_free(s);
     }
   }
 
@@ -768,7 +770,7 @@ static int libsdl_video_close(libsdl_window_t *window) {
   if (window->background) SDL_DestroyTexture(window->background);
   if (window->renderer) SDL_DestroyRenderer(window->renderer);
   if (window->window) SDL_DestroyWindow(window->window);
-  xfree(window);
+  sys_free(window);
 
   return 0;
 }
@@ -823,7 +825,7 @@ static window_t *libsdl_window_create(int encoding, int *width, int *height, int
     debug(DEBUG_INFO, "SDL", "using whole display %dx%d", *width, *height);
   }
 
-  if ((window = xcalloc(1, sizeof(libsdl_window_t))) != NULL) {
+  if ((window = sys_calloc(1, sizeof(libsdl_window_t))) != NULL) {
     window->width = *width;
     window->height = *height;
     window->xfactor = xfactor;
@@ -839,7 +841,7 @@ static window_t *libsdl_window_create(int encoding, int *width, int *height, int
       debug(DEBUG_INFO, "SDL", "window created");
 
     } else {
-      xfree(window);
+      sys_free(window);
       window = NULL;
     }
   }
@@ -963,17 +965,17 @@ static texture_t *libsdl_window_create_texture(window_t *_window, int width, int
   window = (libsdl_window_t *)_window;
 
   if (window) {
-    if ((texture = xcalloc(1, sizeof(texture_t))) != NULL) {
+    if ((texture = sys_calloc(1, sizeof(texture_t))) != NULL) {
       if ((texture->t = SDL_CreateTexture(window->renderer, window->format, SDL_TEXTUREACCESS_STREAMING, width, height)) != NULL) {
         SDL_SetTextureBlendMode(texture->t, SDL_BLENDMODE_BLEND);
         texture->width = width;
         texture->height = height;
         texture->blur = SDL_CreateTexture(window->renderer, window->format, SDL_TEXTUREACCESS_STREAMING, width, height);
         SDL_SetTextureBlendMode(texture->blur, SDL_BLENDMODE_BLEND);
-        texture->buf = xcalloc(1, width * height * 4);
+        texture->buf = sys_calloc(1, width * height * 4);
       } else {
         debug(DEBUG_ERROR, "SDL", "SDL_CreateTexture format 0x%08X failed: %s", window->format, SDL_GetError());
-        xfree(texture);
+        sys_free(texture);
         texture = NULL;
       }
     }
@@ -991,8 +993,8 @@ static int libsdl_window_destroy_texture(window_t *_window, texture_t *texture) 
   if (window && texture) {
     if (texture->t) SDL_DestroyTexture(texture->t);
     if (texture->blur) SDL_DestroyTexture(texture->blur);
-    if (texture->buf) xfree(texture->buf);
-    xfree(texture);
+    if (texture->buf) sys_free(texture->buf);
+    sys_free(texture);
   }
 
   return r;
@@ -1039,7 +1041,7 @@ static int libsdl_window_update_texture_rect(window_t *_window, texture_t *textu
     len = w * window->spixel;
     spitch = texture->width * window->spixel;
     for (i = 0; i < rect.h; i++) {
-      xmemcpy(dst, src, len);
+      sys_memcpy(dst, src, len);
       src += spitch;
       dst += pitch;
     }
@@ -1131,13 +1133,9 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
 
   debug(DEBUG_INFO, "SDL", "audio_create(%d,%d,%d)", pcm, channels, rate);
 
-  if ((pcm >= PCM_S8 && pcm <= PCM_FLT) && (channels == 1 || channels == 2) && rate > 0) {
+  if ((pcm == PCM_U8 || pcm == PCM_S16 || pcm == PCM_S32) && (channels == 1 || channels == 2) && rate > 0) {
     if ((audio = sys_calloc(1, sizeof(sdl_audio_t))) != NULL) {
       switch (pcm) {
-        case PCM_S8:
-          audio->format = AUDIO_S8;
-          audio->bsize = 1;
-          break;
         case PCM_U8:
           audio->format = AUDIO_U8;
           audio->bsize = 1;
@@ -1146,17 +1144,8 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
           audio->format = AUDIO_S16;
           audio->bsize = 2;
           break;
-        case PCM_U16:
-          audio->format = AUDIO_U16;
-          audio->bsize = 2;
-          break;
         case PCM_S32:
-        case PCM_U32: // XXX
           audio->format = AUDIO_S32;
-          audio->bsize = 4;
-          break;
-        case PCM_FLT:
-          audio->format = AUDIO_F32;
           audio->bsize = 4;
           break;
       }
@@ -1181,7 +1170,7 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
   return ptr;
 }
 
-static int libsdl_audio_start(audio_t _audio, int (*getaudio)(void *buffer, int len, void *data), void *data) {
+static int libsdl_audio_start(int handle, audio_t _audio, int (*getaudio)(void *buffer, int len, void *data), void *data) {
   sdl_audio_t *audio;
   uint32_t ptr;
   int r = -1;
@@ -1432,7 +1421,8 @@ static int set_video_driver(char *video_driver) {
   return 1;
 }
 
-static int audio_action(void *arg) {
+static int audio_action(void *_arg) {
+  sdl_audio_arg_t *arg = (sdl_audio_arg_t *)_arg;
   SDL_AudioDeviceID dev = 0;
   SDL_AudioSpec desired, obtained;
   SDL_AudioCVT cvt;
@@ -1454,14 +1444,18 @@ static int audio_action(void *arg) {
 
     if (r == 1) {
       if (dev == 0) {
-        desired.format = AUDIO_S8;
-        desired.freq = 8000;     // DSP frequency -- samples per second
-        desired.channels = 1;    // Number of channels: 1 mono, 2 stereo
-        desired.silence = 0;     // Audio buffer silence value (calculated)
-        desired.samples = 1024;  // Audio buffer size in sample FRAMES (total samples divided by channel count)
-        desired.padding = 0;     // Necessary for some compile environments
-        desired.callback = NULL; // Callback that feeds the audio device (NULL to use SDL_QueueAudio())
-        desired.userdata = NULL; //  Userdata passed to callback (ignored for NULL callbacks)
+        switch (arg->pcm) {
+          case PCM_U8:  desired.format = AUDIO_U8;  break;
+          case PCM_S16: desired.format = AUDIO_S16; break;
+          case PCM_S32: desired.format = AUDIO_S32; break;
+        }
+        desired.freq = arg->rate; // DSP frequency -- samples per second
+        desired.channels = arg->channels; // Number of channels: 1 mono, 2 stereo
+        desired.silence = 0;      // Audio buffer silence value (calculated)
+        desired.samples = 1024;   // Audio buffer size in sample FRAMES (total samples divided by channel count)
+        desired.padding = 0;      // Necessary for some compile environments
+        desired.callback = NULL;  // Callback that feeds the audio device (NULL to use SDL_QueueAudio())
+        desired.userdata = NULL;  //  Userdata passed to callback (ignored for NULL callbacks)
 
         if ((dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0)) == -1) {
           debug(DEBUG_ERROR, "SDL", "SDL_OpenAudioDevice failed: %s", SDL_GetError());
@@ -1531,6 +1525,18 @@ static int audio_action(void *arg) {
   return 0;
 }
 
+static int libsdl_audio_init(int pcm, int channels, int rate) {
+  sdl_audio_arg_t *arg = sys_calloc(1, sizeof(sdl_audio_arg_t));
+  arg->pcm = pcm;
+  arg->channels = channels;
+  arg->rate = rate;
+  return thread_begin("AUDIO", audio_action, arg);
+}
+
+static int libsdl_audio_finish(int handle) {
+  return thread_end("AUDIO", handle);
+}
+
 int liblsdl2_load(void) {
   SDL_version version;
   int set = 0;
@@ -1553,7 +1559,7 @@ int liblsdl2_load(void) {
     set_video_driver(NULL);
   }
 
-  xmemset(&window_provider, 0, sizeof(window_provider));
+  sys_memset(&window_provider, 0, sizeof(window_provider));
   window_provider.create = libsdl_window_create;
   window_provider.event = libsdl_window_event;
   window_provider.destroy = libsdl_window_destroy;
@@ -1576,15 +1582,15 @@ int liblsdl2_load(void) {
   window_provider.shader = libsdl_window_shader;
 #endif
 
-  xmemset(&audio_provider, 0, sizeof(audio_provider));
+  sys_memset(&audio_provider, 0, sizeof(audio_provider));
+  audio_provider.init = libsdl_audio_init;
+  audio_provider.finish = libsdl_audio_finish;
   audio_provider.create = libsdl_audio_create;
   audio_provider.start = libsdl_audio_start;
   audio_provider.destroy = libsdl_audio_destroy;
   audio_provider.mixer_init = libsdl_mixer_init;
   audio_provider.mixer_play = libsdl_mixer_play;
   audio_provider.mixer_stop = libsdl_mixer_stop;
-
-  handle = thread_begin("AUDIO", audio_action, NULL);
 
   return 0;
 }
@@ -1606,9 +1612,6 @@ int liblsdl2_init(int pe, script_ref_t obj) {
 }
 
 int liblsdl2_unload(void) {
-  if (handle > 0) {
-    thread_end("AUDIO", handle);
-  }
 #ifdef SDL_MIXER
   Mix_CloseAudio();
 #endif

@@ -239,6 +239,7 @@ typedef struct {
   int nev, iev, oev;
   calibration_t calibration;
   surface_t *background;
+  int audio, pcm, channels, rate;
   void *local_storage[last_key];
 } pumpkin_module_t;
 
@@ -588,6 +589,10 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.nextTaskId = 1;
   pumpkin_module.battery = 100;
   pumpkin_module.osversion = 50;
+
+  pumpkin_module.pcm = PCM_S16;
+  pumpkin_module.channels = 1;
+  pumpkin_module.rate = 44100;
 
   StoRemoveLocks(APP_STORAGE);
 
@@ -1054,6 +1059,10 @@ int pumpkin_global_finish(void) {
 
   pumpkin_unload_fonts();
   PrefFinishModule();
+
+  if (pumpkin_module.ap && pumpkin_module.ap->finish && pumpkin_module.audio > 0) {
+    pumpkin_module.ap->finish(pumpkin_module.audio);
+  }
 
   if (pumpkin_module.background) {
     surface_destroy(pumpkin_module.background);
@@ -5245,7 +5254,42 @@ void pumpkin_setcolor(uint32_t fg, uint32_t bg) {
   }
 }
 
-void pumpkin_sound_init(void) {
+int pumpkin_audio_get(int *pcm, int *channels, int *rate) {
+  int r = -1;
+
+  if (mutex_lock(mutex) == 0) {
+    if (pcm) *pcm = pumpkin_module.pcm;
+    if (channels) *channels = pumpkin_module.channels;
+    if (rate) *rate = pumpkin_module.rate;
+
+    if (pumpkin_module.ap && pumpkin_module.ap->init) {
+      if (pumpkin_module.audio == 0) {
+        pumpkin_module.audio = pumpkin_module.ap->init(pumpkin_module.pcm, pumpkin_module.channels, pumpkin_module.rate);
+      }
+      r = pumpkin_module.audio;
+    }
+
+    mutex_unlock(mutex);
+  }
+
+  return r;
+}
+
+int pumpkin_audio_set(int pcm, int channels, int rate) {
+  int r = -1;
+
+  if (mutex_lock(mutex) == 0) {
+    pumpkin_module.pcm = pcm;
+    pumpkin_module.channels = channels;
+    pumpkin_module.rate = rate;
+    r = 0;
+    mutex_unlock(mutex);
+  }
+
+  return r;
+}
+
+void pumpkin_audio_task_init(void) {
   pumpkin_task_t *task;
 
   if ((task = xcalloc(1, sizeof(pumpkin_task_t))) != NULL) {
@@ -5258,7 +5302,7 @@ void pumpkin_sound_init(void) {
   }
 }
 
-void pumpkin_sound_finish(void) {
+void pumpkin_audio_task_finish(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
   if (task) {

@@ -1,9 +1,11 @@
 include ../common.mak
 include ../commonp.mak
 
-OBJS=main.o drop.o midi.o
+RESAMPLE=$(SRC)/libresample
+OBJS=main.o drop.o midi.o $(RESAMPLE)/resample.o $(RESAMPLE)/resamplesubs.o $(RESAMPLE)/filterkit.o
 RES=icon.res version.res
 PROGRAM=$(ROOT)/pumpkin.exe
+CUSTOMPFLAGS=-I$(SRC)/libresample
 
 $(PROGRAM): $(OBJS) $(RES)
 	g++ -mwindows -o $(PROGRAM) $(OBJS) $(RES) -L$(BIN) -lpit -lpumpkin -lgdi32 -lole32 -luuid -lwinmm

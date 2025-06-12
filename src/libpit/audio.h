@@ -10,8 +10,10 @@ extern "C" {
 typedef int audio_t;
 
 typedef struct {
+  int (*init)(int pcm, int channels, int rate);
+  int (*finish)(int handle);
   audio_t (*create)(int pcm, int channels, int rate, void *data);
-  int (*start)(audio_t audio, int (*getaudio)(void *buffer, int len, void *data), void *data);
+  int (*start)(int handle, audio_t audio, int (*getaudio)(void *buffer, int len, void *data), void *data);
   int (*play)(audio_t audio, uint8_t *raw, int len);
   int (*destroy)(audio_t audio);
 

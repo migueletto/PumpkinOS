@@ -629,8 +629,10 @@ uint32_t pumpkin_printf(const char *format, ...);
 int32_t pumpkin_gets(char *buf, uint32_t max, int echo);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
 
-void pumpkin_sound_init(void);
-void pumpkin_sound_finish(void);
+int pumpkin_audio_get(int *pcm, int *channels, int *rate);
+int pumpkin_audio_set(int pcm, int channels, int rate);
+void pumpkin_audio_task_init(void);
+void pumpkin_audio_task_finish(void);
 
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data);
 
