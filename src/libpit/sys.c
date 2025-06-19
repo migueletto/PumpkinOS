@@ -34,7 +34,9 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <termios.h>
+#if !defined(KERNEL)
 #include <dirent.h>
+#endif
 #include <dlfcn.h>
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -53,6 +55,10 @@
 #include <netdb.h>
 #endif
 
+#if defined(KERNEL)
+#include "ff.h"
+#endif
+
 #include "sys.h"
 #include "thread.h"
 #include "endianness.h"
@@ -67,12 +73,14 @@ struct sys_dir_t {
   HANDLE handle;
   WIN32_FIND_DATA ffd;
   char buf[FILE_PATH];
+#elif defined(KERNEL)
+  DIR dir;
 #else
   DIR *dir;
 #endif
 };
 
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(KERNEL)
 #define closesocket(s) close(s)
 #endif
 
@@ -89,6 +97,7 @@ void sys_init(void) {
 #endif
 }
 
+#if !defined(KERNEL)
 static int socket_select(int socket, uint32_t us, int nf) {
 #if defined(WINDOWS)
   TIMEVAL tv;
@@ -116,6 +125,95 @@ static int socket_select(int socket, uint32_t us, int nf) {
 
   return r;
 }
+#endif
+
+#if defined(KERNEL)
+#define TAG_FD "SYS_FD"
+
+#define FD_FILE   1
+
+#define MAX_FNAME 16
+
+typedef struct {
+  char *tag;
+  int type;
+  FIL fil;
+  char name[MAX_FNAME];
+} fd_t;
+
+static void fd_destructor(void *p) {
+  fd_t *f;
+
+  f = (fd_t *)p;
+
+  if (f) {
+    debug(DEBUG_TRACE, "SYS", "fd_destructor type=%d f=%p", f->type, f);
+
+    switch (f->type) {
+      case FD_FILE:
+        f_close(&f->fil);
+        break;
+    }
+    sys_free(f);
+  }
+}
+
+static int fd_open(int type, FIL *fil, char *name) {
+  fd_t *f;
+  int fd;
+
+  if ((f = sys_calloc(1, sizeof(fd_t))) == NULL) {
+    return -1;
+  }
+
+  f->tag = TAG_FD;
+  f->type = type;
+  sys_memcpy(&f->fil, fil, sizeof(FIL));
+  sys_strncpy(f->name, name, MAX_FNAME-1);
+
+  if ((fd = ptr_new(f, fd_destructor)) == -1) {
+    f_close(&f->fil);
+    sys_free(f);
+    return -1;
+  }
+  debug(DEBUG_TRACE, "SYS", "fd_open type=%d ptr=%d f=%p", type, fd, f);
+
+  return fd;
+}
+
+static int fd_read_timeout(fd_t *f, unsigned char *buf, int n, int *nread, uint32_t us) {
+  UINT br;
+  int r = -1;
+
+  *nread = 0;
+
+  switch (f->type) {
+    case FD_FILE:
+      if (f_read(&f->fil, buf, n, &br) == FR_OK) {
+        *nread = br;
+        r = 1;
+      }
+      break;
+  }
+
+  return r;
+}
+
+static int fd_write(fd_t *f, uint8_t *buf, int n) {
+  UINT bw;
+  int r = -1;
+
+  switch (f->type) {
+    case FD_FILE:
+      if (f_write(&f->fil, buf, n, &bw) == FR_OK) {
+        r = n;
+      }
+      break;
+  }
+
+  return r;
+}
+#endif
 
 #if defined(WINDOWS)
 #define TAG_FD "SYS_FD"
@@ -330,7 +428,11 @@ uint64_t sys_time(void) {
 }
 
 char *sys_getenv(char *name) {
+#if defined(KERNEL)
+  return NULL;
+#else
   return getenv(name);
+#endif
 }
 
 /*
@@ -353,7 +455,7 @@ int sys_country(char *country, int len) {
   }
 #else
   char *s, *p, buf[32];
-  if ((s = getenv("LANG")) != NULL) {
+  if ((s = sys_getenv("LANG")) != NULL) {
     sys_strncpy(buf, s, sizeof(buf)-1);
     if ((p = sys_strchr(buf, '.')) != NULL) {
       // "pt_BR.UTF-8" -> "pt_BR"
@@ -390,7 +492,7 @@ int sys_language(char *language, int len) {
   }
 #else
   char *s, *p, buf[32];
-  if ((s = getenv("LANG")) != NULL) {
+  if ((s = sys_getenv("LANG")) != NULL) {
     sys_strncpy(buf, s, sizeof(buf)-1);
     if ((p = sys_strchr(buf, '.')) != NULL) {
       // "pt_BR.UTF-8" -> "pt_BR"
@@ -412,8 +514,8 @@ int sys_language(char *language, int len) {
 }
 
 uint32_t sys_get_pid(void) {
-#if WINDOWS
-  return getpid();
+#if KERNEL
+  return 0;
 #else
   return getpid();
 #endif
@@ -432,6 +534,9 @@ uint32_t sys_get_tid(void) {
 #if defined(EMSCRIPTEN)
   return 0;
 #endif
+#if defined(KERNEL)
+  return 0;
+#endif
 }
 
 int sys_errno(void) {
@@ -440,13 +545,17 @@ int sys_errno(void) {
   err = GetLastError();
   if (!err) err = WSAGetLastError();
   return err;
+#elif defined(KERNEL)
+  return 0;
 #else
   return errno;
 #endif
 }
 
 void sys_strerror(int err, char *msg, int len) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  msg[0] = 0;
+#elif defined(WINDOWS)
   int i;
 
   msg[0] = 0;
@@ -482,7 +591,13 @@ sys_dir_t *sys_opendir(const char *pathname) {
     return NULL;
   }
 
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  if (f_opendir(&dir->dir, pathname) != FR_OK) {
+    debug_errno("SYS", "opendir(\"%s\")", pathname);
+    sys_free(dir);
+    dir = NULL;
+  }
+#elif defined(WINDOWS)
   normalize_path(pathname, dir->buf, FILE_PATH);
 
   int len = sys_strlen(dir->buf);
@@ -517,9 +632,18 @@ int sys_readdir(sys_dir_t *dir, char *name, int len) {
     if (!FindNextFile(dir->handle, &dir->ffd)) return -1;
   }
   sys_strncpy(name, dir->ffd.cFileName, len);
+#elif defined(KERNEL)
+  FILINFO fno;
+  if (f_readdir(&dir->dir, &fno) != FR_OK) {
+    return -1;
+  }
+  if (fno.fname[0] == 0) {
+    return -1;
+  }
+  sys_strncpy(name, fno.fname, len);
 #else
   struct dirent *ent;
-  errno =0;
+  errno = 0;
   if ((ent = readdir(dir->dir)) == NULL) {
     if (errno) {
       debug_errno("SYS", "readdir");
@@ -539,6 +663,8 @@ int sys_closedir(sys_dir_t *dir) {
 #if defined(WINDOWS)
     FindClose(dir->handle);
     r = 0;
+#elif defined(KERNEL)
+    r = f_closedir(&dir->dir) == FR_OK ? 0 : -1;
 #else
     r = closedir(dir->dir);
 #endif
@@ -556,6 +682,9 @@ int sys_chdir(char *path) {
 #if defined(WINDOWS)
     normalize_path(path, buf, FILE_PATH);
     r = chdir(buf);
+#elif defined(KERNEL)
+    sys_strncpy(buf, path, FILE_PATH);
+    r = f_chdir(buf) == FR_OK ? 0 : -1;
 #else
     sys_strncpy(buf, path, FILE_PATH);
     r = chdir(buf);
@@ -566,7 +695,11 @@ int sys_chdir(char *path) {
 }
 
 int sys_getcwd(char *buf, int len) {
+#if defined(KERNEL)
+  f_getcwd(buf, len);
+#else
   getcwd(buf, len);
+#endif
 
   return 0;
 }
@@ -593,6 +726,26 @@ int sys_open(const char *pathname, int flags) {
   }
 
   r = fd_open(FD_FILE, handle, NULL, NULL, -1);
+
+#elif defined(KERNEL)
+  FIL fil;
+  BYTE fmode = 0;
+  int rd, wr;
+
+  rd = (flags & SYS_READ);
+  wr = (flags & SYS_WRITE);
+
+  if (rd && wr) fmode |= FA_READ | FA_WRITE;
+  else if (rd)  fmode |= FA_READ;
+  else if (wr)  fmode |= FA_WRITE;
+
+  if ((r = f_open(&fil, pathname, fmode)) == -1) {
+    debug(DEBUG_ERROR, "SYS", "f_open(\"%s\") failed", pathname);
+    return -1;
+  }
+
+  r = fd_open(FD_FILE, &fil, (char *)pathname);
+
 #else
   uint32_t f = 0;
   int rd, wr;
@@ -636,6 +789,26 @@ int sys_create(const char *pathname, int flags, uint32_t mode) {
   }
 
   r = fd_open(FD_FILE, handle, NULL, NULL, -1);
+#elif defined(KERNEL)
+
+  FIL fil;
+  BYTE fmode = FA_CREATE_ALWAYS;
+  int rd, wr;
+
+  rd = (flags & SYS_READ);
+  wr = (flags & SYS_WRITE);
+
+  if (rd && wr) fmode |= FA_READ | FA_WRITE;
+  else if (rd)  fmode |= FA_READ;
+  else if (wr)  fmode |= FA_WRITE;
+
+  if ((r = f_open(&fil, pathname, fmode)) == -1) {
+    debug(DEBUG_ERROR, "SYS", "f_open(\"%s\") failed", pathname);
+    return -1;
+  }
+
+  r = fd_open(FD_FILE, &fil, (char *)pathname);
+
 #else
   uint32_t f = O_CREAT;
   int rd, wr;
@@ -661,7 +834,9 @@ int sys_create(const char *pathname, int flags, uint32_t mode) {
 // return  0: fd is not set within tv
 // return  1, fd is set
 int sys_select(int fd, uint32_t us) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   fd_t *f;
   DWORD available;
   int r = -1;
@@ -735,6 +910,9 @@ int sys_fdisset(int n, sys_fdset_t *fds) {
 }
 
 int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fdset_t *exceptfds, sys_timeval_t *timeout) {
+#if defined(KERNEL)
+  return -1;
+#else
   fd_set rfds, wfds, efds;
   int r, i, isset;
 #if defined(WINDOWS)
@@ -869,6 +1047,7 @@ int sys_select_fds(int nfds, sys_fdset_t *readfds, sys_fdset_t *writefds, sys_fd
   }
 
   return r;
+#endif
 }
 
 // return -1: error
@@ -902,6 +1081,21 @@ int sys_read_timeout(int fd, uint8_t *buf, int len, int *nread, uint32_t us) {
   ptr_unlock(fd, TAG_FD);
 
   return r;
+
+#elif defined(KERNEL)
+
+  fd_t *f;
+
+  if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
+    return -1;
+  }
+
+  r = fd_read_timeout(f, buf, len, nread, us);
+
+  ptr_unlock(fd, TAG_FD);
+
+  return r;
+
 #else
   if ((r = sys_select(fd, us)) <= 0) {
     return r;
@@ -948,7 +1142,7 @@ int sys_write(int fd, uint8_t *buf, int len) {
     return -1;
   }
 
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   fd_t *f;
 
   if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
@@ -1017,6 +1211,32 @@ int64_t sys_seek(int fd, int64_t offset, sys_seek_t whence) {
 
   ptr_unlock(fd, TAG_FD);
 
+#elif defined(KERNEL)
+  fd_t *f;
+  int32_t pos;
+
+  if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
+    return -1;
+  }
+
+  switch (whence) {
+    case SYS_SEEK_SET: pos = offset; break;
+    case SYS_SEEK_CUR: pos = f_tell(&f->fil) + offset; break;
+    case SYS_SEEK_END: pos = f_size(&f->fil) - offset; break;
+    default:
+      ptr_unlock(fd, TAG_FD);
+      return -1;
+  }
+
+  if (f->type == FD_FILE) {
+    r = f_lseek(&f->fil, pos) == FR_OK ? pos : -1;
+    if (r == -1) {
+      debug(DEBUG_ERROR, "SYS", "f_lseek(%d) failed", pos);
+    }
+  }
+
+  ptr_unlock(fd, TAG_FD);
+
 #else
   switch (whence) {
     case SYS_SEEK_SET: r = lseek(fd, offset, SEEK_SET); break;
@@ -1051,6 +1271,18 @@ int sys_truncate(int fd, int64_t offset) {
 
   ptr_unlock(fd, TAG_FD);
 
+#elif defined(KERNEL)
+  fd_t *f;
+
+  if ((f = ptr_lock(fd, TAG_FD)) == NULL) {
+    return -1;
+  }
+
+  if (f->type == FD_FILE) {
+    r = f_truncate(&f->fil) == FR_OK ? 0 : -1;
+  }
+
+  ptr_unlock(fd, TAG_FD);
 #else
   r = ftruncate(fd, offset);
 #endif
@@ -1084,20 +1316,26 @@ int sys_pipe(int *fd) {
   fd[0] = fd0;
   fd[1] = fd1;
 
+  return 0;
+#elif defined(KERNEL)
+  return -1;
 #else
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fd) == -1) {
     debug_errno("SYS", "socketpair");
     return -1;
   }
-#endif
 
   return 0;
+#endif
 }
 
 // return -1: error or client disconnected
 // return  0: nothing to read from fd
 // return  1, something to read from fd
 int sys_peek(int fd) {
+#if defined(KERNEL)
+  return 0;
+#else
   int r;
 
   if ((r = sys_select(fd, 0)) <= 0) {
@@ -1113,6 +1351,7 @@ int sys_peek(int fd) {
 #endif
 
   return r;
+#endif
 }
 
 int sys_fstat(int fd, sys_stat_t *st) {
@@ -1137,6 +1376,25 @@ int sys_fstat(int fd, sys_stat_t *st) {
       } else if (f->type == FD_FILE) {
         st->mode = SYS_IFDIR;
         r = 0;
+      }
+      ptr_unlock(fd, TAG_FD);
+    }
+  }
+
+#elif defined(KERNEL)
+  FILINFO fno;
+  fd_t *f;
+
+  if (st) {
+    sys_memset(st, 0, sizeof(sys_stat_t));
+
+    if ((f = ptr_lock(fd, TAG_FD)) != NULL) {
+      if (f->type == FD_FILE) {
+        if (f_stat(f->name, &fno) == FR_OK) {
+          st->mode = SYS_IFREG;
+          st->size = fno.fsize;
+          r = 0;
+        }
       }
       ptr_unlock(fd, TAG_FD);
     }
@@ -1168,10 +1426,28 @@ int sys_fstat(int fd, sys_stat_t *st) {
 
 int sys_stat(const char *pathname, sys_stat_t *st) {
   char buf[FILE_PATH];
-  struct stat sb;
   int r = -1;
 
   if (pathname && st) {
+#if defined(KERNEL)
+    FILINFO fno;
+
+    sys_strncpy(buf, pathname, FILE_PATH);
+
+    if (f_stat(buf, &fno) == FR_OK) {
+      st->mode = 0;
+      if (fno.fattrib & AM_DIR) st->mode |= SYS_IFDIR; else st->mode |= SYS_IFREG;
+      st->size = fno.fsize;
+      st->atime = 0;
+      st->mtime = 0;
+      st->ctime = 0;
+      r = 0;
+    } else {
+      debug(DEBUG_ERROR, "SYS", "f_stat(\"%s\") failed", buf);
+    }
+#else
+    struct stat sb;
+
 #if defined(WINDOWS)
     normalize_path(pathname, buf, FILE_PATH);
 #else
@@ -1194,6 +1470,7 @@ int sys_stat(const char *pathname, sys_stat_t *st) {
         debug_errno("SYS", "stat(\"%s\")", buf);
       }
     }
+#endif
   }
 
   return r;
@@ -1237,7 +1514,7 @@ int sys_statfs(const char *pathname, sys_statfs_t *st) {
 int sys_close(int fd) {
   int r = -1;
 
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   r = ptr_free(fd, TAG_FD);
 #else
   if (fd != -1) {
@@ -1256,6 +1533,10 @@ int sys_rename(const char *pathname1, const char *pathname2) {
   normalize_path(pathname1, buf1, FILE_PATH);
   normalize_path(pathname2, buf2, FILE_PATH);
   r = rename(buf1, buf2);
+#elif defined(KERNEL)
+  sys_strncpy(buf1, pathname1, FILE_PATH);
+  sys_strncpy(buf2, pathname2, FILE_PATH);
+  r = f_rename(buf1, buf2) == FR_OK ? 0 : -1;
 #else
   sys_strncpy(buf1, pathname1, FILE_PATH);
   sys_strncpy(buf2, pathname2, FILE_PATH);
@@ -1276,14 +1557,23 @@ int sys_unlink(const char *pathname) {
 #if defined(WINDOWS)
   normalize_path(pathname, buf, FILE_PATH);
   r = unlink(buf);
-#else
-  sys_strncpy(buf, pathname, FILE_PATH);
-  r = unlink(buf);
-#endif
-
   if (r == -1) {
     debug_errno("SYS", "unlink(\"%s\")", buf);
   }
+#elif defined(KERNEL)
+  sys_strncpy(buf, pathname, FILE_PATH);
+  r = f_unlink(buf) == FR_OK ? 0 : -1;
+  if (r == -1) {
+    debug(DEBUG_ERROR, "SYS", "f_unlink(\"%s\") failed", buf);
+  }
+#else
+  sys_strncpy(buf, pathname, FILE_PATH);
+  r = unlink(buf);
+  if (r == -1) {
+    debug_errno("SYS", "unlink(\"%s\")", buf);
+  }
+#endif
+
 
   return r;
 }
@@ -1295,6 +1585,9 @@ int sys_rmdir(const char *pathname) {
 #if defined(WINDOWS)
   normalize_path(pathname, buf, FILE_PATH);
   r = rmdir(buf);
+#elif defined(KERNEL)
+  sys_strncpy(buf, pathname, FILE_PATH);
+  r = f_rmdir(buf) == FR_OK ? 0 : -1;
 #else
   sys_strncpy(buf, pathname, FILE_PATH);
   r = rmdir(buf);
@@ -1320,19 +1613,30 @@ int sys_mkdir(const char *pathname) {
   } else {
     r = 0;
   }
-#else
-  sys_strncpy(buf, pathname, FILE_PATH);
-  r = mkdir(buf, 0755);
-#endif
   if (r == -1) {
     debug_errno("SYS", "mkdir(\"%s\")", buf);
   }
+#elif defined(KERNEL)
+  sys_strncpy(buf, pathname, FILE_PATH);
+  r = f_mkdir(buf) == FR_OK ? 0 : -1;
+  if (r == -1) {
+    debug(DEBUG_ERROR, "SYS", "f_mkdir(\"%s\") failed", buf);
+  }
+#else
+  sys_strncpy(buf, pathname, FILE_PATH);
+  r = mkdir(buf, 0755);
+  if (r == -1) {
+    debug_errno("SYS", "mkdir(\"%s\")", buf);
+  }
+#endif
 
   return r;
 }
 
 int sys_serial_open(char *device, char *word, int baud) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   HANDLE handle, eventr, eventw;
   COMMTIMEOUTS timeouts;
   DCB dcb;
@@ -1462,8 +1766,8 @@ int sys_serial_open(char *device, char *word, int baud) {
 }
 
 int sys_serial_baud(int serial, int baud) {
-#if defined(WINDOWS)
-  debug(DEBUG_ERROR, "SYS", "sys_serial_baud not implemented on windows");
+#if defined(WINDOWS) || defined(KERNEL)
+  debug(DEBUG_ERROR, "SYS", "sys_serial_baud not implemented");
   return -1;
 #else
   struct termios termios;
@@ -1534,8 +1838,8 @@ int sys_serial_baud(int serial, int baud) {
 }
 
 int sys_serial_word(int serial, char *word) {
-#if defined(WINDOWS)
-  debug(DEBUG_ERROR, "SYS", "sys_serial_word not implemented on windows");
+#if defined(WINDOWS) || defined(KERNEL)
+  debug(DEBUG_ERROR, "SYS", "sys_serial_word not implemented");
   return -1;
 #else
   struct termios termios;
@@ -1598,7 +1902,7 @@ int sys_serial_word(int serial, char *word) {
 }
 
 void *sys_tty_raw(int fd) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return NULL;
 #else
   struct termios term;
@@ -1619,7 +1923,7 @@ void *sys_tty_raw(int fd) {
 }
 
 int sys_tty_restore(int fd, void *p) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return 0;
 #else
   int r = -1;
@@ -1634,7 +1938,7 @@ int sys_tty_restore(int fd, void *p) {
 }
 
 int sys_termsize(int fd, int *cols, int *rows) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return -1;
 #else
   struct winsize ws;
@@ -1653,7 +1957,7 @@ int sys_termsize(int fd, int *cols, int *rows) {
 }
 
 int sys_isatty(int fd) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return 0;
 #else
   return isatty(fd);
@@ -1661,7 +1965,7 @@ int sys_isatty(int fd) {
 }
 
 int sys_daemonize(void) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return -1;
 #else
   pid_t pid;
@@ -1833,7 +2137,7 @@ int sys_set_thread_name(char *name) {
   return 0;
 }
 
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(KERNEL)
 static void sys_set_signals(int op) {
   sigset_t set;
 
@@ -1852,18 +2156,19 @@ static void sys_set_signals(int op) {
 #endif
 
 void sys_block_signals(void) {
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(KERNEL)
   sys_set_signals(SIG_BLOCK);
 #endif
 }
 
 void sys_unblock_signals(void) {
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(KERNEL)
   sys_set_signals(SIG_UNBLOCK);
 #endif
 }
 
 void sys_install_handler(int signum, void (*handler)(int)) {
+#if !defined(KERNEL)
 #if defined(WINDOWS)
   signal(signum, handler);
 #else
@@ -1872,22 +2177,26 @@ void sys_install_handler(int signum, void (*handler)(int)) {
   action.sa_handler = handler;
   sigaction(signum, &action, NULL);
 #endif
+#endif
 }
 
 void sys_wait(int *status) {
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(KERNEL)
   wait(status);
 #endif
 }
 
 void *sys_lib_load(char *libname, int *first_load) {
-  char buf[FILE_PATH];
   void *lib;
-  int len;
 
   *first_load = 0;
 
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return NULL;
+#elif defined(WINDOWS)
+  char buf[FILE_PATH];
+  int len;
+
   normalize_path(libname, buf, FILE_PATH-1);
   len = sys_strlen(buf);
   if (sys_strstr(buf, ".dll") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 5) {
@@ -1912,6 +2221,9 @@ void *sys_lib_load(char *libname, int *first_load) {
     debug(DEBUG_INFO, "SYS", "library %s already loaded", buf);
   }
 #else
+  char buf[FILE_PATH];
+  int len;
+
   sys_strncpy(buf, libname, FILE_PATH-1);
   len = sys_strlen(buf);
   if (sys_strstr(buf, ".so") == NULL && sys_strchr(buf, '.') == NULL && FILE_PATH-len > 4) {
@@ -1959,7 +2271,9 @@ void *sys_lib_load(char *libname, int *first_load) {
 void *sys_lib_defsymbol(void *lib, char *name, int mandatory) {
   void *sym;
 
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  sym = NULL;
+#elif defined(WINDOWS)
   sym = (void *)GetProcAddress((HMODULE)lib, name);
 
   if (sym == NULL && mandatory) {
@@ -1978,7 +2292,9 @@ void *sys_lib_defsymbol(void *lib, char *name, int mandatory) {
 }
 
 int sys_lib_close(void *lib) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return 0;
+#elif defined(WINDOWS)
   return FreeLibrary((HMODULE)lib);
 #else
   return dlclose(lib);
@@ -1986,7 +2302,7 @@ int sys_lib_close(void *lib) {
 }
 
 void sys_exit(int r) {
-#ifndef ANDROID
+#if !defined(ANDROID) && !defined(KERNEL)
   exit(r);
 #endif
 }
@@ -1996,6 +2312,8 @@ void sys_set_finish(int status) {
   thread_set_status(status);
   thread_set_flags(FLAG_FINISH);
 }
+
+#ifndef KERNEL
 
 static const char *sys_inet_ntop(int af, const void *a0, char *s, uint32_t l) {
 	const unsigned char *a = a0;
@@ -2248,7 +2566,12 @@ static int sys_tcpip_fill_addr(struct sockaddr_storage *a, char *host, int port,
   return r;
 }
 
+#endif
+
 uint32_t sys_socket_ipv4(char *host) {
+#if defined(KERNEL)
+  return -1;
+#else
   struct sockaddr_storage a;
   struct sockaddr_in *addr;
   int len;
@@ -2260,11 +2583,18 @@ uint32_t sys_socket_ipv4(char *host) {
   }
 
   return r;
+#endif
 }
 
 int sys_socket_fill_addr(void *a, char *host, int port, int *len) {
+#if defined(KERNEL)
+  return -1;
+#else
   return sys_tcpip_fill_addr((struct sockaddr_storage *)a, host, port, len, 0);
+#endif
 }
+
+#if !defined(KERNEL)
 
 static int sys_tcpip_type(int *type, int *proto) {
   switch (*type) {
@@ -2357,8 +2687,12 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
   return sock;
 }
 
+#endif
+
 int sys_socket_open_connect_timeout(char *host, int port, int type, uint32_t us) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   int sock;
 
   if ((sock = sys_tcpip_connect(host, port, type, us)) == -1) {
@@ -2376,6 +2710,9 @@ int sys_socket_open_connect(char *host, int port, int type) {
 }
 
 int sys_socket_open(int type, int ipv6) {
+#if defined(KERNEL)
+  return -1;
+#else
   int sock, addrlen;
 
   if ((sock = sys_tcpip_socket(NULL, 0, &type, NULL, &addrlen, &ipv6, NULL)) == -1) {
@@ -2387,10 +2724,13 @@ int sys_socket_open(int type, int ipv6) {
 #else
   return sock;
 #endif
+#endif
 }
 
-
 int sys_socket_connect(int sock, char *host, int port) {
+#if defined(KERNEL)
+  return -1;
+#else
   struct sockaddr_storage addr;
   int ipv6, len;
 
@@ -2425,8 +2765,10 @@ int sys_socket_connect(int sock, char *host, int port) {
 #endif
 
   return 0;
+#endif
 }
 
+#if !defined(KERNEL)
 static int sys_tcpip_bind(int sock, char *host, int *pport) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
@@ -2520,9 +2862,12 @@ static int sys_tcpip_bind(int sock, char *host, int *pport) {
 
   return 0;
 }
+#endif
 
 int sys_socket_binds(int sock, char *host, int *port) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   fd_t *f;
   int r = -1;
 
@@ -2541,15 +2886,22 @@ int sys_socket_binds(int sock, char *host, int *port) {
 }
 
 int sys_socket_listen(int sock, int n) {
+#if defined(KERNEL)
+  return -1;
+#else
   if (listen(sock, n) == -1) {
     debug_errno("SYS", "listen");
     return -1;
   }
 
   return 0;
+#endif
 }
 
 int sys_socket_bind(char *host, int *port, int type) {
+#if defined(KERNEL)
+  return -1;
+#else
   struct sockaddr_storage addr;
   int sock, addrlen, ipv6;
 
@@ -2574,8 +2926,10 @@ int sys_socket_bind(char *host, int *port, int type) {
 #else
   return sock;
 #endif
+#endif
 }
 
+#if !defined(KERNEL)
 static int sys_tcpip_bind_connect(char *src_host, int src_port, char *host, int port, int type) {
   struct sockaddr_storage src_addr, addr;
   int sock, addrlen, src_ipv6, ipv6, reuse, len;
@@ -2615,9 +2969,12 @@ static int sys_tcpip_bind_connect(char *src_host, int src_port, char *host, int 
 
   return sock;
 }
+#endif
 
 int sys_socket_bind_connect(char *src_host, int src_port, char *host, int port, int type) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   int sock;
 
   if ((sock = sys_tcpip_bind_connect(src_host, src_port, host, port, type)) == -1) {
@@ -2630,6 +2987,7 @@ int sys_socket_bind_connect(char *src_host, int src_port, char *host, int port, 
 #endif
 }
 
+#if !defined(KERNEL)
 static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv, int nf) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
@@ -2685,9 +3043,12 @@ static int sys_tcpip_accept(int sock, char *host, int hlen, int *port, sys_timev
 
   return csock;
 }
+#endif
 
 int sys_socket_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *tv) {
-#if defined(WINDOWS)
+#if defined(KERNEL)
+  return -1;
+#elif defined(WINDOWS)
   fd_t *f;
   int csock = -1;
 
@@ -2707,6 +3068,7 @@ int sys_socket_accept(int sock, char *host, int hlen, int *port, sys_timeval_t *
 #endif
 }
 
+#if !defined(KERNEL)
 static int sys_tcpip_sendto(int sock, char *host, int port, unsigned char *buf, int n) {
   struct sockaddr_storage addr;
   int len, r;
@@ -2722,6 +3084,7 @@ static int sys_tcpip_sendto(int sock, char *host, int port, unsigned char *buf, 
 
   return r;
 }
+#endif
 
 int sys_socket_sendto(int sock, char *host, int port, unsigned char *buf, int n) {
   int r = -1;
@@ -2738,13 +3101,14 @@ int sys_socket_sendto(int sock, char *host, int port, unsigned char *buf, int n)
   }
 
   ptr_unlock(sock, TAG_FD);
-#else
+#elif !defined(KERNEL)
   r = sys_tcpip_sendto(sock, host, port, buf, n);
 #endif
 
   return r;
 }
 
+#if !defined(KERNEL)
 static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, sys_timeval_t *tv, int nf) {
   struct sockaddr_storage addr;
   struct sockaddr_in *addr4;
@@ -2787,6 +3151,7 @@ static int sys_tcpip_recvfrom(int sock, char *host, int hlen, int *port, unsigne
 
   return r;
 }
+#endif
 
 int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char *buf, int n, sys_timeval_t *tv) {
   int r = -1;
@@ -2803,7 +3168,7 @@ int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char
   }
 
   ptr_unlock(sock, TAG_FD);
-#else
+#elif !defined(KERNEL)
   r = sys_tcpip_recvfrom(sock, host, hlen, port, buf, n, tv, 1);
 #endif
 
@@ -2811,6 +3176,9 @@ int sys_socket_recvfrom(int sock, char *host, int hlen, int *port, unsigned char
 }
 
 int sys_setsockopt(int sock, int level, int optname, const void *optval, int optlen) {
+#if defined(KERNEL)
+  return -1;
+#else
   int ilevel, ioptname, r = -1;
 
   switch (level) {
@@ -2855,13 +3223,15 @@ int sys_setsockopt(int sock, int level, int optname, const void *optval, int opt
 #endif
 
   return r;
+#endif
 }
 
 int sys_socket_shutdown(int sock, int dir) {
-  int r = -1, d = 0;
+  int r = -1;
 
 #if defined(WINDOWS)
   fd_t *f;
+  int d = 0;
 
   if (dir & SYS_SHUTDOWN_RD) d |= SD_RECEIVE;
   if (dir & SYS_SHUTDOWN_WR) d |= SD_SEND;
@@ -2875,9 +3245,12 @@ int sys_socket_shutdown(int sock, int dir) {
   }
 
   ptr_unlock(sock, TAG_FD);
-#else
+#elif !defined(KERNEL)
+  int d = 0;
+
   if (dir & SYS_SHUTDOWN_RD) d |= SHUT_RD;
   if (dir & SYS_SHUTDOWN_WR) d |= SHUT_WR;
+
   r = shutdown(sock, d);
 #endif
 
@@ -2885,7 +3258,7 @@ int sys_socket_shutdown(int sock, int dir) {
 }
 
 int sys_fork_exec(char *filename, char *argv[], int fd) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return -1;
 #else
   char *envp[] = { NULL };
@@ -2926,7 +3299,7 @@ int sys_tmpname(char *buf, int max) {
   int n, r = -1;
 
   if (max >= 256 + L_tmpnam + 1) {
-    t = getenv("TEMP");
+    t = sys_getenv("TEMP");
     sys_memset(buf, 0, max);
     sys_strncpy(buf, t ? t : "\\", 255);
     n = sys_strlen(buf);
@@ -2939,6 +3312,7 @@ int sys_tmpname(char *buf, int max) {
 }
 #endif
 
+#if !defined(KERNEL)
 int sys_mkstempfile(char *buf) {
   return mkstemp(buf);
 }
@@ -2953,36 +3327,17 @@ int sys_mkstemp(void) {
 
   return fd;
 }
-
-void *sys_malloc(sys_size_t size) {
-  return malloc(size);
-}
-
-void sys_free(void *ptr) {
-  free(ptr);
-}
-
-void *sys_calloc(sys_size_t nmemb, sys_size_t size) {
-  return calloc(nmemb, size);
-}
-
-void *sys_realloc(void *ptr, sys_size_t size) {
-  return realloc(ptr, size);
-}
-
-long sys_strtol(const char *nptr, char **endptr, int base) {
-  return strtol(nptr, endptr, base);
-}
-
-unsigned long int sys_strtoul(const char *nptr, char **endptr, int base) {
-  return strtoul(nptr, endptr, base);
-}
+#endif
 
 double sys_strtod(const char *nptr, char **endptr) {
   return strtod(nptr, endptr);
 }
 
 int sys_abs(int x) {
+  return x < 0 ? -x : x;
+}
+
+double sys_fabs(double x) {
   return x < 0 ? -x : x;
 }
 
@@ -2994,12 +3349,8 @@ double sys_ceil(double x) {
   return ceil(x);
 }
 
-double sys_fabs(double x) {
-  return x < 0 ? -x : x;
-}
-
 double sys_log(double x) {
-  return exp(x);
+  return log(x);
 }
 
 double sys_exp(double x) {
@@ -3070,7 +3421,7 @@ int sys_sscanf(const char *str, const char *format, ...) {
 }
 
 sys_size_t sys_getpagesize(void) {
-#if defined(WINDOWS)
+#if defined(WINDOWS) || defined(KERNEL)
   return 4096; // XXX
 #else
   return sysconf(_SC_PAGE_SIZE);

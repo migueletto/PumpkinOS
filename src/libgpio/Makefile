@@ -2,16 +2,18 @@ include ../common.mak
 
 PROGRAM=$(BIN)/libgpio$(SOEXT)
 
+ifeq ($(RPI),yes)
 CUSTOMFLAGS=-DBCM2835 -I$(SRC)/libbcm2835
-
-ifeq ($(OS),Linux)
-OBJS=libgpio.o gpio.o gpiobcm.o
+OBJS=libgpio.o gpiomem.o gpiosys.o gpiobcm.o
+LIBS=-lbcm2835
+else ifeq ($(OS),Linux)
+OBJS=libgpio.o gpiomem.o gpiosys.o
 else
-OBJS=libgpio.o gpio.o
+OBJS=libgpio.o gpiomem.o
 endif
 
 $(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lbcm2835 -lpit
+	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(LIB) $(LIBS) -lpit
 
 clean:
 	rm -f $(PROGRAM) *.o

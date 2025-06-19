@@ -3,7 +3,7 @@ include ../commonp.mak
 
 CRDATE := $(shell date +%s)
 
-CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I./dlmalloc -DARMEMU
+CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I./dlmalloc -DARMEMU -ffreestanding
 
 GPSLIB_SOURCE=GPSLib68K.c
 
@@ -39,6 +39,20 @@ $(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
 
 emulation/systrap.wasm: emulation/systrap.c emulation/switch.c
 	$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm
+
+else ifeq ($(OSNAME),Kernel)
+
+LAUNCHER=$(SRC)/Launcher
+LAUNCHER_SOURCE=$(LAUNCHER)/Launcher.c $(LAUNCHER)/editstr.c $(LAUNCHER)/editbmp.c $(LAUNCHER)/editform.c $(LAUNCHER)/editbin.c $(LAUNCHER)/editsurf.c
+LAUNCHER_OBJS=$(LAUNCHER_SOURCE:%.c=%.o)
+
+PROGRAM=$(BIN)/libpumpkin.a
+OBJS=$(SOURCE:%.c=%.o)
+$(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
+	$(AR) -cr $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
+
+emulation/systrap.o: emulation/systrap.c emulation/switch.c
+	$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
 
 else
 

@@ -7,7 +7,6 @@
 #include "gpiomonitor.h"
 #include "bcm2835.h"
 #include "debug.h"
-#include "xalloc.h"
 
 struct gpio_t {
   int a;
@@ -35,7 +34,7 @@ int gpio_bcm_finish(void) {
 gpio_t *gpio_bcm_open(void *data) {
   gpio_t *gpio;
 
-  if ((gpio = xcalloc(1, sizeof(gpio_t))) != NULL) {
+  if ((gpio = sys_calloc(1, sizeof(gpio_t))) != NULL) {
   }
 
   return gpio;
@@ -45,7 +44,7 @@ int gpio_bcm_close(gpio_t *gpio) {
   int r = -1;
 
   if (gpio) {
-    xfree(gpio);
+    sys_free(gpio);
     r = 0;
   }
 
@@ -143,7 +142,7 @@ static int monitor_action(void *arg) {
   }
 
   monitor->callback(monitor->pe, -1, 0, monitor->ref, monitor->data);
-  xfree(monitor);
+  sys_free(monitor);
 
   return 0;
 }
@@ -156,7 +155,7 @@ int gpio_bcm_create_monitor(gpio_t *gpio, int pe, int pin, int (*callback)(int p
 
   handle = -1;
 
-  if ((monitor = xcalloc(1, sizeof(gpio_monitor_t))) != NULL) {
+  if ((monitor = sys_calloc(1, sizeof(gpio_monitor_t))) != NULL) {
     monitor->pin = pin;
     monitor->callback = callback;
     monitor->pe = pe;
@@ -164,7 +163,7 @@ int gpio_bcm_create_monitor(gpio_t *gpio, int pe, int pin, int (*callback)(int p
     monitor->data = data;
 
     if ((handle = thread_begin(TAG_GPIO, monitor_action, monitor)) == -1) {
-      xfree(monitor);
+      sys_free(monitor);
     }
   }
 

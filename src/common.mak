@@ -136,6 +136,14 @@ SOEXT=.wasm
 LUAPLAT=linux
 OS=Emscripten
 OSDEFS=$(MBITS) -DEMSCRIPTEN -DSOEXT=\"$(SOEXT)\" -pthread
+else ifeq ($(OSNAME),Kernel)
+SYS_OS=6
+SOEXT=.a
+LUAPLAT=linux
+OS=Linux
+OSDEFS=$(MBITS) -DKERNEL -DSOEXT=\"$(SOEXT)\"
+PILRCDEFS=-D KERNEL
+CC=gcc
 else
 $(error Unknown OS $(OSNAME))
 endif
@@ -144,7 +152,7 @@ EM_CC=emcc
 EM_AR=emar
 
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -O2 -g -fPIC -fno-stack-protector $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" $(CUSTOMFLAGS) $(SYSDEFS)
+CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" $(CUSTOMFLAGS) $(SYSDEFS)
 
 %.wasm : %.c
 	$(EM_CC) $(CFLAGS) -c -o $@ $<

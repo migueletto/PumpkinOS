@@ -567,11 +567,11 @@ static int stbi_write_tga_core(stbi__write_context *s, int x, int y, int comp, v
 
             if (i < x - 1) {
                ++len;
-               diff = memcmp(begin, row + (i + 1) * comp, comp);
+               diff = sys_memcmp(begin, row + (i + 1) * comp, comp);
                if (diff) {
                   const unsigned char *prev = begin;
                   for (k = i + 2; k < x && len < 128; ++k) {
-                     if (memcmp(prev, row + k * comp, comp)) {
+                     if (sys_memcmp(prev, row + k * comp, comp)) {
                         prev += comp;
                         ++len;
                      } else {
@@ -581,7 +581,7 @@ static int stbi_write_tga_core(stbi__write_context *s, int x, int y, int comp, v
                   }
                } else {
                   for (k = i + 2; k < x && len < 128; ++k) {
-                     if (!memcmp(begin, row + k * comp, comp)) {
+                     if (!sys_memcmp(begin, row + k * comp, comp)) {
                         ++len;
                      } else {
                         break;
@@ -992,7 +992,7 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
          stbiw__sbpush(out, STBIW_UCHAR(blocklen >> 8));
          stbiw__sbpush(out, STBIW_UCHAR(~blocklen)); // NLEN
          stbiw__sbpush(out, STBIW_UCHAR(~blocklen >> 8));
-         memcpy(out+stbiw__sbn(out), data+j, blocklen);
+         sys_memcpy(out+stbiw__sbn(out), data+j, blocklen);
          stbiw__sbn(out) += blocklen;
          j += blocklen;
       }
@@ -1082,7 +1082,7 @@ static void stbiw__wpcrc(unsigned char **data, int len)
 
 static unsigned char stbiw__paeth(int a, int b, int c)
 {
-   int p = a + b - c, pa = abs(p-a), pb = abs(p-b), pc = abs(p-c);
+   int p = a + b - c, pa = sys_abs(p-a), pb = sys_abs(p-b), pc = sys_abs(p-c);
    if (pa <= pb && pa <= pc) return STBIW_UCHAR(a);
    if (pb <= pc) return STBIW_UCHAR(b);
    return STBIW_UCHAR(c);
@@ -1100,7 +1100,7 @@ static void stbiw__encode_png_line(unsigned char *pixels, int stride_bytes, int 
    int signed_stride = stbi__flip_vertically_on_write ? -stride_bytes : stride_bytes;
 
    if (type==0) {
-      memcpy(line_buffer, z, width*n);
+      sys_memcpy(line_buffer, z, width*n);
       return;
    }
 
@@ -1156,7 +1156,7 @@ STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int s
             // Estimate the entropy of the line using this filter; the less, the better.
             est = 0;
             for (i = 0; i < x*n; ++i) {
-               est += abs((signed char) line_buffer[i]);
+               est += sys_abs((signed char) line_buffer[i]);
             }
             if (est < best_filter_val) {
                best_filter_val = est;

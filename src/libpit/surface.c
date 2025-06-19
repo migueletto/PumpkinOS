@@ -13,18 +13,31 @@
 #include "surface.h"
 #include "rgb.h"
 #include "util.h"
+#include "loadfile.h"
 #include "debug.h"
-#include "xalloc.h"
+
+#define STBI_MALLOC(sz)         sys_malloc(sz)
+#define STBI_REALLOC(p,newsz)   sys_realloc(p,newsz)
+#define STBI_FREE(p)            sys_free(p)
+#define STBI_ASSERT(x)          (void)(x)
+#define STBIW_MALLOC(sz)        sys_malloc(sz)
+#define STBIW_REALLOC(p,newsz)  sys_realloc(p,newsz)
+#define STBIW_FREE(p)           sys_free(p)
+#define STBIW_MEMMOVE(a,b,sz)   sys_memmove(a,b,sz)
+#define STBIW_ASSERT(x)         (void)(x)
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
 #define STBI_NO_PSD
 #define STBI_NO_TGA
 #define STBI_NO_HDR
 #define STBI_NO_PIC
 #define STBI_NO_PNM
+#define STBI_NO_LINEAR
 #include "stb_image.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STBI_WRITE_NO_STDIO
 #include "stb_image_write.h"
 
 typedef struct {
@@ -98,7 +111,7 @@ void surface_print(surface_t *surface, int x, int y, char *s, font_t *f, int fon
 }
 
 void surface_printvf(surface_t *surface, int x, int y, char *s, uint32_t color, double size, double angle, graphic_vfont_t *vf) {
-  graphic_vfont_draw(vf, surface->data, s, x, y, color, size, (int)((angle * 180) / M_PI), surface->setpixel, surface->setarea);
+  graphic_vfont_draw(vf, surface->data, s, x, y, color, size, (int)((angle * 180) / sys_pi()), surface->setpixel, surface->setarea);
 }
 
 void surface_sizevf(char *s, double size, int *dx, int *dy, graphic_vfont_t *vf) {
@@ -167,7 +180,7 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
   int i, j, k, red, green, blue, alpha;
 
   if (mono) {
-    if ((pixels = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
+    if ((pixels = sys_calloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
       for (i = 0, j = 1 << mono, color = 0; i < j; i++, color += 255 / (j - 1)) {
         gray[i] = dst->color_rgb(dst->data, color, color, color, 255);
       }
@@ -200,13 +213,13 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
           pixels[k + w + 1] += err * 1 / 16;
         }
       }
-      xfree(pixels);
+      sys_free(pixels);
     }
 
   } else {
-    if ((pixels_r = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
-        (pixels_g = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
-        (pixels_b = xcalloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
+    if ((pixels_r = sys_calloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
+        (pixels_g = sys_calloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL &&
+        (pixels_b = sys_calloc(1, (w+1) * (h+1) * sizeof(int32_t))) != NULL) {
 
       for (i = 0, k = 0; i < h; i++) {
         for (j = 0; j < w; j++, k++) {
@@ -249,9 +262,9 @@ void surface_dither(surface_t *dst, int dst_x, int dst_y, surface_t *src, int sr
         }
       }
 
-      xfree(pixels_b);
-      xfree(pixels_g);
-      xfree(pixels_r);
+      sys_free(pixels_b);
+      sys_free(pixels_g);
+      sys_free(pixels_r);
     }
   }
 }
@@ -743,8 +756,8 @@ static void bsurface_destroy(void *data) {
   buffer_surface_t *b = (buffer_surface_t *)data;
 
   if (b) {
-    if (b->buffer) xfree(b->buffer);
-    xfree(b);
+    if (b->buffer) sys_free(b->buffer);
+    sys_free(b);
   }
 }
 
@@ -768,7 +781,7 @@ void surface_copy(surface_t *surface, uint8_t *src) {
 
   if (surface && src) {
     if ((dst = surface_buffer(surface, &len)) != NULL) {
-      xmemcpy(dst, src, len);
+      sys_memcpy(dst, src, len);
     } else {
       for (i = 0; i < surface->height; i++) {
         for (j = 0; j < surface->width; j++) {
@@ -800,8 +813,8 @@ surface_t *surface_create(int width, int height, int encoding) {
       return NULL;
   }
 
-  if ((surface = xcalloc(1, sizeof(surface_t))) != NULL) {
-    if ((b = xcalloc(1, sizeof(buffer_surface_t))) != NULL) {
+  if ((surface = sys_calloc(1, sizeof(surface_t))) != NULL) {
+    if ((b = sys_calloc(1, sizeof(buffer_surface_t))) != NULL) {
       surface->tag = TAG_SURFACE;
       surface->width = width;
       surface->height = height;
@@ -819,15 +832,15 @@ surface_t *surface_create(int width, int height, int encoding) {
       b->height = height;
       b->encoding = encoding;
       b->rowBytes = rowBytes;
-      b->buffer = xcalloc(1, height * rowBytes);
+      b->buffer = sys_calloc(1, height * rowBytes);
 
       if (b->buffer == NULL) {
-        xfree(b);
-        xfree(surface);
+        sys_free(b);
+        sys_free(surface);
         surface = NULL;
       }
     } else {
-      xfree(surface);
+      sys_free(surface);
       surface = NULL;
     }
   }
@@ -838,7 +851,7 @@ surface_t *surface_create(int width, int height, int encoding) {
 void surface_palette(surface_t *surface, int i, int red, int green, int blue) {
   if (surface && surface->encoding == SURFACE_ENCODING_PALETTE && i >= 0 && i < MAX_PALETTE) {
      if (!surface->palette) {
-       surface->palette = xcalloc(MAX_PALETTE, sizeof(surface_palette_t));
+       surface->palette = sys_calloc(MAX_PALETTE, sizeof(surface_palette_t));
      }
      if (surface->palette) {
        surface->palette[i].red = red;
@@ -857,7 +870,7 @@ static void buffer_dither(uint8_t *buf, surface_t *surface) {
   int16_t *pixels, oldpixel, newpixel, err;
   int i, j, k;
 
-  if ((pixels = xcalloc(1, (surface->width+1) * (surface->height+1) * sizeof(int16_t))) != NULL) {
+  if ((pixels = sys_calloc(1, (surface->width+1) * (surface->height+1) * sizeof(int16_t))) != NULL) {
     for (i = 0, k = 0; i < surface->height; i++) {
       for (j = 0; j < surface->width; j++, k++) {
         pixels[k] = buf[k];
@@ -877,7 +890,7 @@ static void buffer_dither(uint8_t *buf, surface_t *surface) {
       }
     }
 
-    xfree(pixels);
+    sys_free(pixels);
   }
 }
 
@@ -890,10 +903,10 @@ static int surface_scale_down(surface_t *src, surface_t *dst) {
   fx = (float)dst->width / (float)src->width;
   fy = (float)dst->height / (float)src->height;
   len = dst->width * dst->height;
-  rbin = xcalloc(len, sizeof(uint32_t));
-  gbin = xcalloc(len, sizeof(uint32_t));
-  bbin = xcalloc(len, sizeof(uint32_t));
-  count = xcalloc(len, sizeof(uint32_t));
+  rbin = sys_calloc(len, sizeof(uint32_t));
+  gbin = sys_calloc(len, sizeof(uint32_t));
+  bbin = sys_calloc(len, sizeof(uint32_t));
+  count = sys_calloc(len, sizeof(uint32_t));
 
   for (i = 0; i < src->height; i++) {
     for (j = 0; j < src->width; j++) {
@@ -918,10 +931,10 @@ static int surface_scale_down(surface_t *src, surface_t *dst) {
     }
   }
 
-  xfree(count);
-  xfree(bbin);
-  xfree(gbin);
-  xfree(rbin);
+  sys_free(count);
+  sys_free(bbin);
+  sys_free(gbin);
+  sys_free(rbin);
 
   return 0;
 }
@@ -1007,6 +1020,7 @@ int surface_rotate(surface_t *src, surface_t *dst, double angle) {
 
 static surface_t *surface_load_internal(char *filename, uint8_t *buffer, int size, int encoding) {
   surface_t *surface = NULL;
+  unsigned int flen;
   uint8_t *buf, red, green, blue, alpha;
   uint32_t color;
   int width, height, icomp, ocomp, mono, len, i, j, k;
@@ -1028,7 +1042,13 @@ static surface_t *surface_load_internal(char *filename, uint8_t *buffer, int siz
   }
 
   if (filename) {
-    buf = stbi_load(filename, &width, &height, &icomp, ocomp);
+    if ((buffer = (uint8_t *)load_file(filename, &flen)) != NULL) {
+      size = flen;
+      buf = stbi_load_from_memory(buffer, size, &width, &height, &icomp, ocomp);
+      sys_free(buffer);
+    } else {
+      buf = NULL;
+    }
   } else {
     buf = stbi_load_from_memory(buffer, size, &width, &height, &icomp, ocomp);
   }
@@ -1083,6 +1103,16 @@ surface_t *surface_load_mem(uint8_t *buffer, int size, int encoding) {
   return surface_load_internal(NULL, buffer, size, encoding);
 }
 
+static void surface_stbi_write_func(void *context, void *data, int size) {
+  char *filename = (char *)context;
+  int fd;
+
+  if (filename && data && (fd = sys_open(filename, SYS_WRITE | SYS_TRUNC)) != -1) {
+    sys_write(fd, data, size);
+    sys_close(fd);
+  }
+}
+
 int surface_save_mem(surface_t *surface, int quality, void *context, void (*callback)(void *context, void *data, int size)) {
   char *filename, *ext;
   uint32_t color;
@@ -1107,7 +1137,7 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
         return -1;
     }
 
-    buf = xcalloc(1, surface->width * surface->height * ocomp);
+    buf = sys_calloc(1, surface->width * surface->height * ocomp);
 
     if (ocomp >= 3) {
       for (i = 0, k = 0; i < surface->height; i++) {
@@ -1132,11 +1162,11 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
       filename = (char *)context;
       if ((ext = getext(filename)) != NULL) {
         if (!sys_strcasecmp(ext, "png")) {
-          r = stbi_write_png(filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+          r = !stbi_write_png_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
         } else if (!sys_strcasecmp(ext, "bmp")) {
-          r = stbi_write_bmp(filename, surface->width, surface->height, ocomp, buf);
+          r = !stbi_write_bmp_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf);
         } else if (!sys_strcasecmp(ext, "jpg")) {
-          r = stbi_write_jpg(filename, surface->width, surface->height, ocomp, buf, quality);
+          r = !stbi_write_jpg_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, quality);
         } else {
           debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
         }
@@ -1144,9 +1174,9 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
         debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
       }
     } else {
-      r = stbi_write_png_to_func(callback, context, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+      r = !stbi_write_png_to_func(callback, context, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
     }
-    xfree(buf);
+    sys_free(buf);
   }
 
   return r;
@@ -1161,8 +1191,8 @@ int surface_destroy(surface_t *surface) {
 
   if (surface) {
     if (surface->destroy) surface->destroy(surface->data);
-    if (surface->palette) xfree(surface->palette);
-    xfree(surface);
+    if (surface->palette) sys_free(surface->palette);
+    sys_free(surface);
     r = 0;
   }
 

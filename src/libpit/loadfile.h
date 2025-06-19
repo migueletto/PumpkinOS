@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 char *load_fd(int fd, unsigned int *len);
-
 char *load_file(char *filename, unsigned int *len);
 
 #ifdef __cplusplus

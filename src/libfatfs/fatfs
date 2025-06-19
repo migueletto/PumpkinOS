@@ -1,0 +1,28 @@
+#!/bin/sh
+
+case "$1" in
+  'create')
+    rm -rf fat32.bin
+    dd if=/dev/zero of=fat32.bin count=204800 
+    /sbin/mkdosfs fat32.bin -s2 -F32
+    chmod a+rw fat32.bin
+    ;;
+
+  'mount')
+    rm -rf fs
+    mkdir fs
+    sudo mount -o loop -tvfat fat32.bin ./fs
+    ;;
+
+  'umount')
+    mkdir -p ./fs
+    sudo umount ./fs
+    rm -rf fs
+    ;;
+
+  *)
+    echo "usage: $0 create|mount|umount"
+    ;;
+esac
+
+exit 0

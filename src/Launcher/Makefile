@@ -10,6 +10,12 @@ $(PROGRAM).prc: res
 	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
 	cp $(PROGRAM).prc $(PRC)
 
+else ifeq ($(OSNAME),Kernel)
+
+$(PROGRAM).prc: res
+	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c Lnch -n Launcher *.bin
+	cp $(PROGRAM).prc $(PRC)
+
 else
 
 SOURCE=Launcher.c editstr.c editbmp.c editform.c editbin.c editsurf.c
@@ -29,7 +35,7 @@ $(DLIB): $(PROGRAM).dlib
 endif
 
 res: resource.rcp
-	$(PILRC) resource.rcp
+	$(PILRC) $(PILRCDEFS) resource.rcp
 	touch res
 
 clean:

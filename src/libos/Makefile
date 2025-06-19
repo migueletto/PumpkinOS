@@ -10,6 +10,13 @@ OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
 	$(EM_AR) -cru $(PROGRAM) $(OBJS)
 
+else ifeq ($(OSNAME),Kernel)
+
+PROGRAM=$(BIN)/libos.a
+OBJS=$(SOURCE:%.c=%.o)
+$(PROGRAM): $(OBJS)
+	$(AR) -cr $(PROGRAM) $(OBJS)
+
 else
 
 PROGRAM=$(BIN)/libos$(SOEXT)

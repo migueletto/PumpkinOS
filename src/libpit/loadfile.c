@@ -1,7 +1,6 @@
 #include "sys.h"
 #include "loadfile.h"
 #include "debug.h"
-#include "xalloc.h"
 
 char *load_fd(int fd, unsigned int *len) {
   char *buf;
@@ -15,12 +14,12 @@ char *load_fd(int fd, unsigned int *len) {
     return NULL;
   }
 
-  if ((buf = xmalloc(*len + 1)) == NULL) {
+  if ((buf = sys_malloc(*len + 1)) == NULL) {
     return NULL;
   }
 
   if ((sys_read_timeout(fd, (uint8_t *)buf, *len, &nread, -1)) == -1) {
-    xfree(buf);
+    sys_free(buf);
     return NULL;
   }
   buf[nread] = 0;

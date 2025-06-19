@@ -13,6 +13,13 @@ OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS)
 	$(EM_AR) -cru $(PROGRAM) $(OBJS)
 
+else ifeq ($(OSNAME),Kernel)
+
+PROGRAM=$(BIN)/liblsdl2.a
+OBJS=$(SOURCE:%.c=%.o)
+$(PROGRAM): $(OBJS)
+	$(AR) -cr $(PROGRAM) $(OBJS)
+
 else
 
 ifeq ($(OSNAME),Msys)

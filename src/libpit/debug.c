@@ -18,8 +18,8 @@ typedef struct {
   int level;
 } debug_sys_t;
 
-static mutex_t *mutex;
 static FILE *fd = NULL;
+static mutex_t *mutex;
 static int level = DEBUG_ERROR;
 static debug_sys_t sys_level[MAX_SYS];
 static int nlevels = 0;
@@ -224,7 +224,7 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
     s += ch('\n', s, tmp + MAX_BUF - s);
     *s = 0;
 
-#ifdef ANDROID
+#if defined(ANDROID)
     switch (_level) {
       case DEBUG_TRACE: _level = ANDROID_LOG_INFO; break;
       case DEBUG_INFO:  _level = ANDROID_LOG_INFO; break;

@@ -4,11 +4,14 @@
 #include "pit_io.h"
 #include "ptr.h"
 #include "gpio.h"
+#include "gpiomem.h"
 #ifdef LINUX
+#include "gpiosys.h"
+#endif
+#ifdef RPI
 #include "gpiobcm.h"
 #endif
 #include "debug.h"
-#include "xalloc.h"
 
 typedef struct {
   char *tag;
@@ -16,8 +19,11 @@ typedef struct {
   gpio_t *gpio;
 } libgpio_t;
 
-static gpio_provider_t provider;
+static gpio_provider_t provider_mem;
 #ifdef LINUX
+static gpio_provider_t provider_sys;
+#endif
+#ifdef RPI
 static gpio_provider_t provider_bcm;
 #endif
 
@@ -27,7 +33,7 @@ static void gpio_destructor(void *p) {
   libgpio = (libgpio_t *)p;
   if (libgpio) {
     libgpio->gpiop->close(libgpio->gpio);
-    xfree(libgpio);
+    sys_free(libgpio);
   }
 }
 
@@ -37,7 +43,7 @@ static int libgpio_open(int pe) {
   int ptr, r = -1;
 
   if ((gpiop = script_get_pointer(pe, GPIO_PROVIDER)) != NULL) {
-    if ((libgpio = xcalloc(1, sizeof(libgpio_t))) != NULL) {
+    if ((libgpio = sys_calloc(1, sizeof(libgpio_t))) != NULL) {
       if ((libgpio->gpio = gpiop->open(gpiop->data)) != NULL) {
         libgpio->gpiop = gpiop;
         libgpio->tag = TAG_GPIO;
@@ -46,10 +52,10 @@ static int libgpio_open(int pe) {
           r = script_push_integer(pe, ptr);
         } else {
           gpiop->close(libgpio->gpio);
-          xfree(libgpio);
+          sys_free(libgpio);
         }
       } else {
-        xfree(libgpio);
+        sys_free(libgpio);
       }
     }
   }
@@ -176,38 +182,74 @@ static int libgpio_destroy(int pe) {
   return script_push_boolean(pe, r == 0);
 }
 
-#ifdef LINUX
-static int libgpio_bcm(int pe) {
-  int bcm, r = -1;
+static int gpio_select(int pe, char *type) {
+  int r = -1;
 
-  if (script_get_boolean(pe, 0, &bcm) == 0) {
-    debug(DEBUG_INFO, "GPIO", "registering %s (%s)", GPIO_PROVIDER, bcm ? "bcm" : "regular");
-    script_set_pointer(pe, GPIO_PROVIDER, bcm ? &provider_bcm : &provider);
-    if (bcm) {
-      gpio_bcm_init();
-    } else {
-      gpio_bcm_finish();
-    }
+  debug(DEBUG_INFO, "GPIO", "registering %s %s", GPIO_PROVIDER, type);
+  if (!sys_strcmp(type, "mem")) {
+    script_set_pointer(pe, GPIO_PROVIDER, &provider_mem);
+#ifdef RPI
+    gpio_bcm_finish();
+#endif
+    r = 0;
+#ifdef LINUX
+  } else if (!sys_strcmp(type, "sys")) {
+    script_set_pointer(pe, GPIO_PROVIDER, &provider_sys);
+    r = 0;
+#ifdef RPI
+    gpio_bcm_finish();
+  } else if (!sys_strcmp(type, "bcm")) {
+    script_set_pointer(pe, GPIO_PROVIDER, &provider_bcm);
+    gpio_bcm_init();
+    r = 0;
+#endif
+#endif
+  } else {
+    debug(DEBUG_INFO, "GPIO", "invalid %s %s", GPIO_PROVIDER, type);
   }
 
   return r;
 }
-#endif
+
+static int libgpio_select(int pe) {
+  char *type = NULL;
+  int r = -1;
+
+  if (script_get_string(pe, 0, &type) == 0) {
+    r = gpio_select(pe, type);
+  }
+
+  if (type) sys_free(type);
+
+  return r;
+}
 
 int libgpio_load(void) {
-  xmemset(&provider, 0, sizeof(gpio_provider_t));
-  provider.open = gpio_open;
-  provider.close = gpio_close;
-  provider.setup = gpio_setup;
-  provider.output = gpio_output;
-  provider.output_multi = gpio_output_multi;
-  provider.input = gpio_input;
-  provider.create_monitor = gpio_create_monitor;
-  provider.destroy_monitor = gpio_destroy_monitor;
-  gpio_init();
+  sys_memset(&provider_mem, 0, sizeof(gpio_provider_t));
+  provider_mem.open = gpio_mem_open;
+  provider_mem.close = gpio_mem_close;
+  provider_mem.setup = gpio_mem_setup;
+  provider_mem.output = gpio_mem_output;
+  provider_mem.output_multi = gpio_mem_output_multi;
+  provider_mem.input = gpio_mem_input;
+  provider_mem.create_monitor = gpio_mem_create_monitor;
+  provider_mem.destroy_monitor = gpio_mem_destroy_monitor;
+  provider_mem.data = gpio_mem_init();
 
 #ifdef LINUX
-  xmemset(&provider_bcm, 0, sizeof(gpio_provider_t));
+  sys_memset(&provider_sys, 0, sizeof(gpio_provider_t));
+  provider_sys.open = gpio_sys_open;
+  provider_sys.close = gpio_sys_close;
+  provider_sys.setup = gpio_sys_setup;
+  provider_sys.output = gpio_sys_output;
+  provider_sys.output_multi = gpio_sys_output_multi;
+  provider_sys.input = gpio_sys_input;
+  provider_sys.create_monitor = gpio_sys_create_monitor;
+  provider_sys.destroy_monitor = gpio_sys_destroy_monitor;
+#endif
+
+#ifdef RPI
+  sys_memset(&provider_bcm, 0, sizeof(gpio_provider_t));
   provider_bcm.open = gpio_bcm_open;
   provider_bcm.close = gpio_bcm_close;
   provider_bcm.setup = gpio_bcm_setup;
@@ -222,8 +264,9 @@ int libgpio_load(void) {
 }
 
 int libgpio_unload(void) {
-  gpio_finish();
-#ifdef LINUX
+  gpio_mem_finish(provider_mem.data);
+
+#ifdef RPI
   gpio_bcm_finish();
 #endif
 
@@ -232,15 +275,20 @@ int libgpio_unload(void) {
 
 int libgpio_init(int pe, script_ref_t obj) {
   if (script_get_pointer(pe, GPIO_PROVIDER) == NULL) {
-    debug(DEBUG_INFO, "GPIO", "registering %s", GPIO_PROVIDER);
-    script_set_pointer(pe, GPIO_PROVIDER, &provider);
+#ifdef LINUX
+    gpio_select(pe, "sys");
+#else
+    gpio_select(pe, "mem");
+#endif
   }
 
   script_add_iconst(pe, obj, "IN",       GPIO_IN);
   script_add_iconst(pe, obj, "OUT",      GPIO_OUT);
   script_add_iconst(pe, obj, "LOW_OUT",  GPIO_LOW_OUT);
   script_add_iconst(pe, obj, "HIGH_OUT", GPIO_HIGH_OUT);
+#ifdef RPI
   script_add_iconst(pe, obj, "ALT0",     GPIO_ALT0);
+#endif
 
   script_add_function(pe, obj, "open",    libgpio_open);
   script_add_function(pe, obj, "close",   libgpio_close);
@@ -249,9 +297,8 @@ int libgpio_init(int pe, script_ref_t obj) {
   script_add_function(pe, obj, "input",   libgpio_input);
   script_add_function(pe, obj, "monitor", libgpio_monitor);
   script_add_function(pe, obj, "destroy", libgpio_destroy);
-#ifdef LINUX
-  script_add_function(pe, obj, "bcm",     libgpio_bcm);
-#endif
+
+  script_add_function(pe, obj, "select",  libgpio_select);
 
   return 0;
 }

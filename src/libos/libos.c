@@ -249,7 +249,11 @@ static param_t params[] = {
   { 0, 0, NULL }
 };
 
+#ifdef KERNEL
+int libos_start(int pe) {
+#else
 static int libos_start(int pe) {
+#endif
   script_arg_t k, v;
   script_ref_t obj;
   libos_t *data;
@@ -352,7 +356,11 @@ static int libos_start(int pe) {
   return r;
 }
 
+#ifdef KERNEL
+int libos_app_init(int pe) {
+#else
 static int libos_app_init(int pe) {
+#endif
   window_provider_t *wp;
   audio_provider_t *ap;
   bt_provider_t *bt;

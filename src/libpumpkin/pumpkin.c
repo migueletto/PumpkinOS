@@ -725,14 +725,6 @@ void pumpkin_set_secure(void *secure) {
   pumpkin_module.secure = secure;
 }
 
-int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data) {
-  return pit_http_get(PUMPKIN_USER_AGENT, url, pumpkin_module.secure, timeout, callback, data);
-}
-
-void pumpkin_http_abort(int handle) {
-  pit_http_abort(handle);
-}
-
 static void pumpkin_set_host_depth(int depth) {
   PumpkinPreferencesType prefs;
   UInt32 border;
@@ -1664,12 +1656,11 @@ int pumpkin_launcher(char *name, int width, int height) {
     } else {
       wman_add(pumpkin_module.wm, 0, texture, 0, 0, width, height);
       MemSet(&request, sizeof(launch_request_t), 0);
-#ifdef ANDROID
+#if defined(ANDROID) || defined(KERNEL)
       pumpkin_set_compat(creator, appCompatOk, 0);
       extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
       request.pilot_main = LauncherPilotMain;
 #endif
-
       StrNCopy(request.name, name, dmDBNameLength);
       request.code = sysAppLaunchCmdNormalLaunch;
       pumpkin_launch_sub(&request, 1);
@@ -4355,6 +4346,15 @@ UInt32 RGBToLong(RGBColorType *rgb) {
   return rgba32(rgb->r, rgb->g, rgb->b, 0xFF);
 }
 
+#if !defined(KERNEL)
+int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data) {
+  return pit_http_get(PUMPKIN_USER_AGENT, url, pumpkin_module.secure, timeout, callback, data);
+}
+
+void pumpkin_http_abort(int handle) {
+  pit_http_abort(handle);
+}
+
 static int pumpkin_httpd_string(int pe) {
   http_connection_t *con;
   script_int_t ptr, code;
@@ -4780,6 +4780,7 @@ int pumpkin_httpd_destroy(pumpkin_httpd_t *h) {
 
   return r;
 }
+#endif
 
 void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename) {
   LocalID dbID;

@@ -2948,7 +2948,7 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
   return errNone;
 }
 
-#if defined(ANDROID) || defined(EMSCRIPTEN)
+#if defined(ANDROID) || defined(EMSCRIPTEN) || defined(KERNEL)
 UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #else
 UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
@@ -2983,6 +2983,12 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       break;
     case 4:
       debug(DEBUG_INFO, PUMPKINOS, "Host OS is Android");
+      break;
+    case 5:
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is Emscripten");
+      break;
+    case 6:
+      debug(DEBUG_INFO, PUMPKINOS, "Host OS is Kernel");
       break;
     default:
       debug(DEBUG_ERROR, PUMPKINOS, "Host OS is unknown");

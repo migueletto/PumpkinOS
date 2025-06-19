@@ -15,8 +15,10 @@ MENU MainMenu
 BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
+#ifndef KERNEL
     MENUITEM "Exit"         shutdownCmd "E"
     MENUITEM "Fork"         forkCmd     "F"
+#endif
     MENUITEM "About"        aboutCmd    "A"
   END
 
