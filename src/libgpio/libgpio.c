@@ -182,27 +182,25 @@ static int libgpio_destroy(int pe) {
   return script_push_boolean(pe, r == 0);
 }
 
-static int gpio_select(int pe, char *type) {
+#if !defined(KERNEL)
+static
+#endif
+int gpio_select(int pe, char *type) {
   int r = -1;
 
   debug(DEBUG_INFO, "GPIO", "registering %s %s", GPIO_PROVIDER, type);
   if (!sys_strcmp(type, "mem")) {
     script_set_pointer(pe, GPIO_PROVIDER, &provider_mem);
-#ifdef RPI
-    gpio_bcm_finish();
-#endif
     r = 0;
-#ifdef LINUX
+#if defined(LINUX) || defined(RPI)
   } else if (!sys_strcmp(type, "sys")) {
     script_set_pointer(pe, GPIO_PROVIDER, &provider_sys);
     r = 0;
-#ifdef RPI
-    gpio_bcm_finish();
+#endif
+#if defined(RPI)
   } else if (!sys_strcmp(type, "bcm")) {
     script_set_pointer(pe, GPIO_PROVIDER, &provider_bcm);
-    gpio_bcm_init();
     r = 0;
-#endif
 #endif
   } else {
     debug(DEBUG_INFO, "GPIO", "invalid %s %s", GPIO_PROVIDER, type);
@@ -265,10 +263,6 @@ int libgpio_load(void) {
 
 int libgpio_unload(void) {
   gpio_mem_finish(provider_mem.data);
-
-#ifdef RPI
-  gpio_bcm_finish();
-#endif
 
   return 0;
 }

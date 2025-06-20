@@ -12,25 +12,6 @@ struct gpio_t {
   int a;
 };
 
-int gpio_bcm_init(void) {
-  int r = 0;
-
-  if (!bcm2835_init()) {
-    debug(DEBUG_ERROR, "GPIO", "failed to init bcm2835 library");
-    r = -1;
-  } else {
-    debug(DEBUG_INFO, "GPIO", "bcm2835 library initialized");
-  }
-
-  return r;
-}
-
-int gpio_bcm_finish(void) {
-  bcm2835_close();
-
-  return 0;
-}
-
 gpio_t *gpio_bcm_open(void *data) {
   gpio_t *gpio;
 

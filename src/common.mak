@@ -79,6 +79,11 @@ HOSTCC=gcc
 AR=ar
 NM=nm -j -u
 
+ifneq (,$(wildcard /boot/firmware/config.txt))
+RPI=1
+RPI_DEFS=-DRPI
+endif
+
 ifeq ($(OSNAME),)
 OSNAME := $(shell uname -o)
 endif
@@ -89,8 +94,9 @@ EXTLIBS=-lrt -ldl
 SOEXT=.so
 LUAPLAT=linux
 OS=Linux
-OSDEFS=$(MBITS) -DLINUX -DSOEXT=\"$(SOEXT)\"
+OSDEFS=$(MBITS) -DLINUX $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
+
 else ifeq ($(OSNAME),Msys)
 SYS_OS=2
 EXTLIBS=-lwsock32 -lws2_32
@@ -99,6 +105,7 @@ LUAPLAT=mingw
 OS=Windows
 OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
+
 else ifeq ($(OSNAME),Serenity)
 ifeq ($(SERENITY),)
 $(error Missing SERENITY parameter (must point to SerenityOS home directory))
@@ -110,6 +117,7 @@ LUAPLAT=linux
 OS=Serenity
 OSDEFS=$(MBITS) -DSERENITY -DSOEXT=\"$(SOEXT)\" -I$(SERENITY)/Build/x86_64/Root/usr/include -D_GNU_SOURCE
 CC=$(SERENITY)/Toolchain/Local/x86_64/bin/x86_64-pc-serenity-gcc
+
 else ifeq ($(OSNAME),Android)
 ifeq ($(NDK),)
 $(error You must define the NDK environment variable)
@@ -127,6 +135,7 @@ LUAPLAT=linux
 OS=Android
 OSDEFS=$(ARM_ARCH) --gcc-toolchain=$(NDK) --sysroot=$(NDK)/sysroot -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -DANDROID -DSOEXT=\"$(SOEXT)\"
 CC=$(NDK)/bin/clang
+
 else ifeq ($(OSNAME),Emscripten)
 EMSC=$(SRC)/emscripten
 BIN=$(EMSC)
@@ -136,14 +145,16 @@ SOEXT=.wasm
 LUAPLAT=linux
 OS=Emscripten
 OSDEFS=$(MBITS) -DEMSCRIPTEN -DSOEXT=\"$(SOEXT)\" -pthread
+
 else ifeq ($(OSNAME),Kernel)
 SYS_OS=6
 SOEXT=.a
 LUAPLAT=linux
 OS=Linux
-OSDEFS=$(MBITS) -DKERNEL -DSOEXT=\"$(SOEXT)\"
+OSDEFS=$(MBITS) -DKERNEL $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
 PILRCDEFS=-D KERNEL
 CC=gcc
+
 else
 $(error Unknown OS $(OSNAME))
 endif

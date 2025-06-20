@@ -1,11 +1,19 @@
 #include "sys.h"
 #include "script.h"
 #include "pwindow.h"
+#include "gpio.h"
+#include "pspi.h"
 
-static void *wp;
+static void *gpiop = NULL;
+static void *spip = NULL;
+static void *wp = NULL;
 
 int script_set_pointer(int pe, char *name, void *p) {
-  if (!sys_strcmp(name, WINDOW_PROVIDER)) {
+  if (!sys_strcmp(name, GPIO_PROVIDER)) {
+    gpiop = p;
+  } else if (!sys_strcmp(name, SPI_PROVIDER)) {
+    spip = p;
+  } else if (!sys_strcmp(name, WINDOW_PROVIDER)) {
     wp = p;
   }
 
@@ -13,8 +21,14 @@ int script_set_pointer(int pe, char *name, void *p) {
 }
 
 void *script_get_pointer(int pe, char *name) {
+  if (!sys_strcmp(name, GPIO_PROVIDER)) {
+    return gpiop;
+  }
+  if (!sys_strcmp(name, SPI_PROVIDER)) {
+    return spip;
+  }
   if (!sys_strcmp(name, WINDOW_PROVIDER)) {
-     return wp;
+    return wp;
   }
 
   return NULL;
@@ -51,6 +65,10 @@ int script_object_get(int pe, script_ref_t obj, script_arg_t *key, script_arg_t 
   }
 
   return -1;
+}
+
+int script_get_function(int pe, int index, script_ref_t *ref) {
+  return 0;
 }
 
 int script_get_integer(int pe, int index, script_int_t *i) {

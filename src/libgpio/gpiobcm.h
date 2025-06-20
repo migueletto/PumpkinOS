@@ -1,5 +1,3 @@
-int gpio_bcm_init(void);
-int gpio_bcm_finish(void);
 gpio_t *gpio_bcm_open(void *data);
 int gpio_bcm_close(gpio_t *gpio);
 int gpio_bcm_setmode(gpio_t *gpio, int mode);

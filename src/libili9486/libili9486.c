@@ -72,11 +72,13 @@ static uint32_t libili9486_color_rgb(void *data, int red, int green, int blue, i
   return ili9486_color565(red, green, blue);
 }
 
-static void surface_destructor(void *p) {
-  surface_t *surface;
+#if !defined(KERNEL)
+static
+#endif
+void surface_destructor(void *p) {
+  surface_t *surface = (surface_t *)p;
   libili9486_t *ili9486;
 
-  surface = (surface_t *)p;
   if (surface) {
     ili9486 = (libili9486_t *)surface->data;
     ili9486_enable(ili9486->spip, ili9486->spi, ili9486->gpiop, ili9486->gpio, ili9486->rs_pin, 0);
@@ -89,11 +91,69 @@ static void surface_destructor(void *p) {
   }
 }
 
+#if !defined(KERNEL)
+static
+#endif
+surface_t *libili9486_create_surface(int spi_cs, int rs_pin, int rst_pin, int spi_speed, int width, int height, spi_provider_t *spip, gpio_provider_t *gpiop) {
+  surface_t *surface;
+  libili9486_t *ili9486;
+
+  if ((surface = sys_calloc(1, sizeof(surface_t))) != NULL) {
+    if ((ili9486 = sys_calloc(1, sizeof(libili9486_t))) != NULL) {
+      if ((ili9486->spi = spip->open(0, spi_cs, spi_speed, spip->data)) != NULL) {
+        ili9486->gpiop = gpiop;
+        ili9486->spip = spip;
+        ili9486->gpio = gpiop->open(gpiop->data);
+        gpiop->setup(ili9486->gpio, rs_pin, GPIO_OUT);
+        gpiop->setup(ili9486->gpio, rst_pin, GPIO_OUT);
+
+        if (ili9486_begin(ili9486->spip, ili9486->spi, gpiop, ili9486->gpio, rs_pin, rst_pin) == 0) {
+          ili9486->width = width;
+          ili9486->height = height;
+          ili9486->rs_pin = rs_pin;
+          ili9486->len = ili9486->width * ili9486->height * sizeof(uint16_t);
+          ili9486->buf = sys_calloc(1, ili9486->len);
+          ili9486->aux = sys_calloc(1, ili9486->len);
+          ili9486->y0 = ili9486->height;
+          ili9486->y1 = -1;
+          surface->width = ili9486->width;
+          surface->height = ili9486->height;
+          surface->encoding = SURFACE_ENCODING_RGB565;
+          surface->data = ili9486;
+          surface->setpixel = libili9486_setpixel;
+          surface->rgb_color = libili9486_rgb_color;
+          surface->color_rgb = libili9486_color_rgb;
+          surface->getbuffer = libili9486_getbuffer;
+          surface->update = libili9486_update;
+          surface->event = spip->event ? libili9486_event : NULL;
+          surface->tag = TAG_SURFACE;
+        } else {
+          debug(DEBUG_ERROR, "ILI9486", "ili9486_begin failed");
+          gpiop->open(ili9486->gpio);
+          spip->close(ili9486->spi);
+          sys_free(ili9486);
+          sys_free(surface);
+          surface = NULL;
+        }
+      } else {
+        sys_free(ili9486);
+        sys_free(surface);
+        surface = NULL;
+      }
+    } else {
+      sys_free(surface);
+      surface = NULL;
+    }
+  }
+
+  return surface;
+}
+
+#if !defined(KERNEL)
 static int libili9486_surface(int pe) {
   spi_provider_t *spip;
   gpio_provider_t *gpiop;
   surface_t *surface;
-  libili9486_t *ili9486;
   script_int_t spi_cs, rs_pin, rst_pin, spi_speed, width, height;
   int ptr, r = -1;
 
@@ -117,67 +177,13 @@ static int libili9486_surface(int pe) {
       return -1;
     }
 
-    if ((surface = sys_calloc(1, sizeof(surface_t))) != NULL) {
-      if ((ili9486 = sys_calloc(1, sizeof(libili9486_t))) != NULL) {
-        if ((ili9486->spi = spip->open(0, spi_cs, spi_speed, spip->data)) != NULL) {
-          ili9486->gpiop = gpiop;
-          ili9486->spip = spip;
-          ili9486->gpio = gpiop->open(gpiop->data);
-          gpiop->setup(ili9486->gpio, rs_pin, GPIO_OUT);
-          gpiop->setup(ili9486->gpio, rst_pin, GPIO_OUT);
-          if (ili9486_begin(ili9486->spip, ili9486->spi, gpiop, ili9486->gpio, rs_pin, rst_pin) == 0) {
-            //if (ili9486_enable(ili9486->spip, ili9486->spi, gpiop, ili9486->gpio, rs_pin, 1) == 0) {
-              ili9486->width = width;
-              ili9486->height = height;
-              ili9486->rs_pin = rs_pin;
-              ili9486->len = ili9486->width * ili9486->height * sizeof(uint16_t);
-              ili9486->buf = sys_calloc(1, ili9486->len);
-              ili9486->aux = sys_calloc(1, ili9486->len);
-              ili9486->y0 = ili9486->height;
-              ili9486->y1 = -1;
-              surface->width = ili9486->width;
-              surface->height = ili9486->height;
-              surface->encoding = SURFACE_ENCODING_RGB565;
-              surface->data = ili9486;
-              surface->setpixel = libili9486_setpixel;
-              surface->rgb_color = libili9486_rgb_color;
-              surface->color_rgb = libili9486_color_rgb;
-              surface->getbuffer = libili9486_getbuffer;
-              surface->update = libili9486_update;
-              surface->event = spip->event ? libili9486_event : NULL;
-              surface->tag = TAG_SURFACE;
+    surface = libili9486_create_surface(spi_cs, rs_pin, rst_pin, spi_speed, width, height, spip, gpiop);
 
-              if ((ptr = ptr_new(surface, surface_destructor)) != -1) {
-                r = script_push_integer(pe, ptr);
-              } else {
-                gpiop->open(ili9486->gpio);
-                spip->close(ili9486->spi);
-                sys_free(ili9486->buf);
-                sys_free(ili9486);
-                sys_free(surface);
-              }
-/*
-            } else {
-              debug(DEBUG_ERROR, "ILI9486", "ili9486_enable failed");
-              gpiop->open(ili9486->gpio);
-              spip->close(ili9486->spi);
-              sys_free(ili9486);
-              sys_free(surface);
-            }
-*/
-          } else {
-            debug(DEBUG_ERROR, "ILI9486", "ili9486_begin failed");
-            gpiop->open(ili9486->gpio);
-            spip->close(ili9486->spi);
-            sys_free(ili9486);
-            sys_free(surface);
-          }
-        } else {
-          sys_free(ili9486);
-          sys_free(surface);
-        }
+    if (surface != NULL) {
+      if ((ptr = ptr_new(surface, surface_destructor)) != -1) {
+        r = script_push_integer(pe, ptr);
       } else {
-        sys_free(surface);
+        surface_destructor(surface);
       }
     }
   }
@@ -190,6 +196,7 @@ int libili9486_init(int pe, script_ref_t obj) {
 
   return 0;
 }
+#endif
 
 /*
 Raspberry Pi 26-pins GPIO header assignment:

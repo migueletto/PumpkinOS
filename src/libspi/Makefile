@@ -1,13 +1,20 @@
 include ../common.mak
 
-PROGRAM=$(BIN)/libspi$(SOEXT)
-
 OBJS=libspi.o spi.o
 
-all: $(PROGRAM)
+ifeq ($(OSNAME),Kernel)
 
+PROGRAM=$(BIN)/libspi.a
+$(PROGRAM): $(OBJS)
+	$(AR) -cr $(PROGRAM) $(OBJS)
+
+else
+
+PROGRAM=$(BIN)/libspi$(SOEXT)
 $(PROGRAM): $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(LIB) -lpit
+
+endif
 
 clean:
 	rm -f $(PROGRAM) *.o

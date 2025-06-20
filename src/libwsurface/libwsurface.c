@@ -227,6 +227,11 @@ static int libwsurface_window_destroy(window_t *_window) {
   return r;
 }
 
+#if defined(KERNEL)
+void libwsurface_set_surface(int ptr) {
+  surface_ptr = ptr;
+}
+#else
 int libwsurface_surface(int pe) {
   script_int_t ptr;
 
@@ -236,6 +241,7 @@ int libwsurface_surface(int pe) {
 
   return 0;
 }
+#endif
 
 int libwsurface_load(void) {
   sys_memset(&provider, 0, sizeof(window_provider_t));
@@ -260,8 +266,8 @@ int libwsurface_load(void) {
 int libwsurface_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "WSURF", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &provider);
-
+#if !defined(KERNEL)
   script_add_function(pe, obj, "surface", libwsurface_surface);
-
+#endif
   return 0;
 }
