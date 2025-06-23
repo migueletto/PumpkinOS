@@ -707,7 +707,7 @@ overflow:
 int my_vsnprintf(char *str, sys_size_t size, const char *fmt, sys_va_list ap) {
   printf_buf_t f;
 	sys_va_list ap2;
-	int nl_type[NL_ARGMAX+1] = {0};
+	int nl_type[NL_ARGMAX+1];
 	union arg nl_arg[NL_ARGMAX+1];
 	int i, ret;
 

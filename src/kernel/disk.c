@@ -6,14 +6,18 @@
 #define SECTOR_LEN FF_MIN_SS
 
 #define DISK_SIZE 100 * 1024 * 1024
+#define BDISK_SIZE 1506336
 
-static uint8_t disk[DISK_SIZE] = {
+static uint8_t disk[DISK_SIZE];
+
+static const uint8_t bdisk[BDISK_SIZE] = {
 #include "diskbin.h"
 };
 
 static FATFS fatfs;
 
 void disk_init(void) {
+  sys_memcpy(disk, bdisk, BDISK_SIZE);
   f_mount(&fatfs, "", 0);
 }
 

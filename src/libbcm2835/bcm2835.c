@@ -11,6 +11,9 @@
 // Needed to compile with gcc -std=c99, as reported by John Blaiklock.
 #define _POSIX_C_SOURCE 200809L
 
+#include "sys.h"
+#include "debug.h"
+
 //#include <stdlib.h>
 //#include <stdio.h>
 //#include <errno.h>
@@ -522,22 +525,37 @@ void bcm2835_gpio_set_pad(uint8_t group, uint32_t control)
   bcm2835_peri_write(paddr, control | BCM2835_PAD_PASSWRD);
 }
 
+static void microsleep(uint32_t us) {
+#if defined(BAREMETAL)
+  uint32_t start, target;
+
+  if (us == 0) return;
+  //debug(1, "XXX", "nanosleep %u.%06u", (uint32_t)req->tv_sec, (uint32_t)(req->tv_nsec / 1000));
+
+  start = bcm2835_st_read();
+  target = start + us;
+
+  if (target < start) {
+    while (bcm2835_st_read() > start || bcm2835_st_read() < target);
+  } else {
+    while (bcm2835_st_read() < target);
+  }
+#else
+  sys_usleep(us);
+#endif
+}
+
 /* Some convenient arduino-like functions
 // milliseconds
 */
 void bcm2835_delay(unsigned int millis)
 {
-    struct timespec sleeper;
-    
-    sleeper.tv_sec  = (time_t)(millis / 1000);
-    sleeper.tv_nsec = (long)(millis % 1000) * 1000000;
-    nanosleep(&sleeper, NULL);
+    microsleep(millis * 1000);
 }
 
 /* microseconds */
 void bcm2835_delayMicroseconds(uint64_t micros)
 {
-    struct timespec t1;
     uint64_t start;
   
     if (debug) {
@@ -554,17 +572,13 @@ void bcm2835_delayMicroseconds(uint64_t micros)
     /* Not allowed to access timer registers (result is not as precise)*/
     if (start==0)
     {
-  t1.tv_sec = 0;
-  t1.tv_nsec = 1000 * (long)(micros);
-  nanosleep(&t1, NULL);
+  microsleep(micros);
   return;
     }
 
     if (micros > 450)
     {
-  t1.tv_sec = 0;
-  t1.tv_nsec = 1000 * (long)(micros - 200);
-  nanosleep(&t1, NULL);
+  microsleep(micros - 200);
     }    
   
     bcm2835_st_delay(start, micros);

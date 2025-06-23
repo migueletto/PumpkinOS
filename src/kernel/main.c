@@ -42,7 +42,7 @@ extern int liblsdl2_init(int pe, script_ref_t obj);
 
 #endif
 
-int main(int argc, char *argv[]) {
+int main(void) {
 #ifdef RPI
   gpio_provider_t *gpiop;
   spi_provider_t *spip;
