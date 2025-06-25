@@ -6,7 +6,7 @@
 #define SECTOR_LEN FF_MIN_SS
 
 #define DISK_SIZE 100 * 1024 * 1024
-#define BDISK_SIZE 1506336
+#define BDISK_SIZE 1824752
 
 static uint8_t disk[DISK_SIZE];
 

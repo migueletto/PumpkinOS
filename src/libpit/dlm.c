@@ -1019,8 +1019,8 @@ static void malloc_consolidate(void *h, mstate av) {
 }
 
 void dlm_init(void *h) {
-  sys_memset(&dlmalloc_state, 0, sizeof(dlmalloc_state));
-  sys_memset(heap_buffer, 0, heap_size);
+  //sys_memset(&dlmalloc_state, 0, sizeof(dlmalloc_state));
+  //sys_memset(heap_buffer, 0, heap_size);
   heap_pointer = 0;
 }
 
