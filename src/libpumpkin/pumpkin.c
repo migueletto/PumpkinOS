@@ -1320,6 +1320,37 @@ void pumpkin_calibrate(int restore) {
   }
 }
 
+static void pumpkin_init_midi(void) {
+  DmOpenRef dbRef;
+  DmResID id;
+  MemHandle h;
+  UInt32 size;
+  UInt16 at;
+  void *p;
+
+  if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTMidi, sysFileCSystem, dmModeWrite)) == NULL) {
+    debug(DEBUG_INFO, PUMPKINOS, "creating system MIDI database");
+    if (DmCreateDatabase(0, "System MIDI Sounds", sysFileCSystem, sysFileTMidi, false) == errNone) {
+      if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTMidi, sysFileCSystem, dmModeWrite)) != NULL) {
+        for (id = 0; ; id++) {
+          if ((h = DmGetResource('pmid', id)) == NULL) break;
+          if ((p = MemHandleLock(h)) != NULL) {
+            size = MemHandleSize(h);
+            at = 0xFFFF;
+            DmNewRecordEx(dbRef, &at, size, p);
+            debug(DEBUG_INFO, PUMPKINOS, "adding MIDI sound %u at %u", id, at);
+            MemHandleUnlock(h);
+          }
+          DmReleaseResource(h);
+        }
+        DmCloseDatabase(dbRef);
+      }
+    }
+  } else {
+    DmCloseDatabase(dbRef);
+  }
+}
+
 static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
@@ -1476,6 +1507,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       pumpkin_module.background = NULL;
     }
     pumpkin_module.refresh = 1;
+
+    pumpkin_init_midi();
   }
 
   pumpkin_module.render = 1;
