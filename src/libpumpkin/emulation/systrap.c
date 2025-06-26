@@ -826,8 +826,12 @@ uint32_t palmos_systrap(uint16_t trap) {
       if (depthP) depth = m68k_read_memory_32(depthP);
       if (enableColorP) enableColor = m68k_read_memory_32(enableColorP);
       err = WinScreenMode(operation, widthP ? &width : NULL, heightP ? &height : NULL, depthP ? &depth : NULL, enableColorP ? &enableColor : NULL);
-      debug(DEBUG_TRACE, "EmuPalmOS", "WinScreenMode(%d, 0x%08X [%d], 0x%08X [%d], 0x%08X [%d], 0x%08X): %d",
-        operation, widthP, width, heightP, height, depthP, depth, enableColorP, err);
+      if (operation == winScreenModeGetSupportedDepths) {
+        // do not advertise support for 16 bits color
+        depth &= 0xff;
+      }
+      debug(DEBUG_TRACE, "EmuPalmOS", "WinScreenMode(%d, 0x%08X [%d], 0x%08X [%d], 0x%08X [%d], 0x%08X [%d]): %d",
+        operation, widthP, width, heightP, height, depthP, depth, enableColorP, enableColor, err);
       if (widthP) m68k_write_memory_32(widthP, width);
       if (heightP) m68k_write_memory_32(heightP, height);
       if (depthP) m68k_write_memory_32(depthP, depth);
@@ -893,7 +897,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       encode_rectangle(boundsP, &bounds);
       if (errorP) m68k_write_memory_16(errorP, error);
       uint32_t w = emupalmos_trap_out(wh);
-      debug(DEBUG_TRACE, "EmuPalmOS", "WinCreateWindow([%d,%d,%d,%d]): 0x%08X", bounds.topLeft.x, bounds.topLeft.y, bounds.extent.x, bounds.extent.y, w);
+      debug(DEBUG_TRACE, "EmuPalmOS", "WinCreateWindow([%d,%d,%d,%d], %d, %d, %d, 0x%08X [%d]): 0x%08X", bounds.topLeft.x, bounds.topLeft.y, bounds.extent.x, bounds.extent.y, frame, modal, focusable, errorP, error, w);
       m68k_set_reg(M68K_REG_A0, w);
       }
       break;
