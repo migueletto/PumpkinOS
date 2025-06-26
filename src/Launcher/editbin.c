@@ -19,7 +19,7 @@ typedef struct {
   UInt8 *p;
   UInt32 size;
   UInt32 cols, rows, maxrows, fw, fh, dw;
-  Boolean down, changed, stop;
+  Boolean down, changed;
 } bin_edit_t;
 
 static const RGBColorType addr  = { 0, 0x00, 0x80, 0x00 };
@@ -246,16 +246,13 @@ static Boolean eventHandler(EventType *event) {
     case ctlSelectEvent:
       switch (event->data.ctlSelect.controlID) {
         case okBtn:
-          data->stop = true;
           break;
         case cancelBtn:
           if (!data->changed || FrmCustomAlert(QuestionAlert, "Discard changes ?", "", "") == 0) {
             data->changed = false;
-            data->stop = true;
           }
           break;
       }
-      handled = true;
       break;
 
     default:
