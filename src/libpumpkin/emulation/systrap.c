@@ -2468,6 +2468,16 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushNextPenStroke(): %d", err);
       m68k_set_reg(M68K_REG_D0, err);
       break;
+    case sysTrapClipboardAddItem: {
+      // void ClipboardAddItem(const ClipboardFormatType format, const void *ptr, UInt16 length)
+      uint8_t format = ARG8;
+      uint32_t ptrP = ARG32;
+      uint16_t length = ARG16;
+      void *ptr = emupalmos_trap_in(ptrP, trap, 1);
+      ClipboardAddItem(format, ptr, length);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ClipboardAddItem(%d, 0x%08X, %d)", format, ptrP, length);
+      }
+      break;
     case sysTrapClipboardGetItem: {
       // MemHandle ClipboardGetItem(const ClipboardFormatType format, UInt16 *length)
       uint8_t format = ARG8;
@@ -2744,6 +2754,27 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case sysTrapGrfGetState: {
+      // Err GrfGetState(Boolean *capsLockP, Boolean *numLockP, UInt16 *tempShiftP, Boolean *autoShiftedP)
+      uint32_t capsLockP = ARG32;
+      uint32_t numLockP = ARG32;
+      uint32_t tempShiftP = ARG32;
+      uint32_t autoShiftedP = ARG32;
+      emupalmos_trap_in(capsLockP, trap, 0);
+      emupalmos_trap_in(numLockP, trap, 1);
+      emupalmos_trap_in(tempShiftP, trap, 2);
+      emupalmos_trap_in(autoShiftedP, trap, 3);
+      Boolean capsLock, numLock, autoShifted;
+      UInt16 tempShift;
+      err = GrfGetState(&capsLock, &numLock, &tempShift, &autoShifted);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GrfGetState(%d, %d, %d, %d): %d", capsLock, numLock, tempShift, autoShifted, err);
+      if (capsLockP) m68k_write_memory_8(capsLockP, capsLock);
+      if (numLockP) m68k_write_memory_8(numLockP, numLock);
+      if (tempShiftP) m68k_write_memory_16(tempShiftP, tempShift);
+      if (autoShiftedP) m68k_write_memory_8(autoShiftedP, autoShifted);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case sysTrapGrfSetState: {
       // Err GrfSetState(Boolean capsLock, Boolean numLock, Boolean upperShift)
       uint8_t capsLock = ARG8;
@@ -2807,7 +2838,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t strLen = ARG16;
       uint32_t digestP = ARG32;
       UInt8 *str = emupalmos_trap_in(strP, trap, 0);
-      UInt8 *digest = emupalmos_trap_in(digestP, trap, 1);
+      UInt8 *digest = emupalmos_trap_in(digestP, trap, 2);
       Err res = EncDigestMD5(str, strLen, digest);
       debug(DEBUG_TRACE, "EmuPalmOS", "EncDigestMD5(0x%08X, %u, 0x%08X): %d", strP, strLen, digestP, res);
       m68k_set_reg(M68K_REG_D0, res);
