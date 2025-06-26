@@ -18,7 +18,6 @@
 *.pdb
 *.log
 *.pyc
-*.pmid
 syscalls_stubs.txt
 syscalls_stubs.c
 res
