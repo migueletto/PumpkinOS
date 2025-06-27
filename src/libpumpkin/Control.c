@@ -425,10 +425,24 @@ after it is no longer in use (typically after the form containing the
 control is freed).
 */
 void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
+  FormLabelType *labelP;
   Boolean visible;
   UInt16 oldWidth, newWidth, middle;
 
   if (controlP && newLabel) {
+    // Many apps use CtlSetLabel to set the label of a FormLabelType, which is not correct.
+    // PalmOS handles this well, but PumpkinOS can not, because the internal structures
+    // of controls and labels are different. For this reason, in PumpkinOS all labels have
+    // an internal marker attribute initialized to 0x5A5A. If we cast controlP to FormLabelType
+    // and find the marker, assume the object is a FormLabelType.
+    labelP = (FormLabelType *)controlP;
+    if (labelP->marker == 0x5A5A) {
+      if (labelP->text) {
+        labelP->text = (char *)newLabel;
+      }
+      return;
+    }
+
     visible = controlP->attr.visible;
     if (visible) {
       CtlEraseControl(controlP);

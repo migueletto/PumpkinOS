@@ -1547,10 +1547,11 @@ boot forms:
 13500: Attention
 */
 
-UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
+static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID, FormCheckResponseFuncPtr callback) {
   FormType *previous;
   EventType event;
   FormObjectType obj;
+  FieldType *fld;
   UInt16 index, buttonID;
   Boolean stop;
   Err err;
@@ -1593,7 +1594,14 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
           case ctlSelectEvent:
             if (event.data.ctlSelect.pControl->style == buttonCtl) {
               buttonID = event.data.ctlSelect.controlID;
-              stop = true;
+              if (fieldID && callback) {
+                // the dialog closes only if the callback returns true
+                index = FrmGetObjectIndex(formP, fieldID);
+                fld = index != 0xffff ? (FieldType *)FrmGetObjectPtr(formP, index) : NULL;
+                stop = fld ? callback(buttonID, FldGetTextPtr(fld)) : true;
+              } else {
+                stop = true;
+              }
             }
             break;
           case appStopEvent:
@@ -1605,6 +1613,7 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
       }
     }
 
+    FldSetActiveField(NULL);
     FrmEraseForm(formP);
     MenuSetActiveMenu(NULL);
     FrmSetActiveForm(previous);
@@ -1615,6 +1624,10 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
   }
 
   return buttonID;
+}
+
+UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
+  return FrmDoDialogResponse(formP, timeout, 0, NULL);
 }
 
 UInt16 FrmDoDialog(FormType *formP) {
@@ -1636,12 +1649,18 @@ UInt16 FrmDoDialog(FormType *formP) {
   10006: warning
   10007: stop
 */
-static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
-  FormType *previous, *formP;
+static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char *entry, Int16 entryLen, FormCheckResponseFuncPtr callback) {
+  FormType *formP;
+  FieldType *fld;
   RectangleType rect;
   UInt16 bitmapID, len, tw, th, x;
   UInt16 labelX, labelY, labelH, labelW, formH, totalLines;
+  UInt16 bmpX, bmpY, fieldX, fieldY;
+  BitmapType *bitmapP;
+  Coord bmpW, bmpH;
+  MemHandle h;
   FontID old;
+  char *s;
   int i, r = 0;
 
   if (alert && msg) {
@@ -1667,11 +1686,17 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
     }
     labelH = FntCharHeight() * totalLines;
     formH = 46 + labelH;
+    if (entry && entryLen > 0) {
+      formH += FntCharHeight() + 8;
+    }
 
     if ((formP = FrmNewForm(1000, alert->title, 2, 158-formH, 156, formH, true, 1000+alert->defaultButton, alert->helpRscID, 0)) != NULL) {
       // bitmap
+      bmpX = 8;
+      bmpY = 20;
+
       if (bitmapID) {
-        FrmNewBitmap(&formP, bitmapID, bitmapID, 8, 20);
+        FrmNewBitmap(&formP, bitmapID, bitmapID, bmpX, bmpY);
       }
 
       // label
@@ -1679,8 +1704,37 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
         FrmNewLabel(&formP, 2000, msg, labelX, labelY, boldFont);
       }
 
-      // buttons
       FntSetFont(stdFont);
+
+      if (entry && entryLen > 0) {
+        // field
+
+        bmpH = 0;
+        if (bitmapID) {
+          if ((h = DmGetResource(bitmapRsc, bitmapID)) != NULL) {
+            if ((bitmapP = MemHandleLock(h)) != NULL) {
+              BmpGetDimensions(bitmapP, &bmpW, &bmpH, NULL);
+              MemHandleUnlock(h);
+            }
+            DmReleaseResource(h);
+          }
+        }
+
+        if (bmpH > 0) {
+          fieldY = bmpY + bmpH + 6; 
+        } else {
+          fieldY = labelY + labelH + 2; 
+        }
+        fieldX = 8;
+
+        fld = FldNewField((void **)&formP, 3000, fieldX, fieldY,
+          140, FntCharHeight(), stdFont, entryLen, true, true,
+          true, false, leftAlign, false, false, false);
+      } else {
+        fld = NULL;
+      }
+
+      // buttons
       th = FntCharHeight();
       for (i = 0, x = 6; i < alert->numButtons; i++) {
         len = StrLen(alert->button[i]);
@@ -1690,10 +1744,17 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg) {
         x += tw + 6;
       }
 
-      previous = FrmGetActiveForm();
-      r = FrmDoDialog(formP);
+      if (fld) {
+        FldGrabFocus(fld);
+        r = FrmDoDialogResponse(formP, evtWaitForever, 3000, callback);
+        if ((s = FldGetTextPtr(fld)) != NULL) {
+          StrNCopy(entry, s, entryLen);
+        }
+      } else {
+        r = FrmDoDialog(formP);
+      }
+
       FrmDeleteForm(formP);
-      FrmSetActiveForm(previous);
       r -= 1000;
     }
 
@@ -1710,10 +1771,73 @@ UInt16 FrmAlert(UInt16 alertId) {
 
   if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
     if ((alert = MemHandleLock(h)) != NULL) {
-      r = FrmShowAlert(alertId, alert, alert->message);
+      r = FrmShowAlert(alertId, alert, alert->message, NULL, 0, NULL);
       MemHandleUnlock(h);
     }
     DmReleaseResource(h);
+  }
+
+  return r;
+}
+
+UInt16 FrmCustomAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3) {
+  AlertTemplateType *alert;
+  MemHandle h, t;
+  char *s;
+  UInt16 r = 0;
+
+  if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
+    if ((alert = MemHandleLock(h)) != NULL) {
+      if (alert->message != NULL) {
+        if ((s = TxtParamString(alert->message, NULL, s1, s2, s3)) != NULL) {
+          r = FrmShowAlert(alertId, alert, s, NULL, 0, NULL);
+          t = MemPtrRecoverHandle(s);
+          MemHandleUnlock(t);
+          MemHandleFree(t);
+        }
+      }
+      MemHandleUnlock(h);
+    }
+    DmReleaseResource(h);
+  }
+
+  return r;
+}
+
+/*
+The dialog it displays contains a text field for user entry.
+The text that the user enters is returned in the entryStringBuf parameter.
+When the user taps a button, the callback function is called
+and is passed the button number and entryStringBuf.
+The dialog is only dismissed if the callback returns true.
+This behavior allows you to perform error checking on the
+string that the user entered and give the user a chance to reenter the string.
+The callback function is also called with special constants
+when the alert dialog is being initialized and when it is being
+deallocated. This allows the callback to perform any
+necessary initialization and cleanup.
+*/
+UInt16 FrmCustomResponseAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3, Char *entryStringBuf, Int16 entryStringBufLength, FormCheckResponseFuncPtr callback) {
+  AlertTemplateType *alert;
+  MemHandle h, t;
+  char *s;
+  UInt16 r = 0;
+ 
+  if (entryStringBuf && entryStringBufLength > 0) {
+    if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
+      if ((alert = MemHandleLock(h)) != NULL) {
+        if ((s = TxtParamString(alert->message, NULL, s1, s2, s3)) != NULL) {
+          if (callback) callback(frmResponseCreate, NULL);
+          r = FrmShowAlert(alertId, alert, s, entryStringBuf, entryStringBufLength, callback);
+          if (callback) callback(frmResponseQuit, NULL);
+          t = MemPtrRecoverHandle(s);
+          MemHandleUnlock(t);
+          MemHandleFree(t);
+        }
+        MemHandleUnlock(h);
+      }
+      DmReleaseResource(h);
+    }
   }
 
   return r;
@@ -2035,30 +2159,6 @@ void FrmCopyLabel(FormType *formP, UInt16 labelID, const Char *newLabel) {
   }
 }
 
-UInt16 FrmCustomAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3) {
-  AlertTemplateType *alert;
-  MemHandle h, t;
-  char *s;
-  UInt16 r = 0;
-
-  if ((h = DmGetResource(alertRscType, alertId)) != NULL) {
-    if ((alert = MemHandleLock(h)) != NULL) {
-      if (alert->message != NULL) {
-        if ((s = TxtParamString(alert->message, NULL, s1, s2, s3)) != NULL) {
-          r = FrmShowAlert(alertId, alert, s);
-          t = MemPtrRecoverHandle(s);
-          MemHandleUnlock(t);
-          MemHandleFree(t);
-        }
-      }
-      MemHandleUnlock(h);
-    }
-    DmReleaseResource(h);
-  }
-
-  return r;
-}
-
 void FrmSetControlValue(const FormType *formP, UInt16 objIndex, Int16 newValue) {
   if (formP && objIndex < formP->numObjects) {
     switch (formP->objects[objIndex].objectType) {
@@ -2333,11 +2433,6 @@ void FrmSetObjectPosition(FormType *formP, UInt16 objIndex, Coord x, Coord y) {
   FrmSetObjectBounds(formP, objIndex, &rect);
 }
 
-UInt16 FrmCustomResponseAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3, Char *entryStringBuf, Int16 entryStringBufLength, FormCheckResponseFuncPtr callback) {
-  debug(DEBUG_ERROR, "Form", "FrmCustomResponseAlert not implemented");
-  return 0;
-}
-
 Err FrmAddSpaceForObject(FormType **formPP, MemPtr *objectPP, FormObjectKind objectKind, UInt16 objectSize) {
   // system use only
   debug(DEBUG_ERROR, "Form", "FrmAddSpaceForObject not implemented");
@@ -2436,6 +2531,7 @@ FormLabelType *FrmNewLabel(FormType **formPP, UInt16 id, const Char *textP, Coor
         labelP->pos.y = y;
         labelP->attr.usable = true;
         labelP->fontID = font;
+        labelP->marker = 0x5A5A;
         labelP->text = &labelP->buf[0];
         labelP->len = StrLen((char *)textP) + 1;
         StrCopy(labelP->text, textP);
@@ -2951,6 +3047,7 @@ static FormLabelType *pumpkin_create_label(uint8_t *p, int *i) {
     c->attr.usable = (attr & 0x8000) ? 1 : 0;
     c->attr.reserved = 0;
     c->fontID = font;
+    c->marker = 0x5A5A;
     c->text = &c->buf[0];
     c->len = len;
     xmemcpy(c->text, text, len);

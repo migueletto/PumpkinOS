@@ -2102,11 +2102,30 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t s1P = ARG32;
       uint32_t s2P = ARG32;
       uint32_t s3P = ARG32;
-      char *s1 = (char *)emupalmos_trap_in(s1P, trap, 0);
-      char *s2 = (char *)emupalmos_trap_in(s2P, trap, 1);
-      char *s3 = (char *)emupalmos_trap_in(s3P, trap, 2);
+      char *s1 = (char *)emupalmos_trap_in(s1P, trap, 1);
+      char *s2 = (char *)emupalmos_trap_in(s2P, trap, 2);
+      char *s3 = (char *)emupalmos_trap_in(s3P, trap, 3);
       UInt16 res = FrmCustomAlert(alertId, s1, s2, s3);
       debug(DEBUG_TRACE, "EmuPalmOS", "FrmCustomAlert(%d, 0x%08X, 0x%08X, 0x%08X): %d", alertId, s1P, s2P, s3P, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
+    case sysTrapFrmCustomResponseAlert: {
+      // UInt16 FrmCustomResponseAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3, Char *entryStringBuf, Int16 entryStringBufLength, FormCheckResponseFuncPtr callback)
+      uint16_t alertId = ARG16;
+      uint32_t s1P = ARG32;
+      uint32_t s2P = ARG32;
+      uint32_t s3P = ARG32;
+      uint32_t entryStringBufP = ARG32;
+      int16_t entryStringBufLength = ARG16;
+      uint32_t callbackP = ARG32;
+      char *s1 = (char *)emupalmos_trap_in(s1P, trap, 1);
+      char *s2 = (char *)emupalmos_trap_in(s2P, trap, 2);
+      char *s3 = (char *)emupalmos_trap_in(s3P, trap, 3);
+      char *entryStringBuf = (char *)emupalmos_trap_in(entryStringBufP, trap, 4);
+      FormCheckResponseFuncPtr callback = (FormCheckResponseFuncPtr)emupalmos_trap_in(callbackP, trap, 6);
+      UInt16 res = FrmCustomResponseAlert(alertId, s1, s2, s3, entryStringBuf, entryStringBufLength, callback);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmCustomResponseAlert(%d, 0x%08X, 0x%08X, 0x%08X, 0x%08X, %d, 0x%08X): %d", alertId, s1P, s2P, s3P, entryStringBufP, entryStringBufLength, callbackP, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
