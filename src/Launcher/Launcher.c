@@ -2529,7 +2529,6 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
     case findCmd:
       find(data);
       break;
-      break;
     case appCmd:
       frm = FrmGetActiveForm();
       if (data->mode != launcher_app) {
