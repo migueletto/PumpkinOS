@@ -45,7 +45,6 @@ char *sys_strcpy(char *dest, const char *src) {
 
 char *sys_strncpy(char *dest, const char *src, sys_size_t n) {
   for (; n && (*dest = *src); n--, src++, dest++);
-  sys_memset(dest, 0, n);
   return dest;
 }
 
