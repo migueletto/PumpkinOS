@@ -2,6 +2,7 @@
 #include <VFSMgr.h>
 #include <DLServer.h>
 #include <Helper.h>
+#include <CharAttr.h>
 
 #include "sys.h"
 #include "mutex.h"
@@ -2861,6 +2862,14 @@ uint32_t palmos_systrap(uint16_t trap) {
       Err res = EncDigestMD5(str, strLen, digest);
       debug(DEBUG_TRACE, "EmuPalmOS", "EncDigestMD5(0x%08X, %u, 0x%08X): %d", strP, strLen, digestP, res);
       m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
+    case sysTrapGetCharCaselessValue: {
+      // const UInt8 *GetCharCaselessValue(void)
+      UInt8 *res = (UInt8 *)GetCharCaselessValue();
+      uint32_t a = emupalmos_trap_out(res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GetCharCaselessValue(): 0x%08X", a);
+      m68k_set_reg(M68K_REG_A0, a);
     }
       break;
     case sysTrapErrExceptionList: {

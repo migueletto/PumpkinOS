@@ -181,6 +181,7 @@ typedef enum {
   seltime_key,
   fatal_key,
   emu_key,
+  charattr_key,
   last_key
 } local_storage_key_t;
 
@@ -603,6 +604,8 @@ int SelTimeInitModule(void);
 int SelTimeFinishModule(void);
 int GPSInitModule(gps_parse_line_f parse_line, bt_provider_t *bt);
 int GPSFinishModule(void);
+int CharAttrInitModule(void);
+int CharAttrFinishModule(void);
 
 void pumpkin_crash_log(UInt32 creator, int code, char *msg);
 void pumpkin_test_exception(int fatal);
