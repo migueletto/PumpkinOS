@@ -48,8 +48,7 @@ void *CustomMalloc(HEAP_INFO_t *pHeapInfo, uint32_t size) {
   rem = size & 3;
   if (rem) size += 4 - rem;
 
-  debug(DEBUG_INFO, "Heap", "CustomMalloc %u bytes", size);
-  printLists(pHeapInfo);
+  debug(DEBUG_TRACE, "Heap", "CustomMalloc %u bytes", size);
 
   while (iter != NULL) {
     residueMemory = iter->blkSize - size;
