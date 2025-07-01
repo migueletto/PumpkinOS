@@ -1,88 +1,66 @@
-//#define VISUAL_HEAP 1
-
 #include "sys.h"
 #include "heap.h"
 #include "mutex.h"
-#ifdef VISUAL_HEAP
-#include "pwindow.h"
-#include "script.h"
-#include "media.h"
-#include "pfont.h"
-#include "graphic.h"
-#include "surface.h"
-#endif
-#include "emulation/emupalmosinc.h"
 #include "dlmalloc.h"
 #include "debug.h"
-#include "xalloc.h"
-
-#define WIDTH  256
-#define HEIGHT 256
 
 #define HEAP_MARGIN 16*1024
 
 struct heap_t {
   uint32_t size, pointer;
+  uint8_t *memory;
   uint8_t *start;
   uint8_t *end;
   void *state;
   mutex_t *mutex;
   int free;
-#ifdef VISUAL_HEAP
-  window_provider_t *wp;
-  window_t *w;
-  texture_t *t;
-  surface_t *surface;
-  int x1, y1, x2, y2;
-  int16_t bin[HEIGHT][WIDTH];
-  uint64_t t0, last_render;
+#if defined(HEAP_DEBUG)
+  uint8_t *bitfield;
 #endif
 };
 
-heap_t *heap_init(uint8_t *base, uint32_t size, void *_wp) {
-  heap_t *heap;
-#ifdef VISUAL_HEAP
-  int width, height;
+#if defined(HEAP_DEBUG)
+extern void emupalmos_heap_debug(void *p);
 #endif
+
+heap_t *heap_init(uint8_t *memory, uint32_t size, void *_wp) {
+  heap_t *heap;
+  uint32_t rem;
+  uint64_t p;
 
   debug(DEBUG_INFO, "Heap", "heap_init %u", size);
 
-  if ((heap = xcalloc(1, sizeof(heap_t))) == NULL) {
+  if ((heap = sys_calloc(1, sizeof(heap_t))) == NULL) {
     return NULL;
   }
 
   heap->free = 1;
-  if (base) {
-    heap->start = base;
+  if (memory) {
+    heap->memory = memory;
     heap->free = 0;
-  } else if ((heap->start = xcalloc(1, size)) == NULL) {
-    xfree(heap);
+  } else if ((heap->memory = sys_calloc(1, size + 16)) == NULL) {
+    sys_free(heap);
     heap = NULL;
     return NULL;
   }
 
-  uint64_t p = (uint64_t)heap->start;
-  if (p & 0xf) {
-    p = (p + 0xf) & ~0xf;
+  p = (uint64_t)heap->memory;
+  rem = p & 0xf;
+  if (rem) {
+    p += 16 - rem;
     heap->start = (uint8_t *)p;
+    size -= 16 - rem;
+  } else {
+    heap->start = heap->memory;
   }
 
   heap->size = size;
-  heap->end = (void *)(heap->start + size);
-  heap->state = xcalloc(1, dlmalloc_state_size());
+  heap->end = heap->start + size;
+  heap->state = sys_calloc(1, dlmalloc_state_size());
 
-#ifdef VISUAL_HEAP
-  width = WIDTH;
-  height = HEIGHT;
-  heap->wp = _wp;
-  heap->w = heap->wp->create(ENC_RGBA, &width, &height, 2, 2, 0, 0, 0, NULL, heap->wp->data);
-  heap->t = heap->wp->create_texture(heap->w, width, height);
-  heap->surface = surface_create(width, height, SURFACE_ENCODING_ARGB);
-  heap->t0 = sys_get_clock();
-  heap->x1 = WIDTH;
-  heap->y1 = HEIGHT;
-  heap->x2 = -1;
-  heap->y2 = -1;
+#if defined(HEAP_DEBUG)
+  heap->bitfield = sys_calloc(1, size >> 3);
+  emupalmos_heap_debug(heap);
 #endif
 
   return heap;
@@ -91,15 +69,12 @@ heap_t *heap_init(uint8_t *base, uint32_t size, void *_wp) {
 void heap_finish(heap_t *heap) {
   if (heap) {
     debug(DEBUG_INFO, "Heap", "heap_finish");
-    dlmalloc_stats();
-    if (heap->start && heap->free) xfree(heap->start);
-    if (heap->state) xfree(heap->state);
-#ifdef VISUAL_HEAP
-    if (heap->surface) surface_destroy(heap->surface);
-    if (heap->t) heap->wp->destroy_texture(heap->w, heap->t);
-    if (heap->w) heap->wp->destroy(heap->w);
+    if (heap->memory && heap->free) sys_free(heap->memory);
+    if (heap->state) sys_free(heap->state);
+#if defined(HEAP_DEBUG)
+    sys_free(heap->bitfield);
 #endif
-    xfree(heap);
+    sys_free(heap);
   }
 }
 
@@ -111,97 +86,97 @@ uint32_t heap_size(heap_t *heap) {
   return heap->size;
 }
 
-#ifdef VISUAL_HEAP
-static void heap_draw(heap_t *heap, uint8_t *from, uint8_t *to, int incr) {
-  uint64_t t;
-  uint32_t offset, color;
-  uint16_t value;
-  uint8_t *raw, *p;
-  int len, x, y, red, green;
+#if defined(HEAP_DEBUG)
+extern void dlmalloc_info(void *h);
 
-  for (p = from; p < to; p++) {
-    offset = p - heap->start;
-    offset >>= 9;
-    x = offset & 0xFF;
-    offset >>= 8;
-    y = offset & 0xFF;
+void heap_info(heap_t *heap) {
+  dlmalloc_info(heap);
+}
 
-    if (y < heap->y1) heap->y1 = y;
-    if (y > heap->y2) heap->y2 = y;
-    if (x < heap->x1) heap->x1 = x;
-    if (x > heap->x2) heap->x2 = x;
+static void heap_debug_set(heap_t *heap, uint8_t *address, uint32_t size) {
+  uint32_t i, index, offset;
+  uint8_t mask;
 
-    heap->bin[y][x] += incr;
-    if (heap->bin[y][x] < 0) {
-      heap->bin[y][x] = 0;
-    } else if (heap->bin[y][x] > 512) {
-      heap->bin[y][x] = 512;
+  debug(DEBUG_TRACE, "Heap", "heap set %p %u", address, size);
+  offset = address - heap->start;
+
+  for (i = 0; i < size; offset++, i++) {
+    index = offset >> 3;
+    mask = 1 << (offset & 7);
+    if (heap->bitfield[index] & mask) {
+      debug(DEBUG_ERROR, "Heap", "set already mapped address %p", heap->start + offset);
     }
-    value = heap->bin[y][x];
-
-    if (value < 256) {
-      red = value;
-      green = 0;
-    } else if (value < 512) {
-      red = 255;
-      green = value - 256;
-    } else {
-      red = 255;
-      green = 255;
-    }
-
-    color = heap->surface->color_rgb(heap->surface->data, red, green, 0, 255);
-    heap->surface->setpixel(heap->surface->data, x, y, color);
+    heap->bitfield[index] |= mask;
   }
+}
 
-  if (heap->x2 >= heap->x1 && heap->y2 >= heap->y1) {
-    t = sys_get_clock();
-    if ((t - heap->last_render) >= 20000) {
-      raw = (uint8_t *)heap->surface->getbuffer(heap->surface->data, &len);
-      heap->wp->update_texture_rect(heap->w, heap->t, raw, heap->x1, heap->y1, heap->x2-heap->x1+1, heap->y2-heap->y1+1);
-      heap->wp->draw_texture(heap->w, heap->t, 0, 0);
-      heap->wp->render(heap->w);
-      heap->x1 = WIDTH;
-      heap->y1 = HEIGHT;
-      heap->x2 = -1;
-      heap->y2 = -1;
-      heap->last_render = t;
+static void heap_debug_reset(heap_t *heap, uint8_t *address, uint32_t size) {
+  uint32_t i, index, offset;
+  uint8_t mask;
+
+  debug(DEBUG_TRACE, "Heap", "heap reset %p %u", address, size);
+  offset = address - heap->start;
+
+  for (i = 0; i < size; offset++, i++) {
+    index = offset >> 3;
+    mask = 1 << (offset & 7);
+    if (!(heap->bitfield[index] & mask)) {
+      debug(DEBUG_ERROR, "Heap", "reset unmapped address %p mask 0x%02X", heap->start + offset, mask);
+    }
+    heap->bitfield[index] &= mask ^ 0xff;
+  }
+}
+
+void heap_debug_access(void *p, uint32_t offset, uint32_t size, int write) {
+  heap_t *heap = (heap_t *)p;
+  uint32_t i, index;
+  uint8_t mask;
+
+  for (i = 0; i < size; offset++, i++) {
+    index = offset >> 3;
+    mask = 1 << (offset & 7);
+    if (!(heap->bitfield[index] & mask)) {
+      debug(DEBUG_ERROR, "Heap", "%s access to unmapped address %p (0x%08X)", write ? "write" : "read", heap->start + offset, offset);
     }
   }
 }
 #endif
 
 void *heap_alloc(heap_t *heap, sys_size_t size) {
-  void *p = dlmalloc(heap, size);
+  sys_size_t realsize;
+  sys_size_t *p, *q;
+
+  p = dlmalloc(heap, size);
   if (p) {
-    sys_size_t *q = (sys_size_t *)p;
-    sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
-    realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
-#ifdef VISUAL_HEAP
-    heap_draw(heap, p, (uint8_t *)p + realsize, 1);
+    q = (sys_size_t *)p;
+    realsize = (sys_size_t)(q[-1] & ~1);
+    debug(DEBUG_TRACE, "Heap", "heap_alloc %u %u bytes %p to %p", (uint32_t)realsize, (uint32_t)size, p, (uint8_t *)p + realsize - 1);
+#if defined(HEAP_DEBUG)
+    //if ((size & 7) > 0) size += 8 - (size & 7);
+    heap_debug_set(heap, (uint8_t *)p, (uint32_t)realsize);
 #endif
   }
   return p;
 }
 
 void *heap_realloc(heap_t *heap, void *p, sys_size_t size) {
+  sys_size_t realsize;
+  sys_size_t *q;
+
   if (p) {
-    sys_size_t *q = (sys_size_t *)p;
-    sys_size_t realsize = (sys_size_t)(q[-1] & ~1);
-    realsize -= 16;
+    q = (sys_size_t *)p;
+    realsize = (sys_size_t)(q[-1] & ~1);
+    //realsize -= 8;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
-#ifdef VISUAL_HEAP
-    heap_draw(heap, p, (uint8_t *)p + realsize, -1);
+#if defined(HEAP_DEBUG)
+    heap_debug_reset(heap, (uint8_t *)p, (uint32_t)realsize);
 #endif
 
     p = dlrealloc(heap, p, size);
-    q = (sys_size_t *)p;
-    realsize = (sys_size_t)(q[-1] & ~1);
-    realsize -= 16;
-    debug(DEBUG_TRACE, "Heap", "heap_alloc %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
-#ifdef VISUAL_HEAP
-    heap_draw(heap, p, (uint8_t *)p + realsize, 1);
+    debug(DEBUG_TRACE, "Heap", "heap_alloc %u %u bytes %p to %p", (uint32_t)realsize, (uint32_t)size, p, (uint8_t *)p + size - 1);
+#if defined(HEAP_DEBUG)
+    //if ((size & 7) > 0) size += 8 - (size & 7);
+    heap_debug_set(heap, (uint8_t *)p, (uint32_t)size);
 #endif
   }
 
@@ -215,10 +190,10 @@ void heap_free(heap_t *heap, void *p) {
   if (p) {
     q = (sys_size_t *)p;
     realsize = (sys_size_t)(q[-1] & ~1);
-    realsize -= 16;
+    //size -= 8;
     debug(DEBUG_TRACE, "Heap", "heap_free %u bytes %p to %p", (uint32_t)realsize, p, (uint8_t *)p + realsize - 1);
-#ifdef VISUAL_HEAP
-    heap_draw(heap, p, (uint8_t *)p + realsize, -1);
+#if defined(HEAP_DEBUG)
+    heap_debug_reset(heap, (uint8_t *)p, (uint32_t)realsize);
 #endif
     dlfree(heap, p);
   }
@@ -247,10 +222,6 @@ void *heap_morecore(void *h, sys_size_t size) {
 
 void heap_dump(heap_t *heap) {
   int fd;
-
-#ifdef VISUAL_HEAP
-  surface_save(heap->surface, "heap.png", 0);
-#endif
 
   if ((fd = sys_create("heap.bin", SYS_WRITE, 0622)) != -1) {
     sys_write(fd, heap->start, heap->pointer);

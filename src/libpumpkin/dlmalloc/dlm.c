@@ -779,8 +779,9 @@ void *dlmalloc(void *h, sys_size_t bytes) {
 
 
           size |= PREV_INUSE;
-          while ((sys_size_t)(size) < (sys_size_t)(fwd->size))
+          while ((sys_size_t)(size) < (sys_size_t)(fwd->size)) {
             fwd = fwd->fd;
+          }
           bck = fwd->bk;
         }
       }
@@ -1432,6 +1433,7 @@ struct mallinfo dlmallinfo(void *h) {
   mchunkptr p;
   sys_size_t avail;
   sys_size_t fastavail;
+  sys_size_t tmp;
   int nblocks;
   int nfastblocks;
 
@@ -1443,10 +1445,13 @@ struct mallinfo dlmallinfo(void *h) {
   nfastblocks = 0;
   fastavail = 0;
 
+  debug(DEBUG_INFO, "Heap", "malloc info top %lu", avail);
   for (i = 0; NFASTBINS-i>0; ++i) {
     for (p = av->fastbins[i]; p != 0; p = p->fd) {
       ++nfastblocks;
-      fastavail += chunksize(p);
+      tmp = chunksize(p);
+      debug(DEBUG_INFO, "Heap", "malloc info fastbin %d block %lu", i, tmp);
+      fastavail += tmp;
     }
   }
 
@@ -1456,7 +1461,9 @@ struct mallinfo dlmallinfo(void *h) {
     b = bin_at(av, i);
     for (p = last(b); p != b; p = p->bk) {
       ++nblocks;
-      avail += chunksize(p);
+      tmp = chunksize(p);
+      debug(DEBUG_INFO, "Heap", "malloc info bin %d block %lu", i, tmp);
+      avail += tmp;
     }
   }
 
@@ -1474,8 +1481,11 @@ struct mallinfo dlmallinfo(void *h) {
   return mi;
 }
 
-void dlmalloc_stats(void)
-{
+void dlmalloc_info(void *h) {
+  dlmallinfo(h);
+}
+
+void dlmalloc_stats(void) {
 }
 
 int dlmallopt(void *h, int param_number, int value) {

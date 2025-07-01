@@ -1009,6 +1009,7 @@ int m68k_execute(m68k_state_t *m68k_state, int num_cycles)
 			m68ki_use_data_space(); /* auto-disable (see m68kcpu.h) */
 
 			/* Call external hook to peek at CPU */
+			if (REG_PC == 0) return -1;
 			if (m68ki_instr_hook(REG_PC) == -1) return -1;
 
 			/* Record previous program counter */
@@ -1168,10 +1169,10 @@ void m68k_pulse_reset(void)
 #endif /* M68K_EMULATE_PREFETCH */
 
 	/* Read the initial stack pointer and program counter */
-	m68ki_jump(0);
-	REG_SP = m68ki_read_imm_32();
-	REG_PC = m68ki_read_imm_32();
-	m68ki_jump(REG_PC);
+	//m68ki_jump(0);
+	//REG_SP = m68ki_read_imm_32();
+	//REG_PC = m68ki_read_imm_32();
+	//m68ki_jump(REG_PC);
 
 	CPU_RUN_MODE = RUN_MODE_NORMAL;
 

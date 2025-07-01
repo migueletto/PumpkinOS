@@ -323,6 +323,7 @@ void *pumpkin_heap_alloc(uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   void *p;
 
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_alloc %s %u", tag, size);
   p = heap_alloc(task ? task->heap : pumpkin_module.heap, size);
   if (p) {
     debug(DEBUG_TRACE, "Heap", "ALLOC %p %s %u", p, tag, size);
@@ -336,10 +337,12 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   void *q = NULL;
 
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_realloc %s %p %u", tag, p, size);
   if (p) {
     q = size ? heap_realloc(task ? task->heap : pumpkin_module.heap, p, size) : NULL;
-    debug(DEBUG_TRACE, "Heap", "FREE %p %s", p, tag);
-    debug(DEBUG_TRACE, "Heap", "ALLOC %p %s %u", q, tag, size);
+    debug(DEBUG_TRACE, "Heap", "REALLOC %p %p %s %u", p, q, tag, size);
+    //debug(DEBUG_TRACE, "Heap", "FREE %p %s", p, tag);
+    //debug(DEBUG_TRACE, "Heap", "ALLOC %p %s %u", q, tag, size);
   }
 
   return q;
@@ -348,6 +351,7 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
 void pumpkin_heap_free(void *p, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_free %s %p", tag, p);
   if (p) {
     debug(DEBUG_TRACE, "Heap", "FREE %p %s", p, tag);
     heap_free(task ? task->heap : pumpkin_module.heap, p);
@@ -369,15 +373,6 @@ void pumpkin_heap_dump(void) {
   if (mutex_lock(mutex) == 0) {
     heap_dump(pumpkin_module.heap);
     mutex_unlock(mutex);
-  }
-}
-
-void pumpkin_heap_walk(int global) {
-  if (global) {
-    heap_walk(pumpkin_module.heap, StoHeapWalk, 0);
-  } else {
-    pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-    heap_walk(pumpkin_module.heap, StoHeapWalk, task->task_index+1);
   }
 }
 
@@ -1496,6 +1491,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   KeyInitModule();
   SndInitModule(pumpkin_module.ap);
   SelTimeInitModule();
+  CharAttrInitModule();
   SysFatalAlertInit();
 
   if (i == 0) {
@@ -1601,6 +1597,7 @@ static int pumpkin_local_finish(UInt32 creator) {
   UicFinishModule();
   FntFinishModule();
   WinFinishModule(true);
+  CharAttrFinishModule();
 
   if (pumpkin_module.tasks[task->task_index].bootRef) {
     DmCloseDatabase(pumpkin_module.tasks[task->task_index].bootRef);

@@ -115,6 +115,16 @@ static const uint8_t SysLibLoad_code[] = {
 0x30, 0x03, 0x4c, 0xee, 0x0c, 0xf8, 0xff, 0xac, 0x4e, 0x5e, 0x4e, 0x75,
 };
 
+#if defined(HEAP_DEBUG)
+static void *heap_debug;
+
+void emupalmos_heap_debug(void *p) {
+  heap_debug = p;
+}
+
+extern void heap_debug_access(void *p, uint32_t offset, uint32_t size, int write);
+#endif 
+
 void emupalmos_finish(int f) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->m68k_state.finish = f;
@@ -242,6 +252,9 @@ uint8_t cpu_read_byte(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 1, 0);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
       value = WinLegacyRead(address - state->screenStart);
@@ -272,6 +285,9 @@ uint16_t cpu_read_word(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 2, 0);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd - 1) {
       value = WinLegacyRead(address - state->screenStart);
@@ -311,6 +327,9 @@ uint32_t cpu_read_long(uint32_t address) {
     }
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 4, 0);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd - 3) {
       value = WinLegacyRead(address - state->screenStart);
@@ -342,6 +361,9 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 1, 0)) return;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 1, 1);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
@@ -363,6 +385,9 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 2, 1);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
@@ -385,6 +410,9 @@ void cpu_write_long(uint32_t address, uint32_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
+#ifdef HEAP_DEBUG
+    heap_debug_access(heap_debug, address, 4, 1);
+#endif
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (address >= state->screenStart && address < state->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
@@ -1658,9 +1686,9 @@ static emu_state_t *emupalmos_new(void) {
 
     // fill the ARM syscall tables for DAL, BOOT and UI functions
     state->systable = pumpkin_heap_alloc(4096, "sysTable");
-    dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFuntions");
-    bootFunctions = pumpkin_heap_alloc(0x1000, "bootFuntions");
-    uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFuntions");
+    dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFunctions");
+    bootFunctions = pumpkin_heap_alloc(0x1000, "bootFunctions");
+    uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFunctions");
     state->systable[1] = (uint8_t *)dalFunctions  - ram;
     state->systable[2] = (uint8_t *)bootFunctions - ram;
     state->systable[3] = (uint8_t *)uiFunctions   - ram;

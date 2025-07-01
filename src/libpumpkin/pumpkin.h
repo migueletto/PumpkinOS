@@ -197,7 +197,6 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag);
 void pumpkin_heap_free(void *p, char *tag);
 void *pumpkin_heap_dup(void *p, uint32_t size, char *tag);
 void pumpkin_heap_dump(void);
-void pumpkin_heap_walk(int global);
 
 int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
