@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -3823,6 +3824,78 @@ static Boolean StoValidTypeCreator(UInt8 *buf) {
   }
 
   return i > 0;
+}
+
+Err VFSFileDBInfo(FileRef ref, Char *nameP,
+          UInt16 *attributesP, UInt16 *versionP, UInt32 *crDateP,
+          UInt32 *modDateP, UInt32 *bckUpDateP,
+          UInt32 *modNumP, MemHandle *appInfoHP,
+          MemHandle *sortInfoHP, UInt32 *typeP,
+          UInt32 *creatorP, UInt16 *numRecordsP) {
+
+  char name[dmDBNameLength];
+  UInt8 database[256];
+  UInt16 attr, version, numRecs;
+  UInt32 i, nread, creationDate, modificationDate, lastBackupDate, modificationNumber, appInfo, sortInfo, type, creator, uniqueIDSeed, pos, dummy32;
+  Err err;
+
+  VFSFileTell(ref, &pos);
+
+  if ((err = VFSFileRead(ref, sizeof(database), database, &nread)) == errNone) {
+    VFSFileSeek(ref, vfsOriginBeginning, pos);
+    err = dmErrInvalidParam;
+
+    if (!StoValidName(database)) {
+      debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid name \"%.*s\"", dmDBNameLength, database);
+      pumpkin_set_lasterr(err);
+      return err;
+    }
+
+    StrNCopy(name, (char *)database, dmDBNameLength - 1);
+    i = 0;
+    i += dmDBNameLength;
+    i += get2b(&attr, database, i);
+    i += get2b(&version, database, i);
+    i += get4b(&creationDate, database, i);
+    i += get4b(&modificationDate, database, i);
+    i += get4b(&lastBackupDate, database, i);
+    i += get4b(&modificationNumber, database, i);
+    i += get4b(&appInfo, database, i);
+    i += get4b(&sortInfo, database, i);
+    pumpkin_s2id(&type, (char *)&database[i]);
+    if (!StoValidTypeCreator(&database[i])) {
+      debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid type 0x%08X", type);
+      pumpkin_set_lasterr(err);
+      return err;
+    }
+    i += 4;
+    pumpkin_s2id(&creator, (char *)&database[i]);
+    if (!StoValidTypeCreator(&database[i])) {
+      debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid creator 0x%08X", creator);
+      pumpkin_set_lasterr(err);
+      return err;
+    }
+    i += 4;
+    i += get4b(&uniqueIDSeed, database, i);
+    i += get4b(&dummy32, database, i);  // nextRecordListID
+    i += get2b(&numRecs, database, i);  // numberOfRecords
+
+    if (attributesP) *attributesP = attr;
+    if (versionP) *versionP = version;
+    if (crDateP) *crDateP = creationDate;
+    if (modDateP) *modDateP = modificationDate;
+    if (bckUpDateP) *bckUpDateP = lastBackupDate;
+    if (modNumP) *modNumP = modificationNumber;
+    if (appInfoHP) *appInfoHP = NULL; // XXX
+    if (sortInfoHP) *sortInfoHP = NULL; // XXX
+    if (typeP) *typeP = type;
+    if (creatorP) *creatorP = creator;
+
+    err = errNone;
+  }
+
+  pumpkin_set_lasterr(err);
+  return err;
 }
 
 Err DmCreateDatabaseFromImage(MemPtr bufferP) {

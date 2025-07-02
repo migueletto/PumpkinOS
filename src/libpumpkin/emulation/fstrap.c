@@ -421,13 +421,24 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t typeP = ARG32;
       uint32_t creatorP = ARG32;
       uint32_t numRecordsP = ARG32;
-      char name[dmDBNameLength];
       FileRefProxy *ref = (FileRefProxy *)emupalmos_trap_sel_in(refP, sysTrapFileSystemDispatch, sel, 0);
       FileRef fileRef = ref ? ref->ref : NULL;
+      char *name = emupalmos_trap_sel_in(nameP, sysTrapFileSystemDispatch, sel, 1);
       UInt16 attributes, version, numRecords;
       UInt32 crDate, modDate, bckUpDate, modNum, type, creator;
       MemHandle appInfoH, sortInfoH;
       Err res = VFSFileDBInfo(fileRef, name, &attributes, &version, &crDate, &modDate, &bckUpDate, &modNum, &appInfoH, &sortInfoH, &type, &creator, &numRecords);
+      if (attributesP) m68k_write_memory_16(attributesP, attributes);
+      if (versionP) m68k_write_memory_16(versionP, version);
+      if (crDateP) m68k_write_memory_32(crDateP, crDate);
+      if (modDateP) m68k_write_memory_32(modDateP, modDate);
+      if (bckUpDateP) m68k_write_memory_32(bckUpDateP, bckUpDate);
+      if (modNumP) m68k_write_memory_32(modNumP, modNum);
+      if (appInfoHP) m68k_write_memory_32(appInfoHP, 0); // XXX
+      if (sortInfoHP) m68k_write_memory_32(sortInfoHP, 0); // XXX
+      if (typeP) m68k_write_memory_32(typeP, type);
+      if (creatorP) m68k_write_memory_32(creatorP, creator);
+      if (numRecordsP) m68k_write_memory_32(numRecordsP, numRecords);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "VFSFileDBInfo(fileRef=%d): %d", refP, res);
     }

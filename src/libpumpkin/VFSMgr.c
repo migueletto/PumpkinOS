@@ -759,16 +759,6 @@ Err VFSFileDBGetRecord(FileRef ref, UInt16 recIndex, MemHandle *recHP, UInt8 *re
   return_err(sysErrParamErr);
 }
 
-Err VFSFileDBInfo(FileRef ref, Char *nameP,
-          UInt16 *attributesP, UInt16 *versionP, UInt32 *crDateP,
-          UInt32 *modDateP, UInt32 *bckUpDateP,
-          UInt32 *modNumP, MemHandle *appInfoHP,
-          MemHandle *sortInfoHP, UInt32 *typeP,
-          UInt32 *creatorP, UInt16 *numRecordsP) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBInfo not implemented");
-  return_err(vfsErrBadData);
-}
-
 Err VFSChangeDir(UInt16 volRefNum, char *path) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char *old, *cwd;
