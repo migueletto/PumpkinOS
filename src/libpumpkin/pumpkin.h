@@ -197,6 +197,7 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag);
 void pumpkin_heap_free(void *p, char *tag);
 void *pumpkin_heap_dup(void *p, uint32_t size, char *tag);
 void pumpkin_heap_dump(void);
+int pumpkin_heap_debug_access(uint32_t offset, uint32_t size, int read);
 
 int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line);
 int pumpkin_global_finish(void);
@@ -608,8 +609,6 @@ int CharAttrFinishModule(void);
 
 void pumpkin_crash_log(UInt32 creator, int code, char *msg);
 void pumpkin_test_exception(int fatal);
-void pumpkin_debug_init(void);
-void pumpkin_debug_check(void);
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
 int pumpkin_script_init_env(int pe);

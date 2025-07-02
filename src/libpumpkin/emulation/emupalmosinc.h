@@ -14,5 +14,6 @@ int emupalmos_finished(void);
 void emupalmos_panic(char *msg, int code);
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3);
 void emupalmos_disasm(int disasm);
+int emupalmos_check_address(uint32_t address, uint32_t size, int read);
 
 void cpu_pulse_reset(void);

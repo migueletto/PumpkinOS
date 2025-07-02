@@ -40,6 +40,6 @@ void *CustomMalloc(HEAP_INFO_t *pHeapInfo, uint32_t size);
  **/
 void CustomFree(HEAP_INFO_t *pHeapInfo, void *p);
 
-BD_t *CustomBlock(HEAP_INFO_t *pHeapInfo, void *p);
+uint32_t CustomBlockSize(HEAP_INFO_t *pHeapInfo, void *p);
 
 #endif	

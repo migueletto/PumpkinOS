@@ -4,7 +4,7 @@ include ../common.mak
 
 PROGRAM=pumpkin
 
-CUSTOMFLAGS=-g -nostartfiles -I$(SRC)/libfatfs -I$(SRC)/font -I$(SRC)/libbcm2835
+CUSTOMFLAGS=-g -nostartfiles -I$(SRC)/libfatfs -I$(SRC)/font -I$(SRC)/libbcm2835 -I$(SRC)/libpit/custom_malloc
 
 ifdef RPI
 MODULES=$(BIN)/libos.a $(BIN)/libwsurface.a $(BIN)/libgpio.a $(BIN)/libspi.a $(BIN)/libili9486.a $(BIN)/libbcm2835.a $(BIN)/libpumpkin.a $(BIN)/libpit.a $(BIN)/libfatfs.a float/float.a

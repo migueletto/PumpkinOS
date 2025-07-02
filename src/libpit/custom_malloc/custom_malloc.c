@@ -19,12 +19,12 @@ void CustomMallocInit(HEAP_INFO_t *pHeapInfo) {
 static void printLists(HEAP_INFO_t *hp) {
   BD_t *iter;
 
-  debug(DEBUG_INFO, "Heap", "heap size %u, used %u", hp->heapSize, hp->allocSize);
+  debug(DEBUG_ERROR, "Heap", "heap size %u, used %u", hp->heapSize, hp->allocSize);
 
   iter = hp->avail_dll->next;
-  if (iter) debug(DEBUG_INFO, "Heap", "available list");
+  if (iter) debug(DEBUG_ERROR, "Heap", "available list");
   while (iter != NULL) {
-    debug(DEBUG_INFO, "Heap", "block size=%u offset=%u", iter->blkSize, (uint32_t)((uint8_t *)iter - hp->pHeap));
+    debug(DEBUG_ERROR, "Heap", "block size=%u offset=%u", iter->blkSize, (uint32_t)((uint8_t *)iter - hp->pHeap));
     iter = iter->next;
   }
 
@@ -47,8 +47,6 @@ void *CustomMalloc(HEAP_INFO_t *pHeapInfo, uint32_t size) {
   iter = pHeapInfo->avail_dll->next;
   rem = size & 3;
   if (rem) size += 4 - rem;
-
-  debug(DEBUG_TRACE, "Heap", "CustomMalloc %u bytes", size);
 
   while (iter != NULL) {
     residueMemory = iter->blkSize - size;
@@ -103,9 +101,14 @@ void *CustomMalloc(HEAP_INFO_t *pHeapInfo, uint32_t size) {
   return NULL;
 }
 
-BD_t *CustomBlock(HEAP_INFO_t *pHeapInfo, void *p) {
+uint32_t CustomBlockSize(HEAP_INFO_t *pHeapInfo, void *p) {
+  BD_t *bd;
+
   if (!pHeapInfo || !p) return 0;
-  return p - sizeof(BD_t);
+
+  bd = (BD_t *)(p - sizeof(BD_t));
+
+  return bd->blkSize;
 }
 
 void CustomFree(HEAP_INFO_t *pHeapInfo, void *p) {

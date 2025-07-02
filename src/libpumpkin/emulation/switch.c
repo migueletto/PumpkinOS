@@ -1086,7 +1086,12 @@ case sysTrapDmWrite: {
   uint32_t srcP = ARG32;
   void *s_srcP = emupalmos_trap_in(srcP, trap, 2);
   uint32_t bytes = ARG32;
-  Err res = DmWrite(recordP ? s_recordP : NULL, offset, srcP ? s_srcP : NULL, bytes);
+  Err res;
+  if (emupalmos_check_address(recordP + offset, bytes, 0) && emupalmos_check_address(srcP, bytes, 1)) {
+    res = DmWrite(recordP ? s_recordP : NULL, offset, srcP ? s_srcP : NULL, bytes);
+  } else {
+    res = dmErrInvalidParam;
+  }
   m68k_set_reg(M68K_REG_D0, res);
   debug(DEBUG_TRACE, "EmuPalmOS", "DmWrite(recordP=0x%08X, offset=%d, srcP=0x%08X, bytes=%d): %d", recordP, offset, srcP, bytes, res);
 }
@@ -4323,9 +4328,9 @@ case sysTrapSysUIAppSwitch: {
   uint16_t cmd = ARG16;
   uint32_t cmdPBP = ARG32;
   void *l_cmdPBP = cmdPBP ? ram + cmdPBP : NULL;
+  debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch(cardNo=%d, dbID=0x%08X, cmd=%d, cmdPBP=0x%08X)", cardNo, dbID, cmd, cmdPBP);
   Err res = SysUIAppSwitch(cardNo, dbID, cmd, cmdPBP ? l_cmdPBP : 0);
   m68k_set_reg(M68K_REG_D0, res);
-  debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch(cardNo=%d, dbID=0x%08X, cmd=%d, cmdPBP=0x%08X): %d", cardNo, dbID, cmd, cmdPBP, res);
 }
 break;
 case sysTrapSysCurAppDatabase: {
@@ -4672,5 +4677,12 @@ case sysTrapCategorySetName: {
   char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
   CategorySetName(db ? l_db : 0, index, nameP ? s_nameP : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "CategorySetName(db=0x%08X, index=%d, nameP=0x%08X [%s])", db, index, nameP, s_nameP);
+}
+break;
+case sysTrapPwdExists: {
+  // Boolean PwdExists(void)
+  Boolean res = PwdExists();
+  m68k_set_reg(M68K_REG_D0, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "PwdExists(): %d", res);
 }
 break;

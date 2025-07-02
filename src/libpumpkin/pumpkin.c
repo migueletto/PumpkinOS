@@ -59,6 +59,7 @@
 #define VFS_INSTALL   "/app_install/"
 
 #define HEAP_SIZE (8*1024*1024)
+#define SMALL_HEAP_SIZE (128*1024)
 
 #define APP_STORAGE "/app_storage/"
 
@@ -313,20 +314,12 @@ void pumpkin_test_exception(int fatal) {
   debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_test_exception should not be here!");
 }
 
-void pumpkin_debug_init(void) {
-}
-
-void pumpkin_debug_check(void) {
-}
-
 void *pumpkin_heap_alloc(uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   void *p;
 
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_alloc %s %u", tag, size);
   p = heap_alloc(task ? task->heap : pumpkin_module.heap, size);
   if (p) {
-    debug(DEBUG_TRACE, "Heap", "ALLOC %p %s %u", p, tag, size);
     xmemset(p, 0, size);
   }
 
@@ -337,12 +330,8 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   void *q = NULL;
 
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_realloc %s %p %u", tag, p, size);
   if (p) {
     q = size ? heap_realloc(task ? task->heap : pumpkin_module.heap, p, size) : NULL;
-    debug(DEBUG_TRACE, "Heap", "REALLOC %p %p %s %u", p, q, tag, size);
-    //debug(DEBUG_TRACE, "Heap", "FREE %p %s", p, tag);
-    //debug(DEBUG_TRACE, "Heap", "ALLOC %p %s %u", q, tag, size);
   }
 
   return q;
@@ -351,9 +340,7 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
 void pumpkin_heap_free(void *p, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_free %s %p", tag, p);
   if (p) {
-    debug(DEBUG_TRACE, "Heap", "FREE %p %s", p, tag);
     heap_free(task ? task->heap : pumpkin_module.heap, p);
   }
 }
@@ -374,6 +361,10 @@ void pumpkin_heap_dump(void) {
     heap_dump(pumpkin_module.heap);
     mutex_unlock(mutex);
   }
+}
+
+int pumpkin_heap_debug_access(uint32_t offset, uint32_t size, int read) {
+  return heap_debug_access(heap_get(), offset, size, read);
 }
 
 heap_t *heap_get(void) {
@@ -591,7 +582,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   StoRemoveLocks(APP_STORAGE);
 
-  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, wp);
+  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
 
   SysUInitModule(); // sto calls SysQSortP
@@ -1437,7 +1428,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
 
   thread_set(task_key, task);
   if (pumpkin_module.mode != 1) {
-    task->heap = heap_init(NULL, HEAP_SIZE, NULL);
+    task->heap = heap_init(NULL, HEAP_SIZE, SMALL_HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   } else {
     task->heap = pumpkin_module.heap;
@@ -5325,7 +5316,7 @@ void pumpkin_audio_task_init(void) {
 
   if ((task = xcalloc(1, sizeof(pumpkin_task_t))) != NULL) {
     thread_set(task_key, task);
-    task->heap = heap_init(NULL, 256*1024, NULL);
+    task->heap = heap_init(NULL, 256*1024, 0, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
     VFSInitModule();
     VFSAddVolume(VFS_CARD);

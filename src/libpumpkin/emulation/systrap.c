@@ -71,7 +71,6 @@ uint32_t palmos_systrap(uint16_t trap) {
 
   if (palmos_systrap_gen(trap)) {
     debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X end (gen)", trap);
-    pumpkin_debug_check();
     pumpkin_trace(trap);
     return 0;
   }
@@ -1225,7 +1224,11 @@ uint32_t palmos_systrap(uint16_t trap) {
         }
         err = 0;
       } else {
-        err = MemSet(emupalmos_trap_in(dstP, trap, 0), numBytes, value);
+        if (emupalmos_check_address(dstP, numBytes, 0)) {
+          err = MemSet(emupalmos_trap_in(dstP, trap, 0), numBytes, value);
+        } else {
+          err = dmErrInvalidParam;
+        }
       }
       debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X): %d", dstP, numBytes, value, err);
       m68k_set_reg(M68K_REG_D0, err);
@@ -1251,7 +1254,11 @@ uint32_t palmos_systrap(uint16_t trap) {
         }
         err = 0;
       } else {
-        err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
+        if (emupalmos_check_address(dstP, numBytes, 0) && emupalmos_check_address(sP, numBytes, 1)) {
+          err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
+        } else {
+          err = dmErrInvalidParam;
+        }
       }
       debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d): %d", dstP, sP, numBytes, err);
       m68k_set_reg(M68K_REG_D0, err);
@@ -3068,6 +3075,5 @@ uint32_t palmos_systrap(uint16_t trap) {
   debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X end (int)", trap);
   pumpkin_trace(trap);
 
-  //pumpkin_debug_check();
   return r;
 }

@@ -1,5 +1,4 @@
 #include "sys.h"
-#include "dlm.h"
 #include "thread.h"
 #include "ptr.h"
 #include "vfs.h"
@@ -19,6 +18,7 @@
 
 extern int libos_app_init(int pe);
 extern int libos_start(int pe);
+extern void malloc_init(void);
 
 #ifdef RPI
 extern int libgpio_load(void);
@@ -45,6 +45,9 @@ static void blink(void) {
 #else
 extern int liblsdl2_load(void);
 extern int liblsdl2_init(int pe, script_ref_t obj);
+
+static void blink(void) {
+}
 #endif
 
 int main(void) {
@@ -63,7 +66,7 @@ int main(void) {
 
   blink();
   blink();
-  dlm_init(NULL);
+  malloc_init();
   blink();
   debug_setsyslevel(NULL, DEBUG_INFO);
   blink();

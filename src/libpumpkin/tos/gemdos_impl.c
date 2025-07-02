@@ -422,7 +422,7 @@ int32_t Mshrink(void *block, int32_t newsiz) {
   if (data->heap == NULL) {
     data->heapStart = (uint8_t *)block - data->memory + newsiz;
     data->heapSize = data->memorySize - data->heapStart;
-    data->heap = heap_init(data->memory + data->heapStart, data->heapSize, NULL);
+    data->heap = heap_init(data->memory + data->heapStart, data->heapSize, 0, NULL);
     debug(DEBUG_INFO, "TOS", "heap: 0x%08X (%u bytes)", data->heapStart, data->heapSize);
     r = 0;
   } else {
