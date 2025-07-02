@@ -717,7 +717,6 @@ void FntSaveFontEx(FontPtr font, FontID id) {
   BitmapType *bmp;
   WinHandle wh;
   RectangleType rect;
-  FontTypeV2 *font2;
   Coord width, height;
   UInt16 i, j, k, ch, x, y, w, error;
   char filename[64];
@@ -746,8 +745,6 @@ void FntSaveFontEx(FontPtr font, FontID id) {
       pumpkin_save_bitmap(bmp, kDensityLow, 0, 0, width, height, filename);
       WinDeleteWindow(wh, false);
       BmpDelete(bmp);
-    } else {
-      font2 = (FontTypeV2 *)font;
     }
   }
 }
