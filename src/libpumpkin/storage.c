@@ -1540,7 +1540,7 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
-    if (dbID < (sto->size - sizeof(storage_db_t))) {
+    if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
       db = (storage_db_t *) (sto->base + dbID);
       if ((dbRef = pumpkin_heap_alloc(sizeof(DmOpenType), "dbRef")) != NULL) {
         if (dbID == sto->watchID) {
