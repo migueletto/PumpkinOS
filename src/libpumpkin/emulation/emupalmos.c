@@ -465,6 +465,7 @@ void decode_event(uint32_t eventP, EventType *event) {
     case penDownEvent:
     case penMoveEvent:
     case nilEvent:
+    case frmSaveEvent:
     case appStopEvent:
     case winDisplayChangedEvent:
     case appRaiseEvent:
@@ -676,6 +677,7 @@ void encode_event(uint32_t eventP, EventType *event) {
     case penDownEvent:
     case penMoveEvent:
     case nilEvent:
+    case frmSaveEvent:
     case appStopEvent:
     case winDisplayChangedEvent:
     case appRaiseEvent:
