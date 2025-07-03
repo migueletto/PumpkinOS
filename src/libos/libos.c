@@ -160,6 +160,40 @@ static void EventLoop(libos_t *data) {
 #endif
 }
 
+static void choose_launcher(libos_t *data) {
+  char name[dmDBNameLength];
+  DmSearchStateType stateInfo;
+  UInt32 type, creator;
+  UInt16 cardNo;
+  LocalID dbID;
+
+  if (data->launcher[0]) {
+    if ((dbID = DmFindDatabase(0, data->launcher)) != 0) {
+      if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone && type == sysFileTApplication) {
+        PrefSetPreference(prefLauncherAppCreator, creator);
+      } else {
+        MemSet(data->launcher, MAX_STR, 0);
+      }
+    } else {
+      MemSet(data->launcher, MAX_STR, 0);
+    }
+  }
+
+  if (!data->launcher[0]) {
+    if ((creator = PrefGetPreference(prefLauncherAppCreator)) != 0) {
+      if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, &cardNo, &dbID) == errNone) {
+        if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+          StrNCopy(data->launcher, name, dmDBNameLength-1);
+        }
+      }
+    }
+
+    if (!data->launcher[0]) {
+      StrCopy(data->launcher, "Launcher");
+    }
+  }
+}
+
 static int libos_action(void *arg) {
   libos_t *data;
   int encoding, height = 0;
@@ -199,6 +233,8 @@ static int libos_action(void *arg) {
   pumpkin_set_mode(data->mode, data->dia, data->hdepth);
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
+
+  choose_launcher(data);
 
   if (data->mode == 1) {
     debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\"", data->launcher);
@@ -279,7 +315,6 @@ static int libos_start(int pe) {
     data->abgr = 0;
     data->xfactor = 1;
     data->yfactor = 1;
-    sys_strncpy(data->launcher, "Launcher", MAX_STR);
 
     for (i = 0; params[i].id; i++) {
       k.type = SCRIPT_ARG_STRING;

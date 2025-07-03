@@ -24,6 +24,5 @@ pumpkin.start {
   width    = 1024,
   height   = 768,
   hdepth   = 16,
-  depth    = 16,
-  launcher = "Launcher"
+  depth    = 16
 }
