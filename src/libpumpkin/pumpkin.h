@@ -408,6 +408,8 @@ UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
+void *UIColorSaveTable(void);
+void UIColorRestoreTable(void *p);
 RGBColorType *WinGetPalette(UInt16 n);
 WinDrawOperation WinGetDrawMode(void);
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);

@@ -134,6 +134,31 @@ Err UIColorSetTableEntry(UIColorTableEntries which, const RGBColorType *rgbP) {
   return 0;
 }
 
+void *UIColorSaveTable(void) {
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
+  IndexedColorType *old;
+  Int16 i;
+
+  old = MemPtrNew(UILastColorTableEntry * sizeof(IndexedColorType));
+  for (i = 0; i < UILastColorTableEntry; i++) {
+    old[i] = module->table[i];
+  }
+
+  return old;
+}
+
+void UIColorRestoreTable(void *p) {
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
+  IndexedColorType *old = (IndexedColorType *)p;
+  Int16 i;
+
+  if (old) {
+    for (i = 0; i < UILastColorTableEntry; i++) {
+      module->table[i] = old[i];
+    }
+  }
+}
+
 Err UIColorPushTable(void) {
   uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
   Int16 i;
