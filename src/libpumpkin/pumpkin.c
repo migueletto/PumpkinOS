@@ -2005,11 +2005,14 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   client_request_t creq;
   GoToParamsType *gotoParam;
   ErrJumpBuf jmpbuf;
+  BitmapType *bmp, *bck;
+  WinHandle wh;
+  void *old;
   void *win_module;
   void *frm_module;
   void *fld_module;
   void *menu_module;
-  int handle, call_sub;
+  int handle, call_sub, m68k, launched;
   uint32_t r = 0;
   void *data;
 
@@ -2050,11 +2053,16 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
 
   if (pumpkin_module.mode != 0) {
     debug(DEBUG_INFO, PUMPKINOS, "spawning \"%s\" with launchCode %d", name, cmd);
+    wh = WinGetDisplayWindow();
+    bmp = WinGetBitmap(wh);
+    bck = (BitmapType *)BmpCreateBitmapV3(bmp, BmpGetDensity(bmp), BmpGetBits(bmp), NULL);
+    old = UIColorSaveTable();
     win_module = WinReinitModule(NULL);
     frm_module = FrmReinitModule(NULL);
     fld_module = FldReinitModule(NULL);
     menu_module = MenuReinitModule(NULL);
-    UIColorPushTable();
+    m68k = pumpkin_is_m68k();
+    launched = pumpkin_is_launched();
     pumpkin_launched(1);
     xmemcpy(jmpbuf, task->jmpbuf, sizeof(ErrJumpBuf));
     if (ErrSetJump(task->jmpbuf) != 0) {
@@ -2066,16 +2074,21 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
       pumpkin_set_data(data);
     }
     xmemcpy(task->jmpbuf, jmpbuf, sizeof(ErrJumpBuf));
-    pumpkin_set_m68k(0);
-    pumpkin_launched(0);
-    UIColorPopTable();
+    pumpkin_set_m68k(m68k);
+    pumpkin_launched(launched);
+    UIColorRestoreTable(old);
+    WinReinitModule(win_module);
     MenuReinitModule(menu_module);
     FldReinitModule(fld_module);
     FrmReinitModule(frm_module);
-    WinReinitModule(win_module);
     FrmSetDIAPolicyAttr(FrmGetActiveForm(), frmDIAPolicyCustom);
     PINSetInputTriggerState(pinInputTriggerEnabled);
-    FrmDrawForm(FrmGetActiveForm());
+    wh = WinGetDisplayWindow();
+    WinHandle draw = WinSetDrawWindow(wh);
+    WinDrawBitmap(bck, 0, 0);
+    WinSetDrawWindow(draw);
+    BmpDelete(bck);
+    //FrmDrawForm(FrmGetActiveForm());
   } else {
     debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" via spawner on port %d", cmd, name, pumpkin_module.spawner);
     thread_client_write(pumpkin_module.spawner, (uint8_t *)&creq, sizeof(client_request_t));

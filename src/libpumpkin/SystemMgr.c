@@ -124,8 +124,17 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
   sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
   char name[dmDBNameLength];
   EventType event;
+  UInt32 result;
+  UInt16 flags;
 
   if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+    if (pumpkin_get_mode() == 1) {
+      debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch calling \"%s\" cmd %d", name, cmd);
+      flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
+      SysAppLaunch(0, dbID, flags, cmd, NULL, &result);
+      return errNone;
+    }
+
     debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch registering switch to \"%s\" cmd %d", name, cmd);
     MemSet(&module->request, sizeof(launch_request_t), 0);
     StrNCopy(module->request.name, name, dmDBNameLength);
