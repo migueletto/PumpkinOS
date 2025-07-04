@@ -9,15 +9,14 @@
 #include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
-#include "language.h"
 #include "debug.h"
 #include "xalloc.h"
 
 typedef struct {
   FontType *fonts[256];
   FontTypeV2 *fontsv2[256];
-  language_t *lang[256];
   FontID currentFont;
+  UInt16 density;
 } fnt_module_t;
 
 static void adjust(Int16 *r) {
@@ -36,6 +35,7 @@ int FntInitModule(UInt16 density) {
   }
 
   pumpkin_set_local_storage(fnt_key, module);
+  module->density = density;
 
   // map all system fonts
   for (i = 0; i < 128; i++) {
@@ -47,6 +47,20 @@ int FntInitModule(UInt16 density) {
   }
 
   return 0;
+}
+
+void *FntReinitModule(void *module) {
+  fnt_module_t *old = NULL;
+
+  if (module) {
+    FntFinishModule();
+    pumpkin_set_local_storage(fnt_key, module);
+  } else {
+    old = (fnt_module_t *)pumpkin_get_local_storage(fnt_key);
+    FntInitModule(old->density);
+  }
+
+  return old;
 }
 
 int FntFinishModule(void) {

@@ -566,6 +566,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
 void *WinReinitModule(void *module);
 int WinFinishModule(Boolean deleteDisplay);
 int FntInitModule(UInt16 density);
+void *FntReinitModule(void *module);
 int FntFinishModule(void);
 int UicInitModule(void);
 int UicFinishModule(void);

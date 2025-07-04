@@ -128,10 +128,10 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
   UInt16 flags;
 
   if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
-    if (pumpkin_get_mode() == 1) {
+    if (pumpkin_get_mode() != 0) {
       debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch calling \"%s\" cmd %d", name, cmd);
       flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
-      SysAppLaunch(0, dbID, flags, cmd, NULL, &result);
+      SysAppLaunch(0, dbID, flags, cmd, cmdPBP, &result);
       return errNone;
     }
 
@@ -139,7 +139,7 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
     MemSet(&module->request, sizeof(launch_request_t), 0);
     StrNCopy(module->request.name, name, dmDBNameLength);
     module->request.code = cmd;
-    // XXX nao tem como saber o tamanho de cmdPBP
+    // XXX there is no way to know the size of cmdPB
   }
 
   MemSet(&event, sizeof(EventType), 0);

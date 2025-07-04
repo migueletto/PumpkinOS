@@ -202,11 +202,11 @@ void *WinReinitModule(void *module) {
   win_module_t *old = NULL;
 
   if (module) {
-    WinFinishModule(false);
+    WinFinishModule(true);
     pumpkin_set_local_storage(win_key, module);
   } else {
     old = (win_module_t *)pumpkin_get_local_storage(win_key);
-    WinInitModule(old->density, old->width, old->height, old->depth0, old->displayWindow);
+    WinInitModule(old->density, old->width, old->height, old->depth0, NULL);
   }
 
   return old;

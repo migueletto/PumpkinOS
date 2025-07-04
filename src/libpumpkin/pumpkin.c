@@ -2005,10 +2005,11 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   client_request_t creq;
   GoToParamsType *gotoParam;
   ErrJumpBuf jmpbuf;
-  BitmapType *bmp, *bck;
+  BitmapType *bmp;
   WinHandle wh, draw;
   void *old;
   void *win_module;
+  void *fnt_module;
   void *frm_module;
   void *fld_module;
   void *menu_module;
@@ -2053,11 +2054,9 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
 
   if (pumpkin_module.mode != 0) {
     debug(DEBUG_INFO, PUMPKINOS, "spawning \"%s\" with launchCode %d", name, cmd);
-    wh = WinGetDisplayWindow();
-    bmp = WinGetBitmap(wh);
-    bck = (BitmapType *)BmpCreateBitmapV3(bmp, BmpGetDensity(bmp), BmpGetBits(bmp), NULL);
     old = UIColorSaveTable();
     win_module = WinReinitModule(NULL);
+    fnt_module = FntReinitModule(NULL);
     frm_module = FrmReinitModule(NULL);
     fld_module = FldReinitModule(NULL);
     menu_module = MenuReinitModule(NULL);
@@ -2078,17 +2077,18 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     pumpkin_launched(launched);
     UIColorRestoreTable(old);
     WinReinitModule(win_module);
+    FntReinitModule(fnt_module);
     MenuReinitModule(menu_module);
     FldReinitModule(fld_module);
     FrmReinitModule(frm_module);
     FrmSetDIAPolicyAttr(FrmGetActiveForm(), frmDIAPolicyCustom);
     PINSetInputTriggerState(pinInputTriggerEnabled);
+    // restore the previous screen
     wh = WinGetDisplayWindow();
+    bmp = WinGetBitmap(wh);
     draw = WinSetDrawWindow(wh);
-    WinDrawBitmap(bck, 0, 0);
+    WinDrawBitmap(bmp, 0, 0);
     WinSetDrawWindow(draw);
-    BmpDelete(bck);
-    //FrmDrawForm(FrmGetActiveForm());
   } else {
     debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" via spawner on port %d", cmd, name, pumpkin_module.spawner);
     thread_client_write(pumpkin_module.spawner, (uint8_t *)&creq, sizeof(client_request_t));
@@ -2742,22 +2742,11 @@ int pumpkin_sys_event(void) {
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
         }
 
-        if (i != -1 && pumpkin_module.locked) {
-          pumpkin_module.buttonMask &= ~arg1;
-          pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
-        } else {
-          i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
-          pumpkin_module.buttonMask &= ~arg1;
-          pumpkin_module.dragging = -1;
+        pumpkin_module.buttonMask &= ~arg1;
+        pumpkin_module.dragging = -1;
 
-          if (arg1 == 1) {
-            i = task_clicked(pumpkin_module.lastX, pumpkin_module.lastY, &tx, &ty);
-            if (i != -1  && i == pumpkin_module.current_task) {
-              pumpkin_module.tasks[i].penX = tx;
-              pumpkin_module.tasks[i].penY = ty;
-              pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
-            }
-          }
+        if (i != -1 && (pumpkin_module.locked || arg1 == 1)) {
+          pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, 0);
         }
         break;
       case WINDOW_MOTION:
