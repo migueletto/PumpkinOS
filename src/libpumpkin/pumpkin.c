@@ -2006,7 +2006,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
   GoToParamsType *gotoParam;
   ErrJumpBuf jmpbuf;
   BitmapType *bmp, *bck;
-  WinHandle wh;
+  WinHandle wh, draw;
   void *old;
   void *win_module;
   void *frm_module;
@@ -2064,16 +2064,16 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     m68k = pumpkin_is_m68k();
     launched = pumpkin_is_launched();
     pumpkin_launched(1);
+    data = pumpkin_get_data();
     xmemcpy(jmpbuf, task->jmpbuf, sizeof(ErrJumpBuf));
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
     } else {
-      data = pumpkin_get_data();
       pumpkin_set_data(NULL);
       r = pumpkin_launch_sub(&creq.data.launch, 1);
-      pumpkin_set_data(data);
     }
     xmemcpy(task->jmpbuf, jmpbuf, sizeof(ErrJumpBuf));
+    pumpkin_set_data(data);
     pumpkin_set_m68k(m68k);
     pumpkin_launched(launched);
     UIColorRestoreTable(old);
@@ -2084,7 +2084,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     FrmSetDIAPolicyAttr(FrmGetActiveForm(), frmDIAPolicyCustom);
     PINSetInputTriggerState(pinInputTriggerEnabled);
     wh = WinGetDisplayWindow();
-    WinHandle draw = WinSetDrawWindow(wh);
+    draw = WinSetDrawWindow(wh);
     WinDrawBitmap(bck, 0, 0);
     WinSetDrawWindow(draw);
     BmpDelete(bck);
