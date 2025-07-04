@@ -642,7 +642,7 @@ void decode_event(uint32_t eventP, EventType *event) {
       } else {
         // 68K PalmOS EventType is 24 bytes long
         for (i = 0; i < 24; i++) {
-          event->data.buffer[i] = m68k_read_memory_8 (eventP + 8 + i);
+          event->data.buffer[i] = m68k_read_memory_8(eventP + i);
         }
       }
       break;
@@ -840,7 +840,7 @@ void encode_event(uint32_t eventP, EventType *event) {
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
         for (i = 0; i < 24; i++) {
-          m68k_write_memory_8 (eventP + 8 + i, event->data.buffer[i]);
+          m68k_write_memory_8(eventP + i, event->data.buffer[i]);
         }
       }
       break;
