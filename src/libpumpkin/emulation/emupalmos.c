@@ -636,13 +636,13 @@ void decode_event(uint32_t eventP, EventType *event) {
       event->data.winExit.exitWindow = a ? (WinHandle)(ram + a) : NULL;
       break;
     default:
-      if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
+      if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
         // 68K PalmOS EventType is 24 bytes long
-        for (i = 0; i < 24; i++) {
-          event->data.buffer[i] = m68k_read_memory_8(eventP + i);
+        for (i = 0; i < 16; i++) {
+          event->data.buffer[i] = m68k_read_memory_8(eventP + 8 + i);
         }
       }
       break;
@@ -835,12 +835,12 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_32(eventP + 12, a);
       break;
     default:
-      if (event->eType < firstUserEvent || event->eType > lastUserEvent) {
+      if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
         sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
-        for (i = 0; i < 24; i++) {
-          m68k_write_memory_8(eventP + i, event->data.buffer[i]);
+        for (i = 0; i < 16; i++) {
+          m68k_write_memory_8(eventP + 8 + i, event->data.buffer[i]);
         }
       }
       break;
