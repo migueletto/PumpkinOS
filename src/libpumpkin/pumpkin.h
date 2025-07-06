@@ -407,6 +407,7 @@ Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
+void WinDirectAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
 void *UIColorSaveTable(void);
 void UIColorRestoreTable(void *p);

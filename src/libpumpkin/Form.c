@@ -183,6 +183,8 @@ static Err FrmInitFormInternal(FormType *formP) {
   RctSetRectangle(&rect, 0, 0, width, height);
   WinSetClipingBounds(&formP->window, &rect);
 
+  WinDirectAccessHack(&formP->window, 0, 0, width, height);
+
   formP->selectedObject = -1;
   formP->activeList = -1;
   formP->activeField = -1;

@@ -57,7 +57,7 @@ typedef struct {
   UInt16 coordSys;
 } win_surface_t;
 
-static void directAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+void WinDirectAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   BitmapType *bitmapP = WinGetBitmap(wh);
   uint8_t *bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
   uint32_t addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
@@ -188,7 +188,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     }
     module->displayWindow->windowBounds.extent.x = width;
     module->displayWindow->windowBounds.extent.y = height;
-    directAccessHack(module->displayWindow, 0, 0, width, height);
+    WinDirectAccessHack(module->displayWindow, 0, 0, width, height);
   }
 
   module->activeWindow = module->displayWindow;
@@ -325,7 +325,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
         height >>= 1;
       }
       RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
-      directAccessHack(wh, 0, 0, width, height);
+      WinDirectAccessHack(wh, 0, 0, width, height);
       err = errNone;
     }
   }
@@ -510,7 +510,7 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
     BmpDelete(bitmapP);
   }
   module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, NULL, &err);
-  directAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
+  WinDirectAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
 }
 
 void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
@@ -570,7 +570,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
       debug(DEBUG_TRACE, "Window", "WinSetBounds BmpDelete %p", old);
       BmpDelete(old);
     }
-    directAccessHack(winHandle, winHandle->windowBounds.topLeft.x, winHandle->windowBounds.topLeft.y, winHandle->windowBounds.extent.x, winHandle->windowBounds.extent.y);
+    WinDirectAccessHack(winHandle, winHandle->windowBounds.topLeft.x, winHandle->windowBounds.topLeft.y, winHandle->windowBounds.extent.x, winHandle->windowBounds.extent.y);
 
     RctSetRectangle(&rect, 0, 0, width, height);
     WinSetClipingBounds(winHandle, &rect);
@@ -2890,7 +2890,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         width >>= 1;
         height >>= 1;
       }
-      directAccessHack(wh, 0, 0, width, height);
+      WinDirectAccessHack(wh, 0, 0, width, height);
     } else {
       pumpkin_heap_free(wh, "Window");
       wh = NULL;
