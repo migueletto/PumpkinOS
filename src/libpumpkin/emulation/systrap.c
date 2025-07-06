@@ -2399,6 +2399,13 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case sysTrapEvtWakeup: {
+      // Err EvtWakeup(void)
+      err = EvtWakeup();
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtWakeup(): %d", err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case sysTrapEvtGetEvent: {
       // void EvtGetEvent(EventType *event, Int32 timeout)
       uint32_t eventP = ARG32;
