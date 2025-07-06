@@ -97,6 +97,11 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           *valueP = 0;
           err = errNone;
           break;
+        case sysFtrNumDisplayDepth:
+          if (WinScreenMode(winScreenModeGetDefaults, NULL, NULL, valueP, NULL) == errNone) {
+            err = errNone;
+          }
+          break;
         case sysFtrNumWinVersion:
           *valueP = pumpkin_get_density() == kDensityDouble ? 4 : 3;
           err = errNone;
