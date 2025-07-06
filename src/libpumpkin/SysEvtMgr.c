@@ -79,12 +79,16 @@ Err EvtDequeueKeyEvent(SysEventType *eventP, UInt16 peek) {
 }
 
 Err EvtWakeup(void) {
-  debug(DEBUG_ERROR, "PALMOS", "EvtWakeup not implemented");
+  EventType event;
+
+  MemSet(&event, sizeof(EventType), 0);
+  event.eType = nilEvent;
+  EvtAddEventToQueue(&event);
+
   return errNone;
 }
 
 Err EvtWakeupWithoutNilEvent(void) {
-  debug(DEBUG_ERROR, "PALMOS", "EvtWakeupWithoutNilEvent not implemented");
   return errNone;
 }
 
