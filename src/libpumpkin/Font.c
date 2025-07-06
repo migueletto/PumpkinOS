@@ -837,7 +837,7 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         WinBlitBitmap(f->bmp, drawWindow, &rect, x, y, WinGetDrawMode(), true);
         width = f->width[ch - f->firstChar];
       } else {
-        debug(DEBUG_ERROR, "Font", "missing symbol 0x%04X", wch);
+        debug(DEBUG_ERROR, "Font", "v1 missing symbol 0x%04X", wch);
         width = MISSING_SYMBOL_WIDTH;
       }
     } else {
@@ -848,7 +848,7 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
         WinBlitBitmap(f2->bmp[index], drawWindow, &rect, x, y, WinGetDrawMode(), true);
         width = f2->width[ch - f2->firstChar]*mult;
       } else {
-        debug(DEBUG_ERROR, "Window", "missing symbol 0x%04X", wch);
+        debug(DEBUG_ERROR, "Font", "v2 missing symbol 0x%04X", wch);
         width = MISSING_SYMBOL_WIDTH;
       }
     }
