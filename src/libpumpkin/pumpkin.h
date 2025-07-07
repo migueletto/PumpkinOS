@@ -414,6 +414,7 @@ void UIColorRestoreTable(void *p);
 RGBColorType *WinGetPalette(UInt16 n);
 WinDrawOperation WinGetDrawMode(void);
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
+void WinSetAsciiText(Boolean asciiText);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);

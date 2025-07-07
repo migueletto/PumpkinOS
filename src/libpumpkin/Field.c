@@ -141,6 +141,7 @@ static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt
 
   x = fldP->rect.topLeft.x+1;
 
+  WinSetAsciiText(true);
   for (i = 0; i < len;) {
     n = pumpkin_next_char((UInt8 *)s, i, len, &wch);
     ch = pumpkin_map_char(wch, &f);
@@ -151,6 +152,7 @@ static void FldDrawLine(FieldType *fldP, char *s, UInt16 start, UInt16 len, UInt
     x += FntFontCharWidth(f, ch);
     i += n;
   }
+  WinSetAsciiText(false);
 }
 
 void FldDrawField(FieldType *fldP) {
@@ -193,25 +195,30 @@ void FldDrawField(FieldType *fldP) {
         start = fldP->lines[fldP->top + j].start;
         len = fldP->lines[fldP->top + j].length;
 
-        // draw line of text, except the LAST line of pixels, using winPaint
-        WinGetClip(&clip);
-        WinSetClip(&aux);
-        FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, fieldBackHigh,
-          fldP->selLastPos > fldP->selFirstPos && fldP->selFirstPos <= (start + len) && fldP->selLastPos > start);
-        WinSetClip(&clip);
+        if (fldP->attr.editable && fldP->attr.underlined) {
+          // draw line of text, except the LAST line of pixels, using winPaint
+          WinGetClip(&clip);
+          WinSetClip(&aux);
+          FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, fieldBackHigh,
+            fldP->selLastPos > fldP->selFirstPos && fldP->selFirstPos <= (start + len) && fldP->selLastPos > start);
+          WinSetClip(&clip);
 
-        // draw the LAST line of pixels, using winOverlay, so that letters like "j" and "g"
-        // are drawn on top of the gray line
-        RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y+th-1, rect.extent.x, 1);
-        WinSetClip(&aux);
-        prev = WinSetDrawMode(winOverlay);
-        FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, 0, false);
-        WinSetDrawMode(prev);
-        WinSetClip(&clip);
+          // draw the LAST line of pixels, using winOverlay, so that letters like "j" and "g"
+          // are drawn on top of the gray line
+          RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y+th-1, rect.extent.x, 1);
+          WinSetClip(&aux);
+          prev = WinSetDrawMode(winOverlay);
+          FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, 0, false);
+          WinSetDrawMode(prev);
+          WinSetClip(&clip);
+        } else {
+          FldDrawLine(fldP, &fldP->text[start], start, len, y, fieldBack, fieldBackHigh,
+            fldP->selLastPos > fldP->selFirstPos && fldP->selFirstPos <= (start + len) && fldP->selLastPos > start);
+        }
 
         // erase the remainder of the Field width
-        x = len ? FntCharsWidth(&fldP->text[start], len) : 0;
-        RctSetRectangle(&aux, rect.topLeft.x+1 + x, rect.topLeft.y+y, rect.extent.x - x, th-1);
+        x = len && fldP->text[start] >= 32 ? FntCharsWidth(&fldP->text[start], len) : 0;
+        RctSetRectangle(&aux, rect.topLeft.x+1 + x, rect.topLeft.y+y, rect.extent.x - x, fldP->attr.editable && fldP->attr.underlined ? th-1 : th);
         WinEraseRectangle(&aux, 0);
       } else {
         // erase the entire Field width

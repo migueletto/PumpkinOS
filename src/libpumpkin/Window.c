@@ -40,6 +40,7 @@ typedef struct {
   int dirty_level;
   Coord x1, y1, x2, y2;
   DrawStateType state[DrawStateStackSize];
+  Boolean asciiText;
   UInt8 fullCcolorTable[2 + 256 * 4];
   ColorTableType *colorTable;
   RGBColorType uiColor[UILastColorTableEntry];
@@ -1933,6 +1934,11 @@ void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
   WinSetDrawMode(prev);
 }
 
+void WinSetAsciiText(Boolean asciiText) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  module->asciiText = asciiText;
+}
+
 static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   FontType *f;
@@ -1975,7 +1981,9 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         i += pumpkin_next_char(chars, i, len, &wch);
         ch = pumpkin_map_char(wch, &f);
         if (v10 && ch == 0x80) ch = 0x19; // numeric space
-        x += FntDrawChar(f, wch, ch, 0, 1, x, y);
+        if (!module->asciiText || ch >= 32) {
+          x += FntDrawChar(f, wch, ch, 0, 1, x, y);
+        }
       }
     } else {
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
@@ -2029,7 +2037,9 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           i += pumpkin_next_char(chars, i, len, &wch);
           ch = pumpkin_map_char(wch, &f);
           if (v10 && ch == 0x80) ch = 0x19; // numeric space
-          x += FntDrawChar(f, wch, ch, index, mult, x, y);
+          if (!module->asciiText || ch >= 32) {
+            x += FntDrawChar(f, wch, ch, index, mult, x, y);
+          }
         }
         WinSetCoordinateSystem(prev);
       }
