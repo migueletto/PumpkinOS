@@ -91,6 +91,8 @@ void CtlDrawControl(ControlType *controlP) {
     wasVisible = controlP->attr.visible;
     controlP->attr.visible = true;
 
+    WinEraseRectangle(&controlP->bounds, 0);
+
     switch (controlP->style) {
       case buttonCtl:
       case pushButtonCtl:
