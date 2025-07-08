@@ -371,6 +371,8 @@ double sys_fabs(double x);
 
 double sys_log(double x);
 
+double sys_log10(double x);
+
 double sys_exp(double x);
 
 double sys_sqrt(double x);
@@ -381,7 +383,21 @@ double sys_sin(double x);
 
 double sys_cos(double x);
 
+double sys_tan(double x);
+
 double sys_atan2(double y, double x);
+
+double sys_sinh(double x);
+
+double sys_cosh(double x);
+
+double sys_tanh(double x);
+
+double sys_asin(double x);
+
+double sys_acos(double x);
+
+double sys_atan(double x);
 
 double sys_pi(void);
 

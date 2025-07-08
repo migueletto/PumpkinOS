@@ -99,6 +99,10 @@ double sys_log(double x) {
   return 0;
 }
 
+double sys_log10(double x) {
+  return 0;
+}
+
 double sys_exp(double x) {
   return 0;
 }
@@ -119,11 +123,39 @@ double sys_cos(double x) {
   return 0;
 }
 
+double sys_tan(double x) {
+  return 0;
+}
+
 double sys_pi(void) {
   return 3.141592653589793;
 }
 
 double sys_atan2(double y, double x) {
+  return 0;
+}
+
+double sys_sinh(double x) {
+  return 0;
+}
+
+double sys_cosh(double x) {
+  return 0;
+}
+
+double sys_tanh(double x) {
+  return 0;
+}
+
+double sys_asin(double x) {
+  return 0;
+}
+
+double sys_acos(double x) {
+  return 0;
+}
+
+double sys_atan(double x) {
   return 0;
 }
 
@@ -191,6 +223,10 @@ double sys_log(double x) {
   return log(x);
 }
 
+double sys_log10(double x) {
+  return log10(x);
+}
+
 double sys_exp(double x) {
   return exp(x);
 }
@@ -211,8 +247,36 @@ double sys_cos(double x) {
   return cos(x);
 }
 
+double sys_tan(double x) {
+  return tan(x);
+}
+
 double sys_pi(void) {
   return M_PI;
+}
+
+double sys_sinh(double x) {
+  return sinh(x);
+}
+
+double sys_cosh(double x) {
+  return cosh(x);
+}
+
+double sys_tanh(double x) {
+  return tanh(x);
+}
+
+double sys_asin(double x) {
+  return asin(x);
+}
+
+double sys_acos(double x) {
+  return acos(x);
+}
+
+double sys_atan(double x) {
+  return atan(x);
 }
 
 double sys_atan2(double y, double x) {
