@@ -355,6 +355,11 @@ Err FntDefineFont(FontID font, FontPtr fontP) {
   FontTypeV2 *f2;
   Err err = sysErrParamErr;
 
+  if (fontP == NULL) {
+    debug(DEBUG_ERROR, "Font", "FntDefineFont: attempt to define NULL font %d", font);
+    return err;
+  }
+
   if (font >= 128 && font < 256) {
     if (fontP->v == 1) {
       fontP = FntCopyFont(fontP);
