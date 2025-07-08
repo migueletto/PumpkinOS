@@ -224,6 +224,8 @@ void FldDrawField(FieldType *fldP) {
         // erase the entire Field width
         WinEraseRectangle(&aux, 0);
       }
+
+      if (fldP->attr.singleLine) break;
     }
 
     WinSetBackColor(oldb);
