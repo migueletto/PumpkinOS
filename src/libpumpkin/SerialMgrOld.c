@@ -129,3 +129,7 @@ UInt32 SerReceive(UInt16 refNum, void * bufP, UInt32 count, Int32 timeout, Err* 
   return 0;
 }
 
+UInt16 SerGetStatus(UInt16 refNum, Boolean * ctsOnP, Boolean * dsrOnP) {
+  debug(DEBUG_ERROR, "PALMOS", "SerGetStatus not implemented");
+  return 0;
+}
