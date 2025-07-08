@@ -1555,13 +1555,12 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
   FormObjectType obj;
   FieldType *fld;
   UInt16 index, buttonID;
-  Boolean stop;
+  Boolean stop, found;
   Err err;
 
   buttonID = 0;
 
   if (formP) {
-    FldSetActiveField(NULL);
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
 
@@ -1576,14 +1575,19 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
       FrmDrawForm(formP);
     }
 
-    for (index = 0; index < formP->numObjects; index++) {
+    for (index = 0, found = false; index < formP->numObjects; index++) {
       if (formP->objects[index].objectType == frmFieldObj) {
         obj = formP->objects[index].object;
         if (obj.field->attr.hasFocus) {
           FldSetActiveField(obj.field);
+          found = true;
           break;
         }
       }
+    }
+
+    if (!found) {
+      FldSetActiveField(NULL);
     }
 
     for (stop = false; !stop;) {
