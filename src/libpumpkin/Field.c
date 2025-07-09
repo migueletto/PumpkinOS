@@ -188,8 +188,10 @@ void FldDrawField(FieldType *fldP) {
     for (j = 0, y = 0; y+th-1 < rect.extent.y; j++, y += th) {
       if (fldP->attr.editable && fldP->attr.underlined) {
         WinDrawLine(rect.topLeft.x, rect.topLeft.y+y+th-1, rect.topLeft.x+rect.extent.x-1, rect.topLeft.y+y+th-1);
+        RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y, rect.extent.x, th-1);
+      } else {
+        RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y, rect.extent.x, th);
       }
-      RctSetRectangle(&aux, rect.topLeft.x+1, rect.topLeft.y+y, rect.extent.x, th-1);
 
       if (fldP->text && j < fldP->numUsedLines && (fldP->top + j) < fldP->totalLines) {
         start = fldP->lines[fldP->top + j].start;
@@ -530,9 +532,11 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
         FldSetActiveField(NULL);
         old = FntSetFont(fldP->fontID);
         line = (eventP->screenY - fldP->rect.topLeft.y) / FntCharHeight();
-        if (line < fldP->numUsedLines && (fldP->top + line) < fldP->totalLines) {
+        if (line < fldP->numUsedLines - fldP->top) {
+          line += fldP->top;
           fldP->insPtYPos = line;
-          fldP->insPtXPos = FntWidthToOffset(&fldP->text[fldP->lines[fldP->top + line].start], fldP->lines[fldP->top + line].length, eventP->screenX - fldP->rect.topLeft.x, NULL, NULL);
+          fldP->insPtXPos = FntWidthToOffset(&fldP->text[fldP->lines[line].start], fldP->lines[line].length, eventP->screenX - fldP->rect.topLeft.x, NULL, NULL);
+          if (fldP->insPtXPos) fldP->insPtXPos--;
         }
         FntSetFont(old);
         FldSetActiveField(fldP);
@@ -800,6 +804,7 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
 static void FldGrabFocusEx(FieldType *fldP, Boolean grab) {
   FontID old;
   Int16 x, y;
+  Int16 insPtYPos;
 
   IN;
   if (fldP) {
@@ -807,19 +812,21 @@ static void FldGrabFocusEx(FieldType *fldP, Boolean grab) {
     if (grab) fldP->attr.hasFocus = true;
 
     if (fldP->attr.visible && fldP->attr.editable) {
-      x = fldP->rect.topLeft.x;
-      y = fldP->rect.topLeft.y+1;
-      old = FntSetFont(fldP->fontID);
-
-      if (fldP->text && fldP->insPtYPos < fldP->numUsedLines && (fldP->top + fldP->insPtYPos) < fldP->totalLines) {
-        x += FntCharsWidth(&fldP->text[fldP->lines[fldP->top + fldP->insPtYPos].start], fldP->insPtXPos);
+      if (fldP->text && fldP->insPtYPos < fldP->numUsedLines && fldP->insPtYPos >= fldP->top) {
+        old = FntSetFont(fldP->fontID);
+        x = fldP->rect.topLeft.x;
+        y = fldP->rect.topLeft.y+1;
+        insPtYPos = fldP->insPtYPos - fldP->top;
+        y += insPtYPos * FntCharHeight();
+        x += FntCharsWidth(&fldP->text[fldP->lines[fldP->insPtYPos].start], fldP->insPtXPos);
+        debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable 1");
+        InsPtSetHeight(FntCharHeight()-2);
+        InsPtSetLocation(x, y);
+        FntSetFont(old);
+        if (grab) InsPtEnable(true);
+      } else {
+        if (grab) InsPtEnable(false);
       }
-      y += fldP->insPtYPos * FntCharHeight();
-      debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable 1");
-      InsPtSetHeight(FntCharHeight()-2);
-      InsPtSetLocation(x, y);
-      if (grab) InsPtEnable(true);
-      FntSetFont(old);
     } else {
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable 0");
       if (grab) InsPtEnable(false);
@@ -891,7 +898,7 @@ void FldSetInsertionPoint(FieldType *fldP, UInt16 pos) {
 //debug(1, "XXX", "FldSetInsertionPoint totalLines=%d", fldP->totalLines);
     if (fldP->totalLines > 0) {
       for (i = 0, offset = 0; i < fldP->totalLines; i++) {
-        if (offset + fldP->lines[i].length >= pos) {
+        if (offset + fldP->lines[i].length > pos) {
           fldP->insPtYPos = i;
           fldP->insPtXPos = pos - offset;
           break;
@@ -1166,8 +1173,8 @@ Boolean FldInsert(FieldType *fldP, const Char *insertChars, UInt16 insertLen) {
         FldDelete(fldP, fldP->selFirstPos, fldP->selLastPos);
         fldP->selLastPos = fldP->selFirstPos;
       }
-      for (i = 0, offset = 0; i < fldP->insPtYPos && i < fldP->numUsedLines && (fldP->top + i) < fldP->totalLines; i++) {
-        offset += fldP->lines[fldP->top + i].length;
+      for (i = 0, offset = 0; i < fldP->insPtYPos && i < fldP->numUsedLines; i++) {
+        offset += fldP->lines[i].length;
       }
       offset += fldP->insPtXPos;
       for (i = 0; i < insertLen; i++) {
@@ -1203,7 +1210,7 @@ static void FldDeleteOneChar(FieldType *fldP, UInt16 offset) {
     fldP->insPtXPos--;
   } else if (fldP->insPtYPos) {
     fldP->insPtYPos--;
-    fldP->insPtXPos = fldP->lines[fldP->top + fldP->insPtYPos].length - 1;
+    fldP->insPtXPos = fldP->lines[fldP->insPtYPos].length - 1;
   }
   debug(DEBUG_TRACE, PALMOS_MODULE, "FldDeleteOneChar text[%d] = 0, textLen %d", i, fldP->textLen);
   OUTV;
