@@ -802,35 +802,41 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
 }
 
 static void FldGrabFocusEx(FieldType *fldP, Boolean grab) {
+  Int16 x, y, insPtYPos;
+  Boolean enable;
   FontID old;
-  Int16 x, y;
-  Int16 insPtYPos;
 
   IN;
   if (fldP) {
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus field %d (visible %d, editable %d)", fldP->id, fldP->attr.visible, fldP->attr.editable);
     if (grab) fldP->attr.hasFocus = true;
+    enable = false;
 
     if (fldP->attr.visible && fldP->attr.editable) {
-      if (fldP->text && fldP->insPtYPos < fldP->numUsedLines && fldP->insPtYPos >= fldP->top) {
-        old = FntSetFont(fldP->fontID);
-        x = fldP->rect.topLeft.x;
-        y = fldP->rect.topLeft.y+1;
-        insPtYPos = fldP->insPtYPos - fldP->top;
-        y += insPtYPos * FntCharHeight();
-        x += FntCharsWidth(&fldP->text[fldP->lines[fldP->insPtYPos].start], fldP->insPtXPos);
-        debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable 1");
+      x = fldP->rect.topLeft.x;
+      y = fldP->rect.topLeft.y+1;
+      old = FntSetFont(fldP->fontID);
+
+      if (fldP->text) {
+        if (fldP->insPtYPos < fldP->numUsedLines && fldP->insPtYPos >= fldP->top) {
+          insPtYPos = fldP->insPtYPos - fldP->top;
+          y += insPtYPos * FntCharHeight();
+          x += FntCharsWidth(&fldP->text[fldP->lines[fldP->insPtYPos].start], fldP->insPtXPos);
+          enable = y < fldP->rect.topLeft.y + fldP->rect.extent.y;
+        }
+      } else {
+        enable = true;
+      }
+
+      if (enable) {
         InsPtSetHeight(FntCharHeight()-2);
         InsPtSetLocation(x, y);
-        FntSetFont(old);
-        if (grab) InsPtEnable(true);
-      } else {
-        if (grab) InsPtEnable(false);
       }
-    } else {
-      debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable 0");
-      if (grab) InsPtEnable(false);
+      FntSetFont(old);
     }
+
+    debug(DEBUG_TRACE, PALMOS_MODULE, "FldGrabFocus insPtEnable %d", enable);
+    if (grab) InsPtEnable(enable);
   }
   OUTV;
 }
