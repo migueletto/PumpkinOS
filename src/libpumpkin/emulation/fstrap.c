@@ -28,7 +28,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t fileRefP = ARG32;
       FileRef l_fileRefP = 0;
       Err res = VFSFileOpen(volRefNum, pathNameP ? s_pathNameP : NULL, openMode, fileRefP ? &l_fileRefP : NULL);
-      if (fileRefP && l_fileRefP) {
+      if (fileRefP) {
         FileRefProxy *proxy = pumpkin_heap_alloc(sizeof(FileRefProxy), "FileProxy");
         if (proxy) {
           proxy->ref = l_fileRefP;

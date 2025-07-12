@@ -189,29 +189,26 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
 
   checkvol(module, volRefNum);
 
-  if (pathNameP && pathNameP[0]) {
+  if (pathNameP && pathNameP[0] && fileRefP) {
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileOpen %d \"%s\" -> \"%s\"", volRefNum, pathNameP, module->path);
     type = vfs_checktype(module->session[volRefNum-1], module->path);
 
     if (type == -1) {
+      *fileRefP = NULL;
       err = vfsErrFileNotFound;
     } else if (type == VFS_DIR) {
       if ((d = vfs_opendir(module->session[volRefNum-1], module->path)) != NULL) {
-        if (fileRefP) {
-          *fileRefP = d;
-          err = errNone;
-        }
+        *fileRefP = d;
+        err = errNone;
       }
     } else if (type == VFS_FILE) {
       mode = 0;
       if (openMode & vfsModeRead)  mode |= VFS_READ;
       if (openMode & vfsModeWrite) mode |= VFS_WRITE;
       if ((f = vfs_open(module->session[volRefNum-1], module->path, mode)) != NULL) {
-        if (fileRefP) {
-          *fileRefP = f;
-          err = errNone;
-        }
+        *fileRefP = f;
+        err = errNone;
       }
     }
   }
