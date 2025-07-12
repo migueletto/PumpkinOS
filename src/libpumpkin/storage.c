@@ -921,7 +921,7 @@ Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP,
   storage_db_t *db;
   Err err = dmErrInvalidParam;
 
-  if (dbID < (sto->size - sizeof(storage_db_t))) {
+  if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
     db = (storage_db_t *)(sto->base + dbID);
     if (nameP) sys_strncpy(nameP, db->name, dmDBNameLength-1);
     if (attributesP) *attributesP = db->attributes;
