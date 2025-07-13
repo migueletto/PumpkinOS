@@ -48,10 +48,14 @@ typedef struct {
 
 static void buildpath(vfs_module_t *module, UInt16 volRefNum, char *dst, char *src) {
   char *s;
+  int i;
 
   MemSet(dst, MAX_PATH, 0);
+  if (StrNCompare(src, "dev0:", 5) == 0) {
+    src += 5;
+  }
 
-  if (src[0] == '/') {
+  if (src[0] == '/' || src[0] == '\\') {
     StrNCopy(dst, module->volume[volRefNum - 1], MAX_PATH - 1);
     src++;
   } else {
@@ -61,11 +65,19 @@ static void buildpath(vfs_module_t *module, UInt16 volRefNum, char *dst, char *s
   s = &dst[StrLen(dst)];
   StrNCat(dst, src, MAX_PATH - 1);
 
+  for (i = 0; dst[i]; i++) {
+    if (dst[i] == '\\') {
+      dst[i] = '/';
+    }
+  }
+
   // Some programs (Cellar Door) uses "/Palm", but pumpkin uses "/PALM" (and some filesystems are case sensitive)
-  if (StrNCompare(src, "Palm", 4) == 0) {
-    s[1] = 'A';
-    s[2] = 'L';
-    s[3] = 'M';
+  if (StrNCaselessCompare(s, "palm", 4) == 0) {
+    MemMove(s, "PALM", 4);
+  }
+
+  if (StrNCaselessCompare(s, "palm/programs", 13) == 0) {
+    MemMove(s, "PALM/Programs", 13);
   }
 }
 
@@ -188,6 +200,7 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
   Err err = vfsErrBadName;
 
   checkvol(module, volRefNum);
+  if (fileRefP) *fileRefP = NULL;
 
   if (pathNameP && pathNameP[0] && fileRefP) {
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
@@ -195,7 +208,6 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
     type = vfs_checktype(module->session[volRefNum-1], module->path);
 
     if (type == -1) {
-      *fileRefP = NULL;
       err = vfsErrFileNotFound;
     } else if (type == VFS_DIR) {
       if ((d = vfs_opendir(module->session[volRefNum-1], module->path)) != NULL) {
@@ -562,6 +574,8 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
       if (dirEntryIteratorP) *dirEntryIteratorP = vfsIteratorStop;
       err = vfsErrNotADirectory;
     }
+  } else {
+    if (dirEntryIteratorP) *dirEntryIteratorP = vfsIteratorStop;
   }
 
   return_err(err);
