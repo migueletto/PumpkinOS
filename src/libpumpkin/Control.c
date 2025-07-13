@@ -91,8 +91,6 @@ void CtlDrawControl(ControlType *controlP) {
     wasVisible = controlP->attr.visible;
     controlP->attr.visible = true;
 
-    WinEraseRectangle(&controlP->bounds, 0);
-
     switch (controlP->style) {
       case buttonCtl:
       case pushButtonCtl:
@@ -304,6 +302,7 @@ void CtlShowControl(ControlType *controlP) {
   if (controlP) {
     debug(DEBUG_TRACE, "Control", "CtlShowControl control %d style %d", controlP->id, controlP->style);
     controlP->attr.usable = true;
+    WinEraseRectangle(&controlP->bounds, 0);
     CtlDrawControl(controlP);
   }
 }
