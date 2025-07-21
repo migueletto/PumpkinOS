@@ -685,6 +685,13 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "DateDaysToDate(%u, 0x%08X)", days, dateP);
       }
       break;
+    case sysTrapTimSetSeconds: {
+      // void TimSetSeconds(UInt32 seconds)
+      uint32_t seconds = ARG32;
+      TimSetSeconds(seconds);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TimSetSeconds(%u)", seconds);
+      }
+      break;
     case sysTrapTimAdjust: {
       // void TimAdjust(DateTimeType *dateTimeP, Int32 adjustment)
       uint32_t dateTimeP = ARG32;
@@ -1120,7 +1127,17 @@ uint32_t palmos_systrap(uint16_t trap) {
       SystemPreferencesType prefs;
       PrefGetPreferences(p ? &prefs : NULL);
       // XXX decode prefs into p
-      debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetPreferences(0x%08X)", p);
+      debug(DEBUG_ERROR, "EmuPalmOS", "PrefGetPreferences(0x%08X)", p);
+      }
+      break;
+    case sysTrapPrefSetPreferences: {
+      // void PrefSetPreferences(SystemPreferencesPtr p)
+      uint32_t p = ARG32;
+      emupalmos_trap_in(p, trap, 0);
+      SystemPreferencesType prefs;
+      // XXX encode p into prefs
+      PrefSetPreferences(p ? &prefs : NULL);
+      debug(DEBUG_ERROR, "EmuPalmOS", "PrefSetPreferences(0x%08X)", p);
       }
       break;
     case sysTrapPrefGetPreference: {
@@ -2864,6 +2881,60 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t y = ARG16;
       GsiSetLocation(x, y);
       debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetLocation(%d, %d)", x, y);
+    }
+      break;
+    case sysTrapPrgStartDialog: {
+      // ProgressPtr PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void *userDataP)
+      uint32_t titleP = ARG32;
+      uint32_t textCallbackP = ARG32;
+      uint32_t userDataP = ARG32;
+      char *title = emupalmos_trap_in(titleP, trap, 0);
+      void *textCallback = emupalmos_trap_in(textCallbackP, trap, 1);
+      void *userData = emupalmos_trap_in(userDataP, trap, 2);
+      ProgressPtr prg = PrgStartDialog(title, textCallback, userData);
+      uint32_t prgP = emupalmos_trap_out(prg);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrgStartDialog(0x%08X [%s], 0x%08X, 0x%08X): 0x%08X", titleP, title ? title : "", textCallbackP, userDataP, prgP);
+      m68k_set_reg(M68K_REG_A0, prgP);
+    }
+      break;
+    case sysTrapPrgStopDialog: {
+      // void PrgStopDialog(ProgressPtr prgP, Boolean force)
+      uint32_t prgP = ARG32;
+      uint8_t force = ARG8;
+      void *prg = emupalmos_trap_in(prgP, trap, 0);
+      PrgStopDialog(prg, force);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrgStopDialog(0x%08X)", prgP);
+    }
+      break;
+    case sysTrapPrgHandleEvent: {
+      // Boolean PrgHandleEvent(ProgressPtr prgGP, EventType *eventP)
+      uint32_t prgP = ARG32;
+      uint32_t eventP = ARG32;
+      void *prg = emupalmos_trap_in(prgP, trap, 0);
+      emupalmos_trap_in(eventP, trap, 1);
+      EventType event;
+      if (eventP) decode_event(eventP, &event);
+      Boolean res = PrgHandleEvent(prg, &event);
+      char *eventName = EvtGetEventName(event.eType);
+      if (eventName) {
+        debug(DEBUG_TRACE, "EmuPalmOS", "PrgHandleEvent(0x%08X, 0x%08X [%s]): %d", prgP, eventP, eventName, res);
+      } else {
+        debug(DEBUG_TRACE, "EmuPalmOS", "PrgHandleEvent(0x%08X, 0x%08X [0x%04X]): %d", prgP, eventP, event.eType, res);
+      }
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
+    case sysTrapPrgUpdateDialog: {
+      // void PrgUpdateDialog(ProgressPtr prgGP, UInt16 err, UInt16 stage, const Char *messageP, Boolean updateNow)
+      uint32_t prgP = ARG32;
+      uint16_t err = ARG16;
+      uint16_t stage = ARG16;
+      uint32_t messageP = ARG32;
+      uint8_t updateNow = ARG8;
+      void *prg = emupalmos_trap_in(prgP, trap, 0);
+      char *message = emupalmos_trap_in(messageP, trap, 3);
+      PrgUpdateDialog(prg, err, stage, message, updateNow);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrgUpdateDialog(0x%08X, %d, %d, 0x%08X [%s], %d)", prgP, err, stage, messageP, messageP ? message : "", updateNow);
     }
       break;
     case sysTrapEncDigestMD5: {

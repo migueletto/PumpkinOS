@@ -1278,6 +1278,26 @@ Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other) {
   return r;
 }
 
+Boolean CallPrgCallback(UInt32 addr, UInt32 data) {
+  uint32_t a, argsSize;
+  uint8_t *p;
+  Boolean handled = false;
+
+  debug(DEBUG_TRACE, "EmuPalmOS", "CallPrgCallback addr 0x%08X data 0x%08X", addr, data);
+  argsSize = sizeof(uint32_t);
+
+  if ((p = pumpkin_heap_alloc(argsSize, "CallPrg")) != NULL) {
+    uint8_t *ram = pumpkin_heap_base();
+    a = p - ram;
+    m68k_write_memory_32(a, data);
+    handled = (call68K_func(0, addr, a, argsSize) & 0xFF) != 0x00;
+    pumpkin_heap_free(p, "CallPrg");
+  }
+  debug(DEBUG_TRACE, "EmuPalmOS", "CallPrgCallback handled %d", handled);
+
+  return handled;
+}
+
 Boolean CallFormHandler(UInt32 addr, EventType *eventP) {
   uint32_t a, argsSize, eventOffset;
   uint8_t *p;

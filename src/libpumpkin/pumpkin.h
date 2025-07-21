@@ -534,6 +534,7 @@ void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF,
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
 Int32 SysRandom32(Int32 newSeed);
 
+Boolean CallPrgCallback(UInt32 addr, UInt32 data);
 Boolean CallFormHandler(UInt32 addr, EventType *event);
 Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt8 cmd, EventType *eventP);
 void CallListDrawItem(UInt32 addr, Int16 i, RectangleType *rect, char **text);
