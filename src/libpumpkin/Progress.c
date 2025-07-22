@@ -18,7 +18,7 @@ ProgressPtr	PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void
   ProgressPtr	prgP;
   UInt16 index;
   
-  if ((prgP = MemPtrNew(sizeof(ProgressType))) != NULL) {
+  if (title && textCallback && (prgP = MemPtrNew(sizeof(ProgressType))) != NULL) {
     StrNCopy(prgP->title, title, progressMaxTitle);
     prgP->textCallback = textCallback;
     prgP->userDataP = userDataP;
@@ -62,7 +62,7 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
       handled = SysHandleEvent(eventP);
     }
 
-    if (prgP->textCallback && prgP->needUpdate) {
+    if (prgP->needUpdate) {
       MemSet(&data, sizeof(PrgCallbackData), 0);
       debug(DEBUG_INFO, "Progress", "PrgHandleEvent stage %d error %d message [%s] ...", prgP->stage, prgP->error, prgP->message);
 
