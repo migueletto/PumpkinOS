@@ -1575,6 +1575,7 @@ case sysTrapWinClipRectangle: {
   // void WinClipRectangle(out RectangleType *rP)
   uint32_t rP = ARG32;
   RectangleType l_rP;
+  decode_rectangle(rP, &l_rP);
   WinClipRectangle(rP ? &l_rP : NULL);
   encode_rectangle(rP, &l_rP);
   debug(DEBUG_TRACE, "EmuPalmOS", "WinClipRectangle(rP=0x%08X [%d,%d,%d,%d])", rP, l_rP.topLeft.x, l_rP.topLeft.y, l_rP.extent.x, l_rP.extent.y);

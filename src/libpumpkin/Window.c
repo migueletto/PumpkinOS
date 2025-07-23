@@ -722,7 +722,7 @@ void WinClipRectangle(RectangleType *rP) {
           y2 = y2 >> 1;
         }
 
-        RctSetRectangle(rP, x1, x2, x2 - x1 + 1, y2 - y1 + 1);
+        RctSetRectangle(rP, x1, y1, x2 - x1 + 1, y2 - y1 + 1);
 
       } else {
         // no intersection
