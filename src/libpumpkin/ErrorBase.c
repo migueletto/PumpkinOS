@@ -5,6 +5,7 @@
 #include "pwindow.h"
 #include "vfs.h"
 #include "pumpkin.h"
+#include "emupalmosinc.h"
 #include "debug.h"
 
 #define PALMOS_MODULE "Error"
@@ -57,7 +58,12 @@ void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const fun
   }
   SysFatalAlert(buf);
 
-  pumpkin_fatal_error(finish);
+  if (pumpkin_is_m68k()) {
+    // emupalmos_finish() is safer because it does not rely on ErrLongJump.
+    emupalmos_finish(1);
+  } else {
+    pumpkin_fatal_error(finish);
+  }
 }
 
 UInt16 ErrAlertCustom(Err errCode, Char *errMsgP, Char *preMsgP, Char *postMsgP) {
