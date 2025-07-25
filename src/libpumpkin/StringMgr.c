@@ -104,7 +104,7 @@ Char *StrIToA(Char *s, Int32 i) {
 Char *StrIToH(Char *s, UInt32 i) {
   if (s == NULL) ErrFatalDisplayEx("StrIToH NULL", 0);
   if (s) {
-    sys_snprintf(s, 8, "%X", i);
+    sys_snprintf(s, 9, "%08X", i);
   }
   return s;
 }
