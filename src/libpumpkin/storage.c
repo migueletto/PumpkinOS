@@ -5018,6 +5018,8 @@ MemPtr MemLocalIDToGlobal(LocalID local, UInt16 cardNo) {
 }
 
 // This routine determines if the given local ID is to a nonmovable (memIDPtr) or movable (memIDHandle) chunk.
+// XXX this distinction makes no sense in PumpkinOS,
+// but some apps depends on it an even crash if the value is not the expected (example: Bird)
 LocalIDKind MemLocalIDKind(LocalID local) {
   return memIDHandle;
 }
