@@ -98,6 +98,8 @@ void LstDrawList(ListType *listP) {
   IndexedColorType objFrame, oldf;
   int i, w, h;
 
+  if (listP->bitsBehind && !listP->attr.poppedUp) return;
+
   oldw = WinGetActiveWindow();
   WinSetActiveWindow(listP->popupWin);
   oldd = WinSetDrawWindow(listP->popupWin);
@@ -132,6 +134,8 @@ void LstDrawList(ListType *listP) {
 }
 
 void LstEraseList(ListType *listP) {
+  if (listP->bitsBehind && !listP->attr.poppedUp) return;
+
   if (listP->attr.visible) {
     debug(DEBUG_TRACE, "List", "LstEraseList list %d", listP->id);
     if (listP->bitsBehind) {
@@ -519,6 +523,7 @@ Int16 LstPopupList(ListType *listP) {
 
   debug(DEBUG_TRACE, "List", "LstPopupList begin");
   if (listP) {
+    listP->attr.poppedUp = 1;
     LstDrawList(listP);
     prevActive = WinGetActiveWindow();
     WinSetActiveWindow(listP->popupWin);
@@ -596,6 +601,7 @@ Int16 LstPopupList(ListType *listP) {
           debug(DEBUG_TRACE, "List", "LstPopupList popSelect list id %d erase", listP->id);
           LstEraseList(listP);
         }
+        listP->attr.poppedUp = 0;
         frm->activeList = -1;
         WinSetActiveWindow(prevActive);
         WinSetDrawWindow(prevDraw);
