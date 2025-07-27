@@ -563,7 +563,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
         th = FntCharHeight();
         if (formP->window.windowFlags.modal) {
-          RctSetRectangle(&rect, 0, 0, formP->window.windowBounds.extent.x, th+2);
+          RctSetRectangle(&rect, 0, 0, formP->window.windowBounds.extent.x, th+1);
           WinEraseRectangle(&rect, 0);
           MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
           x = (formP->window.windowBounds.extent.x - tw) / 2;
