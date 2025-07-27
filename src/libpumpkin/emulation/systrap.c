@@ -781,6 +781,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, t);
       }
       break;
+    case sysTrapFplInit:
+      // Err FplInit(void)
+      debug(DEBUG_TRACE, "EmuPalmOS", "FplInit()");
+      m68k_set_reg(M68K_REG_D0, 0);
+      break;
+    case sysTrapFplFree:
+      // void FplFree(void)
+      debug(DEBUG_TRACE, "EmuPalmOS", "FplFree()");
+      break;
     case sysTrapFlpDispatch:
       palmos_flptrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
@@ -2954,6 +2963,14 @@ uint32_t palmos_systrap(uint16_t trap) {
       UInt8 *res = (UInt8 *)GetCharCaselessValue();
       uint32_t a = emupalmos_trap_out(res);
       debug(DEBUG_TRACE, "EmuPalmOS", "GetCharCaselessValue(): 0x%08X", a);
+      m68k_set_reg(M68K_REG_A0, a);
+    }
+      break;
+    case sysTrapGetCharSortValue: {
+      // const UInt8 *GetCharSortValue(void) 
+      UInt8 *res = (UInt8 *)GetCharSortValue();
+      uint32_t a = emupalmos_trap_out(res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GetCharSortValue(): 0x%08X", a);
       m68k_set_reg(M68K_REG_A0, a);
     }
       break;

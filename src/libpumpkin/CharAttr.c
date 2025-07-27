@@ -5,6 +5,7 @@
 
 typedef struct {
   UInt8 *charCaselessValue;
+  UInt8 *charSortValue;
 } charattr_module_t;
 
 static const UInt8 charCaselessValue[256] = {
@@ -34,6 +35,7 @@ static const UInt8 charCaselessValue[256] = {
 
 int CharAttrInitModule(void) {
   charattr_module_t *module;
+  Int16 i;
 
   if ((module = sys_calloc(1, sizeof(charattr_module_t))) == NULL) {
     return -1;
@@ -41,6 +43,12 @@ int CharAttrInitModule(void) {
 
   if ((module->charCaselessValue = MemPtrNew(256)) != NULL) {
     MemMove(module->charCaselessValue, charCaselessValue, 256);
+  }
+
+  if ((module->charSortValue = MemPtrNew(256)) != NULL) {
+    for (i = 0; i < 256; i++) {
+      module->charSortValue[i] = i;
+    }
   }
 
   pumpkin_set_local_storage(charattr_key, module);
@@ -53,6 +61,7 @@ int CharAttrFinishModule(void) {
 
   if (module) {
     if (module->charCaselessValue) MemPtrFree(module->charCaselessValue);
+    if (module->charSortValue) MemPtrFree(module->charSortValue);
     sys_free(module);
   }
 
@@ -63,4 +72,10 @@ const UInt8 *GetCharCaselessValue(void) {
   charattr_module_t *module = (charattr_module_t *)pumpkin_get_local_storage(charattr_key);
 
   return module->charCaselessValue;
+}
+
+const UInt8 *GetCharSortValue(void) {
+  charattr_module_t *module = (charattr_module_t *)pumpkin_get_local_storage(charattr_key);
+
+  return module->charSortValue;
 }
