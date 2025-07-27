@@ -793,13 +793,19 @@ int StoFinish(void) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   DmOpenType *dbRef;
   storage_db_t *db;
-  int r = -1;
+  int read_locks, write_locks, r = -1;
 
   if (sto) {
     for (dbRef = sto->dbRef; dbRef; dbRef = dbRef->next) {
       if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
         db = (storage_db_t *)(sto->base + dbRef->dbID);
         debug(DEBUG_ERROR, "STOR", "StoFinish database \"%s\" was left open", db->name);
+        if (mutex_lock(sto->mutex) == 0) {
+          if (StoGetFileLocks(sto, db, &read_locks, &write_locks) == 0) {
+            StoPutFileLocks(sto, db, read_locks - db->readCount, write_locks - db->writeCount);
+          }
+          mutex_unlock(sto->mutex);
+        }
       }
     }
     vfs_close_session(sto->session);
