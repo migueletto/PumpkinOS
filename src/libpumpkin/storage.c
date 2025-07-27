@@ -1735,7 +1735,7 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
-    if (dbID < (sto->size - sizeof(storage_db_t))) {
+    if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
       if (dbID == sto->watchID) {
         debug(DEBUG_INFO, "STOR", "WATCH DmDeleteDatabase(0x%08X)", dbID);
         sto->watchID = 0;
