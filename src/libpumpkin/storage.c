@@ -4329,6 +4329,7 @@ Boolean StoPtrDecoded(void *p) {
 static void StoDecodeResource(storage_handle_t *res) {
   UInt8 *aux;
   uint32_t dsize;
+  uint16_t ftype;
   char st[8];
   void *p;
   int i;
@@ -4355,12 +4356,22 @@ static void StoDecodeResource(storage_handle_t *res) {
         }
         break;
       case fontRscType:
-      case 'pFNT': // XXX SmallBasic defines a v1 font resource with type 'pFNT'
         debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);
         if ((p = pumpkin_create_font(res, res->buf, res->size, &dsize)) != NULL) {
           res->d.res.destructor = pumpkin_destroy_font;
           res->d.res.decoded = p;
           res->d.res.decodedSize = dsize;
+        }
+        break;
+      case 'pFNT': // XXX SmallBasic defines a v1 font resource with type 'pFNT'
+        get2b(&ftype, res->buf, 0);
+        if (ftype == 0x9000) {
+          debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_font(res, res->buf, res->size, &dsize)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_font;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
         }
         break;
       case fontExtRscType:
@@ -4369,6 +4380,17 @@ static void StoDecodeResource(storage_handle_t *res) {
           res->d.res.destructor = pumpkin_destroy_fontv2;
           res->d.res.decoded = p;
           res->d.res.decodedSize = dsize;
+        }
+        break;
+      case 'font': // XXX TealPaint defines a v2 font resource with type 'font'
+        get2b(&ftype, res->buf, 0);
+        if (ftype == 0x9200) {
+          debug(DEBUG_TRACE, "STOR", "decoding font v2 resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_fontv2(res, res->buf, res->size, &dsize)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_fontv2;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
         }
         break;
       case iconType:
