@@ -1866,6 +1866,7 @@ static Boolean frmHelpEventHandler(EventType *eventP) {
 
   switch (eventP->eType) {
     case ctlSelectEvent:
+    case ctlRepeatEvent:
       switch (eventP->data.ctlSelect.controlID) {
         case 10404: // up arrow
           frmHelpPage(true);
