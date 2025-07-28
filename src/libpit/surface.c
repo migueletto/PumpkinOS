@@ -1110,7 +1110,7 @@ static void surface_stbi_write_func(void *context, void *data, int size) {
   char *filename = (char *)context;
   int fd;
 
-  if (filename && data && (fd = sys_open(filename, SYS_WRITE | SYS_TRUNC)) != -1) {
+  if (filename && data && (fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
     sys_write(fd, data, size);
     sys_close(fd);
   }
