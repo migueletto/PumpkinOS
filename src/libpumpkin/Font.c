@@ -666,7 +666,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
       } else {
         font->width[j] = width;
         font->totalWidth += width;
-        //debug(DEBUG_TRACE, "Font", "char %d: offset %d, width %d", firstChar + j, offset, width);
+        debug(DEBUG_TRACE, "Font", "char %d: offset %d, width %d", firstChar + j, offset, width);
       }
     }
     debug(DEBUG_TRACE, "Font", "totalWidth %d", font->totalWidth);
@@ -676,24 +676,24 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
 
       switch (font->densities[j].density) {
         case kDensityLow:
-          glyph_len = font->densities[1].glyphBitsOffset - font->densities[0].glyphBitsOffset;
-          font->pitch[j] = glyph_len / font->fRectHeight;
+          font->pitch[j] = rowWords * 2;
+          glyph_len = font->pitch[j] * font->fRectHeight;
           font->data[j] = xcalloc(1, glyph_len);
-          xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
+          MemMove(font->data[j], &p[glyph_offset], glyph_len);
           font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
-          xmemcpy(bits, font->data[j], font->fRectHeight * font->pitch[j]);
-          debug(DEBUG_TRACE, "Font", "single density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);
+          MemMove(bits, font->data[j], font->fRectHeight * font->pitch[j]);
+          debug(DEBUG_TRACE, "Font", "single density: offset %d, length %d (%d), pitch %d", glyph_offset, glyph_len, rowWords * 2, font->pitch[j]);
           break;
         case kDensityDouble:
-          glyph_len = size - glyph_offset;
-          font->pitch[j] = glyph_len / (font->fRectHeight*2);
+          font->pitch[j] = rowWords * 4;
+          glyph_len = font->pitch[j] * font->fRectHeight * 2;
           font->data[j] = xcalloc(1, glyph_len);
-          xmemcpy(font->data[j], &p[glyph_offset], glyph_len);
+          MemMove(font->data[j], &p[glyph_offset], glyph_len);
           font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight*2, 0, kDensityDouble, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
-          xmemcpy(bits, font->data[j], font->fRectHeight * 2 * font->pitch[j]);
-          debug(DEBUG_TRACE, "Font", "double density: offset %d, length %d, pitch %d", glyph_offset, glyph_len, font->pitch[j]);
+          MemMove(bits, font->data[j], font->fRectHeight * 2 * font->pitch[j]);
+          debug(DEBUG_TRACE, "Font", "double density: offset %d, length %d (%d), pitch %d", glyph_offset, glyph_len, rowWords * 4, font->pitch[j]);
           break;
       }
     }
