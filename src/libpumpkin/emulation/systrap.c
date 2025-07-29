@@ -824,6 +824,9 @@ uint32_t palmos_systrap(uint16_t trap) {
     case sysTrapExpansionDispatch:
       palmos_expansiontrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
+    case sysTrapTsmDispatch:
+      palmos_tsmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      break;
     case sysTrapWinScreenMode: {
       // Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP)
       uint8_t operation = ARG8;
