@@ -4661,12 +4661,15 @@ break;
 case sysTrapCategoryInitialize: {
   // void CategoryInitialize(inout AppInfoType *appInfoP, UInt16 localizedAppInfoStrID)
   uint32_t appInfoP = ARG32;
-  AppInfoType l_appInfoP;
-  decode_appinfo(appInfoP, &l_appInfoP);
-  uint16_t localizedAppInfoStrID = ARG16;
-  CategoryInitialize(appInfoP ? &l_appInfoP : NULL, localizedAppInfoStrID);
-  encode_appinfo(appInfoP, &l_appInfoP);
-  debug(DEBUG_TRACE, "EmuPalmOS", "CategoryInitialize(appInfoP=0x%08X, localizedAppInfoStrID=%d)", appInfoP, localizedAppInfoStrID);
+  AppInfoType *l_appInfoP;
+  if ((l_appInfoP = MemPtrNew(sizeof(AppInfoType))) != NULL) {
+    decode_appinfo(appInfoP, l_appInfoP);
+    uint16_t localizedAppInfoStrID = ARG16;
+    CategoryInitialize(appInfoP ? l_appInfoP : NULL, localizedAppInfoStrID);
+    encode_appinfo(appInfoP, l_appInfoP);
+    MemPtrFree(l_appInfoP);
+    debug(DEBUG_TRACE, "EmuPalmOS", "CategoryInitialize(appInfoP=0x%08X, localizedAppInfoStrID=%d)", appInfoP, localizedAppInfoStrID);
+  }
 }
 break;
 case sysTrapCategorySetName: {
