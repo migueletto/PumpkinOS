@@ -2204,7 +2204,11 @@ void FrmSetControlGroupSelection(const FormType *formP, UInt8 groupNum, UInt16 c
       if (FrmGetObjectType(formP, index) == frmControlObj) {
         control = (ControlType *)FrmGetObjectPtr(formP, index);
         if (control && control->group == groupNum) {
-          CtlUpdateGroup(control, true);
+          if (control->style == pushButtonCtl) {
+            CtlUpdateGroup(control, true);
+          } else if (control->style == checkboxCtl) {
+            CtlUpdateCheckboxGroup(control, true);
+          }
         }
       }
     }

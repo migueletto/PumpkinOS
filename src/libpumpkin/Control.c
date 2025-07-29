@@ -368,10 +368,7 @@ void CtlSetValue(ControlType *controlP, Int16 newValue) {
           break;
         case checkboxCtl:
           debug(DEBUG_TRACE, "Control", "CtlSetValue checkBox %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
-          controlP->attr.on = newValue ? true : false;
-          if (controlP->attr.visible) {
-            CtlDrawControl(controlP);
-          }
+          CtlUpdateCheckboxGroup(controlP, newValue ? true : false);
           break;
         default:
           debug(DEBUG_TRACE, "Control", "CtlSetValue type %d control %d value %d visible %d", controlP->style, controlP->id, newValue, controlP->attr.visible);
@@ -518,6 +515,36 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value) {
   }
 }
 
+void CtlUpdateCheckboxGroup(ControlType *controlP, Boolean value) {
+  FormType *formP;
+  ControlType *control2P;
+  UInt16 objIndex;
+          
+  if (controlP->attr.on != value) {
+    controlP->attr.on = value;
+    debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d on %d group %d visible %d", controlP->id, value, controlP->group, controlP->attr.visible);
+    if (controlP->attr.visible) {
+      CtlDrawControl(controlP);
+    }     
+    formP = (FormType *)controlP->formP;
+      
+    if (formP && controlP->group & value) {
+      for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
+        if (formP->objects[objIndex].objectType == frmControlObj) {
+          control2P = formP->objects[objIndex].object.control;
+          if (control2P->id != controlP->id && control2P->group == controlP->group) {
+            debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d on %d group %d visible %d", controlP->id, !value, controlP->group, controlP->attr.visible);
+            control2P->attr.on = !value;
+            if (control2P->attr.visible) {
+              CtlDrawControl(control2P);
+            }     
+          }
+        }
+      }
+    }
+  }
+}
+
 Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
   SliderControlType *sc;
   EventType event;
@@ -623,10 +650,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         }
       } else if (controlP->style == checkboxCtl) {
         debug(DEBUG_TRACE, "Control", "CtlHandleEvent updating checkBox %d to %d", controlP->id, !controlP->attr.on);
-        controlP->attr.on = !controlP->attr.on;
-        if (controlP->attr.visible) {
-          CtlDrawControl(controlP);
-        }
+        CtlUpdateCheckboxGroup(controlP, !controlP->attr.on);
       } else {
         if (!controlP->attr.on) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
