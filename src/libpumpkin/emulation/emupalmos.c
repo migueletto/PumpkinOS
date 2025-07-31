@@ -1278,6 +1278,53 @@ Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other) {
   return r;
 }
 
+Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
+  // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
+  uint32_t a, argsSize;
+  uint8_t *p;
+  Err r = 0;
+
+  argsSize = sizeof(uint32_t) * 4;
+
+  if ((p = pumpkin_heap_alloc(argsSize, "CallSndFunc")) != NULL) {
+    uint8_t *ram = pumpkin_heap_base();
+    a = p - ram;
+    m68k_write_memory_32(a, data);
+    m68k_write_memory_32(a + 4, channel);
+    m68k_write_memory_32(a + 8, buffer);
+    m68k_write_memory_32(a + 12, nsamples);
+    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndFunc 0x%08X 0x%08X %u 0x%08X %u ...", addr, data, channel, buffer, nsamples);
+    r = call68K_func(0, addr, a, argsSize) & 0xFFFF;
+    pumpkin_heap_free(p, "CallSndFunc");
+  }
+
+  return r;
+}
+
+Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nsamples) {
+  // Err SndStreamVariableBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 *bufferSizeP)
+  uint32_t a, argsSize;
+  uint8_t *p;
+  Err r = 0;
+
+  argsSize = sizeof(uint32_t) * 4;
+
+  if ((p = pumpkin_heap_alloc(argsSize + sizeof(UInt32), "CallSndFunc")) != NULL) {
+    uint8_t *ram = pumpkin_heap_base();
+    a = p - ram;
+    m68k_write_memory_32(a, data);
+    m68k_write_memory_32(a + 4, channel);
+    m68k_write_memory_32(a + 8, buffer);
+    m68k_write_memory_32(a + 12, a + argsSize);
+    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndFunc 0x%08X 0x%08X %u 0x%08X %u ...", addr, data, channel, buffer, *nsamples);
+    r = call68K_func(0, addr, a, argsSize) & 0xFFFF;
+    *nsamples = m68k_read_memory_32(a + argsSize);
+    pumpkin_heap_free(p, "CallSndFunc");
+  }
+
+  return r;
+}
+
 Boolean CallPrgCallback(UInt32 addr, UInt32 data) {
   uint32_t a, argsSize;
   uint8_t *p;

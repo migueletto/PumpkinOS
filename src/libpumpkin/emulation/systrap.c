@@ -2770,7 +2770,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       }
       break;
     case sysTrapSndStreamCreate: {
-      // Err SndStreamCreate( SndStreamRef *channel, SndStreamMode mode, UInt32 samplerate, SndSampleType type, SndStreamWidth width, SndStreamBufferCallback func, void *userdata UInt32 buffsize, Boolean armNative)
+      // Err SndStreamCreate(SndStreamRef *channel, SndStreamMode mode, UInt32 samplerate, SndSampleType type, SndStreamWidth width, SndStreamBufferCallback func, void *userdata, UInt32 buffsize, Boolean armNative)
       uint32_t channelP = ARG32;
       uint8_t mode = ARG8;
       uint32_t samplerate = ARG32;
@@ -2780,40 +2780,66 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t userdataP = ARG32;
       uint32_t buffsize = ARG32;
       uint8_t armNative = ARG8;
-      emupalmos_trap_in(channelP, trap, 0);
-      emupalmos_trap_in(funcP, trap, 5);
-      emupalmos_trap_in(userdataP, trap, 6);
-      err = errNone;
+      SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
+      SndStreamBufferCallback func = (SndStreamBufferCallback)emupalmos_trap_in(funcP, trap, 5);
+      void *userdata = emupalmos_trap_in(userdataP, trap, 6);
+      err = SndStreamCreate(channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreate(0x%08X, %d, %d, %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
         channelP, mode, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case sysTrapSndStreamCreateExtended: {
+      // Err SndStreamCreateExtended(SndStreamRef *channel, SndStreamMode mode, SndFormatType format, UInt32 samplerate, SndSampleType type, SndStreamWidth width, SndStreamVariableBufferCallback func, void *userdata, UInt32 buffsize, Boolean armNative)
+      uint32_t channelP = ARG32;
+      uint8_t mode = ARG8;
+      uint32_t format = ARG32;
+      uint32_t samplerate = ARG32;
+      uint16_t type = ARG16;
+      uint8_t width = ARG8;
+      uint32_t funcP = ARG32;
+      uint32_t userdataP = ARG32;
+      uint32_t buffsize = ARG32;
+      uint8_t armNative = ARG8;
+      SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
+      SndStreamVariableBufferCallback func = (SndStreamVariableBufferCallback)emupalmos_trap_in(funcP, trap, 6);
+      void *userdata = emupalmos_trap_in(userdataP, trap, 7);
+      err = SndStreamCreateExtended(channel, mode, format, samplerate, type, width, func, userdata, buffsize, armNative);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreateExtented(0x%08X, %d, %d, %d %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
+        channelP, mode, format, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case sysTrapSndStreamDelete: {
       // Err SndStreamDelete(SndStreamRef channel)
-      uint32_t channelP = ARG32;
-      emupalmos_trap_in(channelP, trap, 0);
-      err = errNone;
-      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamDelete(0x%08X): %d", channelP, err);
+      uint32_t channel = ARG32;
+      err = SndStreamDelete(channel);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamDelete(0x%08X): %d", channel, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     case sysTrapSndStreamSetVolume: {
       // Err SndStreamSetVolume(SndStreamRef channel, Int32 volume)
-      uint32_t channelP = ARG32;
+      uint32_t channel = ARG32;
       uint32_t volume = ARG32;
-      emupalmos_trap_in(channelP, trap, 0);
-      err = errNone;
-      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamSetVolume(0x%08X, %d): %d", channelP, volume, err);
+      err = SndStreamSetVolume(channel, volume);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamSetVolume(0x%08X, %d): %d", channel, volume, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     case sysTrapSndStreamStart: {
       // Err SndStreamStart(SndStreamRef channel)
-      uint32_t channelP = ARG32;
-      emupalmos_trap_in(channelP, trap, 0);
-      err = errNone;
-      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamStart(0x%08X): %d", channelP, err);
+      uint32_t channel = ARG32;
+      err = SndStreamStart(channel);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamStart(0x%08X): %d", channel, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case sysTrapSndStreamStop: {
+      // Err SndStreamStop(SndStreamRef channel)
+      uint32_t channel = ARG32;
+      err = SndStreamStop(channel);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamStop(0x%08X): %d", channel, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;

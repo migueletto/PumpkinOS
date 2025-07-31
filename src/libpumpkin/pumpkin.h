@@ -545,6 +545,8 @@ Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, B
 Int16 CallDmCompare(UInt32 addr, UInt32 rec1, UInt32 rec2, Int16 other, UInt32 rec1SortInfo, UInt32 rec2SortInfo, UInt32 appInfoH);
 Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notifyParamsP);
 Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other);
+Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples);
+Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nsamples);
 
 typedef Int32 _comparFP (void *, void *, void *otherP);
 typedef _comparFP * CmpFuncPPtr;
