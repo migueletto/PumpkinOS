@@ -9,6 +9,7 @@
 #include "bytes.h"
 #include "util.h"
 #include "pumpkin.h"
+#include "ssfn_font.h"
 #include "AppRegistry.h"
 #include "xalloc.h"
 #include "debug.h"
@@ -4328,7 +4329,7 @@ Boolean StoPtrDecoded(void *p) {
 
 static void StoDecodeResource(storage_handle_t *res) {
   UInt8 *aux;
-  uint32_t dsize;
+  uint32_t ftype32, dsize;
   uint16_t ftype;
   char st[8];
   void *p;
@@ -4388,6 +4389,18 @@ static void StoDecodeResource(storage_handle_t *res) {
           debug(DEBUG_TRACE, "STOR", "decoding font v2 resource %s %d", st, res->d.res.id);
           if ((p = pumpkin_create_fontv2(res, res->buf, res->size, &dsize)) != NULL) {
             res->d.res.destructor = pumpkin_destroy_fontv2;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
+        }
+        break;
+      case 'ssfn':
+        get2b(&ftype, res->buf, 0);
+        get4b(&ftype32, res->buf, 0);
+        if (ftype == 0x1f8b || ftype32 == 0x53464E32) {
+          debug(DEBUG_TRACE, "STOR", "decoding ssfn resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_ssfn(res, res->buf, res->size, &dsize, 12)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_ssfn;
             res->d.res.decoded = p;
             res->d.res.decodedSize = dsize;
           }

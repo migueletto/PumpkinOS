@@ -10,7 +10,6 @@
 #include "storage.h"
 #include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 typedef struct {
   FontType *fonts[256];
@@ -30,7 +29,7 @@ int FntInitModule(UInt16 density) {
   fnt_module_t *module;
   int i;
 
-  if ((module = xcalloc(1, sizeof(fnt_module_t))) == NULL) {
+  if ((module = sys_calloc(1, sizeof(fnt_module_t))) == NULL) {
     return -1;
   }
 
@@ -72,7 +71,7 @@ int FntFinishModule(void) {
       if (module->fonts[i]) FntFreeFont(module->fonts[i]);
       if (module->fontsv2[i]) FntFreeFont((FontPtr)module->fontsv2[i]);
     }
-    xfree(module);
+    sys_free(module);
   }
 
   return 0;
@@ -259,59 +258,60 @@ UInt16 FntWordWrap(Char const *chars, UInt16 maxWidth) {
 FontPtr FntCopyFont(FontPtr f) {
   FontType *f1;
   FontTypeV2 *f2, *ff;
-  uint8_t *bits;
-  uint32_t j, glyph_len, glyph_offset;
+  uint8_t *src, *dst;
+  uint32_t j, glyph_len;
   Err err;
 
   if (!f) return NULL;
 
   if (f->v == 1) {
-    f1 = xcalloc(1, sizeof(FontType));
-    xmemcpy(f1, f, sizeof(FontType));
-    f1->column = xcalloc(f->lastChar - f->firstChar + 1, sizeof(uint16_t));
-    xmemcpy(f1->column, f->column, (f->lastChar - f->firstChar + 1) * sizeof(uint16_t));
-    f1->width = xcalloc(f->lastChar - f->firstChar + 1, sizeof(uint8_t));
-    xmemcpy(f1->width, f->width, (f->lastChar - f->firstChar + 1) * sizeof(uint8_t));
-    f1->data = xcalloc(1, f->pitch * f->fRectHeight);
-    xmemcpy(f1->data, f->data, f->pitch * f->fRectHeight);
+    f1 = sys_calloc(1, sizeof(FontType));
+    sys_memcpy(f1, f, sizeof(FontType));
+    f1->column = sys_calloc(f->lastChar - f->firstChar + 1, sizeof(uint16_t));
+    sys_memcpy(f1->column, f->column, (f->lastChar - f->firstChar + 1) * sizeof(uint16_t));
+    f1->width = sys_calloc(f->lastChar - f->firstChar + 1, sizeof(uint8_t));
+    sys_memcpy(f1->width, f->width, (f->lastChar - f->firstChar + 1) * sizeof(uint8_t));
+    f1->data = sys_calloc(1, f->pitch * f->fRectHeight);
+    sys_memcpy(f1->data, f->data, f->pitch * f->fRectHeight);
     f1->bmp = BmpCreate3(f->pitch*8, f->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
-    bits = BmpGetBits(f1->bmp);
-    xmemcpy(bits, f->data, f->fRectHeight * f->pitch);
+    dst = BmpGetBits(f1->bmp);
+    src = BmpGetBits(f->bmp);
+    sys_memcpy(dst, src, f->fRectHeight * f->pitch);
     f = f1;
   } else {
     ff = (FontTypeV2 *)f;
-    f2 = xcalloc(1, sizeof(FontTypeV2));
-    xmemcpy(f2, ff, sizeof(FontTypeV2));
-    f2->densities = xcalloc(ff->densityCount, sizeof(FontDensityType));
-    xmemcpy(f2->densities, ff->densities, ff->densityCount * sizeof(FontDensityType));
-    f2->pitch = xcalloc(ff->densityCount, sizeof(uint16_t));
-    xmemcpy(f2->pitch, ff->pitch, ff->densityCount * sizeof(uint16_t));
-    f2->column = xcalloc(ff->lastChar - ff->firstChar + 1, sizeof(uint16_t));
-    xmemcpy(f2->column, ff->column, (ff->lastChar - ff->firstChar + 1) * sizeof(uint16_t));
-    f2->width = xcalloc(ff->lastChar - ff->firstChar + 1, sizeof(uint8_t));
-    xmemcpy(f2->width, ff->width, (ff->lastChar - ff->firstChar + 1) * sizeof(uint8_t));
-    f2->data = xcalloc(ff->densityCount, sizeof(uint8_t *));
-    f2->bmp = xcalloc(ff->densityCount, sizeof(BitmapType *));
+    f2 = sys_calloc(1, sizeof(FontTypeV2));
+    sys_memcpy(f2, ff, sizeof(FontTypeV2));
+    f2->densities = sys_calloc(ff->densityCount, sizeof(FontDensityType));
+    sys_memcpy(f2->densities, ff->densities, ff->densityCount * sizeof(FontDensityType));
+    f2->pitch = sys_calloc(ff->densityCount, sizeof(uint16_t));
+    sys_memcpy(f2->pitch, ff->pitch, ff->densityCount * sizeof(uint16_t));
+    f2->column = sys_calloc(ff->lastChar - ff->firstChar + 1, sizeof(uint16_t));
+    sys_memcpy(f2->column, ff->column, (ff->lastChar - ff->firstChar + 1) * sizeof(uint16_t));
+    f2->width = sys_calloc(ff->lastChar - ff->firstChar + 1, sizeof(uint8_t));
+    sys_memcpy(f2->width, ff->width, (ff->lastChar - ff->firstChar + 1) * sizeof(uint8_t));
+    f2->data = sys_calloc(ff->densityCount, sizeof(uint8_t *));
+    f2->bmp = sys_calloc(ff->densityCount, sizeof(BitmapType *));
 
     for (j = 0; j < ff->densityCount; j++) {
-      glyph_offset = ff->densities[j].glyphBitsOffset;
-
       switch (ff->densities[j].density) {
         case kDensityLow:
-          glyph_len = ff->densities[1].glyphBitsOffset - ff->densities[0].glyphBitsOffset;
-          f2->data[j] = xcalloc(1, glyph_len);
-          xmemcpy(f2->data[j], ff->data[j], glyph_len);
+          glyph_len = ff->pitch[j] * ff->fRectHeight;
+          f2->data[j] = sys_calloc(1, glyph_len);
+          sys_memcpy(f2->data[j], ff->data[j], glyph_len);
           f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
-          bits = BmpGetBits(f2->bmp[j]);
-          xmemcpy(bits, ff->data[j], ff->fRectHeight * ff->pitch[j]);
+          dst = BmpGetBits(f2->bmp[j]);
+          src = BmpGetBits(ff->bmp[j]);
+          sys_memcpy(dst, src, ff->fRectHeight * ff->pitch[j]);
           break;
         case kDensityDouble:
-          glyph_len = ff->size - glyph_offset;
-          f2->data[j] = xcalloc(1, glyph_len);
-          xmemcpy(f2->data[j], ff->data[j], glyph_len);
+          glyph_len = ff->pitch[j] * ff->fRectHeight * 2;
+          f2->data[j] = sys_calloc(1, glyph_len);
+          sys_memcpy(f2->data[j], ff->data[j], glyph_len);
           f2->bmp[j] = BmpCreate3(ff->pitch[j]*8, ff->fRectHeight*2, 0, kDensityDouble, 1, true, 0, NULL, &err);
-          bits = BmpGetBits(f2->bmp[j]);
-          xmemcpy(bits, ff->data[j], ff->fRectHeight * 2 * ff->pitch[j]);
+          dst = BmpGetBits(f2->bmp[j]);
+          src = BmpGetBits(ff->bmp[j]);
+          sys_memcpy(dst, src, ff->fRectHeight * 2 * ff->pitch[j]);
           break;
       }
     }
@@ -329,23 +329,23 @@ void FntFreeFont(FontPtr f) {
   if (f) {
     if (f->v == 1) {
       BmpDelete(f->bmp);
-      xfree(f->column);
-      xfree(f->width);
-      xfree(f->data);
-      xfree(f);
+      sys_free(f->column);
+      sys_free(f->width);
+      sys_free(f->data);
+      sys_free(f);
     } else {
       ff = (FontTypeV2 *)f;
       for (j = 0; j < ff->densityCount; j++) {
         BmpDelete(ff->bmp[j]);
-        xfree(ff->data[j]);
+        sys_free(ff->data[j]);
       }
-      xfree(ff->densities);
-      xfree(ff->pitch);
-      xfree(ff->width);
-      xfree(ff->column);
-      xfree(ff->data);
-      xfree(ff->bmp);
-      xfree(ff);
+      sys_free(ff->densities);
+      sys_free(ff->pitch);
+      sys_free(ff->width);
+      sys_free(ff->column);
+      sys_free(ff->data);
+      sys_free(ff->bmp);
+      sys_free(ff);
     }
   }
 }
@@ -517,15 +517,15 @@ FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsiz
     font->descent = descent;
     font->leading = leading;
     font->rowWords = rowWords;
-    font->column = xcalloc(lastChar - firstChar + 1, sizeof(uint16_t));
-    font->width = xcalloc(lastChar - firstChar + 1, sizeof(uint8_t));
+    font->column = sys_calloc(lastChar - firstChar + 1, sizeof(uint16_t));
+    font->width = sys_calloc(lastChar - firstChar + 1, sizeof(uint8_t));
     debug(DEBUG_TRACE, "Font", "font chars %d to %d, maxWidth %d, rectWidth %d, rectheight %d, rowWords %d",
       firstChar, lastChar, maxWidth, fRectWidth, fRectHeight, rowWords);
 
     font->pitch = font->rowWords * 2;
     glyph_len = font->pitch * font->fRectHeight;
-    font->data = xcalloc(1, glyph_len);
-    xmemcpy(font->data, &p[i], glyph_len);
+    font->data = sys_calloc(1, glyph_len);
+    sys_memcpy(font->data, &p[i], glyph_len);
     i += glyph_len;
     debug(DEBUG_TRACE, "Font", "length %d, pitch %d", glyph_len, font->pitch);
 
@@ -553,7 +553,7 @@ FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsiz
 
     font->bmp = BmpCreate3(font->pitch*8, font->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
     bits = BmpGetBits(font->bmp);
-    xmemcpy(bits, font->data, font->fRectHeight * font->pitch);
+    sys_memcpy(bits, font->data, font->fRectHeight * font->pitch);
   }
 
   *dsize = sizeof(FontType);
@@ -632,12 +632,12 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
     font->rowWords = rowWords;
     font->version = version;
     font->densityCount = densityCount;
-    font->densities = xcalloc(densityCount, sizeof(FontDensityType));
-    font->pitch = xcalloc(densityCount, sizeof(uint16_t));
-    font->column = xcalloc(lastChar - firstChar + 1, sizeof(uint16_t));
-    font->width = xcalloc(lastChar - firstChar + 1, sizeof(uint8_t));
-    font->data = xcalloc(densityCount, sizeof(uint8_t *));
-    font->bmp = xcalloc(densityCount, sizeof(BitmapType *));
+    font->densities = sys_calloc(densityCount, sizeof(FontDensityType));
+    font->pitch = sys_calloc(densityCount, sizeof(uint16_t));
+    font->column = sys_calloc(lastChar - firstChar + 1, sizeof(uint16_t));
+    font->width = sys_calloc(lastChar - firstChar + 1, sizeof(uint8_t));
+    font->data = sys_calloc(densityCount, sizeof(uint8_t *));
+    font->bmp = sys_calloc(densityCount, sizeof(BitmapType *));
     debug(DEBUG_TRACE, "Font", "font version %d, densities %d, chars %d to %d, maxWidth %d, rectWidth %d, rectheight %d, rowWords %d",
       version, densityCount, firstChar, lastChar, maxWidth, fRectWidth, fRectHeight, rowWords);
 
@@ -678,7 +678,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
         case kDensityLow:
           font->pitch[j] = rowWords * 2;
           glyph_len = font->pitch[j] * font->fRectHeight;
-          font->data[j] = xcalloc(1, glyph_len);
+          font->data[j] = sys_calloc(1, glyph_len);
           MemMove(font->data[j], &p[glyph_offset], glyph_len);
           font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight, 0, kDensityLow, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
@@ -688,7 +688,7 @@ FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *
         case kDensityDouble:
           font->pitch[j] = rowWords * 4;
           glyph_len = font->pitch[j] * font->fRectHeight * 2;
-          font->data[j] = xcalloc(1, glyph_len);
+          font->data[j] = sys_calloc(1, glyph_len);
           MemMove(font->data[j], &p[glyph_offset], glyph_len);
           font->bmp[j] = BmpCreate3(font->pitch[j]*8, font->fRectHeight*2, 0, kDensityDouble, 1, true, 0, NULL, &err);
           bits = BmpGetBits(font->bmp[j]);
@@ -709,24 +709,24 @@ void pumpkin_destroy_fontv2(void *p) {
 
   font = (FontTypeV2 *)p;
   if (font) {
-    if (font->densities) xfree(font->densities);
-    if (font->pitch) xfree(font->pitch);
-    if (font->column) xfree(font->column);
-    if (font->width) xfree(font->width);
+    if (font->densities) sys_free(font->densities);
+    if (font->pitch) sys_free(font->pitch);
+    if (font->column) sys_free(font->column);
+    if (font->width) sys_free(font->width);
 
     if (font->bmp) {
       for (i = 0; i < font->densityCount; i++) {
         if (font->bmp[i]) BmpDelete(font->bmp[i]);
       }
-      xfree(font->bmp);
+      sys_free(font->bmp);
     }
     if (font->data) {
       for (i = 0; i < font->densityCount; i++) {
         if (font->data) {
-          xfree(font->data[i]);
+          sys_free(font->data[i]);
         }
       }
-      xfree(font->data);
+      sys_free(font->data);
     }
     MemChunkFree(font);
   }
