@@ -107,6 +107,7 @@ typedef struct {
   Int16 other;
   LocalID watchID;
   storage_db_t *tmpDb;
+  UInt16 fontSize;
 } storage_t;
 
 static void StoDecodeResource(storage_handle_t *res);
@@ -731,6 +732,7 @@ int StoInit(char *path, mutex_t *mutex) {
         }
         vfs_closedir(dir);
         if (sto) {
+          sto->fontSize = 12;
           pumpkin_set_local_storage(sto_key, sto);
           r = 0;
         }
@@ -4328,6 +4330,7 @@ Boolean StoPtrDecoded(void *p) {
 }
 
 static void StoDecodeResource(storage_handle_t *res) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   UInt8 *aux;
   uint32_t ftype32, dsize;
   uint16_t ftype;
@@ -4395,11 +4398,11 @@ static void StoDecodeResource(storage_handle_t *res) {
         }
         break;
       case 'ssfn':
-        get2b(&ftype, res->buf, 0);
         get4b(&ftype32, res->buf, 0);
-        if (ftype == 0x1f8b || ftype32 == 0x53464E32) {
+        get2b(&ftype, res->buf, 0);
+        if (ftype32 == 0x53464E32 || ftype == 0x1f8b) { // 'SFN2' ssfn font or gziped ssfn font
           debug(DEBUG_TRACE, "STOR", "decoding ssfn resource %s %d", st, res->d.res.id);
-          if ((p = pumpkin_create_ssfn(res, res->buf, res->size, &dsize, 12)) != NULL) {
+          if ((p = pumpkin_create_ssfn(res, res->buf, res->size, &dsize, sto->fontSize)) != NULL) {
             res->d.res.destructor = pumpkin_destroy_ssfn;
             res->d.res.decoded = p;
             res->d.res.decodedSize = dsize;
@@ -5498,4 +5501,16 @@ Err MemStoreInfo(UInt16 cardNo, UInt16 storeNumber, UInt16 *versionP, UInt16 *fl
 Err MemStoreSetInfo(UInt16 cardNo, UInt16 storeNumber, UInt16 *versionP, UInt16 *flagsP, Char *nameP, UInt32 *crDateP, UInt32 *bckUpDateP, UInt32 *heapListOffsetP, UInt32 *initCodeOffset1P, UInt32 *initCodeOffset2P, LocalID *databaseDirIDP) {
   debug(DEBUG_ERROR, "STOR", "MemStoreSetInfo not implemented");
   return dmErrInvalidParam;
+}
+
+UInt16 FntSetSize(UInt16 size) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+  UInt16 old = 0;
+
+  if (sto) {
+    old = sto->fontSize;
+    sto->fontSize = size;
+  }
+
+  return old;
 }
