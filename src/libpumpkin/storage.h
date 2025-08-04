@@ -28,6 +28,5 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
 UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordInfo, UInt32 compar, Int16 other);
 Err DmInsertionSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other);
 Err DmQuickSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other);
-UInt16 FntSetSize(UInt16 size);
 
 #endif

@@ -17,7 +17,7 @@
 
 #include "ssfn.h"
 
-FontTypeV2 *pumpkin_create_ssfn(void *h, uint8_t *p, uint32_t size, uint32_t *dsize, uint16_t fsize) {
+FontTypeV2 *pumpkin_create_ssfn(void *h, uint8_t *p, uint32_t size, uint32_t *dsize, uint8_t family, uint8_t style, uint16_t fsize) {
   FontTypeV2 *font;
   ssfn_t *ctx;
   ssfn_buf_t buf;
@@ -51,7 +51,7 @@ FontTypeV2 *pumpkin_create_ssfn(void *h, uint8_t *p, uint32_t size, uint32_t *ds
     width = height = left = top = 0;
 
     for (density = 0; density < 2; density++, fsize <<= 1) {
-      if (ssfn_select(ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR, fsize) != SSFN_OK) {
+      if (ssfn_select(ctx, family, NULL, style, fsize) != SSFN_OK) {
         debug(DEBUG_ERROR, "SSFN", "ssfn_select size %d failed", fsize);
         MemChunkFree(font);
         return NULL;

@@ -107,6 +107,8 @@ typedef struct {
   Int16 other;
   LocalID watchID;
   storage_db_t *tmpDb;
+  UInt8 fontFamily;
+  UInt8 fontStyle;
   UInt16 fontSize;
 } storage_t;
 
@@ -733,6 +735,8 @@ int StoInit(char *path, mutex_t *mutex) {
         vfs_closedir(dir);
         if (sto) {
           sto->fontSize = 12;
+          sto->fontFamily = PUMPKIN_FONT_FAMILY_SANS;
+          sto->fontStyle = PUMPKIN_FONT_STYLE_REGULAR;
           pumpkin_set_local_storage(sto_key, sto);
           r = 0;
         }
@@ -4397,12 +4401,12 @@ static void StoDecodeResource(storage_handle_t *res) {
           }
         }
         break;
-      case 'ssfn':
+      case ssfnRscType:
         get4b(&ftype32, res->buf, 0);
         get2b(&ftype, res->buf, 0);
         if (ftype32 == 0x53464E32 || ftype == 0x1f8b) { // 'SFN2' ssfn font or gziped ssfn font
           debug(DEBUG_TRACE, "STOR", "decoding ssfn resource %s %d", st, res->d.res.id);
-          if ((p = pumpkin_create_ssfn(res, res->buf, res->size, &dsize, sto->fontSize)) != NULL) {
+          if ((p = pumpkin_create_ssfn(res, res->buf, res->size, &dsize, sto->fontFamily, sto->fontStyle, sto->fontSize)) != NULL) {
             res->d.res.destructor = pumpkin_destroy_ssfn;
             res->d.res.decoded = p;
             res->d.res.decodedSize = dsize;
@@ -5503,14 +5507,12 @@ Err MemStoreSetInfo(UInt16 cardNo, UInt16 storeNumber, UInt16 *versionP, UInt16 
   return dmErrInvalidParam;
 }
 
-UInt16 FntSetSize(UInt16 size) {
+void FntSetAppearance(UInt8 family, UInt8 style, UInt16 size) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  UInt16 old = 0;
 
   if (sto) {
-    old = sto->fontSize;
+    sto->fontFamily = family;
+    sto->fontStyle = style;
     sto->fontSize = size;
   }
-
-  return old;
 }

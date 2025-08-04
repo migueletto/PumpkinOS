@@ -861,3 +861,23 @@ UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult,
 
   return width;
 }
+
+// Loads and defines a font resource
+
+Boolean FntLoadFont(DmResType type, DmResID resId, FontID fontId) {
+  MemHandle handle;
+  FontType *font;
+  Boolean r = false;
+
+  if ((handle = DmGetResource(type, resId)) != NULL) {
+    if ((font = MemHandleLock(handle)) != NULL) {
+      if (FntDefineFont(fontId, font) == errNone) {
+        r = true;
+      }
+      MemHandleUnlock(handle);
+    }
+    DmReleaseResource(handle);
+  }
+
+  return r;
+}

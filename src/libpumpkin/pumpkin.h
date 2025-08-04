@@ -124,6 +124,20 @@ extern "C" {
 #define pColorUnselectedBorder 6
 #define pColorLockedBorder     7
 
+#define ssfnRscType 'ssfn'
+
+#define PUMPKIN_FONT_FAMILY_SERIF       0
+#define PUMPKIN_FONT_FAMILY_SANS        1
+#define PUMPKIN_FONT_FAMILY_DECOR       2
+#define PUMPKIN_FONT_FAMILY_MONOSPACE   3
+#define PUMPKIN_FONT_FAMILY_HAND        4
+
+#define PUMPKIN_FONT_STYLE_REGULAR      0
+#define PUMPKIN_FONT_STYLE_BOLD         1
+#define PUMPKIN_FONT_STYLE_ITALIC       2
+#define PUMPKIN_FONT_STYLE_USRDEF1      4
+#define PUMPKIN_FONT_STYLE_USRDEF2      8
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
@@ -517,6 +531,8 @@ UInt16 FntGetDensityCount(FontType *f);
 UInt16 FntGetDensity(FontType *f, UInt16 index);
 UInt16 FntDrawChar(FontType *f, UInt32 wch, UInt8 ch, UInt16 index, UInt16 mult, Coord x, Coord y);
 Int16 FntFontCharWidth(FontType *f, Char ch);
+void FntSetAppearance(UInt8 family, UInt8 style, UInt16 size);
+Boolean FntLoadFont(DmResType type, DmResID resId, FontID fontId);
 
 Err HwrGetROMToken(UInt16 cardNo, UInt32 token, UInt8 **dataP, UInt16 *sizeP);
 

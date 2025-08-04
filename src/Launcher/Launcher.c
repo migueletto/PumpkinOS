@@ -2956,8 +2956,6 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #endif
 {
   launcher_data_t *data;
-  MemHandle fontHandle;
-  FontType *font;
   UInt32 value;
 
   switch (cmd) {
@@ -3025,11 +3023,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   data->mode = launcher_app;
   data->filterId = 0xffffffff;
 
-  fontHandle = DmGetResource(fontExtRscType, fakeFnt);
-  font = MemHandleLock(fontHandle);
-  FntDefineFont(fakeMonoFont, font);
-  MemHandleUnlock(fontHandle);
-  DmReleaseResource(fontHandle);
+  FntLoadFont(fontExtRscType, fakeFnt, fakeMonoFont);
 
   StrCopy(data->path, "/");
 
