@@ -5,6 +5,7 @@
 /tools
 /registry
 /pumpkin
+/src/.vscode/*
 *.a
 *.o
 *.res
