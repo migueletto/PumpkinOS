@@ -29,14 +29,14 @@ void *sys_calloc(sys_size_t nmemb, sys_size_t size) {
 }
 
 void *sys_realloc(void *ptr, sys_size_t size) {
-  BD_t *bd;
+  uint32_t oldSize;
   void *p = NULL;
 
   if (ptr) {
     p = CustomMalloc(&heap, size);
     if (p) {
-      bd = CustomBlock(&heap, ptr);
-      sys_memcpy(p, ptr, size < bd->blkSize ? size : bd->blkSize);
+      oldSize = CustomBlockSize(&heap, ptr);
+      sys_memcpy(p, ptr, size < oldSize ? size : oldSize);
     }
     CustomFree(&heap, ptr);
   }
