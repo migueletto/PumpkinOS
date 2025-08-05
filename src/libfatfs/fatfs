@@ -5,13 +5,28 @@ case "$1" in
     rm -rf fat32.bin
     dd if=/dev/zero of=fat32.bin count=204800 
     /sbin/mkdosfs fat32.bin -s2 -F32
-    chmod a+rw fat32.bin
     ;;
 
   'mount')
     rm -rf fs
     mkdir fs
-    sudo mount -o loop -tvfat fat32.bin ./fs
+    user=`id -u`
+    group=`id -g`
+    sudo mount -o loop,user,uid=$user,gid=$group -tvfat fat32.bin ./fs
+    ;;
+
+  'init')
+    mkdir -p fs/vfs/app_card/PALM/Programs
+    mkdir -p fs/vfs/app_install
+    mkdir -p fs/vfs/app_storage
+    if [ -f ../../vfs/app_install/Launcher.prc ];
+    then
+      cp ../../vfs/app_install/Launcher.prc fs/vfs/app_install
+    fi
+    if [ -f ../../vfs/app_install/BOOT.prc ];
+    then
+      cp ../../vfs/app_install/BOOT.prc fs/vfs/app_install
+    fi
     ;;
 
   'umount')
@@ -21,7 +36,7 @@ case "$1" in
     ;;
 
   *)
-    echo "usage: $0 create|mount|umount"
+    echo "usage: $0 create|mount|init|umount"
     ;;
 esac
 
