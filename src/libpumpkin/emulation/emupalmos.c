@@ -306,7 +306,7 @@ uint32_t cpu_read_long(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd - 3) {
+    if (state->screenStart && address >= state->screenStart && address < state->screenEnd - 3) {
       value = WinLegacyRead(address - state->screenStart);
       value <<= 24;
       b = WinLegacyRead(address - state->screenStart + 1);
@@ -380,7 +380,7 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd - 3) {
+    if (state->screenStart && address >= state->screenStart && address < state->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
       WinLegacyWrite(address - state->screenStart,     (value >> 24) & 0xff);
       WinLegacyWrite(address - state->screenStart + 1, (value >> 16) & 0xff);
@@ -1280,9 +1280,12 @@ Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other) {
 
 Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
   // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
+  emu_state_t *oldState;
   uint32_t a, argsSize;
   uint8_t *p;
   Err r = 0;
+
+  oldState = emupalmos_install();
 
   argsSize = sizeof(uint32_t) * 4;
 
@@ -1298,20 +1301,26 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
     pumpkin_heap_free(p, "CallSndFunc");
   }
 
+  emupalmos_deinstall(oldState);
+
   return r;
 }
 
 Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nsamples) {
   // Err SndStreamVariableBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 *bufferSizeP)
+  emu_state_t *oldState;
   uint32_t a, argsSize;
   uint8_t *p;
   Err r = 0;
 
+  oldState = emupalmos_install();
+
   argsSize = sizeof(uint32_t) * 4;
 
-  if ((p = pumpkin_heap_alloc(argsSize + sizeof(UInt32), "CallSndFunc")) != NULL) {
+  if ((p = pumpkin_heap_alloc(argsSize + sizeof(UInt32) + 1024, "CallSndFunc")) != NULL) {
     uint8_t *ram = pumpkin_heap_base();
     a = p - ram;
+    m68k_set_reg(M68K_REG_SP, a + argsSize + sizeof(UInt32));
     m68k_write_memory_32(a, data);
     m68k_write_memory_32(a + 4, channel);
     m68k_write_memory_32(a + 8, buffer);
@@ -1321,6 +1330,8 @@ Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32
     *nsamples = m68k_read_memory_32(a + argsSize);
     pumpkin_heap_free(p, "CallSndFunc");
   }
+
+  emupalmos_deinstall(oldState);
 
   return r;
 }

@@ -3439,6 +3439,12 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   BitmapType *bitmapP;
   UInt32 len;
 
+  if (!module) {
+    *startAddr = 0;
+    *endAddr = 0;
+    return;
+  }
+
   bitmapP = WinGetBitmap(module->displayWindow);
 
   if (pumpkin_get_osversion() <= 30) {
