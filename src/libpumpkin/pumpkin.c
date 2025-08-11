@@ -2579,6 +2579,11 @@ int pumpkin_sys_event(void) {
     if (!paused) break;
   }
 
+  if (ev == WINDOW_EXPOSE) {
+    pumpkin_module.refresh = 1;
+    ev = 0;
+  }
+
   if (mutex_lock(mutex) == 0) {
     now = sys_get_clock();
 
