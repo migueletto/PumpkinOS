@@ -1,9 +1,7 @@
 #include "sys.h"
 #include "script.h"
-#include "thread.h"
 #include "media.h"
 #include "pwindow.h"
-#include "ptr.h"
 #include "average.h"
 #include "debug.h"
 
@@ -47,20 +45,25 @@ typedef struct {
   struct xkb_keymap *keymap;
   struct xkb_compose_state *compose_state;
   struct xkb_state *xkb_state;
+  texture_t *background;
   xcb_clipboard_t clipboard;
 } libwxcb_window_t;
 
 static window_provider_t window_provider;
 
 static void libwxcb_status(libwxcb_window_t *window, int *x, int *y, int *buttons) {
-  *x = window->x;
-  *y = window->y;
-  *buttons = window->buttons;
+  if (window) {
+    *x = window->x;
+    *y = window->y;
+    *buttons = window->buttons;
+  }
 }
 
 static void libwxcb_title(libwxcb_window_t *window, char *title) {
   if (window && title) {
+    debug(DEBUG_TRACE, "XCB", "set title [%s]", title);
     xcb_change_property(window->c, XCB_PROP_MODE_REPLACE, window->window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, sys_strlen(title), title);
+    xcb_change_property(window->c, XCB_PROP_MODE_REPLACE, window->window, XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING, 8, sys_strlen(title), title);
   }
 }
 
@@ -196,6 +199,8 @@ static int libwxcb_event2(libwxcb_window_t *window, int wait, int *arg1, int *ar
   struct pollfd pfd;
   int poll_result, r = 0;
 
+  if (!window) return -1;
+
   pfd.fd = xcb_get_file_descriptor(window->c);
   pfd.events = POLLIN;
   pfd.revents = 0;
@@ -257,19 +262,6 @@ static int libwxcb_window_show_cursor(window_t *window, int show) {
   return 0;
 }
 
-static int libwxcb_video_close(libwxcb_window_t *window) {
-  int r = -1;
-
-  if (window) {
-    xcb_unmap_window(window->c, window->window);
-    xcb_disconnect(window->c);
-    sys_free(window);
-    r = 0;
-  }
-
-  return r;
-}
-
 static window_t *libwxcb_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate,
      int fullscreen, int software, char *driver, void *data) {
 
@@ -315,10 +307,16 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
   iter = xcb_setup_roots_iterator(setup);
   screen = iter.data;
 
+  if (screen->root_depth != 24) {
+    xcb_disconnect(c);
+    debug(DEBUG_ERROR, "XCB", "screen depth is %d bits, but only 24 is supported", screen->root_depth);
+    return NULL;
+  }
+
   if (*width == 0 || *height == 0) {
     *width = screen->width_in_pixels;
     *height = screen->height_in_pixels;
-    debug(DEBUG_INFO, "SDL", "using whole display %dx%d", *width, *height);
+    debug(DEBUG_INFO, "XCB", "using whole display %dx%d", *width, *height);
   }
 
   if ((window = sys_calloc(1, sizeof(libwxcb_window_t))) != NULL) {
@@ -326,6 +324,7 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
     window->setup = setup;
     window->screen = screen;
     window->window = xcb_generate_id(window->c);
+    debug(DEBUG_INFO, "XCB", "windows id 0x%08X", window->window);
 
     mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     values[0] = window->screen->white_pixel;
@@ -395,23 +394,21 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
 }
 
 static int libwxcb_window_render(window_t *_window) {
-  libwxcb_window_t *window = (libwxcb_window_t *)_window;
-  int r = -1;
-
-  if (window) {
-    r = 0;
-  }
-
-  return r;
+  return 0;
 }
 
 static int libwxcb_window_erase(window_t *_window, uint32_t bg) {
   libwxcb_window_t *window;
   int r = -1;
 
-  window = (libwxcb_window_t *)_window;
+  if (_window) {
+    window = (libwxcb_window_t *)_window;
+    xcb_clear_area(window->c, 1, window->window, 0, 0, window->width, window->height);
 
-  if (window) {
+    if (window->background) {
+       window_provider.draw_texture(_window, window->background, 0, 0);
+    }
+
     r = 0;
   }
 
@@ -458,19 +455,6 @@ static int libwxcb_window_destroy_texture(window_t *_window, texture_t *texture)
   return r;
 }
 
-static int libwxcb_window_background(window_t *_window, uint32_t *raw, int width, int height) {
-  libwxcb_window_t *window;
-  int r = -1;
-
-  window = (libwxcb_window_t *)_window;
-
-  if (window && raw) {
-    r = 0;
-  }
-
-  return r;
-}
-
 static int libwxcb_window_update_texture_rect(window_t *_window, texture_t *texture, uint8_t *src, int tx, int ty, int w, int h) {
   libwxcb_window_t *window;
   xcb_image_t *image;
@@ -480,18 +464,18 @@ static int libwxcb_window_update_texture_rect(window_t *_window, texture_t *text
   if (_window && texture && w > 0 && h > 0 && tx >= 0 && ty >= 0 && (tx+w) <= texture->width && (ty+h) <= texture->height) {
     window = (libwxcb_window_t *)_window;
     s = &src[(ty * texture->width + tx) * window->spixel];
-    d = &texture->buf[(ty * texture->width + tx) * window->spixel];
+    d = texture->buf;
     pitch = texture->width * window->spixel;
     len = w * window->spixel;
     for (i = 0; i < h; i++) {
       sys_memcpy(d, s, len);
       s += pitch;
-      d += pitch;
+      d += len;
     }
 
-    if ((image = xcb_image_create_native(window->c, texture->width, texture->height, XCB_IMAGE_FORMAT_Z_PIXMAP,
-                     24, NULL, texture->width * texture->height * window->spixel, texture->buf)) != NULL) {
-      xcb_image_put(window->c, texture->pixmap, window->gc, image, 0, 0, 0);
+    if ((image = xcb_image_create_native(window->c, w, h, XCB_IMAGE_FORMAT_Z_PIXMAP,
+                     24, NULL, w * h * window->spixel, texture->buf)) != NULL) {
+      xcb_image_put(window->c, texture->pixmap, window->gc, image, tx, ty, 0);
       xcb_image_destroy(image);
       debug(DEBUG_TRACE, "XCB", "libwxcb_window_update_texture_rect %d,%d %dx%d (%dx%d)", tx, ty, w, h, texture->width, texture->height);
       r = 0;
@@ -540,17 +524,28 @@ static int libwxcb_window_draw_texture_rect(window_t *_window, texture_t *textur
 }
 
 static int libwxcb_window_draw_texture(window_t *_window, texture_t *texture, int x, int y) {
+  int r = -1;
+
+  if (texture) {
+    r = libwxcb_window_draw_texture_rect(_window, texture, 0, 0, texture->width, texture->height, x, y);
+  }
+
+  return r;
+}
+
+static int libwxcb_window_background(window_t *_window, uint32_t *raw, int width, int height) {
   libwxcb_window_t *window;
   int r = -1;
 
-  if (_window && texture) {
+  if (_window && raw) {
     window = (libwxcb_window_t *)_window;
-    xcb_copy_area(window->c, texture->pixmap, window->window, window->gc, 0, 0, x, y, texture->width, texture->height);
-    xcb_flush(window->c);
-    debug(DEBUG_TRACE, "XCB", "libwxcb_window_draw_texture %d,%d", x, y);
+    debug(DEBUG_TRACE, "XCB", "background %dx%d", width, height);
+    if (window->background) {
+      libwxcb_window_destroy_texture(_window, window->background);
+    }
+    window->background = libwxcb_window_create_texture(_window, width, height);
+    libwxcb_window_update_texture(_window, window->background, (uint8_t *)raw);
     r = 0;
-  } else {
-    debug(DEBUG_ERROR, "XCB", "libwxcb_window_draw_texture %d,%d", x, y);
   }
 
   return r;
@@ -576,8 +571,22 @@ static int libwxcb_window_update(window_t *_window, int x, int y, int width, int
   return 0;
 }
 
-static int libwxcb_window_destroy(window_t *window) {
-  return libwxcb_video_close((libwxcb_window_t *)window);
+static int libwxcb_window_destroy(window_t *_window) {
+  libwxcb_window_t *window;
+  int r = -1;
+
+  if (_window) {
+    window = (libwxcb_window_t *)_window;
+    if (window->background) {
+      libwxcb_window_destroy_texture(_window, window->background);
+    }
+    xcb_unmap_window(window->c, window->window);
+    xcb_disconnect(window->c);
+    sys_free(window);
+    r = 0;
+  }
+
+  return r;
 }
 
 static int libwxcb_window_average(window_t *window, int *x, int *y, int ms) {

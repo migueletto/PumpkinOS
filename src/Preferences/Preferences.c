@@ -580,8 +580,8 @@ static void drawImage(FormType *frm, UInt16 i, RectangleType *rect) {
         bw = (width * bh) / height;
       }
     
-      src = surface_create(width, height, pumpkin_get_encoding());
-      dst = surface_create(bw, bh, pumpkin_get_encoding());
+      src = surface_create(width, height, SURFACE_ENCODING_RGB565);
+      dst = surface_create(bw, bh, SURFACE_ENCODING_RGB565);
       BmpDrawSurface(bmp, 0, 0, width, height, src, 0, 0, false);
       surface_scale(src, dst);
       bits = surface_buffer(dst, &len);
