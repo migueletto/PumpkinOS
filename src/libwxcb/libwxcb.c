@@ -47,6 +47,8 @@ typedef struct {
   struct xkb_state *xkb_state;
   texture_t *background;
   xcb_clipboard_t clipboard;
+  xcb_pixmap_t cursor_pixmap;
+  xcb_cursor_t invisible_cursor;
 } libwxcb_window_t;
 
 static window_provider_t window_provider;
@@ -157,8 +159,9 @@ static int map_key(libwxcb_window_t *window, xcb_key_press_event_t *ev) {
 
   if (key) {
     switch (key) {
-      case XKB_KEY_BackSpace: key = 8; break;
+      case XKB_KEY_BackSpace: key = 8;  break;
       case XKB_KEY_Return:    key = 10; break;
+      case XKB_KEY_Escape:    key = 27; break;
       case XKB_KEY_Right:     key = WINDOW_KEY_RIGHT; break;
       case XKB_KEY_Left:      key = WINDOW_KEY_LEFT; break;
       case XKB_KEY_Down:      key = WINDOW_KEY_DOWN; break;
@@ -258,8 +261,20 @@ static int libwxcb_event2(libwxcb_window_t *window, int wait, int *arg1, int *ar
   return r;
 }
 
-static int libwxcb_window_show_cursor(window_t *window, int show) {
-  return 0;
+static int libwxcb_window_show_cursor(window_t *_window, int show) {
+  libwxcb_window_t *window;
+  uint32_t value;
+  int r = -1;
+
+  if (_window) {
+    window = (libwxcb_window_t *)_window;
+    value = show ? XCB_CURSOR_NONE : window->invisible_cursor;
+    xcb_change_window_attributes(window->c, window->window, XCB_CW_CURSOR, &value);
+    xcb_flush(window->c);
+    r = 0;
+  }
+
+  return r;
 }
 
 static window_t *libwxcb_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate,
@@ -382,6 +397,11 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
     free(reply_selection);
     free(reply_target);
     free(reply_property);
+
+    window->cursor_pixmap = xcb_generate_id(window->c);
+    xcb_create_pixmap(window->c, 1, window->cursor_pixmap, window->window, 1, 1); // 1bpp, 1x1 pixmap
+    window->invisible_cursor = xcb_generate_id(window->c);
+    xcb_create_cursor(window->c, window->invisible_cursor, window->cursor_pixmap, window->cursor_pixmap, 0, 0, 0, 0, 0, 0, 0, 0); // fg and bg are all 0
 
     window->width = *width;
     window->height = *height;
@@ -580,7 +600,10 @@ static int libwxcb_window_destroy(window_t *_window) {
     if (window->background) {
       libwxcb_window_destroy_texture(_window, window->background);
     }
+    xcb_free_cursor(window->c, window->invisible_cursor);
+    xcb_free_pixmap(window->c, window->cursor_pixmap);
     xcb_unmap_window(window->c, window->window);
+    xcb_destroy_window(window->c, window->window);
     xcb_disconnect(window->c);
     sys_free(window);
     r = 0;
