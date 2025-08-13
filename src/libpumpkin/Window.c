@@ -1637,11 +1637,19 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
 
 void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *srcRect, Coord dstX, Coord dstY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  RectangleType rect;
+  Coord width, height;
   BitmapType *bmp;
 
   if (src && dst) {
     bmp = WinGetBitmap(src);
-    WinCopyBitmap(bmp, dst, srcRect, dstX, dstY);
+    if (srcRect) {
+      MemMove(&rect, srcRect, sizeof(RectangleType));
+    } else {
+      BmpGetDimensions(bmp, &width, &height, NULL);
+      RctSetRectangle(&rect, 0, 0, width, height);
+    }
+    WinCopyBitmap(bmp, dst, &rect, dstX, dstY);
     if (dst == module->activeWindow && dst != module->displayWindow) {
       WinConvertToDisplay(dst, &dstX, &dstY);
       WinCopyBitmap(bmp, module->displayWindow, srcRect, dstX, dstY);
