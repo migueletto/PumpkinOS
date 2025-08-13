@@ -6,6 +6,7 @@ typedef struct BD_t {
   struct BD_t *prev;
   struct BD_t *next;
   uint32_t blkSize;
+  uint32_t pad; // making BD_t a multiple of 8 bytes
 } BD_t;
 
 typedef struct HEAP_INFO_t {
