@@ -19,6 +19,7 @@ typedef UInt8 IndexedColorType;
 UInt32 pumpkin_get_app_creator(void);
 
 uint8_t *pumpkin_heap_alloc(uint32_t size, const char *tag);
+uint8_t *pumpkin_heap_realloc(uint8_t *p, uint32_t size, const char *tag);
 void pumpkin_heap_free(void *p, const char *tag);
 
 void debug_full(const char *file, const char *func, int line, int level, const char *sys, const char *fmt, ...);

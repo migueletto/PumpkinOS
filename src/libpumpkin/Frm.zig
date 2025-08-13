@@ -67,7 +67,7 @@ pub fn gotoForm(formId: u16) void {
 }
 
 pub fn initForm(formId: u16) ?*FormType {
-  return @ptrCast(*FormType, c.FrmInitForm(formId));
+  return @ptrCast(c.FrmInitForm(formId));
 }
 
 pub fn setActiveForm(formP: ?*FormType) void {
@@ -79,11 +79,11 @@ pub fn closeAllForms() void {
 }
 
 pub fn setEventHandler(formP: ?*FormType, handler: ?eventHandlerFn) void {
-  c.FrmSetEventHandler(formP, @ptrCast(*void, @constCast(handler)));
+  c.FrmSetEventHandler(formP, @ptrCast(@constCast(handler)));
 }
 
 pub fn getActiveForm() *FormType {
-  return @ptrCast(*FormType, c.FrmGetActiveForm());
+  return @ptrCast(c.FrmGetActiveForm());
 }
 
 pub fn getActiveFormID() u16 {
@@ -111,8 +111,8 @@ pub fn deleteForm(formP: *FormType) void {
 }
 
 pub fn doDialogId(formId: u16) u16 {
-  var formP = c.FrmInitForm(formId);
-  var r = c.FrmDoDialog(formP);
+  const formP = c.FrmInitForm(formId);
+  const r = c.FrmDoDialog(formP);
   c.FrmDeleteForm(formP);
   return r;
 }
@@ -142,22 +142,23 @@ pub fn copyLabel(formP: *FormType, labelID: u16, newLabel: [*]const u8) void {
 }
 
 pub fn setFieldNum(formP: *FormType, fieldId: u16, value: f64) void {
-  var objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
+  const objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
   if (objIndex != invalidObjectId) {
-    var fld = @ptrCast(*FieldType, c.FrmGetObjectPtr(formP, objIndex));
+    const fld: *FieldType = @ptrCast(c.FrmGetObjectPtr(formP, objIndex));
     var buf: [32]u8 = undefined;
     const slice = std.fmt.bufPrint(&buf, "{d:.2}", .{ value }) catch { return; };
-    _ = c.FldInsert(fld, slice.ptr, @intCast(u16, slice.len));
+    const len: u16 = @intCast(slice.len);
+    _ = c.FldInsert(fld, slice.ptr, len);
   }
 }
 
 pub fn getFieldNum(formP: *FormType, fieldId: u16) f64 {
   var value: f64 = 0;
-  var objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
+  const objIndex: u16 = getObjectIndex(formP, fieldId, formObjects.fieldObj);
   if (objIndex != invalidObjectId) {
-    var fld = @ptrCast(*FieldType, c.FrmGetObjectPtr(formP, objIndex));
+    const fld: *FieldType = @ptrCast(c.FrmGetObjectPtr(formP, objIndex));
     var str = c.FldGetTextPtr(fld);
-    var len = c.StrLen(str);
+    const len = c.StrLen(str);
     if (len > 0) {
       value = std.fmt.parseFloat(f64, str[0..len]) catch 0.0;
     }
@@ -179,45 +180,45 @@ pub fn getControlGroupSelection(formP: *FormType, groupNum: u8) u16 {
 }
 
 pub fn getObjectIndex(formP: *FormType, controlId: u16, requiredObjType: formObjects) u16 {
-  var objIndex: u16 = c.FrmGetObjectIndex(formP, controlId);
+  const objIndex: u16 = c.FrmGetObjectIndex(formP, controlId);
   if (objIndex == invalidObjectId) return objIndex;
-  var objTypeU8: u8 = c.FrmGetObjectType(formP, objIndex);
-  var objType: formObjects = @intToEnum(formObjects, objTypeU8);
+  const objTypeU8: u8 = c.FrmGetObjectType(formP, objIndex);
+  const objType: formObjects = @enumFromInt(objTypeU8);
   return if (objType == requiredObjType) objIndex else invalidObjectId;
 }
 
 pub fn getControl(formP: *FormType, controlId: u16) ?*ControlType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.controlObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*ControlType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.controlObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn getField(formP: *FormType, controlId: u16) ?*FieldType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.fieldObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*FieldType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.fieldObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn getList(formP: *FormType, controlId: u16) ?*ListType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.listObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*ListType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.listObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn getTable(formP: *FormType, controlId: u16) ?*TableType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.tableObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*TableType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.tableObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn getGadget(formP: *FormType, controlId: u16) ?*GadgetType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.gadgetObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*GadgetType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.gadgetObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn getScrollBar(formP: *FormType, controlId: u16) ?*ScrollBarType {
-  var objIndex: u16 = getObjectIndex(formP, controlId, formObjects.scrollBarObj);
-  return if (objIndex != invalidObjectId) @ptrCast(*ScrollBarType, c.FrmGetObjectPtr(formP, objIndex)) else null;
+  const objIndex: u16 = getObjectIndex(formP, controlId, formObjects.scrollBarObj);
+  return if (objIndex != invalidObjectId) @ptrCast(c.FrmGetObjectPtr(formP, objIndex)) else null;
 }
 
 pub fn simpleFrmOpenHandler() bool {
-  var formP = pumpkin.Frm.getActiveForm();
+  const formP = pumpkin.Frm.getActiveForm();
   pumpkin.Frm.drawForm(formP);
   return true;
 }
@@ -230,9 +231,9 @@ pub fn eventLoop(formMap: *FormMap, timeout: i32) void {
     if (pumpkin.Sys.handleEvent(&event)) continue;
     if (pumpkin.Menu.handleEvent(&event)) continue;
     if (event.eType == pumpkin.eventTypes.frmLoad) {
-      var eventHandler = formMap.get(event.data.frmLoad.formID);
+      const eventHandler = formMap.get(event.data.frmLoad.formID);
       if (eventHandler != null) {
-        var formP = initForm(event.data.frmLoad.formID);
+        const formP = initForm(event.data.frmLoad.formID);
         if (formP != null) {
           setActiveForm(formP);
           setEventHandler(formP, eventHandler);

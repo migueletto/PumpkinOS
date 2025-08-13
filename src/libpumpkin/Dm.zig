@@ -6,7 +6,7 @@ const c = @cImport({
 });
 
 pub fn getResource(resType: u32, resID: u16) MemHandle {
-  return @ptrCast(MemHandle, c.DmGetResource(resType, resID));
+  return @ptrCast(c.DmGetResource(resType, resID));
 }
 
 pub fn releaseResource(handle: MemHandle) u16 {

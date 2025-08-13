@@ -22,7 +22,7 @@
 syscalls_stubs.txt
 syscalls_stubs.c
 res
-zig-cache
+.zig-cache
 !/lib/*
 !/lib32/*
 !/vfs/app_card/PALM/Programs/Command/

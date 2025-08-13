@@ -432,29 +432,39 @@ pub const PumpkinAllocator = Allocator {
 const pumpkin_allocator_vtable = Allocator.VTable {
   .alloc  = PumpkinAllocatorVTable.alloc,
   .resize = PumpkinAllocatorVTable.resize,
+  .remap  = PumpkinAllocatorVTable.remap,
   .free   = PumpkinAllocatorVTable.free,
 };
 
 const PumpkinAllocatorVTable = struct {
-  fn alloc(_: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
-    _ = ptr_align;
+  fn alloc(_: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
     _ = ret_addr;
-    debug(DEBUG_INFO, "ZigAlloc", "alloc {d}", .{ len });
+    const alignment = std.mem.Alignment.toByteUnits(ptr_align);
+    debug(DEBUG_INFO, "ZigAlloc", "alloc {d} align {d}", .{ len, alignment });
     assert(len > 0);
-    return c.pumpkin_heap_alloc(@intCast(u32, len), "zig");
+    const lenu32: u32 = @intCast(len);
+    const ptr = c.pumpkin_heap_alloc(lenu32, "zig");
+    debug(DEBUG_INFO, "ZigAlloc", "ptr {d}", .{ @intFromPtr(ptr) });
+    return ptr;
   }
 
-  fn resize(_: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
-    _ = buf_align;
+  fn resize(_: *anyopaque, buf: []u8, ptr_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
     _ = ret_addr;
-    debug(DEBUG_INFO, "ZigAlloc", "resize {d} -> {d}", .{ buf.len, new_len });
+    debug(DEBUG_INFO, "ZigAlloc", "resize {d} -> {d} align {d}", .{ buf.len, new_len, std.mem.Alignment.toByteUnits(ptr_align) });
     return if (new_len <= buf.len) true else false;
   }
 
-  fn free(_: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
-    _ = buf_align;
+  fn remap(_: *anyopaque, buf: []u8, ptr_align: std.mem.Alignment, new_len: usize, ret_addr: usize,) ?[*]u8 {
     _ = ret_addr;
-    debug(DEBUG_INFO, "ZigAlloc", "free", .{});
+    debug(DEBUG_INFO, "ZigAlloc", "remap {d} -> {d} align {d}", .{ buf.len, new_len, std.mem.Alignment.toByteUnits(ptr_align) });
+    assert(new_len > 0);
+    const lenu32: u32 = @intCast(new_len);
+    return c.pumpkin_heap_realloc(buf.ptr, lenu32, "zig");
+  }
+
+  fn free(_: *anyopaque, buf: []u8, ptr_align: std.mem.Alignment, ret_addr: usize) void {
+    _ = ret_addr;
+    debug(DEBUG_INFO, "ZigAlloc", "free {d} align {d}", .{ buf.len, std.mem.Alignment.toByteUnits(ptr_align) });
     c.pumpkin_heap_free(buf.ptr, "zig");
   }
 };

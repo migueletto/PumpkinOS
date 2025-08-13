@@ -14,7 +14,7 @@ fn isBitmap(handle: MemHandle) bool {
 }
 
 pub fn get(resID: u16) MemHandle {
-  var handle = Dm.getResource(pumpkin.bitmapRsc, resID);
+  const handle = Dm.getResource(pumpkin.bitmapRsc, resID);
   if (isBitmap(handle)) {
     return handle;
   }
@@ -28,7 +28,7 @@ pub fn release(handle: MemHandle) u16 {
 }
 
 pub fn lock(handle: MemHandle) ?*BitmapType {
-  return if (isBitmap(handle)) @ptrCast(*BitmapType, c.MemHandleLock(handle)) else null;
+  return if (isBitmap(handle)) @ptrCast(c.MemHandleLock(handle)) else null;
 }
 
 pub fn unlock(handle: MemHandle) void {
@@ -37,7 +37,7 @@ pub fn unlock(handle: MemHandle) void {
 
 pub fn paint(handle: MemHandle, x: i16, y: i16) void {
   if (isBitmap(handle)) {
-    var bmp = c.MemHandleLock(handle);
+    const bmp = c.MemHandleLock(handle);
     c.WinPaintBitmap(bmp, x, y);
     c.MemHandleUnlock(handle);
   }
@@ -45,7 +45,7 @@ pub fn paint(handle: MemHandle, x: i16, y: i16) void {
 
 pub fn dimensions(handle: MemHandle, width: *i16, height: *i16) void {
   if (isBitmap(handle)) {
-    var bmp = c.MemHandleLock(handle);
+    const bmp = c.MemHandleLock(handle);
     var rowBytes: u16 = 0;
     c.BmpGetDimensions(bmp, width, height, &rowBytes);
     c.MemHandleUnlock(handle);

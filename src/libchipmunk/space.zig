@@ -16,7 +16,7 @@ pub const SpaceBody = struct {
   }
 
   pub fn getPosition(self: SpaceBody, x: *f64, y: *f64) void {
-    var pos: ch.cpVect = ch.cpBodyGetPosition(self.body);
+    const pos: ch.cpVect = ch.cpBodyGetPosition(self.body);
     x.* = pos.x;
     y.* = pos.y;
   }
@@ -47,23 +47,23 @@ pub const Space2D = struct {
   time: ch.cpFloat = 0,
 
   pub fn setGravity(self: Space2D, x: f64, y: f64) void {
-    var gravity = ch.cpv(x, y);
+    const gravity = ch.cpv(x, y);
     ch.cpSpaceSetGravity(self.space, gravity);
   }
 
   pub fn addBox(self: *Space2D, width: f64, height: f64, mass: f64) SpaceBody {
     var body: ?*ch.cpBody = null;
     if (mass >= 0) {
-      var moment = ch.cpMomentForBox(mass, width, height);
+      const moment = ch.cpMomentForBox(mass, width, height);
       body = ch.cpBodyNew(mass, moment);
       _ = ch.cpSpaceAddBody(self.space, body);
     } else {
       body = ch.cpSpaceGetStaticBody(self.space);
     }
-    var shape = ch.cpBoxShapeNew(body, width, height, 0);
+    const shape = ch.cpBoxShapeNew(body, width, height, 0);
     _ = ch.cpSpaceAddShape(self.space, shape);
 
-    var box = SpaceBody {
+    const box = SpaceBody {
       .space = self.space,
       .body = body,
       .shape = shape,
@@ -77,19 +77,19 @@ pub const Space2D = struct {
   pub fn addCircle(self: *Space2D, radius: f64, mass: f64) SpaceBody {
     var body: ?*ch.cpBody = null;
     if (mass >= 0) {
-      var moment = ch.cpMomentForCircle(mass, 0, radius, ch.cpvzero);
+      const moment = ch.cpMomentForCircle(mass, 0, radius, ch.cpvzero);
       body = ch.cpBodyNew(mass, moment);
       _ = ch.cpSpaceAddBody(self.space, body);
     } else {
       body = ch.cpSpaceGetStaticBody(self.space);
     }
-    var shape = ch.cpCircleShapeNew(body, radius, ch.cpvzero);
+    const shape = ch.cpCircleShapeNew(body, radius, ch.cpvzero);
     _ = ch.cpSpaceAddShape(self.space, shape);
 
-    var width = @floatToInt(i16, radius * 2);
-    var height = @floatToInt(i16, radius * 2);
+    const width: i16 = @intFromFloat(radius * 2);
+    const height: i16 = @intFromFloat(radius * 2);
 
-    var circle = SpaceBody {
+    const circle = SpaceBody {
       .space = self.space,
       .body = body,
       .shape = shape,
@@ -103,17 +103,17 @@ pub const Space2D = struct {
   }
 
   pub fn addSegment(self: *Space2D, x1: f64, y1: f64, x2: f64, y2: f64, mass: f64) SpaceBody {
-    var v1 = ch.cpv(x1, y1);
-    var v2 = ch.cpv(x2, y2);
+    const v1 = ch.cpv(x1, y1);
+    const v2 = ch.cpv(x2, y2);
     var body: ?*ch.cpBody = null;
     if (mass >= 0) {
-      var moment = ch.cpMomentForSegment(mass, v1, v2, 0);
+      const moment = ch.cpMomentForSegment(mass, v1, v2, 0);
       body = ch.cpBodyNew(mass, moment);
       _ = ch.cpSpaceAddBody(self.space, body);
     } else {
       body = ch.cpSpaceGetStaticBody(self.space);
     }
-    var shape = ch.cpSegmentShapeNew(body, v1, v2, 0);
+    const shape = ch.cpSegmentShapeNew(body, v1, v2, 0);
     _ = ch.cpSpaceAddShape(self.space, shape);
 
     return SpaceBody {
@@ -135,18 +135,18 @@ pub const Space2D = struct {
   }
 };
 
-fn shapeCallback(shape: ?*ch.cpShape, data: ?*anyopaque) callconv(.C) void {
+fn shapeCallback(shape: ?*ch.cpShape, data: ?*anyopaque) callconv(.c) void {
   _ = data;
   ch.cpShapeFree(shape);
 }
 
-fn bodyCallback(body: ?*ch.cpBody, data: ?*anyopaque) callconv(.C) void {
+fn bodyCallback(body: ?*ch.cpBody, data: ?*anyopaque) callconv(.c) void {
   _ = data;
   ch.cpBodyFree(body);
 }
 
 pub fn init() Space2D {
-  var space = Space2D {
+  const space = Space2D {
     .space = ch.cpSpaceNew(),
   };
 

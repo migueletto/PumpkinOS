@@ -6,6 +6,6 @@ const c = @cImport({
 });
 
 pub fn showAboutPumpkin() void {
-  var creator: u32 = c.pumpkin_get_app_creator();
+  const creator: u32 = c.pumpkin_get_app_creator();
   c.AbtShowAboutPumpkin(creator);
 }

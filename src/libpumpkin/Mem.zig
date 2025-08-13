@@ -6,7 +6,7 @@ const c = @cImport({
 });
 
 pub fn handleLock(handle: MemHandle) *void {
-  return @ptrCast(*void, c.MemHandleLock(handle));
+  return @ptrCast(c.MemHandleLock(handle));
 }
 
 pub fn handleUnlock(handle: MemHandle) void {
