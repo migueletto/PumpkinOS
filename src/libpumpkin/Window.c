@@ -1652,7 +1652,7 @@ void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *srcRect, Coord d
     WinCopyBitmap(bmp, dst, &rect, dstX, dstY);
     if (dst == module->activeWindow && dst != module->displayWindow) {
       WinConvertToDisplay(dst, &dstX, &dstY);
-      WinCopyBitmap(bmp, module->displayWindow, srcRect, dstX, dstY);
+      WinCopyBitmap(bmp, module->displayWindow, &rect, dstX, dstY);
     }
   }
 }
