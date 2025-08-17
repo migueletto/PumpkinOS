@@ -3,6 +3,7 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const os = b.option([]const u8, "OS", "OS") orelse "";
 
     const mod = b.addModule("pumpkin", .{
         .root_source_file = b.path("../libpumpkin/pumpkin.zig"),
@@ -22,10 +23,15 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    lib.addIncludePath(b.path("../libpumpkin"));
-    lib.addLibraryPath(b.path("../../bin"));
-    lib.linkSystemLibrary("pit");
-    lib.linkSystemLibrary("pumpkin");
+    lib.root_module.addIncludePath(b.path("../libpumpkin"));
+    lib.root_module.addLibraryPath(b.path("../../bin"));
+    if (std.mem.eql(u8, os, "Windows")) {
+      lib.root_module.linkSystemLibrary("libpit", .{});
+      lib.root_module.linkSystemLibrary("libpumpkin", .{});
+    } else {
+      lib.root_module.linkSystemLibrary("pit", .{});
+      lib.root_module.linkSystemLibrary("pumpkin", .{});
+    }
     lib.linkLibC();
     b.installArtifact(lib);
 }

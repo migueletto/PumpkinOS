@@ -14,8 +14,8 @@ $(PROGRAM).prc: $(DLIB)
 $(DLIB): $(ZIGLIB)
 	cp $(ZIGLIB) $(DLIB)
 
-$(ZIGLIB): main.zig
-	$(ZIG) build
+$(ZIGLIB): main.zig build.zig
+	$(ZIG) build -DOS=$(OS)
 	touch $(ZIGLIB)
 
 clean:
