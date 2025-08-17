@@ -20,6 +20,7 @@
 #include <linux/input-event-codes.h>
 
 #include "xdg-shell-client-protocol.h"
+#include "xdg-decoration-client-protocol.h"
 #include "shm.h"
 
 #define MARGIN 4
@@ -52,6 +53,8 @@ typedef struct {
 	struct xkb_context *xkb_context;
   struct xkb_compose_state *compose_state;
   struct wl_keyboard *keyboard;
+  struct zxdg_decoration_manager_v1 *decoration_manager;
+  struct zxdg_toplevel_decoration_v1 *decoration;
   uint8_t *shm_data;
   int configured;
   int running;
@@ -286,19 +289,31 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
   libwwayland_window_t *window = (libwwayland_window_t *)data;
 
+  debug(DEBUG_INFO, "WAYLAND", "registry name %u interface \"%s\" version %u", name, interface, version);
+
   if (sys_strcmp(interface, wl_shm_interface.name) == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding shm interface");
     window->shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
 
   } else if (sys_strcmp(interface, wl_seat_interface.name) == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding seat interface");
     window->seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
     wl_seat_add_listener(window->seat, &seat_listener, window);
 
   } else if (sys_strcmp(interface, wl_compositor_interface.name) == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding compositor interface");
     window->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
 
   } else if (sys_strcmp(interface, xdg_wm_base_interface.name) == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding xdg wm base interface");
     window->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
     xdg_wm_base_add_listener(window->xdg_wm_base, &xdg_wm_base_listener, NULL);
+
+  } else if (sys_strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding zxdg decoration manager interface");
+    window->decoration_manager = wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface, 1);
+    window->decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(window->decoration_manager, window->xdg_toplevel);
+    zxdg_toplevel_decoration_v1_set_mode(window->decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
   } 
 }
 
