@@ -391,17 +391,24 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
     reply_selection = xcb_intern_atom_reply(window->c, selection, NULL);
     reply_target = xcb_intern_atom_reply(window->c, target, NULL);
     reply_property = xcb_intern_atom_reply(window->c, property, NULL);
-    window->clipboard.selection = reply_selection->atom;
-    window->clipboard.target = reply_target->atom;
-    window->clipboard.property = reply_property->atom;
-    free(reply_selection);
-    free(reply_target);
-    free(reply_property);
+    if (reply_selection) {
+      window->clipboard.selection = reply_selection->atom;
+      free(reply_selection);
+    }
+    if (reply_target) {
+      window->clipboard.target = reply_target->atom;
+      free(reply_target);
+    }
+    if (reply_property) {
+      window->clipboard.property = reply_property->atom;
+      free(reply_property);
+    }
 
     window->cursor_pixmap = xcb_generate_id(window->c);
     xcb_create_pixmap(window->c, 1, window->cursor_pixmap, window->window, 1, 1); // 1bpp, 1x1 pixmap
     window->invisible_cursor = xcb_generate_id(window->c);
     xcb_create_cursor(window->c, window->invisible_cursor, window->cursor_pixmap, window->cursor_pixmap, 0, 0, 0, 0, 0, 0, 0, 0); // fg and bg are all 0
+    xcb_flush(window->c);
 
     window->width = *width;
     window->height = *height;
