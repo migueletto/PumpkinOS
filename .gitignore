@@ -19,6 +19,8 @@
 *.pdb
 *.log
 *.pyc
+xdg-*.c
+xdg-*.h
 syscalls_stubs.txt
 syscalls_stubs.c
 res
