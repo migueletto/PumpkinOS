@@ -271,6 +271,15 @@ PIT_LIB_CODE
   r = must_end;
 PIT_LIB_END_B
 
+PIT_LIB_FUNCTION(builtin,getpointer)
+  PIT_LIB_PARAM_S(name)
+  void *value = NULL;
+PIT_LIB_CODE
+  value = script_get_pointer(pe, name);
+  r = 0;
+  PIT_LIB_FREE_S(name);
+PIT_LIB_END_P(value)
+
 PIT_LIB_BEGIN(builtin)
   PIT_LIB_EXPORT_F(debug);
   PIT_LIB_EXPORT_F(debugbytes);
@@ -293,6 +302,7 @@ PIT_LIB_BEGIN(builtin)
   PIT_LIB_EXPORT_F(idle);
   PIT_LIB_EXPORT_F(finish);
   PIT_LIB_EXPORT_F(must_end);
+  PIT_LIB_EXPORT_F(getpointer);
 PIT_LIB_END
 
 int script_create_builtins(int pe, script_ref_t obj) {

@@ -162,6 +162,7 @@ int ext_script_set_stack(script_priv_t *priv, int index);
 #define PIT_LIB_END_R(n)             } else { PIT_LIB_ERR; } r = script_push_real(pe, n); PIT_LIB_EXIT_F; return r; }
 #define PIT_LIB_END_S(s)             } else { PIT_LIB_ERR; } if (s) { r = script_push_string(pe, s); } else { r = -1; } PIT_LIB_EXIT_F; return r; }
 #define PIT_LIB_END_O(obj)           } else { PIT_LIB_ERR; } if (obj != -1) { r = script_push_object(pe, obj); script_remove_ref(pe, obj); } else { r = -1; } PIT_LIB_EXIT_F; return r; }
+#define PIT_LIB_END_P(pt)             } else { PIT_LIB_ERR; } if (pt) { script_arg_t v; v.type = SCRIPT_ARG_POINTER; v.value.p = pt; r = script_push_value(pe, &v); } else { r = -1; } PIT_LIB_EXIT_F; return r; }
 
 #define PIT_LIB_BEGIN(name)          int lib##name##_init(int pe, script_ref_t obj) { int err = 0;
 #define PIT_LIB_EXPORT_F(name)       err += script_add_function(pe, obj, #name, lib_function_##name);
