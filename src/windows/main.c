@@ -895,10 +895,36 @@ static int audio_finish(int handle) {
   return thread_end("AUDIO", handle);
 }
 
+static int custom_load(int pe) {
+  script_ref_t obj;
+  int r = -1;
+
+  if ((obj = script_create_object(pe)) != -1) {
+    debug(DEBUG_INFO, "Windows", "registering provider %s", WINDOW_PROVIDER);
+    script_set_pointer(pe, WINDOW_PROVIDER, &wp);
+  
+    debug(DEBUG_INFO, "Windows", "registering provider %s", AUDIO_PROVIDER);
+    script_set_pointer(pe, AUDIO_PROVIDER, &ap);
+
+    script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
+    script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
+    script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+    script_add_iconst(pe, obj, "hdepth", 16);
+  
+    r = script_push_object(pe, obj);
+    script_remove_ref(pe, obj);
+  }
+    
+  return r;
+}       
+  
 static void pit_callback(int pe, void *data) {
-  script_set_pointer(pe, WINDOW_PROVIDER, &wp);
-  script_set_pointer(pe, AUDIO_PROVIDER, &ap);
-}
+  script_arg_t value;
+
+  value.type = SCRIPT_ARG_FUNCTION;
+  value.value.r = script_create_function(pe, custom_load);
+  script_global_set(pe, "custom_load", &value);
+} 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
   WNDCLASS wc;

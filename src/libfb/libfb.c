@@ -639,6 +639,8 @@ int libfb_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "FB", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &wp);
 
+  script_add_iconst(pe, obj, "hdepth", 16);
+
   script_add_function(pe, obj, "setup",  libfb_setup);
   script_add_function(pe, obj, "cursor", libfb_cursor);
 

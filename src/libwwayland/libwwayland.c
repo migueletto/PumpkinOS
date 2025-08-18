@@ -834,6 +834,7 @@ int libwwayland_init(int pe, script_ref_t obj) {
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
   script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+  script_add_iconst(pe, obj, "hdepth", 32);
 
   script_add_function(pe, obj, "calib", libwwayland_calib);
 

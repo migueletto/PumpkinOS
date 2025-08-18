@@ -6,34 +6,32 @@ end
 
 pit.cleanup(cleanup_callback)
 
-hdepth = 16
-
-if not pit.getpointer("window_provider") and pit.getenv("WAYLAND_DISPLAY") then
-  pit.loadlib("libwwayland")
-  hdepth = 32
+if custom_load then
+  lib = custom_load()
 end
 
-if not pit.getpointer("window_provider") then
-  pit.loadlib("liblsdl2")
-  hdepth = 16
+if not lib and pit.getenv("WAYLAND_DISPLAY") then
+  lib = pit.loadlib("libwwayland")
 end
 
-if not pit.getpointer("window_provider") and pit.getenv("DISPLAY") then
-  pit.loadlib("libwxcb")
-  hdepth = 32
+if not lib then
+  lib = pit.loadlib("liblsdl2")
 end
 
-if not pit.getpointer("window_provider") then
-  fb = pit.loadlib("libfb")
-  if fb then
-    fb.setup(0, 1, 0)
-    fb.cursor(true)
-    hdepth = 16
+if not lib and pit.getenv("DISPLAY") then
+  lib = pit.loadlib("libwxcb")
+end
+
+if not lib then
+  lib = pit.loadlib("libfb")
+  if lib then
+    lib.setup(0, 1, 0)
+    lib.cursor(true)
   end
 end
 
-if not pit.getpointer("window_provider") then
-  print("window provider not found")
+if not lib then
+  print("could not load a display lib")
   pit.finish(0)
   return
 end
@@ -47,6 +45,6 @@ pumpkin.start {
   density  = 144,
   width    = 1024,
   height   = 768,
-  hdepth   = hdepth,
-  depth    = 16
+  depth    = 16,
+  hdepth   = lib.hdepth
 }
