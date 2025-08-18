@@ -9,7 +9,7 @@ XDG_DECORATION_PROTOCOL=/usr/share/wayland-protocols/unstable/xdg-decoration/xdg
 
 PROGRAM=$(BIN)/libwwayland$(SOEXT)
 OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): xdg-shell-client-protocol.h $(OBJS)
+$(PROGRAM): xdg-shell-client-protocol.h xdg-decoration-client-protocol.h $(OBJS)
 	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBWAYLAND)
 
 xdg-shell-client-protocol.h:
