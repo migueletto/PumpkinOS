@@ -40,8 +40,8 @@ static libwaveshare_t ws;
 static window_t *window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   window_t *w = NULL;
 
-  if ((ws.tft_spi = ws.spip->open(ws.tft_cs, ws.spi_speed, ws.spip->data)) != NULL &&
-      (ws.touch_spi = ws.spip->open(ws.touch_cs, ws.spi_speed, ws.spip->data)) != NULL &&
+  if ((ws.tft_spi = ws.spip->open(0, ws.tft_cs, ws.spi_speed, ws.spip->data)) != NULL &&
+      (ws.touch_spi = ws.spip->open(0, ws.touch_cs, ws.spi_speed, ws.spip->data)) != NULL &&
       (ws.gpio = ws.gpiop->open(ws.gpiop->data)) != NULL) {
 
     if (ili9486_begin(ws.spip, ws.tft_spi, ws.gpiop, ws.gpio, ws.dc_pin, ws.rst_pin) == 0) {
