@@ -229,7 +229,7 @@ static int libsdl_init_video(void) {
           debug(DEBUG_ERROR, "SDL", "SDL_GetRenderDriverInfo %d failed: %s", i, SDL_GetError());
         } else {
           libsdl_render_info("available", &info);
-          if ((cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND)) != NULL) {
+          if ((cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW)) != NULL) {
             SDL_SetCursor(cursor);
           }
           //SDL_ShowCursor(SDL_DISABLE);
