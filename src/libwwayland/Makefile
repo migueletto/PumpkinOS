@@ -1,7 +1,13 @@
 include ../common.mak
 
+ifneq (,$(wildcard /usr/include/libdecor-0/libdecor.h))
+LIBDECOR_LIB=-ldecor-0
+LIBDECOR_FLAGS=-I/usr/include/libdecor-0 -DLIBDECOR
+endif
+
 SOURCE=libwwayland.c xdg-shell-protocol.c xdg-decoration-protocol.c shm.c
-LIBWAYLAND=-lwayland-client -lwayland-cursor -lxkbcommon
+LIBWAYLAND=-lwayland-client -lwayland-cursor -lxkbcommon $(LIBDECOR_LIB)
+CUSTOMFLAGS=$(LIBDECOR_FLAGS)
 
 WAYLAND_SCANNER=/usr/bin/wayland-scanner
 XDG_SHELL_PROTOCOL=/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml

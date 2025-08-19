@@ -18,12 +18,13 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
 #include <linux/input-event-codes.h>
+#ifdef LIBDECOR
+#include <libdecor.h>
+#endif
 
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
 #include "shm.h"
-
-#define MARGIN 4
 
 struct texture_t {
   int width, height;
@@ -31,7 +32,7 @@ struct texture_t {
 };
 
 typedef struct {
-  int width, height, spixel;
+  int width, height, spixel, margin, inside;
   int old_x, old_y, x, y, old_buttons, buttons, mods, other;
   uint32_t old_key, key;
   uint32_t modifiers;
@@ -47,14 +48,18 @@ typedef struct {
   struct wl_buffer *buffer;
   struct wl_surface *cursor_surface;
   struct wl_cursor_image *cursor_image;
-	struct wl_buffer *cursor_buffer;
-	struct xkb_state *xkb_state;
-	struct xkb_keymap *xkb_keymap;
-	struct xkb_context *xkb_context;
+  struct wl_buffer *cursor_buffer;
+  struct xkb_state *xkb_state;
+  struct xkb_keymap *xkb_keymap;
+  struct xkb_context *xkb_context;
   struct xkb_compose_state *compose_state;
   struct wl_keyboard *keyboard;
   struct zxdg_decoration_manager_v1 *decoration_manager;
   struct zxdg_toplevel_decoration_v1 *decoration;
+#ifdef LIBDECOR
+  struct libdecor *libdecor;
+  struct libdecor_frame *frame;
+#endif
   uint8_t *shm_data;
   int configured;
   int running;
@@ -79,33 +84,37 @@ static void pointer_handle_motion(void *data, struct wl_pointer *wl_pointer, uin
   libwwayland_window_t *window = (libwwayland_window_t *)data;
   int x, y;
 
-  x = surface_x >> 8;
-  y = surface_y >> 8;
+  if (window->inside) {
+    x = wl_fixed_to_int(surface_x);
+    y = wl_fixed_to_int(surface_y);
 
-  if (x >= MARGIN && y >= MARGIN && x < MARGIN + window->width && y < MARGIN + window->height) {
-    window->x = x - MARGIN;
-    window->y = y - MARGIN;
+    if (x >= window->margin && y >= window->margin && x < window->margin + window->width && y < window->margin + window->height) {
+      window->x = x - window->margin;
+      window->y = y - window->margin;
+    }
   }
 }
 
 static void pointer_handle_button(void *data, struct wl_pointer *pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
   libwwayland_window_t *window = (libwwayland_window_t *)data;
 
-  button = map_button(button);
+  if (window->inside) {
+    button = map_button(button);
 
-  if (button) {
-    switch (state) {
-      case WL_POINTER_BUTTON_STATE_PRESSED:
-        if (button == 2 && (window->modifiers & 1)) {
-          // shift right click, move the wayland window and don't pass the event to the app
-          xdg_toplevel_move(window->xdg_toplevel, window->seat, serial);
-        } else {
-          window->buttons |= button;
-        }
-        break;
-      case WL_POINTER_BUTTON_STATE_RELEASED:
-        window->buttons &= ~button;
-        break;
+    if (button) {
+      switch (state) {
+        case WL_POINTER_BUTTON_STATE_PRESSED:
+          if (!window->frame && button == 2 && (window->modifiers & 1)) {
+            // shift right click, move the wayland window and don't pass the event to the app
+            xdg_toplevel_move(window->xdg_toplevel, window->seat, serial);
+          } else {
+            window->buttons |= button;
+          }
+          break;
+        case WL_POINTER_BUTTON_STATE_RELEASED:
+          window->buttons &= ~button;
+          break;
+      }
     }
   }
 }
@@ -113,10 +122,18 @@ static void pointer_handle_button(void *data, struct wl_pointer *pointer, uint32
 static void pointer_handle_enter(void *data, struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y) {
   libwwayland_window_t *window = (libwwayland_window_t *)data;
 
-  wl_pointer_set_cursor(wl_pointer, serial, window->cursor_surface, window->cursor_image->hotspot_x, window->cursor_image->hotspot_y);
+  if (surface == window->surface) {
+    wl_pointer_set_cursor(wl_pointer, serial, window->cursor_surface, window->cursor_image->hotspot_x, window->cursor_image->hotspot_y);
+    window->inside = 1;
+  }
 }
 
 static void pointer_handle_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface) {
+  libwwayland_window_t *window = (libwwayland_window_t *)data;
+
+  if (surface == window->surface) {
+    window->inside = 0;
+  }
 }
 
 static const struct wl_pointer_listener pointer_listener = {
@@ -144,30 +161,30 @@ static void wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard, uint3
   uint32_t *key;
   char buf[128];
 
-  debug(DEBUG_INFO, "WAYLAND", "keyboard enter");
+  debug(DEBUG_TRACE, "WAYLAND", "keyboard enter");
   wl_array_for_each(key, keys) {
-    xkb_keysym_t sym = xkb_state_key_get_one_sym(window->xkb_state, *key + 2*MARGIN);
+    xkb_keysym_t sym = xkb_state_key_get_one_sym(window->xkb_state, *key + 8);
     xkb_keysym_get_name(sym, buf, sizeof(buf));
-    debug(DEBUG_INFO, "WAYLAND", "sym: %-12s (%d), ", buf, sym);
-    xkb_state_key_get_utf8(window->xkb_state, *key + 2*MARGIN, buf, sizeof(buf));
-    debug(DEBUG_INFO, "WAYLAND", "utf8: '%s'\n", buf);
+    debug(DEBUG_TRACE, "WAYLAND", "sym: %-12s (%d), ", buf, sym);
+    xkb_state_key_get_utf8(window->xkb_state, *key + 8, buf, sizeof(buf));
+    debug(DEBUG_TRACE, "WAYLAND", "utf8: '%s'\n", buf);
   }
 }
 
 static void wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial, struct wl_surface *surface) {
-  debug(DEBUG_INFO, "WAYLAND", "keyboard leave");
+  debug(DEBUG_TRACE, "WAYLAND", "keyboard leave");
 }
 
 static void wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
   libwwayland_window_t *window = (libwwayland_window_t *)data;
 
-  debug(DEBUG_INFO, "WAYLAND", "keyboard modifiers 0x%08X", mods_depressed);
+  debug(DEBUG_TRACE, "WAYLAND", "keyboard modifiers 0x%08X", mods_depressed);
   xkb_state_update_mask(window->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
   window->modifiers = mods_depressed;
 }
 
 static void wl_keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard, int32_t rate, int32_t delay) {
-  debug(DEBUG_INFO, "WAYLAND", "keyboard repeat info");
+  debug(DEBUG_TRACE, "WAYLAND", "keyboard repeat info");
 }
 
 static int map_key(libwwayland_window_t *window, uint32_t keycode) {
@@ -238,7 +255,7 @@ static int map_key(libwwayland_window_t *window, uint32_t keycode) {
 static void wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
   libwwayland_window_t *window = (libwwayland_window_t *)data;
 
-  key = map_key(window, key + 2*MARGIN); 
+  key = map_key(window, key + 8); 
   if (key) {
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
       debug(DEBUG_TRACE, "WAYLAND", "key down %d", key);
@@ -352,6 +369,43 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
   .close = xdg_toplevel_handle_close,
 };
 
+#ifdef LIBDECOR
+static void libdecor_error(struct libdecor *context, enum libdecor_error error, const char *message) {
+  debug(DEBUG_ERROR, "WAYLAND", "libdecor error %d: %s", error, message);
+}
+
+static struct libdecor_interface libdecor_interface = {
+  libdecor_error
+};
+
+static void decoration_frame_configure(struct libdecor_frame *frame, struct libdecor_configuration *configuration, void *user_data) {
+  libwwayland_window_t *window = (libwwayland_window_t *)user_data;
+  struct libdecor_state *state;
+
+  debug(DEBUG_INFO, "WAYLAND", "libdecor configure");
+  window->configured = 1;
+  state = libdecor_state_new(window->width, window->height);
+  libdecor_frame_commit(frame, state, configuration);
+  libdecor_state_free(state);
+}
+
+static void decoration_frame_close(struct libdecor_frame *frame, void *user_data) {
+  debug(DEBUG_TRACE, "WAYLAND", "libdecor close");
+  // SDL_WINDOWEVENT_CLOSE
+}
+
+static void decoration_frame_commit(struct libdecor_frame *frame, void *user_data) {
+  debug(DEBUG_TRACE, "WAYLAND", "libdecor commit");
+  // SDL_WINDOWEVENT_EXPOSED
+}
+
+static struct libdecor_frame_interface libdecor_frame_interface = {
+  decoration_frame_configure,
+  decoration_frame_close,
+  decoration_frame_commit
+};
+#endif
+
 static void libwwayland_status(libwwayland_window_t *window, int *x, int *y, int *buttons) {
   if (window) {
     *x = window->x;
@@ -363,7 +417,16 @@ static void libwwayland_status(libwwayland_window_t *window, int *x, int *y, int
 static void libwwayland_title(libwwayland_window_t *window, char *title) {
   if (window && title) {
     debug(DEBUG_TRACE, "WAYLAND", "set title [%s]", title);
-    //xdg_toplevel_set_title(window->xdg_toplevel, title);
+
+#ifdef LIBDECOR
+    if (window->frame) {
+      libdecor_frame_set_title(window->frame, title);
+    } else {
+      xdg_toplevel_set_title(window->xdg_toplevel, title);
+    }
+#else
+    xdg_toplevel_set_title(window->xdg_toplevel, title);
+#endif
   }
 }
 
@@ -496,8 +559,8 @@ static window_t *libwwayland_window_create(int encoding, int *width, int *height
   libwwayland_window_t *window;
   struct wl_display *display;
   struct wl_registry *registry;
-	struct wl_cursor_theme *cursor_theme;
-	struct wl_cursor *cursor;
+  struct wl_cursor_theme *cursor_theme;
+  struct wl_cursor *cursor;
   struct xkb_compose_table *compose_table;
   uint32_t spixel;
   const char *locale;
@@ -522,6 +585,7 @@ static window_t *libwwayland_window_create(int encoding, int *width, int *height
     window->height = *height;
     window->spixel = spixel;
     window->running = 1;
+    window->margin = 4;
 
     registry = wl_display_get_registry(display);
     wl_registry_add_listener(registry, &registry_listener, window);
@@ -547,25 +611,63 @@ static window_t *libwwayland_window_create(int encoding, int *width, int *height
       debug(DEBUG_ERROR, "WAYLAND", "xkb_compose_table_new_from_locale failed");
     }
 
-	  cursor_theme = wl_cursor_theme_load(NULL, 24, window->shm);
-	  cursor = wl_cursor_theme_get_cursor(cursor_theme, "left_ptr");
-	  window->cursor_image = cursor->images[0];
-	  window->cursor_buffer = wl_cursor_image_get_buffer(window->cursor_image);
-	  window->cursor_surface = wl_compositor_create_surface(window->compositor);
-	  wl_surface_attach(window->cursor_surface, window->cursor_buffer, 0, 0);
-	  wl_surface_commit(window->cursor_surface);
+    cursor_theme = wl_cursor_theme_load(NULL, 24, window->shm);
+    cursor = wl_cursor_theme_get_cursor(cursor_theme, "left_ptr");
+    window->cursor_image = cursor->images[0];
+    window->cursor_buffer = wl_cursor_image_get_buffer(window->cursor_image);
+    window->cursor_surface = wl_compositor_create_surface(window->compositor);
+    wl_surface_attach(window->cursor_surface, window->cursor_buffer, 0, 0);
+    wl_surface_commit(window->cursor_surface);
 
     window->surface = wl_compositor_create_surface(window->compositor);
-    window->xdg_surface = xdg_wm_base_get_xdg_surface(window->xdg_wm_base, window->surface);
-    window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
 
-    xdg_surface_add_listener(window->xdg_surface, &xdg_surface_listener, window);
-    xdg_toplevel_add_listener(window->xdg_toplevel, &xdg_toplevel_listener, window);
+    wl_surface_attach(window->surface, NULL, 0, 0);
+    wl_surface_commit(window->surface);
+
+#ifdef LIBDECOR
+    if (!window->decoration_manager) {
+      window->libdecor = libdecor_new(window->display, &libdecor_interface);
+      if (window->libdecor) {
+        window->margin = 0;
+        window->frame = libdecor_decorate(window->libdecor, window->surface, &libdecor_frame_interface, window);
+        //libdecor_frame_set_app_id(window->frame, c->classname);
+        libdecor_frame_map(window->frame);
+      } else {
+        debug(DEBUG_ERROR, "WAYLAND", "libdecor_decorate failed");
+      }
+    }
+
+    if (!window->frame) {
+#endif
+      debug(DEBUG_INFO, "WAYLAND", "xdg_toplevel from xdg");
+      window->xdg_surface = xdg_wm_base_get_xdg_surface(window->xdg_wm_base, window->surface);
+      window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
+      xdg_surface_add_listener(window->xdg_surface, &xdg_surface_listener, window);
+      xdg_toplevel_add_listener(window->xdg_toplevel, &xdg_toplevel_listener, window);
+#ifdef LIBDECOR
+    }
+#endif
 
     wl_surface_commit(window->surface);
-    while (wl_display_dispatch(window->display) != -1 && !window->configured);
+    while (!window->configured) {
+      wl_display_flush(window->display);
+      wl_display_dispatch(window->display);
+      if (thread_must_end()) break;
+    }
 
-    if ((window->buffer = create_buffer(window, window->width + 2*MARGIN, window->height + 2*MARGIN)) == NULL) {
+#ifdef LIBDECOR
+    if (window->frame) {
+      debug(DEBUG_INFO, "WAYLAND", "xdg_toplevel from libdecor");
+      window->xdg_surface = libdecor_frame_get_xdg_surface(window->frame);
+      window->xdg_toplevel = libdecor_frame_get_xdg_toplevel(window->frame);
+      libdecor_frame_unset_capabilities(window->frame, LIBDECOR_ACTION_RESIZE);
+      libdecor_frame_set_min_content_size(window->frame, window->width, window->height);
+      libdecor_frame_set_max_content_size(window->frame, window->width, window->height);
+      libdecor_frame_set_visibility(window->frame, 1);
+    }
+#endif
+
+    if ((window->buffer = create_buffer(window, window->width + 2*window->margin, window->height + 2*window->margin)) == NULL) {
       sys_free(window);
       return NULL;
     }
@@ -573,7 +675,7 @@ static window_t *libwwayland_window_create(int encoding, int *width, int *height
     wl_surface_attach(window->surface, window->buffer, 0, 0);
     wl_surface_commit(window->surface);
 
-    xdg_surface_set_window_geometry(window->xdg_surface, 0, 0, window->width + 2*MARGIN, window->height + 2*MARGIN);
+    xdg_surface_set_window_geometry(window->xdg_surface, 0, 0, window->width + 2*window->margin, window->height + 2*window->margin);
     wl_surface_commit(window->surface);
   }
 
@@ -702,13 +804,13 @@ static int libwwayland_window_draw_texture_rect(window_t *_window, texture_t *te
         h = window->height - y;
       }
 
-      x += MARGIN;
-      y += MARGIN;
+      x += window->margin;
+      y += window->margin;
 
       s = &texture->buf[(ty * texture->width + tx) * window->spixel];
-      d = &window->shm_data[(y * (window->width + 2*MARGIN) + x) * window->spixel];
+      d = &window->shm_data[(y * (window->width + 2*window->margin) + x) * window->spixel];
       spitch = texture->width * window->spixel;
-      dpitch = (window->width + 2*MARGIN) * window->spixel;
+      dpitch = (window->width + 2*window->margin) * window->spixel;
       len = w * window->spixel;
       for (i = 0; i < h; i++) {
         sys_memcpy(d, s, len);
@@ -784,10 +886,15 @@ static int libwwayland_window_destroy(window_t *_window) {
     if (window->background) {
       libwwayland_window_destroy_texture(_window, window->background);
     }
-	  xdg_toplevel_destroy(window->xdg_toplevel);
-	  xdg_surface_destroy(window->xdg_surface);
-	  wl_surface_destroy(window->surface);
-	  wl_buffer_destroy(window->buffer);
+#ifdef LIBDECOR
+    if (window->libdecor) {
+      libdecor_unref(window->libdecor);
+    }
+#endif
+    xdg_toplevel_destroy(window->xdg_toplevel);
+    xdg_surface_destroy(window->xdg_surface);
+    wl_surface_destroy(window->surface);
+    wl_buffer_destroy(window->buffer);
     sys_free(window);
     r = 0;
   }
