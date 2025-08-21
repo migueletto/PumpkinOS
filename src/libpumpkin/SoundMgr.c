@@ -64,6 +64,20 @@ typedef struct {
   Boolean finished;
 } snd_param_t;
 
+static Err SndStreamCreateInternal(
+  SndStreamRef *channel,
+  SndStreamMode mode,
+  SndFormatType format,
+  UInt32 samplerate,
+  SndSampleType type,
+  SndStreamWidth width,
+  SndStreamBufferCallback func,
+  SndStreamVariableBufferCallback vfunc,
+  void *userdata,
+  UInt32 buffsize,
+  Boolean armNative,
+  Boolean m68k);
+
 int SndInitModule(audio_provider_t *ap) {
   snd_module_t *module;
   int i;
@@ -446,7 +460,7 @@ void putSample(int pcm, uint8_t *buffer, UInt32 i, Int32 sample) {
 static int SndGetAudio(void *buffer, int len, void *data) {
   SndStreamArg *arg = (SndStreamArg *)data;
   SndStreamType *snd;
-  UInt32 nsamples, i, j;
+  UInt32 nbytes, nsamples, i, j;
   Int32 volume, pan;
   Err err;
   Boolean inited = false;
@@ -483,22 +497,43 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       if (snd->started && !snd->stopped) {
         nsamples = len / snd->samplesize;
         if (snd->func) {
+          debug(DEBUG_TRACE, "Sound", "GetAudio native func len=%d nsamples=%d", len, nsamples);
           err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
         } else if (snd->func68k) {
           ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
-            snd->buffer = MemPtrNew(len);
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
           }
+          debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
           err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          MemMove(buffer, snd->buffer, len);
         } else if (snd->vfunc) {
-          err = snd->vfunc(snd->userdata, arg->ptr, buffer, &nsamples);
-          len = nsamples * snd->samplesize;
+          debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc len=%d", len);
+          nbytes = len;
+          err = snd->vfunc(snd->userdata, arg->ptr, buffer, &nbytes);
+          if (nbytes > len) {
+            debug(DEBUG_ERROR, "Sound", "GetAudio native returned more bytes (%d) than the buffer size (%d)", nbytes, len);
+          } else {
+            len = nbytes;
+          }
+          nsamples = nbytes / snd->samplesize;
+          debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc got len=%d nsamples=%d", len, nsamples);
         } else if (snd->vfunc68k) {
           ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
-            snd->buffer = MemPtrNew(len);
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
           }
-          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nsamples);
+          debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
+          nbytes = len;
+          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          if (nbytes > len) {
+            debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
+          } else {
+            len = nbytes;
+          }
+          MemMove(buffer, snd->buffer, len);
+          nsamples = nbytes / snd->samplesize;
+          debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc got len=%d nsamples=%d", len, nsamples);
         } else {
           err = sndErrBadParam;
         }
@@ -801,7 +836,7 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
         param->async = flags == sndFlagAsync;
         debug(DEBUG_TRACE, "Sound", "SndPlayBuffer %d samples of size %d", param->size, param->sampleSize);
 
-        if (SndStreamCreateExtended(&param->channel, sndOutput, sndFormatPCM, rate, type, width, SndVariableBufferCallback, param, 0, false) == errNone) {
+        if (SndStreamCreateInternal(&param->channel, sndOutput, sndFormatPCM, rate, type, width, NULL, SndVariableBufferCallback, param, 0, false, false) == errNone) {
           SndStreamSetVolume(param->channel, volume);
           if (SndStreamStart(param->channel) == errNone) {
             if (flags == sndFlagAsync) {
@@ -1056,7 +1091,8 @@ static void SndStreamRefDestructor(void *p) {
   if (snd) {
     debug(DEBUG_TRACE, "Sound", "SndStreamRefDestructor(%p)", snd);
     if (snd->audio && snd->ap && snd->ap->destroy) {
-      if (snd->buffer) MemPtrFree(snd->buffer);
+      //if (snd->buffer) MemPtrFree(snd->buffer);
+      if (snd->buffer) pumpkin_heap_free(snd->buffer, "snd_buffer");
       snd->ap->destroy(snd->audio);
     }
     sys_free(snd);
@@ -1074,7 +1110,8 @@ static Err SndStreamCreateInternal(
   SndStreamVariableBufferCallback vfunc, /* function that gets called to fill a buffer */
   void *userdata,               /* gets passed in to the above function */
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
-  Boolean armNative)            /* true if callback is arm native */ {
+  Boolean armNative,            /* true if callback is arm native */
+  Boolean m68k) {
 
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd;
@@ -1106,7 +1143,7 @@ static Err SndStreamCreateInternal(
     if (pcm != -1) {
       if ((snd = sys_calloc(1, sizeof(SndStreamType))) != NULL) {
         snd->tag = TAG_SOUND;
-        if (pumpkin_is_m68k()) {
+        if (m68k) {
           snd->func = NULL;
           snd->vfunc = NULL;
           snd->userdata = NULL;
@@ -1170,7 +1207,7 @@ Err SndStreamCreate(
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative)            /* true if callback is arm native */ {
 
-  return SndStreamCreateInternal(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative);
+  return SndStreamCreateInternal(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative, pumpkin_is_m68k());
 }
 
 Err SndStreamCreateExtended(
@@ -1185,5 +1222,5 @@ Err SndStreamCreateExtended(
   UInt32 buffsize,              /* preferred buffersize, use 0 for default */
   Boolean armNative) {
 
-  return SndStreamCreateInternal(channel, mode, format, samplerate, type, width, NULL, func, userdata, buffsize, armNative);
+  return SndStreamCreateInternal(channel, mode, format, samplerate, type, width, NULL, func, userdata, buffsize, armNative, pumpkin_is_m68k());
 }

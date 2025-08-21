@@ -1289,9 +1289,10 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
 
   argsSize = sizeof(uint32_t) * 4;
 
-  if ((p = pumpkin_heap_alloc(argsSize, "CallSndFunc")) != NULL) {
+  if ((p = pumpkin_heap_alloc(argsSize + 1024, "CallSndFunc")) != NULL) {
     uint8_t *ram = pumpkin_heap_base();
     a = p - ram;
+    m68k_set_reg(M68K_REG_SP, a + argsSize + 1024);
     m68k_write_memory_32(a, data);
     m68k_write_memory_32(a + 4, channel);
     m68k_write_memory_32(a + 8, buffer);
@@ -1306,7 +1307,7 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
   return r;
 }
 
-Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nsamples) {
+Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes) {
   // Err SndStreamVariableBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 *bufferSizeP)
   emu_state_t *oldState;
   uint32_t a, argsSize;
@@ -1320,14 +1321,15 @@ Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32
   if ((p = pumpkin_heap_alloc(argsSize + sizeof(UInt32) + 1024, "CallSndFunc")) != NULL) {
     uint8_t *ram = pumpkin_heap_base();
     a = p - ram;
-    m68k_set_reg(M68K_REG_SP, a + argsSize + sizeof(UInt32));
+    m68k_set_reg(M68K_REG_SP, a + argsSize + sizeof(UInt32) + 1024);
     m68k_write_memory_32(a, data);
     m68k_write_memory_32(a + 4, channel);
     m68k_write_memory_32(a + 8, buffer);
     m68k_write_memory_32(a + 12, a + argsSize);
-    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndFunc 0x%08X 0x%08X %u 0x%08X %u ...", addr, data, channel, buffer, *nsamples);
+    m68k_write_memory_32(a + argsSize, *nbytes);
+    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndVFunc 0x%08X 0x%08X %u 0x%08X %u ...", addr, data, channel, buffer, *nbytes);
     r = call68K_func(0, addr, a, argsSize) & 0xFFFF;
-    *nsamples = m68k_read_memory_32(a + argsSize);
+    *nbytes = m68k_read_memory_32(a + argsSize);
     pumpkin_heap_free(p, "CallSndFunc");
   }
 
