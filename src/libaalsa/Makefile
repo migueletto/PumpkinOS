@@ -1,7 +1,7 @@
 include ../common.mak
 
 SOURCE=libaalsa.c
-LIBSDL=-lasound
+LIBALSA=-lasound
 
 PROGRAM=$(BIN)/libaalsa$(SOEXT)
 OBJS=$(SOURCE:%.c=%.o)
