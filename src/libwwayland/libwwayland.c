@@ -113,12 +113,14 @@ static void pointer_handle_button(void *data, struct wl_pointer *pointer, uint32
     if (button) {
       switch (state) {
         case WL_POINTER_BUTTON_STATE_PRESSED:
-          if (!window->frame && button == 2 && (window->modifiers & 1)) {
+#ifndef LIBDECOR
+          if (button == 2 && (window->modifiers & 1)) {
             // shift right click, move the wayland window and don't pass the event to the app
             xdg_toplevel_move(window->xdg_toplevel, window->seat, serial);
-          } else {
-            window->buttons |= button;
+            break;
           }
+#endif
+          window->buttons |= button;
           break;
         case WL_POINTER_BUTTON_STATE_RELEASED:
           window->buttons &= ~button;
@@ -511,10 +513,11 @@ static struct wl_buffer *create_buffer(libwwayland_window_t *window, int width, 
 }
 
 static int libwwayland_icon(libwwayland_window_t *window, uint32_t *raw, int width, int height) {
+  struct xdg_toplevel *xdg_toplevel;
   uint32_t *p;
   int i, r = -1;
 
-  if (window && raw && width > 0 && height > 0 && window->icon_manager && window->frame) {
+  if (window && raw && width > 0 && height > 0 && window->icon_manager) {
     debug(DEBUG_TRACE, "WAYLAND", "set icon %dx%d", width, height);
     if ((window->icon = xdg_toplevel_icon_manager_v1_create_icon(window->icon_manager)) != NULL) {
       if ((window->icon_buffer = create_buffer1(window, width, height)) == NULL) {
@@ -523,7 +526,12 @@ static int libwwayland_icon(libwwayland_window_t *window, uint32_t *raw, int wid
           p[i] = raw[i];
         }
         xdg_toplevel_icon_v1_add_buffer(window->icon, window->icon_buffer->buffer, 1);
-        xdg_toplevel_icon_manager_v1_set_icon(window->icon_manager, libdecor_frame_get_xdg_toplevel(window->frame), window->icon);
+#ifdef LIBDECOR
+        xdg_toplevel = window->frame ? libdecor_frame_get_xdg_toplevel(window->frame) : window->xdg_toplevel;
+#else
+        xdg_toplevel = window->xdg_toplevel;
+#endif
+        xdg_toplevel_icon_manager_v1_set_icon(window->icon_manager, xdg_toplevel, window->icon);
         r = 0;
       }
     }
