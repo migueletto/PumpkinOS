@@ -10,6 +10,7 @@
 #include <locale.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_image.h>
+#include <xcb/xcb_ewmh.h>
 #include <xcb/xkb.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-x11.h>
@@ -49,6 +50,8 @@ typedef struct {
   xcb_clipboard_t clipboard;
   xcb_pixmap_t cursor_pixmap;
   xcb_cursor_t invisible_cursor;
+  xcb_ewmh_connection_t ewmh;
+  int net_wm_icon;
 } libwxcb_window_t;
 
 static window_provider_t window_provider;
@@ -288,6 +291,7 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
   struct xkb_compose_table *compose_table;
   xcb_intern_atom_cookie_t selection, target, property;
   xcb_intern_atom_reply_t *reply_selection, *reply_target, *reply_property;
+  xcb_intern_atom_cookie_t *ewmh_cookie;
   const char *locale;
   uint32_t spixel;
   uint32_t mask, values[3];
@@ -402,6 +406,14 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
     if (reply_property) {
       window->clipboard.property = reply_property->atom;
       free(reply_property);
+    }
+
+    ewmh_cookie = xcb_ewmh_init_atoms(window->c, &window->ewmh);
+    if (xcb_ewmh_init_atoms_replies(&window->ewmh, ewmh_cookie, NULL)) {
+      debug(DEBUG_INFO, "XCB", "xcb_ewmh_init_atoms_replies (_NET_WM_ICON=%d)", window->ewmh._NET_WM_ICON);
+      window->net_wm_icon = 1;
+    } else {
+      debug(DEBUG_ERROR, "XCB", "xcb_ewmh_init_atoms_replies error");
     }
 
     window->cursor_pixmap = xcb_generate_id(window->c);
@@ -578,6 +590,67 @@ static int libwxcb_window_background(window_t *_window, uint32_t *raw, int width
   return r;
 }
 
+/*
+#define ICON_W 32
+#define ICON_H 32
+
+static void geticon(libwxcb_window_t *window, xcb_atom_t icon_atom) {
+  xcb_get_property_cookie_t cookie;
+  xcb_get_property_reply_t *reply;
+  xcb_generic_error_t *e;
+  uint32_t len;
+
+  cookie = xcb_get_property(window->c, 0, window->window, icon_atom, XCB_ATOM_CARDINAL, 0, 2 + (ICON_W * ICON_H));
+  reply = xcb_get_property_reply(window->c, cookie, &e);
+  if (reply) {
+    if (e) {
+      debug(DEBUG_ERROR, "XCB", "_NET_WM_ICON error");
+    } else {
+      len = xcb_get_property_value_length(reply);
+      debug(DEBUG_INFO, "XCB", "_NET_WM_ICON length %d", len);
+      if (len > 0) {
+        debug_bytes(DEBUG_INFO, "XCB", xcb_get_property_value(reply), len);
+      }
+    }
+    free(reply);
+  } else {
+    debug(DEBUG_INFO, "XCB", "_NET_WM_ICON does not exist");
+  }
+}
+*/
+
+static void seticon(libwxcb_window_t *window, xcb_atom_t icon_atom, uint32_t *src, int width, int height) {
+  uint32_t *data, num_words;
+
+  num_words = 2 + (width * height);
+  if ((data = sys_calloc(num_words, sizeof(uint32_t))) != NULL) {
+    data[0] = width;
+    data[1] = height;
+    sys_memcpy(&data[2], src, width * height * sizeof(uint32_t));
+    xcb_change_property(window->c, XCB_PROP_MODE_REPLACE, window->window, icon_atom, XCB_ATOM_CARDINAL, 32, num_words, data);
+    xcb_flush(window->c);
+    sys_free(data);
+  }
+}
+
+static int libwxcb_window_icon(window_t *_window, uint32_t *raw, int width, int height) {
+  libwxcb_window_t *window;
+  int r = -1;
+
+  if (_window && raw) {
+    window = (libwxcb_window_t *)_window;
+    if (window->net_wm_icon) {
+      debug(DEBUG_TRACE, "XCB", "icon %dx%d", width, height);
+      seticon(window, window->ewmh._NET_WM_ICON, raw, width, height);
+      r = 0;
+    } else {
+      debug(DEBUG_TRACE, "XCB", "set icon is not available");
+    }
+  }
+
+  return r;
+}
+
 static void libwxcb_window_status(window_t *window, int *x, int *y, int *buttons) {
   libwxcb_status((libwxcb_window_t *)window, x, y, buttons);
 }
@@ -607,6 +680,7 @@ static int libwxcb_window_destroy(window_t *_window) {
     if (window->background) {
       libwxcb_window_destroy_texture(_window, window->background);
     }
+    xcb_ewmh_connection_wipe(&window->ewmh);
     xcb_free_cursor(window->c, window->invisible_cursor);
     xcb_free_pixmap(window->c, window->cursor_pixmap);
     xcb_unmap_window(window->c, window->window);
@@ -635,6 +709,7 @@ int libwxcb_load(void) {
   window_provider.erase = libwxcb_window_erase;
   window_provider.render = libwxcb_window_render;
   window_provider.background = libwxcb_window_background;
+  window_provider.icon = libwxcb_window_icon;
   window_provider.create_texture = libwxcb_window_create_texture;
   window_provider.destroy_texture = libwxcb_window_destroy_texture;
   window_provider.update_texture = libwxcb_window_update_texture;

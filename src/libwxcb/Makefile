@@ -1,7 +1,7 @@
 include ../common.mak
 
 SOURCE=libwxcb.c
-LIBXCB=-lxcb -lxcb-image -lxkbcommon -lxkbcommon-x11 -lxcb-xkb
+LIBXCB=-lxcb -lxcb-image -lxkbcommon -lxkbcommon-x11 -lxcb-xkb -lxcb-ewmh
 
 PROGRAM=$(BIN)/libwxcb$(SOEXT)
 OBJS=$(SOURCE:%.c=%.o)
