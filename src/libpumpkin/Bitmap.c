@@ -1889,7 +1889,8 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
           case 16:
             offset = sy * rowBytes + sx*2;
             // XXX transparentValue is 24-bits RGB, but pixel values are 16-bits 565, so convert transparentValue to 16-bits
-            transparentValue = rgb565(r32(transparentValue), g32(transparentValue), b32(transparentValue));
+            //transparentValue = rgb565(r32(transparentValue), g32(transparentValue), b32(transparentValue));
+            // XXX is this correct? the logo bitmap is 16 bits and the white transparentValue is 0x0000FFFF, not 0x00FFFFFF
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0, k = 0; j < w; j++, k += 2) {
                 get2_16(&rgb, bits, offset + k);

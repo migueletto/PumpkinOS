@@ -66,6 +66,7 @@ typedef struct {
   int (*erase)(window_t *window, uint32_t bg);
   int (*render)(window_t *window);
   int (*background)(window_t *window, uint32_t *raw, int width, int height);
+  int (*icon)(window_t *window, uint32_t *raw, int width, int height);
   texture_t *(*create_texture)(window_t *window, int width, int height);
   int (*destroy_texture)(window_t *window, texture_t *texture);
   int (*update_texture)(window_t *window, texture_t *texture, uint8_t *raw);

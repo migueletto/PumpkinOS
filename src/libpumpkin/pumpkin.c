@@ -1337,6 +1337,36 @@ static void pumpkin_init_midi(void) {
   }
 }
 
+static void pumpkin_init_icon(void) {
+  surface_t *icon;
+  BitmapType *bmp;
+  MemHandle h;
+  Coord width, height;
+  UInt32 transparentValue;
+  uint32_t *raw;
+  int density, depth, len;
+
+  if (pumpkin_module.wp->icon) {
+    if ((h = DmGetResource(bitmapRsc, 10000)) != NULL) {
+      if ((bmp = MemHandleLock(h)) != NULL) {
+        bmp = BmpGetBestBitmap(bmp, pumpkin_module.density, pumpkin_module.depth);
+        BmpGetDimensions(bmp, &width, &height, NULL);
+        depth = BmpGetBitDepth(bmp);
+        density = BmpGetDensity(bmp);
+        BmpGetTransparentValue(bmp, &transparentValue);
+        debug(DEBUG_INFO, PUMPKINOS, "set icon %dx%d, density %d, depth %d, transparent 0x%08X", width, height, density, depth, transparentValue);
+        icon = surface_create(width, height, pumpkin_module.encoding);
+        BmpDrawSurface(bmp, 0, 0, width, height, icon, 0, 0, true);
+        raw = (uint32_t *)icon->getbuffer(icon->data, &len);
+        pumpkin_module.wp->icon(pumpkin_module.w, raw, width, height);
+        surface_destroy(icon);
+        MemHandleUnlock(h);
+      }
+      DmReleaseResource(h);
+    }
+  }
+}
+
 static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
@@ -1496,6 +1526,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     pumpkin_module.refresh = 1;
 
     pumpkin_init_midi();
+    pumpkin_init_icon();
   }
 
   pumpkin_module.render = 1;
