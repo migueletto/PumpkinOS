@@ -24,12 +24,18 @@
 
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-client-protocol.h"
+#include "xdg-toplevel-icon-client-protocol.h"
 #include "shm.h"
 
 struct texture_t {
   int width, height;
   uint8_t *buf;
 };
+
+typedef struct {
+  struct wl_buffer *buffer;
+  uint8_t *shm_data;
+} buffer_t;
 
 typedef struct {
   int width, height, spixel, margin, inside;
@@ -56,10 +62,13 @@ typedef struct {
   struct wl_keyboard *keyboard;
   struct zxdg_decoration_manager_v1 *decoration_manager;
   struct zxdg_toplevel_decoration_v1 *decoration;
+  struct xdg_toplevel_icon_manager_v1 *icon_manager;
+  struct xdg_toplevel_icon_v1 *icon;
 #ifdef LIBDECOR
   struct libdecor *libdecor;
   struct libdecor_frame *frame;
 #endif
+  buffer_t *icon_buffer;
   uint8_t *shm_data;
   int configured;
   int running;
@@ -331,6 +340,10 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
     window->decoration_manager = wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface, 1);
     window->decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(window->decoration_manager, window->xdg_toplevel);
     zxdg_toplevel_decoration_v1_set_mode(window->decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+
+  } else if (sys_strcmp(interface, "xdg_toplevel_icon_manager_v1") == 0) {
+    debug(DEBUG_INFO, "WAYLAND", "binding xdg toplevel icon interface");
+    window->icon_manager = wl_registry_bind(registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
   } 
 }
 
@@ -430,6 +443,95 @@ static void libwwayland_title(libwwayland_window_t *window, char *title) {
   }
 }
 
+static buffer_t *create_buffer1(libwwayland_window_t *window, int width, int height) {
+  buffer_t *buffer;
+  struct wl_shm_pool *pool;
+  int stride = width * window->spixel;
+  int size = stride * height;
+  int fd;
+
+  if ((buffer = sys_malloc(sizeof(buffer_t))) == NULL) {
+    return NULL;
+  }
+
+  fd = create_shm_file(size);
+  if (fd < 0) {
+    debug(DEBUG_ERROR, "WAYLAND", "creating a buffer file for %d B failed: %m", size);
+    return NULL;
+  }
+
+  buffer->shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (buffer->shm_data == MAP_FAILED) {
+    debug(DEBUG_ERROR, "WAYLAND", "mmap failed: %m");
+    close(fd);
+    sys_free(buffer);
+    return NULL;
+  }
+
+  pool = wl_shm_create_pool(window->shm, fd, size);
+  buffer->buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
+  wl_shm_pool_destroy(pool);
+  close(fd);
+
+  return buffer;
+}
+
+static struct wl_buffer *create_buffer(libwwayland_window_t *window, int width, int height) {
+  struct wl_shm_pool *pool;
+  struct wl_buffer *buffer;
+  int stride = width * window->spixel;
+  int size = stride * height;
+  uint32_t *p;
+  int fd, i;
+
+  fd = create_shm_file(size);
+  if (fd < 0) {
+    debug(DEBUG_ERROR, "WAYLAND", "creating a buffer file for %d B failed: %m", size);
+    return NULL;
+  }
+
+  window->shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (window->shm_data == MAP_FAILED) {
+    debug(DEBUG_ERROR, "WAYLAND", "mmap failed: %m");
+    close(fd);
+    return NULL;
+  }
+
+  p = (uint32_t *)window->shm_data;
+  for (i = 0; i < width * height; i++) {
+    p[i] = 0xff404080;
+  }
+
+  pool = wl_shm_create_pool(window->shm, fd, size);
+  buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
+  wl_shm_pool_destroy(pool);
+  close(fd);
+
+  return buffer;
+}
+
+static int libwwayland_icon(libwwayland_window_t *window, uint32_t *raw, int width, int height) {
+  uint32_t *p;
+  int i, r = -1;
+
+  if (window && raw && width > 0 && height > 0 && window->icon_manager && window->frame) {
+    debug(DEBUG_TRACE, "WAYLAND", "set icon %dx%d", width, height);
+    if ((window->icon = xdg_toplevel_icon_manager_v1_create_icon(window->icon_manager)) != NULL) {
+      if ((window->icon_buffer = create_buffer1(window, width, height)) == NULL) {
+        p = (uint32_t *)window->icon_buffer->shm_data;
+        for (i = 0; i < width * height; i++) {
+          p[i] = raw[i];
+        }
+        xdg_toplevel_icon_v1_add_buffer(window->icon, window->icon_buffer->buffer, 1);
+        xdg_toplevel_icon_manager_v1_set_icon(window->icon_manager, libdecor_frame_get_xdg_toplevel(window->frame), window->icon);
+        r = 0;
+      }
+    }
+  }
+
+  return r;
+}
+
 static char *libwwayland_clipboard(libwwayland_window_t *_window, char *clipboard, int len) {
   //libwwayland_window_t *window;
   char *r = NULL;
@@ -517,40 +619,6 @@ static int libwwayland_window_show_cursor(window_t *_window, int show) {
   }
 
   return r;
-}
-
-static struct wl_buffer *create_buffer(libwwayland_window_t *window, int width, int height) {
-  struct wl_shm_pool *pool;
-  struct wl_buffer *buffer;
-  int stride = width * window->spixel;
-  int size = stride * height;
-  uint32_t *p;
-  int fd, i;
-  
-  fd = create_shm_file(size);
-  if (fd < 0) {
-    debug(DEBUG_ERROR, "WAYLAND", "creating a buffer file for %d B failed: %m", size);
-    return NULL;
-  }
-  
-  window->shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (window->shm_data == MAP_FAILED) {
-    debug(DEBUG_ERROR, "WAYLAND", "mmap failed: %m");
-    close(fd);
-    return NULL;
-  } 
-    
-  p = (uint32_t *)window->shm_data;
-  for (i = 0; i < width * height; i++) {
-    p[i] = 0xff404080;
-  }
-
-  pool = wl_shm_create_pool(window->shm, fd, size);
-  buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
-  wl_shm_pool_destroy(pool);
-  close(fd);
-
-  return buffer;
 }
 
 static window_t *libwwayland_window_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate,
@@ -865,6 +933,10 @@ static void libwwayland_window_title(window_t *window, char *title) {
   libwwayland_title((libwwayland_window_t *)window, title);
 }
 
+static int libwwayland_window_icon(window_t *window, uint32_t *raw, int width, int height) {
+  return libwwayland_icon((libwwayland_window_t *)window, raw, width, height);
+}
+
 static char *libwwayland_window_clipboard(window_t *window, char *clipboard, int len) {
   return libwwayland_clipboard((libwwayland_window_t *)window, clipboard, len);
 }
@@ -891,6 +963,8 @@ static int libwwayland_window_destroy(window_t *_window) {
       libdecor_unref(window->libdecor);
     }
 #endif
+    if (window->icon_buffer) {
+    }
     xdg_toplevel_destroy(window->xdg_toplevel);
     xdg_surface_destroy(window->xdg_surface);
     wl_surface_destroy(window->surface);
@@ -924,6 +998,7 @@ int libwwayland_load(void) {
   window_provider.draw_texture = libwwayland_window_draw_texture;
   window_provider.status = libwwayland_window_status;
   window_provider.title = libwwayland_window_title;
+  window_provider.icon = libwwayland_window_icon;
   window_provider.clipboard = libwwayland_window_clipboard;
   window_provider.event2 = libwwayland_window_event2;
   window_provider.update = libwwayland_window_update;
