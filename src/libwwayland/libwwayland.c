@@ -51,7 +51,6 @@ typedef struct {
   struct xdg_surface *xdg_surface;
   struct wl_surface *surface;
   struct xdg_toplevel *xdg_toplevel;
-  struct wl_buffer *buffer;
   struct wl_surface *cursor_surface;
   struct wl_cursor_image *cursor_image;
   struct wl_buffer *cursor_buffer;
@@ -68,8 +67,8 @@ typedef struct {
   struct libdecor *libdecor;
   struct libdecor_frame *frame;
 #endif
+  buffer_t *buffer;
   buffer_t *icon_buffer;
-  uint8_t *shm_data;
   int configured;
   int running;
   texture_t *background;
@@ -445,7 +444,7 @@ static void libwwayland_title(libwwayland_window_t *window, char *title) {
   }
 }
 
-static buffer_t *create_buffer1(libwwayland_window_t *window, int width, int height) {
+static buffer_t *create_buffer(libwwayland_window_t *window, int width, int height) {
   buffer_t *buffer;
   struct wl_shm_pool *pool;
   int stride = width * window->spixel;
@@ -478,38 +477,11 @@ static buffer_t *create_buffer1(libwwayland_window_t *window, int width, int hei
   return buffer;
 }
 
-static struct wl_buffer *create_buffer(libwwayland_window_t *window, int width, int height) {
-  struct wl_shm_pool *pool;
-  struct wl_buffer *buffer;
-  int stride = width * window->spixel;
-  int size = stride * height;
-  uint32_t *p;
-  int fd, i;
-
-  fd = create_shm_file(size);
-  if (fd < 0) {
-    debug(DEBUG_ERROR, "WAYLAND", "creating a buffer file for %d B failed: %m", size);
-    return NULL;
+static void destroy_buffer(buffer_t *buffer) {
+  if (buffer) {
+    wl_buffer_destroy(buffer->buffer);
+    sys_free(buffer);
   }
-
-  window->shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (window->shm_data == MAP_FAILED) {
-    debug(DEBUG_ERROR, "WAYLAND", "mmap failed: %m");
-    close(fd);
-    return NULL;
-  }
-
-  p = (uint32_t *)window->shm_data;
-  for (i = 0; i < width * height; i++) {
-    p[i] = 0xff404080;
-  }
-
-  pool = wl_shm_create_pool(window->shm, fd, size);
-  buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
-  wl_shm_pool_destroy(pool);
-  close(fd);
-
-  return buffer;
 }
 
 static int libwwayland_icon(libwwayland_window_t *window, uint32_t *raw, int width, int height) {
@@ -520,7 +492,7 @@ static int libwwayland_icon(libwwayland_window_t *window, uint32_t *raw, int wid
   if (window && raw && width > 0 && height > 0 && window->icon_manager) {
     debug(DEBUG_TRACE, "WAYLAND", "set icon %dx%d", width, height);
     if ((window->icon = xdg_toplevel_icon_manager_v1_create_icon(window->icon_manager)) != NULL) {
-      if ((window->icon_buffer = create_buffer1(window, width, height)) == NULL) {
+      if ((window->icon_buffer = create_buffer(window, width, height)) == NULL) {
         p = (uint32_t *)window->icon_buffer->shm_data;
         for (i = 0; i < width * height; i++) {
           p[i] = raw[i];
@@ -748,7 +720,7 @@ static window_t *libwwayland_window_create(int encoding, int *width, int *height
       return NULL;
     }
 
-    wl_surface_attach(window->surface, window->buffer, 0, 0);
+    wl_surface_attach(window->surface, window->buffer->buffer, 0, 0);
     wl_surface_commit(window->surface);
 
     xdg_surface_set_window_geometry(window->xdg_surface, 0, 0, window->width + 2*window->margin, window->height + 2*window->margin);
@@ -768,7 +740,7 @@ static int libwwayland_window_erase(window_t *_window, uint32_t bg) {
 
   if (_window) {
     window = (libwwayland_window_t *)_window;
-    sys_memset(window->shm_data, 0, window->width * window->height * window->spixel);
+    sys_memset(window->buffer->shm_data, 0, window->width * window->height * window->spixel);
 
     if (window->background) {
       window_provider.draw_texture(_window, window->background, 0, 0);
@@ -884,7 +856,7 @@ static int libwwayland_window_draw_texture_rect(window_t *_window, texture_t *te
       y += window->margin;
 
       s = &texture->buf[(ty * texture->width + tx) * window->spixel];
-      d = &window->shm_data[(y * (window->width + 2*window->margin) + x) * window->spixel];
+      d = &window->buffer->shm_data[(y * (window->width + 2*window->margin) + x) * window->spixel];
       spitch = texture->width * window->spixel;
       dpitch = (window->width + 2*window->margin) * window->spixel;
       len = w * window->spixel;
@@ -893,7 +865,7 @@ static int libwwayland_window_draw_texture_rect(window_t *_window, texture_t *te
         s += spitch;
         d += dpitch;
       }
-      wl_surface_attach(window->surface, window->buffer, 0, 0);
+      wl_surface_attach(window->surface, window->buffer->buffer, 0, 0);
       wl_surface_damage(window->surface, x, y, w, h);
       wl_surface_commit(window->surface);
       r = 0;
@@ -972,11 +944,14 @@ static int libwwayland_window_destroy(window_t *_window) {
     }
 #endif
     if (window->icon_buffer) {
+      destroy_buffer(window->icon_buffer);
     }
     xdg_toplevel_destroy(window->xdg_toplevel);
     xdg_surface_destroy(window->xdg_surface);
     wl_surface_destroy(window->surface);
-    wl_buffer_destroy(window->buffer);
+    if (window->buffer) {
+      destroy_buffer(window->buffer);
+    }
     sys_free(window);
     r = 0;
   }
