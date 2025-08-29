@@ -1,12 +1,6 @@
-include ../common.mak
-
+PROGRAM=libwxcb
 SOURCE=libwxcb.c
-LIBXCB=-lxcb -lxcb-image -lxkbcommon -lxkbcommon-x11 -lxcb-xkb -lxcb-ewmh
+LIBS=-lxcb -lxcb-image -lxkbcommon -lxkbcommon-x11 -lxcb-xkb -lxcb-ewmh
 
-PROGRAM=$(BIN)/libwxcb$(SOEXT)
-OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBXCB)
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../common.mak
+include ../lib.mak

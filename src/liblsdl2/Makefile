@@ -1,48 +1,23 @@
 include ../common.mak
 
-#CUSTOMFLAGS=-DSDL_OPENGL
-
+PROGRAM=liblsdl2
 SOURCE=liblsdl2.c
 
-ifeq ($(OSNAME),Emscripten)
+#MIXER_LIBS=-lSDL2_mixer
+#MIXER_FLAGS=-DSDL_MIXER
+#OPENGL_FLAGS=-DSDL_OPENGL
 
+ifeq ($(OSNAME),Kernel)
+STATIC=1
+else ifeq ($(OSNAME),Emscripten)
+STATIC=2
 CUSTOMFLAGS=-s USE_SDL=2
-
-PROGRAM=$(BIN)/liblsdl2.a
-OBJS=$(SOURCE:%.c=%.wasm)
-$(PROGRAM): $(OBJS)
-	$(EM_AR) -cru $(PROGRAM) $(OBJS)
-
-else ifeq ($(OSNAME),Kernel)
-
-PROGRAM=$(BIN)/liblsdl2.a
-OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
-
+else ifeq ($(OSNAME),Msys)
+CUSTOMFLAGS=$(MIXER_FLAGS) $(OPENGL_FLAGS)
+LIBS=-lSDL2 -lversion -limm32 -lgdi32 -lsetupapi -lwinmm -lole32 -loleaut32 $(MIXER_LIBS)
 else
-
-ifeq ($(OSNAME),Msys)
-#LIBSDL=-lSDL2 -lversion -limm32 -lgdi32 -lsetupapi -lwinmm -lole32 -loleaut32 -lSDL2_mixer
-LIBSDL=-lSDL2 -lversion -limm32 -lgdi32 -lsetupapi -lwinmm -lole32 -loleaut32
+CUSTOMFLAGS=$(MIXER_FLAGS) $(OPENGL_FLAGS)
+LIBS=-lSDL2 $(MIXER_LIBS)
 endif
 
-ifeq ($(OSNAME),GNU/Linux)
-#LIBSDL=-lSDL2 -lSDL2_mixer
-LIBSDL=-lSDL2
-endif
-
-ifeq ($(OSNAME),serenity)
-#LIBSDL=-lSDL2 -lSDL2_mixer
-LIBSDL=-lSDL2
-endif
-
-PROGRAM=$(BIN)/liblsdl2$(SOEXT)
-OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit $(LIBSDL)
-
-endif
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../lib.mak

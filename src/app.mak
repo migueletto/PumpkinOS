@@ -13,8 +13,10 @@ ifeq ($(APPTYPE),)
 APPTYPE=appl
 endif
 
+ifeq ($(OBJS),)
 ifneq ($(SOURCE),)
 OBJS=$(SOURCE:%.c=%.o)
+endif
 endif
 
 ifneq ($(OBJS),)

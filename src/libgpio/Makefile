@@ -1,33 +1,20 @@
 include ../common.mak
 
+PROGRAM=libgpio
+
 ifeq ($(RPI),1)
 CUSTOMFLAGS=-DBCM2835 -I$(SRC)/libbcm2835
-RPI_LIBS=-lbcm2835
-RPI_OBJS=gpiobcm.o
+LIBS=-lbcm2835
+RPI_SOURCE=gpiobcm.c
 endif
 
 ifeq ($(OSNAME),Kernel)
-
-PROGRAM=$(BIN)/libgpio.a
-OBJS=libgpio.o gpiomem.o gpiosys.o $(RPI_OBJS)
-$(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
-
+STATIC=1
+SOURCE=libgpio.c gpiomem.c gpiosys.c $(RPI_SOURCE)
 else ifeq ($(OSNAME),GNU/Linux)
-
-PROGRAM=$(BIN)/libgpio$(SOEXT)
-OBJS=libgpio.o gpiomem.o gpiosys.o $(RPI_OBJS)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) $(RPI_LIBS) -lpit
-
+SOURCE=libgpio.c gpiomem.c gpiosys.c $(RPI_SOURCE)
 else
-
-PROGRAM=$(BIN)/libgpio$(SOEXT)
-OBJS=libgpio.o gpiomem.o
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit
-
+SOURCE=libgpio.c gpiomem.c
 endif
 
-clean:
-	rm -f $(PROGRAM) *.o
+include ../lib.mak

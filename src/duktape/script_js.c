@@ -248,9 +248,9 @@ static void free_function(void *udata, void *ptr) {
 }
 
 int ext_script_init(void) {
-  debug(DEBUG_INFO, "JS", "duktape version %d", DUK_VERSION);
-  debug(DEBUG_INFO, "JS", "integer type is %d bytes", sizeof(duk_int_t));
-  debug(DEBUG_INFO, "JS", "floating point type is %d bytes", sizeof(duk_double_t));
+  debug(DEBUG_INFO, "JS", "duktape version %ld", DUK_VERSION);
+  debug(DEBUG_INFO, "JS", "integer type is %d bytes", (uint32_t)sizeof(duk_int_t));
+  debug(DEBUG_INFO, "JS", "floating point type is %d bytes", (uint32_t)sizeof(duk_double_t));
 
   return 0;
 }
@@ -462,7 +462,7 @@ int ext_script_object_set(script_priv_t *priv, script_ref_t obj, script_arg_t *k
   get_ref(priv, obj);
 
   if (!duk_is_object(priv->ctx, -1)) {
-    debug(DEBUG_ERROR, "JS", "object %lld not found or not an object", obj);
+    debug(DEBUG_ERROR, "JS", "object %ld not found or not an object", obj);
     return -1;
   }
 
@@ -480,7 +480,7 @@ int ext_script_object_get(script_priv_t *priv, script_ref_t obj, script_arg_t *k
   get_ref(priv, obj);
 
   if (!duk_is_object(priv->ctx, -1)) {
-    debug(DEBUG_ERROR, "JS", "object %lld not found or not an object", obj);
+    debug(DEBUG_ERROR, "JS", "object %ld not found or not an object", obj);
     return -1;
   }
 

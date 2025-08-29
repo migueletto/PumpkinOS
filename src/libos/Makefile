@@ -1,30 +1,15 @@
 include ../common.mak
 include ../commonp.mak
 
+PROGRAM=libos
 SOURCE=libos.c
 
-ifeq ($(OSNAME),Emscripten)
-
-PROGRAM=$(BIN)/libos.a
-OBJS=$(SOURCE:%.c=%.wasm)
-$(PROGRAM): $(OBJS)
-	$(EM_AR) -cru $(PROGRAM) $(OBJS)
-
-else ifeq ($(OSNAME),Kernel)
-
-PROGRAM=$(BIN)/libos.a
-OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
-
+ifeq ($(OSNAME),Kernel)
+STATIC=1
+else ifeq ($(OSNAME),Emscripten)
+STATIC=2
 else
-
-PROGRAM=$(BIN)/libos$(SOEXT)
-OBJS=$(SOURCE:%.c=%.o)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit -lpumpkin
-
+LIBS=-lpumpkin
 endif
 
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../lib.mak

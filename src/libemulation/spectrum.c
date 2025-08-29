@@ -251,7 +251,7 @@ static void render(spectrum_data_t *spectrum, surface_t *surface) {
       spectrum->video[i] = spectrum->ram[ROM_SIZE + i];
     }
 
-    surface_update(surface);
+    surface_update(surface, 0, surface->height);
   }
     
   spectrum->flashCount++;

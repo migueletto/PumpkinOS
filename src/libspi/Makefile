@@ -1,26 +1,17 @@
 include ../common.mak
 
+PROGRAM=libbcm2835
+
 ifeq ($(RPI),1)
 CUSTOMFLAGS=-I$(SRC)/libbcm2835
 LIBS=-lbcm2835
-OBJS=libspi.o spi_bcm.o
+SOURCE=libspi.c spi_bcm.c
 else
-OBJS=libspi.o spi.o
+SOURCE=libspi.c spi.c
 endif
 
 ifeq ($(OSNAME),Kernel)
-
-PROGRAM=$(BIN)/libspi.a
-$(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
-
-else
-
-PROGRAM=$(BIN)/libspi$(SOEXT)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(LIB) -lpit
-
+STATIC=1
 endif
 
-clean:
-	rm -f $(PROGRAM) *.o
+include ../lib.mak

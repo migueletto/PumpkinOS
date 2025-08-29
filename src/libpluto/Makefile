@@ -1,15 +1,8 @@
-include ../common.mak
-include ../commonp.mak
-
-PROGRAM=$(BIN)/libpluto$(SOEXT)
-
-OBJS=VectorGraphics.o plutosvg.o plutovg-blend.o plutovg-dash.o plutovg-font.o plutovg-geometry.o plutovg-paint.o \
-     plutovg-rle.o plutovg.o sw_ft_math.o sw_ft_raster.o sw_ft_stroker.o
-
+PROGRAM=libpluto
+SOURCE=VectorGraphics.c plutosvg.c plutovg-blend.c plutovg-dash.c plutovg-font.c plutovg-geometry.c plutovg-paint.c \
+       plutovg-rle.c plutovg.c sw_ft_math.c sw_ft_raster.c sw_ft_stroker.c
 CUSTOMPFLAGS=-I.
 
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../common.mak
+include ../commonp.mak
+include ../lib.mak

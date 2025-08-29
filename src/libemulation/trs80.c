@@ -287,7 +287,7 @@ static void render(trs80_data_t *trs80, surface_t *surface) {
     }
   }
 
-  surface_update(surface);
+  surface_update(surface, 0, surface->height);
 }
 
 static void set_vram(trs80_data_t *trs80, uint16_t vaddr, uint8_t b) {

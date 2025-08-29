@@ -1,13 +1,6 @@
-include ../common.mak
-
-PROGRAM=$(BIN)/libzycore$(SOEXT)
-
-OBJS=Allocator.o ArgParse.o Bitset.o Format.o List.o Memory.o Process.o String.o Synchronization.o Terminal.o Thread.o Vector.o Zycore.o
-
+PROGRAM=libzycore
+SOURCE=Allocator.c ArgParse.c Bitset.c Format.c List.c Memory.c Process.c String.c Synchronization.c Terminal.c Thread.c Vector.c Zycore.c
 CUSTOMFLAGS=-I.
 
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS)
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../common.mak
+include ../lib.mak

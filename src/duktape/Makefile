@@ -1,17 +1,9 @@
-include ../common.mak
-
-LIBJS=$(BIN)/libscriptjs$(SOEXT)
-PROGRAM=duk
-
+PROGRAM=libscriptjs
+SOURCE=script_js.c duk_alloc_default.c duk_api_buffer.c duk_api_bytecode.c duk_api_call.c duk_api_codec.c duk_api_compile.c duk_api_debug.c duk_api_heap.c duk_api_inspect.c duk_api_memory.c duk_api_object.c duk_api_random.c duk_api_stack.c duk_api_string.c duk_api_time.c duk_bi_array.c duk_bi_boolean.c duk_bi_buffer.c duk_bi_date.c duk_bi_date_unix.c duk_bi_date_windows.c duk_bi_duktape.c duk_bi_encoding.c duk_bi_error.c duk_bi_function.c duk_bi_global.c duk_bi_json.c duk_bi_math.c duk_bi_number.c duk_bi_object.c duk_bi_performance.c duk_bi_pointer.c duk_bi_promise.c duk_bi_proxy.c duk_bi_reflect.c duk_bi_regexp.c duk_bi_string.c duk_bi_symbol.c duk_bi_thread.c duk_bi_thrower.c duk_builtins.c duk_debug_fixedbuffer.c duk_debugger.c duk_debug_macros.c duk_debug_vsnprintf.c duk_error_augment.c duk_error_longjmp.c duk_error_macros.c duk_error_misc.c duk_error_throw.c duk_hbuffer_alloc.c duk_hbuffer_ops.c duk_hbufobj_misc.c duk_heap_alloc.c duk_heap_finalize.c duk_heap_hashstring.c duk_heap_markandsweep.c duk_heap_memory.c duk_heap_misc.c duk_heap_refcount.c duk_heap_stringcache.c duk_heap_stringtable.c duk_hobject_alloc.c duk_hobject_class.c duk_hobject_enum.c duk_hobject_misc.c duk_hobject_pc2line.c duk_hobject_props.c duk_hstring_misc.c duk_hthread_alloc.c duk_hthread_builtins.c duk_hthread_misc.c duk_hthread_stacks.c duk_js_arith.c duk_js_call.c duk_js_compiler.c duk_js_executor.c duk_js_ops.c duk_js_var.c duk_lexer.c duk_numconv.c duk_regexp_compiler.c duk_regexp_executor.c duk_replacements.c duk_selftest.c duk_tval.c duk_unicode_support.c duk_unicode_tables.c duk_util_bitdecoder.c duk_util_bitencoder.c duk_util_bufwriter.c duk_util_cast.c duk_util_double.c duk_util_hashbytes.c duk_util_memory.c duk_util_misc.c duk_util_tinyrandom.c ./duk-v1-compat/duk_v1_compat.c
 CUSTOMFLAGS=-I. -I./duk-v1-compat
 
-OBJS=script_js.o duk_alloc_default.o duk_api_buffer.o duk_api_bytecode.o duk_api_call.o duk_api_codec.o duk_api_compile.o duk_api_debug.o duk_api_heap.o duk_api_inspect.o duk_api_memory.o duk_api_object.o duk_api_random.o duk_api_stack.o duk_api_string.o duk_api_time.o duk_bi_array.o duk_bi_boolean.o duk_bi_buffer.o duk_bi_date.o duk_bi_date_unix.o duk_bi_date_windows.o duk_bi_duktape.o duk_bi_encoding.o duk_bi_error.o duk_bi_function.o duk_bi_global.o duk_bi_json.o duk_bi_math.o duk_bi_number.o duk_bi_object.o duk_bi_performance.o duk_bi_pointer.o duk_bi_promise.o duk_bi_proxy.o duk_bi_reflect.o duk_bi_regexp.o duk_bi_string.o duk_bi_symbol.o duk_bi_thread.o duk_bi_thrower.o duk_builtins.o duk_debug_fixedbuffer.o duk_debugger.o duk_debug_macros.o duk_debug_vsnprintf.o duk_error_augment.o duk_error_longjmp.o duk_error_macros.o duk_error_misc.o duk_error_throw.o duk_hbuffer_alloc.o duk_hbuffer_ops.o duk_hbufobj_misc.o duk_heap_alloc.o duk_heap_finalize.o duk_heap_hashstring.o duk_heap_markandsweep.o duk_heap_memory.o duk_heap_misc.o duk_heap_refcount.o duk_heap_stringcache.o duk_heap_stringtable.o duk_hobject_alloc.o duk_hobject_class.o duk_hobject_enum.o duk_hobject_misc.o duk_hobject_pc2line.o duk_hobject_props.o duk_hstring_misc.o duk_hthread_alloc.o duk_hthread_builtins.o duk_hthread_misc.o duk_hthread_stacks.o duk_js_arith.o duk_js_call.o duk_js_compiler.o duk_js_executor.o duk_js_ops.o duk_js_var.o duk_lexer.o duk_numconv.o duk_regexp_compiler.o duk_regexp_executor.o duk_replacements.o duk_selftest.o duk_tval.o duk_unicode_support.o duk_unicode_tables.o duk_util_bitdecoder.o duk_util_bitencoder.o duk_util_bufwriter.o duk_util_cast.o duk_util_double.o duk_util_hashbytes.o duk_util_memory.o duk_util_misc.o duk_util_tinyrandom.o ./duk-v1-compat/duk_v1_compat.o
+include ../common.mak
+include ../lib.mak
 
-$(LIBJS): $(OBJS)
-	$(CC) -shared -o $(LIBJS) $(OBJS) -L$(BIN) -lpit -lm
-
-$(PROGRAM): duk_cmdline.o $(LIBJS)
-	$(CC) -o $(PROGRAM) duk_cmdline.o -L$(BIN) -lpit -lscriptjs -lm
-
-clean:
-	rm -f $(LIBJS) $(OBJS) $(PROGRAM)
+duk: duk_cmdline.o
+	$(CC) -o duk duk_cmdline.o -L$(BIN) -lpit -lscriptjs -lm

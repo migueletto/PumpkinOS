@@ -485,7 +485,7 @@ static void zx81_callback(void *data, uint32_t cycles) {
 
   t = sys_get_clock();
   if ((t - zx81->ut) > HOST_PERIOD) {
-    surface_update(surface);
+    surface_update(surface, 0, surface->height);
     zx81->ut = t;
   }
 

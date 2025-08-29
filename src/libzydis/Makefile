@@ -1,13 +1,8 @@
 include ../common.mak
 
-PROGRAM=$(BIN)/libzydis$(SOEXT)
-
-OBJS=MetaInfo.o Mnemonic.o Register.o Segment.o SharedData.o String.o Utils.o Zydis.o Decoder.o DecoderData.o Encoder.o EncoderData.o Disassembler.o Formatter.o FormatterBuffer.o FormatterATT.o FormatterBase.o FormatterIntel.o
-
+PROGRAM=libzydis
+SOURCE=MetaInfo.c Mnemonic.c Register.c Segment.c SharedData.c String.c Utils.c Zydis.c Decoder.c DecoderData.c Encoder.c EncoderData.c Disassembler.c Formatter.c FormatterBuffer.c FormatterATT.c FormatterBase.c FormatterIntel.c
 CUSTOMFLAGS=-I. -I$(SRC)/libzycore
+LIBS=-lzycore
 
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lzycore
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../lib.mak

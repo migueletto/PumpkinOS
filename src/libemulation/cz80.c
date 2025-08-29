@@ -395,7 +395,7 @@ static void cz80_io_out(cz80_data_t *cz80, uint16_t port, uint8_t b) {
 
 static void render(cz80_data_t *cz80) {
   surface_t *surface = lock_surface(cz80);
-  surface_update(surface);
+  surface_update(surface, 0, surface->height);
   unlock_surface(cz80);
 }
 

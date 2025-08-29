@@ -1,11 +1,5 @@
+PROGRAM=libfb
+SOURCE=libfb.c
+
 include ../common.mak
-
-PROGRAM=$(BIN)/libfb$(SOEXT)
-
-OBJS=libfb.o
-
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit
-
-clean:
-	rm -f $(PROGRAM) $(OBJS)
+include ../lib.mak

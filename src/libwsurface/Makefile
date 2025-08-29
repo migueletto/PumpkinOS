@@ -1,22 +1,11 @@
-include ../common.mak
-
-OBJS=libwsurface.o
-
+PROGRAM=libwsurface
+SOURCE=libwsurface.c
 CUSTOMFLAGS=-I$(SRC)/font
 
+include ../common.mak
+
 ifeq ($(OSNAME),Kernel)
-
-PROGRAM=$(BIN)/libwsurface.a
-$(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
-
-else
-
-PROGRAM=$(BIN)/libwsurface$(SOEXT)
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(LIB) -lpit
-
+STATIC=1
 endif
 
-clean:
-	rm -f $(PROGRAM) *.o
+include ../lib.mak

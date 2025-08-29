@@ -1,14 +1,11 @@
-include ../common.mak
+ifeq ($(S2N),)
+$(error Missing S2N parameter (S2N must point to your s2n root directory))
+endif
 
-PROGRAM=$(BIN)/libls2n.so
-
-OBJS=libls2n.o
-
-# set S2N variable to s2n-tls location
+PROGRAM=libls2n
+SOURCE=libls2n.c
 CUSTOMFLAGS=-I$(S2N)/api
+LIBS=-L$(S2N)/lib -ls2n
 
-$(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -L$(BIN) -L$(S2N)/lib -lpit -ls2n
-
-clean:
-	rm -f $(PROGRAM) *.o
+include ../common.mak
+include ../lib.mak

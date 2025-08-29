@@ -471,7 +471,7 @@ static void coco_callback(void *data, uint32_t count) {
 
   surface_t *surface = lock_surface(coco);
   ev = surface_event(surface, 0, &arg1, &arg2);
-  surface_update(surface);
+  surface_update(surface, 0, surface->height);
   unlock_surface(coco);
 
   switch (ev) {

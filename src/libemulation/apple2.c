@@ -971,7 +971,7 @@ static void render(apple2_data_t *apple2, surface_t *surface) {
     loresScreen(apple2, surface);
   }
 
-  surface_update(surface);
+  surface_update(surface, 0, surface->height);
 }
 
 static int apple2_rom(computer_t *c, int num, uint32_t size, char *name) {
