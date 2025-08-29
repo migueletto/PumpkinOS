@@ -24,6 +24,7 @@ xdg-*.h
 syscalls_stubs.txt
 syscalls_stubs.c
 res
+res.flag
 .zig-cache
 !/lib/*
 !/lib32/*

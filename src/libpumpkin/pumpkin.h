@@ -688,6 +688,9 @@ typedef int (*pumpkin_system_call_t)(syscall_lib_e lib, uint32_t id, uint32_t se
 #define PUBLIC __attribute__((visibility("default")))
 extern int (*pumpkin_system_call_p)(syscall_lib_e lib, uint32_t id, uint32_t sel, uint64_t *iret, void **pret, ...);
 #define PUMPKIN_API PUBLIC pumpkin_system_call_t pumpkin_system_call_p
+#else
+#define PUBLIC
+#define PUMPKIN_API
 #endif
 
 #ifdef __cplusplus
