@@ -1,5 +1,5 @@
 # additional package(s) to install (example for Ubuntu):
-# sudo apt install wayland-protocols wayland-bin libwayland-dev libxkbcommon-dev libdecor-0-dev
+# sudo apt install wayland-protocols libwayland-bin libwayland-dev libxkbcommon-dev libdecor-0-dev
 
 ifneq (,$(wildcard /usr/include/libdecor-0/libdecor.h))
 LIBDECOR_LIB=-ldecor-0
