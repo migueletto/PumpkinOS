@@ -1,3 +1,6 @@
+# additional package(s) to install (example for Ubuntu):
+# sudo apt install libsdl2-dev
+
 include ../common.mak
 
 PROGRAM=liblsdl2
