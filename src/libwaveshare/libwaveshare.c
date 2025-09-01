@@ -358,6 +358,7 @@ int libwaveshare_init(int pe, script_ref_t obj) {
   script_set_pointer(pe, WINDOW_PROVIDER, &wp);
 
   script_add_function(pe, obj, "setup", setup);
+  script_add_iconst(pe, obj, "hdepth", 16);
 
   return 0;
 }
