@@ -22,7 +22,7 @@ MODULES="libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command 
 if [ $OSNAME = "Msys" ]; then
   EXTRA="windows"
 elif [ $OSNAME = "GNU/Linux" ]; then
-  EXTRA="liblsdl2 linux"
+  EXTRA="liblsdl2 libaalsa linux"
 elif [ $OSNAME = "Serenity" ]; then
   if [ -z "$SERENITY" ]; then
     echo "Environment variable SERENITY must point to SerenityOS home directory"
