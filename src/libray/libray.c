@@ -109,14 +109,7 @@ static int libray_window_update_texture_rect(window_t *_window, texture_t *textu
     dst += ty * texture->width + tx;
     for (i = 0; i < h; i++) {
       for (j = 0; j < w; j++) {
-        uint32_t d = src[j];
-        uint32_t a = (d >> 24) & 0xff;
-        uint32_t r = (d >> 16) & 0xff;
-        uint32_t g = (d >> 8) & 0xff;
-        uint32_t b = d & 0xff; 
-        // ABGR
-        d = (a << 24) | (b << 16) | (g << 8) | r;
-        dst[j] = d;
+        dst[j] = src[j];
       }
       src += texture->width;
       dst += texture->width;
@@ -399,7 +392,7 @@ int libray_load(void) {
   return 0;
 }
 
-static void traceLogCallback(int level, const char *fmt, va_list ap) {
+static void traceLogCallback(int level, const char *fmt, sys_va_list ap) {
   switch (level) {
     case LOG_DEBUG:   level = DEBUG_TRACE; break;
     case LOG_INFO:    level = DEBUG_INFO;  break;

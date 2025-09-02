@@ -6,6 +6,8 @@ end
 
 pit.cleanup(cleanup_callback)
 
+abgr = false
+
 if custom_load then
   lib = custom_load()
 end
@@ -21,7 +23,10 @@ end
 
 if not lib then
   lib = pit.loadlib("libray")
-  if lib then pit.loadlib("libaalsa") end
+  if lib then
+    pit.loadlib("libaalsa")
+    abgr = true
+  end
 end
 
 if not lib and pit.getenv("DISPLAY") then
@@ -52,6 +57,7 @@ pumpkin.start {
   density  = 144,
   width    = 1024,
   height   = 768,
+  abgr     = abgr,
   depth    = 16,
   hdepth   = lib.hdepth
 }
