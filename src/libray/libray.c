@@ -6,19 +6,10 @@
 #include "debug.h"
 #include "raylib.h"
 
-#define MAX_DRAW 256
-
 struct texture_t {
   int width, height;
-  Texture2D texture;
   uint32_t *aux;
 };
-
-typedef struct {
-  texture_t *texture;
-  Rectangle src;
-  Vector2 pos;
-} texture_draw_t;
 
 typedef struct {
   int width, height;
@@ -26,8 +17,8 @@ typedef struct {
   int numKeyDown;
   uint8_t keyDown[512];
   uint16_t charDown[512];
-  texture_draw_t draw[MAX_DRAW];
-  int ndraw;
+  uint32_t *aux;
+  Texture2D texture;
 } libray_window_t;
 
 static window_provider_t window_provider;
@@ -36,11 +27,16 @@ static window_t *libray_window_create(int encoding, int *width, int *height, int
      int fullscreen, int software, char *driver, void *data) {
 
   libray_window_t *window;
+  Image image;
 
   if ((window = sys_calloc(1, sizeof(libray_window_t))) != NULL) {
     window->width = *width;
     window->height = *height;
+    window->aux = sys_calloc(window->width * window->height, sizeof(uint32_t));
     InitWindow(window->width, window->height, "");
+    image = GenImageColor(window->width, window->height, BLACK);
+    window->texture = LoadTextureFromImage(image);
+    UnloadImage(image);
   }
 
   return (window_t *)window;
@@ -48,16 +44,12 @@ static window_t *libray_window_create(int encoding, int *width, int *height, int
 
 static int libray_window_render(window_t *_window) {
   libray_window_t *window = (libray_window_t *)_window;
-  int i, r = -1;
+  int r = -1;
 
   if (window) {
     BeginDrawing();
-    ClearBackground(WHITE);
-    for (i = 0; i < window->ndraw; i++) {
-      DrawTextureRec(window->draw[i].texture->texture, window->draw[i].src, window->draw[i].pos, WHITE);
-    }
+    DrawTexture(window->texture, 0, 0, WHITE);
     EndDrawing();
-    window->ndraw = 0;
     r = 0;
   }
 
@@ -70,7 +62,7 @@ static int libray_window_erase(window_t *_window, uint32_t bg) {
 
   if (window) {
     BeginDrawing();
-    ClearBackground(WHITE);
+    ClearBackground(BLACK);
     EndDrawing();
     r = 0;
   }
@@ -80,15 +72,11 @@ static int libray_window_erase(window_t *_window, uint32_t bg) {
 
 static texture_t *libray_window_create_texture(window_t *_window, int width, int height) {
   texture_t *texture;
-  Image image;
 
   if ((texture = sys_calloc(1, sizeof(texture_t))) != NULL) {
-    image = GenImageColor(width, height, WHITE);
     texture->width = width;
     texture->height = height;
-    texture->texture = LoadTextureFromImage(image);
     texture->aux = sys_calloc(width * height, sizeof(uint32_t));
-    UnloadImage(image);
   }
 
   return texture;
@@ -98,7 +86,6 @@ static int libray_window_destroy_texture(window_t *_window, texture_t *texture) 
   int r = -1;
 
   if (texture) {
-    UnloadTexture(texture->texture);
     sys_free(texture->aux);
     sys_free(texture);
     r = 0;
@@ -111,40 +98,40 @@ static int libray_window_background(window_t *_window, uint32_t *raw, int width,
   return -1;
 }
 
-static int libray_window_update_texture(window_t *_window, texture_t *texture, uint8_t *src) {
-  int r = -1;
+static int libray_window_update_texture_rect(window_t *_window, texture_t *texture, uint8_t *p, int tx, int ty, int w, int h) {
+  uint32_t *src, *dst;
+  int i, j, r = -1;
 
-  if (texture && src) {
-    UpdateTexture(texture->texture, src);
+  if (texture && p) {
+    src = (uint32_t *)p;
+    src += ty * texture->width + tx;
+    dst = texture->aux;
+    dst += ty * texture->width + tx;
+    for (i = 0; i < h; i++) {
+      for (j = 0; j < w; j++) {
+        uint32_t d = src[j];
+        uint32_t a = (d >> 24) & 0xff;
+        uint32_t r = (d >> 16) & 0xff;
+        uint32_t g = (d >> 8) & 0xff;
+        uint32_t b = d & 0xff; 
+        // ABGR
+        d = (a << 24) | (b << 16) | (g << 8) | r;
+        dst[j] = d;
+      }
+      src += texture->width;
+      dst += texture->width;
+    }
     r = 0;
   }
 
   return r;
 }
 
-static int libray_window_update_texture_rect(window_t *_window, texture_t *texture, uint8_t *src, int tx, int ty, int w, int h) {
-  Rectangle rec;
-  uint32_t *p;
-  int i, k, len, r = -1;
+static int libray_window_update_texture(window_t *_window, texture_t *texture, uint8_t *src) {
+  int r = -1;
 
   if (texture && src) {
-    if (tx == 0 && ty == 0 && w == texture->width && h == texture->height) {
-      return libray_window_update_texture(_window, texture, src);
-    }
-    p = (uint32_t *)src;
-    p += ty * texture->width + tx;
-    len = w * sizeof(uint32_t);
-    for (i = 0, k = 0; i < h; i++) {
-      sys_memcpy(&texture->aux[k], p, len);
-      k += w;
-      p += texture->width;
-    }
-    rec.x = tx;
-    rec.y = ty;
-    rec.width = w;
-    rec.height = h;
-    UpdateTextureRec(texture->texture, rec, texture->aux);
-    r = 0;
+    r = libray_window_update_texture_rect(_window, texture, src, 0, 0, texture->width, texture->height);
   }
 
   return r;
@@ -152,41 +139,57 @@ static int libray_window_update_texture_rect(window_t *_window, texture_t *textu
 
 static int libray_window_draw_texture_rect(window_t *_window, texture_t *texture, int tx, int ty, int w, int h, int x, int y) {
   libray_window_t *window = (libray_window_t *)_window;
-  int r = -1;
+  uint32_t *src, *dst;
+  int i, j, r = -1;
 
-  if (window && texture && w > 0 && h > 0) {
-    if (window->ndraw < MAX_DRAW) {
-      window->draw[window->ndraw].texture = texture;
-      window->draw[window->ndraw].src.x = tx;
-      window->draw[window->ndraw].src.y = ty;
-      window->draw[window->ndraw].src.width = w;
-      window->draw[window->ndraw].src.height = h;
-      window->draw[window->ndraw].pos.x = x;
-      window->draw[window->ndraw].pos.y = y;
-      window->ndraw++;
-      r = 0;
+  if (window && texture && w > 0 && h > 0 && tx >= 0 && ty >= 0 && tx+w <= texture->width && ty+h <= texture->height &&
+      x < window->width && y < window->height && x+w > 0 && y+h > 0) {
+
+    if (x < 0) {
+      tx -= x;
+      w += x;
+      x = 0;
     }
+  
+    if (y < 0) {
+      ty -= y;
+      h += y;
+      y = 0;
+    }
+  
+    if (w > 0 && h > 0) {
+      if (x + w > window->width) {
+        w = window->width - x;
+      }
+  
+      if (y + h > window->height) {
+        h = window->height - y;
+      }
+
+      src = texture->aux;
+      src += ty * texture->width + tx;
+      dst = window->aux;
+      dst += y * window->width + x;
+      for (i = 0; i < h; i++) {
+        for (j = 0; j < w; j++) {
+          dst[j] = src[j];
+        }
+        src += texture->width;
+        dst += window->width;
+      } 
+      UpdateTexture(window->texture, window->aux);
+    }
+    r = 0;
   }
 
   return r;
 }
 
 static int libray_window_draw_texture(window_t *_window, texture_t *texture, int x, int y) {
-  libray_window_t *window = (libray_window_t *)_window;
   int r = -1;
 
-  if (window && texture) {
-    if (window->ndraw < MAX_DRAW) {
-      window->draw[window->ndraw].texture = texture;
-      window->draw[window->ndraw].src.x = 0;
-      window->draw[window->ndraw].src.y = 0;
-      window->draw[window->ndraw].src.width = texture->width;
-      window->draw[window->ndraw].src.height = texture->height;
-      window->draw[window->ndraw].pos.x = x;
-      window->draw[window->ndraw].pos.y = y;
-      window->ndraw++;
-      r = 0;
-    }
+  if (_window && texture) {
+    r = libray_window_draw_texture_rect(_window, texture, 0, 0, texture->width, texture->height, x, y);
   }
 
   return r;
@@ -351,8 +354,16 @@ static int libray_window_update(window_t *_window, int x, int y, int width, int 
   return 0;
 }
 
-static int libray_window_destroy(window_t *window) {
-  CloseWindow();
+static int libray_window_destroy(window_t *_window) {
+  libray_window_t *window = (libray_window_t *)_window;
+
+  if (window) {
+    UnloadTexture(window->texture);
+    CloseWindow();
+    sys_free(window->aux);
+    sys_free(window);
+  }
+
   return 0;
 }
 
