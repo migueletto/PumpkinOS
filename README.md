@@ -88,10 +88,10 @@ The Windows version implements Drag & Drop functionality. You can drag a PalmOS 
 it will be installed and show up in the Launcher. The Linux version lacks this functionality. For now, you have to manually copy PRCs
 to the vfs/app_install directory and restart PumpkinOS.
 
-If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WSL. On Windows, edit pumpkin.bat and change the last line to (you should also add the Windows equivalent of the /usr/bin directory of your MSYS2 installation the the PATH):
+If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WSL. On Windows, edit pumpkin.bat and change the last line to:
 
-    gdb.exe --args .\pumpkin.exe -d 1 -f pumpkin.log -s libscriptlua.dll script\pumpkin_windows.lua
+    gdb.exe --args .\pumpkin.exe -d 1 -f pumpkin.log -s libscriptlua .\script\pumpkin.lua
 
 On Linux and WSL edit pumpkin.sh and change the last line to:
 
-    gdb --args ./pumpkin -d 1 -f pumpkin.log -s libscriptlua.so ./script/pumpkin_linux.lua
+    gdb --args ./pumpkin -d 1 -f pumpkin.log -s libscriptlua ./script/pumpkin.lua
