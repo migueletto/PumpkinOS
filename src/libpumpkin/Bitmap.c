@@ -433,13 +433,13 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   UInt8 v8, version;
   UInt16 v16;
   UInt32 v32;
-  Boolean le, leBits;
+  Boolean le;
 
   if (bmp) {
     bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
-    leBits = BmpGetCommonFlag(bmp, BitmapFlagLittleEndian);
+    BmpGetCommonFlag(bmp, BitmapFlagLittleEndian);
 
     if (version == 3) {
         switch (selector) {
@@ -2589,12 +2589,9 @@ static void BmpCopyBit32(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
   UInt16 rowBytes;
   UInt32 old, fg, bg;
   UInt32 offset, dataSize;
-  Boolean le, leBits;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
-  le = BmpLittleEndian(dst);
-  leBits = BmpGetCommonFlag(dst, BitmapFlagLittleEndian);
   bits = BmpGetBits(dst);
   offset = dy * rowBytes + dx*4;
 
