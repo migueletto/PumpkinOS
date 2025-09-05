@@ -8,7 +8,6 @@ VFS=$(ROOT)/vfs
 TOOLS=$(ROOT)/tools
 LIBPIT=$(SRC)/libpit
 LIBPUMPKIN=$(SRC)/libpumpkin
-LIBAPP=$(SRC)/libapp/libapp.a
 STUBS=syscalls_stubs
 
 SYSNAME=pit
