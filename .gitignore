@@ -26,6 +26,10 @@ syscalls_stubs.c
 res
 res.flag
 .zig-cache
+/src/emscripten/pumpkin.data
+/src/emscripten/pumpkin.html
+/src/emscripten/pumpkin.js
+/src/emscripten/pumpkin.zip
 !/lib/*
 !/lib32/*
 !/vfs/app_card/PALM/Programs/Command/

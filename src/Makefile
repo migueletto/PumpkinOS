@@ -4,11 +4,20 @@ DIRS=../bin ../lib ../tools ../vfs/app_card/PALM/Programs ../vfs/app_install ../
 BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
 
 ifeq ($(OSNAME),GNU/Linux)
+ifeq ($(wildcard /usr/include/SDL2/SDL.h),)
+$(error SDL2 development headers are not installed)
+endif
 EXTRA_MODULES=liblsdl2 libaalsa linux
+
 else ifeq ($(OSNAME),Msys)
 EXTRA_MODULES=windows
+
 else ifeq ($(OSNAME),Emscripten)
-MODULES=libpit lua libpumpkin libos BOOT Launcher
+EMCC=$(shell which emcc)
+ifeq ($(wildcard $(EMCC)),)
+$(error Emscripten compiler (emcc) was not found in your PATH)
+endif
+BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos BOOT Launcher
 EXTRA_MODULES=liblsdl2 emscripten
 endif
 
