@@ -18,10 +18,6 @@ if not lib and pit.getenv("WAYLAND_DISPLAY") then
 end
 
 if not lib then
-  lib = pit.loadlib("liblsdl2")
-end
-
-if not lib then
   lib = pit.loadlib("libray")
   if lib then
     pit.loadlib("libaalsa")
@@ -32,6 +28,10 @@ end
 if not lib and pit.getenv("DISPLAY") then
   lib = pit.loadlib("libwxcb")
   if lib then pit.loadlib("libaalsa") end
+end
+
+if not lib then
+  lib = pit.loadlib("liblsdl2")
 end
 
 if not lib then
