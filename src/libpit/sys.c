@@ -2075,13 +2075,15 @@ static int64_t gettime(int type) {
 int64_t sys_get_clock(void) {
   int64_t ts = -1;
 
-#if WINDOWS
+#if defined(WINDOWS)
   LARGE_INTEGER ticks_per_second, ticks;
   QueryPerformanceFrequency(&ticks_per_second);
   QueryPerformanceCounter(&ticks);
   ticks.QuadPart *= 1000000;
   ticks.QuadPart /= ticks_per_second.QuadPart;
   ts = ticks.QuadPart;
+#elif defined(EMSCRIPTEN)
+  ts = gettime(CLOCK_MONOTONIC);
 #else
 #if _POSIX_TIMERS > 0
   ts = gettime(CLOCK_MONOTONIC_RAW);
