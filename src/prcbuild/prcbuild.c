@@ -11,7 +11,7 @@
 
 #define MAX_RSRC 8192
 
-static int prcbuild(char *filename, char *type, char *creator, char *name, char *rsrc[], int num) {
+static int prcbuild(char *filename, char *type, char *creator, char *name, char *rsrc[], int num, int verbose) {
   pdb_t *pdb;
   uint16_t id;
   int64_t size;
@@ -33,7 +33,9 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, char 
                   if ((data = calloc(1, size)) != NULL) {
                     if (read(fr, data, size) == size) {
                       if (pdb_add_res(pdb, stype, id, size, data) == 0) {
-                        fprintf(stderr, "Adding resource %s %5d (%d bytes)\n", stype, id, (int)size);
+                        if (verbose) {
+                          fprintf(stderr, "Adding resource %s %5d (%d bytes)\n", stype, id, (int)size);
+                        }
                       } else {
                         free(data);
                       }
@@ -60,7 +62,7 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, char 
 int main(int argc, char *argv[]) {
   char *filename = NULL, *type = NULL, *creator = NULL, *name = NULL;
   char *rsrc[MAX_RSRC];
-  int i, num;
+  int i, num, verbose = 0;
 
   for (i = 1, num = 0; i < argc; i++) {
     if (argv[i][0] == '-') {
@@ -77,6 +79,9 @@ int main(int argc, char *argv[]) {
         case 'n':
           name = argv[++i];
           break;
+        case 'v':
+          verbose = 1;
+          break;
       }
     } else {
       if (num < MAX_RSRC) {
@@ -86,7 +91,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (filename && type && creator && name && num > 0 && strlen(type) == 4 && strlen(creator) == 4) {
-    prcbuild(filename, type, creator, name, rsrc, num);
+    prcbuild(filename, type, creator, name, rsrc, num, verbose);
   } else {
     fprintf(stderr, "usage: %s -f <filename> -t <type> -c <creator> -n <name> rsrc.bin ...\n", argv[0]);
   }

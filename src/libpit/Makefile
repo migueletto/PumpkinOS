@@ -8,28 +8,34 @@ ifeq ($(OSNAME),Emscripten)
 
 PROGRAM=$(BIN)/libpit.a
 OBJS=$(SOURCE:%.c=%.wasm) script.wasm threadptr.wasm mutex.wasm httpc.wasm httpd.wasm template.wasm
+all: $(PROGRAM)
 $(PROGRAM): $(OBJS)
-	$(EM_AR) -cru $(PROGRAM) $(OBJS)
+	@echo Creating $(PROGRAM).a
+	@$(ARCMD) $(PROGRAM) $(OBJS)
 
 else ifeq ($(OSNAME),Kernel)
 
 PROGRAM=$(BIN)/libpit.a
 OBJS=$(SOURCE:%.c=%.o) threadnull.o mutexnull.o fmodl.o strtod.o floatscan.o intscan.o qsort.o vsnprintf.o vsscanf.o
+all: $(PROGRAM)
 $(PROGRAM): $(OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS)
+	@echo Creating $(PROGRAM).a
+	@$(ARCMD) $(PROGRAM) $(OBJS)
 
 else
 
 PROGRAM=$(BIN)/libpit$(SOEXT)
 OBJS=$(SOURCE:%.c=%.o) script.o threadudp.o mutex.o httpc.o httpd.o template.o
+all: $(PROGRAM)
 $(PROGRAM): $(OBJS)
+	@echo Linking libpit$(SOEXT)
 ifeq ($(OSNAME),Android)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) $(OSLDEFS) -Wl,-soname,libpit$(SOEXT) -lm
+	@$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) $(OSLDEFS) -Wl,-soname,libpit$(SOEXT) -lm
 else
-	$(CC) -shared -o $(PROGRAM) $(OBJS) -lpthread $(EXTLIBS) -lm
+	@$(CC) -shared -o $(PROGRAM) $(OBJS) -lpthread $(EXTLIBS) -lm
 endif
 
 endif
 
 clean:
-	rm -f $(PROGRAM) $(OBJS)
+	@rm -f $(PROGRAM) $(OBJS)

@@ -30,27 +30,33 @@ endif
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 
 $(PROGRAM).prc: $(DLIB_OPT) $(RESFLAG)
-	$(PRCDUILD) -f $(PROGRAM).prc -t $(APPTYPE) -c $(APPID) -n $(APPNAME) $(DLIB_OPT) resources/*
-	cp $(PROGRAM).prc $(PRC)
+	@echo Building $(PROGRAM).prc
+	@$(PRCDUILD) -f $(PROGRAM).prc -t $(APPTYPE) -c $(APPID) -n $(APPNAME) $(DLIB_OPT) resources/*
+	@echo Installing $(PROGRAM).prc
+	@cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(PROGRAM).dlib
-	cp $(PROGRAM).dlib $(DLIB)
-	strip $(DLIB)
+	@cp $(PROGRAM).dlib $(DLIB)
+	@strip $(DLIB)
 
 $(PROGRAM).dlib: $(OBJS) $(STUBS_OPT)
-	$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(STUBS_OPT) $(LIBS)
+	@echo Linking $(PROGRAM).dlib
+	@$(CC) -shared -o $(PROGRAM).dlib $(OBJS) $(STUBS_OPT) $(LIBS)
 
 $(STUBS_OPT): $(STUBS).c
-	$(CC) $(CFLAGS) -c $(STUBS).c
+	@echo Compiling $<
+	@$(CC) $(CFLAGS) -c $(STUBS).c
 
 $(STUBS).c: $(OBJS)
-	$(NM) $(OBJS) | sort | uniq > $(STUBS).txt
-	$(LIBPUMPKIN)/gen_stubs.sh $(STUBS).txt $(LIBPUMPKIN)/traps.txt > $(STUBS).c
+	@echo Generating $<
+	@$(NM) $(OBJS) | sort | uniq > $(STUBS).txt
+	@$(LIBPUMPKIN)/gen_stubs.sh $(STUBS).txt $(LIBPUMPKIN)/traps.txt > $(STUBS).c
 
 res.flag: $(RCP) $(RCPDEP)
-	mkdir -p resources
-	$(PILRC) $(RCP) resources
-	touch res.flag
+	@echo Compiling resources
+	@mkdir -p resources
+	@$(PILRC) $(RCP) resources
+	@touch res.flag
 
 clean:
-	rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin res.flag
+	@rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin res.flag

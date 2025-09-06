@@ -1,11 +1,15 @@
 include ../common.mak
 
 PROGRAM=$(TOOLS)/pilrc
-OBJS=bitmap.o font.o lex.o main.o pilrc.o plex.o restype.o util.o win.o
+SOURCE=bitmap.c font.c lex.c main.c pilrc.c plex.c restype.c util.c win.c
+OBJS=$(SOURCE:%.c=%.o)
 CC=$(HOSTCC)
 
+all: $(PROGRAM)
+
 $(PROGRAM): $(OBJS)
-	$(CC) -o $(PROGRAM) $(OBJS)
+	@echo Linking pilrc
+	@$(CC) -o $(PROGRAM) $(OBJS)
 
 clean:
-	rm -f $(PROGRAM) $(OBJS)
+	@rm -f $(PROGRAM) $(OBJS)

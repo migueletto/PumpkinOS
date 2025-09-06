@@ -16,10 +16,12 @@ LIB=$(BIN)/$(PROGRAM)
 $(LIB)$(EXT):
 
 $(LIB)$(SOEXT): $(EXTDEPS) $(OBJS)
-	$(CC) -shared -o $(LIB)$(SOEXT) $(OBJS) -L$(BIN) -lpit $(LIBS)
+	@echo Linking $(PROGRAM)$(SOEXT)
+	@$(CC) -shared -o $(LIB)$(SOEXT) $(OBJS) -L$(BIN) -lpit $(LIBS)
 
 $(LIB).a: $(OBJS)
+	@echo Creating $(PROGRAM).a
 	$(ARCMD) $(LIB).a $(OBJS)
 
 clean: $(EXTCLEANDEPS)
-	rm -f $(LIB)$(SOEXT) $(LIB).a $(OBJS) $(EXTCLEAN)
+	@rm -f $(LIB)$(SOEXT) $(LIB).a $(OBJS) $(EXTCLEAN)

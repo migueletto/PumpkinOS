@@ -1,6 +1,6 @@
 OSNAME    = PumpkinOS
 PCC       = m68k-palmos-gcc
-PILRC     = $(TOOLS)/pilrc
+PILRC     = $(TOOLS)/pilrc -q
 PRCDUILD  = $(TOOLS)/prcbuild
 BUILDPRC  = build-prc
 DLIBID    = $(shell expr $(SYS_OS) \* 64 + $(SYS_CPU) \* 8 + $(SYS_SIZE))

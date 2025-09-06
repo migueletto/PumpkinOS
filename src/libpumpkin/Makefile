@@ -35,10 +35,12 @@ LAUNCHER_OBJS=$(LAUNCHER_SOURCE:%.c=%.wasm)
 PROGRAM=$(BIN)/libpumpkin.a
 OBJS=$(SOURCE:%.c=%.wasm)
 $(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
-	$(EM_AR) -cru $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
+	@echo Creating libpumpkin.a
+	@$(ARCMD) $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
 
 emulation/systrap.wasm: emulation/systrap.c emulation/switch.c
-	$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm
+	@echo Compiling $<
+	@$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm
 
 else ifeq ($(OSNAME),Kernel)
 
@@ -49,22 +51,26 @@ LAUNCHER_OBJS=$(LAUNCHER_SOURCE:%.c=%.o)
 PROGRAM=$(BIN)/libpumpkin.a
 OBJS=$(SOURCE:%.c=%.o)
 $(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
-	$(AR) -cr $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
+	@echo Creating libpumpkin.a
+	@$(ARCMD) $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
 
 emulation/systrap.o: emulation/systrap.c emulation/switch.c
-	$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
+	@echo Compiling $<
+	@$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
 
 else
 
 PROGRAM=$(BIN)/libpumpkin$(SOEXT)
 OBJS=$(SOURCE:%.c=%.o)
 $(PROGRAM): $(OBJS)
-	$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) -L$(BIN) -lpit -lm
+	@echo Linking libpumpkin$(SOEXT)
+	@$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) -L$(BIN) -lpit -lm
 
 emulation/systrap.o: emulation/systrap.c emulation/switch.c
-	$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
+	@echo Compiling $<
+	@$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
 
 endif
 
 clean:
-	rm -f $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
+	@rm -f $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)

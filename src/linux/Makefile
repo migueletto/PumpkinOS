@@ -5,7 +5,8 @@ PROGRAM=$(ROOT)/pumpkin
 OBJS=main.o
 
 $(PROGRAM): $(OBJS)
-	$(CC) -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit -lpthread
+	@echo Linking pumpkin
+	@$(CC) -o $(PROGRAM) $(OBJS) -L$(BIN) -lpit -lpthread
 
 clean:
-	rm -f $(PROGRAM) $(OBJS)
+	@rm -f $(PROGRAM) $(OBJS)
