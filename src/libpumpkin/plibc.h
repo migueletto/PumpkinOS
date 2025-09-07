@@ -70,19 +70,6 @@ int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap);
 int plibc_printf(const char *format, ...);
 int plibc_vprintf(const char *format, sys_va_list ap);
 
-int plibc_iscntrl(int c);
-int plibc_isblank(int c);
-int plibc_isspace(int c);
-int plibc_isgraph(int c);
-int plibc_ispunct(int c);
-int plibc_islower(int c);
-int plibc_isupper(int c);
-int plibc_isalpha(int c);
-int plibc_isdigit(int c);
-int plibc_isalnum(int c);
-int plibc_isxdigit(int c);
-int plibc_isprint(int c);
-
 void plibc_error(const char *filename, const char *function, int lineNo, char *msg);
 
 #define plibc_rewind(stream) (void)plibc_fseek(stream, 0, PLIBC_SEEK_SET)
