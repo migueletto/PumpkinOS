@@ -321,6 +321,8 @@ char *sys_strrchr(const char *s, int c);
 
 void *sys_memchr(const void *src, int c, sys_size_t n);
 
+void *sys_memrchr(const void *src, int c, sys_size_t n);
+
 char *sys_strstr(const char *haystack, const char *needle);
 
 sys_size_t sys_strspn(const char *s, const char *c);
