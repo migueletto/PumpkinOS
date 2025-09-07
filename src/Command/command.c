@@ -202,6 +202,7 @@ static void command_putchar(void *data, char c) {
 
   pterm_cursor(idata->t, 0);
   pterm_send(idata->t, &b, 1);
+  pterm_cursor(idata->t, 1);
 }
 
 static void command_setcolor(void *data, uint32_t fg, uint32_t bg) {
