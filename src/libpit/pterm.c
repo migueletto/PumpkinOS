@@ -177,9 +177,9 @@ void pterm_cursor(pterm_t *t, int show) {
       i = t->row * t->cols + t->col;
       if (t->cursor_state) {
         if (t->rgb) {
-          t->cb->draw(t->col, t->row, ' ', t->rgb_fg, t->rgb_fg, 0, t->cb->data);
+          t->cb->draw(t->col, t->row, t->char_buffer[i], t->rgb_bg, t->rgb_fg, 0, t->cb->data);
         } else {
-          t->cb->draw(t->col, t->row, ' ', FG(t->color), FG(t->color), 0, t->cb->data);
+          t->cb->draw(t->col, t->row, t->char_buffer[i], BG(t->color), FG(t->color), 0, t->cb->data);
         }
       } else {
         if (t->rgb) {
