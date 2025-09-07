@@ -177,8 +177,8 @@ static int pterm_editor_write(void *data, char *buf, int len) {
 static int pterm_editor_color(void *data, uint32_t fg, uint32_t bg) {
   pterm_t *t = (pterm_t *)data;
 
-  if (fg != -1) pterm_setfg(t, fg);
-  if (bg != -1) pterm_setbg(t, bg);
+  pterm_setfg(t, fg);
+  pterm_setbg(t, bg);
 
   return 0;
 }
