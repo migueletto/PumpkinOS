@@ -379,7 +379,7 @@ static void command_key(command_internal_data_t *idata, UInt8 c, Boolean expand)
       conn = telnet->next;
       telnet_close(telnet);
       conn_close(conn);
-      idata->wait = SysTicksPerSecond() / 2;
+      idata->wait = SysTicksPerSecond() / 4;
     }
 
   } else {
@@ -1887,7 +1887,7 @@ static Err StartApplication(void *param) {
   iterator = vfsIteratorStart;
   VFSVolumeEnumerate(&idata->volume, &iterator);
 
-  idata->wait = SysTicksPerSecond() / 2;
+  idata->wait = SysTicksPerSecond() / 4;
   VFSChangeDir(idata->volume, "/");
   VFSCurrentDir(idata->volume, idata->cwd, MAXCMD);
 
@@ -1948,7 +1948,7 @@ static void check_telnet(void) {
         conn = telnet->next;
         telnet_close(telnet);
         conn_close(conn);
-        idata->wait = SysTicksPerSecond() / 2;
+        idata->wait = SysTicksPerSecond() / 4;
         break;
       }
       command_putc(idata, b);
