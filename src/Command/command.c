@@ -1406,7 +1406,8 @@ static int command_script_edit(int pe) {
   script_opt_string(pe, 0, &name);
 
   xmemset(&e, 0, sizeof(editor_t));
-  pumpkin_editor_init(&e, idata->t);
+  pumpkin_editor_init_term(&e, idata->t);
+  pumpkin_editor_init_io(&e);
 
   if (editor_get_plugin(&e, sysAnyPluginId) == 0 && e.edit) {
     e.edit(&e, name);

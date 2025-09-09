@@ -194,7 +194,7 @@ static int pterm_editor_window(void *data, int *ncols, int *nrows) {
   return 0;
 }
 
-int pumpkin_editor_init(editor_t *e, pterm_t *t) {
+int pumpkin_editor_init_term(editor_t *e, pterm_t *t) {
   int r = -1;
 
   if (e) {
@@ -207,7 +207,16 @@ int pumpkin_editor_init(editor_t *e, pterm_t *t) {
     e->write = pterm_editor_write;
     e->color = pterm_editor_color;
     e->window = pterm_editor_window;
+    r = 0;
+  }
 
+  return r;
+}
+
+int pumpkin_editor_init_io(editor_t *e) {
+  int r = -1;
+
+  if (e) {
     e->fopen = vfs_editor_fopen;
     e->fclose = vfs_editor_fclose;
     e->fread = vfs_editor_fread;
