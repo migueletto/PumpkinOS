@@ -189,15 +189,6 @@ enum {
   MAX_SCR_ROWS = CONFIG_FEATURE_VI_MAX_LEN,
 };
 
-// VT102 ESC sequences.
-// See "Xterm Control Sequences"
-// http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
-#define ESC "\033"
-
-#define CLS    ESC "[2J"
-#define HOME   ESC "[H"
-#define CLREOL ESC "[K"
-
 #if ENABLE_FEATURE_VI_DOT_CMD || ENABLE_FEATURE_VI_YANKMARK
 // cmds modifying text[]
 static const char modifying_cmds[] ALIGN1 = "aAcCdDiIJoOpPrRs""xX<>~";
@@ -489,34 +480,14 @@ static void show_help(struct globals *g)
 
 static void write1(struct globals *g, const char *out)
 {
-/*
-  char buf[256];
-  int i;
-
-  for (i = 0; out[i] && i < 255; i++) {
-    if (out[i] == 27) {
-      buf[i] = 'E';
-    } else if (out[i] < 32) {
-      buf[i] = '.';
-    } else {
-      buf[i] = out[i];
-    }
-  }
-  buf[i] = 0;
-  debug(DEBUG_INFO, "VI", "cmd: \"%s\"", buf);
-  debug_bytes(DEBUG_INFO, "VI", (uint8_t *)out, strlen(out));
-*/
-
-  //fputs(out, stdout);
-
+  debug(DEBUG_TRACE, "vi", "write1 [%s]", out);
   g->e->write(g->e->data, (char *)out, sys_strlen(out));
 }
 
-#if ENABLE_FEATURE_VI_WIN_RESIZE
 static int get_terminal_width_height(struct globals *g, unsigned int *ncolumns, unsigned int *nrows) {
   int nc, nr;
 
-  //g->e->window(g->e->data, &nc, &nr);
+  g->e->window(g->e->data, &nc, &nr);
   *ncolumns = nc;
   *nrows = nr;
 
@@ -532,14 +503,6 @@ static int query_screen_dimensions(struct globals *g)
     g->columns = MAX_SCR_COLS;
   return err;
 }
-#else
-static ALWAYS_INLINE int query_screen_dimensions(struct globals *g)
-{
-  g->columns = 80;
-  g->rows = 25;
-  return 0;
-}
-#endif
 
 static void fflush_all(void) {
 }
@@ -581,19 +544,18 @@ static void cookmode(void)
 //----- Move the cursor to row x col (count from 0, not 1) -------
 static void place_cursor(struct globals *g, int row, int col)
 {
-  char buf[32];
   if (row < 0) row = 0;
   if (row >= g->rows) row = g->rows - 1;
   if (col < 0) col = 0;
   if (col >= g->columns) col = g->columns - 1;
-  sys_snprintf(buf, sizeof(buf), "%s[%d;%dH", ESC, row+1, col+1);
-  g->e->write(g->e->data, buf, sys_strlen(buf));
+  debug(DEBUG_TRACE, "vi", "cursor %2d,%2d", col, row);
+  g->e->cursor(g->e->data, col, row);
 }
 
 //----- Erase from cursor to end of line -----------------------
 static void clear_to_eol(struct globals *g)
 {
-  g->e->write(g->e->data, CLREOL, sys_strlen(CLREOL));
+  g->e->clreol(g->e->data);
 }
 
 static void go_bottom_and_clear_to_eol(struct globals *g)
@@ -841,6 +803,7 @@ static char* format_line(struct globals *g, char *src /*, int li*/)
   int ofs = g->offset;
   char *dest = g->scr_out_buf; // [MAX_SCR_COLS + MAX_TABSTOP * 2]
 
+  debug(DEBUG_TRACE, "vi", "format_line [%s]", src);
   c = '~'; // char in col 0 in non-existent lines is '~'
   co = 0;
   while (co < g->columns + g->tabstop) {
@@ -892,24 +855,27 @@ static char* format_line(struct globals *g, char *src /*, int li*/)
 }
 
 static void edit_print(void *data, uint32_t fg, uint32_t bg, char *s, int n) {
-  editor_t *e = (editor_t *)data;
+  struct globals *g = (struct globals *)data;
   
-debug(1, "XXX", "sequence fg=0x%08X bg=0x%08X [%.*s]", fg, bg, n, s);
-  e->color(e->data, fg, bg);
-  if (s && n) e->write(e->data, s, n);
+  if (s && n) {
+    debug(DEBUG_TRACE, "vi", "sequence fg=0x%08X bg=0x%08X [%.*s]", fg, bg, n, s);
+    g->e->color(g->e->data, fg, bg);
+    g->e->write(g->e->data, s, n);
+    g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
+  }
 } 
 
 static void draw_line(struct globals *g, char *line, int len) {
   int i;
 
-  if (g->syntax) {
-    g->syntax->syntax_begin_line(g->shigh, edit_print, g->e);
+  if (g->syntax && g->cmd_mode == 0) {
+    g->syntax->syntax_begin_line(g->shigh, edit_print, g);
     for (i = 0; i < len; i++) {
       g->syntax->syntax_char(g->shigh, line[i]);
     }
     g->syntax->syntax_end_line(g->shigh);
   } else {
-    edit_print(g->e, g->foregroundColor, g->backgroundColor, line, len);
+    edit_print(g, g->foregroundColor, g->backgroundColor, line, len);
   }
 }
 
@@ -942,10 +908,15 @@ static void refresh(struct globals *g, int full_screen)
   tp = g->screenbegin;  // index into text[] of top line
 
   // compare text[] to screen[] and mark screen[] lines that need updating
-debug(1, "XXX", "refresh");
+  debug(DEBUG_TRACE, "vi", "refresh");
   for (li = 0; li < g->rows - 1; li++) {
     int cs, ce;        // column start & end
     char *out_buf;
+
+    if (!tp[0]) {
+      g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
+      g->syntax->syntax_reset(g->shigh);
+    }
     // format current text line
     out_buf = format_line(g, tp /*, li*/);
 
@@ -999,12 +970,12 @@ debug(1, "XXX", "refresh");
       sys_memcpy(sp+cs, out_buf+cs, ce-cs+1);
       place_cursor(g, li, cs);
       // write line out to terminal
-      //g->e->write(g->e->data, &sp[cs], ce - cs + 1);
       draw_line(g, &sp[cs], ce - cs + 1);
     }
   }
 
   place_cursor(g, g->crow, g->ccol);
+  g->syntax->syntax_reset(g->shigh);
 
   old_offset = g->offset;
 #undef old_offset
@@ -1014,8 +985,7 @@ debug(1, "XXX", "refresh");
 static void redraw(struct globals *g, int full_screen)
 {
   // cursor to top,left; clear to the end of screen
-  g->e->write(g->e->data, CLS, sys_strlen(CLS));
-  g->e->write(g->e->data, HOME, sys_strlen(HOME));
+  g->e->cls(g->e->data);
   screen_erase(g);    // erase the internal screen buffer
   g->last_status_cksum = 0;  // force status update
   refresh(g, full_screen);  // this will redraw the entire display
@@ -2067,6 +2037,7 @@ static char *char_insert(struct globals *g, char *p, char c, int undo) // insert
     if ((p[-1] != '\n') && (g->dot > g->text)) {
       p--;
     }
+    refresh(g, 1); // YYY
   } else if (/*c == term_orig.c_cc[VERASE] ||*/ c == 8 || c == 127) { // Is this a BS
     if (p > g->text) {
       p--;
@@ -3625,6 +3596,7 @@ static void do_cmd(struct globals *g, int c)
     dot_end(g);    // go to e-o-l
     //**** fall through to ... 'a'
   case 'a':      // a- append after current char
+    g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
     if (*g->dot != '\n')
       g->dot++;
     goto dc_i;
@@ -3695,6 +3667,7 @@ static void do_cmd(struct globals *g, int c)
   case 'i':      // i- insert before current char
   case KEYCODE_INSERT:  // Cursor Key Insert
  dc_i:
+    g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
     g->cmd_mode = 1;  // start inserting
     undo_queue_commit(g);  // commit queue when cmd_mode changes
     break;
@@ -3735,10 +3708,12 @@ static void do_cmd(struct globals *g, int c)
     break;
   case 'O':      // O- open a empty line above
     //    0i\n ESC -i
+    g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
     p = begin_line(g, g->dot);
     if (p[-1] == '\n') {
       dot_prev(g);
   case 'o':      // o- open a empty line below; Yes, I know it is in the middle of the "if (..."
+      g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
       dot_end(g);
       g->dot = char_insert(g, g->dot, '\n', ALLOW_UNDO);
     } else {
@@ -4455,8 +4430,7 @@ static int vi_main(struct globals *g, int argc, char **argv) {
   argv += optind;
   g->cmdline_filecnt = argc - optind;
 
-  g->e->write(g->e->data, CLS, sys_strlen(CLS));
-  g->e->write(g->e->data, HOME, sys_strlen(HOME));
+  g->e->cls(g->e->data);
 
   // This is the main file handling loop
   optind = 0;
@@ -4468,8 +4442,7 @@ static int vi_main(struct globals *g, int argc, char **argv) {
       break;
   }
 
-  g->e->write(g->e->data, CLS, sys_strlen(CLS));
-  g->e->write(g->e->data, HOME, sys_strlen(HOME));
+  g->e->cls(g->e->data);
 
   return 0;
 }
