@@ -61,8 +61,8 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, char 
 
 int main(int argc, char *argv[]) {
   char *filename = NULL, *type = NULL, *creator = NULL, *name = NULL;
-  char *rsrc[MAX_RSRC];
-  int i, num, verbose = 0;
+  char *rsrc[MAX_RSRC], *aux, hex[4], buf[32];
+  int i, j, k, num, verbose = 0;
 
   for (i = 1, num = 0; i < argc; i++) {
     if (argv[i][0] == '-') {
@@ -77,7 +77,20 @@ int main(int argc, char *argv[]) {
           creator = argv[++i];
           break;
         case 'n':
-          name = argv[++i];
+          aux = argv[++i];
+          for (j = 0, k = 0; aux[j] && k < 31;) {
+            if (aux[j] == '\\' && strlen(&aux[j]) >= 4 && aux[j + 1] == 'x') {
+              hex[0] = aux[j + 2];
+              hex[1] = aux[j + 3];
+              hex[2] = 0;
+              buf[k++] = strtol(hex, NULL, 16);
+              j += 4;
+            } else {
+              buf[k++] = aux[j++];
+            }
+          }
+          buf[k++] = 0;
+	  name = buf;
           break;
         case 'v':
           verbose = 1;
