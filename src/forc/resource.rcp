@@ -1,0 +1,29 @@
+#include "resource.h"
+
+MENU MainMenu
+BEGIN
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "About" aboutCmd "A"
+  END
+END
+
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenu
+BEGIN
+  TITLE "forc"
+  TABLE ID FileTable AT (0 16 160 121) ROWS 11 COLUMNS 1 COLUMNWIDTHS 160
+END
+
+FORM ID EditForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenu
+BEGIN
+  TITLE "Edit"
+END
+
+HEX "wind" ID 1
+  0x01 0x90 0x01 0x2C
