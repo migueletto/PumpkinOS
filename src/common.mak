@@ -162,7 +162,7 @@ EM_CC=emcc
 EM_AR=emar
 
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS)
+CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME=\"$(APPNAME)\" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS)
 
 COLOR_GREEN=\033[0;1;32m
 COLOR_CYAN=\033[0;1;36m
