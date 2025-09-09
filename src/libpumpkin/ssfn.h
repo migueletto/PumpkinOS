@@ -50,9 +50,7 @@ typedef unsigned short int  uint16_t;
 typedef short int           int16_t;
 typedef unsigned int        uint32_t;
 #ifndef _UINT64_T
-#ifndef EMSCRIPTEN
-typedef unsigned long int   uint64_t;
-#endif
+//typedef unsigned long int   uint64_t;
 #endif
 #endif
 

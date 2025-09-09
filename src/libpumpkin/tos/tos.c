@@ -774,7 +774,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       memory = MemHandleLock(hMemory);
       MemSet(memory, memorySize, 0);
 
-      rem = ((uint64_t)(memory)) & 0x0F;
+      rem = ((uintptr_t)(memory)) & 0x0F;
       if (rem != 0) {
         memory += 16 - rem;
       }

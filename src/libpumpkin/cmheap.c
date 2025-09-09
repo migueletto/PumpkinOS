@@ -26,7 +26,7 @@ struct heap_t {
 heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, void *_wp) {
   heap_t *heap;
   uint32_t rem;
-  uint64_t p;
+  uintptr_t p;
 
   debug(DEBUG_INFO, "Heap", "heap_init %u %u", size, small_size);
 
@@ -44,7 +44,7 @@ heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, void *_wp
     return NULL;
   }
 
-  p = (uint64_t)heap->memory;
+  p = (uintptr_t)heap->memory;
   rem = p & 0xf;
   if (rem) {
     p += 16 - rem;
