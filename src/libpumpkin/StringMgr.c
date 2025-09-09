@@ -201,3 +201,13 @@ Char *StrDelocalizeNumber(Char *s, Char thousandSeparator, Char decimalSeparator
 
   return s;
 }
+
+Char *StrDup(const Char *src) {
+  Char *dst = NULL;
+  if (src == NULL) ErrFatalDisplayEx("StrDup NULL", 0);
+  if (src) {
+    dst = MemPtrNew(StrLen(src) + 1);
+    if (dst) sys_strcpy(dst, src);
+  }
+  return dst;
+}

@@ -402,6 +402,7 @@ Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
 MemHandle MemLocalIDToHandle(LocalID local);
 
+Char *StrDup(const Char *src);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
 Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
