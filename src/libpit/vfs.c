@@ -23,7 +23,9 @@ struct vfs_dir_t {
   int type; // VFS_FILE or VFS_DIR
   vfs_priv_t *priv;
   vfs_ent_t *(*readdir)(vfs_priv_t *priv);
+  int (*rewinddir)(vfs_priv_t *priv);
   int (*closedir)(vfs_priv_t *priv);
+  int did_read;
 };
 
 struct vfs_file_t {
@@ -457,6 +459,7 @@ vfs_dir_t *vfs_opendir(vfs_session_t *session, char *path) {
 
   vdir->type = VFS_DIR;
   vdir->readdir = mount->callback.readdir;
+  vdir->rewinddir = mount->callback.rewinddir;
   vdir->closedir = mount->callback.closedir;
   mutex_unlock(mutex);
   xfree(abspath);
@@ -464,11 +467,26 @@ vfs_dir_t *vfs_opendir(vfs_session_t *session, char *path) {
   return vdir;
 }
 
-vfs_ent_t *vfs_readdir(vfs_dir_t *dir) {
+int vfs_rewinddir(vfs_dir_t *dir) {
+  int r = -1;
+
   if (dir) {
-    return dir->readdir ? dir->readdir(dir->priv) : NULL;
+    r = dir->rewinddir ? (dir->did_read ? dir->rewinddir(dir->priv) : 0) : -1;
+    if (r == 0) dir->did_read = 0;
   }
-  return NULL;
+
+  return r;
+}
+
+vfs_ent_t *vfs_readdir(vfs_dir_t *dir) {
+  vfs_ent_t *ent = NULL;
+
+  if (dir) {
+    ent = dir->readdir ? dir->readdir(dir->priv) : NULL;
+    if (ent) dir->did_read = 1;
+  }
+
+  return ent;
 }
 
 int vfs_closedir(vfs_dir_t *dir) {

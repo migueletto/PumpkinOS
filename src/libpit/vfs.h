@@ -52,6 +52,8 @@ typedef struct {
 
   vfs_ent_t *(*readdir)(vfs_priv_t *priv);
 
+  int (*rewinddir)(vfs_priv_t *priv);
+
   int (*closedir)(vfs_priv_t *priv);
 
   vfs_fpriv_t *(*open)(char *path, int mode, void *data);
@@ -108,6 +110,8 @@ int vfs_type(void *p);
 vfs_dir_t *vfs_opendir(vfs_session_t *session, char *path);
 
 vfs_ent_t *vfs_readdir(vfs_dir_t *dir);
+
+int vfs_rewinddir(vfs_dir_t *dir);
 
 int vfs_closedir(vfs_dir_t *dir);
 

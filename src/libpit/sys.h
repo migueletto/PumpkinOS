@@ -155,6 +155,8 @@ sys_dir_t *sys_opendir(const char *pathname);
 
 int sys_readdir(sys_dir_t *dir, char *name, int len);
 
+int sys_rewinddir(sys_dir_t *dir);
+
 int sys_closedir(sys_dir_t *dir);
 
 int sys_chdir(char *path);

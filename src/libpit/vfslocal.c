@@ -28,6 +28,7 @@ static char *vfs_local_getmount(void *data);
 static int vfs_local_checktype(char *path, void *data);
 static vfs_priv_t *vfs_local_opendir(char *path, void *data);
 static vfs_ent_t *vfs_local_readdir(vfs_priv_t *priv);
+static int vfs_local_rewinddir(vfs_priv_t *priv);
 static int vfs_local_closedir(vfs_priv_t *priv);
 
 static vfs_fpriv_t *vfs_local_open(char *path, int mode, void *data);
@@ -53,6 +54,7 @@ static vfs_callback_t local_callback = {
   vfs_local_checktype,
   vfs_local_opendir,
   vfs_local_readdir,
+  vfs_local_rewinddir,
   vfs_local_closedir,
   vfs_local_open,
   vfs_local_peek,
@@ -180,6 +182,18 @@ static vfs_ent_t *vfs_local_readdir(vfs_priv_t *priv) {
   priv->current.wr    = (st.mode & SYS_IWUSR) ? 1 : 0;
 
   return &priv->current;
+}
+
+static int vfs_local_rewinddir(vfs_priv_t *priv) {
+  int r = -1;
+
+  if (priv) {
+    if (priv->dir) {
+      r = sys_rewinddir(priv->dir);
+    }
+  }
+
+  return r;
 }
 
 static int vfs_local_closedir(vfs_priv_t *priv) {
