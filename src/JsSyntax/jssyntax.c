@@ -406,12 +406,22 @@ static void syntax_end_line(syntax_highlight_t *shigh) {
   }
 }
 
+static void syntax_reset(syntax_highlight_t *shigh) {
+  debug(DEBUG_TRACE, "SYNTAX", "reset");
+
+  shigh->state = state_initial;
+  shigh->line_comment = 0;
+  shigh->comment = 0;
+  shigh->count = 0;
+}
+
 static void *PluginMain(void *p) {
   plugin.syntax_create = syntax_create;
   plugin.syntax_destroy = syntax_destroy;
   plugin.syntax_begin_line = syntax_begin_line;
   plugin.syntax_char = syntax_char;
   plugin.syntax_end_line = syntax_end_line;
+  plugin.syntax_reset = syntax_reset;
 
   return &plugin;
 }

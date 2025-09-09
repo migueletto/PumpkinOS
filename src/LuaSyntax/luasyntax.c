@@ -25,7 +25,10 @@ typedef enum {
   state_minus,
   state_minus_minus,
   state_minus_minus_bracket,
-  state_comment
+  state_comment,
+  state_bracket,
+  state_bracket_bracket,
+  state_bracket_bracket_minus,
 } state_t;
 
 static const RGBColorType reservedWordRGB = { 0, 0xff, 0xff, 0x20 };
@@ -225,27 +228,20 @@ static void next_state(syntax_highlight_t *shigh, char c) {
       shigh->state = state_minus;
       break;
     default:
-      if (c == '_') {
+      attr = TxtCharAttr(c);
+      if (attr & charAttr_DI) {
+        shigh->state = state_number;
+        shigh->count = 0;
+        shigh->buf[shigh->count++] = c;
+        debug(DEBUG_TRACE, "SYNTAX", "begin number buffer \"%.*s\"", shigh->count, shigh->buf);
+      } else if (attr & (charAttr_LO | charAttr_UP)) {
         shigh->state = state_alpha;
         shigh->count = 0;
         shigh->buf[shigh->count++] = c;
         debug(DEBUG_TRACE, "SYNTAX", "begin alpha buffer \"%.*s\"", shigh->count, shigh->buf);
       } else {
-        attr = TxtCharAttr(c);
-        if (attr & charAttr_DI) {
-          shigh->state = state_number;
-          shigh->count = 0;
-          shigh->buf[shigh->count++] = c;
-          debug(DEBUG_TRACE, "SYNTAX", "begin number buffer \"%.*s\"", shigh->count, shigh->buf);
-        } else if (attr & (charAttr_LO | charAttr_UP)) {
-          shigh->state = state_alpha;
-          shigh->count = 0;
-          shigh->buf[shigh->count++] = c;
-          debug(DEBUG_TRACE, "SYNTAX", "begin alpha buffer \"%.*s\"", shigh->count, shigh->buf);
-        } else {
-          shigh->print(shigh->data, shigh->otherColor, shigh->backgroundColor, &c, 1);
-          shigh->state = state_initial;
-        }
+        shigh->print(shigh->data, shigh->otherColor, shigh->backgroundColor, &c, 1);
+        shigh->state = state_initial;
       }
       break;
   }
@@ -375,6 +371,34 @@ static void syntax_char(syntax_highlight_t *shigh, char c) {
       break;
     case state_comment:
       shigh->print(shigh->data, shigh->commentColor, shigh->backgroundColor, &c, 1);
+      if (c == ']') {
+        shigh->state = state_bracket;
+      }
+      break;
+    case state_bracket:
+      shigh->print(shigh->data, shigh->commentColor, shigh->backgroundColor, &c, 1);
+      if (c == ']') {
+        shigh->state = state_bracket_bracket;
+      } else {
+        shigh->state = state_comment;
+      }
+      break;
+    case state_bracket_bracket:
+      shigh->print(shigh->data, shigh->commentColor, shigh->backgroundColor, &c, 1);
+      if (c == '-') {
+        shigh->state = state_bracket_bracket_minus;
+      } else {
+        shigh->state = state_comment;
+      }
+      break;
+    case state_bracket_bracket_minus:
+      shigh->print(shigh->data, shigh->commentColor, shigh->backgroundColor, &c, 1);
+      if (c == '-') {
+        shigh->state = state_initial;
+        shigh->comment = 0;
+      } else {
+        shigh->state = state_comment;
+      }
       break;
   }
 }
@@ -399,12 +423,22 @@ static void syntax_end_line(syntax_highlight_t *shigh) {
   }
 }
 
+static void syntax_reset(syntax_highlight_t *shigh) {
+  debug(DEBUG_TRACE, "SYNTAX", "reset");
+
+  shigh->state = state_initial;
+  shigh->line_comment = 0;
+  shigh->comment = 0;
+  shigh->count = 0;
+}
+
 static void *PluginMain(void *p) {
   plugin.syntax_create = syntax_create;
   plugin.syntax_destroy = syntax_destroy;
   plugin.syntax_begin_line = syntax_begin_line;
   plugin.syntax_char = syntax_char;
   plugin.syntax_end_line = syntax_end_line;
+  plugin.syntax_reset = syntax_reset;
 
   return &plugin;
 }
