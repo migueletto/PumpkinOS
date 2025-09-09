@@ -543,6 +543,12 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
     if (vfs_type(dirRef) == VFS_DIR) {
       d = (vfs_dir_t *)dirRef;
 
+      if (dirEntryIteratorP) {
+        if (*dirEntryIteratorP == vfsIteratorStart) {
+          vfs_rewinddir(d);
+        }
+      }
+
       for (;;) {
         ent = vfs_readdir(d);
         if (ent == NULL) break;
@@ -552,7 +558,7 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
       if (ent != NULL) {
         if (dirEntryIteratorP) {
           if (*dirEntryIteratorP == vfsIteratorStart) {
-            *dirEntryIteratorP = 0;
+            *dirEntryIteratorP = 1;
           } else {
             *dirEntryIteratorP = *dirEntryIteratorP + 1;
           }
