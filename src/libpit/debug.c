@@ -244,6 +244,10 @@ void debugva_full(const char *file, const char *func, int line, int _level, cons
 #elif !defined(KERNEL)
     mutex_lock_only(mutex);
     fwrite((uint8_t *)tmp, 1, s - tmp, fd);
+    if (s > tmp && tmp[s - tmp - 1] != '\n') {
+      if (raw) fwrite("\r", 1, 1, fd);
+      fwrite("\n", 1, 1, fd);
+    }
     fflush(fd);
     mutex_unlock_only(mutex);
 #endif
