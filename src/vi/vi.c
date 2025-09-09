@@ -555,7 +555,7 @@ static void place_cursor(struct globals *g, int row, int col)
 //----- Erase from cursor to end of line -----------------------
 static void clear_to_eol(struct globals *g)
 {
-  g->e->clreol(g->e->data);
+  g->e->clreol(g->e->data, g->backgroundColor);
 }
 
 static void go_bottom_and_clear_to_eol(struct globals *g)
@@ -915,7 +915,7 @@ static void refresh(struct globals *g, int full_screen)
 
     if (!tp[0]) {
       g->e->color(g->e->data, g->foregroundColor, g->backgroundColor);
-      g->syntax->syntax_reset(g->shigh);
+      if (g->syntax) g->syntax->syntax_reset(g->shigh);
     }
     // format current text line
     out_buf = format_line(g, tp /*, li*/);
@@ -975,7 +975,7 @@ static void refresh(struct globals *g, int full_screen)
   }
 
   place_cursor(g, g->crow, g->ccol);
-  g->syntax->syntax_reset(g->shigh);
+  if (g->syntax) g->syntax->syntax_reset(g->shigh);
 
   old_offset = g->offset;
 #undef old_offset
@@ -985,7 +985,7 @@ static void refresh(struct globals *g, int full_screen)
 static void redraw(struct globals *g, int full_screen)
 {
   // cursor to top,left; clear to the end of screen
-  g->e->cls(g->e->data);
+  g->e->cls(g->e->data, g->backgroundColor);
   screen_erase(g);    // erase the internal screen buffer
   g->last_status_cksum = 0;  // force status update
   refresh(g, full_screen);  // this will redraw the entire display
@@ -4430,7 +4430,7 @@ static int vi_main(struct globals *g, int argc, char **argv) {
   argv += optind;
   g->cmdline_filecnt = argc - optind;
 
-  g->e->cls(g->e->data);
+  g->e->cls(g->e->data, g->backgroundColor);
 
   // This is the main file handling loop
   optind = 0;
@@ -4442,7 +4442,7 @@ static int vi_main(struct globals *g, int argc, char **argv) {
       break;
   }
 
-  g->e->cls(g->e->data);
+  g->e->cls(g->e->data, g->backgroundColor);
 
   return 0;
 }

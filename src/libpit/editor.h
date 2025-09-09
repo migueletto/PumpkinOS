@@ -1,8 +1,8 @@
 typedef struct editor_t {
   // called by editor
   int (*cursor)(void *data, int col, int row);
-  int (*cls)(void *data);
-  int (*clreol)(void *data);
+  int (*cls)(void *data, uint32_t bg);
+  int (*clreol)(void *data, uint32_t bg);
   int (*peek)(void *data, int ms);
   int (*read)(void *data, uint16_t *c);
   int (*write)(void *data, char *buf, int len);

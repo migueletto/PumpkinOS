@@ -6,6 +6,7 @@
 #include "pterm.h"
 #include "peditor.h"
 #include "pumpkin.h"
+#include "debug.h"
 
 static void *vfs_editor_fopen(void *data, char *name, int writing) {
   FileRef f = NULL;
@@ -20,6 +21,10 @@ static void *vfs_editor_fopen(void *data, char *name, int writing) {
     } else {
       err = VFSFileOpen(1, name, vfsModeRead, &f);
     }
+  }
+
+  if (err != errNone) {
+    debug(DEBUG_ERROR, PUMPKINOS, "vfs_editor_fopen(\"%s\", %d) failed", name, writing);
   }
 
   return err == errNone ? f : NULL;
@@ -121,17 +126,19 @@ static int pterm_editor_cursor(void *data, int col, int row) {
   return 0;
 }
 
-static int pterm_editor_cls(void *data) {
+static int pterm_editor_cls(void *data, uint32_t bg) {
   pterm_t *t = (pterm_t *)data;
 
+  pterm_setbg(t, bg);
   pterm_cls(t);
 
   return 0;
 }
 
-static int pterm_editor_clreol(void *data) {
+static int pterm_editor_clreol(void *data, uint32_t bg) {
   pterm_t *t = (pterm_t *)data;
 
+  pterm_setbg(t, bg);
   pterm_clreol(t);
 
   return 0;
