@@ -409,6 +409,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
 
         }
       } else {
+        event.eType = tblExitEvent;
         event.data.tblExit.tableID = tableP->id;
         event.data.tblExit.pTable = tableP;
         event.data.tblExit.row = 0;
@@ -422,6 +423,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
     case tblEnterEvent:
 //debug(1, "XXX", "tblEnterEvent");
       if (eventP->data.tblEnter.tableID == tableP->id) {
+        debug(DEBUG_TRACE, "Table", "tblEnterEvent table %d", tableP->id);
 //debug(1, "XXX", "tblEnterEvent in table");
         TblSetSelection(tableP, eventP->data.tblEnter.row, eventP->data.tblEnter.column);
         TblGrabFocus(tableP, eventP->data.tblEnter.row, eventP->data.tblEnter.column);
@@ -432,6 +434,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
     case tblSelectEvent:
 //debug(1, "XXX", "tblSelectEvent event id=%d table id=%d", eventP->data.tblSelect.tableID, tableP->id);
       if (eventP->data.tblSelect.tableID == tableP->id) {
+        debug(DEBUG_TRACE, "Table", "tblSelectEvent table %d", tableP->id);
         row = eventP->data.tblSelect.row;
         column = eventP->data.tblSelect.column;
 //debug(1, "XXX", "tblSelectEvent in table select row=%d col=%d", eventP->data.tblSelect.row, eventP->data.tblSelect.column);
@@ -454,7 +457,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
       break;
     case tblExitEvent:
 //debug(1, "XXX", "tblExitEvent");
-      debug(DEBUG_TRACE, "Table", "exit table %d", tableP->id);
+      debug(DEBUG_TRACE, "Table", "tblExitEvent table %d", tableP->id);
       handled = true;
       break;
     default:
