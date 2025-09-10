@@ -81,7 +81,10 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
     WinSetBackColor(fieldBack);
     WinSetForeColor(objFore);
     WinSetTextColor(fieldText);
-    WinEraseRectangle(&rect, 0);
+
+    if (item->itemType != customTableItem) {
+      WinEraseRectangle(&rect, 0);
+    }
 
     switch (item->itemType) {
       case checkboxTableItem:
