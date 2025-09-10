@@ -1,7 +1,7 @@
 include common.mak
 
 DIRS=../bin ../lib ../tools ../vfs/app_card/PALM/Programs ../vfs/app_install ../vfs/app_storage ../registry
-BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command Edit LuaSyntax MemoPad AddressBook ToDoList DateBook
+BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command vi LuaSyntax MemoPad AddressBook ToDoList DateBook
 
 ifeq ($(OSNAME),GNU/Linux)
 ifneq ($(wildcard /usr/include/SDL2/SDL.h),)
