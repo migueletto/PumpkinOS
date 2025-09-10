@@ -184,7 +184,7 @@ static void draw_page(editor_t *e, edit_t *data, int from_current, int all) {
     if (draw) {
       e->cursor(e->data, 0, i);
       draw_line(e, data, line->buf, len);
-      e->clreol(e->data);
+      e->clreol(e->data, data->backgroundColor);
     }
     data->shown++;
     i += line->span;
@@ -195,12 +195,12 @@ static void draw_page(editor_t *e, edit_t *data, int from_current, int all) {
     debug(DEBUG_TRACE, "EDIT", "row %d empty", i);
     e->cursor(e->data, 0, i);
     e->color(e->data, data->foregroundColor, color);
-    e->clreol(e->data);
+    e->clreol(e->data, data->backgroundColor);
   }
 
   e->cursor(e->data, 0, i);
   e->color(e->data, data->foregroundColor, data->emptyColor);
-  e->clreol(e->data);
+  e->clreol(e->data, data->backgroundColor);
 }
 
 static void draw_status(editor_t *e, edit_t *data, char *status, int inverse) {
@@ -221,7 +221,7 @@ static void draw_status(editor_t *e, edit_t *data, char *status, int inverse) {
     e->write(e->data, status, len);
   }
   e->color(e->data, data->foregroundColor, data->emptyColor);
-  e->clreol(e->data);
+  e->clreol(e->data, data->backgroundColor);
 
   data->col = col;
   data->row = row;
@@ -762,7 +762,7 @@ debug(1, "XXX", "cursor down to line %d", data->line);
               e->cursor(e->data, 0, data->nrows-1);
               c = key;
               e->write(e->data, &c, 1);
-              e->clreol(e->data);
+              e->clreol(e->data, data->backgroundColor);
               data->col = 1;
               data->row = data->nrows-1;
               data->ncmd = 0;
@@ -938,7 +938,7 @@ static int edit_edit(editor_t *e, char *filename) {
     }
     e->color(e->data, data.foregroundColor, data.emptyColor);
     e->cursor(e->data, 0, data.nrows-1);
-    e->clreol(e->data);
+    e->clreol(e->data, data.backgroundColor);
     doit(e, &data);
     for (line = data.first; line;) {
       if (line->buf) xfree(line->buf);
