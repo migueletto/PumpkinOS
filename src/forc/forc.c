@@ -17,6 +17,12 @@
 
 #define Y0 16
 
+enum info_type_e {
+  INFO,
+  WARNING,
+  ERROR
+};
+
 typedef struct {
   VFSExplorer *vfse;
   RectangleType rect;
@@ -24,8 +30,7 @@ typedef struct {
   UInt16 row, col;
   FontID font;
   UInt16 fontWidth, fontHeight;
-  Boolean enableCursor;
-  Boolean saveCursor;
+  Boolean isFile;
   uint32_t fg, bg;
   uint8_t *buffer;
 } app_data_t;
@@ -194,14 +199,28 @@ static int forc_editor_window(void *data_, int *ncols, int *nrows) {
 
 static void resize(FormType *frm, app_data_t *data) {
   WinHandle wh;
+  TableType *tbl;
   RectangleType rect;
   UInt32 swidth, sheight;
+  UInt16 objIndex;
+  Coord width;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
   wh = FrmGetWindowHandle(frm);
   RctSetRectangle(&rect, 0, 0, swidth, sheight);
   WinSetBounds(wh, &rect);
   WinSetClipingBounds(&frm->window, &rect);
+
+  objIndex = FrmGetObjectIndex(frm, fileTable);
+  if (objIndex != 0xffff) {
+    FrmGetObjectBounds(frm, objIndex, &rect);
+    rect.extent.x += swidth  - 160;
+    rect.extent.y += sheight - 160;
+    FrmSetObjectBounds(frm, objIndex, &rect);
+    tbl = FrmGetObjectPtr(frm, objIndex);
+    width = TblGetColumnWidth(tbl, 0);
+    TblSetColumnWidth(tbl, 0, width + swidth - 160);
+  }
 }
 
 static Boolean EditFormHandleEvent(EventType *event) {
@@ -209,7 +228,6 @@ static Boolean EditFormHandleEvent(EventType *event) {
   editor_t e;
   FormType *frm;
   Coord width, height;
-  UInt32 density;
   FontID oldFont;
   char *filename;
   char path[MAX_PATH];
@@ -224,12 +242,12 @@ static Boolean EditFormHandleEvent(EventType *event) {
 
       if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
         debug(DEBUG_INFO, APPNAME, "editing file [%s]", filename);
+	FrmSetTitle(frm, filename);
         sys_memset(&e, 0, sizeof(editor_t));
         e.data = data;
         WinGetWindowExtent(&width, &height);
         RctSetRectangle(&data->rect, 0, Y0, width, height - Y0);
 
-        WinScreenGetAttribute(winScreenDensity, &density);
         data->font = mono8x14Font;
         oldFont = FntSetFont(data->font);
         data->fontHeight = FntCharHeight();
@@ -266,12 +284,6 @@ static Boolean EditFormHandleEvent(EventType *event) {
       handled = true;
       break;
 
-    case winDisplayChangedEvent:
-      frm = FrmGetActiveForm();
-      resize(frm, data);
-      handled = true;
-      break;
-
     default:
       break;
   }
@@ -279,9 +291,61 @@ static Boolean EditFormHandleEvent(EventType *event) {
   return handled;
 }
 
+static void infoDialog(enum info_type_e type, const char *fmt, ...) {
+  char buf[256];
+  sys_va_list arg;
+
+  sys_va_start(arg, fmt);
+  StrVNPrintF(buf, sizeof(buf)-1, fmt, arg);
+
+  switch (type) {
+    case INFO:
+      FrmCustomAlert(10024, buf, "", "");
+      break;
+    case WARNING:
+      FrmCustomAlert(10031, buf, "", "");
+      break;
+    case ERROR:
+      FrmCustomAlert(10021, buf, "", "");
+  }
+  sys_va_end(arg);
+}
+
+static char *fileDialog(UInt16 id, char *title) {
+  FormType *frm;
+  FieldType *fld;
+  UInt16 index;
+  char *filename = NULL;
+
+  if ((frm = FrmInitForm(id)) != NULL) {
+    FrmSetTitle(frm, title);
+    index = FrmGetObjectIndex(frm, fileFld);
+    FrmSetFocus(frm, index);
+    FrmDoDialog(frm);
+    fld = FrmGetObjectPtr(frm, index);
+    filename = FldGetTextPtr(fld);
+    filename = filename && filename[0] ? StrDup(filename) : NULL;
+    FrmDeleteForm(frm);
+  }
+
+  return filename;
+}
+
+static void fileOperation(app_data_t *data, char *label, char *filename, Err (*f)(UInt16, const Char *)) {
+  char path[MAX_PATH];
+
+  sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
+  if (f(1, path) == errNone) {
+    VFSExplorerRefresh(NULL, data->vfse);
+  } else {
+    infoDialog(ERROR, "Error %s %s", label, filename);
+  }
+}
+
 static Boolean MainFormHandleEvent(EventType *event) {
   app_data_t *data = pumpkin_get_data();
   FormType *frm;
+  char *filename;
   Boolean handled = false;
 
   switch (event->eType) {
@@ -290,7 +354,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
       resize(frm, data);
       if (data->vfse == NULL) {
         debug(DEBUG_INFO, APPNAME, "creating vfse");
-        data->vfse = VFSExplorerCreate(frm, FileTable, FILE_ROOT);
+        data->vfse = VFSExplorerCreate(frm, fileTable, upBtn, downBtn, FILE_ROOT);
       } else {
         debug(DEBUG_INFO, APPNAME, "refreshing vfse");
         VFSExplorerRefresh(frm, data->vfse);
@@ -299,22 +363,47 @@ static Boolean MainFormHandleEvent(EventType *event) {
       handled = true;
       break;
 
-    case winDisplayChangedEvent:
-      frm = FrmGetActiveForm();
-      resize(frm, data);
-      pumpkin_set_size(APPID, event->data.winDisplayChanged.newBounds.extent.x, event->data.winDisplayChanged.newBounds.extent.y);
-      handled = true;
-      break;
-
     case tblSelectEvent:
       handled = VFSExplorerHandleEvent(data->vfse, event);
-      if (!handled) {
-        FrmGotoForm(EditForm);
-      }
+      data->isFile = !handled;
       break;
 
     case tblExitEvent:
       handled = VFSExplorerHandleEvent(data->vfse, event);
+      break;
+
+    case ctlSelectEvent:
+      switch (event->data.ctlSelect.controlID) {
+        case openBtn:
+          if (data->isFile) {
+            FrmGotoForm(EditForm);
+          } else {
+            VFSExplorerEnter(data->vfse);
+          }
+          break;
+        case newDirBtn:
+          if ((filename = fileDialog(NewFileForm, "New dir")) != NULL) {
+            fileOperation(data, "creating", filename, VFSDirCreate);
+          }
+          break;
+        case newFileBtn:
+          if ((filename = fileDialog(NewFileForm, "New file")) != NULL) {
+            fileOperation(data, "creating", filename, VFSFileCreate);
+          }
+          break;
+        case delBtn:
+          if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
+            fileOperation(data, "deleting", filename, VFSFileDelete);
+          }
+          break;
+        case upBtn:
+          VFSExplorerPaginate(data->vfse, -5);
+          break;
+        case downBtn:
+          VFSExplorerPaginate(data->vfse, 5);
+          break;
+      }
+      handled = true;
       break;
 
     case menuEvent:

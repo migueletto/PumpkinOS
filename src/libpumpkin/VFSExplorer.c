@@ -5,56 +5,97 @@
 #include "VFSExplorer.h"
 #include "debug.h"
 
+#define ITEMS_CAP 32
 #define MAX_NAME 64
 #define MAX_PATH 256
+#define PARENT_DIR ".."
 
 struct VFSExplorer {
-  UInt16 tableID;
+  UInt16 tableID, upID, downID;
   FormType *frm;
   TableType *tbl;
   FileRef d;
+  struct item_t *items;
+  int itemsCap;
+  int itemsLen;
+  int topItem;
   Int16 selectedRow;
-  char *selectedItem;
+  Int16 selectedItem;
   char root[MAX_PATH];
   char path[MAX_PATH];
 };
 
-typedef struct {
+typedef struct item_t {
   VFSExplorer *vfse;
   char *name;
-  UInt32 iterator;
+  UInt32 size;
   Boolean dir;
 } item_t;
 
 static void item_draw(void *t, Int16 row, Int16 column, RectangleType *rect) {
   TableType *tbl = (TableType *)t;
   IndexedColorType fg, bg;
+  RGBColorType fgRGB, bgRGB;
   item_t *item;
-  Int16 len;
+  Int16 len, width;
+  char *s, buf[32];
 
   if (tbl && rect && (item = TblGetItemPtr(tbl, row, column)) != NULL) {
-    if (item->name) {
-      if (row == item->vfse->selectedRow) {
-        fg = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
-        bg = UIColorGetTableEntryIndex(UIFormFrame);
-      } else {
-        fg = UIColorGetTableEntryIndex(UIFieldText);
-        bg = UIColorGetTableEntryIndex(UIFormFill);
-      }
-      WinSetBackColor(bg);
-      WinSetTextColor(fg);
-
-      len = StrLen(item->name);
-      WinPaintChars(item->name, len, rect->topLeft.x, rect->topLeft.y);
-      rect->topLeft.x += FntCharsWidth(item->name, len);
-      rect->extent.x -= rect->topLeft.x;
+    switch (column) {
+      case 0:
+        s = item->name;
+        break;
+      case 1:
+        StrNPrintF(buf, sizeof(buf)-1, "%u", item->size);
+        s = buf;
+        break;
+      default:
+        s = "";
+        break;
     }
-  }
 
-  WinEraseRectangle(rect, 0);
+    if (row == item->vfse->selectedRow) {
+      bg = UIColorGetTableEntryIndex(UIFormFrame);
+      WinSetBackColor(bg);
+      fg = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+      WinSetTextColor(fg);
+    } else {
+      if (row % 2) {
+        bgRGB.r = 0xf0;
+        bgRGB.g = 0xf0;
+        bgRGB.b = 0xff;
+      } else {
+        bgRGB.r = 0xf8;
+        bgRGB.g = 0xf8;
+        bgRGB.b = 0xff;
+      }
+      WinSetBackColorRGB(&bgRGB, NULL);
+      fg = UIColorGetTableEntryIndex(UIFieldText);
+      if (item->dir) {
+        fgRGB.r = 0x20;
+        fgRGB.g = 0x20;
+        fgRGB.b = 0xff;
+      } else {
+        fgRGB.r = 0x00;
+        fgRGB.g = 0x00;
+        fgRGB.b = 0x00;
+      }
+      WinSetTextColorRGB(&fgRGB, NULL);
+    }
+
+    if (s && s[0]) {
+      len = StrLen(s);
+      WinPaintChars(s, len, rect->topLeft.x, rect->topLeft.y);
+      width = FntCharsWidth(s, len);
+      rect->topLeft.x += width;
+      rect->extent.x -= width;
+    }
+
+    WinEraseRectangle(rect, 0);
+  }
 }
 
-VFSExplorer *VFSExplorerCreate(FormType *frm, UInt16 tableID, char *root) {
+VFSExplorer *VFSExplorerCreate(FormType *frm, UInt16 tableID, UInt16 upID, UInt16 downID, char *root) {
   VFSExplorer *vfse;
 
   if (root == NULL) {
@@ -67,6 +108,8 @@ VFSExplorer *VFSExplorerCreate(FormType *frm, UInt16 tableID, char *root) {
   }
 
   vfse->tableID = tableID;
+  vfse->upID = upID;
+  vfse->downID = downID;
   StrNCopy(vfse->root, root, MAX_PATH-1);
   StrNCopy(vfse->path, root, MAX_PATH-1);
 
@@ -75,13 +118,33 @@ VFSExplorer *VFSExplorerCreate(FormType *frm, UInt16 tableID, char *root) {
   return vfse;
 }
 
+static void item_insert(VFSExplorer *vfse, char *name, Boolean dir, UInt32 i) {
+  if (i == vfse->itemsCap) {
+    if (vfse->itemsCap == 0) {
+      vfse->itemsCap = ITEMS_CAP;
+      vfse->items = sys_calloc(vfse->itemsCap, sizeof(item_t));
+    } else {
+      vfse->itemsCap += ITEMS_CAP;
+      vfse->items = sys_realloc(vfse->items, vfse->itemsCap * sizeof(item_t));
+    }
+  }
+
+  if (vfse->items[i].name) {
+    MemPtrFree(vfse->items[i].name);
+  }
+  vfse->items[i].name = StrDup(name);
+  vfse->items[i].dir = dir;
+  vfse->items[i].vfse = vfse;
+}
+
 void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
   FileInfoType info;
   TableType *tbl;
+  ControlType *ctl;
   UInt32 iterator;
   FileRef d;
   UInt16 index, row, rows;
-  item_t *item, *oldItem;
+  Boolean enabled;
   char name[MAX_NAME];
 
   if (frm == NULL) {
@@ -103,54 +166,83 @@ void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
     return;
   }
 
-  if (VFSFileOpen(1, vfse->path, vfsModeRead, &d) != errNone) {
-    return;
+  if (vfse->d == NULL) {
+    if (VFSFileOpen(1, vfse->path, vfsModeRead, &d) == errNone) {
+      vfse->d = d;
+    }
   }
 
   vfse->frm = frm;
   vfse->tbl = tbl;
-  vfse->d = d;
   vfse->selectedRow = -1;
 
+  vfse->itemsLen = 0;
+  if (StrCompare(vfse->path, vfse->root) != 0) {
+    item_insert(vfse, PARENT_DIR, true, vfse->itemsLen++);
+  }
+
+  if (vfse->d != NULL) {
+    iterator = vfsIteratorStart;
+    for (;; vfse->itemsLen++) {
+      MemSet(&info, sizeof(info), 0);
+      MemSet(name, sizeof(MAX_NAME), 0);
+      info.nameP = name;
+      info.nameBufLen = MAX_NAME - 1;
+      if (VFSDirEntryEnumerate(vfse->d, &iterator, &info) != errNone) break;
+      if (iterator == vfsIteratorStop) break;
+      item_insert(vfse, info.nameP, info.attributes == vfsFileAttrDirectory, vfse->itemsLen);
+    }
+  }
+
   TblSetColumnUsable(vfse->tbl, 0, true);
+  TblSetColumnUsable(vfse->tbl, 1, true);
   TblSetCustomDrawProcedure(vfse->tbl, 0, item_draw);
+  TblSetCustomDrawProcedure(vfse->tbl, 1, item_draw);
   rows = TblGetNumberOfRows(vfse->tbl);
 
-  iterator = vfsIteratorStart;
-  for (row = 0; row < rows; row++) {
-    MemSet(&info, sizeof(info), 0);
-    info.nameP = name;
-    info.nameBufLen = MAX_NAME - 1;
-    if (VFSDirEntryEnumerate(vfse->d, &iterator, &info) != errNone) break;
-    if (iterator == vfsIteratorStop) break;
-    if ((item = MemPtrNew(sizeof(item_t))) == NULL) break;
-    oldItem = TblGetItemPtr(vfse->tbl, row, 0);
-    if (oldItem) {
-      if (oldItem->name) MemPtrFree(oldItem->name);
-      MemPtrFree(oldItem);
-    }
+  for (row = 0; row < rows && (row + vfse->topItem) < vfse->itemsLen; row++) {
     TblSetItemStyle(vfse->tbl, row, 0, customTableItem);
-    item->vfse = vfse;
-    item->name = StrDup(info.nameP);
-    item->dir = (info.attributes == vfsFileAttrDirectory);
-    item->iterator = iterator;
-    TblSetItemPtr(vfse->tbl, row, 0, item);
+    TblSetItemStyle(vfse->tbl, row, 1, customTableItem);
+    TblSetItemInt(vfse->tbl, row, 0, vfse->topItem + row);
+    TblSetItemInt(vfse->tbl, row, 1, vfse->topItem + row);
+    TblSetItemPtr(vfse->tbl, row, 0, &vfse->items[vfse->topItem + row]);
+    TblSetItemPtr(vfse->tbl, row, 1, &vfse->items[vfse->topItem + row]);
     TblSetRowUsable(vfse->tbl, row, true);
   }
   for (; row < rows; row++) {
-    oldItem = TblGetItemPtr(vfse->tbl, row, 0);
-    if (oldItem) {
-      if (oldItem->name) MemPtrFree(oldItem->name);
-      MemPtrFree(oldItem);
-    }
+    TblSetItemStyle(vfse->tbl, row, 0, customTableItem);
+    TblSetItemStyle(vfse->tbl, row, 1, customTableItem);
+    TblSetItemInt(vfse->tbl, row, 0, -1);
+    TblSetItemInt(vfse->tbl, row, 1, -1);
     TblSetItemPtr(vfse->tbl, row, 0, NULL);
+    TblSetItemPtr(vfse->tbl, row, 1, NULL);
     TblSetRowUsable(vfse->tbl, row, false);
   }
   TblMarkTableInvalid(vfse->tbl);
+
+  if ((index = FrmGetObjectIndex(frm, vfse->upID)) != 0xffff) {
+    if (FrmGetObjectType(frm, index) == frmControlObj) {
+      if ((ctl = FrmGetObjectPtr(frm, index)) != NULL) {
+        enabled = vfse->itemsLen > 0 && vfse->itemsLen > rows && vfse->topItem > 0;
+        CtlSetLabel(ctl, enabled ? "\x01" : "\x03");
+        CtlSetEnabled(ctl, enabled);
+      }
+    }
+  }
+
+  if ((index = FrmGetObjectIndex(frm, vfse->downID)) != 0xffff) {
+    if (FrmGetObjectType(frm, index) == frmControlObj) {
+      if ((ctl = FrmGetObjectPtr(frm, index)) != NULL) {
+        enabled = vfse->itemsLen > 0 && vfse->itemsLen > rows && vfse->topItem < vfse->itemsLen-1;
+        CtlSetLabel(ctl, enabled ? "\x02" : "\x04");
+        CtlSetEnabled(ctl, enabled);
+      }
+    }
+  }
 }
 
 Boolean VFSExplorerHandleEvent(VFSExplorer *vfse, EventType *event) {
-  Int16 row;
+  Int16 row, i;
   item_t *item;
   Boolean handled = false;
 
@@ -159,23 +251,34 @@ Boolean VFSExplorerHandleEvent(VFSExplorer *vfse, EventType *event) {
       case tblSelectEvent:
         if (event->data.tblSelect.tableID == vfse->tableID) {
           row = event->data.tblSelect.row;
-          item = TblGetItemPtr(vfse->tbl, row, 0);
-          debug(DEBUG_INFO, "VFSExplorer", "VFSExplorerHandleEvent tblSelectEvent row %d [%s]", row, item->name);
+          i = TblGetItemInt(vfse->tbl, row, 0);
+          item = &vfse->items[i];
+          debug(DEBUG_INFO, "VFSExplorer", "VFSExplorerHandleEvent tblSelectEvent row %d item %d [%s] dir %d", row, i, item->name, item->dir);
           if (vfse->selectedRow != -1) {
             TblMarkRowInvalid(vfse->tbl, vfse->selectedRow);
           }
           TblMarkRowInvalid(vfse->tbl, row);
           vfse->selectedRow = row;
-          vfse->selectedItem = item->name;
-          TblRedrawTable(vfse->tbl);
+          vfse->selectedItem = i;
           if (item->dir) {
-            StrNCat(vfse->path, item->name, MAX_PATH-1);
-            StrNCat(vfse->path, "/", MAX_PATH-1);
-            debug(DEBUG_INFO, "VFSExplorer", "change to subdir [%s]", vfse->path);
-            VFSExplorerRefresh(vfse->frm, vfse);
-            TblRedrawTable(vfse->tbl);
+            if (StrCompare(item->name, PARENT_DIR) == 0) {
+              for (i = StrLen(vfse->path) - 2; i >= 0 && vfse->path[i]; i--) {
+                if (vfse->path[i] == '/') {
+                  vfse->path[i+1] = 0;
+                  break;
+                }
+              }
+              if (vfse->d) {
+                VFSFileClose(vfse->d);
+                vfse->d = NULL;
+              }
+              debug(DEBUG_INFO, "VFSExplorer", "change to parent dir [%s]", vfse->path);
+              vfse->topItem = 0;
+              VFSExplorerRefresh(vfse->frm, vfse);
+            }
             handled = true;
           }
+          TblRedrawTable(vfse->tbl);
         }
         break;
       case tblExitEvent:
@@ -200,32 +303,62 @@ char *VFSExplorerCurrentPath(VFSExplorer *vfse) {
 char *VFSExplorerSelectedItem(VFSExplorer *vfse) {
   char *name = NULL;
 
-  if (vfse && vfse->selectedItem) {
-    name = vfse->selectedItem;
+  if (vfse && vfse->selectedItem != -1) {
+    name = vfse->items[vfse->selectedItem].name;
   }
 
   return name;
 }
 
+void VFSExplorerEnter(VFSExplorer *vfse) {
+  if (vfse && vfse->selectedRow != -1) {
+    StrNCat(vfse->path, vfse->items[vfse->selectedItem].name, MAX_PATH-1);
+    StrNCat(vfse->path, "/", MAX_PATH-1);
+    debug(DEBUG_INFO, "VFSExplorer", "change to sub dir [%s]", vfse->path);
+    if (vfse->d) {
+      VFSFileClose(vfse->d);
+      vfse->d = NULL;
+    }
+    vfse->topItem = 0;
+    VFSExplorerRefresh(vfse->frm, vfse);
+    TblRedrawTable(vfse->tbl);
+  }
+}
+
+void VFSExplorerPaginate(VFSExplorer *vfse, Int16 n) {
+  if (vfse && vfse->itemsLen && n) {
+    vfse->topItem += n;
+    if (vfse->topItem < 0) vfse->topItem = 0;
+    else if (vfse->topItem >= vfse->itemsLen) vfse->topItem = vfse->itemsLen - 1;
+    VFSExplorerRefresh(vfse->frm, vfse);
+    TblRedrawTable(vfse->tbl);
+  }
+}
+
 void VFSExplorerDestroy(VFSExplorer *vfse) {
-  UInt16 row, rows;
-  item_t *item;
+  UInt16 row, rows, i;
 
   if (vfse) {
     if (vfse->d) {
       VFSFileClose(vfse->d);
     }
+
     if (vfse->tbl) {
       rows = TblGetNumberOfRows(vfse->tbl);
       for (row = 0; row < rows; row++) {
-        if ((item = TblGetItemPtr(vfse->tbl, row, 0)) != NULL) {
-          TblSetItemPtr(vfse->tbl, row, 0, NULL);
-          if (item->name) MemPtrFree(item->name);
-          MemPtrFree(item);
-        }
+        TblSetItemInt(vfse->tbl, row, 0, -1);
+        TblSetItemInt(vfse->tbl, row, 1, -1);
+        TblSetItemPtr(vfse->tbl, row, 0, NULL);
+        TblSetItemPtr(vfse->tbl, row, 1, NULL);
       }
       TblMarkTableInvalid(vfse->tbl);
     }
+
+    for (i = 0; i < vfse->itemsLen; i++) {
+      if (vfse->items[i].name) MemPtrFree(vfse->items[i].name);
+    }
+    sys_free(vfse->items);
+
     MemPtrFree(vfse);
   }
 }
