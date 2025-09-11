@@ -1,0 +1,92 @@
+#define MAX_TOKEN   32
+#define MAX_STRING 512
+
+typedef struct lexer_t lexer_t;
+
+typedef enum {
+  TOKEN_OPENC = 0x1000,
+  TOKEN_CLOSEC,
+  TOKEN_BOOL,
+  TOKEN_UINTEGER,
+  TOKEN_INTEGER,
+  TOKEN_HEXA,
+  TOKEN_OCTAL,
+  TOKEN_BINARY,
+  TOKEN_FLOATN,
+  TOKEN_STR,
+  TOKEN_IDENT,
+  TOKEN_UINT8,
+  TOKEN_INT8,
+  TOKEN_UINT16,
+  TOKEN_INT16,
+  TOKEN_UINT32,
+  TOKEN_INT32,
+  TOKEN_FLOAT,
+  TOKEN_STRING,
+  TOKEN_CONST,
+  TOKEN_STRUCT,
+  TOKEN_VAR,
+  TOKEN_LET,
+  TOKEN_NNULL,
+  TOKEN_NEW,
+  TOKEN_FUNCTION,
+  TOKEN_PLUS,
+  TOKEN_MINUS,
+  TOKEN_TIMES,
+  TOKEN_DIV,
+  TOKEN_MOD,
+  TOKEN_OPENP,
+  TOKEN_CLOSEP,
+  TOKEN_OPENB,
+  TOKEN_CLOSEB,
+  TOKEN_OPENSB,
+  TOKEN_CLOSESB,
+  TOKEN_COLON,
+  TOKEN_SCOLON,
+  TOKEN_COMMA,
+  TOKEN_DOT,
+  TOKEN_QUESTION,
+  TOKEN_OR,
+  TOKEN_AND,
+  TOKEN_NOT,
+  TOKEN_BOR,
+  TOKEN_BAND,
+  TOKEN_BNOT,
+  TOKEN_BXOR,
+  TOKEN_EQ,
+  TOKEN_LT,
+  TOKEN_GT,
+  TOKEN_LTE,
+  TOKEN_GTE,
+  TOKEN_NEQ,
+  TOKEN_LSHIFT,
+  TOKEN_RSHIFT,
+  TOKEN_INC,
+  TOKEN_DEC,
+  TOKEN_PI,
+  TOKEN_LOOP,
+  TOKEN_IF,
+  TOKEN_ELSE,
+  TOKEN_BREAK,
+  TOKEN_CONTINUE,
+  TOKEN_SWITCH,
+  TOKEN_CASE,
+  TOKEN_RANGE,
+  TOKEN_VARARG,
+  TOKEN_RETURN,
+  TOKEN_IMPORT,
+
+  TOKEN_ERROR = 0xff00,
+  TOKEN_EOF = 0xffff
+} token_e;
+
+typedef struct {
+  token_e id;
+  char *value;
+} token_t;
+
+lexer_t *lexer_init(int fd);
+void lexer_destroy(lexer_t *l);
+uint16_t lexer_next(lexer_t *l, token_t *t);
+uint32_t lexer_line(lexer_t *l);
+char *lexer_stoken(token_e id);

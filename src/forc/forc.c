@@ -10,6 +10,10 @@
 #include "edit.h"
 #include "color.h"
 #include "VFSExplorer.h"
+#include "plibc.h"
+#include "parser.h"
+#include "error.h"
+#include "util.h"
 #include "debug.h"
 
 #define FILE_ROOT "/PALM/Programs/forc/"
@@ -47,11 +51,14 @@ static void InitData(void) {
   } else {
     VFSDirCreate(1, FILE_ROOT);
   }
+
+  plibc_init();
 }
 
 static void FinishData(void) {
   app_data_t *data = pumpkin_get_data();
 
+  plibc_finish();
   pumpkin_set_data(NULL);
   sys_free(data);
 }
@@ -242,7 +249,7 @@ static Boolean EditFormHandleEvent(EventType *event) {
 
       if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
         debug(DEBUG_INFO, APPNAME, "editing file [%s]", filename);
-	FrmSetTitle(frm, filename);
+        FrmSetTitle(frm, filename);
         sys_memset(&e, 0, sizeof(editor_t));
         e.data = data;
         WinGetWindowExtent(&width, &height);
@@ -311,6 +318,16 @@ static void infoDialog(enum info_type_e type, const char *fmt, ...) {
   sys_va_end(arg);
 }
 
+void system_error(char *fmt, ...) {
+  char buf[256];
+  sys_va_list arg;
+  
+  sys_va_start(arg, fmt);
+  StrVNPrintF(buf, sizeof(buf)-1, fmt, arg);
+  FrmCustomAlert(10021, buf, "", "");
+  sys_va_end(arg);
+}
+
 static char *fileDialog(UInt16 id, char *title) {
   FormType *frm;
   FieldType *fld;
@@ -345,7 +362,9 @@ static void fileOperation(app_data_t *data, char *label, char *filename, Err (*f
 static Boolean MainFormHandleEvent(EventType *event) {
   app_data_t *data = pumpkin_get_data();
   FormType *frm;
-  char *filename;
+  char *filename, *ext, *s;
+  char path[MAX_PATH];
+  char path2[MAX_PATH];
   Boolean handled = false;
 
   switch (event->eType) {
@@ -401,6 +420,25 @@ static Boolean MainFormHandleEvent(EventType *event) {
           break;
         case downBtn:
           VFSExplorerPaginate(data->vfse, 5);
+          break;
+        case compileBtn:
+          if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
+            ext = getext(filename);
+            if (sys_strcmp(ext, "fc") == 0) {
+              sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
+              sys_strncpy(path2, path, sizeof(path2)-1);
+              if ((s = sys_strrchr(path2, '.')) != NULL) {
+                s[1] = 'o';
+                s[2] = 0;
+                debug(DEBUG_INFO, APPNAME, "compiling '%s' into '%s'", path, path2);
+                if (compile(path, path2) == 0) {
+                  VFSExplorerRefresh(NULL, data->vfse);
+                }
+              }
+            } else {
+              infoDialog(ERROR, "File '%s' is not .fc", filename);
+            }
+          }
           break;
       }
       handled = true;
