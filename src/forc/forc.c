@@ -12,6 +12,9 @@
 #include "VFSExplorer.h"
 #include "plibc.h"
 #include "parser.h"
+#include "assembler.h"
+#include "linker.h"
+#include "run.h"
 #include "error.h"
 #include "util.h"
 #include "debug.h"
@@ -301,31 +304,43 @@ static Boolean EditFormHandleEvent(EventType *event) {
 static void infoDialog(enum info_type_e type, const char *fmt, ...) {
   char buf[256];
   sys_va_list arg;
+  int level = -1;
 
   sys_va_start(arg, fmt);
   StrVNPrintF(buf, sizeof(buf)-1, fmt, arg);
 
   switch (type) {
     case INFO:
+      level = DEBUG_INFO;
       FrmCustomAlert(10024, buf, "", "");
       break;
     case WARNING:
+      level = DEBUG_ERROR;
       FrmCustomAlert(10031, buf, "", "");
       break;
     case ERROR:
+      level = DEBUG_ERROR;
       FrmCustomAlert(10021, buf, "", "");
+      break;
   }
   sys_va_end(arg);
+
+  if (level != -1) {
+    debug(level, APPNAME, "%s", buf);
+  }
 }
 
-void system_error(char *fmt, ...) {
+int system_error(char *fmt, ...) {
   char buf[256];
   sys_va_list arg;
   
   sys_va_start(arg, fmt);
   StrVNPrintF(buf, sizeof(buf)-1, fmt, arg);
-  FrmCustomAlert(10021, buf, "", "");
   sys_va_end(arg);
+  debug(DEBUG_ERROR, APPNAME, "%s", buf);
+  FrmCustomAlert(10021, buf, "", "");
+
+  return -1;
 }
 
 static char *fileDialog(UInt16 id, char *title) {
@@ -353,18 +368,72 @@ static void fileOperation(app_data_t *data, char *label, char *filename, Err (*f
 
   sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
   if (f(1, path) == errNone) {
-    VFSExplorerRefresh(NULL, data->vfse);
+    VFSExplorerRefresh(NULL, data->vfse, true);
   } else {
     infoDialog(ERROR, "Error %s %s", label, filename);
+  }
+}
+
+static void compileFile(app_data_t *data) {
+  char *filename, *ext, *s;
+  char path[MAX_PATH];
+  char path2[MAX_PATH];
+  char path3[MAX_PATH];
+  char path4[MAX_PATH];
+  char *objs[1];
+
+  if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
+    ext = getext(filename);
+    if (sys_strcmp(ext, "fc") == 0) {
+      sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
+      sys_strncpy(path2, path, sizeof(path2)-1);
+      if ((s = sys_strrchr(path2, '.')) != NULL) {
+        s[1] = 's';
+        s[2] = 0;
+        debug(DEBUG_INFO, APPNAME, "compiling '%s' into '%s'", path, path2);
+        if (compile(path, path2) == 0) {
+          sys_strncpy(path3, path2, sizeof(path3)-1);
+          if ((s = sys_strrchr(path3, '.')) != NULL) {
+            s[1] = 'o';
+            debug(DEBUG_INFO, APPNAME, "compiling '%s' into '%s'", path2, path3);
+            if (assembler_assemble(path2, path3) == 0) {
+              sys_strncpy(path4, path3, sizeof(path4)-1);
+              if ((s = sys_strrchr(path4, '.')) != NULL) {
+                s[1] = 'x';
+                objs[0] = path3;
+                linker_link(1, objs, path4);
+              }
+            }
+          }
+          VFSExplorerRefresh(NULL, data->vfse, true);
+        }
+      }
+    } else {
+      infoDialog(ERROR, "File '%s' is not .fc", filename);
+    }
+  }
+}
+
+static void runFile(app_data_t *data) {
+  char *filename, *ext;
+  char path[MAX_PATH];
+
+  if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
+    ext = getext(filename);
+    if (sys_strcmp(ext, "x") == 0) {
+      sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
+      debug(DEBUG_INFO, APPNAME, "running '%s'", path);
+      runner_run(path, 0);
+    } else {
+      infoDialog(ERROR, "File '%s' is not .x", filename);
+    }
   }
 }
 
 static Boolean MainFormHandleEvent(EventType *event) {
   app_data_t *data = pumpkin_get_data();
   FormType *frm;
-  char *filename, *ext, *s;
-  char path[MAX_PATH];
-  char path2[MAX_PATH];
+  char *filename;
   Boolean handled = false;
 
   switch (event->eType) {
@@ -376,7 +445,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
         data->vfse = VFSExplorerCreate(frm, fileTable, upBtn, downBtn, FILE_ROOT);
       } else {
         debug(DEBUG_INFO, APPNAME, "refreshing vfse");
-        VFSExplorerRefresh(frm, data->vfse);
+        VFSExplorerRefresh(frm, data->vfse, false);
       }
       FrmDrawForm(frm);
       handled = true;
@@ -421,32 +490,21 @@ static Boolean MainFormHandleEvent(EventType *event) {
         case downBtn:
           VFSExplorerPaginate(data->vfse, 5);
           break;
-        case compileBtn:
-          if ((filename = VFSExplorerSelectedItem(data->vfse)) != NULL) {
-            ext = getext(filename);
-            if (sys_strcmp(ext, "fc") == 0) {
-              sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
-              sys_strncpy(path2, path, sizeof(path2)-1);
-              if ((s = sys_strrchr(path2, '.')) != NULL) {
-                s[1] = 'o';
-                s[2] = 0;
-                debug(DEBUG_INFO, APPNAME, "compiling '%s' into '%s'", path, path2);
-                if (compile(path, path2) == 0) {
-                  VFSExplorerRefresh(NULL, data->vfse);
-                }
-              }
-            } else {
-              infoDialog(ERROR, "File '%s' is not .fc", filename);
-            }
-          }
-          break;
       }
       handled = true;
       break;
 
     case menuEvent:
-      if (event->data.menu.itemID == aboutCmd) {
-        AbtShowAboutPumpkin(APPID);
+      switch (event->data.menu.itemID) {
+        case compileCmd:
+          compileFile(data);
+          break;
+        case runCmd:
+          runFile(data);
+          break;
+        case aboutCmd:
+          AbtShowAboutPumpkin(APPID);
+          break;
       }
       handled = true;
       break;

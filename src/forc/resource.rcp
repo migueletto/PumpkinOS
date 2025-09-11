@@ -4,7 +4,9 @@ MENU MainMenu
 BEGIN
   PULLDOWN "Options"
   BEGIN
-    MENUITEM "About" aboutCmd "A"
+    MENUITEM "Compile" compileCmd "C"
+    MENUITEM "Run"     runCmd     "R"
+    MENUITEM "About"   aboutCmd   "A"
   END
 END
 
@@ -38,7 +40,6 @@ END
 FORM ID EditForm AT (0 0 160 160)
 NOFRAME
 USABLE
-MENUID MainMenu
 BEGIN
   TITLE "Edit"
 END

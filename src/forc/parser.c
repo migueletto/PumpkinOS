@@ -98,13 +98,12 @@ static void info(parser_t *p, char *msg, ...) {
 
 static int syntax_error(parser_t *p, char *msg, ...) {
   sys_va_list ap;
+  char buf[1024];
 
-  debug(DEBUG_INFO, APPNAME, "Syntax error at line %u", lexer_line(p->l));
-  if (msg) {
-    sys_va_start(ap, msg);
-    debugva(DEBUG_INFO, APPNAME, msg, ap);
-    sys_va_end(ap);
-  }
+  sys_va_start(ap, msg);
+  sys_vsnprintf(buf, sizeof(buf)-1, msg, ap);
+  sys_va_end(ap);
+  system_error("Syntax error at line %u: %s", lexer_line(p->l), buf);
 
   return -1;
 }
@@ -966,6 +965,16 @@ static type_t parse_expr(parser_t *p, int *depth) {
               (*depth)++;
               break;
             }
+            if (p->eval) {
+              if (symbol->type == SYMBOL_VAR && symbol->symbol.var.value.type) {
+                var = &symbol->symbol.var;
+                push(p, &var->value);
+                etype[*depth] = var->type;
+                (*depth)++;
+                break;
+              }
+              return syntax_error(p, "expression is not constant");
+            }
             if (parse_address(p, symbol, &var, &global) != 0) return -1;
             tsize = ptype_size(p, var->type) * 8;
             sig = tsize == 32 ? "" : (type_signed(var->type) ? "i" : "u");
@@ -1108,11 +1117,15 @@ static int check_types(parser_t *p, type_t vtype, type_t type) {
 }
 
 static int assign(parser_t *p, symbol_var_t *f, type_t type) {
+  uint32_t size;
+  char *sign;
+
   //fprintf(stderr, "assign type %s to variable type %s\n", type_name(type), type_name(f->type));
   if (check_types(p, f->type, type) != 0) return -1;
 
   if (type == TYPE_FLOAT) {
     emit(p, "float%c\n", type_signed(type) ? 'i' : 'u');
+    sign = "";
   } else if (type >= TYPE_STRUCT) {
     // vaddr hnewaddr
     emit(p, "over\n");
@@ -1125,10 +1138,14 @@ static int assign(parser_t *p, symbol_var_t *f, type_t type) {
     // vaddr hnewaddr hnewaddr
     emit(p, "hinc\n"); // increment reference count for new address
     // vaddr hnewaddr
+    sign = "";
+  } else {
+    size = ptype_size(p, type);
+    sign = size < 4 ? (type_signed(type) ? "i" : "u") : "";
   }
 
   emit(p, "swap\n");
-  emit(p, "store%u\n", ptype_size(p, f->type) * 8);
+  emit(p, "store%s%u\n", sign, ptype_size(p, f->type) * 8);
 
   return 0;
 }
@@ -1365,17 +1382,18 @@ static int parse_statements(parser_t *p, token_e *last, uint32_t pre_loop, uint3
   return syntax_error(p, "unreachable");
 }
 
-static int check_constant(parser_t *p, type_t type, char *name, value_t *v, value_t *r) {
+static int check_constant(parser_t *p, type_t type, char *name, value_t *v, value_t *r, int isvar) {
   uint32_t u;
   int32_t i;
   int ok;
+  char *s = isvar ? "variable" : "constant";
 
   if ((type_integer(type) && !type_integer(v->type)) ||
       (type_signed(type) && !type_signed(v->type)) ||
       (type_unsigned(type) && !type_unsigned(v->type)) ||
       (type == TYPE_FLOAT && !type_numeric(v->type)) ||
       (type == TYPE_STRING && v->type != TYPE_STRING)) {
-    return syntax_error(p, "constant '%s' can not receive type %s", name, type_name(v->type));
+    return syntax_error(p, "%s '%s' of type %s can not receive type %s", s, name, type_name(type), type_name(v->type));
   }
 
   if (type_signed(type)) {
@@ -1394,7 +1412,7 @@ static int check_constant(parser_t *p, type_t type, char *name, value_t *v, valu
       default:
         break;
     }
-    if (!ok) return syntax_error(p, "value %d is out of range for type %s in constant '%s'", i, type_name(type), name);
+    if (!ok) return syntax_error(p, "value %d is out of range for type %s in %s '%s'", i, type_name(type), s, name);
 
   } else if (type_unsigned(type)) {
     type_coerce(r, TYPE_UINT32, v, 0);
@@ -1412,7 +1430,7 @@ static int check_constant(parser_t *p, type_t type, char *name, value_t *v, valu
       default:
         break;
     }
-    if (!ok) return syntax_error(p, "value %u is out of range for type %s in constant '%s'", u, type_name(type), name);
+    if (!ok) return syntax_error(p, "value %u is out of range for type %s in %s '%s'", u, type_name(type), s, name);
 
   } else if (type == TYPE_FLOAT) {
     type_coerce(r, TYPE_FLOAT, v, 0);
@@ -1454,7 +1472,7 @@ static int add_new_const(parser_t *p, type_t const_type, char *name, value_t *v)
   int r = -1;
 
   info(p, "Generating constant '%s'", name);
-  if (check_constant(p, const_type, name, v, &value) != 0) return -1;
+  if (check_constant(p, const_type, name, v, &value, 0) != 0) return -1;
 
   if ((s = new_symbol(p, p->st, name, SYMBOL_CONST)) != NULL) {
     tsize = ptype_size(p, const_type);
@@ -1483,7 +1501,7 @@ static int add_new_const_array(parser_t *p, type_t const_type, char *name, uint3
     s->symbol.cons.value = sys_calloc(size, tsize);
 
     for (i = 0; i < n; i++) {
-      if (check_constant(p, const_type, name, &v[i], &value) != 0) return -1;
+      if (check_constant(p, const_type, name, &v[i], &value, 0) != 0) return -1;
       set_value(s->symbol.cons.value, i, &value);
     }
 
@@ -1500,7 +1518,8 @@ static int add_new_const_array(parser_t *p, type_t const_type, char *name, uint3
   return 0;
 }
 
-static int add_new_var(parser_t *p, symbol_table_t *st, type_t var_type, char *name) {
+static int add_new_var(parser_t *p, symbol_table_t *st, type_t var_type, char *name, value_t *v) {
+  value_t value;
   symbol_t *s;
   symbol_struct_t *struc;
   uint32_t tsize;
@@ -1510,6 +1529,11 @@ static int add_new_var(parser_t *p, symbol_table_t *st, type_t var_type, char *n
     info(p, "Generating variable '%s'", name);
   }
 
+  if (v) {
+    if (check_constant(p, var_type, name, v, &value, 1) != 0) return -1;
+    info(p, "Variable '%s' has initial value", name);
+  }
+
   if ((s = new_symbol(p, st, name, SYMBOL_VAR)) != NULL) {
     s->symbol.var.type = var_type;
     s->symbol.var.array = 0;
@@ -1517,6 +1541,10 @@ static int add_new_var(parser_t *p, symbol_table_t *st, type_t var_type, char *n
     s->symbol.var.offset = type_align(tsize, st->frame_size);
     st->frame_size = s->symbol.var.offset + tsize;
     //fprintf(stderr, "var '%s' offset %u\n", name, s->symbol.var.offset);
+
+    if (v) {
+      sys_memcpy(&s->symbol.var.value, &value, sizeof(value_t));
+    }
 
     if (var_type >= TYPE_STRUCT) {
       struc = get_struct(p, var_type);
@@ -1570,7 +1598,7 @@ static int parse_formal_params(parser_t *p, symbol_table_t *lt) {
     }
     TYPE(type);
     IDENT(name);
-    add_new_var(p, lt, type, name);
+    add_new_var(p, lt, type, name, NULL);
   }
 
   return i;
@@ -1579,7 +1607,7 @@ static int parse_formal_params(parser_t *p, symbol_table_t *lt) {
 static int parse_local_vars(parser_t *p, symbol_table_t *lt) {
   type_t vtype;
   value_t value;
-  int type, array, depth;
+  int type, array, depth, hasvalue;
   char *name;
 
   p->param_size = lt->frame_size;
@@ -1592,6 +1620,7 @@ static int parse_local_vars(parser_t *p, symbol_table_t *lt) {
     }
     TYPE(vtype);
     IDENT(name);
+    hasvalue = 0;
 
     if (opt(OPENSB)) {
       if (opt(CLOSESB)) {
@@ -1609,13 +1638,25 @@ static int parse_local_vars(parser_t *p, symbol_table_t *lt) {
       }
     } else {
       BACK;
+
+      if (opt(OPENP)) {
+        p->eval = 1;
+        EXPR(depth);
+        p->eval = 0;
+        CLOSEP;
+        pop(p, &value);
+        hasvalue = 1;
+      } else {
+        BACK;
+      }
+
       array = 0;
     }
 
     if (array) {
       add_new_var_array(p, lt, vtype, name, array);
     } else {
-      add_new_var(p, lt, vtype, name);
+      if (add_new_var(p, lt, vtype, name, hasvalue ? &value : NULL) != 0) return -1;
     }
   }
 
@@ -1626,6 +1667,7 @@ static void add_new_function(parser_t *p, symbol_table_t *lt, type_t type, char 
   symbol_t *s;
   symbol_var_t *var;
   uint32_t locals_size, size, i;
+  char *sign;
 
   info(p, "Generating function '%s'", name);
 
@@ -1650,9 +1692,31 @@ static void add_new_function(parser_t *p, symbol_table_t *lt, type_t type, char 
     s->symbol.function.end_label = next_label(p);
     p->f = &s->symbol.function;
     emit(p, ":%s\n", s->name);
+
     locals_size = lt->frame_size - p->f->param_size - 12;
     if (locals_size) {
       emit(p, "frame %u\n", locals_size);
+
+      for (i = 0; i < lt->num_symbols; i++) {
+         var = &lt->symbol[i].symbol.var;
+         if (var->value.type && !var->array) {
+           switch (var->type) {
+             case TYPE_BOOL:   emit(p, "pushu8 %d\n", var->value.value.b); break;
+             case TYPE_INT8:   emit(p, "pushi8 %d\n", var->value.value.i8); break;
+             case TYPE_UINT8:  emit(p, "pushu8 %u\n", var->value.value.u8); break;
+             case TYPE_INT16:  emit(p, "pushi16 %d\n", var->value.value.i16); break;
+             case TYPE_UINT16: emit(p, "pushu16 %u\n", var->value.value.u16); break;
+             case TYPE_INT32:  emit(p, "push32\n"); emit(p, "d32 %d\n", var->value.value.i32); break;
+             case TYPE_UINT32: emit(p, "push32\n"); emit(p, "d32 %u\n", var->value.value.u32); break;
+             case TYPE_FLOAT:  emit(p, "push32\n"); emit(p, "d32 0x%08X ; float %.8f\n", var->value.value.u32, var->value.value.d); break;
+             default: break; // not possible
+           }
+           emit(p, "faddr 0x%04X\n", var->offset);
+           size = ptype_size(p, var->type);
+           sign = size < 4 ? (type_signed(var->type) ? "i" : "u") : "";
+           emit(p, "store%s%u\n", sign, ptype_size(p, var->type) * 8);
+         }
+      }
     }
   }
 }
@@ -1741,35 +1805,21 @@ static int add_import(parser_t *p, char *name) {
   char obj[MAX_TOKEN + 8], asmm[MAX_TOKEN + 8], src[MAX_TOKEN + 8];
   uint8_t *symb, *code;
   uint32_t symb_size, code_size;
-  PLIBC_FILE *f, *fdin;
-  int fdout, r = -1;
+  PLIBC_FILE *f;
+  int r = -1;
 
   info(p, "Importing module '%s'", name);
-
   sys_snprintf(obj, sizeof(obj)-1, "%s.o", name);
+
   if ((f = plibc_fopen(1, obj, "rb")) == NULL) {
-    sys_snprintf(src, sizeof(src)-1, "%s.c", name);
-    sys_snprintf(asmm, sizeof(asmm)-1, "%s.asm", name);
+    sys_snprintf(src, sizeof(src)-1, "%s.fc", name);
+    sys_snprintf(asmm, sizeof(asmm)-1, "%s.s", name);
     if (compile(src, asmm) != 0) return -1;
     info(p, "Assembling file '%s' into '%s'", asmm, obj);
 
-    if ((fdin = plibc_fopen(1, asmm, "r")) == NULL) {
+    if (assembler_assemble(asmm, obj) != 0) {
       return -1;
     }
-
-    if ((fdout = plibc_open(1, obj, PLIBC_WRONLY | PLIBC_CREAT | PLIBC_TRUNC)) == -1) {
-      plibc_fclose(fdin);
-      return -1;
-    }
-
-    if (assemble(fdin, fdout) != 0) {
-      plibc_fclose(fdin);
-      plibc_close(fdout);
-      return -1;
-    }
-
-    plibc_fclose(fdin);
-    plibc_close(fdout);
 
     if ((f = plibc_fopen(1, obj, "rb")) == NULL) {
       return syntax_error(p, "error importing module \"%s\"", name);
@@ -1800,7 +1850,7 @@ static int parse_fieldlist(parser_t *p, symbol_table_t *lt) {
       syntax_error(p, "field '%s' already defined", name);
       return -1;
     }
-    add_new_var(p, lt, type, name);
+    add_new_var(p, lt, type, name, NULL);
     if (opt(CLOSEB)) {
       BACK;
       break;
@@ -1820,7 +1870,7 @@ static int parser_parse(parser_t *p) {
   uint32_t locals_size;
   int32_t array, count;
   char *name;
-  int type, depth, nparams, section = 0;
+  int type, depth, nparams, hasvalue, section = 0;
 
   for (;;) {
     switch (next()) {
@@ -1883,6 +1933,7 @@ static int parser_parse(parser_t *p) {
         insection(3);
         TYPE(vtype);
         IDENT(name);
+        hasvalue = 0;
         if (opt(OPENSB)) {
           if (opt(CLOSESB)) {
             array = -1;
@@ -1899,12 +1950,22 @@ static int parser_parse(parser_t *p) {
           }
         } else {
           BACK;
+          if (opt(OPENP)) {
+            p->eval = 1;
+            EXPR(depth);
+            p->eval = 0;
+            CLOSEP;
+            pop(p, &value);
+            hasvalue = 1;
+          } else {
+            BACK;
+          }
           array = 0;
         }
         if (array) {
           add_new_var_array(p, p->st, vtype, name, array);
         } else {
-          add_new_var(p, p->st, vtype, name);
+          if (add_new_var(p, p->st, vtype, name, hasvalue ? &value : NULL) != 0) return -1;
         }
         break;
       case TOKEN_FUNCTION:
@@ -1912,7 +1973,7 @@ static int parser_parse(parser_t *p) {
         TYPE(vtype);
         IDENT(name);
         lt = new_symbol_table(0);
-        add_new_var(p, lt, vtype, "_"); // return value
+        add_new_var(p, lt, vtype, "_", NULL); // return value
         OPENP;
         FORMAL_PARAMS(lt);
         CLOSEP;
@@ -1987,7 +2048,11 @@ static void emit_vars(parser_t *p) {
           emit(p, "d32 0 ; unitialized array\n");
         }
       } else {
-        emit(p, "res %u\n", ptype_size(p, var->type));
+        if (var->value.type) {
+          emit_data(p, &var->value);
+        } else {
+          emit(p, "res %u\n", ptype_size(p, var->type));
+        }
       }
     }
   }
@@ -2027,14 +2092,12 @@ int compile(char *src, char *obj) {
   int fd_src, fd_obj, r;
 
   if ((fd_src = plibc_open(1, src, PLIBC_RDONLY)) == -1) {
-    system_error("Error opening source file '%s'", src);
-    return -1;
+    return system_error("Error opening source file '%s'", src);
   }
 
   if ((fd_obj = plibc_open(1, obj, PLIBC_WRONLY | PLIBC_CREAT | PLIBC_TRUNC)) == -1) {
     plibc_close(fd_src);
-    system_error("Error creating object file '%s'", obj);
-    return -1;
+    return system_error("Error creating object file '%s'", obj);
   }
 
   if ((l = lexer_init(fd_src)) != NULL) {
@@ -2056,8 +2119,8 @@ int compile(char *src, char *obj) {
   if (r == 0) {
     info(p, "Success compiling file '%s'", src);
   } else {
-    info(p, "Error compiling file '%s'", src);
     plibc_remove(1, obj);
+    info(p, "Error compiling file '%s'", src);
   }
 
   return r;

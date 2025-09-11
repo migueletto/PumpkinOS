@@ -23,6 +23,7 @@ typedef struct {
   int array, use, set;
   uint32_t offset;
   struct symbol_table_t *st; // for structs
+  value_t value; // initial value
 } symbol_var_t;
 
 typedef struct {

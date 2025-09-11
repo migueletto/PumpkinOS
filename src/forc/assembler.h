@@ -1,1 +1,1 @@
-int assemble(PLIBC_FILE *fdin, int fdout);
+int assembler_assemble(char *asmm, char *obj);

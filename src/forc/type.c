@@ -3,6 +3,7 @@
 #include "type.h"
 
 static char *tname[] = {
+  "<none>",
   "bool",
   "int8_t",
   "uint8_t",

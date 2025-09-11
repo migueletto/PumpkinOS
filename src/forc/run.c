@@ -1,7 +1,10 @@
 #include "sys.h"
+#include "thread.h"
 #include "plibc.h"
+#include "run.h"
 #include "section.h"
 #include "heap.h"
+#include "error.h"
 #include "debug.h"
 
 #define MEM_SIZE   1024*1024
@@ -56,16 +59,7 @@
         } \
         DROP(1)
 
-static int run_error(char *fmt, ...) {
-  sys_va_list ap;
-
-  debug(DEBUG_ERROR, APPNAME, "Runtime error");
-  sys_va_start(ap, fmt);
-  debugva(DEBUG_ERROR, APPNAME, fmt, ap);
-  sys_va_end(ap);
-
-  return -1;
-}
+#define run_error system_error
 
 static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
   uint32_t ip, sp0,sp, fp, opcode, aux, size, i;
@@ -81,7 +75,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
   char buf[256], *s;
   int verbose = 0, r;
 
-  //fprintf(stderr, "argument: %u\n", arg);
+  debug(DEBUG_INFO, APPNAME, "argument: %u", arg);
 
   ip = start >> 2;
   sp = MEM_SIZE >> 2;
@@ -96,16 +90,16 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
   heap_start = memory8 + end;
   heap = heap_init(heap_start, MEM_SIZE - end - STACK_SIZE);
   if (verbose) {
-    //fprintf(stderr, "heap %p\n", heap_start);
+    debug(DEBUG_INFO, APPNAME, "heap %p", heap_start);
   }
 
-  for (r = 0; r == 0;) {
+  for (r = 0; r == 0 && !thread_must_end();) {
     if (ip == (0xffffffff >> 2)) {
       if (verbose) {
         for (i = sp0-1; i >= sp; i--) {
-          //fprintf(stderr, "stack[%u] 0x%08x: [0x%08x]\n", i-sp, i << 2, memory[i]);
+          debug(DEBUG_TRACE, APPNAME, "stack[%u] 0x%08x: [0x%08x]", i-sp, i << 2, memory[i]);
         }
-        //fprintf(stderr, "end of execution\n");
+        debug(DEBUG_INFO, APPNAME, "end of execution");
       }
       break;
     }
@@ -113,7 +107,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
     OPCODE(opcode);
     if (verbose) {
       for (i = sp0-1; i >= sp; i--) {
-        //fprintf(stderr, "stack[%u] 0x%08x: [0x%08x]\n", i-sp, i << 2, memory[i]);
+        debug(DEBUG_TRACE, APPNAME, "stack[%u] 0x%08x: [0x%08x]", i-sp, i << 2, memory[i]);
       }
       sys_snprintf(buf, sizeof(buf)-1, "ip=0x%08x sp=%08x fp=%08x op=0x%08x", aux << 2, sp << 2, fp << 2, opcode);
     }
@@ -405,25 +399,27 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
     POP(aux);
     if (verbose) {
       for (i = sp0-1; i >= sp; i--) {
-        //fprintf(stderr, "stack[%u] 0x%08x: [0x%08x]\n", i-sp, i << 2, memory[i]);
+        debug(DEBUG_INFO, APPNAME, "stack[%u] 0x%08x: [0x%08x]", i-sp, i << 2, memory[i]);
       }
     }
 
     if (sp == (MEM_SIZE >> 2)) {
-      //fprintf(stderr, "no return value\n");
+      debug(DEBUG_ERROR, APPNAME, "no return value");
+      r = -1;
     } else if (sp == (MEM_SIZE >> 2) - 1) {
-      //fprintf(stderr, "return value: %u\n", TOP);
+      debug(DEBUG_ERROR, APPNAME, "return value: %u", TOP);
     } else {
-      //fprintf(stderr, "unbalanced stack: %u\n", sp << 2);
+      debug(DEBUG_ERROR, APPNAME, "unbalanced stack: %u", sp << 2);
+      r = -1;
     }
   } else {
-    //fprintf(stderr, "execution aborted\n");
+    debug(DEBUG_ERROR, APPNAME, "execution aborted");
   }
 
   return r;
 }
 
-int run(char *exe, int arg) {
+int runner_run(char *exe, int arg) {
   uint32_t aux, size, start;
   uint32_t *memory;
   int fd, r = 0;
@@ -434,53 +430,54 @@ int run(char *exe, int arg) {
   }
 
   if (plibc_read(fd, &aux, 4) != 4) {
-    run_error("I/O error 1");
     plibc_close(fd);
+    run_error("I/O error 1");
     return -1;
   }
 
   if (aux != EXE_MAGIC) {
-    run_error("invalid executable '%s'", exe);
     plibc_close(fd);
+    run_error("invalid executable '%s'", exe);
     return -1;
   }
 
   if (plibc_read(fd, &start, 4) != 4) {
-    run_error("I/O error 2");
     plibc_close(fd);
+    run_error("I/O error 2");
     return -1;
   }
 
   if ((size = plibc_lseek(fd, 0, PLIBC_SEEK_END)) == -1 || plibc_lseek(fd, 8, PLIBC_SEEK_SET) == -1) {
-    run_error("I/O error 3");
     plibc_close(fd);
+    run_error("I/O error 3");
     return -1;
   }
   size -= 8;
 
   if (size < 4) {
-    run_error("invalid executable '%s'", exe);
     plibc_close(fd);
+    run_error("invalid executable '%s'", exe);
     return -1;
   }
 
   if ((start % 4) != 0 || start >= size) {
-    run_error("invalid executable '%s'", exe);
     plibc_close(fd);
+    run_error("invalid executable '%s'", exe);
   }
 
   if ((memory = sys_calloc(1, MEM_SIZE)) == NULL) {
-    run_error("internal error");
     plibc_close(fd);
+    run_error("internal error");
     return -1;
   }
 
   if (plibc_read(fd, memory, size) != size) {
-    run_error("I/O error 4");
-    sys_free(memory);
     plibc_close(fd);
+    sys_free(memory);
+    run_error("I/O error 4");
     return -1;
   }
+  plibc_close(fd);
 
   r = run1(memory, start, size, arg);
   sys_free(memory);

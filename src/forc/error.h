@@ -1,1 +1,1 @@
-void system_error(char *fmt, ...);
+int system_error(char *fmt, ...);

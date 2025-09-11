@@ -4,7 +4,7 @@
 #include "buffer.h"
 #include "ht.h"
 #include "linker.h"
-#include "debug.h"
+#include "error.h"
 
 typedef struct {
   char *name;
@@ -27,13 +27,16 @@ typedef struct {
   int fd;
 } linker_t;
 
-static void linker_error(char *fmt, ...) {
+static int linker_error(char *fmt, ...) {
   sys_va_list ap;
+  char buf[1024];
 
-  debug(DEBUG_ERROR, APPNAME,  "Linker error");
   sys_va_start(ap, fmt);
-  debugva(DEBUG_ERROR, APPNAME, fmt, ap);
+  sys_vsnprintf(buf, sizeof(buf)-1, fmt, ap);
   sys_va_end(ap);
+  system_error("Linker error: %s", buf);
+
+  return -1;
 }
 
 static int add_symbols(linker_t *link, module_t *module, uint8_t *symb, uint32_t size) {
@@ -83,8 +86,7 @@ static int add_symbols(linker_t *link, module_t *module, uint8_t *symb, uint32_t
             r = -1;
           }
         } else {
-          linker_error("symbol '%s' already defined", name);
-          r = -1;
+          r = linker_error("symbol '%s' already defined", name);
         }
     }
   }
@@ -154,8 +156,7 @@ static int linker_link1(linker_t *link) {
   int r = 0;
 
   if ((main = ht_get(link->defined, "main")) == NULL) {
-    linker_error("main function is not defined in any module");
-    return -1;
+    return linker_error("main function is not defined in any module");
   }
 
   base = 0;
@@ -179,8 +180,7 @@ static int linker_link1(linker_t *link) {
       if ((defined = ht_get(link->defined, name)) != NULL) {
         module->code[addr >> 2] = defined->module->base + defined->addr;
       } else {
-        linker_error("symbol '%s' used in module '%s' is not defined in any module", name, module->name);
-        r = -1;
+        r = linker_error("symbol '%s' used in module '%s' is not defined in any module", name, module->name);
       }
     }
   }
@@ -203,8 +203,7 @@ int linker_link(int n, char *obj[], char *exe) {
 
   if ((link.fd = plibc_open(1, exe, PLIBC_WRONLY | PLIBC_CREAT | PLIBC_TRUNC)) == -1) {
     plibc_close(link.fd);
-    debug(DEBUG_ERROR, APPNAME, "Error creating executable file '%s'", exe);
-    return -1;
+    return system_error("Error creating executable file '%s'", exe);
   }
 
   link.defined = ht_create();

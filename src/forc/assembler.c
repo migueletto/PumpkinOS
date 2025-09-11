@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include "section.h"
 #include "ht.h"
+#include "error.h"
 #include "debug.h"
 
 #define MAX_PARTS   16
@@ -87,11 +88,12 @@ static opcode_t opcodes[] = {
 
 static int error(assemble_t *assemble, char *fmt, ...) {
   sys_va_list ap;
+  char buf[1024];
 
-  debug(DEBUG_ERROR, APPNAME, "Error at line %d: ", assemble->linenum);
   sys_va_start(ap, fmt);
-  debugva(DEBUG_ERROR, APPNAME, fmt, ap);
+  sys_vsnprintf(buf, sizeof(buf)-1, fmt, ap);
   sys_va_end(ap);
+  system_error("Error at line %u: %s", assemble->linenum, buf);
 
   return -1;
 }
@@ -563,7 +565,7 @@ static void save_section(assemble_t *assemble, uint32_t id, buffer_t *buffer, ch
   }
 }
 
-int assemble(PLIBC_FILE *fdin, int fdout) {
+static int assemble1(PLIBC_FILE *fdin, int fdout) {
   assemble_t *assemble;
   hti it;
   label_t *lbl;
@@ -616,6 +618,26 @@ int assemble(PLIBC_FILE *fdin, int fdout) {
   buffer_free(assemble->code);
   buffer_free(assemble->symb);
   sys_free(assemble);
+
+  return r;
+}
+
+int assembler_assemble(char *asmm, char *obj) {
+  PLIBC_FILE *fdin;
+  int fdout, r;
+
+  if ((fdin = plibc_fopen(1, asmm, "r")) == NULL) {
+    return system_error("Error opening input file '%s'", asmm);
+  }
+
+  if ((fdout = plibc_open(1, obj, PLIBC_WRONLY | PLIBC_CREAT | PLIBC_TRUNC)) == -1) {
+    plibc_fclose(fdin);
+    return system_error("Error opening output file '%s'", obj);
+  }
+
+  r = assemble1(fdin, fdout);
+  plibc_fclose(fdin);
+  plibc_close(fdout);
 
   return r;
 }
