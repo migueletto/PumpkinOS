@@ -113,7 +113,7 @@ VFSExplorer *VFSExplorerCreate(FormType *frm, UInt16 tableID, UInt16 upID, UInt1
   StrNCopy(vfse->root, root, MAX_PATH-1);
   StrNCopy(vfse->path, root, MAX_PATH-1);
 
-  VFSExplorerRefresh(frm, vfse);
+  VFSExplorerRefresh(frm, vfse, false);
 
   return vfse;
 }
@@ -137,7 +137,22 @@ static void item_insert(VFSExplorer *vfse, char *name, Boolean dir, UInt32 i) {
   vfse->items[i].vfse = vfse;
 }
 
-void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
+static Int32 compareItem(void *e1, void *e2, void *p) {
+  item_t *item1 = e1;
+  item_t *item2 = e2;
+
+  if (item1->dir == item2->dir) {
+    return StrCompare(item1->name, item2->name);
+  }
+
+  if (item1->dir && !item2->dir) {
+    return -1;
+  }
+
+  return 1;
+}
+
+void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse, Boolean redraw) {
   FileInfoType info;
   TableType *tbl;
   ControlType *ctl;
@@ -192,6 +207,8 @@ void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
       if (iterator == vfsIteratorStop) break;
       item_insert(vfse, info.nameP, info.attributes == vfsFileAttrDirectory, vfse->itemsLen);
     }
+
+    SysQSortP(vfse->items, vfse->itemsLen, sizeof(item_t), compareItem, vfse);
   }
 
   TblSetColumnUsable(vfse->tbl, 0, true);
@@ -201,6 +218,7 @@ void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
   rows = TblGetNumberOfRows(vfse->tbl);
 
   for (row = 0; row < rows && (row + vfse->topItem) < vfse->itemsLen; row++) {
+    TblMarkRowInvalid(vfse->tbl, row);
     TblSetItemStyle(vfse->tbl, row, 0, customTableItem);
     TblSetItemStyle(vfse->tbl, row, 1, customTableItem);
     TblSetItemInt(vfse->tbl, row, 0, vfse->topItem + row);
@@ -219,6 +237,10 @@ void VFSExplorerRefresh(FormType *frm, VFSExplorer *vfse) {
     TblSetRowUsable(vfse->tbl, row, false);
   }
   TblMarkTableInvalid(vfse->tbl);
+
+  if (redraw) {
+    TblRedrawTable(vfse->tbl);
+  }
 
   if ((index = FrmGetObjectIndex(frm, vfse->upID)) != 0xffff) {
     if (FrmGetObjectType(frm, index) == frmControlObj) {
@@ -274,7 +296,7 @@ Boolean VFSExplorerHandleEvent(VFSExplorer *vfse, EventType *event) {
               }
               debug(DEBUG_INFO, "VFSExplorer", "change to parent dir [%s]", vfse->path);
               vfse->topItem = 0;
-              VFSExplorerRefresh(vfse->frm, vfse);
+              VFSExplorerRefresh(vfse->frm, vfse, false);
             }
             handled = true;
           }
@@ -320,8 +342,7 @@ void VFSExplorerEnter(VFSExplorer *vfse) {
       vfse->d = NULL;
     }
     vfse->topItem = 0;
-    VFSExplorerRefresh(vfse->frm, vfse);
-    TblRedrawTable(vfse->tbl);
+    VFSExplorerRefresh(vfse->frm, vfse, true);
   }
 }
 
@@ -330,8 +351,7 @@ void VFSExplorerPaginate(VFSExplorer *vfse, Int16 n) {
     vfse->topItem += n;
     if (vfse->topItem < 0) vfse->topItem = 0;
     else if (vfse->topItem >= vfse->itemsLen) vfse->topItem = vfse->itemsLen - 1;
-    VFSExplorerRefresh(vfse->frm, vfse);
-    TblRedrawTable(vfse->tbl);
+    VFSExplorerRefresh(vfse->frm, vfse, true);
   }
 }
 
