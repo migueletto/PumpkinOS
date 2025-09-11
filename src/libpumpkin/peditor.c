@@ -109,6 +109,20 @@ static int vfs_editor_seek(void *data, void *_f, int orig, int offset) {
   return r;
 }
 
+static int vfs_editor_truncate(void *data, void *_f, int offset) {
+  FileRef f;
+  int r = -1;
+
+  if (_f) {
+    f = (FileRef)_f;
+    if (VFSFileTruncate(f, offset) == errNone) {
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
 static int pterm_editor_cursor(void *data, int col, int row) {
   pterm_t *t = (pterm_t *)data;
   uint8_t cols, rows;
@@ -230,6 +244,7 @@ int pumpkin_editor_init_io(editor_t *e) {
     e->fwrite = vfs_editor_fwrite;
     e->fsize = vfs_editor_fsize;
     e->seek = vfs_editor_seek;
+    e->truncate = vfs_editor_truncate;
     r = 0;
   }
 

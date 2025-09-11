@@ -14,6 +14,7 @@ typedef struct editor_t {
   int (*fwrite)(void *data, void *f, void *buf, int n);
   int (*fsize)(void *data, void *f);
   int (*seek)(void *data, void *f, int orig, int offset);
+  int (*truncate)(void *data, void *f, int offset);
 
   // host data
   void *data;

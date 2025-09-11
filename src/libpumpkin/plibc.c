@@ -140,9 +140,6 @@ int plibc_open(int vol, const char *pathname, int flags) {
       }
     }
 
-    if (flags & PLIBC_TRUNC) {
-    }
-
     if ((openMode & vfsModeWrite) && (flags & PLIBC_APPEND)) {
       origin = vfsOriginEnd;
     } else {
@@ -150,6 +147,10 @@ int plibc_open(int vol, const char *pathname, int flags) {
     }
 
     if (VFSFileOpen(vol, pathname, openMode, &fileRef) == errNone) {
+      if (flags & PLIBC_TRUNC) {
+        VFSFileTruncate(fileRef, 0);
+      }
+
       if ((err = VFSFileSeek(fileRef, origin, 0)) == errNone || err == vfsErrFileEOF) {
         if ((f = sys_calloc(1, sizeof(fd_t))) != NULL) {
           f->fileRef = fileRef;

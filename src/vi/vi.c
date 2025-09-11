@@ -2172,6 +2172,7 @@ static int file_write(struct globals *g, char *fn, char *first, char *last)
   } else {
     charcnt = 0;
   }
+  g->e->truncate(g->e->data, fd, cnt);
   g->e->fclose(g->e->data, fd);
   return charcnt;
 }
