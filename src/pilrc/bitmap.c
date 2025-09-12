@@ -55,7 +55,7 @@
 typedef unsigned char PILRC_BYTE;                /* b */
 typedef unsigned short PILRC_USHORT;             /* us */
 typedef unsigned int PILRC_ULONG;                /* ul */
-typedef int bool;                                /* f */
+//typedef int bool;                                /* f */
 
 // 
 // data structures
