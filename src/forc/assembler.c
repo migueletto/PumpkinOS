@@ -63,10 +63,10 @@ static opcode_t opcodes[] = {
   { "sub",        0x31 },
   { "mul",        0x32 },
   { "div",        0x33 },
-  { "gt",         0x34 },
-  { "lt",         0x35 },
-  { "gte",        0x36 },
-  { "lte",        0x37 },
+  { "gte",        0x34 },
+  { "lte",        0x35 },
+  { "gt",         0x36 },
+  { "lt",         0x37 },
 
   { "push",       0x40 },
   { "fetch",      0x50 },
@@ -244,7 +244,7 @@ static int add_optype(assemble_t *assemble, char optype, uint32_t *data, int shi
     case 0:
       break;
     default:
-      r = error(assemble, "Invalid modifier");
+      r = error(assemble, "Invalid modifier for optype '%c'", optype);
       break;
   }
 

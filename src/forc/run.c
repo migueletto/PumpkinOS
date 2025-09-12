@@ -257,16 +257,16 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
         fbinop(/, 0x3300, "div");
         break;
       case 0x34: // gt
-        fbinop(>, 0x3400, "gt");
+        fbinop(>, 0x3400, "gte");
         break;
       case 0x35: // lt
-        fbinop(<, 0x3500, "lt");
+        fbinop(<, 0x3500, "lte");
         break;
       case 0x36: // gte
-        fbinop(>=, 0x3600, "gte");
+        fbinop(>=, 0x3600, "gt");
         break;
       case 0x37: // lte
-        fbinop(<=, 0x3700, "lte");
+        fbinop(<=, 0x3700, "lt");
         break;
       case 0x40: // pushi8, pushu8, pushi16, pushu16
         switch (opcode >> 16) {
