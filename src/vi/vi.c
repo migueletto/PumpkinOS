@@ -105,6 +105,7 @@ static char *strchrnul(const char *s, int c) {
   return r ? r : (char *)&s[sys_strlen(s)];
 }
 
+#if 0
 #ifdef WINDOWS
 static char *strndup(const char *str, sys_size_t size) {
   char *r = NULL;
@@ -113,10 +114,11 @@ static char *strndup(const char *str, sys_size_t size) {
   n = sys_strlen(str);
   if (n > size) n = size;
   r = sys_malloc(n+1);
-  strncpy(r, str, n);
+  sys_strncpy(r, str, n);
 
   return r;
 }
+#endif
 #endif
 
 static char *last_char_is(const char *s, int c) {
