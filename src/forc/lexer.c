@@ -42,6 +42,7 @@ static reserved_t reserved[] = {
   { "continue"  , TOKEN_CONTINUE },
   { "return"    , TOKEN_RETURN },
   { "pi"        , TOKEN_PI },
+  { "print"     , TOKEN_PRINT },
   { NULL        , 0 }
 };
 
@@ -117,6 +118,7 @@ static char *stoken[] = {
   "VARARG",
   "RETURN",
   "IMPORT",
+  "PRINT",
 };
 
 char *lexer_stoken(token_e id) {

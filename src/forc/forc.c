@@ -424,6 +424,7 @@ static void runFile(app_data_t *data) {
       sys_snprintf(path, sizeof(path)-1, "%s%s", VFSExplorerCurrentPath(data->vfse), filename);
       debug(DEBUG_INFO, APPNAME, "running '%s'", path);
       runner_run(path, 0);
+      debug(DEBUG_INFO, APPNAME, "finished '%s'", path);
     } else {
       infoDialog(ERROR, "File '%s' is not .x", filename);
     }

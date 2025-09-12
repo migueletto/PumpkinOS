@@ -1261,6 +1261,22 @@ static int parse_statements(parser_t *p, token_e *last, uint32_t pre_loop, uint3
       case TOKEN_CLOSEB:
         BACK;
         return 0;
+      case TOKEN_PRINT:
+        OPENP;
+        EXPR(depth);
+        CLOSEP;
+        switch (type) {
+          case TYPE_UINT8:  emit(p, "printu8\n");  break;
+          case TYPE_INT8:   emit(p, "printi8\n");  break;
+          case TYPE_UINT16: emit(p, "printu16\n"); break;
+          case TYPE_INT16:  emit(p, "printi16\n"); break;
+          case TYPE_UINT32: emit(p, "printi32\n"); break;
+          case TYPE_INT32:  emit(p, "printu32\n"); break;
+          case TYPE_FLOAT:  emit(p, "printf\n");   break;
+          case TYPE_STRING: emit(p, "prints\n");   break;
+          default: return syntax_error(p, "invalid expression type for print");
+        }
+        break;
       case TOKEN_LET:
         if (last) *last = TOKEN_LET;
         IDENT(name);

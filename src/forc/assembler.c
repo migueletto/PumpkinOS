@@ -67,6 +67,7 @@ static opcode_t opcodes[] = {
   { "lte",        0x35 },
   { "gt",         0x36 },
   { "lt",         0x37 },
+  { "print",      0x3f },
 
   { "push",       0x40 },
   { "fetch",      0x50 },
@@ -241,6 +242,9 @@ static int add_optype(assemble_t *assemble, char optype, uint32_t *data, int shi
     case 'f':
       *data |= 0x01 << shift;
       break;
+    case 's':
+      *data |= 0x02 << shift;
+      break;
     case 0:
       break;
     default:
@@ -251,10 +255,17 @@ static int add_optype(assemble_t *assemble, char optype, uint32_t *data, int shi
   return r;
 }
 
-static void add_modifiers(assemble_t *assemble, char sign, int size, uint32_t *data, int shift) {
-  switch (sign) {
+// 76543210
+// ....ttss
+// ss: size 00=8, 01=16, 02=32, 03=invalid
+// tt: type 00=unsigned int, 01=signed int, 10=float, 11=string
+
+static void add_modifiers(assemble_t *assemble, char type, int size, uint32_t *data, int shift) {
+  switch (type) {
     case 'u': break;
-    case 'i': *data |= 0x80 << shift; break;
+    case 'i': *data |= (0x01 << 2) << shift; break;
+    case 'f': *data |= (0x02 << 2) << shift; break;
+    case 's': *data |= (0x03 << 2) << shift; break;
     default: break;
   }
 
@@ -316,11 +327,7 @@ static int get_modifiers(assemble_t *assemble, char *opcode, int i, char *sign, 
       }
       break;
     case 32:
-      if (*sign) {
-        error(assemble, "Invalid sign modifier in opcode %s", opcode);
-      } else {
-        r = 0;
-      }
+      r = 0;
       break;
     default:
       error(assemble, "Invalid size modifier in opcode %s", opcode);
@@ -361,8 +368,23 @@ static int assemble_instruction(assemble_t *assemble, char *instruction) {
         case 0x30: // add, addf, ...
           data = opcodes[i].code << 24;
           optype = parts[0][len];
-          r = add_optype(assemble, optype, &data, 16);
-          if (r == 0) emit32(assemble->code, data);
+
+          if (opcodes[i].code == 0x3f) {
+            // print
+            if (optype == 0 && get_modifiers(assemble, parts[0], len, &sign, &size) == 0) {
+              add_modifiers(assemble, sign, size, &data, 16);
+              emit32(assemble->code, data);
+              r = 0;
+            } else {
+              add_modifiers(assemble, optype, size, &data, 16);
+              emit32(assemble->code, data);
+              r = 0;
+            }
+          } else {
+            add_modifiers(assemble, optype, size, &data, 16);
+            emit32(assemble->code, data);
+            r = 0;
+          }
           break;
 
         case 0x40: // pushi8, pushu8, pushi16, pushu16

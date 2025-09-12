@@ -75,6 +75,7 @@ typedef enum {
   TOKEN_VARARG,
   TOKEN_RETURN,
   TOKEN_IMPORT,
+  TOKEN_PRINT,
 
   TOKEN_ERROR = 0xff00,
   TOKEN_EOF = 0xffff

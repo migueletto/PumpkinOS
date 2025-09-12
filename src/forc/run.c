@@ -49,7 +49,7 @@
             PREV = PREV oper TOP; \
             s = name; \
             break; \
-          case code+1: \
+          case code+8: \
             ff1.u = PREV; \
             ff2.u = TOP; \
             ff1.f = ff1.f oper ff2.f; \
@@ -66,6 +66,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
   uint16_t *memory16 = (uint16_t *)memory;
   uint8_t *memory8 = (uint8_t *)memory;
   uint8_t *heap_start, *ptr;
+  int32_t iaux;
   heap_t *heap;
   union {
     uint32_t u;
@@ -233,14 +234,14 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
       case 0x28: // floati
         STACK_MIN(1);
         ff1.i = TOP;
-        ff2.f = (float)ff1.i;
+        ff2.f = ff1.f;
         TOP = ff2.i;
         s = "floati";
         break;
       case 0x29: // floatu
         STACK_MIN(1);
         ff1.u = TOP;
-        ff2.f = (float)ff1.u;
+        ff2.f = ff1.f;
         TOP = ff2.u;
         s = "floatu";
         break;
@@ -257,16 +258,64 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
         fbinop(/, 0x3300, "div");
         break;
       case 0x34: // gt
-        fbinop(>, 0x3400, "gte");
+        fbinop(>=, 0x3400, "gte");
         break;
       case 0x35: // lt
-        fbinop(<, 0x3500, "lte");
+        fbinop(<=, 0x3500, "lte");
         break;
       case 0x36: // gte
-        fbinop(>=, 0x3600, "gt");
+        fbinop(>, 0x3600, "gt");
         break;
       case 0x37: // lte
-        fbinop(<=, 0x3700, "lt");
+        fbinop(<, 0x3700, "lt");
+        break;
+      case 0x3f: // print
+
+// 76543210
+// ....ttss
+// ss: size 00=8, 01=16, 02=32, 03=invalid
+// tt: type 00=unsigned int, 01=signed int, 10=float, 11=string
+
+        STACK_MIN(1);
+        POP(aux);
+        switch (opcode >> 16) {
+          case 0x3f00:
+            aux &= 0xff;
+            debug(DEBUG_INFO, APPNAME, "printu8 %u", aux);
+            break;
+          case 0x3f04:
+            aux &= 0xff;
+            iaux = (int8_t)aux;
+            debug(DEBUG_INFO, APPNAME, "printi8 %d", iaux);
+            break;
+          case 0x3f01:
+            aux &= 0xffff;
+            debug(DEBUG_INFO, APPNAME, "printu16 %u", aux);
+            break;
+          case 0x3f05:
+            aux &= 0xffff;
+            iaux = (int16_t)aux;
+            debug(DEBUG_INFO, APPNAME, "printi16 %d", iaux);
+            break;
+          case 0x3f02:
+            debug(DEBUG_INFO, APPNAME, "printu32 %u", aux);
+            break;
+          case 0x3f06:
+            iaux = (int32_t)aux;
+            debug(DEBUG_INFO, APPNAME, "printi32 %d", iaux);
+            break;
+          case 0x3f08:
+            ff1.i = (int32_t)aux;
+            debug(DEBUG_INFO, APPNAME, "printf %.8f (%d) (0x%08X)", ff1.f, ff1.i, aux);
+            break;
+          case 0x3f0c:
+            s = (char *)&memory8[aux];
+            debug(DEBUG_INFO, APPNAME, "prints \"%s\"", s);
+            break;
+          default:
+            s = "print";
+            break;
+        }
         break;
       case 0x40: // pushi8, pushu8, pushi16, pushu16
         switch (opcode >> 16) {
@@ -274,7 +323,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
             PUSH(opcode & 0xff);
             s = "pushu8";
             break;
-          case 0x4080: // pushi8
+          case 0x4004: // pushi8
             aux = opcode & 0xff;
             if (aux & 0x80) aux |= 0xffffff00;
             PUSH(aux);
@@ -284,7 +333,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
             PUSH(opcode & 0xffff);
             s = "pushu16";
             break;
-          case 0x4081: // pushi16
+          case 0x4005: // pushi16
             aux = opcode & 0xffff;
             if (aux & 0x8000) aux |= 0xffff0000;
             PUSH(aux);
@@ -299,7 +348,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
             TOP = FETCH8(TOP);
             s = "fetchu8";
             break;
-          case 0x5080: // fetchi8
+          case 0x5004: // fetchi8
             aux = FETCH8(TOP);
             if (aux & 0x80) aux |= 0xffffff00;
             TOP = aux;
@@ -309,7 +358,7 @@ static int run1(uint32_t *memory, uint32_t start, uint32_t end, int32_t arg) {
             TOP = FETCH16(TOP);
             s = "fetchu16";
             break;
-          case 0x5081: // fetchi16
+          case 0x5005: // fetchi16
             aux = FETCH16(TOP);
             if (aux & 0x8000) aux |= 0xffff0000;
             TOP = aux;
