@@ -74,7 +74,6 @@ else
 $(error Missing BITS parameter (must be either 32 or 64))
 endif
 
-HOSTCC=gcc
 AR=ar
 NM=nm -j -u
 
@@ -86,6 +85,8 @@ endif
 ifeq ($(OSNAME),)
 OSNAME := $(shell uname -o)
 endif
+
+REAL_OSNAME := $(shell uname -o)
 
 ifeq ($(OSNAME),GNU/Linux)
 SYS_OS=1
@@ -102,8 +103,17 @@ EXTLIBS=-lwsock32 -lws2_32
 SOEXT=.dll
 LUAPLAT=mingw
 OS=Windows
+ifeq ($(REAL_OSNAME),GNU/Linux)
+OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\" -I/usr/i686-w64-mingw32/include
+CC=x86_64-w64-mingw32-gcc-win32
+CPP=x86_64-w64-mingw32-g++-win32
+WINDRES=x86_64-w64-mingw32-windres
+else
 OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
+CPP=g++
+WINDRES=windres
+endif
 
 else ifeq ($(OSNAME),Serenity)
 ifeq ($(SERENITY),)
@@ -162,16 +172,23 @@ EM_CC=emcc
 EM_AR=emar
 
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding $(OSDEFS) -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME=\"$(APPNAME)\" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS)
+CFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME=\"$(APPNAME)\" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
+HOSTCFLAGS=-Wall
 
 COLOR_GREEN=\033[0;1;32m
 COLOR_CYAN=\033[0;1;36m
 COLOR_RED=\033[0;1;31m
 COLOR_END=\033[0m
 
+ifneq ($(HOSTCC),)
+%.o: %.c
+	@echo Compiling $<
+	@$(HOSTCC) $(HOSTCFLAGS) -c -o $@ $<
+else
 %.o: %.c
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c -o $@ $<
+endif
 
 %.wasm : %.c
 	@echo Compiling $<

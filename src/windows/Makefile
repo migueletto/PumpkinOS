@@ -9,19 +9,19 @@ CUSTOMPFLAGS=-I$(SRC)/libresample
 
 $(PROGRAM): $(OBJS) $(RES)
 	@echo Linking pumpkin.exe
-	@g++ -mwindows -o $(PROGRAM) $(OBJS) $(RES) -L$(BIN) -lpit -lpumpkin -lgdi32 -lole32 -luuid -lwinmm
+	@$(CPP) -mwindows -o $(PROGRAM) $(OBJS) $(RES) -L$(BIN) -lpit -lpumpkin -lgdi32 -lole32 -luuid -lwinmm
 
 drop.o: drop.cpp
 	@echo Compiling $<
-	@g++ $(CFLAGS) -c -o drop.o drop.cpp
+	@$(CPP) $(CFLAGS) -c -o drop.o drop.cpp
 
 icon.res: icon.rc
 	@echo Compiling $<
-	@windres icon.rc -O coff -o icon.res
+	@$(WINDRES) icon.rc -O coff -o icon.res
 
 version.res: version.rc
 	@echo Compiling $<
-	@windres version.rc -O coff -o version.res
+	@$(WINDRES) version.rc -O coff -o version.res
 
 clean:
 	@rm -f $(OBJS) $(RES) $(PROGRAM)
