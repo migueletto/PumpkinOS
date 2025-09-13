@@ -13,7 +13,7 @@ $(PROGRAM): $(OBJS) $(RES)
 
 drop.o: drop.cpp
 	@echo Compiling $<
-	@$(CPP) $(CFLAGS) -c -o drop.o drop.cpp
+	@$(CPP) $(CPPFLAGS) -c -o drop.o drop.cpp
 
 icon.res: icon.rc
 	@echo Compiling $<
