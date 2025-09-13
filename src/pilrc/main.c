@@ -159,6 +159,7 @@ main(int cArg,
   if (cArg < 2)
   {
     printf("%s\n%s\n%s", header, disclaimer, usage);
+    printf("\n  sizeof(char *)=%u, sizeof(c_int)=%u, sizeof(long)=%u\n", (unsigned)(sizeof(char *)), (unsigned)(sizeof(p_int)), (unsigned)(sizeof(long)));
     exit(1);
   }
 

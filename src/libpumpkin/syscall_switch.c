@@ -4403,6 +4403,7 @@
       }
       break;
 
+/*
     case sysTrapErrLongJump: {
       ErrJumpBufP buf = sys_va_arg(ap, void *);
       Int16 result = sys_va_arg(ap, UInt32);
@@ -4416,6 +4417,7 @@
       *iret = ret;
       }
       break;
+*/
 
     case sysTrapErrThrow: {
       Int32 err = sys_va_arg(ap, UInt32);
