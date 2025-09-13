@@ -39,6 +39,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <time.h>
+#include <unistd.h>
 #include "pilrc.h"
 
 #ifdef WIN32
@@ -262,12 +263,24 @@ MakeFilename(const char *szFormat, ...)
 |
 |		Return a temporary filename in newly malloc()ed memory
 -------------------------------------------------------------JOHN------------*/
+
+#define TMPNAMTEMPLATE "/tmp/pilrc_XXXXXX"
+#define TMPNAMBUFSIZE  32
+
+static char *pilrc_tmpnam(void) {
+  static char tmpnam_buf[TMPNAMBUFSIZE];
+  strcpy(tmpnam_buf, TMPNAMTEMPLATE);
+  int fd = mkstemp(tmpnam_buf);
+  if (fd != -1) close(fd);
+  return tmpnam_buf;
+}
+
 char *
 MakeTempFilename(void)
 {
   /* In some situations, the race condition inherent in the use of tmpnam()
      is a security risk.  This is not a significant issue for PilRC.  */
-  char *fname = tmpnam(NULL);
+  char *fname = pilrc_tmpnam();
   if (fname == NULL)
     Error("Can't make temporary filename -- tmpnam() failed");
   return MakeFilename("%s", fname);
