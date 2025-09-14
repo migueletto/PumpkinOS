@@ -31,7 +31,7 @@ PRC=$(VFS)/app_install/$(PROGRAM).prc
 
 $(PROGRAM).prc: $(DLIB_OPT) $(RESFLAG)
 	@echo Building $(PROGRAM).prc
-	@$(PRCDUILD) -f $(PROGRAM).prc -t $(APPTYPE) -c $(APPID) -n "$(APPNAME)" $(DLIB_OPT) resources/*
+	@$(PRCDUILD) -f $(PROGRAM).prc -t $(APPTYPE) -c $(APPID) -n $(APPNAME) $(DLIB_OPT) resources/*
 	@echo Installing $(PROGRAM).prc
 	@cp $(PROGRAM).prc $(PRC)
 
