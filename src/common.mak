@@ -172,7 +172,7 @@ EM_CC=emcc
 EM_AR=emar
 
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME=\"$(APPNAME)\" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
+CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
 CFLAGS=$(CPPFLAGS) -std=gnu99
 HOSTCFLAGS=-Wall
 

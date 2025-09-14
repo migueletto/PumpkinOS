@@ -1,6 +1,6 @@
 PROGRAM=MemoPad
 SOURCE=MemoDB.c MemoMain.c MemoRsc.c MemoTransfer.c
-APPNAME="Memo Pad"
+APPNAME=Memo Pad
 APPID=memo
 
 include ../common.mak
