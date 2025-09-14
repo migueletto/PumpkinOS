@@ -15,6 +15,8 @@
 #define InfoAlert      1002
 #define QuestionAlert  1003
 
+#define buildLbl    1001
+
 #define iconsGad    1001
 #define iconsScl    1002
 

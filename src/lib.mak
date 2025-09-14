@@ -21,7 +21,7 @@ $(LIB)$(SOEXT): $(EXTDEPS) $(OBJS)
 
 $(LIB).a: $(OBJS)
 	@echo Creating $(PROGRAM).a
-	$(ARCMD) $(LIB).a $(OBJS)
+	@$(ARCMD) $(LIB).a $(OBJS)
 
 clean: $(EXTCLEANDEPS)
 	@rm -f $(LIB)$(SOEXT) $(LIB).a $(OBJS) $(EXTCLEAN)

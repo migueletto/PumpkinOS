@@ -3,7 +3,19 @@ include ../commonp.mak
 
 CRDATE := $(shell date +%s)
 
-CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -DARMEMU -ffreestanding -DHEAP_DEBUG
+GIT := $(shell which git)
+ifneq ($(GIT),)
+ifneq ($(wildcard $(ROOT)/.git/HEAD),)
+GIT_COMMIT_ID := -DGIT_COMMIT_ID=\"$(shell $(GIT) rev-parse --short HEAD)\"
+GIT_CHANGED := $(shell $(GIT) status --porcelain)
+ifneq ($(GIT_CHANGED),)
+GIT_NOT_CLEAN=-DGIT_NOT_CLEAN
+endif
+endif
+endif
+
+CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -DARMEMU -ffreestanding -DHEAP_DEBUG \
+             $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN)
 
 GPSLIB_SOURCE=GPSLib68K.c
 

@@ -665,6 +665,8 @@ int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int fle
 
 void pumpkin_set_loop(void (*callback)(void *), void *data);
 
+const char *pumpkin_get_build(void);
+
 typedef enum {
   BT_LIB = 1,
   CPM_LIB,

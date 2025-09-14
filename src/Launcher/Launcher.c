@@ -2108,14 +2108,13 @@ static void find(launcher_data_t *data) {
   }
 }
 
-static void LauncherOpenForm(UInt16 formId) {
-  FormType *frm, *previous;
+static void LauncherAboutForm(UInt16 formId) {
+  FormType *frm;
 
   if ((frm = FrmInitForm(formId)) != NULL) {
-    previous = FrmGetActiveForm();
+    FrmCopyLabel(frm, buildLbl, pumpkin_get_build());
     FrmDoDialog(frm);
     FrmDeleteForm(frm);
-    FrmSetActiveForm(previous);
   }
 }
 
@@ -2635,7 +2634,7 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       }
       break;
     case aboutCmd:
-      LauncherOpenForm(AboutForm);
+      LauncherAboutForm(AboutForm);
       break;
   }
 }
