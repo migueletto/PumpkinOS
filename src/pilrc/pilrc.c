@@ -2553,8 +2553,8 @@ FParseObjects(RCPFILE * prcpfile)
   ITM itm;
   int icol;
   FormObjectKind fok;
-  BOOL bSeenEditableField = fFalse;
-  BOOL bSeenGSI = fFalse;
+  //BOOL bSeenEditableField = fFalse;
+  //BOOL bSeenGSI = fFalse;
 
   /*
    * add objects to object table until we see a rwEnd 
@@ -2571,8 +2571,10 @@ FParseObjects(RCPFILE * prcpfile)
     switch (rwSav = tok.rw)
     {
       case rwEnd:
+/*
         if (bSeenEditableField && !bSeenGSI)
           WarningLine("Form has editable field(s) without Graffiti State Indicator");
+*/
         return fTrue;
 
       case rwTTL:                               /* Yuck, should just do this in FORM line! */
@@ -2687,7 +2689,7 @@ FParseObjects(RCPFILE * prcpfile)
         SETPBAFIELD(obj.field, maxChars, itm.maxChars);
         SETPBAFIELD(obj.field, fontID, itm.font);
         fok = frmFieldObj;
-		if (itm.editable) bSeenEditableField = fTrue;
+		//if (itm.editable) bSeenEditableField = fTrue;
         break;
 
       case rwPUL:                               /* popuplist */
@@ -2754,16 +2756,16 @@ FParseObjects(RCPFILE * prcpfile)
 
       case rwGSI:                               /* graffitistateindicator */
         ParseItm(&itm, ifPt, if2GSI, if3Null, if4Null);
-		if (bSeenGSI)
-		  WarningLine("Form contains multiple Graffiti State Indicators");
+		//if (bSeenGSI)
+		  //WarningLine("Form contains multiple Graffiti State Indicators");
         obj.grfState = calloc(1, sizeof(RCFORMGRAFFITISTATE));
         obj.grfState->pos = itm.pt;
         fok = frmGraffitiStateObj;
-		bSeenGSI = fTrue;
+		//bSeenGSI = fTrue;
         break;
 
       case rwNoGSI:            /* indicate no graffitistateindicator expliticly */
-		bSeenGSI = fTrue;
+		//bSeenGSI = fTrue;
         break;
 
       case rwGDT:                               /* gadget */
