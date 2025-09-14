@@ -1,0 +1,32 @@
+#include "resource.h"
+
+MENU MainMenu
+BEGIN
+  PULLDOWN "Options"
+  BEGIN
+    MENUITEM "About" aboutCmd "A"
+  END
+END
+
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+USABLE
+MENUID MainMenu
+BEGIN
+  TITLE "Hello World"
+  LABEL "Hello World from PumpkinOS" ID 1001 AT (CENTER CENTER) USABLE FONT 0
+END
+
+FORM ID AboutForm AT (2 2 156 156)
+MODAL
+SAVEBEHIND
+USABLE
+BEGIN
+  TITLE "About"
+  FORMBITMAP AT (53 23) BITMAP 10000 USABLE
+  LABEL "Hello World" ID 1001 AT (CENTER CENTER) USABLE FONT 1
+  BUTTON "OK" ID 1002 AT (60 139 37 12) USABLE
+END
+
+ICONFAMILY "icon_big.bmp" "icon_big.bmp" "icon_big.bmp" "icon_big.bmp" TRANSPARENT 255 255 255
+SMALLICONFAMILY "icon_small.bmp" "icon_small.bmp" "icon_small.bmp" "icon_small.bmp" TRANSPARENT 255 255 255
