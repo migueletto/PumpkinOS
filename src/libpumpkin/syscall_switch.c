@@ -4417,13 +4417,13 @@
       *iret = ret;
       }
       break;
-*/
 
     case sysTrapErrThrow: {
       Int32 err = sys_va_arg(ap, UInt32);
       ErrThrow(err);
       }
       break;
+*/
 
     case sysTrapEvtAddEventToQueue: {
       const EventType *event = sys_va_arg(ap, void *);
