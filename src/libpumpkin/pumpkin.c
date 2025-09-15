@@ -673,6 +673,69 @@ int pumpkin_get_spawner(void) {
   return pumpkin_module.spawner;
 }
 
+static int drop_get_name(char *src, char *dst, int max) {
+  int len, i;
+
+  len = sys_strlen(src);
+  if (len < 2) return -1;
+  i = len-1;
+  if (src[i] == '/') return -1;
+
+  for (;;) {
+    if (i == 0) break;
+    if (src[i] == '/') break;
+    i--;
+  }
+
+  if (src[i] != '/') return -1;
+
+  sys_snprintf(dst, max, "vfs/app_install/%s", &src[i+1]);
+  return 0;
+}
+
+static void drop_deploy(char *file, void *data) {
+  client_request_t creq;
+  uint8_t *buf;
+  char name[256];
+  int nr, nw, rfd, wfd = 0;
+  int r = 0;
+
+  debug(DEBUG_INFO, PUMPKINOS, "reading \"%s\"", file);
+  if (drop_get_name(file, name, sizeof(name)-1) == 0) {
+    debug(DEBUG_INFO, PUMPKINOS, "writing \"%s\"", name);
+    if ((rfd = sys_open(file, SYS_READ)) != -1) {
+      if ((wfd = sys_create(name, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
+        if ((buf = (uint8_t *)sys_malloc(65536)) != NULL) {
+          for (;;) {
+            nr = sys_read(rfd, buf, 65536);
+            if (nr <= 0) break;
+            nw = sys_write(wfd, buf, nr);
+            if (nw != nr) {
+              nr = -1;
+              break;
+            }
+          }
+          r = (nr == 0);
+          sys_free(buf);
+        }
+        sys_close(wfd);
+      }
+      sys_close(rfd);
+    }
+  } else {
+    debug(DEBUG_ERROR, PUMPKINOS, "invalid name \"%s\"", file);
+  }
+
+  if (r) {
+    debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
+    sys_memset(&creq, 0, sizeof(client_request_t));
+    creq.type = MSG_DEPLOY;
+    thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+  } else {
+    debug(DEBUG_ERROR, PUMPKINOS, "deploy \"%s\" failed", file);
+  }
+}
+
 void pumpkin_set_window(window_t *w, int width, int height, int full_height) {
   debug(DEBUG_INFO, PUMPKINOS, "set window %dx%d (%dx%d)", width, height, width, full_height);
   pumpkin_module.w = w;
@@ -681,6 +744,10 @@ void pumpkin_set_window(window_t *w, int width, int height, int full_height) {
   pumpkin_module.full_height = full_height;
 
   pumpkin_module.wm = wman_init(pumpkin_module.wp, w, width, height);
+
+  if (pumpkin_module.wp->drop_file) {
+    pumpkin_module.wp->drop_file(w, drop_deploy, NULL);
+  }
 }
 
 void pumpkin_get_window(int *width, int *height) {

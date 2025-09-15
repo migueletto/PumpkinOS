@@ -82,6 +82,7 @@ typedef struct {
   int (*average)(window_t *window, int *x, int *y, int ms);
   int (*show_cursor)(window_t *window, int show);
   int (*shader)(window_t *_window, int i, char *vertex, int vlen, char *fragment, int flen, float (*getvar)(char *name, void *data), void *data);
+  int (*drop_file)(window_t *_window, void (*callback)(char *filename, void *data), void *data);
   void *data;
 } window_provider_t;
 

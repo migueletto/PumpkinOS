@@ -60,6 +60,8 @@ typedef struct {
   float (*getvar)(char *name, void *data);
   void *data;
 #endif
+  void (*drop_callback)(char *filename, void *data);
+  void *drop_data;
 } libsdl_window_t;
 
 typedef struct {
@@ -433,7 +435,7 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
         *arg2 = ev.wheel.y;
         r = WINDOW_WHEEL;
         break;
-    case SDL_WINDOWEVENT:
+      case SDL_WINDOWEVENT:
         switch (ev.window.event) {
           case SDL_WINDOWEVENT_CLOSE:
             r = -1;
@@ -441,6 +443,13 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
           default:
             break;
         }
+        break;
+      case SDL_DROPFILE:
+        if (window->drop_callback && ev.drop.file) {
+          debug(DEBUG_INFO, "SDL", "file \"%s\" dropped", ev.drop.file);
+          window->drop_callback(ev.drop.file, window->drop_data);
+        }
+        SDL_free(ev.drop.file);
         break;
       case SDL_QUIT:
         r = -1;
@@ -1397,6 +1406,17 @@ static int libsdl_window_shader(window_t *_window, int i, char *vertex, int vlen
 }
 #endif
 
+static int libsdl_window_drop_file(window_t *_window, void (*callback)(char *filename, void *data), void *data) {
+  libsdl_window_t *window = (libsdl_window_t *)_window;
+
+  if (window) {
+    window->drop_callback = callback;
+    window->drop_data = data;
+  }
+
+  return 0;
+}
+
 static int libsdl_window_destroy(window_t *window) {
   return libsdl_video_close((libsdl_window_t *)window);
 }
@@ -1555,6 +1575,8 @@ int liblsdl2_load(void) {
     return -1;
   }
 
+  SDL_EventState(SDL_DROPTEXT, SDL_ENABLE);
+
   if (set) {
     set_video_driver(NULL);
   }
@@ -1581,6 +1603,7 @@ int liblsdl2_load(void) {
 #ifdef SDL_OPENGL
   window_provider.shader = libsdl_window_shader;
 #endif
+  window_provider.drop_file = libsdl_window_drop_file;
 
   sys_memset(&audio_provider, 0, sizeof(audio_provider));
   audio_provider.init = libsdl_audio_init;
