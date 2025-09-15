@@ -176,10 +176,12 @@ CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-s
 CFLAGS=$(CPPFLAGS) -std=gnu99
 HOSTCFLAGS=-Wall
 
+ifneq ($(OSNAME),Msys)
 COLOR_GREEN=\033[0;1;32m
 COLOR_CYAN=\033[0;1;36m
 COLOR_RED=\033[0;1;31m
 COLOR_END=\033[0m
+endif
 
 ifneq ($(HOSTCC),)
 %.o: %.c
