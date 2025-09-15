@@ -218,6 +218,7 @@ int pumpkin_global_finish(void);
 int pumpkin_set_local_storage(local_storage_key_t key, void *p);
 void *pumpkin_get_local_storage(local_storage_key_t key);
 void pumpkin_deploy_files(char *path);
+void pumpkin_init_misc(void);
 void pumpkin_send_deploy(void);
 void pumpkin_local_refresh(void);
 void pumpkin_set_spawner(int handle);

@@ -618,11 +618,13 @@ static void registry_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 i
 }
 
 void pumpkin_deploy_files(char *path) {
+  StoDeployFiles(path, pumpkin_module.registry);
+}
+
+void pumpkin_init_misc(void) {
   DmOpenRef dbRef;
   LocalID dbID;
   PumpkinPreferencesType prefs;
-
-  StoDeployFiles(path, pumpkin_module.registry);
 
   dbID = DmFindDatabase(0, BOOT_NAME);
   dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly);

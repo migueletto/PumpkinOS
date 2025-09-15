@@ -4220,6 +4220,7 @@ int StoDeployFiles(char *path, AppRegistryType *ar) {
   if (path) {
     if ((dir = StoVfsOpendir(sto->session, path)) != NULL) {
       spawner = pumpkin_get_spawner() == thread_get_handle();
+      if (!spawner) mutex_lock(sto->mutex);
 
       for (r = 0; r == 0;) {
         if ((ent = StoVfsReaddir(dir)) == NULL) break;
@@ -4249,6 +4250,8 @@ int StoDeployFiles(char *path, AppRegistryType *ar) {
           }
         }
       }
+
+      if (!spawner) mutex_unlock(sto->mutex);
       vfs_closedir(dir);
     }
   }
