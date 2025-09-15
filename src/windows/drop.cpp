@@ -79,7 +79,7 @@ bool FileDropTarget::QueryDataObject(IDataObject *pDataObject) {
   HRESULT r;
 
   r = pDataObject->QueryGetData(&fmtetc);
-  debug(DEBUG_TRACE, "WIN32", "QueryGetData: 0x%08lX", r);
+  debug(DEBUG_TRACE, "WIN32", "QueryGetData: 0x%08X", r);
 
   return SUCCEEDED(r);
 }
@@ -201,11 +201,11 @@ static bool DropData(HWND hwnd, IDataObject *pDataObject) {
   bool ok = false;
 
   r = pDataObject->QueryGetData(&fmtetc);
-  debug(DEBUG_TRACE, "WIN32", "DropData QueryGetData: 0x%08lX", r);
+  debug(DEBUG_TRACE, "WIN32", "DropData QueryGetData: 0x%08X", r);
   if (SUCCEEDED(r)) {
     debug(DEBUG_TRACE, "WIN32", "DropData query data ok");
     r = pDataObject->GetData(&fmtetc, &stgmed);
-    debug(DEBUG_TRACE, "WIN32", "DropData GetData: 0x%08lX", r);
+    debug(DEBUG_TRACE, "WIN32", "DropData GetData: 0x%08X", r);
     if (SUCCEEDED(r)) {
       debug(DEBUG_TRACE, "WIN32", "DropData get data ok");
       hDrop = (HDROP)stgmed.hGlobal;
