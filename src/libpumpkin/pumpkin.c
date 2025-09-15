@@ -242,6 +242,7 @@ typedef struct {
   surface_t *background;
   int audio, pcm, channels, rate;
   void *local_storage[last_key];
+  char *mount;
 } pumpkin_module_t;
 
 typedef union {
@@ -689,7 +690,7 @@ static int drop_get_name(char *src, char *dst, int max) {
 
   if (src[i] != '/') return -1;
 
-  sys_snprintf(dst, max, "vfs/app_install/%s", &src[i+1]);
+  sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, VFS_INSTALL+1, &src[i+1]);
   return 0;
 }
 
@@ -701,7 +702,7 @@ static void drop_deploy(char *file, void *data) {
   int r = 0;
 
   debug(DEBUG_INFO, PUMPKINOS, "reading \"%s\"", file);
-  if (drop_get_name(file, name, sizeof(name)-1) == 0) {
+  if (pumpkin_module.mount && drop_get_name(file, name, sizeof(name)-1) == 0) {
     debug(DEBUG_INFO, PUMPKINOS, "writing \"%s\"", name);
     if ((rfd = sys_open(file, SYS_READ)) != -1) {
       if ((wfd = sys_create(name, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
@@ -1585,6 +1586,9 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   SysFatalAlertInit();
 
   if (i == 0) {
+    pumpkin_module.mount = VFSGetMount(1);
+    debug(DEBUG_INFO, PUMPKINOS, "VFS mount \"%s\"", pumpkin_module.mount);
+
     pumpkin_get_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
     if (prefs.value[pBackgroundImage] & 0xFFFF) {
       pumpkin_image_background(&prefs.color[pColorBackground], prefs.value[pBackgroundImage] & 0xFFFF, prefs.value[pBackgroundImage] >> 16);
