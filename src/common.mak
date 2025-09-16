@@ -103,13 +103,12 @@ EXTLIBS=-lwsock32 -lws2_32
 SOEXT=.dll
 LUAPLAT=mingw
 OS=Windows
+OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
 ifeq ($(REAL_OSNAME),GNU/Linux)
-OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\" -I/usr/i686-w64-mingw32/include
 CC=x86_64-w64-mingw32-gcc-win32
 CPP=x86_64-w64-mingw32-g++-win32
 WINDRES=x86_64-w64-mingw32-windres
 else
-OSDEFS=$(MBITS) -DWINDOWS -DWINDOWS$(BITS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
 CPP=g++
 WINDRES=windres
@@ -172,11 +171,11 @@ EM_CC=emcc
 EM_AR=emar
 
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -ffreestanding -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
-CFLAGS=$(CPPFLAGS) -std=gnu99
+CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar -g -fPIC -fno-stack-protector -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS)
+CFLAGS=$(CPPFLAGS) -ffreestanding -std=gnu99
 HOSTCFLAGS=-Wall
 
-ifneq ($(OSNAME),Msys)
+ifneq ($(REAL_OSNAME),Msys)
 COLOR_GREEN=\033[0;1;32m
 COLOR_CYAN=\033[0;1;36m
 COLOR_RED=\033[0;1;31m
