@@ -677,18 +677,22 @@ int pumpkin_get_spawner(void) {
 static int drop_get_name(char *src, char *dst, int max) {
   int len, i;
 
+  if (!src) return -1;
+  if (sys_strchr(src, '%')) return -1;
+  if (sys_strstr(src, "..")) return -1;
+
   len = sys_strlen(src);
   if (len < 2) return -1;
   i = len-1;
-  if (src[i] == '/') return -1;
+  if (src[i] == FILE_SEP) return -1;
 
   for (;;) {
     if (i == 0) break;
-    if (src[i] == '/') break;
+    if (src[i] == FILE_SEP) break;
     i--;
   }
 
-  if (src[i] != '/') return -1;
+  if (src[i] != FILE_SEP) return -1;
 
   sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, VFS_INSTALL+1, &src[i+1]);
   return 0;

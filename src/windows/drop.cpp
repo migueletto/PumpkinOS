@@ -11,8 +11,6 @@
 #include "xalloc.h"
 #include "debug.h"
 
-static bool DropData(HWND hwnd, IDataObject *pDataObject);
-
 class FileDropTarget : public IDropTarget {
 
 public:
@@ -27,9 +25,11 @@ public:
   HRESULT __stdcall DragLeave(void);
   HRESULT __stdcall Drop(IDataObject *pDataObject, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect);
 
+  bool DropData(HWND hwnd, IDataObject *pDataObject);
+
   // Constructor
-  FileDropTarget(HWND hwnd);
-  ~FileDropTarget();
+  FileDropTarget(HWND hwnd, void (*callback)(char *filename, void *data), void *data);
+  virtual ~FileDropTarget() {}
 
 private:
   bool QueryDataObject(IDataObject *pDataObject);
@@ -37,15 +37,18 @@ private:
   LONG m_lRefCount;
   HWND m_hwnd;
   bool m_fAllowDrop;
+
+  void (*drop_callback)(char *filename, void *data);
+  void *drop_data;
 };
 
-FileDropTarget::FileDropTarget(HWND hwnd) {
+FileDropTarget::FileDropTarget(HWND hwnd, void (*callback)(char *filename, void *data), void *data) {
   m_lRefCount = 1;
   m_hwnd = hwnd;
   m_fAllowDrop = false;
-}
 
-FileDropTarget::~FileDropTarget() {
+  drop_callback = callback;
+  drop_data = data;
 }
 
 HRESULT __stdcall FileDropTarget::QueryInterface(REFIID iid, void **ppvObject) {
@@ -131,66 +134,7 @@ HRESULT __stdcall FileDropTarget::Drop(IDataObject * pDataObject, DWORD grfKeySt
   return S_OK;
 }
 
-static int getName(char *src, char *dst, int max) {
-  int len, i;
-
-  len = strlen(src);
-  if (len < 2) return -1;
-  i = len-1;
-  if (src[i] == '\\') return -1;
-
-  for (;;) {
-    if (i == 0) break;
-    if (src[i] == '\\') break;
-    i--;
-  }
-
-  if (src[i] != '\\') return -1;
-
-  sys_snprintf(dst, max, "vfs/app_install/%s", &src[i+1]);
-  return 0;
-}
-
-static bool deploy(char *file) {
-  uint8_t *buf;
-  char name[256];
-  int nr, nw, rfd, wfd = 0;
-  bool r = false;
-
-  debug(DEBUG_INFO, "WIN32", "reading \"%s\"", file);
-  if (getName(file, name, sizeof(name)-1) == 0) {
-    debug(DEBUG_INFO, "WIN32", "writing \"%s\"", name);
-    if ((rfd = sys_open(file, SYS_READ)) != -1) {
-      if ((wfd = sys_create(name, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-        if ((buf = (uint8_t *)xmalloc(65536)) != NULL) {
-          for (;;) {
-            nr = sys_read(rfd, buf, 65536);
-            if (nr <= 0) break;
-            nw = sys_write(wfd, buf, nr);
-            if (nw != nr) {
-              nr = -1;
-              break;
-            }
-          }
-          r = (nr == 0);
-          xfree(buf);
-        }
-        sys_close(wfd);
-      }
-      sys_close(rfd);
-    }
-  } else {
-    debug(DEBUG_ERROR, "WIN32", "invalid name \"%s\"", file);
-  }
-
-  if (!r) {
-    debug(DEBUG_ERROR, "WIN32", "deploy \"%s\" failed", file);
-  }
-
-  return r;
-}
-
-static bool DropData(HWND hwnd, IDataObject *pDataObject) {
+bool FileDropTarget::DropData(HWND hwnd, IDataObject *pDataObject) {
   FORMATETC fmtetc = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
   STGMEDIUM stgmed;
   HDROP hDrop;
@@ -217,10 +161,9 @@ static bool DropData(HWND hwnd, IDataObject *pDataObject) {
         buf = (char *)xcalloc(size+1, sizeof(char));
         DragQueryFile(hDrop, i, buf, size+1);
         debug(DEBUG_TRACE, "WIN32", "DropData file %d name: \"%s\"", i, buf);
-        if (deploy(buf)) {
-          ok = true;
-        }
+        drop_callback(buf, drop_data);
         xfree(buf);
+        ok = true;
       }
       if (ok) {
         debug(DEBUG_TRACE, "WIN32", "send MSG_DEPLOY");
@@ -235,8 +178,8 @@ static bool DropData(HWND hwnd, IDataObject *pDataObject) {
   return ok;
 }
 
-void RegisterDropWindow(HWND hwnd, IDropTarget **ppDropTarget) {
-  FileDropTarget *pDropTarget = new FileDropTarget(hwnd);
+void RegisterDropWindow(HWND hwnd, IDropTarget **ppDropTarget, void (*callback)(char *filename, void *data), void *data) {
+  FileDropTarget *pDropTarget = new FileDropTarget(hwnd, callback, data);
 
   CoLockObjectExternal(pDropTarget, TRUE, FALSE);
 

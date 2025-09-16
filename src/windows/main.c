@@ -333,8 +333,6 @@ static window_t *window_create(int encoding, int *width, int *height, int xfacto
     SelectObject(window->hdcBitmap, window->bitmap);
     ReleaseDC(window->hwnd, hdc);
 
-    RegisterDropWindow(window->hwnd, &window->dt);
-
     ShowWindow(window->hwnd, SW_NORMAL);
   }
 
@@ -561,6 +559,15 @@ static int window_show_cursor(window_t *window, int show) {
 static int window_average(window_t *window, int *x, int *y, int ms) {
   return average_click(&wp, window, x, y, ms);
 }
+
+static int window_drop_file(window_t *_window, void (*callback)(char *filename, void *data), void *data) {
+  win_window_t *window = (win_window_t *)_window;
+
+  RegisterDropWindow(window->hwnd, &window->dt, callback, data);
+
+  return 0;
+}
+
 
 static int audio_mixer_init(void) {
   return 0;
@@ -956,6 +963,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.status = window_status;
   wp.show_cursor = window_show_cursor;
   wp.average = window_average;
+  wp.drop_file = window_drop_file;
   wp.data = hInstance;
 
   ap.init = audio_init;
