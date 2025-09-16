@@ -1,0 +1,14 @@
+# Use command "x86_64-w64-mingw32-gcc-win32 --print-search-dirs" to find the library paths used by gcc,
+# then convert them to the format expected by Wine using command "winepath -w <path>" for each one,
+# then concatenate the converted paths into variable WINEPATH using separator ";",
+# then append "Z:.\bin" at the end.
+# In my case, these paths are needed:
+#   Z:\usr\lib\gcc\x86_64-w64-mingw32\13-win32
+#   Z:\usr\x86_64-w64-mingw32\lib
+#   Z:.\bin
+
+export WINEPATH='Z:\usr\lib\gcc\x86_64-w64-mingw32\13-win32;Z:\usr\x86_64-w64-mingw32\lib;Z:.\bin'
+
+# Call wine passing the standard PumpkinOS command line:
+
+wine ./pumpkin.exe -d 1 -f pumpkin.log -s libscriptlua ./script/pumpkin.lua
