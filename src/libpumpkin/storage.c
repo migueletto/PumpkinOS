@@ -3591,7 +3591,7 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
   storage_db_t *db;
   DmOpenType *dbRef;
   storage_handle_t *h;
-  UInt16 id;
+  UInt16 id, idaux, os, cpu, size;
   uint32_t i;
   char buf[VFS_PATH];
   int first_load;
@@ -3607,11 +3607,19 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
           debug(DEBUG_INFO, "STOR", "searching for dlib id %d (os=%d cpu=%d size=%d)", id, SYS_OS, SYS_CPU, SYS_SIZE);
           for (i = 0; i < db->numRecs; i++) {
             h = db->elements[i];
-            if (h->d.res.type == resType && h->d.res.id == id) {
-              storage_name(sto, db->name, STO_FILE_ELEMENT, id, resType, 0, 0, buf);
-              lib = StoVfsLoadlib(sto->session, buf, &first_load);
-              *firstLoad = lib != NULL && first_load == 1;
-              break;
+            if (h->d.res.type == resType) {
+              if (h->d.res.id == id) {
+                storage_name(sto, db->name, STO_FILE_ELEMENT, id, resType, 0, 0, buf);
+                lib = StoVfsLoadlib(sto->session, buf, &first_load);
+                *firstLoad = lib != NULL && first_load == 1;
+                break;
+              }
+              idaux = h->d.res.id;
+              os = idaux / 64;
+              idaux %= 64;
+              cpu = idaux / 8;
+              size = idaux % 8;
+              debug(DEBUG_INFO, "STOR", "ignoring dlib id %d (os=%d cpu=%d size=%d)", h->d.res.id, os, cpu, size);
             }
           }
         }
