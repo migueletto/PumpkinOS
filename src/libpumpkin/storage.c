@@ -3594,11 +3594,12 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
   UInt16 id, idaux, os, cpu, size;
   uint32_t i;
   char buf[VFS_PATH];
-  int first_load;
+  int first_load, dlib_found;
   void *lib = NULL;
 
   if (dbP && firstLoad) {
     if (mutex_lock(sto->mutex) == 0) {
+      dlib_found = 0;
       dbRef = (DmOpenType *)dbP;
       if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
         db = (storage_db_t *)(sto->base + dbRef->dbID);
@@ -3619,12 +3620,17 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
               idaux %= 64;
               cpu = idaux / 8;
               size = idaux % 8;
+              dlib_found = 1;
               debug(DEBUG_INFO, "STOR", "ignoring dlib id %d (os=%d cpu=%d size=%d)", h->d.res.id, os, cpu, size);
             }
           }
         }
       }
       mutex_unlock(sto->mutex);
+
+      if (dlib_found && !lib) {
+        pumpkin_error_dialog("Application was compiled for a different archirecture");
+      }
     }
   }
 
