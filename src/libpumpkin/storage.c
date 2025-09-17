@@ -3629,7 +3629,7 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
       mutex_unlock(sto->mutex);
 
       if (dlib_found && !lib) {
-        pumpkin_error_dialog("Application was compiled for a different archirecture");
+        pumpkin_error_dialog("App was compiled for a different architecture");
       }
     }
   }
