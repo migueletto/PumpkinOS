@@ -37,7 +37,7 @@ $(PROGRAM).prc: $(DLIB_OPT) $(RESFLAG)
 
 $(DLIB): $(PROGRAM).dlib
 	@cp $(PROGRAM).dlib $(DLIB)
-#	@strip $(DLIB)
+	@$(STRIP) $(DLIB)
 
 $(PROGRAM).dlib: $(OBJS) $(STUBS_OPT)
 	@echo Linking $(PROGRAM).dlib
