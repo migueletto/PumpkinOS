@@ -77,6 +77,7 @@ OBJS=$(SOURCE:%.c=%.o)
 $(PROGRAM): $(OBJS)
 	@echo Linking libpumpkin$(SOEXT)
 	@$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) -L$(BIN) -lpit -lm
+	@$(STRIP) $(PROGRAM)
 
 emulation/systrap.o: emulation/systrap.c emulation/switch.c
 	@echo Compiling $<
