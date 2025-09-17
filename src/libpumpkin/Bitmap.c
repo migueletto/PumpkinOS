@@ -828,7 +828,7 @@ static uint32_t BmpSurfaceColorRgb(void *data, int red, int green, int blue, int
   ColorTableType *colorTable;
   UInt32 transparentValue;
   Boolean transp;
-  uint32_t color;
+  uint32_t color = 0;
 
   transp = BmpGetTransparentValue(bsurf->bitmapP, &transparentValue);
 
@@ -2804,6 +2804,11 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
               dstGreen = g32(dstPixel);
               dstBlue  = b32(dstPixel);
               break;
+            default:
+              dstRed   = 0;
+              dstGreen = 0;
+              dstBlue  = 0;
+              break;
           }
           dstRed   = ((srcRed   * srcAlpha) + (dstRed   * (255 - srcAlpha))) / 255;
           dstGreen = ((srcGreen * srcAlpha) + (dstGreen * (255 - srcAlpha))) / 255;
@@ -2823,6 +2828,9 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
           srcTransp = true;
           dstPixel = BmpGetPixelValue(dst, dx, dy);
         }
+        break;
+      default:
+        dstPixel = 0;
         break;
     }
 

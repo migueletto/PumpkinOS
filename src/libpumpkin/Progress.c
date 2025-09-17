@@ -15,7 +15,7 @@ ProgressPtr	PrgStartDialogV31(const Char *title, PrgCallbackFunc textCallback) {
 }
 
 ProgressPtr	PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void *userDataP) {
-  ProgressPtr	prgP;
+  ProgressPtr	prgP = NULL;
   UInt16 index;
   
   if (title && textCallback && (prgP = MemPtrNew(sizeof(ProgressType))) != NULL) {

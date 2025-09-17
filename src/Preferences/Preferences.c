@@ -295,6 +295,9 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
         case tfComma24h:   // 13,00
           listIndex = 4;
           break;
+        default:
+          listIndex = 0;
+          break;
       }
 
       index = FrmGetObjectIndex(frm, timeFormatList);

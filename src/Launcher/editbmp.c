@@ -214,6 +214,9 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
       rgb.g = data->rgb.g;
       rgb.b = data->rgb.b;
       break;
+    default:
+      color = 0;
+      break;
   }
 
   transp = putBit(data->bmps[data->index], data->j0 + j, data->i0 + i, color, data->transpPixel);

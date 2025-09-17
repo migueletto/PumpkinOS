@@ -831,6 +831,7 @@ static void launcherScanFiles(launcher_data_t *data) {
   data->cellHeight = FntCharHeight() + 2;
   data->cellWidth = data->gadRect.extent.x;
   FntSetFont(old);
+  index = 0;
 
   if (VFSFileOpen(1, data->path, vfsModeRead, &dirRef) == errNone) {
     dirEntryIterator = vfsIteratorStart;
@@ -949,7 +950,7 @@ static void launcherScanRegistry(launcher_data_t *data) {
 
 static void launcherScanRecords(launcher_data_t *data) {
   MemHandle h;
-  UInt16 num, index;
+  UInt16 num, index = 0;
   FontID old;
   DmOpenRef dbRef;
 
@@ -1295,8 +1296,14 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
           case EMUPALMOS_GENERIC_ERROR:
             s = "other error";
             break;
+          default:
+            s = "unknown";
+            break;
         }
         StrNPrintF(buf, sizeof(buf)-1, "Crash: %s", s);
+        bmpId = errorBmp;
+        break;
+      default:
         bmpId = errorBmp;
         break;
     }

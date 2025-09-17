@@ -118,6 +118,10 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
   frm = FrmInitForm(13400);
   if (titleP) FrmSetTitle(frm, (char *)titleP);
 
+  choices = NULL;
+  max = 0;
+  tz = NULL;
+
   index = FrmGetObjectIndex(frm, 13403);
   if ((list = (ListType *)FrmGetObjectPtr(frm, index)) != NULL) {
     // DmGetResource('tSTR', 13419)  0x346B  string 0x5e 0x31 0x72 0x00    XXX what is this ?
@@ -132,9 +136,6 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     // 00 b4 01 e0 00 78 00 3c 00 3c 00 3c 01 e0 01 a4
     // 00 78 00 f0 00 00 fd e4 fe 98 fe d4 fd a8 fe 5c
     // fe 20 00 00 00 3c 01 a4 02 1c 01 e0 01 e0 fe 5c
-
-    choices = NULL;
-    max = 0;
 
     if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
       if ((tz = MemHandleLock(h)) != NULL) {
@@ -164,7 +165,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     // 00 db 00 22 00 16 00 17 00 17 00 17 00 17 00 17
     // 00 17 00 0a 00 0e 00 19 00 19 00 19 00 1b 00 0f
 
-    if ((h = DmGetResource(wrdListRscType, 13401)) != NULL) {
+    if (tz && (h = DmGetResource(wrdListRscType, 13401)) != NULL) {
       if ((country = MemHandleLock(h)) != NULL) {
         maxc = tz[0];
         if (maxc == max) {
@@ -201,7 +202,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     }
   }
 
-  if (list && choices) {
+  if (tz && list && choices) {
     LstSetDrawFunction(list, SelectTimeZoneDrawItem);
     LstSetListChoices(list, (char **)choices, max);
     for (i = 0; i < max; i++) {

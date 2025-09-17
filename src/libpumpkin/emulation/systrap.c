@@ -1455,7 +1455,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       char *f = emupalmos_trap_in(formatStr, trap, 1);
       Int16 res = 0;
       if (s && f) {
-        int i, j, k = 1, t = 0, sz, arglen;
+        int i, j = 0, k = 1, t = 0, sz, arglen = 0;
         uint32_t arg;
         char *p, *q, fmt[16];
         for (i = 0, p = s; f[i]; i++) {

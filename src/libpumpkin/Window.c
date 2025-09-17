@@ -2874,6 +2874,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
         break;
       case nativeFormat:
+      default:
         // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
         // When using this format, the width and height arguments must be specified using the active coordinate system.
         density = module->density;

@@ -294,7 +294,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
     forever = 0;
   }
 
-  for (; !thread_must_end() && !pumpkin_must_finish();) {
+  for (ev = 0; !thread_must_end() && !pumpkin_must_finish();) {
     InsPtCheckBlink();
     n = sizeof(buf);
     ev = pumpkin_event(&key, &mods, &buttons, buf, &n, wait);

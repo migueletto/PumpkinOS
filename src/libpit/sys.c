@@ -722,13 +722,15 @@ int sys_chdir(char *path) {
 }
 
 int sys_getcwd(char *buf, int len) {
+  int r;
+
 #if defined(KERNEL)
-  f_getcwd(buf, len);
+  r = f_getcwd(buf, len) == FR_OK;
 #else
-  getcwd(buf, len);
+  r = getcwd(buf, len) ? 0 : -1;
 #endif
 
-  return 0;
+  return r;
 }
 
 int sys_open(const char *pathname, int flags) {

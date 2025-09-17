@@ -275,11 +275,12 @@ static int audio_action(void *arg) {
                 break;
               default:
                 debug(DEBUG_ERROR, "ALSA", "invalid pcm %d", audio->pcm);
+                frame_size = 0;
                 format = -1;
                 break;
             }
 
-            if (snd == NULL) {
+            if (snd == NULL && format != -1) {
               debug(DEBUG_INFO, "ALSA", "open device for playback");
               if ((r = snd_pcm_open(&snd, "default", SND_PCM_STREAM_PLAYBACK, 0)) != 0) {
                 debug(DEBUG_ERROR, "ALSA", "snd_pcm_open failed: (%d) %s", r, snd_strerror(r));
