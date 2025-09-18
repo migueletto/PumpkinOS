@@ -13,7 +13,7 @@ GIT_NOT_CLEAN=-DGIT_NOT_CLEAN
 endif
 GIT_TAG := $(shell $(GIT) name-rev --name-only --tags HEAD)
 ifneq ($(GIT_TAG),undefined)
-GIT_TAG_NAME := -DGIT_TAG_NAME=\"$(GIT_TAG_NAME)\"
+GIT_TAG_NAME := -DGIT_TAG_NAME=\"$(GIT_TAG)\"
 endif
 endif
 endif
