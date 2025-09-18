@@ -11,11 +11,15 @@ GIT_CHANGED := $(shell $(GIT) status --porcelain)
 ifneq ($(GIT_CHANGED),)
 GIT_NOT_CLEAN=-DGIT_NOT_CLEAN
 endif
+GIT_TAG := $(shell $(GIT) name-rev --name-only --tags HEAD)
+ifneq ($(GIT_TAG),undefined)
+GIT_TAG_NAME := -DGIT_TAG_NAME=\"$(GIT_TAG_NAME)\"
+endif
 endif
 endif
 
 CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -DARMEMU -ffreestanding -DHEAP_DEBUG \
-             $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN)
+             $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN) $(GIT_TAG_NAME)
 
 GPSLIB_SOURCE=GPSLib68K.c
 
