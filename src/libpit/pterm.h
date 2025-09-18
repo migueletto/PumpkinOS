@@ -33,6 +33,7 @@ uint32_t pterm_getbg(pterm_t *t);
 void pterm_cursor(pterm_t *t, int show);
 void pterm_cursor_blink(pterm_t *t);
 void pterm_cursor_enable(pterm_t *t, int enabled);
+void pterm_crlf_mode(pterm_t *t, int crlf);
 
 void pterm_getsize(pterm_t *pterm, uint8_t *cols, uint8_t *rows);
 int pterm_getcursor(pterm_t *pterm, uint8_t *col, uint8_t *row);

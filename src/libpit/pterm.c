@@ -23,6 +23,7 @@ struct pterm_t {
   int row0, row1;  // scrolling region
   int keymode;
   int lastcol;
+  int crlf;
   uint8_t attr, saved_attr, color, saved_color;
   int cursor_state, cursor_enabled;
   uint8_t *char_buffer;
@@ -212,6 +213,10 @@ void pterm_cursor_enable(pterm_t *t, int enabled) {
     }
     t->cursor_state = 0;
   }
+}
+
+void pterm_crlf_mode(pterm_t *t, int crlf) {
+  t->crlf = crlf;
 }
 
 static void term_delete_char(pterm_t *t, int col, int row) {
@@ -843,6 +848,10 @@ static void term_sendc(pterm_t *t, uint8_t c) {
       term_incx(t, n);
       break;
     case 10:
+      if (t->crlf) {
+        pterm_setx(t, 0);
+        t->lastcol = 0;
+      }
       term_incy(t);
       break;
     case 12:
