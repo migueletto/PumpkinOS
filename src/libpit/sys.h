@@ -435,6 +435,10 @@ int sys_vsnprintf(char *str, sys_size_t size, const char *format, sys_va_list ap
 
 int sys_sscanf(const char *str, const char *format, ...) __attribute__ ((format (scanf, 2, 3)));
 
+int sys_rand(void);
+
+void sys_srand(unsigned int seed);
+
 int sys_iscntrl(int c);
 int sys_isblank(int c);
 int sys_isspace(int c);

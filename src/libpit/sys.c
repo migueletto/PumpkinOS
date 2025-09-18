@@ -1985,6 +1985,14 @@ int sys_termsize(int fd, int *cols, int *rows) {
 #endif
 }
 
+int sys_rand(void) {
+  return rand();
+}
+
+void sys_srand(unsigned int seed) {
+  return srand(seed);
+}
+
 int sys_isatty(int fd) {
 #if defined(WINDOWS) || defined(KERNEL)
   return 0;
