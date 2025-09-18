@@ -256,8 +256,8 @@ int pumpkin_dia_get_taskbar_dimension(int *width, int *height);
 
 int pumpkin_launcher(char *name, int width, int height);
 int pumpkin_launch(launch_request_t *request);
-int pumpkin_ps(int (*ps_callback)(int i, char *name, int m68k, void *data), void *data);
-int pumpkin_kill(char *name);
+int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, void *data), void *data);
+int pumpkin_kill(uint32_t tid);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
@@ -646,6 +646,7 @@ void pumpkin_setio(
   int (*getchar)(void *iodata),
   int (*haschar)(void *iodata),
   void (*putchar)(void *iodata, char c),
+  void (*putstr)(void *iodata, char *s, uint32_t len),
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata);
 int pumpkin_getchar(void);
 int pumpkin_haschar(void);

@@ -873,12 +873,12 @@ static void launcherScanFiles(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "found %d files", data->numItems);
 }
 
-static int ps_callback(int i, char *name, int m68k, void *_data) {
+static int ps_callback(int i, uint32_t id, char *name, int m68k, void *_data) {
   launcher_data_t *data = (launcher_data_t *)_data;
 
   if (data->numItems < MAX_ITEMS) {
     StrNCopy(data->item[data->numItems].name, name, dmDBNameLength-1);
-    data->item[data->numItems].id = i;
+    data->item[data->numItems].id = id;
     data->item[data->numItems].m68k = m68k;
     data->numItems++;
   }

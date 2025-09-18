@@ -144,6 +144,7 @@ typedef struct {
   int (*getchar)(void *iodata);
   int (*haschar)(void *iodata);
   void (*putchar)(void *iodata, char c);
+  void (*putstr)(void *iodata, char *s, uint32_t len);
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg);
   void *iodata;
   void *table;
@@ -1170,14 +1171,14 @@ static void task_destructor(void *p) {
   }
 }
 
-int pumpkin_ps(int (*ps_callback)(int i, char *name, int m68k, void *data), void *data) {
+int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, void *data), void *data) {
   int i, r = -1;
 
   if (ps_callback) {
     if (mutex_lock(mutex) == 0) {
       for (i = 0; i < MAX_TASKS; i++) {
         if (pumpkin_module.tasks[i].active) {
-          if (ps_callback(i, pumpkin_module.tasks[i].name, pumpkin_module.tasks[i].m68k, data) != 0) break;
+          if (ps_callback(i, pumpkin_module.tasks[i].taskId, pumpkin_module.tasks[i].name, pumpkin_module.tasks[i].m68k, data) != 0) break;
         }
       }
       mutex_unlock(mutex);
@@ -1188,21 +1189,18 @@ int pumpkin_ps(int (*ps_callback)(int i, char *name, int m68k, void *data), void
   return r;
 }
 
-int pumpkin_kill(char *name) {
+int pumpkin_kill(uint32_t tid) {
   int i, r = -1;
 
-  if (name) {
-    if (mutex_lock(mutex) == 0) {
-      for (i = 0; i < MAX_TASKS; i++) {
-        if (pumpkin_module.tasks[i].active && !sys_strcmp(pumpkin_module.tasks[i].name, name)) {
-          thread_end(TAG_APP, pumpkin_module.tasks[i].handle);
-          r = 0;
-          break;
-        }
+  if (mutex_lock(mutex) == 0) {
+    for (i = 0; i < MAX_TASKS; i++) {
+      if (pumpkin_module.tasks[i].active && tid == pumpkin_module.tasks[i].taskId) {
+        thread_end(TAG_APP, pumpkin_module.tasks[i].handle);
+        r = 0;
+        break;
       }
-      mutex_unlock(mutex);
-      r = 0;
     }
+    mutex_unlock(mutex);
   }
 
   return r;
@@ -4410,6 +4408,8 @@ UInt16 pumpkin_get_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, B
         size = 0;
       }
       DmCloseDatabase(dbRef);
+    } else {
+      size = 0;
     }
     mutex_unlock(mutex);
   }
@@ -5278,6 +5278,7 @@ void pumpkin_setio(
   int (*getchar)(void *iodata),
   int (*haschar)(void *iodata),
   void (*putchar)(void *iodata, char c),
+  void (*putstr)(void *iodata, char *s, uint32_t len),
   void (*setcolor)(void *iodata, uint32_t fg, uint32_t bg), void *iodata) {
 
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
@@ -5285,6 +5286,7 @@ void pumpkin_setio(
   task->getchar = getchar;
   task->haschar = haschar;
   task->putchar = putchar;
+  task->putstr = putstr;
   task->setcolor = setcolor;
   task->iodata = iodata;
 }
@@ -5321,7 +5323,13 @@ void pumpkin_write(char *s, uint32_t len) {
 }
 
 void pumpkin_puts(char *s) {
-  pumpkin_write(s, sys_strlen(s));
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task->putstr) {
+    task->putstr(task->iodata, s, sys_strlen(s));
+  } else {
+    pumpkin_write(s, sys_strlen(s));
+  }
 }
 
 uint32_t pumpkin_vprintf(const char *format, sys_va_list ap) {
