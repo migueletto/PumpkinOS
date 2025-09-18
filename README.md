@@ -74,9 +74,8 @@ After either a successful or an unsuccessful run, you will find a pumpkin.log fi
 If something goes wrong, look for lines marked with an "E" on the third column of this file.
 You can reach me for questions (and send me your log file if you wish).
 
-The Windows and Emscripten versions implement Drag & Drop functionality. You can drag a PalmOS PRC over the PumpkinOS window and 
-it will be installed and show up in the Launcher. The Linux version lacks this functionality. For now, you have to manually copy PRCs
-to the vfs/app_install directory and restart PumpkinOS.
+PumpkinOS supports Drag & Drop functionality. You can drag a PalmOS PRC file over its window and 
+it will be installed and show up in the Launcher. You can also manually copy PRCs to the vfs/app_install directory and restart PumpkinOS.
 
 If you really want to, you can debug PumpkinOS with gdb on Windows, Linux and WSL2. On Windows, edit pumpkin.bat and change the last line to:
 
