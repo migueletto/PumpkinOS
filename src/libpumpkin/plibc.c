@@ -503,12 +503,23 @@ int plibc_fputc(int c, PLIBC_FILE *stream) {
 }
 
 int plibc_fputs(const char *s, PLIBC_FILE *stream) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
   int len, r = PLIBC_EOF;
 
   if (s && stream) {
-    len = sys_strlen(s);
-    if (plibc_fwrite(s, 1, len, stream) == len) {
-      r = 0;
+
+    if (stream->fd >= 0 && stream->fd < MAX_FDS && table[stream->fd] && table[stream->fd]->fileRef) {
+      if (table[stream->fd]->fileRef == stdoutFileRef || table[stream->fd]->fileRef == stderrFileRef) {
+        pumpkin_puts((char *)s);
+        r = 0;
+      }
+    }
+
+    if (r == PLIBC_EOF) {
+      len = sys_strlen(s);
+      if (plibc_fwrite(s, 1, len, stream) == len) {
+        r = 0;
+      }
     }
   }
 

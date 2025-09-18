@@ -917,7 +917,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       data.cb.data = &data;
       pterm_callback(data.t, &data.cb);
 
-      pumpkin_setio(tos_getchar, tos_haschar, tos_putchar, tos_setcolor, &data);
+      pumpkin_setio(tos_getchar, tos_haschar, tos_putchar, NULL, tos_setcolor, &data);
 
       pc = textStart;
       a7 = stackStart + stackSize - 16;

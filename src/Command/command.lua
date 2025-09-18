@@ -1,6 +1,10 @@
 -- initialization script
 
 function command_eval(cmd)
+  local func = _G[cmd]
+  if func and type(func) == "function" then
+    return "'" .. cmd .. "' is a function, try using " .. cmd .. "()"
+  end
   local s,flag = nil,false
   local f,r = load("return " .. cmd)
   if not f then
@@ -47,10 +51,10 @@ function chain()
   aa()
   setio("tmp1", "tmp2")
   bb(4)
-  setio("tmp2", "out.txt")
+  setio("tmp2", nil)
+  rm("tmp1")
   cc()
   setio(nil, nil)
-  rm("tmp1")
   rm("tmp2")
 end
 
@@ -77,11 +81,12 @@ function ls(dir, f)
         function(e1, e2)
           return string.lower(e1.name) < string.lower(e2.name)
         end)
+      print("Attr Name")
       for k,e in pairs(sorted) do
         local dt, dr
-        if e.directory then dt = "d"  else dt = " "  end
-        if e.readOnly  then dr = "r " else dr = "w " end
-        print(dt .. dr .. e.name)
+        if e.directory then dt = "d" else dt = " " end
+        if e.readOnly  then dr = "r" else dr = "w" end
+        print(dt .. dr .. "   " .. e.name)
       end
     end
   end
@@ -119,10 +124,15 @@ function lsdb(dbtype, creator, pattern)
         function(e1, e2)
           return string.lower(e1.name) < string.lower(e2.name)
         end)
+      print("Type Creator Name")
       for k,e in pairs(sorted) do
-        print(e.type .. " " .. e.creator .. " " .. e.name)
+        print(e.type .. " " .. e.creator .. "    " .. e.name)
       end
     end
   end
   return t
 end
+
+def("ls",   "[dir]", "List contents of dir")
+def("lsdb", "[type [,creator]]", "List databases of Type and Creator")
+

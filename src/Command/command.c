@@ -22,7 +22,6 @@
 #include "pumpkin.h"
 #include "storage.h"
 #include "debug.h"
-#include "xalloc.h"
 #include "color.h"
 #include "fill.h"
 #include "file.h"
@@ -40,6 +39,7 @@
 #define TAG_RSRC "cmd_rsrc"
 
 #define MAX_EXTERNAL_CMDS 64
+#define MAX_DEF_CMDS 64
 #define MAXCMD 512
 
 #define SCREEN_PEN_DOWN 1
@@ -48,6 +48,13 @@
 
 #define COLS 80
 #define ROWS 25
+
+typedef struct {
+  char *name;
+  int (*function)(int pe, void *data);
+  char *args;
+  char *help;
+} command_builtin_t;
 
 typedef struct {
   char *tag;
@@ -94,6 +101,7 @@ typedef struct {
   int (*cmain)(int argc, char *argv[]);
   char name[dmDBNameLength];
   void *lib;
+  int crlf;
 } command_ext_t;
 
 struct command_internal_data_t {
@@ -116,64 +124,70 @@ struct command_internal_data_t {
   command_prefs_t prefs;
   FileRef in, out;
   command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
+  command_builtin_t def_commands[MAX_DEF_CMDS];
+  Int32 ndefs;
 };
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
 static const RGBColorType defaultBackground = { 0, 0x13, 0x32, 0x65 };
 static const RGBColorType defaultHighlight  = { 0, 0xFF, 0xFF, 0x80 };
 
-static int command_script_tid(int pe);
-static int command_script_cls(int pe);
-static int command_script_print(int pe);
-static int command_script_gets(int pe);
-static int command_script_cd(int pe);
-static int command_script_opendb(int pe);
-static int command_script_readdb(int pe);
-static int command_script_closedb(int pe);
-static int command_script_opendir(int pe);
-static int command_script_readdir(int pe);
-static int command_script_closedir(int pe);
-static int command_script_launch(int pe);
-static int command_script_ps(int pe);
-static int command_script_kill(int pe);
-static int command_script_cat(int pe);
-static int command_script_rm(int pe);
-static int command_script_run(int pe);
-static int command_script_deploy(int pe);
-static int command_script_edit(int pe);
-static int command_script_telnet(int pe);
-static int command_script_exit(int pe);
-static int command_script_pit(int pe);
-static int command_script_play(int pe);
-static int command_script_crash(int pe);
-static int command_script_setio(int pe);
+static int command_script_tid(int pe, void *data);
+static int command_script_cls(int pe, void *data);
+static int command_script_print(int pe, void *data);
+static int command_script_gets(int pe, void *data);
+static int command_script_cd(int pe, void *data);
+static int command_script_opendb(int pe, void *data);
+static int command_script_readdb(int pe, void *data);
+static int command_script_closedb(int pe, void *data);
+static int command_script_opendir(int pe, void *data);
+static int command_script_readdir(int pe, void *data);
+static int command_script_closedir(int pe, void *data);
+static int command_script_launch(int pe, void *data);
+static int command_script_ps(int pe, void *data);
+static int command_script_kill(int pe, void *data);
+static int command_script_cat(int pe, void *data);
+static int command_script_rm(int pe, void *data);
+static int command_script_run(int pe, void *data);
+static int command_script_deploy(int pe, void *data);
+static int command_script_edit(int pe, void *data);
+static int command_script_telnet(int pe, void *data);
+static int command_script_exit(int pe, void *data);
+static int command_script_pit(int pe, void *data);
+static int command_script_play(int pe, void *data);
+static int command_script_crash(int pe, void *data);
+static int command_script_setio(int pe, void *data);
+static int command_script_def(int pe, void *data);
+static int command_script_help(int pe, void *data);
 
 static const command_builtin_t builtinCommands[] = {
-  { "tid",      command_script_tid      },
-  { "cls",      command_script_cls      },
-  { "print",    command_script_print    },
-  { "gets",     command_script_gets     },
-  { "cd",       command_script_cd       },
-  { "opendb",   command_script_opendb   },
-  { "readdb",   command_script_readdb   },
-  { "closedb",  command_script_closedb  },
-  { "opendir",  command_script_opendir  },
-  { "readdir",  command_script_readdir  },
-  { "closedir", command_script_closedir },
-  { "launch",   command_script_launch   },
-  { "ps",       command_script_ps       },
-  { "kill",     command_script_kill     },
-  { "cat",      command_script_cat      },
-  { "rm",       command_script_rm       },
-  { "run",      command_script_run      },
-  { "deploy",   command_script_deploy   },
-  { "edit",     command_script_edit     },
-  { "telnet",   command_script_telnet   },
-  { "exit",     command_script_exit     },
-  { "pit",      command_script_pit      },
-  { "play",     command_script_play     },
-  { "crash",    command_script_crash    },
-  { "setio",    command_script_setio    },
+  { "tid",      command_script_tid,      NULL, "Return the current task ID" },
+  { "cls",      command_script_cls,      NULL, "Clear the terminal" },
+  { "print",    command_script_print,    "val1, val2, ...", "Write values to the terminal" },
+  { "gets",     command_script_gets,     NULL, "Return a string read from the terminal" },
+  { "cd",       command_script_cd,       "dir", "Change directory" },
+  { "opendb",   command_script_opendb,   NULL, NULL },
+  { "readdb",   command_script_readdb,   NULL, NULL },
+  { "closedb",  command_script_closedb,  NULL, NULL },
+  { "opendir",  command_script_opendir,  NULL, NULL },
+  { "readdir",  command_script_readdir,  NULL, NULL },
+  { "closedir", command_script_closedir, NULL, NULL },
+  { "launch",   command_script_launch,   "file", "Launch an application by name" },
+  { "ps",       command_script_ps,       NULL, "List active tasks" },
+  { "kill",     command_script_kill,     "tid", "Kill a task" },
+  { "cat",      command_script_cat,      "file", "Print the contents of a file" },
+  { "rm",       command_script_rm,       "file", "Remove a file or a directory" },
+  { "run",      command_script_run,      "file", "Run a script" },
+  { "deploy",   command_script_deploy,   "name,creator,file", "Deploys a script file as an application" },
+  { "edit",     command_script_edit,     "file", "Edit a file using the system editor" },
+  { "telnet",   command_script_telnet,   NULL, NULL },
+  { "exit",     command_script_exit,     NULL, "Exit this session" },
+  { "pit",      command_script_pit,      NULL, NULL },
+  { "play",     command_script_play,     NULL, NULL },
+  { "crash",    command_script_crash,    NULL, NULL },
+  { "setio",    command_script_setio,    NULL, NULL },
+  { "def",      command_script_def,      NULL, NULL },
+  { "help",     command_script_help,     NULL, "List available commands" },
   { NULL, NULL }
 };
 
@@ -182,18 +196,7 @@ static void command_putc(command_internal_data_t *idata, char c) {
 }
 
 static void command_puts(command_internal_data_t *idata, char *s) {
-  int i, n;
-  char prev;
-
-  if (s) {
-    n = StrLen(s);
-    for (i = 0, prev = 0; i < n; prev = s[i], i++) {
-      if (s[i] == '\n' && prev != '\r') {
-        command_putc(idata, '\r');
-      }
-      command_putc(idata, s[i]);
-    }
-  }
+  plibc_fputs(s, plibc_stdout);
 }
 
 static void command_putchar(void *data, char c) {
@@ -202,6 +205,14 @@ static void command_putchar(void *data, char c) {
 
   pterm_cursor(idata->t, 0);
   pterm_send(idata->t, &b, 1);
+  pterm_cursor(idata->t, 1);
+}
+
+static void command_putstr(void *data, char *s, uint32_t len) {
+  command_internal_data_t *idata = (command_internal_data_t *)data;
+
+  pterm_cursor(idata->t, 0);
+  pterm_send(idata->t, (uint8_t *)s, len);
   pterm_cursor(idata->t, 1);
 }
 
@@ -279,7 +290,7 @@ static void command_execute(command_internal_data_t *idata, char *s) {
         command_putc(idata, '\r');
         command_putc(idata, '\n');
       }
-      xfree(val);
+      sys_free(val);
     }
   }
 }
@@ -974,7 +985,25 @@ Int32 read_file(char *name, char *b, Int32 max) {
   return n;
 }
 
-static int command_script_file(int pe, int run) {
+static void print_usage(command_internal_data_t *idata, command_builtin_t *cmd) {
+  if (cmd->help && cmd->help[0]) {
+    command_puts(idata, cmd->help);
+    command_putc(idata, '\r');
+    command_putc(idata, '\n');
+  }
+
+  command_puts(idata, "usage: ");
+  command_puts(idata, cmd->name);
+  command_putc(idata, '(');
+  if (cmd->args && cmd->args[0]) {
+    command_puts(idata, cmd->args);
+  }
+  command_putc(idata, ')');
+  command_putc(idata, '\r');
+  command_putc(idata, '\n');
+}
+
+static int command_script_file(int pe, int run, void *data) {
   command_internal_data_t *idata = command_get_data();
   Int32 n, max = 65536;
   char *buf, *name = NULL;
@@ -1001,35 +1030,39 @@ static int command_script_file(int pe, int run) {
       }
       MemPtrFree(buf);
     }
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
 
-  if (name) xfree(name);
+  if (name) sys_free(name);
 
   return 0;
 }
 
-static int command_script_cat(int pe) {
-  return command_script_file(pe, 0);
+static int command_script_cat(int pe, void *data) {
+  return command_script_file(pe, 0, data);
 }
 
-static int command_script_run(int pe) {
-  return command_script_file(pe, 1);
+static int command_script_run(int pe, void *data) {
+  return command_script_file(pe, 1, data);
 }
 
-static int command_script_rm(int pe) {
+static int command_script_rm(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   char *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
     VFSFileDelete(idata->volume, name);
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
 
-  if (name) xfree(name);
+  if (name) sys_free(name);
 
   return 0;
 }
 
-static int command_script_deploy(int pe) {
+static int command_script_deploy(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   UInt32 creator;
   char *name = NULL;
@@ -1046,32 +1079,35 @@ static int command_script_deploy(int pe) {
     } else {
       command_puts(idata, "Error deploying script\r\n");
     }
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
 
-  if (name) xfree(name);
-  if (screator) xfree(screator);
-  if (script) xfree(script);
+  if (name) sys_free(name);
+  if (screator) sys_free(screator);
+  if (script) sys_free(script);
 
   return 0;
 }
 
-static int command_script_kill(int pe) {
-  char *name = NULL;
+static int command_script_kill(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  script_int_t tid;
 
-  if (script_get_string(pe, 0, &name) == 0) {
-    pumpkin_kill(name);
+  if (script_get_integer(pe, 0, &tid) == 0) {
+    pumpkin_kill(tid);
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
-
-  if (name) xfree(name);
 
   return 0;
 }
 
-static int command_script_tid(int pe) {
+static int command_script_tid(int pe, void *data) {
   return script_push_integer(pe, pumpkin_get_taskid());
 }
 
-static int command_script_cls(int pe) {
+static int command_script_cls(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   pterm_cls(idata->t);
   pterm_home(idata->t);
@@ -1085,50 +1121,50 @@ static char *value_tostring(int pe, script_arg_t *arg) {
   switch (arg->type) {
     case SCRIPT_ARG_INTEGER:
       StrPrintF(buf, "%d", arg->value.i);
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       break;
     case SCRIPT_ARG_REAL:
       StrPrintF(buf, "%f", arg->value.d);
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       break;
     case SCRIPT_ARG_BOOLEAN:
       StrCopy(buf, arg->value.i ? "true" : "false");
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       break;
     case SCRIPT_ARG_STRING:
       val = arg->value.s;
       break;
     case SCRIPT_ARG_LSTRING:
-      val = xcalloc(1, arg->value.l.n + 1);
+      val = sys_calloc(1, arg->value.l.n + 1);
       if (val) {
         MemMove(val, arg->value.l.s, arg->value.l.n);
       }
-      xfree(arg->value.l.s);
+      sys_free(arg->value.l.s);
       break;
     case SCRIPT_ARG_OBJECT:
       StrCopy(buf, "<object>");
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       script_remove_ref(pe, arg->value.r);
       break;
     case SCRIPT_ARG_FUNCTION:
       StrCopy(buf, "<function>");
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       script_remove_ref(pe, arg->value.r);
       break;
     case SCRIPT_ARG_NULL:
       StrCopy(buf, "nil");
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       break;
     default:
       StrPrintF(buf, "type(%c)", arg->type);
-      val = xstrdup(buf);
+      val = sys_strdup(buf);
       break;
   }
 
   return val;
 }
 
-static int command_script_print(int pe) {
+static int command_script_print(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   script_arg_t arg;
   Int16 i;
@@ -1143,7 +1179,7 @@ static int command_script_print(int pe) {
     if (s) {
       if (i > 0) command_putc(idata, '\t');
       command_puts(idata, s);
-      xfree(s);
+      sys_free(s);
       crlf = true;
     }
   }
@@ -1156,7 +1192,7 @@ static int command_script_print(int pe) {
   return 0;
 }
 
-static int command_script_gets(int pe) {
+static int command_script_gets(int pe, void *data) {
   char buf[256];
   int n, r = -1;
 
@@ -1170,7 +1206,8 @@ static int command_script_gets(int pe) {
   return r;
 }
 
-static int command_script_launch(int pe) {
+static int command_script_launch(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
   UInt32 result;
   char *name = NULL;
 
@@ -1179,27 +1216,32 @@ static int command_script_launch(int pe) {
     if (dbID) {
       SysAppLaunch(0, dbID, 0, sysAppLaunchCmdNormalLaunch, NULL, &result);
     }
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
 
-  if (name) xfree(name);
+  if (name) sys_free(name);
 
   return 0;
 }
 
-static int ps_callback(int i, char *name, int m68k, void *idata) {
-  char stype[8], screator[8];
+static int ps_callback(int i, uint32_t id, char *name, int m68k, void *idata) {
+  char tid[8], stype[8], screator[8];
   UInt32 type, creator;
   LocalID dbID;
   Int16 r = -1;
 
   dbID = DmFindDatabase(0, name);
   if (dbID && DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
+    sys_snprintf(tid, sizeof(tid)-1, "%3u", id);
+    command_puts(idata, tid);
+    command_putc(idata, ' ');
     pumpkin_id2s(type, stype);
     command_puts(idata, stype);
     command_putc(idata, ' ');
     pumpkin_id2s(creator, screator);
     command_puts(idata, screator);
-    command_putc(idata, ' ');
+    command_puts(idata, "    ");
     command_puts(idata, name);
     command_putc(idata, '\r');
     command_putc(idata, '\n');
@@ -1209,20 +1251,21 @@ static int ps_callback(int i, char *name, int m68k, void *idata) {
   return r;
 }
 
-static int command_script_ps(int pe) {
+static int command_script_ps(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
 
+  command_puts(idata, "TID Type Creator Name\r\n");
   pumpkin_ps(ps_callback, idata);
 
   return 0;
 }
 
-static int command_script_cd(int pe) {
+static int command_script_cd(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   char *dir = NULL;
 
   if (script_get_string(pe, 0, &dir) != 0) {
-    dir = xstrdup("/");
+    dir = sys_strdup("/");
   }
 
   if (VFSChangeDir(idata->volume, dir) == errNone) {
@@ -1231,7 +1274,7 @@ static int command_script_cd(int pe) {
     command_puts(idata, "Invalid directory\r\n");
   }
 
-  if (dir) xfree(dir);
+  if (dir) sys_free(dir);
 
   return 0;
 }
@@ -1240,11 +1283,11 @@ static void ldb_destructor(void *p) {
   command_ldb_t *d = (command_ldb_t *)p;
 
   if (d) {
-    xfree(d);
+    sys_free(d);
   }
 }
 
-static int command_script_opendb(int pe) {
+static int command_script_opendb(int pe, void *data) {
   command_ldb_t *d;
   char *type = NULL;
   char *creator = NULL;
@@ -1253,7 +1296,7 @@ static int command_script_opendb(int pe) {
   script_opt_string(pe, 0, &type);
   script_opt_string(pe, 1, &creator);
 
-  if ((d = xcalloc(1, sizeof(command_ldb_t))) != NULL) {
+  if ((d = sys_calloc(1, sizeof(command_ldb_t))) != NULL) {
     d->tag = TAG_LDB;
     d->first = true;
     if (type && type[0]) {
@@ -1269,17 +1312,17 @@ static int command_script_opendb(int pe) {
     if ((ptr = ptr_new(d, ldb_destructor)) != -1) {
       r = script_push_integer(pe, ptr);
     } else {
-      xfree(d);
+      sys_free(d);
     }
   }
 
-  if (type) xfree(type);
-  if (creator) xfree(creator);
+  if (type) sys_free(type);
+  if (creator) sys_free(creator);
 
   return r;
 }
 
-static int command_script_readdb(int pe) {
+static int command_script_readdb(int pe, void *data) {
   script_int_t ptr;
   script_ref_t obj;
   command_ldb_t *d;
@@ -1310,7 +1353,7 @@ static int command_script_readdb(int pe) {
   return r;
 }
 
-static int command_script_closedb(int pe) {
+static int command_script_closedb(int pe, void *data) {
   script_int_t ptr;
   int r = -1;
 
@@ -1328,18 +1371,18 @@ static void dir_destructor(void *p) {
 
   if (d) {
     if (d->f) VFSFileClose(d->f);
-    xfree(d);
+    sys_free(d);
   }
 }
 
-static int command_script_opendir(int pe) {
+static int command_script_opendir(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   command_dir_t *d;
   char *dir = NULL;
   int ptr, r = -1;
 
   if (script_get_string(pe, 0, &dir) == 0) {
-    if ((d = xcalloc(1, sizeof(command_dir_t))) != NULL) {
+    if ((d = sys_calloc(1, sizeof(command_dir_t))) != NULL) {
       check_prefix(dir, d->buf, MAXCMD);
       if (VFSFileOpen(idata->volume, d->buf, vfsModeRead, &d->f) == errNone) {
         d->tag = TAG_DIR;
@@ -1348,20 +1391,20 @@ static int command_script_opendir(int pe) {
           r = script_push_integer(pe, ptr);
         } else {
           VFSFileClose(d->f);
-          xfree(d);
+          sys_free(d);
         }
       } else {
-        xfree(d);
+        sys_free(d);
       }
     }
   }
 
-  if (dir) xfree(dir);
+  if (dir) sys_free(dir);
 
   return r;
 }
 
-static int command_script_readdir(int pe) {
+static int command_script_readdir(int pe, void *data) {
   script_int_t ptr;
   script_ref_t obj;
   command_dir_t *d;
@@ -1385,7 +1428,7 @@ static int command_script_readdir(int pe) {
   return r;
 }
 
-static int command_script_closedir(int pe) {
+static int command_script_closedir(int pe, void *data) {
   script_int_t ptr;
   int r = -1;
 
@@ -1398,14 +1441,14 @@ static int command_script_closedir(int pe) {
   return r;
 }
 
-static int command_script_edit(int pe) {
+static int command_script_edit(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   editor_t e;
   char *name = NULL;
 
   script_opt_string(pe, 0, &name);
 
-  xmemset(&e, 0, sizeof(editor_t));
+  sys_memset(&e, 0, sizeof(editor_t));
   pumpkin_editor_init_term(&e, idata->t);
   pumpkin_editor_init_io(&e);
 
@@ -1416,12 +1459,12 @@ static int command_script_edit(int pe) {
     if (e.destroy) e.destroy(&e);
   }
 
-  if (name) xfree(name);
+  if (name) sys_free(name);
 
   return 0;
 }
 
-static int command_script_telnet(int pe) {
+static int command_script_telnet(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   char *host = NULL;
   script_int_t port;
@@ -1442,14 +1485,16 @@ static int command_script_telnet(int pe) {
          }
        }
      }
+  } else {
+    print_usage(idata, (command_builtin_t *)data);
   }
 
-  if (host) xfree(host);
+  if (host) sys_free(host);
 
   return 0;
 }
 
-static int command_script_exit(int pe) {
+static int command_script_exit(int pe, void *data) {
   EventType event;
 
   event.eType = appStopEvent;
@@ -1513,13 +1558,13 @@ static int command_shell_filter_write(conn_filter_t *filter, uint8_t *b, int n) 
   return n;
 }
 
-static int command_script_pit(int pe) {
+static int command_script_pit(int pe, void *data) {
   shell_provider_t *p;
   conn_filter_t filter;
   int r = -1;
 
   if ((p = script_get_pointer(pe, SHELL_PROVIDER)) != NULL) {
-    xmemset(&filter, 0, sizeof(conn_filter_t));
+    sys_memset(&filter, 0, sizeof(conn_filter_t));
     filter.peek = command_shell_filter_peek;
     filter.read = command_shell_filter_read;
     filter.write = command_shell_filter_write;
@@ -1541,14 +1586,14 @@ static Err sndCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 
       err = errNone;
     } else {
       VFSFileClose(play->fileRef);
-      xfree(play);
+      sys_free(play);
     }
   }
 
   return err;
 }
 
-static int command_script_play(int pe) {
+static int command_script_play(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   char *name = NULL;
   FileRef fileRef;
@@ -1569,7 +1614,7 @@ static int command_script_play(int pe) {
         debug(DEBUG_INFO, "Command", "wav type %d", type);
         debug(DEBUG_INFO, "Command", "wav %s", width == sndMono ? "mono" : "stereo");
 
-        play = xcalloc(1, sizeof(command_play_t));
+        play = sys_calloc(1, sizeof(command_play_t));
         play->fileRef = fileRef;
         play->sampleSize = 1;
         if (width == sndStereo) play->sampleSize <<= 1;
@@ -1583,11 +1628,11 @@ static int command_script_play(int pe) {
             SndStreamDelete(idata->sound);
             idata->sound = 0;
             VFSFileClose(fileRef);
-            xfree(play);
+            sys_free(play);
           }
         } else {
           VFSFileClose(fileRef);
-          xfree(play);
+          sys_free(play);
         }
       } else {
         VFSFileClose(fileRef);
@@ -1600,12 +1645,12 @@ static int command_script_play(int pe) {
     }
   }
 
-  if (name) xfree(name);
+  if (name) sys_free(name);
 
   return r;
 }
 
-static int command_script_crash(int pe) {
+static int command_script_crash(int pe, void *data) {
   script_int_t fatal;
 
   if (script_get_integer(pe, 0, &fatal) == 0) {
@@ -1615,7 +1660,7 @@ static int command_script_crash(int pe) {
   return 0;
 }
 
-static int command_script_setio(int pe) {
+static int command_script_setio(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   Boolean hasInput, hasOutput;
   char *iname = NULL;
@@ -1668,8 +1713,63 @@ static int command_script_setio(int pe) {
   }
   plibc_setfd(1, idata->out);
 
-  if (iname) xfree(iname);
-  if (oname) xfree(oname);
+  if (iname) sys_free(iname);
+  if (oname) sys_free(oname);
+
+  return 0;
+}
+
+static int command_script_def(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  char *name = NULL;
+  char *args = NULL;
+  char *help = NULL;
+
+  if (script_get_string(pe, 0, &name) == 0 &&
+      script_get_string(pe, 1, &args) == 0 &&
+      script_get_string(pe, 2, &help) == 0) {
+
+     if (idata->ndefs < MAX_DEF_CMDS) {
+       idata->def_commands[idata->ndefs].name = sys_strdup(name);
+       idata->def_commands[idata->ndefs].function = NULL;
+       idata->def_commands[idata->ndefs].args = sys_strdup(args);
+       idata->def_commands[idata->ndefs].help = sys_strdup(help);
+       idata->ndefs++;
+     }
+  }
+
+  if (name) sys_free(name);
+  if (name) sys_free(args);
+  if (help) sys_free(help);
+
+  return 0;
+}
+
+static void print_command_help(command_internal_data_t *idata, command_builtin_t *cmd) {
+  if (cmd->help && cmd->help[0]) {
+    command_puts(idata, cmd->name);
+    command_putc(idata, '(');
+    if (cmd->args && cmd->args[0]) {
+      command_puts(idata, cmd->args);
+    }
+    command_putc(idata, ')');
+    command_puts(idata, ": ");
+    command_puts(idata, cmd->help);
+    command_putc(idata, '\r');
+    command_putc(idata, '\n');
+  }
+}
+
+static int command_script_help(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  Int32 i;
+
+  for (i = 0; builtinCommands[i].name; i++) {
+    print_command_help(idata, (command_builtin_t *)&builtinCommands[i]);
+  }
+  for (i = 0; i < idata->ndefs; i++) {
+    print_command_help(idata, &idata->def_commands[i]);
+  }
 
   return 0;
 }
@@ -1737,6 +1837,7 @@ static int command_pterm_scroll(uint8_t row1, uint8_t row2, int16_t dir, void *_
 }
 
 static int command_function_cmain(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
   command_ext_t *cmd = (command_ext_t *)data;
   DmOpenRef dbRef;
   Boolean firstLoad;
@@ -1770,7 +1871,9 @@ static int command_function_cmain(int pe, void *data) {
 
     if (cmain) {
       if (lib == NULL || mutex_lock(cmd->mutex) == 0) {
+        if (cmd->crlf) pterm_crlf_mode(idata->t, 1);
         r = cmain(argc, argv);
+        pterm_crlf_mode(idata->t, 0);
         debug(DEBUG_TRACE, "Command", "command '%s' returned %d", cmd->name, r);
         if (lib != NULL) mutex_unlock(cmd->mutex);
       }
@@ -1786,7 +1889,7 @@ static int command_function_cmain(int pe, void *data) {
     }
 
     for (i = 1; i < argc; i++) {
-      if (argv[i]) xfree(argv[i]);
+      if (argv[i]) sys_free(argv[i]);
     }
   }
 
@@ -1798,7 +1901,7 @@ static void command_load_external_commands(command_internal_data_t *idata) {
   LocalID dbID;
   DmOpenRef dbRef;
   MemHandle h;
-  Boolean safe, newSearch, firstLoad;
+  Boolean safe, crlf, newSearch, firstLoad;
   char name[dmDBNameLength], *s;
   int (*commandMain)(int argc, char *argv[]);
   int i;
@@ -1828,7 +1931,19 @@ static void command_load_external_commands(command_internal_data_t *idata) {
               }
               DmReleaseResource(h);
             }
+            crlf = 0;
+            if ((h = DmGet1Resource(commandCRLFType, 1000)) != NULL) {
+              if ((s = MemHandleLock(h)) != NULL) {
+                crlf = s[0] != 0;
+                if (crlf) {
+                  debug(DEBUG_INFO, "Command", "command '%s' needs LF to be CRLF", idata->ext_commands[i].name);
+                }
+                MemHandleUnlock(h);
+              }
+              DmReleaseResource(h);
+            }
             idata->ext_commands[i].dbID = dbID; 
+            idata->ext_commands[i].crlf = crlf; 
             if (safe) {
               debug(DEBUG_INFO, "Command", "safe command '%s' loaded", idata->ext_commands[i].name);
               idata->ext_commands[i].cmain = commandMain;
@@ -1868,8 +1983,8 @@ static Err StartApplication(void *param) {
 
   FrmCenterDialogs(true);
 
-  data = xcalloc(1, sizeof(command_data_t));
-  idata = xcalloc(1, sizeof(command_internal_data_t));
+  data = sys_calloc(1, sizeof(command_data_t));
+  idata = sys_calloc(1, sizeof(command_internal_data_t));
   data->idata = idata;
   pumpkin_set_data(data);
   plibc_init();
@@ -1909,6 +2024,7 @@ static Err StartApplication(void *param) {
   idata->cb.scroll = command_pterm_scroll;
   idata->cb.data = data;
   pterm_callback(idata->t, &idata->cb);
+  pterm_crlf_mode(idata->t, 0);
 
   color = RGBToLong(&idata->prefs.foreground);
   pterm_setfg(idata->t, color);
@@ -1921,13 +2037,13 @@ static Err StartApplication(void *param) {
     script_loadlib(idata->pe, "liboshell");
 
     for (i = 0; builtinCommands[i].name; i++) {
-      pumpkin_script_global_function(idata->pe, builtinCommands[i].name, builtinCommands[i].function);
+      pumpkin_script_global_function_data(idata->pe, builtinCommands[i].name, builtinCommands[i].function, (void *)&builtinCommands[i]);
     }
 
     command_load_external_commands(idata);
   }
 
-  pumpkin_setio(command_getchar, command_haschar, command_putchar, command_setcolor, idata);
+  pumpkin_setio(command_getchar, command_haschar, command_putchar, command_putstr, command_setcolor, idata);
 
   FrmGotoForm(MainForm);
 
@@ -1997,8 +2113,8 @@ static void StopApplication(void) {
     }
   }
 
-  xfree(idata);
-  xfree(data);
+  sys_free(idata);
+  sys_free(data);
 }
 
 UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags) {
