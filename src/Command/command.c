@@ -543,6 +543,7 @@ static void command_update_line(command_internal_data_t *idata, Int16 row, Int16
   x = col1 * idata->fwidth;
   pos = row * idata->ncols + col1;
 
+  pumpkin_dirty_region_mode(dirtyRegionBegin);
   for (col = col1; col <= col2; col++, pos++) {
     pterm_getchar(idata->t, pos, &c, &fg, &bg);
     if (selected) {
@@ -562,6 +563,7 @@ static void command_update_line(command_internal_data_t *idata, Int16 row, Int16
     WinPaintChar(c, x, y);
     x += idata->fwidth;
   }
+  pumpkin_dirty_region_mode(dirtyRegionEnd);
 }
 
 static void command_draw(command_internal_data_t *idata) {
