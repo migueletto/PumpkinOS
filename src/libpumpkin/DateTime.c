@@ -377,9 +377,9 @@ void DateToAscii(UInt8 months, UInt8 days, UInt16 years, DateFormatType dateForm
           StrPrintF(pString, "%s %04d", monthNames[months-1], years);
         }
         break;
-      case dfDMYLongWithComma: // 31 Dec: 1995
+      case dfDMYLongWithComma: // 31 Dec, 1995
         if (months >= 1 && months <= 12) {
-          StrPrintF(pString, "%d %s: %04d", days, monthNames[months-1], years);
+          StrPrintF(pString, "%d %s, %04d", days, monthNames[months-1], years);
         }
         break;
       case dfYMDLongWithDot:   // 1995.12.31
