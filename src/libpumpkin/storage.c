@@ -11,7 +11,6 @@
 #include "pumpkin.h"
 #include "ssfn_font.h"
 #include "AppRegistry.h"
-#include "xalloc.h"
 #include "debug.h"
 #include "storage.h"
 
@@ -381,7 +380,7 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
 
   storage_name(sto, db->name, STO_FILE_HEADER, 0, 0, 0, 0, buf);
   if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-    xmemset(buf, 0, sizeof(buf));
+    sys_memset(buf, 0, sizeof(buf));
     if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
       if (sys_sscanf(buf, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
                &db->ftype, stype, screator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
@@ -412,7 +411,7 @@ static int StoGetFileLocks(storage_t *sto, storage_db_t *db, int *read_locks, in
   storage_name(sto, db->name, STO_FILE_LOCK, 0, 0, 0, 0, buf);
   if (StoVfsChecktype(sto->session, buf) == VFS_FILE) {
     if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-      xmemset(buf, 0, sizeof(buf));
+      sys_memset(buf, 0, sizeof(buf));
       if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
         if (sys_sscanf(buf, "read=%u\nwrite=%u\n", read_locks, write_locks) == 2) {
           r = 0;
@@ -703,7 +702,7 @@ int StoInit(char *path, mutex_t *mutex) {
   LocalID dbID;
   int r = -1;
 
-  if ((sto = xcalloc(1, sizeof(storage_t))) != NULL) {
+  if ((sto = sys_calloc(1, sizeof(storage_t))) != NULL) {
     sto->mutex = mutex;
     sto->base = pumpkin_heap_base();
     sto->size = pumpkin_heap_size();
@@ -717,7 +716,7 @@ int StoInit(char *path, mutex_t *mutex) {
           if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) == NULL) {
             vfs_closedir(dir);
             vfs_close_session(sto->session);
-            xfree(sto);
+            sys_free(sto);
             sto = NULL;
             break;
           }
@@ -742,10 +741,10 @@ int StoInit(char *path, mutex_t *mutex) {
         }
       } else {
         vfs_close_session(sto->session);
-        xfree(sto);
+        sys_free(sto);
       }
     } else {
-      xfree(sto);
+      sys_free(sto);
     }
   }
 
@@ -817,7 +816,7 @@ int StoFinish(void) {
     }
     vfs_close_session(sto->session);
     pumpkin_set_local_storage(sto_key, NULL);
-    xfree(sto);
+    sys_free(sto);
     r = 0;
   }
 
@@ -1345,10 +1344,10 @@ static int StoAddDatabaseHandle(storage_t *sto, storage_db_t *db, storage_handle
   if (db->numRecs == db->totalElements) {
     if (db->elements == NULL) {
       db->totalElements = HANDLES_PER_PAGE;
-      db->elements = xcalloc(db->totalElements, sizeof(storage_handle_t *));
+      db->elements = sys_calloc(db->totalElements, sizeof(storage_handle_t *));
     } else {
       db->totalElements += HANDLES_PER_PAGE;
-      db->elements = xrealloc(db->elements, db->totalElements * sizeof(storage_handle_t *));
+      db->elements = sys_realloc(db->elements, db->totalElements * sizeof(storage_handle_t *));
     }
   }
 
@@ -1442,7 +1441,7 @@ static int StoMapRecords(storage_t *sto, storage_db_t *db) {
     storage_name(sto, db->name, STO_FILE_INDEX, 0, 0, 0, 0, buf);
     if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
       for (max = 0; !thread_must_end();) {
-        xmemset(rec, 0, sizeof(rec));
+        sys_memset(rec, 0, sizeof(rec));
         if (vfs_read(f, rec, 12) != 12) break;
         if (sys_sscanf((char *)rec, "%08X.%02X\n", &uniqueID, &attr) == 2) {
           if (uniqueID > max) max = uniqueID;
@@ -1664,7 +1663,7 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                       if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
                         if (encoded) {
                           vfs_write(f, encoded, size);
-                          xfree(encoded);
+                          sys_free(encoded);
                         } else {
                           vfs_write(f, h->buf, h->size);
                         }
@@ -1707,7 +1706,7 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           StoWriteHeader(sto, db);
 
           if (db->elements) {
-            xfree(db->elements);
+            sys_free(db->elements);
             db->elements = NULL;
             db->totalElements = 0;
             db->numRecs = 0;
@@ -1799,7 +1798,7 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           db->appInfoID = 0;
           db->sortInfoID = 0;
           db->f = NULL;
-          xmemset(db->name, 0, dmDBNameLength);
+          sys_memset(db->name, 0, dmDBNameLength);
 
           sto->num_storage--;
           err = errNone;
@@ -2400,7 +2399,7 @@ MemHandle DmResizeResource(MemHandle resourceH, UInt32 newSize) {
                 db = (storage_db_t *) (sto->base + dbRef->dbID);
                 old = h->buf;
                 if ((newBuf = StoPtrNew(h, newSize, h->d.res.type, h->d.res.id)) != NULL) {
-                  xmemcpy(newBuf, old, newSize < h->size ? newSize : h->size);
+                  sys_memcpy(newBuf, old, newSize < h->size ? newSize : h->size);
                   StoPtrFree(old);
                   h->buf = newBuf;
                   h->size = newSize;
@@ -2461,7 +2460,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
 
             storage_name(sto, db->name, STO_FILE_ELEMENT, resID, resType, 0x00, 0, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-              if (p) xmemcpy(h->buf, p, h->size);
+              if (p) sys_memcpy(h->buf, p, h->size);
               vfs_write(f, (uint8_t *)h->buf, h->size);
               vfs_close(f);
             }
@@ -3190,10 +3189,10 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
             storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, 0x00, h->d.rec.uniqueID, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
               if (p) {
-                xmemcpy(&h->buf[0], p, size);
+                sys_memcpy(&h->buf[0], p, size);
                 vfs_write(f, (uint8_t *)p, size);
               } else {
-                xmemset(buf, 0, sizeof(buf));
+                sys_memset(buf, 0, sizeof(buf));
                 for (n = 0; (n + sizeof(buf)) < size; n += sizeof(buf)) {
                   vfs_write(f, (uint8_t *)buf, sizeof(buf));
                 }
@@ -3424,7 +3423,7 @@ Err DmSet(void *recordP, UInt32 offset, UInt32 bytes, UInt8 value) {
         if (b) {
           r = (uint8_t *)recordP;
           if ((r + offset) >= b && (r + offset + bytes) <= (b + h->size)) {
-            xmemset(r + offset, value, bytes);
+            sys_memset(r + offset, value, bytes);
             if (attr) *attr |= dmRecAttrDirty;
             err = errNone;
           }
@@ -3498,7 +3497,7 @@ Err DmWriteOrCheck(void *recordP, UInt32 offset, const void *srcP, UInt32 bytes,
 //uint32_t size = MemHandleSize(h);
 //debug_bytes(1, "XXX", r, size);
 //debug_bytes(1, "XXX", (uint8_t *)srcP, bytes);
-              xmemcpy(r + offset, srcP, bytes);
+              sys_memcpy(r + offset, srcP, bytes);
 //debug_bytes(1, "XXX", r, size);
               if (attr) *attr |= dmRecAttrDirty;
               err = errNone;
@@ -4146,8 +4145,8 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
         vfs_seek(f, 0, 0);
         if ((p = MemPtrNew(size)) != NULL) {
           if (vfs_read(f, p, hsize) == hsize) {
-            xmemset(name, 0, dmDBNameLength);
-            xmemcpy(name, p, dmDBNameLength - 1);
+            sys_memset(name, 0, dmDBNameLength);
+            sys_memcpy(name, p, dmDBNameLength - 1);
             if (name[0]) {
               if ((dbID = DmFindDatabase(0, name)) != 0) {
                 debug(DEBUG_INFO, "STOR", "deleting old version of \"%s\"", name);
@@ -4193,8 +4192,8 @@ int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
     if (mutex_lock(sto->mutex) == 0) {
       hsize = 78;
       if (size > hsize) {
-        xmemset(name, 0, dmDBNameLength);
-        xmemcpy(name, p, dmDBNameLength - 1);
+        sys_memset(name, 0, dmDBNameLength);
+        sys_memcpy(name, p, dmDBNameLength - 1);
         if (name[0]) {
           if ((dbID = DmFindDatabase(0, name)) != 0) {
             debug(DEBUG_INFO, "STOR", "deleting old version of \"%s\"", name);
@@ -4241,7 +4240,7 @@ int StoDeployFiles(char *path, AppRegistryType *ar) {
         if (ent->type != VFS_FILE) continue;
         ext = getext(ent->name);
         if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
-          xmemset(buf, 0, sizeof(buf));
+          sys_memset(buf, 0, sizeof(buf));
           sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
           rr = StoDeployFile(buf, ar);
           StoVfsUnlink(sto->session, buf);
@@ -4697,7 +4696,7 @@ Err MemChunkFree(MemPtr chunkDataP) {
 Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
-  xmemcpy(dstP, sP, numBytes);
+  sys_memmove(dstP, sP, numBytes);
   StoCheckErr(errNone);
   return errNone;
 }
@@ -4705,7 +4704,7 @@ Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
 Err MemSet(void *dstP, Int32 numBytes, UInt8 value) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   if (dstP == NULL) ErrFatalDisplayEx("MemSet NULL", 1);
-  xmemset(dstP, value, numBytes);
+  sys_memset(dstP, value, numBytes);
   StoCheckErr(errNone);
   return errNone;
 }
@@ -5449,7 +5448,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
   sizeofSysDBListItemType = m68k ? (dmDBNameLength + 4*sizeof(UInt32) + 2*sizeof(UInt16)) : sizeof(SysDBListItemType);
   count = 0;
   size = 16;
-  list = xcalloc(size, sizeofSysDBListItemType);
+  list = sys_calloc(size, sizeofSysDBListItemType);
   buf = (UInt8 *)list;
   offset = 0;
 
@@ -5459,7 +5458,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
     }
     if (count == size) {
       size += 16;
-      list = xrealloc(list, size * sizeofSysDBListItemType);
+      list = sys_realloc(list, size * sizeofSysDBListItemType);
       buf = (UInt8 *)list;
     }
     dbID = (uint8_t *)db - sto->base;
@@ -5500,7 +5499,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
     if (dbIDs) *dbIDs = NULL;
     r = false;
   }
-  xfree(list);
+  sys_free(list);
   if (dbCount) *dbCount = count;
 
   return r;
