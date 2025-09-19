@@ -1745,10 +1745,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
       // it is possible to use fast copy
       t1 = sys_get_clock();
-      WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
       if (blitDisplay) {
         WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
       }
+      WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
       t2 = sys_get_clock();
       debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %d/%d txt=%d tr=%d) win=(%d,%d %d/%d) disp=(%d,%d %d/%d) cp=%d",
         (uint32_t)(t2 - t1),
