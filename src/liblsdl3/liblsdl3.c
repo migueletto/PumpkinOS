@@ -207,7 +207,7 @@ static int libsdl_init_video(void) {
   flags |= SDL_VIDEO_OPENGL;
 #endif
 
-  if (SDL_InitSubSystem(flags) != 0) {
+  if (!SDL_InitSubSystem(flags)) {
     debug(DEBUG_ERROR, "SDL", "init video failed: %s", SDL_GetError());
 
   } else {
@@ -713,6 +713,10 @@ static int libsdl_video_setup(libsdl_window_t *window) {
     return -1;
   }
 
+  if ((s = SDL_GetRendererName(window->renderer)) != NULL) {
+    debug(DEBUG_INFO, "SDL", "using driver \"%s\"", s);
+  }
+
   if (window->fullscreen) {
     //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_SetRenderLogicalPresentation(window->renderer, w, h, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
@@ -1053,11 +1057,8 @@ static int libsdl_window_draw_texture_rect(window_t *_window, texture_t *texture
     dst.w = w * window->xfactor;
     dst.h = h * window->yfactor;
 
-    //r = SDL_RenderCopyEx(window->renderer, texture->t, &src, &dst, 0, NULL, SDL_FLIP_NONE);
-    r = SDL_RenderTexture(window->renderer, texture->t, &src, &dst);
-
-    if (r != 0)  {
-      debug(DEBUG_ERROR, "SDL", "SDL_RenderCopy failed");
+    if (!SDL_RenderTexture(window->renderer, texture->t, &src, &dst)) {
+      debug(DEBUG_ERROR, "SDL", "SDL_RenderTexture failed");
       r = -1;
     }
   }
@@ -1078,11 +1079,8 @@ static int libsdl_window_draw_texture(window_t *_window, texture_t *texture, int
     dst.w = texture->width  * window->xfactor;
     dst.h = texture->height * window->yfactor;
 
-    //r = SDL_RenderCopyEx(window->renderer, texture->t, NULL, &dst, 90, &center, SDL_FLIP_NONE);
-    r = SDL_RenderTexture(window->renderer, texture->t, NULL, &dst);
-
-    if (r != 0)  {
-      debug(DEBUG_ERROR, "SDL", "SDL_RenderCopy failed");
+    if (!SDL_RenderTexture(window->renderer, texture->t, NULL, &dst)) {
+      debug(DEBUG_ERROR, "SDL", "SDL_RenderTexture failed");
       r = -1;
     }
   }
@@ -1529,7 +1527,7 @@ int liblsdl3_load(void) {
   int set = 0;
 
   version = SDL_GetVersion();
-  debug(DEBUG_INFO, "SDL", "version %d", version);
+  debug(DEBUG_INFO, "SDL", "version %d.%d.%d", SDL_VERSIONNUM_MAJOR(version), SDL_VERSIONNUM_MINOR(version), SDL_VERSIONNUM_MICRO(version));
 
   if (!SDL_getenv("SDL_VIDEODRIVER") && SDL_getenv("WAYLAND_DISPLAY") != NULL) {
     set = set_video_driver("wayland");
