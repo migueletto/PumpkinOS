@@ -104,8 +104,8 @@ typedef struct FieldType
 
   UInt16 objIndex, numUsedLines, totalLines;
   UInt16 offset, size; // for textHandle
-  Boolean updateTextHandle, password;
-  UInt16 top;
+  Boolean updateTextHandle;
+  UInt16 top, pos;
   Char *textBuf;
   void *formP;
 }
