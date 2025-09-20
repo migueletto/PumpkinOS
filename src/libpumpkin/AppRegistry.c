@@ -211,6 +211,7 @@ static UInt16 AppRegistryProcess(AppRegistryType *ar, UInt32 creator, UInt16 id,
         ar->registry[i].seq = seq;
         ar->registry[i].size = size;
         ar->registry[i].data = size ? xcalloc(1, size) : NULL;
+        ar->registry[i].deleted = false;
         ar->ordered = false;
         pumpkin_id2s(creator, screator);
         debug(DEBUG_INFO, "AppReg", "creating registry creator '%s' id %d seq %d", screator, id, seq);
