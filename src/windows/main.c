@@ -263,7 +263,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     case WM_PAINT:
       window = (win_window_t *)GetProp(hwnd, WINDOW_PROP);
       hdc = BeginPaint(hwnd, &ps);
-      debug(DEBUG_TRACE, "Windows", "paint %d %d %d %d", ps.rcPaint.left, ps.rcPaint.right, ps.rcPaint.top, ps.rcPaint.bottom);
+      debug(DEBUG_TRACE, "Windows", "paint %d %d %d %d", (int32_t)ps.rcPaint.left, (int32_t)ps.rcPaint.right, (int32_t)ps.rcPaint.top, (int32_t)ps.rcPaint.bottom);
       SetDIBits(hdc, window->bitmap, 0, window->height, window->bitmapBuffer, (BITMAPINFO *)&window->bmi, DIB_RGB_COLORS);
       BitBlt(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right-ps.rcPaint.left+1, ps.rcPaint.bottom-ps.rcPaint.top+1, window->hdcBitmap, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
       EndPaint(hwnd, &ps);
@@ -468,7 +468,7 @@ static int window_draw_texture_rect(window_t *_window, texture_t *texture, int t
       rect.right = x + w;
       rect.top = y;
       rect.bottom = y + h;
-      debug(DEBUG_TRACE, "Windows", "invalidate %d %d %d %d", rect.left, rect.right, rect.top, rect.bottom);
+      debug(DEBUG_TRACE, "Windows", "invalidate %d %d %d %d", (int32_t)rect.left, (int32_t)rect.right, (int32_t)rect.top, (int32_t)rect.bottom);
       InvalidateRect(window->hwnd, &rect, false);
     }
   }

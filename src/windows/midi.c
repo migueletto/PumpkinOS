@@ -18,7 +18,7 @@ DWORD playMIDIFile(HWND hWndNotify, LPSTR lpszMIDIFileName) {
   mciOpenParms.lpstrElementName = lpszMIDIFileName;
   if ((dwReturn = mciSendCommand(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT, (DWORD_PTR)(LPVOID)&mciOpenParms)) != 0) {
     // Failed to open device. Don't close it; just return error.
-    debug(DEBUG_ERROR, "MIDI", "failed to open device (%d)", dwReturn);
+    debug(DEBUG_ERROR, "MIDI", "failed to open device (%d)", (uint32_t)dwReturn);
     return dwReturn;
   }
 
@@ -28,14 +28,14 @@ DWORD playMIDIFile(HWND hWndNotify, LPSTR lpszMIDIFileName) {
   // Check if the output port is the MIDI mapper.
   mciStatusParms.dwItem = MCI_SEQ_STATUS_PORT;
   if ((dwReturn = mciSendCommand(wDeviceID, MCI_STATUS, MCI_STATUS_ITEM, (DWORD_PTR)(LPVOID)&mciStatusParms)) != 0) {
-    debug(DEBUG_ERROR, "MIDI", "failed to get device status (%d)", dwReturn);
+    debug(DEBUG_ERROR, "MIDI", "failed to get device status (%d)", (uint32_t)dwReturn);
     mciSendCommand(wDeviceID, MCI_CLOSE, 0, 0);
     return dwReturn;
   }
 
   // The output port is not the MIDI mapper. 
   if (LOWORD(mciStatusParms.dwReturn) != MIDI_MAPPER) {
-    debug(DEBUG_ERROR, "MIDI", "output is not MIDI mapper (%llu)", mciStatusParms.dwReturn);
+    debug(DEBUG_ERROR, "MIDI", "output is not MIDI mapper (%u)", (uint32_t)mciStatusParms.dwReturn);
     mciSendCommand(wDeviceID, MCI_CLOSE, 0, 0);
     return mciStatusParms.dwReturn;
   }
@@ -45,7 +45,7 @@ DWORD playMIDIFile(HWND hWndNotify, LPSTR lpszMIDIFileName) {
   // playback is complete. At this time, the window procedure closes the device.
   mciPlayParms.dwCallback = (DWORD_PTR)hWndNotify;
   if ((dwReturn = mciSendCommand(wDeviceID, MCI_PLAY, MCI_NOTIFY, (DWORD_PTR)(LPVOID)&mciPlayParms)) != 0) {
-    debug(DEBUG_ERROR, "MIDI", "failed to start MIDI play (%d)", dwReturn);
+    debug(DEBUG_ERROR, "MIDI", "failed to start MIDI play (%d)", (uint32_t)dwReturn);
     mciSendCommand(wDeviceID, MCI_CLOSE, 0, 0);
     return dwReturn;
   }
