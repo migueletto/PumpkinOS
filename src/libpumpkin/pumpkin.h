@@ -375,6 +375,7 @@ int pumpkin_alarm_get(LocalID dbID, uint32_t *t, uint32_t *data);
 void pumpkin_set_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 UInt16 pumpkin_get_preference(UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved);
 void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
+void pumpkin_delete_registry(UInt32 creator);
 
 void pumpkin_set_osversion(int version);
 int pumpkin_get_osversion(void);

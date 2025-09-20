@@ -2518,6 +2518,7 @@ static void deleteApplication(launcher_item_t *item) {
     }
     pumpkin_delete_preferences(item->creator, true);
     pumpkin_delete_preferences(item->creator, false);
+    pumpkin_delete_registry(item->creator);
   } else {
     FrmCustomAlert(ErrorAlert, "Could not delete application. Is it running?", "", "");
   }

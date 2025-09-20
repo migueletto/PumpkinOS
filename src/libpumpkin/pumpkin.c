@@ -4433,6 +4433,10 @@ void pumpkin_delete_preferences(UInt32 creator, Boolean saved) {
   }
 }
 
+void pumpkin_delete_registry(UInt32 creator) {
+  AppRegistryDeleteByCreator(pumpkin_module.registry, creator);
+}
+
 void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wHeight, Coord width, Coord height, char *filename) {
   surface_t *surface;
   UInt16 oldDensity;

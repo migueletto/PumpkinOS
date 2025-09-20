@@ -14,6 +14,7 @@ typedef struct {
   UInt16 seq;
   UInt16 size;
   void *data;
+  Boolean deleted;
 } AppRegistryEntry;
 
 struct AppRegistryType {
@@ -114,7 +115,7 @@ void AppRegistryFinish(AppRegistryType *ar) {
   if (ar) {
     if (ar->registry) {
       for (i = 0; i < ar->num; i++) {
-        if (ar->registry[i].id != appRegistrySavedPref && ar->registry[i].id != appRegistryUnsavedPref) {
+        if (!ar->registry[i].deleted && ar->registry[i].id != appRegistrySavedPref && ar->registry[i].id != appRegistryUnsavedPref) {
           AppRegistrySave(ar, i);
         }
         if (ar->registry[i].data) xfree(ar->registry[i].data);
@@ -147,6 +148,43 @@ void AppRegistryDelete(char *regname, UInt16 id) {
     }
     sys_closedir(dir);
   }
+}
+
+int AppRegistryDeleteByCreator(AppRegistryType *ar, UInt32 creator) {
+  sys_dir_t *dir;
+  UInt32 rcreator;
+  char path[64], name[32], screator[8];
+  int i, id, seq, aux, r = -1;
+
+  if (ar && mutex_lock(ar->mutex) == 0) {
+    if ((dir = sys_opendir(ar->regname)) != NULL) {
+      for (;;) {
+        if (sys_readdir(dir, name, sizeof(name) - 1) == -1) break;
+        screator[4] = 0;
+        if (sys_sscanf(name, "%c%c%c%c.%08X.%d.%d", screator, screator + 1, screator + 2,
+                       screator + 3, &aux, &id, &seq) != 7)
+          continue;
+        pumpkin_s2id(&rcreator, screator);
+        if (rcreator != creator) continue;
+  
+        debug(DEBUG_INFO, "AppReg", "deleting registry creator '%s' id %d seq %d", screator, id, seq);
+        sys_snprintf(path, sizeof(path) - 1, "%s%s", ar->regname, name);
+        sys_unlink(path);
+      }
+      sys_closedir(dir);
+      r = 0;
+    }
+
+    for (i = 0; i < ar->num; i++) {
+      if (ar->registry[i].creator == creator) {
+        ar->registry[i].deleted = true;
+      }
+    }
+
+    mutex_unlock(ar->mutex);
+  }
+
+  return r;
 }
 
 static UInt16 AppRegistryProcess(AppRegistryType *ar, UInt32 creator, UInt16 id, UInt16 seq, UInt16 (*callback)(AppRegistryEntry *e, void *d, UInt16 size, Boolean set), void *d, UInt16 size, Boolean set) {
