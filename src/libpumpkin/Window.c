@@ -1898,7 +1898,7 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
   WinBlitBitmap(WinGetBitmap(srcWin), dstWin, srcRect, dstX, dstY, mode, false);
 }
 
-void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
+void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *windowBitmap, *best;
   RectangleType rect;
@@ -1907,19 +1907,21 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
   Coord w, h;
 
   if (bitmapP && module->drawWindow) {
-    bmp = (uint8_t *)bitmapP;
-    base = (uint8_t *)pumpkin_heap_base();
-    end = base + pumpkin_heap_size();
-    if (bmp < base || bmp >= end) {
-      debug(DEBUG_ERROR, "Window", "WinPaintBitmap invalid address %p", bitmapP);
-      return;
+    if (checkAddr) {
+      bmp = (uint8_t *)bitmapP;
+      base = (uint8_t *)pumpkin_heap_base();
+      end = base + pumpkin_heap_size();
+      if (bmp < base || bmp >= end) {
+        debug(DEBUG_ERROR, "Window", "WinPaintBitmap invalid address %p", bitmapP);
+        return;
+      }
     }
 
     BmpGetDimensions(bitmapP, &w, &h, NULL);
     debug(DEBUG_TRACE, "Window", "WinPaintBitmap %p %d,%d at %d,%d", bitmapP, w, h, x, y);
     windowBitmap = WinGetBitmap(module->drawWindow);
 
-    if ((best = BmpGetBestBitmap(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap))) != NULL) {
+    if ((best = BmpGetBestBitmapEx(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
       BmpGetDimensions(best, &w, &h, NULL);
       bitmapDensity = BmpGetDensity(best);
       if (bitmapDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
@@ -1934,6 +1936,10 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
     }
   }
+}
+
+void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
+  WinPaintBitmapEx(bitmapP, x, y, true);
 }
 
 void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {

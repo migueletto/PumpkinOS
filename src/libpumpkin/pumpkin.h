@@ -114,6 +114,7 @@ extern "C" {
 #define pLockModifiers         1
 #define pBorderWidth           2
 #define pBackgroundImage       3
+#define pTaskbar               4
 
 #define pMonoBackground        0
 #define pMonoSelectedBorder    1
@@ -432,6 +433,7 @@ RGBColorType *WinGetPalette(UInt16 n);
 WinDrawOperation WinGetDrawMode(void);
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
 void WinSetAsciiText(Boolean asciiText);
+void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -658,6 +660,12 @@ uint32_t pumpkin_vprintf(const char *format, sys_va_list ap);
 uint32_t pumpkin_printf(const char *format, ...);
 int32_t pumpkin_gets(char *buf, uint32_t max, int echo);
 void pumpkin_setcolor(uint32_t fg, uint32_t bg);
+
+void pumpkin_taskbar_create(void);
+void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name);
+void pumpkin_taskbar_remove(LocalID dbID);
+void pumpkin_taskbar_update(void);
+void pumpkin_taskbar_destroy(void);
 
 int pumpkin_audio_get(int *pcm, int *channels, int *rate);
 int pumpkin_audio_set(int pcm, int channels, int rate);

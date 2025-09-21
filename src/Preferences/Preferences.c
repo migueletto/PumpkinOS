@@ -230,23 +230,73 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
   return handled;
 }
 
+static void updateLabels(prefs_data_t *data, FormType *frm) {
+  SystemPreferencesType prefs;
+  RectangleType timeRect, dateRect, longDateRect;
+  UInt32 seconds;
+  UInt16 index, dx;
+  DateTimeType dateTime;
+  FontID old;
+
+  PrefGetPreferences(&prefs);
+
+  index = FrmGetObjectIndex(frm, timeFormatTrigger);
+  FrmGetObjectBounds(frm, index, &timeRect);
+  index = FrmGetObjectIndex(frm, dateFormatTrigger);
+  FrmGetObjectBounds(frm, index, &dateRect);
+  index = FrmGetObjectIndex(frm, ldateFormatTrigger);
+  FrmGetObjectBounds(frm, index, &longDateRect);
+
+  old = FntSetFont(symbol7Font);
+  dx = FntCharWidth(2);
+  FntSetFont(old);
+
+  timeRect.topLeft.x += dx;
+  dateRect.topLeft.x += dx;
+  longDateRect.topLeft.x += dx;
+  timeRect.topLeft.y += FntCharHeight();
+  dateRect.topLeft.y += FntCharHeight();
+  longDateRect.topLeft.y += FntCharHeight();
+
+  seconds = TimGetSeconds();
+  TimSecondsToDateTime(seconds, &dateTime);
+  TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, data->timeBuf);
+  DateToAscii(dateTime.month, dateTime.day, dateTime.year, prefs.dateFormat, data->dateBuf);
+  DateToAscii(dateTime.month, dateTime.day, dateTime.year, prefs.longDateFormat, data->longDateBuf);
+
+  WinPaintChars(data->timeBuf, StrLen(data->timeBuf), timeRect.topLeft.x, timeRect.topLeft.y);
+  timeRect.topLeft.x += FntCharsWidth(data->timeBuf, StrLen(data->timeBuf));
+  timeRect.extent.x = 160 - timeRect.topLeft.x;
+  WinEraseRectangle(&timeRect, 0);
+
+  WinPaintChars(data->dateBuf, StrLen(data->dateBuf), dateRect.topLeft.x, dateRect.topLeft.y);
+  dateRect.topLeft.x += FntCharsWidth(data->dateBuf, StrLen(data->dateBuf));
+  dateRect.extent.x = 160 - dateRect.topLeft.x;
+  WinEraseRectangle(&dateRect, 0);
+
+  WinPaintChars(data->longDateBuf, StrLen(data->longDateBuf), longDateRect.topLeft.x, longDateRect.topLeft.y);
+  longDateRect.topLeft.x += FntCharsWidth(data->longDateBuf, StrLen(data->longDateBuf));
+  longDateRect.extent.x = 160 - longDateRect.topLeft.x;
+  WinEraseRectangle(&longDateRect, 0);
+
+}
+
 static Boolean FormatsFormHandleEvent(EventType *event) {
   prefs_data_t *data = pumpkin_get_data();
   SystemPreferencesType prefs;
-  UInt32 seconds;
-  DateTimeType dateTime;
   FormType *frm;
   ControlType *ctl;
   ListType *lst;
   RectangleType timeRect, dateRect, longDateRect;
-  UInt16 i, index, localeIndex, listIndex, dx;
-  FontID timeFont, dateFont, longDateFont, old;
+  UInt16 i, index, localeIndex, listIndex;
   DateFormatType dateFormat;
   TimeFormatType timeFormat;
   NumberFormatType numberFormat;
   LmLocaleType locale;
   UInt8 weekStartDay;
   Int16 tz;
+  Int32 delta;
+  SysNotifyParamType notify;
   char *text;
   Boolean handled = false;
 
@@ -309,7 +359,6 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
       FrmGetObjectBounds(frm, index, &timeRect);
       ctl = (ControlType *)FrmGetObjectPtr(frm, index);
       CtlSetLabel(ctl, text);
-      timeFont = ctl->font;
 
       switch (prefs.dateFormat) {
         case dfMDYWithSlashes:   // 12/31/95
@@ -350,7 +399,6 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
       FrmGetObjectBounds(frm, index, &dateRect);
       ctl = (ControlType *)FrmGetObjectPtr(frm, index);
       CtlSetLabel(ctl, text);
-      dateFont = ctl->font;
 
       switch (prefs.longDateFormat) {
         case dfMDYLongWithComma: // Dec 31, 1995
@@ -394,7 +442,6 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
       FrmGetObjectBounds(frm, index, &longDateRect);
       ctl = (ControlType *)FrmGetObjectPtr(frm, index);
       CtlSetLabel(ctl, text);
-      longDateFont = ctl->font;
 
       index = FrmGetObjectIndex(frm, weekStartList);
       lst = (ListType *)FrmGetObjectPtr(frm, index);
@@ -418,35 +465,8 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
       CtlSetLabel(ctl, text);
 
       FrmDrawForm(frm);
-
       WinDrawLine(0, timeRect.topLeft.y - 5, 159, timeRect.topLeft.y - 5);
-
-      seconds = TimGetSeconds();
-      TimSecondsToDateTime(seconds, &dateTime);
-      TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, data->timeBuf);
-      DateToAscii(dateTime.month, dateTime.day, dateTime.year, prefs.dateFormat, data->dateBuf);
-      DateToAscii(dateTime.month, dateTime.day, dateTime.year, prefs.longDateFormat, data->longDateBuf);
-
-      old = FntSetFont(symbol7Font);
-      dx = FntCharWidth(2);
-      FntSetFont(old);
-
-      timeRect.topLeft.x += dx;
-      dateRect.topLeft.x += dx;
-      longDateRect.topLeft.x += dx;
-
-      old = FntSetFont(timeFont);
-      WinPaintChars(data->timeBuf, StrLen(data->timeBuf), timeRect.topLeft.x, timeRect.topLeft.y + FntCharHeight());
-      FntSetFont(old);
-
-      old = FntSetFont(dateFont);
-      WinPaintChars(data->dateBuf, StrLen(data->dateBuf), dateRect.topLeft.x, dateRect.topLeft.y + FntCharHeight());
-      FntSetFont(old);
-
-      old = FntSetFont(longDateFont);
-      WinPaintChars(data->longDateBuf, StrLen(data->longDateBuf), longDateRect.topLeft.x, longDateRect.topLeft.y + FntCharHeight());
-      FntSetFont(old);
-
+      updateLabels(data, frm);
       handled = true;
       break;
 
@@ -497,6 +517,16 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
             default: timeFormat = tfColonAMPM; break;
           }
           PrefSetPreference(prefTimeFormat, timeFormat);
+          frm = FrmGetActiveForm();
+          updateLabels(data, frm);
+
+          MemSet(&notify, sizeof(notify), 0);
+          notify.notifyType = sysNotifyTimeChangeEvent;
+          notify.broadcaster = 0;
+          delta = 0;
+          notify.notifyDetailsP = &delta;
+          SysNotifyBroadcast(&notify);
+
           handled = true;
           break;
         case dateFormatList:
@@ -512,6 +542,8 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
             default: dateFormat = dfMDYWithSlashes; break;
           }
           PrefSetPreference(prefDateFormat, dateFormat);
+          frm = FrmGetActiveForm();
+          updateLabels(data, frm);
           handled = true;
           break;
         case ldateFormatList:
@@ -528,6 +560,8 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
             default: dateFormat = dfMDYLongWithComma; break;
           }
           PrefSetPreference(prefLongDateFormat, dateFormat);
+          frm = FrmGetActiveForm();
+          updateLabels(data, frm);
           handled = true;
           break;
         case weekStartList:
@@ -811,6 +845,12 @@ static Boolean DesktopFormHandleEvent(EventType *event) {
       FrmSetColorTrigger(frm, lockedBorderCtl, &data->prefs.color[pColorLockedBorder], false);
       FrmSetColorTrigger(frm, backgroundCtl, &data->prefs.color[pColorBackground], false);
 
+      if (data->prefs.value[pTaskbar]) {
+        index = FrmGetObjectIndex(frm, taskbarCtl);
+        ctl = (ControlType *)FrmGetObjectPtr(frm, index);
+        CtlSetValue(ctl, 1);
+      }
+
       FrmDrawForm(frm);
 
 /*
@@ -844,6 +884,7 @@ debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.exten
         case lockedBorderCtl: rgb = &data->prefs.color[pColorLockedBorder]; title = "Locked border"; break;
         case backgroundCtl:   rgb = &data->prefs.color[pColorBackground]; title = "Background"; break;
         case imageCtl: imageDialog(); break;
+        case taskbarCtl: data->prefs.value[pTaskbar] = event->data.ctlSelect.on; data->changed = true; handled = true; break;
       }
       if (rgb) {
         data->changed |= UIPickColor(NULL, rgb, UIPickColorStartRGB, title, NULL);
@@ -855,6 +896,12 @@ debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.exten
           FrmSetColorTrigger(frm, backgroundCtl, &data->prefs.color[pColorBackground], true);
         }
         handled = true;
+      }
+
+      if (data->changed) {
+        pumpkin_set_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &data->prefs, sizeof(PumpkinPreferencesType), true);
+        pumpkin_refresh_desktop();
+        data->changed = false;
       }
       break;
 

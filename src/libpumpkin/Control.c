@@ -613,7 +613,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
             event.eType = ctlSelectEvent;
             event.data.ctlSelect.controlID = controlP->id;
             event.data.ctlSelect.pControl = controlP;
-            event.data.ctlSelect.on = true;
+            event.data.ctlSelect.on = controlP->style == checkboxCtl ? controlP->attr.on : true;
           }
           if (controlP->style == sliderCtl || controlP->style == feedbackSliderCtl) {
             sc = (SliderControlType *)controlP;

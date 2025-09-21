@@ -1065,9 +1065,13 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
 
   if (bitmapP) {
     debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap %p begin", bitmapP);
-    base = (uint8_t *)pumpkin_heap_base();
-    end = base + pumpkin_heap_size();
-    size = MemPtrSize(bitmapP);
+    if (checkAddr) {
+      base = (uint8_t *)pumpkin_heap_base();
+      end = base + pumpkin_heap_size();
+      size = MemPtrSize(bitmapP);
+    } else {
+      size = 0;
+    }
     last = size ? (UInt8 *)bitmapP + size : NULL;
 
     display = WinGetDisplayWindow();

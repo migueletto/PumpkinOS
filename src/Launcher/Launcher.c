@@ -92,6 +92,7 @@ typedef struct {
   int num, x[16];
   MenuBarType *mainMenu, *appListMenu;
   Boolean filterVisible;
+  Boolean updateTime;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -2205,6 +2206,7 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
         TimeToAscii(dt.hour, dt.minute, tf, data->title);
         FrmSetTitle(frm, data->title);
         DrawBattery(true);
+        pumpkin_taskbar_update();
       }
       updateFilter(data, frm, false);
       break;
@@ -2848,13 +2850,15 @@ static Boolean ApplicationHandleEvent(EventPtr event) {
 
 static void CheckNotifications(void) {
   launcher_data_t *data = pumpkin_get_data();
-  Boolean deploy = false, reload = false;
+  Boolean deploy = false, reload = false, updateTime = false;
 
   if (mutex_lock(data->mutex) == 0) {
     deploy = data->deploy;
     reload = data->reload;
+    updateTime = data->updateTime;
     data->deploy = false;
     data->reload = false;
+    data->updateTime = false;
     mutex_unlock(data->mutex);
   }
 
@@ -2867,6 +2871,7 @@ static void CheckNotifications(void) {
   if (reload) {
     debug(DEBUG_INFO, "Launcher", "CheckNotifications reload");
     pumpkin_local_refresh();
+    updateTime = false;
 
     switch (data->mode) {
       case launcher_app:
@@ -2879,6 +2884,13 @@ static void CheckNotifications(void) {
         break;
     }
   }
+
+  if (updateTime) {
+    data->lastMinute = -1;
+    UpdateStatus(FrmGetActiveForm(), data, false);
+    pumpkin_refresh_desktop();
+  }
+
 }
 
 static void EventLoop(launcher_data_t *data) {
@@ -2906,8 +2918,12 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
   launcher_data_t *data = (launcher_data_t *)notifyParamsP->userDataP;
   SysNotifyDBCreatedType *dbCreated;
   SysNotifyDBDeletedType *dbDeleted;
+  SysNotifyAppLaunchOrQuitType *launch;
   Boolean reload;
+  UInt32 creator;
+  Int32 *delta;
   char stype[8], screator[8];
+  char name[dmDBNameLength];
 
   if (data && mutex_lock(data->mutex) == 0) {
     pumpkin_id2s(notifyParamsP->notifyType, stype);
@@ -2943,6 +2959,29 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
           reload = dbDeleted->type == sysFileTApplication;
         }
         notifyParamsP->handled = true;
+        break;
+      case sysNotifyAppLaunchingEvent:
+        launch = (SysNotifyAppLaunchOrQuitType *)notifyParamsP->notifyDetailsP;
+        if (launch) {
+          DmDatabaseInfo(0, launch->dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
+          pumpkin_id2s(creator, screator);
+          debug(DEBUG_INFO, "Launcher", "sysNotifyAppLaunchingEvent '%s' \"%s\"", screator, name);
+          pumpkin_taskbar_add(launch->dbID, creator, name);
+        }
+        break;
+      case sysNotifyAppQuittingEvent:
+        launch = (SysNotifyAppLaunchOrQuitType *)notifyParamsP->notifyDetailsP;
+        if (launch) {
+          DmDatabaseInfo(0, launch->dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
+          pumpkin_id2s(creator, screator);
+          debug(DEBUG_INFO, "Launcher", "sysNotifyAppQuittingEvent '%s' \"%s\"", screator, name);
+          pumpkin_taskbar_remove(launch->dbID);
+        }
+        break;
+      case sysNotifyTimeChangeEvent:
+        delta = (Int32 *)notifyParamsP->notifyDetailsP;
+        debug(DEBUG_INFO, "Launcher", "sysNotifyTimeChangeEvent %d", *delta);
+        data->updateTime = true;
         break;
     }
 
@@ -3034,23 +3073,32 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 
   StrCopy(data->path, "/");
 
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent, LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,     LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,     LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDisplayChangeEvent, NULL, sysNotifyNormalPriority, data);
 
   data->appListMenu = MenuInit(AppListMenu);
+  pumpkin_taskbar_create();
+  pumpkin_taskbar_add(pumpkin_get_app_localid(), pumpkin_get_app_creator(), APPNAME);
 
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
   FrmCloseAllForms();
 
+  pumpkin_taskbar_destroy();
   MenuDispose(data->appListMenu);
 
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent, sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,  sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,  sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,    sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,     sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,     sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent,  sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,   sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,    sysNotifyNormalPriority);
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDisplayChangeEvent, sysNotifyNormalPriority);
 
   launcherResetItems(data);

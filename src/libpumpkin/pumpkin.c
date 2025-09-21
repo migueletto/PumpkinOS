@@ -29,6 +29,7 @@
 #include "heap.h"
 #include "grail.h"
 #include "dia.h"
+#include "taskbar.h"
 #include "wman.h"
 #include "calibrate.h"
 #include "color.h"
@@ -79,6 +80,8 @@
 #define SCREEN_DB "ScreenDB"
 
 #define BORDER_SIZE 4
+
+#define TASKBAR_HEIGHT 24
 
 typedef struct {
   uint16_t refNum;
@@ -224,6 +227,8 @@ typedef struct {
   language_t *lang;
   dia_t *dia;
   int dia_kbd;
+  taskbar_t *taskbar;
+  Boolean taskbar_enabled;
   wman_t *wm;
   int dragged, render;
   int refresh;
@@ -641,6 +646,7 @@ void pumpkin_init_misc(void) {
     prefs.value[pLockModifiers] = WINDOW_MOD_SHIFT;
     prefs.value[pBorderWidth] = BORDER_SIZE;
     prefs.value[pBackgroundImage] = 0;
+    prefs.value[pTaskbar] = 0;
     prefs.color[pMonoBackground] = monoBackground;
     prefs.color[pMonoSelectedBorder] = monoSelectedBorder;
     prefs.color[pMonoUnselectedBorder] = monoUnselectedBorder;
@@ -652,6 +658,7 @@ void pumpkin_init_misc(void) {
     pumpkin_set_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
   }
 
+  pumpkin_module.taskbar_enabled = prefs.value[pTaskbar] != 0;
   pumpkin_module.lockKey = prefs.value[pLockKey];
   pumpkin_module.lockModifiers = prefs.value[pLockModifiers];
 
@@ -1015,7 +1022,9 @@ void pumpkin_refresh_desktop(void) {
       surface_destroy(pumpkin_module.background);
       pumpkin_module.background = NULL;
     }
+    pumpkin_module.taskbar_enabled = prefs.value[pTaskbar] != 0;
     pumpkin_module.refresh = 1;
+    pumpkin_module.render = 1;
     mutex_unlock(mutex);
   }
 }
@@ -1105,6 +1114,56 @@ int pumpkin_dia_get_taskbar_dimension(int *width, int *height) {
   }
 
   return r;
+}
+
+void pumpkin_taskbar_create(void) {
+  if (pumpkin_module.mode == 0) {
+    pumpkin_module.taskbar = taskbar_create(pumpkin_module.wp, pumpkin_module.w,
+        pumpkin_module.density, 0, pumpkin_module.height - TASKBAR_HEIGHT, pumpkin_module.width, TASKBAR_HEIGHT, pumpkin_module.encoding);
+  }
+}
+
+void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (dbID && creator && name) {
+    if (mutex_lock(mutex) == 0) {
+      if (pumpkin_module.taskbar) {
+        taskbar_add(pumpkin_module.taskbar, task->taskId, dbID, creator, name);
+      }
+      mutex_unlock(mutex);
+    }
+  }
+}
+
+void pumpkin_taskbar_remove(LocalID dbID) {
+  if (dbID) {
+    if (mutex_lock(mutex) == 0) {
+      if (pumpkin_module.taskbar) {
+        taskbar_remove(pumpkin_module.taskbar, dbID);
+      }
+      mutex_unlock(mutex);
+    }
+  }
+}
+
+void pumpkin_taskbar_update(void) {
+  if (mutex_lock(mutex) == 0) {
+    if (pumpkin_module.taskbar) {
+      taskbar_update(pumpkin_module.taskbar);
+    }
+    mutex_unlock(mutex);
+  }
+}
+
+void pumpkin_taskbar_destroy(void) {
+  if (mutex_lock(mutex) == 0) {
+    if (pumpkin_module.taskbar) {
+      taskbar_destroy(pumpkin_module.taskbar);
+      pumpkin_module.taskbar = NULL;
+    }
+    mutex_unlock(mutex);
+  }
 }
 
 int pumpkin_global_finish(void) {
@@ -1234,10 +1293,25 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
   return 0;
 }
 
+static void sendLaunchNotification(UInt32 notifyType, UInt32 dbID) {
+  SysNotifyParamType notify;
+  SysNotifyAppLaunchOrQuitType launch;
+
+  launch.version = 0;
+  launch.dbID = dbID;
+  launch.cardNo = 0;
+
+  MemSet(&notify, sizeof(notify), 0);
+  notify.notifyType = notifyType;
+  notify.broadcaster = 0;
+  notify.notifyDetailsP = &launch;
+  SysNotifyBroadcast(&notify);
+}
+
 static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   uint32_t r = 0;
-  LocalID dbID;
+  LocalID dbID = 0;
   DmOpenRef dbRef;
   UInt32 creator;
   MemHandle h;
@@ -1289,6 +1363,10 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
 
     pumpkin_set_osversion(pumpkin_module.osversion);
 
+    if (dbID) {
+      sendLaunchNotification(sysNotifyAppLaunchingEvent, dbID);
+    }
+
     if (pilot_main) {
       pumpkin_set_m68k(0);
       if (opendb) {
@@ -1314,6 +1392,10 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       }
       debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main returned %u", r);
       pumpkin_set_m68k(m68k);
+    }
+
+    if (dbID) {
+      sendLaunchNotification(sysNotifyAppQuittingEvent, dbID);
     }
 
     if (lib) {
@@ -2669,6 +2751,7 @@ int pumpkin_sys_event(void) {
   int i, j, x, y, tx, ty, ev, tmp, len;
   int paused, wait, r = -1;
   void *bits;
+  UInt32 taskId;
 
   for (;;) {
     if (thread_must_end()) {
@@ -2757,6 +2840,9 @@ int pumpkin_sys_event(void) {
       }
 
       if (pumpkin_module.render) {
+        if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
+          taskbar_draw(pumpkin_module.taskbar);
+        }
         if (pumpkin_module.wp->render) {
           pumpkin_module.wp->render(pumpkin_module.w);
         }
@@ -2819,6 +2905,13 @@ int pumpkin_sys_event(void) {
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 1) == 0) break;
         }
 
+        if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
+          pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
+          if (pumpkin_module.lastY >= pumpkin_module.height - TASKBAR_HEIGHT && pumpkin_module.lastY < pumpkin_module.height) {
+            break;
+          }
+        }
+
         if (i != -1 && pumpkin_module.locked) {
           pumpkin_module.buttonMask |= arg1;
           pumpkin_forward_msg(i, MSG_BUTTON, 0, 0, arg1);
@@ -2851,6 +2944,20 @@ int pumpkin_sys_event(void) {
         if (pumpkin_module.dia) {
           pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
           if (dia_clicked(pumpkin_module.dia, pumpkin_module.current_task, pumpkin_module.lastX, pumpkin_module.lastY, 0) == 0) break;
+        }
+
+        if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
+          pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
+          if (pumpkin_module.lastY >= pumpkin_module.height - TASKBAR_HEIGHT && pumpkin_module.lastY < pumpkin_module.height) {
+            if ((taskId = taskbar_clicked(pumpkin_module.taskbar, pumpkin_module.lastX, 0)) != 0) {
+              for (i = 0; i < pumpkin_module.num_tasks; i++) {
+                if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].taskId == taskId) {
+                  pumpkin_make_current(i);
+                }
+              }
+            }
+            break;
+          }
         }
 
         pumpkin_module.buttonMask &= ~arg1;
