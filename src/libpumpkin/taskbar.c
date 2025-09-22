@@ -72,7 +72,7 @@ void taskbar_update(taskbar_t *tb) {
   FontID oldFont;
   DateTimeType dt;
   BitmapType *bmp;
-  UInt16 prevCoordSys, len, i;
+  UInt16 prevCoordSys, density, len, i;
   UInt32 t, tf;
   Coord x, y, width, height;
   char clock[32];
@@ -92,6 +92,14 @@ void taskbar_update(taskbar_t *tb) {
     if (tb->tasks[i].bmp) {
       if ((bmp = BmpGetBestBitmapEx(tb->tasks[i].bmp, tb->density, BmpGetBitDepth(tb->tasks[i].bmp), false)) != NULL) {
         BmpGetDimensions(bmp, &width, &height, NULL);
+        density = BmpGetDensity(bmp);
+        if (tb->density > density) {
+          width <<= 1;
+          height <<= 1;
+        } else if (tb->density < density) {
+          width >>= 1;
+          height >>= 1;
+        }
         y = tb->height > height ? (tb->height - height) / 2 : 0;
         WinPaintBitmapEx(bmp, x, y, false);
         x += width + 2;
@@ -210,6 +218,7 @@ void taskbar_add(taskbar_t *tb, UInt32 taskId, LocalID dbID, UInt32 creator, cha
     oldWidth = tb->usedWidth;
     tb->num_tasks++;
     tasks_width(tb);
+    debug(DEBUG_TRACE, "taskbar", "add index=%d taskId=%d dbID=0x%08X name=[%s] width=%d pos=%d", tb->num_tasks-1, taskId, dbID, name, tb->tasks[tb->num_tasks-1].width, oldWidth);
     if (tb->usedWidth > (tb->width - tb->clockWidth)) {
     }
 
@@ -261,6 +270,7 @@ UInt32 taskbar_clicked(taskbar_t *tb, int cx, int down) {
   x = 0;
   for (i = 0; i < tb->num_tasks; i++) {
     if (cx >= x && cx < x + tb->tasks[i].width) {
+      debug(DEBUG_TRACE, "taskbar", "clicked index=%d x=%d taskId=%d dbID=0x%08X name=[%s] width=%d", i, cx, tb->tasks[i].taskId, tb->tasks[i].dbID, tb->tasks[i].name, tb->tasks[i].width);
       return tb->tasks[i].taskId;
     }
     x += tb->tasks[i].width;
