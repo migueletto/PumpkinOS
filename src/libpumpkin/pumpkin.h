@@ -54,6 +54,7 @@ extern "C" {
 #define MSG_DEPLOY  9
 #define MSG_KEYDOWN 10
 #define MSG_KEYUP   11
+#define MSG_WIDGET  12
 #define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
@@ -242,6 +243,7 @@ void pumpkin_set_mono(int mono);
 int pumpkin_get_encoding(void);
 int pumpkin_get_current(void);
 void pumpkin_set_fullrefresh(int fullrefresh);
+void pumpkin_set_taskbar(int enabled);
 
 void pumpkin_set_secure(void *secure);
 int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data);
@@ -666,6 +668,9 @@ void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name);
 void pumpkin_taskbar_remove(LocalID dbID);
 void pumpkin_taskbar_update(void);
 void pumpkin_taskbar_destroy(void);
+
+Int32 pumpkin_taskbar_add_widget(UInt16 bmpID);
+Boolean pumpkin_taskbar_remove_widget(Int32 id);
 
 int pumpkin_audio_get(int *pcm, int *channels, int *rate);
 int pumpkin_audio_set(int pcm, int channels, int rate);

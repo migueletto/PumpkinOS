@@ -845,11 +845,13 @@ static Boolean DesktopFormHandleEvent(EventType *event) {
       FrmSetColorTrigger(frm, lockedBorderCtl, &data->prefs.color[pColorLockedBorder], false);
       FrmSetColorTrigger(frm, backgroundCtl, &data->prefs.color[pColorBackground], false);
 
+#ifdef TASKBAR
       if (data->prefs.value[pTaskbar]) {
         index = FrmGetObjectIndex(frm, taskbarCtl);
         ctl = (ControlType *)FrmGetObjectPtr(frm, index);
         CtlSetValue(ctl, 1);
       }
+#endif
 
       FrmDrawForm(frm);
 
@@ -884,7 +886,9 @@ debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.exten
         case lockedBorderCtl: rgb = &data->prefs.color[pColorLockedBorder]; title = "Locked border"; break;
         case backgroundCtl:   rgb = &data->prefs.color[pColorBackground]; title = "Background"; break;
         case imageCtl: imageDialog(); break;
+#ifdef TASKBAR
         case taskbarCtl: data->prefs.value[pTaskbar] = event->data.ctlSelect.on; data->changed = true; handled = true; break;
+#endif
       }
       if (rgb) {
         data->changed |= UIPickColor(NULL, rgb, UIPickColorStartRGB, title, NULL);

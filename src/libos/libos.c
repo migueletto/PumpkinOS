@@ -20,7 +20,7 @@
 typedef struct {
   int pe;
   int width, height, density, hdepth, depth, abgr, mono, xfactor, yfactor, rotate;
-  int software, fullscreen, fullrefresh, dia, mode, osversion;
+  int software, fullscreen, fullrefresh, dia, taskbar, mode, osversion;
   char launcher[MAX_STR];
   char driver[MAX_STR];
   window_provider_t *wp;
@@ -235,6 +235,10 @@ static int libos_action(void *arg) {
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
 
+  if (data->mode == 0) {
+    pumpkin_set_taskbar(data->taskbar);
+  }
+
   choose_launcher(data);
 
   if (data->mode == 1) {
@@ -255,7 +259,7 @@ static int libos_action(void *arg) {
 
 typedef enum {
   PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_ABGR, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
-  PARAM_FULLSCREEN, PARAM_DIA, PARAM_MODE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
+  PARAM_FULLSCREEN, PARAM_DIA, PARAM_TASKBAR, PARAM_MODE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
   PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION
 } param_id_t;
 
@@ -277,6 +281,7 @@ static param_t params[] = {
   { PARAM_ROTATE,       SCRIPT_ARG_INTEGER, "rotate"       },
   { PARAM_FULLSCREEN,   SCRIPT_ARG_BOOLEAN, "fullscreen"   },
   { PARAM_DIA,          SCRIPT_ARG_BOOLEAN, "dia"          },
+  { PARAM_TASKBAR,      SCRIPT_ARG_BOOLEAN, "taskbar"      },
   { PARAM_MODE,         SCRIPT_ARG_INTEGER, "mode"         },
   { PARAM_SOFTWARE,     SCRIPT_ARG_BOOLEAN, "software"     },
   { PARAM_FULLREFRESH,  SCRIPT_ARG_BOOLEAN, "fullrefresh"  },
@@ -335,6 +340,7 @@ static int libos_start(int pe) {
             case PARAM_ROTATE:       data->rotate        = v.value.i; break;
             case PARAM_FULLSCREEN:   data->fullscreen    = v.value.i; break;
             case PARAM_DIA:          data->dia           = v.value.i; break;
+            case PARAM_TASKBAR:      data->taskbar       = v.value.i; break;
             case PARAM_MODE:         data->mode          = v.value.i; break;
             case PARAM_SOFTWARE:     data->software      = v.value.i; break;
             case PARAM_FULLREFRESH:  data->fullrefresh   = v.value.i; break;

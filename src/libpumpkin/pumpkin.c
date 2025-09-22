@@ -249,6 +249,8 @@ typedef struct {
   int audio, pcm, channels, rate;
   void *local_storage[last_key];
   char *mount;
+  Int32 widget_id;
+  Int32 widget1, widget2;
 } pumpkin_module_t;
 
 typedef union {
@@ -1037,6 +1039,10 @@ void pumpkin_set_fullrefresh(int fullrefresh) {
   pumpkin_module.fullrefresh = fullrefresh;
 }
 
+void pumpkin_set_taskbar(int enabled) {
+  pumpkin_module.taskbar_enabled = enabled;
+}
+
 int pumpkin_dia_get_trigger(void) {
   int r = -1;
 
@@ -1117,10 +1123,49 @@ int pumpkin_dia_get_taskbar_dimension(int *width, int *height) {
 }
 
 void pumpkin_taskbar_create(void) {
-  if (pumpkin_module.mode == 0) {
+  if (pumpkin_module.mode == 0 && pumpkin_module.taskbar_enabled) {
     pumpkin_module.taskbar = taskbar_create(pumpkin_module.wp, pumpkin_module.w,
         pumpkin_module.density, 0, pumpkin_module.height - TASKBAR_HEIGHT, pumpkin_module.width, TASKBAR_HEIGHT, pumpkin_module.encoding);
+    pumpkin_module.widget1 = pumpkin_taskbar_add_widget(9998);
+    pumpkin_module.widget2 = pumpkin_taskbar_add_widget(9999);
   }
+}
+
+Int32 pumpkin_taskbar_add_widget(UInt16 bmpID) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  Int32 id = -1;
+
+  if (task && bmpID) {
+    if (mutex_lock(mutex) == 0) {
+      if (pumpkin_module.taskbar) {
+        if (taskbar_add_widget(pumpkin_module.taskbar, task->taskId, pumpkin_module.widget_id, pumpkin_get_app_localid(), bmpID)) {
+          id = pumpkin_module.widget_id++;
+          debug(DEBUG_INFO, PUMPKINOS, "added widget %u to taskbar", id);
+        }
+      }
+      mutex_unlock(mutex);
+    }
+  }
+
+  return id;
+}
+
+Boolean pumpkin_taskbar_remove_widget(Int32 id) {
+  Boolean r = false;
+
+  if (id > 0) {
+    if (mutex_lock(mutex) == 0) {
+      if (pumpkin_module.taskbar) {
+        r = taskbar_remove_widget(pumpkin_module.taskbar, id);
+        if (r) {
+          debug(DEBUG_INFO, PUMPKINOS, "removed widget %d from taskbar", id);
+        }
+      }
+      mutex_unlock(mutex);
+    }
+  }
+
+  return r;
 }
 
 void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name) {
@@ -1159,6 +1204,8 @@ void pumpkin_taskbar_update(void) {
 void pumpkin_taskbar_destroy(void) {
   if (mutex_lock(mutex) == 0) {
     if (pumpkin_module.taskbar) {
+      pumpkin_taskbar_remove_widget(pumpkin_module.widget1);
+      pumpkin_taskbar_remove_widget(pumpkin_module.widget2);
       taskbar_destroy(pumpkin_module.taskbar);
       pumpkin_module.taskbar = NULL;
     }
@@ -2751,7 +2798,8 @@ int pumpkin_sys_event(void) {
   int i, j, x, y, tx, ty, ev, tmp, len;
   int paused, wait, r = -1;
   void *bits;
-  UInt32 taskId;
+  Int32 taskId;
+  UInt32 widgetId;
 
   for (;;) {
     if (thread_must_end()) {
@@ -2948,11 +2996,19 @@ int pumpkin_sys_event(void) {
 
         if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
           pumpkin_module.wp->status(pumpkin_module.w, &pumpkin_module.lastX, &pumpkin_module.lastY, &tmp);
+
           if (pumpkin_module.lastY >= pumpkin_module.height - TASKBAR_HEIGHT && pumpkin_module.lastY < pumpkin_module.height) {
-            if ((taskId = taskbar_clicked(pumpkin_module.taskbar, pumpkin_module.lastX, 0)) != 0) {
-              for (i = 0; i < pumpkin_module.num_tasks; i++) {
+            if ((taskId = taskbar_clicked(pumpkin_module.taskbar, pumpkin_module.lastX)) != -1) {
+              for (i = 0; i < MAX_TASKS; i++) {
                 if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].taskId == taskId) {
                   pumpkin_make_current(i);
+                }
+              }
+            } else if ((taskId = taskbar_widget_clicked(pumpkin_module.taskbar, pumpkin_module.lastX, &widgetId)) != -1) {
+              for (i = 0; i < MAX_TASKS; i++) {
+                if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].taskId == taskId) {
+                  debug(DEBUG_INFO, PUMPKINOS, "forward MSG_WIDGET %u", widgetId);
+                  pumpkin_forward_msg(i, MSG_WIDGET, widgetId, 0, 0);
                 }
               }
             }
@@ -3321,6 +3377,21 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           MemSet(&event, sizeof(EventType), 0);
           event.eType = appRaiseEvent;
           EvtAddEventToQueue(&event);
+          break;
+        case MSG_WIDGET:
+          if (arg[1] == pumpkin_module.widget1) {
+            pumpkin_make_current(0);
+            FrmAlert(10018);
+	  } else if (arg[1] == pumpkin_module.widget2) {
+            pumpkin_make_current(0);
+            FrmAlert(10019);
+          } else {
+            MemSet(&event, sizeof(EventType), 0);
+            event.eType = appWidgetEvent;
+            event.data.widget.id = arg[1];
+            EvtAddEventToQueue(&event);
+          }
+          ev = 0;
           break;
         default:
           len -= sizeof(uint32_t);

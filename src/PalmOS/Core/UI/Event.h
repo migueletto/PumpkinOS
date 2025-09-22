@@ -91,6 +91,7 @@ typedef enum {
 	penDownRightEvent = 0x4103,
 	modKeyDownEvent = 0x4104,
 	modKeyUpEvent = 0x4105,
+	appWidgetEvent = 0x4106,
 
 	// BGT, 06/24/2003 Clarify the range reserved for licensees
 	firstLicenseeEvent	= 0x5000,
@@ -331,6 +332,10 @@ typedef struct EventType {
  		struct winDisplayChanged {
 			RectangleType newBounds;
 			} winDisplayChanged;
+
+ 		struct widget {
+			UInt32 id;
+			} widget;
 
     UInt32 buffer[24];
       } data;
