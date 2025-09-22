@@ -12,6 +12,7 @@
 #define FORE_COLOR   255
 #define TEXT_COLOR   255
 #define BORDER_COLOR 221
+#define CLOCK_COLOR  222
 
 typedef struct {
   UInt32 taskId;
@@ -46,14 +47,15 @@ static void tasks_width(taskbar_t *tb) {
   prevCoordSys = WinSetCoordinateSystem(tb->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
   tb->usedWidth = 0;
   for (i = 0; i < tb->num_tasks; i++) {
-    tb->tasks[i].width = 0;
-    if (tb->tasks[i].bmp) {
-      if ((bmp = BmpGetBestBitmapEx(tb->tasks[i].bmp, tb->density, BmpGetBitDepth(tb->tasks[i].bmp), false)) != NULL) {
-        BmpGetDimensions(bmp, &width, NULL, NULL);
-        tb->tasks[i].width += width + 2;
+    if (tb->tasks[i].width == 0) {
+      if (tb->tasks[i].bmp) {
+        if ((bmp = BmpGetBestBitmapEx(tb->tasks[i].bmp, tb->density, BmpGetBitDepth(tb->tasks[i].bmp), false)) != NULL) {
+          BmpGetDimensions(bmp, &width, NULL, NULL);
+          tb->tasks[i].width += width + 2;
+        }
       }
+      tb->tasks[i].width += FntCharsWidth(tb->tasks[i].name, StrLen(tb->tasks[i].name)) + 6;
     }
-    tb->tasks[i].width += FntCharsWidth(tb->tasks[i].name, StrLen(tb->tasks[i].name)) + 6;
     tb->usedWidth += tb->tasks[i].width;
   }
   WinSetCoordinateSystem(prevCoordSys);
@@ -69,12 +71,13 @@ void taskbar_update(taskbar_t *tb) {
   WinHandle oldDrawWindow;
   IndexedColorType oldBackColor, oldForeColor, oldTextColor;
   PatternType oldPattern;
+  RectangleType rect;
   FontID oldFont;
   DateTimeType dt;
   BitmapType *bmp;
   UInt16 prevCoordSys, density, len, i;
   UInt32 t, tf;
-  Coord x, y, width, height;
+  Coord x0, x, y, width, height;
   char clock[32];
 
   prevCoordSys = WinSetCoordinateSystem(tb->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
@@ -89,6 +92,7 @@ void taskbar_update(taskbar_t *tb) {
 
   x = 0;
   for (i = 0; i < tb->num_tasks; i++) {
+    x0 = x;
     if (tb->tasks[i].bmp) {
       if ((bmp = BmpGetBestBitmapEx(tb->tasks[i].bmp, tb->density, BmpGetBitDepth(tb->tasks[i].bmp), false)) != NULL) {
         BmpGetDimensions(bmp, &width, &height, NULL);
@@ -113,9 +117,12 @@ void taskbar_update(taskbar_t *tb) {
     x += FntCharsWidth(tb->tasks[i].name, len) + 2;
     draw_separator(tb, x);
     x += 4;
+    x = x0 + tb->tasks[i].width;
   }
 
-  draw_separator(tb, tb->width - tb->clockWidth);
+  WinSetBackColor(CLOCK_COLOR);
+  RctSetRectangle(&rect, tb->width - tb->clockWidth, 0, tb->clockWidth, tb->height);
+  WinEraseRectangle(&rect, 0);
 
   t = TimGetSeconds();
   TimSecondsToDateTime(t, &dt);
@@ -192,7 +199,7 @@ void taskbar_add(taskbar_t *tb, UInt32 taskId, LocalID dbID, UInt32 creator, cha
   DmOpenRef dbRef;
   MemHandle h;
   BitmapType *bmp;
-  UInt32 size, oldWidth;
+  UInt32 i, d, size, oldWidth;
 
   if (tb->num_tasks < MAX_TASKS) {
     tb->tasks[tb->num_tasks].taskId = taskId;
@@ -220,6 +227,11 @@ void taskbar_add(taskbar_t *tb, UInt32 taskId, LocalID dbID, UInt32 creator, cha
     tasks_width(tb);
     debug(DEBUG_TRACE, "taskbar", "add index=%d taskId=%d dbID=0x%08X name=[%s] width=%d pos=%d", tb->num_tasks-1, taskId, dbID, name, tb->tasks[tb->num_tasks-1].width, oldWidth);
     if (tb->usedWidth > (tb->width - tb->clockWidth)) {
+      d = (tb->usedWidth - (tb->width - tb->clockWidth)) / tb->num_tasks;
+      for (i = 0; i < tb->num_tasks; i++) {
+        tb->tasks[i].width -= d;
+      }
+      tasks_width(tb);
     }
 
     taskbar_update(tb);
@@ -247,6 +259,9 @@ void taskbar_remove(taskbar_t *tb, LocalID dbID) {
   }
 
   tasks_width(tb);
+  if (tb->usedWidth < (tb->width - tb->clockWidth)) {
+  }
+
   taskbar_update(tb);
 }
 
