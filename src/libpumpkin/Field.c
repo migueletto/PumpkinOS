@@ -136,7 +136,9 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw) {
   IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt, oldBack, back;
   WinDrawOperation prev;
   RectangleType clip, aux;
-  UInt16 th, tw, row, col, bottom, x, y, i;
+  UInt16 th, tw, row, col, bottom, x, y, n, i;
+  FontType *f;
+  UInt32 wch;
   Boolean posFound, insPtEnable;
   FontID old;
   UInt8 c;
@@ -164,9 +166,11 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw) {
 
     posFound = false;
 
-    for (i = 0; i < fldP->textLen; i++) {
-      c = fldP->text[i];
-      tw = FntCharWidth(c);
+    WinSetAsciiText(true);
+    for (i = 0; i < fldP->textLen; i += n) {
+      n = pumpkin_next_char((UInt8 *)fldP->text, i, fldP->textLen, &wch);
+      c = pumpkin_map_char(wch, &f);
+      tw = FntFontCharWidth(f, c);
 
       if (setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < x + tw) {
         InsPtSetHeight(th - 2);
@@ -274,6 +278,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw) {
 
     InsPtEnable(insPtEnable);
   }
+  WinSetAsciiText(false);
   OUTV;
 }
 
