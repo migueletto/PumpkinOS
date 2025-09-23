@@ -281,6 +281,18 @@ static void updateLabels(prefs_data_t *data, FormType *frm) {
 
 }
 
+static void notifyTimeChange(void) {
+  SysNotifyParamType notify;
+  Int32 delta;
+
+  MemSet(&notify, sizeof(notify), 0);
+  notify.notifyType = sysNotifyTimeChangeEvent;
+  notify.broadcaster = 0;
+  delta = 0;
+  notify.notifyDetailsP = &delta;
+  SysNotifyBroadcast(&notify);
+}
+
 static Boolean FormatsFormHandleEvent(EventType *event) {
   prefs_data_t *data = pumpkin_get_data();
   SystemPreferencesType prefs;
@@ -295,8 +307,6 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
   LmLocaleType locale;
   UInt8 weekStartDay;
   Int16 tz;
-  Int32 delta;
-  SysNotifyParamType notify;
   char *text;
   Boolean handled = false;
 
@@ -504,6 +514,7 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
             }
 
             FrmUpdateForm(FrmGetActiveFormID(), 0);
+            notifyTimeChange();
           }
           handled = true;
           break;
@@ -519,14 +530,7 @@ static Boolean FormatsFormHandleEvent(EventType *event) {
           PrefSetPreference(prefTimeFormat, timeFormat);
           frm = FrmGetActiveForm();
           updateLabels(data, frm);
-
-          MemSet(&notify, sizeof(notify), 0);
-          notify.notifyType = sysNotifyTimeChangeEvent;
-          notify.broadcaster = 0;
-          delta = 0;
-          notify.notifyDetailsP = &delta;
-          SysNotifyBroadcast(&notify);
-
+          notifyTimeChange();
           handled = true;
           break;
         case dateFormatList:
