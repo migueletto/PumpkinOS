@@ -1,0 +1,8 @@
+#include "resource.h"
+
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+USABLE
+BEGIN
+END
+

@@ -1213,6 +1213,22 @@ void pumpkin_taskbar_destroy(void) {
   }
 }
 
+void pumpkin_taskbar_ui(int show) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int x,y;
+
+  if (mutex_lock(mutex) == 0) {
+    if (show) {
+      x = (pumpkin_module.width - task->width) / 2;
+      y = (pumpkin_module.height - task->height) / 2;
+      wman_add(pumpkin_module.wm, task->taskId, task->texture, x, y, task->width, task->height);
+    } else {
+      wman_remove(pumpkin_module.wm, task->taskId, 0);
+    }
+    mutex_unlock(mutex);
+  }
+}
+
 int pumpkin_global_finish(void) {
   int i;
 
@@ -1648,6 +1664,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.num_tasks++;
 
   task->taskId = pumpkin_module.tasks[i].taskId;
+  task->texture = pumpkin_module.tasks[i].texture;
   task->task_index = i;
   task->active = 1;
   task->screen_ptr = ptr;
@@ -2030,7 +2047,7 @@ int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
   AppRegistrySize s;
   AppRegistryPosition p;
-  UInt32 creator;
+  UInt32 type, creator;
   launch_data_t *data;
   client_request_t creq;
   int i, running, index, wait_ack, r = -1;
@@ -2099,7 +2116,7 @@ int pumpkin_launch(launch_request_t *request) {
 
     if ((data = xcalloc(1, sizeof (launch_data_t))) != NULL) {
       dbID = DmFindDatabase(0, request->name);
-      DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
+      DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator);
       data->creator = creator;
       data->width = APP_SCREEN_WIDTH;
       data->height = APP_SCREEN_HEIGHT;
@@ -2139,7 +2156,9 @@ int pumpkin_launch(launch_request_t *request) {
       data->taskId = pumpkin_module.nextTaskId++;
       xmemcpy(&data->request, request, sizeof(launch_request_t));
       data->texture = pumpkin_module.wp->create_texture(pumpkin_module.w, data->width, data->height);
-      wman_add(pumpkin_module.wm, data->taskId, data->texture, data->x, data->y, data->width, data->height);
+      if (type == sysFileTApplication) {
+        wman_add(pumpkin_module.wm, data->taskId, data->texture, data->x, data->y, data->width, data->height);
+      }
       debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\" with launchCode %d", request->name, request->code);
       r = thread_begin(TAG_APP, pumpkin_launch_action, data);
 

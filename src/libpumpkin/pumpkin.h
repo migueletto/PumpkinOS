@@ -668,6 +668,7 @@ void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name);
 void pumpkin_taskbar_remove(LocalID dbID);
 void pumpkin_taskbar_update(void);
 void pumpkin_taskbar_destroy(void);
+void pumpkin_taskbar_ui(int show);
 
 Int32 pumpkin_taskbar_add_widget(UInt16 bmpID);
 Boolean pumpkin_taskbar_remove_widget(Int32 id);
