@@ -646,6 +646,7 @@ int wman_remove(wman_t *wm, int id, int remove) {
           found = 1;
         }
       }
+      if (found && !remove) wm->area[wm->n-1] = aux;
     }
     if (found) {
       wm->n--;
