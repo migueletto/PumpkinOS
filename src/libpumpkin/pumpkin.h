@@ -84,6 +84,7 @@ extern "C" {
 #define font8x16Id  9013
 
 #define sysFileTypePlugin 'plgi'
+#define sysFileTypeWidget 'widg'
 
 #define sysRsrcTypeDlib   'dlib'
 #define sysRsrcTypeWinD   'wind'

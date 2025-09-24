@@ -76,8 +76,13 @@ typedef struct {
 typedef struct {
   Int32 id;
   UInt32 formId;
-  void (*preDialog)(UInt16 formId, FormType *frm);
-  void (*postDialog)(UInt16 formId, FormType *frm, UInt16 button);
+  UInt16 panel, bitmapId;
+  void (*widgetDialogPre)(UInt16 formId, UInt16 panel, FormType *frm, void *data);
+  Boolean (*widgetDialogEventHandler)(UInt16 formId, UInt16 panel, FormType *frm, EventType *event, void *data);
+  void (*widgetDialogPost)(UInt16 formId, UInt16 panel, FormType *frm, UInt16 button, void *data);
+  void (*widgetFinish)(void *data);
+  char *name;
+  void *data;
 } launcher_widget_t;
 
 typedef struct {
@@ -102,7 +107,7 @@ typedef struct {
   Boolean filterVisible;
   Boolean updateTime;
   launcher_widget_t widgets[MAX_WIDGETS];
-  UInt32 numWidgets;
+  UInt16 numWidgets, currentWidget;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -2706,6 +2711,17 @@ static void resize(FormType *frm, launcher_data_t *data) {
   FrmSetUsable(frm, objIndex, totalRows > rows);
 }
 
+static Boolean WidgetDialogEventHandler(EventType *event) {
+  launcher_data_t *data = pumpkin_get_data();
+  UInt16 i = data->currentWidget;
+  Boolean handled;
+
+  handled = data->widgets[i].widgetDialogEventHandler(data->widgets[i].formId, data->widgets[i].panel,
+     FrmGetActiveForm(), event, data->widgets[i].data);
+
+  return handled;
+}
+
 static Boolean MainFormHandleEvent(EventPtr event) {
   launcher_data_t *data;
   FormType *frm;
@@ -2832,12 +2848,16 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       for (i = 0; i < data->numWidgets; i++) {
         if (event->data.widget.id == data->widgets[i].id) {
           if ((frm = FrmInitForm(data->widgets[i].formId)) != NULL) {
-            if (data->widgets[i].preDialog) {
-              data->widgets[i].preDialog(data->widgets[i].formId, frm);
+            if (data->widgets[i].widgetDialogPre) {
+              data->widgets[i].widgetDialogPre(data->widgets[i].formId, data->widgets[i].panel, frm, data->widgets[i].data);
             }
+            if (data->widgets[i].widgetDialogEventHandler) {
+              FrmSetEventHandler(frm, WidgetDialogEventHandler);
+            }
+            data->currentWidget = i;
             button = FrmDoDialog(frm);
-            if (data->widgets[i].postDialog) {
-              data->widgets[i].postDialog(data->widgets[i].formId, frm, button);
+            if (data->widgets[i].widgetDialogPost) {
+              data->widgets[i].widgetDialogPost(data->widgets[i].formId, data->widgets[i].panel, frm, button, data->widgets[i].data);
             }
             FrmDeleteForm(frm);
           }
@@ -3032,25 +3052,71 @@ static void addWidgets(launcher_data_t *data) {
   MemHandle h;
   Boolean newSearch;
   char name[dmDBNameLength];
-  UInt16 j, num, *p;
-  UInt32 i;
+  UInt16 i, j, num, *p, bitmapId;
   Int32 id;
+  Boolean firstLoad;
+  void *lib;
+  void *(*widgetInit)(void);
+  void (*widgetFinish)(void *data);
+  void *widgetData;
+  launcher_widget_t aux;
 
   i = 0;
-/*
   for (newSearch = true; i < MAX_WIDGETS; newSearch = false) {
-    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, 'widg', 0, false, NULL, &dbID) != errNone) break;
+    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTypeWidget, 0, false, NULL, &dbID) != errNone) break;
 
     if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+      debug(DEBUG_INFO, "Launcher", "loading widgets from \"%s\"", name);
       if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
- */
+        if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
+          debug(DEBUG_INFO, "Launcher", "widget library loaded");
+          widgetInit = sys_lib_defsymbol(lib, "WidgetInit", 0);
+          widgetData = NULL;
+          if (widgetInit) {
+            debug(DEBUG_INFO, "Launcher", "calling WidgetInit for library \"%s\"", name);
+            widgetData = widgetInit();
+          }
+          widgetFinish = sys_lib_defsymbol(lib, "WidgetFinish", 0);
+
+          aux.widgetDialogPre = sys_lib_defsymbol(lib, "WidgetDialogPre", 0);
+          if (aux.widgetDialogPre) {
+            debug(DEBUG_INFO, "Launcher", "WidgetDialogPre defined");
+          }
+          aux.widgetDialogEventHandler = sys_lib_defsymbol(lib, "WidgetDialogEventHandler", 0);
+          if (aux.widgetDialogEventHandler) {
+            debug(DEBUG_INFO, "Launcher", "WidgetDialogEventHandler defined");
+          }
+          aux.widgetDialogPost = sys_lib_defsymbol(lib, "WidgetDialogPost", 0);
+          if (aux.widgetDialogPost) {
+            debug(DEBUG_INFO, "Launcher", "WidgetDialogPost defined");
+          }
+        }
         if ((h = DmGetResource(wrdListRscType, 1000)) != NULL) {
           if ((p = MemHandleLock(h)) != NULL) {
             num = p[0];
-            for (j = 1; j <= num && i < MAX_WIDGETS; j += 2) {
-              if ((id = pumpkin_taskbar_add_widget(p[j+1])) != -1) {
-                data->widgets[i].formId = p[j];
+            for (j = 1; j <= num && i < MAX_WIDGETS; j += 3) {
+              bitmapId = p[j + 2];
+              if ((id = pumpkin_taskbar_add_widget(bitmapId)) != -1) {
                 data->widgets[i].id = id;
+                data->widgets[i].formId = p[j];
+                data->widgets[i].panel = p[j + 1];
+                data->widgets[i].bitmapId = bitmapId;
+                data->widgets[i].widgetDialogPre = aux.widgetDialogPre;
+                data->widgets[i].widgetDialogEventHandler = aux.widgetDialogEventHandler;
+                data->widgets[i].widgetDialogPost = aux.widgetDialogPost;
+                data->widgets[i].data = widgetData;
+                if (widgetFinish && j == 1) {
+                  // register widgetFinish only for the first widget in the library,
+                  // so it is called only once
+                  debug(DEBUG_INFO, "Launcher", "registering WidgetFinish for library \"%s\"", name);
+                  data->widgets[i].widgetFinish = widgetFinish;
+                  data->widgets[i].name = StrDup(name);
+                } else {
+                  data->widgets[i].widgetFinish = NULL;
+                  data->widgets[i].name = NULL;
+                }
+                debug(DEBUG_INFO, "Launcher", "widget id %d, formId %d, panel %d, bitmapId %d",
+                  data->widgets[i].id, data->widgets[i].formId, data->widgets[i].panel, data->widgets[i].bitmapId);
                 i++;
               }
             }       
@@ -3058,21 +3124,27 @@ static void addWidgets(launcher_data_t *data) {
           }
           DmReleaseResource(h);
         }
-/*
         DmCloseDatabase(dbRef);
       }
     }
   }
-*/
 
   data->numWidgets = i;
 }
 
 static void removeWidgets(launcher_data_t *data) {
-  UInt32 i;
+  UInt16 i;
 
   for (i = 0; i < data->numWidgets; i++) {
     pumpkin_taskbar_remove_widget(data->widgets[i].id);
+  }
+
+  for (i = 0; i < data->numWidgets; i++) {
+    if (data->widgets[i].widgetFinish) {
+      debug(DEBUG_INFO, "Launcher", "calling WidgetFinish for library \"%s\"", data->widgets[i].name);
+      data->widgets[i].widgetFinish(data->widgets[i].data);
+      MemPtrFree(data->widgets[i].name);
+    }
   }
 }
 
