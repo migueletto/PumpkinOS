@@ -1906,8 +1906,19 @@ void FrmHelp(UInt16 helpMsgId) {
           attr.editable = old;
           FldSetAttributes(fldP, &attr);
           previous = FrmGetActiveForm();
+
+          if (!FldScrollable(fldP, winUp)) {
+            index = FrmGetObjectIndex(formP, 10404);
+            FrmHideObject(formP, index);
+          }
+          if (!FldScrollable(fldP, winDown)) {
+            index = FrmGetObjectIndex(formP, 10405);
+            FrmHideObject(formP, index);
+          }
+
           FrmSetEventHandler(formP, frmHelpEventHandler);
           FrmDoDialog(formP);
+
           attr.editable = true;
           FldSetAttributes(fldP, &attr);
           FldSetTextHandle(fldP, NULL);
