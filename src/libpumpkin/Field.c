@@ -220,21 +220,26 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw) {
           }
           back = (fldP->selFirstPos <= i && i < fldP->selLastPos) ? fieldBackHigh : fieldBack;
           oldBack = WinSetBackColor(back);
-          RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
-          WinSetClip(&clip);
-          WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
-          WinSetBackColor(oldBack);
-          RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1, tw, 1);
-          WinSetClip(&clip);
-          prev = WinSetDrawMode(winOverlay);
-          WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
-          WinSetDrawMode(prev);
-          WinResetClip();
+          if (fldP->attr.editable && fldP->attr.underlined) {
+            RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
+            WinSetClip(&clip);
+            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinSetBackColor(oldBack);
+            RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1, tw, 1);
+            WinSetClip(&clip);
+            prev = WinSetDrawMode(winOverlay);
+            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinSetDrawMode(prev);
+            WinResetClip();
+          } else {
+            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+          }
         }
         col++;
         x += tw;
       }
     }
+    if (x > 1) fldP->numUsedLines++;
     fldP->totalLines = row + 1;
 
     if (!posFound) {
