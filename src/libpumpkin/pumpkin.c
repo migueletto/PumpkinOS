@@ -1150,7 +1150,7 @@ Int32 pumpkin_taskbar_add_widget(UInt16 bmpID) {
 Boolean pumpkin_taskbar_remove_widget(Int32 id) {
   Boolean r = false;
 
-  if (id > 0) {
+  if (id >= 0) {
     if (mutex_lock(mutex) == 0) {
       if (pumpkin_module.taskbar) {
         r = taskbar_remove_widget(pumpkin_module.taskbar, id);
