@@ -646,12 +646,17 @@ void WinSetClip(const RectangleType *rP) {
 
 void WinResetClip(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  RectangleType rect;
   UInt16 coordSys;
 
   if (module->drawWindow) {
     coordSys = module->coordSys;
     module->coordSys = kCoordinatesStandard;
-    WinSetClipingBounds(module->drawWindow, &module->drawWindow->windowBounds);
+    rect.topLeft.x = 0;
+    rect.topLeft.y = 0;
+    rect.extent.x = module->drawWindow->windowBounds.extent.x;
+    rect.extent.y = module->drawWindow->windowBounds.extent.y;
+    WinSetClipingBounds(module->drawWindow, &rect);
     module->coordSys = coordSys;
   }
 }
