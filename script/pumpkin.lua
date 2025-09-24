@@ -59,5 +59,6 @@ pumpkin.start {
   height   = 768,
   abgr     = abgr,
   depth    = 16,
-  hdepth   = lib.hdepth
+  hdepth   = lib.hdepth,
+  taskbar  = true
 }

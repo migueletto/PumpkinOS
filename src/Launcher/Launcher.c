@@ -31,6 +31,7 @@
 
 #define MAX_ITEMS   1024
 #define MAX_NAME    256
+#define MAX_WIDGETS 8
 
 #define PARENT_DIR  ".."
 
@@ -73,6 +74,13 @@ typedef struct {
 } launcher_item_t;
 
 typedef struct {
+  Int32 id;
+  UInt32 formId;
+  void (*preDialog)(UInt16 formId, FormType *frm);
+  void (*postDialog)(UInt16 formId, FormType *frm, UInt16 button);
+} launcher_widget_t;
+
+typedef struct {
   mutex_t *mutex;
   launcher_mode_t mode;
   launcher_item_t item[MAX_ITEMS];
@@ -93,7 +101,8 @@ typedef struct {
   MenuBarType *mainMenu, *appListMenu;
   Boolean filterVisible;
   Boolean updateTime;
-  UInt32 widget1, widget2;
+  launcher_widget_t widgets[MAX_WIDGETS];
+  UInt32 numWidgets;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -125,7 +134,7 @@ static void ErrorDialog(char *msg, Err err, UInt16 num) {
   }
 }
 
-static void OpenErrorDialog(char *name, Err err) {
+static void openErrorDialog(char *name, Err err) {
   char buf[256];
 
   StrNPrintF(buf, sizeof(buf)-1, "Could not open '%s' for writing.", name);
@@ -1409,7 +1418,7 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
     }
     DmCloseDatabase(dbRef);
   } else {
-    OpenErrorDialog(data->name, DmGetLastErr());
+    openErrorDialog(data->name, DmGetLastErr());
   }
 }
 
@@ -1450,7 +1459,7 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
     }
     DmCloseDatabase(dbRef);
   } else {
-    OpenErrorDialog(data->name, DmGetLastErr());
+    openErrorDialog(data->name, DmGetLastErr());
   }
 }
 
@@ -2702,7 +2711,8 @@ static Boolean MainFormHandleEvent(EventPtr event) {
   FormType *frm;
   RectangleType rect;
   FormGadgetTypeInCallback *gad;
-  UInt16 index, sclIndex, gadIndex, cols;
+  UInt16 index, sclIndex, gadIndex, cols, button;
+  UInt32 i;
   Boolean handled;
 
   data = pumpkin_get_data();
@@ -2819,10 +2829,20 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       break;
 
     case appWidgetEvent:
-      if (event->data.widget.id == data->widget1) {
-        FrmAlert(10018);
-      } else if (event->data.widget.id == data->widget2) {
-        FrmAlert(10019);
+      for (i = 0; i < data->numWidgets; i++) {
+        if (event->data.widget.id == data->widgets[i].id) {
+          if ((frm = FrmInitForm(data->widgets[i].formId)) != NULL) {
+            if (data->widgets[i].preDialog) {
+              data->widgets[i].preDialog(data->widgets[i].formId, frm);
+            }
+            button = FrmDoDialog(frm);
+            if (data->widgets[i].postDialog) {
+              data->widgets[i].postDialog(data->widgets[i].formId, frm, button);
+            }
+            FrmDeleteForm(frm);
+          }
+          break;
+        }
       }
       handled = true;
       break;
@@ -3005,6 +3025,57 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
   return errNone;
 }
 
+static void addWidgets(launcher_data_t *data) {
+  DmSearchStateType stateInfo;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  MemHandle h;
+  Boolean newSearch;
+  char name[dmDBNameLength];
+  UInt16 j, num, *p;
+  UInt32 i;
+  Int32 id;
+
+  i = 0;
+/*
+  for (newSearch = true; i < MAX_WIDGETS; newSearch = false) {
+    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, 'widg', 0, false, NULL, &dbID) != errNone) break;
+
+    if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+ */
+        if ((h = DmGetResource(wrdListRscType, 1000)) != NULL) {
+          if ((p = MemHandleLock(h)) != NULL) {
+            num = p[0];
+            for (j = 1; j <= num && i < MAX_WIDGETS; j += 2) {
+              if ((id = pumpkin_taskbar_add_widget(p[j+1])) != -1) {
+                data->widgets[i].formId = p[j];
+                data->widgets[i].id = id;
+                i++;
+              }
+            }       
+            MemHandleUnlock(h);
+          }
+          DmReleaseResource(h);
+        }
+/*
+        DmCloseDatabase(dbRef);
+      }
+    }
+  }
+*/
+
+  data->numWidgets = i;
+}
+
+static void removeWidgets(launcher_data_t *data) {
+  UInt32 i;
+
+  for (i = 0; i < data->numWidgets; i++) {
+    pumpkin_taskbar_remove_widget(data->widgets[i].id);
+  }
+}
+
 #if defined(ANDROID) || defined(EMSCRIPTEN) || defined(KERNEL)
 UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #else
@@ -3094,16 +3165,14 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   data->appListMenu = MenuInit(AppListMenu);
   pumpkin_taskbar_create();
   pumpkin_taskbar_add(pumpkin_get_app_localid(), pumpkin_get_app_creator(), APPNAME);
-  data->widget1 = pumpkin_taskbar_add_widget(9998);
-  data->widget2 = pumpkin_taskbar_add_widget(9999);
+  addWidgets(data);
 
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
   FrmCloseAllForms();
 
-  pumpkin_taskbar_remove_widget(data->widget1);
-  pumpkin_taskbar_remove_widget(data->widget2);
+  removeWidgets(data);
   pumpkin_taskbar_destroy();
   MenuDispose(data->appListMenu);
 
