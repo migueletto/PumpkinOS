@@ -93,6 +93,7 @@ typedef struct {
   MenuBarType *mainMenu, *appListMenu;
   Boolean filterVisible;
   Boolean updateTime;
+  UInt32 widget1, widget2;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -2817,6 +2818,15 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       ItemsGadgetCallback(gad, formGadgetDrawCmd, NULL);
       break;
 
+    case appWidgetEvent:
+      if (event->data.widget.id == data->widget1) {
+        FrmAlert(10018);
+      } else if (event->data.widget.id == data->widget2) {
+        FrmAlert(10019);
+      }
+      handled = true;
+      break;
+
     default:
       break;
   }
@@ -3084,12 +3094,16 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   data->appListMenu = MenuInit(AppListMenu);
   pumpkin_taskbar_create();
   pumpkin_taskbar_add(pumpkin_get_app_localid(), pumpkin_get_app_creator(), APPNAME);
+  data->widget1 = pumpkin_taskbar_add_widget(9998);
+  data->widget2 = pumpkin_taskbar_add_widget(9999);
 
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
   FrmCloseAllForms();
 
+  pumpkin_taskbar_remove_widget(data->widget1);
+  pumpkin_taskbar_remove_widget(data->widget2);
   pumpkin_taskbar_destroy();
   MenuDispose(data->appListMenu);
 
