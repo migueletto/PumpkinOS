@@ -1849,6 +1849,24 @@ UInt16 FrmCustomResponseAlert(UInt16 alertId, const Char *s1, const Char *s2, co
   return r;
 }
 
+static void frmHelpControls(FormType *formP, FieldType *fldP) {
+  UInt16 index;
+
+  index = FrmGetObjectIndex(formP, 10404);
+  if (!FldScrollable(fldP, winUp)) {
+    FrmHideObject(formP, index);
+  } else {
+    FrmShowObject(formP, index);
+  }
+
+  index = FrmGetObjectIndex(formP, 10405);
+  if (!FldScrollable(fldP, winDown)) {
+    FrmHideObject(formP, index);
+  } else {
+    FrmShowObject(formP, index);
+  }
+}
+
 static void frmHelpPage(Boolean up) {
   FormType *formP;
   FieldType *fldP;
@@ -1859,6 +1877,7 @@ static void frmHelpPage(Boolean up) {
   fldP = (FieldType *)FrmGetObjectPtr(formP, index);
   n = FldGetVisibleLines(fldP);
   FldScrollField(fldP, n, up ? winUp : winDown);
+  frmHelpControls(formP, fldP);
 }
 
 static Boolean frmHelpEventHandler(EventType *eventP) {
@@ -1886,7 +1905,7 @@ static Boolean frmHelpEventHandler(EventType *eventP) {
 }
 
 void FrmHelp(UInt16 helpMsgId) {
-  FormType *formP, *previous;
+  FormType *formP;
   FieldType *fldP;
   FieldAttrType attr;
   MemHandle h;
@@ -1898,34 +1917,29 @@ void FrmHelp(UInt16 helpMsgId) {
       if ((index = FrmGetObjectIndex(formP, 10402)) != frmInvalidObjectId) {
         if (formP->objects[index].objectType == frmFieldObj) {
           fldP = formP->objects[index].object.field;
+
           FldGetAttributes(fldP, &attr);
           old = attr.editable;
           attr.editable = true;
           FldSetAttributes(fldP, &attr);
+
           FldSetTextHandle(fldP, h);
+
           attr.editable = old;
           FldSetAttributes(fldP, &attr);
-          previous = FrmGetActiveForm();
 
-          if (!FldScrollable(fldP, winUp)) {
-            index = FrmGetObjectIndex(formP, 10404);
-            FrmHideObject(formP, index);
-          }
-          if (!FldScrollable(fldP, winDown)) {
-            index = FrmGetObjectIndex(formP, 10405);
-            FrmHideObject(formP, index);
-          }
-
+          frmHelpControls(formP, fldP);
           FrmSetEventHandler(formP, frmHelpEventHandler);
           FrmDoDialog(formP);
 
           attr.editable = true;
           FldSetAttributes(fldP, &attr);
+
           FldSetTextHandle(fldP, NULL);
+
           attr.editable = old;
           FldSetAttributes(fldP, &attr);
           FrmDeleteForm(formP);
-          FrmSetActiveForm(previous);
         }
       }
     }
