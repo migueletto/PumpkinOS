@@ -60,7 +60,7 @@ typedef struct {
   FieldType *activeField;
   UInt16 penDownOffset;
   UInt16 penDownX, penDownY;
-  FieldType *auxField;
+  FieldType auxField;
 } fld_module_t;
 
 static void nop(Err err) {
@@ -73,9 +73,8 @@ int FldInitModule(void) {
     return -1;
   }
 
-  module->auxField = FldNewField(NULL, 1, 0, 0, 100, 100,
-    stdFont, 64, false, false, false, false, 0,
-    false, false, false);
+  module->auxField.id = 1;
+  module->auxField.attr.usable = true;
 
   pumpkin_set_local_storage(fld_key, module);
 
@@ -100,8 +99,7 @@ int FldFinishModule(void) {
   fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
 
   if (module) {
-    FldFreeMemory(module->auxField);
-    pumpkin_heap_free(module->auxField, "Field");
+    FldFreeMemory(&module->auxField);
     xfree(module);
   }
 
@@ -1004,13 +1002,13 @@ UInt16 FldCalcFieldHeight(const Char *chars, UInt16 maxWidth) {
   IN;
   if (chars) {
     if (chars[0]) {
-      module->auxField->rect.extent.x = maxWidth;
-      module->auxField->rect.extent.y = 32767;
-      module->auxField->maxChars = StrLen(chars) + 1;
-      module->auxField->fontID = FntGetFont();
-      FldSetTextPtr(module->auxField, (char *)chars);
-      totalLines = module->auxField->totalLines;
-      FldSetTextPtr(module->auxField, NULL);
+      module->auxField.rect.extent.x = maxWidth;
+      module->auxField.rect.extent.y = 32767;
+      module->auxField.maxChars = StrLen(chars) + 1;
+      module->auxField.fontID = FntGetFont();
+      FldSetTextPtr(&module->auxField, (char *)chars);
+      totalLines = module->auxField.totalLines;
+      FldSetTextPtr(&module->auxField, NULL);
     } else {
       totalLines = 1;
     }
