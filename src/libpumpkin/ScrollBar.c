@@ -39,8 +39,7 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
 
     if (redraw) {
       debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar must redraw");
-      if (bar->attr.usable) {
-        debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar usable");
+      if (bar->attr.visible) {
         SclDrawScrollBar(bar);
       }
     }
@@ -63,10 +62,10 @@ void SclDrawScrollBar(ScrollBarType *bar) {
     debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d bounds=(%d,%d,%d,%d)", bar->minValue, bar->value, bar->maxValue, bar->bounds.topLeft.x, bar->bounds.topLeft.y, bar->bounds.extent.x, bar->bounds.extent.y);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     oldb = WinSetBackColor(formFill);
-    WinEraseRectangle(&bar->bounds, 0);
     bar->attr.visible = false;
 
     if (bar->minValue < bar->maxValue && bar->pageSize > 0) {
+      WinEraseRectangle(&bar->bounds, 0);
       ah = bar->bounds.extent.x >= 6 ? 4 : 2;
 
       // rod
