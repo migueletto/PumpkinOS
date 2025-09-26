@@ -253,12 +253,8 @@ static int sendKeyDown(UInt16 eType, UInt16 chr, UInt16 keyCode, UInt16 modifier
 int EvtPumpEvents(Int32 timeoutUs) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   EventType event;
-  //notify_broadcast_t *nb;
-  //SysNotifyProcPtr f;
-  //char tbuf[8], bbuf[8];
   UInt8 buf[1024];
   UInt32 n;
-  //UInt32 result;
   int32_t wait;
   uint64_t t0, t, dt;
   UInt32 ticks;
@@ -344,33 +340,6 @@ int EvtPumpEvents(Int32 timeoutUs) {
           ev = 0;
         }
       }
-
-/*
-    } else if (ev == MSG_NOTIFY) {
-      // notifications
-      nb = (notify_broadcast_t *)buf;
-      if (nb && nb->notify) {
-        pumpkin_id2s(nb->notify->notifyType, tbuf);
-        pumpkin_id2s(nb->notify->broadcaster, bbuf);
-        debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents notification '%s' from '%s'", tbuf, bbuf);
-        if (nb->taskId == pumpkin_get_taskid()) {
-          if (nb->callback) {
-            debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents notification callback %p", nb->callback);
-            f = (SysNotifyProcPtr)nb->callback;
-            f(nb->notify);
-          } else if (nb->callback_m68k) {
-            debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents notification 68K callback 0x%08X", nb->callback_m68k);
-            CallNotifyProc(nb->callback_m68k, nb->notify);
-          } else {
-            debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents send sysAppLaunchCmdNotify to dbID 0x%08X", nb->dbID);
-            SysAppLaunch(nb->cardNo, nb->dbID, 0, sysAppLaunchCmdNotify, nb->notify, &result);
-          }
-        } else {
-          debug(DEBUG_ERROR, PALMOS_MODULE, "EvtPumpEvents notification to wrong task %u != %u", nb->taskId, pumpkin_get_taskid());
-        }
-      }
-      ev = 0;
-*/
     }
 
     if (ev) break;
