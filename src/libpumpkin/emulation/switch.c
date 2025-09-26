@@ -159,6 +159,7 @@ case sysTrapMemChunkFree: {
   // Err MemChunkFree(MemPtr chunkDataP)
   uint32_t chunkDataP = ARG32;
   char *l_chunkDataP = emupalmos_trap_in(chunkDataP, trap, 0);
+  debug(DEBUG_TRACE, "EmuPalmOS", "MemChunkFree(chunkDataP=0x%08X) ...", chunkDataP);
   Err res = MemChunkFree(chunkDataP ? l_chunkDataP : 0);
   m68k_set_reg(M68K_REG_D0, res);
   debug(DEBUG_TRACE, "EmuPalmOS", "MemChunkFree(chunkDataP=0x%08X): %d", chunkDataP, res);
@@ -2389,7 +2390,13 @@ case sysTrapStrCopy: {
   char *s_dst = emupalmos_trap_in(dst, trap, 0);
   uint32_t src = ARG32;
   char *s_src = emupalmos_trap_in(src, trap, 1);
-  Char *res = s_dst && s_src ? StrCopy(s_dst, s_src) : NULL;
+  Char *res = NULL;
+  if (s_dst && s_src) {
+    if (emupalmos_check_address(dst, sys_strlen(s_src)+1, 0)) {
+      debug(DEBUG_TRACE, "EmuPalmOS", "StrCopy %d bytes", (int)sys_strlen(s_src)+1);
+      res = StrCopy(s_dst, s_src);
+    }
+  }
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
   debug(DEBUG_TRACE, "EmuPalmOS", "StrCopy(dst=0x%08X [%s], src=0x%08X [%s]): 0x%08X", dst, s_dst, src, s_src, r_res);
@@ -2414,7 +2421,13 @@ case sysTrapStrCat: {
   char *s_dst = emupalmos_trap_in(dst, trap, 0);
   uint32_t src = ARG32;
   char *s_src = emupalmos_trap_in(src, trap, 1);
-  Char *res = s_dst && s_src ? StrCat(s_dst, s_src) : NULL;
+  Char *res = NULL;
+  if (s_dst && s_src) {
+    if (emupalmos_check_address(dst + sys_strlen(s_dst), sys_strlen(s_src)+1, 0)) {
+      debug(DEBUG_TRACE, "EmuPalmOS", "StrCat %d bytes into %d bytes with %d total", (int)sys_strlen(s_src)+1, (int)sys_strlen(s_dst), (int)sys_strlen(s_dst) + (int)sys_strlen(s_src)+1);
+      res = StrCat(s_dst, s_src);
+    }
+  }
   uint32_t r_res = emupalmos_trap_out(res);
   m68k_set_reg(M68K_REG_A0, r_res);
   debug(DEBUG_TRACE, "EmuPalmOS", "StrCat(dst=0x%08X [%s], src=0x%08X [%s]): 0x%08X", dst, s_dst, src, s_src, r_res);
