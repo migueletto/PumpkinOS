@@ -10,7 +10,6 @@ static void nop(Err err);
 #include "vfs.h"
 #include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 /*
   UIFieldBackground:
@@ -69,7 +68,7 @@ static void nop(Err err) {
 int FldInitModule(void) {
   fld_module_t *module;
 
-  if ((module = xcalloc(1, sizeof(fld_module_t))) == NULL) {
+  if ((module = sys_calloc(1, sizeof(fld_module_t))) == NULL) {
     return -1;
   }
 
@@ -100,7 +99,7 @@ int FldFinishModule(void) {
 
   if (module) {
     FldFreeMemory(&module->auxField);
-    xfree(module);
+    sys_free(module);
   }
 
   return 0;
@@ -258,8 +257,8 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           }
           back = (fldP->selFirstPos <= i && i < fldP->selLastPos) ? fieldBackHigh : fieldBack;
           oldBack = WinSetBackColor(back);
+          debug(DEBUG_TRACE, PALMOS_MODULE, "draw '%c' col=%d row=%d x=%d y=%d", c, col, row, x, y);
           if (fldP->attr.editable && fldP->attr.underlined) {
-            debug(DEBUG_TRACE, PALMOS_MODULE, "draw '%c' col=%d row=%d x=%d y=%d", c, col, row, x, y);
             RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
             WinSetClip(&clip);
             WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
@@ -298,28 +297,30 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
     }
 
     if (draw) {
-      RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
-      if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
-      WinEraseRectangle(&aux, 0);
-      if (fldP->attr.editable && fldP->attr.underlined) {
-        debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d x=%d y=%d", row, x, y);
-        WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
-                    fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
-      }
-      y += th;
-      debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
-      row++;
-      for (; row < bottom; row++) {
-        RctSetRectangle(&aux, fldP->rect.topLeft.x, fldP->rect.topLeft.y + y, fldP->rect.extent.x, th);
+      if (row >= fldP->top && row < bottom) {
+        RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
         if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
         WinEraseRectangle(&aux, 0);
         if (fldP->attr.editable && fldP->attr.underlined) {
-          debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d y=%d", row, y);
-          WinDrawLine(fldP->rect.topLeft.x, fldP->rect.topLeft.y + y + th - 1,
+          debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d x=%d y=%d", row, x, y);
+          WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
                       fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
         }
         y += th;
         debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
+        row++;
+        for (; row < bottom; row++) {
+          RctSetRectangle(&aux, fldP->rect.topLeft.x, fldP->rect.topLeft.y + y, fldP->rect.extent.x, th);
+          if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
+          WinEraseRectangle(&aux, 0);
+          if (fldP->attr.editable && fldP->attr.underlined) {
+            debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d y=%d", row, y);
+            WinDrawLine(fldP->rect.topLeft.x, fldP->rect.topLeft.y + y + th - 1,
+                        fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
+          }
+          y += th;
+          debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
+        }
       }
 
       WinSetBackColor(oldb);
@@ -1073,7 +1074,7 @@ void FldSetMaxChars(FieldType *fldP, UInt16 maxChars) {
     fldP->maxChars = maxChars;
     if (fldP->textBuf) {
       aux = pumpkin_heap_alloc(fldP->maxChars, "FieldTextBuf");
-      xmemcpy(aux, fldP->textBuf, old);
+      sys_memcpy(aux, fldP->textBuf, old);
       pumpkin_heap_free(fldP->textBuf, "FieldTextBuf");
       fldP->textBuf = aux;
       fldP->text = fldP->textBuf;
@@ -1369,7 +1370,7 @@ FieldType *FldNewField(void **formPP, UInt16 id,
       formP = *formPP;
       if (formP) {
         fldP->objIndex = formP->numObjects++;
-        formP->objects = xrealloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
+        formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
         if (formP->objects) {
           formP->objects[fldP->objIndex].objectType = frmFieldObj;
           formP->objects[fldP->objIndex].id = id;
