@@ -34,6 +34,7 @@
 #include "calibrate.h"
 #include "color.h"
 #include "rgb.h"
+#include "notif_serde.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -130,6 +131,7 @@ typedef struct {
   texture_t *texture;
   LocalID dbID;
   UInt32 creator;
+  uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   DmOpenRef bootRef;
   language_t *lang;
   ErrJumpBuf jmpbuf;
@@ -179,6 +181,15 @@ typedef struct {
 } notif_ptr_t;
 
 typedef struct {
+  uint32_t msg;
+  uint32_t taskId;
+  SysNotifyParamType notify;
+  SysNotifyProcPtr callback;
+  uint32_t callback68k;
+} notif_msg_t;
+
+typedef struct {
+  Int32 taskId;
   UInt32 appCreator;
   UInt32 notifyType;
   UInt32 priority;
@@ -470,20 +481,26 @@ void pumpkin_load_plugins(void) {
   }
 }
 
+/*
 static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
   AppRegistryNotification *n = (AppRegistryNotification *)p;
   char stype[8], screator[8];
 
   pumpkin_id2s(n->appCreator, screator);
   pumpkin_id2s(n->notifyType, stype);
-  debug(DEBUG_INFO, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: added", stype, screator, n->priority);
 
-  pumpkin_module.notif[pumpkin_module.num_notif].appCreator = n->appCreator;
-  pumpkin_module.notif[pumpkin_module.num_notif].notifyType = n->notifyType;
-  pumpkin_module.notif[pumpkin_module.num_notif].priority = n->priority;
-  pumpkin_module.notif[pumpkin_module.num_notif].ptr = 0;
-  pumpkin_module.num_notif++;
+  if (pumpkin_module.num_notif < MAX_NOTIF_REGISTER) {
+    pumpkin_module.notif[pumpkin_module.num_notif].appCreator = n->appCreator;
+    pumpkin_module.notif[pumpkin_module.num_notif].notifyType = n->notifyType;
+    pumpkin_module.notif[pumpkin_module.num_notif].priority = n->priority;
+    pumpkin_module.notif[pumpkin_module.num_notif].ptr = 0;
+    pumpkin_module.num_notif++;
+    debug(DEBUG_INFO, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: added", stype, screator, n->priority);
+  } else {
+    debug(DEBUG_ERROR, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: ignored (%d)", stype, screator, n->priority, pumpkin_module.num_notif);
+  }
 }
+*/
 
 FontType *pumpkin_get_font(FontID fontId) {
   FontType *font = NULL;
@@ -602,7 +619,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.registry = AppRegistryInit(REGISTRY_DB);
 
   pumpkin_module.num_notif = 0;
-  AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
+  //AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
 
   emupalmos_init();
   if (ap && ap->mixer_init) ap->mixer_init();
@@ -651,7 +668,6 @@ void pumpkin_init_misc(void) {
     prefs.value[pLockModifiers] = WINDOW_MOD_SHIFT;
     prefs.value[pBorderWidth] = BORDER_SIZE;
     prefs.value[pBackgroundImage] = 0;
-    prefs.value[pTaskbar] = 0;
     prefs.color[pMonoBackground] = monoBackground;
     prefs.color[pMonoSelectedBorder] = monoSelectedBorder;
     prefs.color[pMonoUnselectedBorder] = monoUnselectedBorder;
@@ -663,7 +679,6 @@ void pumpkin_init_misc(void) {
     pumpkin_set_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &prefs, sizeof(PumpkinPreferencesType), true);
   }
 
-  pumpkin_module.taskbar_enabled = prefs.value[pTaskbar] != 0;
   pumpkin_module.lockKey = prefs.value[pLockKey];
   pumpkin_module.lockModifiers = prefs.value[pLockModifiers];
 
@@ -1027,7 +1042,6 @@ void pumpkin_refresh_desktop(void) {
       surface_destroy(pumpkin_module.background);
       pumpkin_module.background = NULL;
     }
-    pumpkin_module.taskbar_enabled = prefs.value[pTaskbar] != 0;
     pumpkin_module.refresh = 1;
     pumpkin_module.render = 1;
     mutex_unlock(mutex);
@@ -1170,12 +1184,17 @@ Boolean pumpkin_taskbar_remove_widget(Int32 id) {
 }
 
 void pumpkin_taskbar_add(LocalID dbID, UInt32 creator, char *name) {
-  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int i;
 
   if (dbID && creator && name) {
     if (mutex_lock(mutex) == 0) {
       if (pumpkin_module.taskbar) {
-        taskbar_add(pumpkin_module.taskbar, task->taskId, dbID, creator, name);
+        for (i = 0; i < pumpkin_module.num_tasks; i++) {
+          if (pumpkin_module.tasks[i].creator == creator) {
+            taskbar_add(pumpkin_module.taskbar, pumpkin_module.tasks[i].taskId, dbID, creator, name);
+            break;
+          }
+        }
       }
       mutex_unlock(mutex);
     }
@@ -1371,6 +1390,7 @@ static void sendLaunchNotification(UInt32 notifyType, UInt32 dbID) {
 }
 
 static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   uint32_t r = 0;
   LocalID dbID = 0;
@@ -1430,6 +1450,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
     }
 
     if (pilot_main) {
+      task->pilot_main = pilot_main;
       pumpkin_set_m68k(0);
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling pilot_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
@@ -1441,6 +1462,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
     } else {
+      task->pilot_main = emupalmos_main;
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
 //pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
@@ -1643,6 +1665,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   surface_rectangle(screen->surface, 0, 0, width-1, height-1, 1, color);
 
   pumpkin_module.tasks[i].taskId = taskId;
+  pumpkin_module.tasks[i].creator = creator;
   pumpkin_module.tasks[i].task_index = i;
   pumpkin_module.tasks[i].active = 1;
   pumpkin_module.tasks[i].reserved = 0;
@@ -1663,6 +1686,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.num_tasks++;
 
   task->taskId = pumpkin_module.tasks[i].taskId;
+  task->creator = pumpkin_module.tasks[i].creator;
   task->texture = pumpkin_module.tasks[i].texture;
   task->task_index = i;
   task->active = 1;
@@ -1759,7 +1783,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     }
   }
 
-  pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
+  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
 
   return 0;
 }
@@ -1873,7 +1897,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   mutex_unlock(mutex);
 
-  pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppFinished, 0);
+  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppFinished, 0);
 
   return 0;
 }
@@ -1944,6 +1968,16 @@ int pumpkin_launcher(char *name, int width, int height) {
   return 0;
 }
 
+void pumpkin_app_crashed(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
+
+  if (task && task->dbID) {
+    sendLaunchNotification(sysNotifyAppCrashedEvent, task->dbID);
+  }
+}
+
 static int pumpkin_launch_action(void *arg) {
   pumpkin_task_t *task;
   launch_data_t *data;
@@ -1964,7 +1998,7 @@ static int pumpkin_launch_action(void *arg) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
-      pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
+      pumpkin_app_crashed();
     } else {
       pumpkin_launch_sub(&data->request, data->request.opendb);
       cont = SysUIAppSwitchCont(&launch);
@@ -2195,7 +2229,7 @@ static int pumpkin_pause_task(char *name, int *call_sub) {
   int i, handle = -1;
   uint32_t msg;
 
-  if (name && task && !sys_strcmp(name, task->name)) {
+  if ((name && task && !sys_strcmp(name, task->name))) {
     // not pausing itself...
     debug(DEBUG_INFO, PUMPKINOS, "no need to pause myself");
     *call_sub = 1;
@@ -2639,6 +2673,42 @@ void pumpkin_forward_event(int i, EventType *event) {
   }
 }
 
+static void pumpkin_forward_notif(Int32 taskId, SysNotifyParamType *notify, SysNotifyProcPtr callback, UInt32 callback68k) {
+  notif_msg_t msg;
+  char snotify[8];
+  uint8_t *buf;
+  UInt32 size;
+  UInt16 i;
+
+  if (mutex_lock(mutex) == 0) {
+    for (i = 0; i < pumpkin_module.num_tasks; i++) {
+      if (pumpkin_module.tasks[i].taskId == taskId) break;
+    }
+    if (i < pumpkin_module.num_tasks) {
+      MemSet(&msg, sizeof(notif_msg_t), 0);
+      msg.msg = MSG_NOTIFY;
+      msg.taskId = taskId;
+      msg.callback = callback;
+      msg.callback68k = callback68k;
+      sys_memcpy(&msg.notify, notify, sizeof(SysNotifyParamType));
+      size = sizeof(notif_msg_t);
+      if ((buf = serialize_notif(notify->notifyType, msg.notify.notifyDetailsP, &size)) != NULL) {
+        msg.notify.notifyDetailsP = NULL;
+        sys_memcpy(buf, &msg, sizeof(notif_msg_t));
+        pumpkin_id2s(notify->notifyType, snotify);
+        debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
+        debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
+        debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+        thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
+        sys_free(buf);
+      }
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "send notification to invalid taskId %d", taskId);
+    }
+    mutex_unlock(mutex);
+  }
+}
+
 void grail_draw_stroke(int x1, int y1, int x2, int y2, int alpha) {
   dia_draw_stroke(pumpkin_module.dia, x1, y1, x2, y2, alpha);
 }
@@ -2908,7 +2978,9 @@ int pumpkin_sys_event(void) {
       if (pumpkin_module.render) {
         if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
           taskbar_draw(pumpkin_module.taskbar);
-        }
+        } else {
+debug(1, "XXX", "taskbar not drawn");
+}
         if (pumpkin_module.wp->render) {
           pumpkin_module.wp->render(pumpkin_module.w);
         }
@@ -3333,11 +3405,14 @@ static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *
 static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n, uint32_t usec) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   client_request_t *creq;
+  notif_msg_t *notif;
+  notif_union_t param;
   EventType event;
   UInt16 prev;
   unsigned char *buf;
   unsigned int len;
   uint32_t *arg, reply;
+  char snotify[8];
   int r, client, ev = 0;
 
   pumpkin_alarm_check();
@@ -3401,6 +3476,32 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           event.eType = appWidgetEvent;
           event.data.widget.id = arg[1];
           EvtAddEventToQueue(&event);
+          ev = 0;
+          break;
+        case MSG_NOTIFY:
+          if (len >= sizeof(notif_msg_t)) {
+            notif = (notif_msg_t *)buf;
+            pumpkin_id2s(notif->notify.notifyType, snotify);
+            debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
+            debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t));
+            deserialize_notif(notif->notify.notifyType, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t), &param);
+            debug(DEBUG_INFO, PUMPKINOS, "received notification '%s' (%u bytes)", snotify, len);
+            notif->notify.notifyDetailsP = &param;
+            if (notif->callback) {
+              debug(DEBUG_INFO, PUMPKINOS, "delivering notification via callback");
+              notif->callback(&notif->notify);
+            } else if (notif->callback68k) {
+              debug(DEBUG_INFO, PUMPKINOS, "delivering notification via 68k callback");
+              CallNotifyProc(notif->callback68k, &notif->notify, len - sizeof(notif_msg_t));
+            } else if (task->pilot_main) {
+              debug(DEBUG_INFO, PUMPKINOS, "delivering notification via PilotMain");
+              task->pilot_main(sysAppLaunchCmdNotify, &notif->notify, 0);
+            } else {
+              debug(DEBUG_ERROR, PUMPKINOS, "task has no callback or PilotMain for delivering notifications");
+            }
+          } else {
+            debug(DEBUG_ERROR, PUMPKINOS, "wrong notification message length %u", len);
+          }
           ev = 0;
           break;
         default:
@@ -5180,7 +5281,7 @@ static void notif_ptr_destructor(void *p) {
 }
 
 Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyProcPtr callbackP, Int8 priority, void *userDataP) {
-  AppRegistryNotification n;
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   UInt32 type, creator;
   notif_ptr_t *np;
   char screator[8], stype[8];
@@ -5210,22 +5311,26 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
               if (pumpkin_is_m68k()) {
                 np->callback68k = callbackP ? (uint8_t *)callbackP - (uint8_t *)pumpkin_heap_base() : 0;
                 np->userData68k = userDataP ? (uint8_t *)userDataP - (uint8_t *)pumpkin_heap_base() : 0;
+                debug(DEBUG_INFO, PUMPKINOS, "notification callback callback68k 0x%08X userData68k 0x%08X", np->callback68k, np->userData68k);
               } else {
                 np->callback = callbackP;
                 np->userData = userDataP;
+                debug(DEBUG_INFO, PUMPKINOS, "notification callback %p usedData %p", np->callback, np->userData);
               }
               ptr = ptr_new(np, notif_ptr_destructor);
             } else {
-              n.appCreator = creator;
-              n.notifyType = notifyType;
-              n.priority = priority;
-              AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+              debug(DEBUG_INFO, PUMPKINOS, "notification has no callback and no usedData");
+              //n.appCreator = creator;
+              //n.notifyType = notifyType;
+              //n.priority = priority;
+              //AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
               ptr = 0;
             }
+            pumpkin_module.notif[i].taskId = task ? task->taskId : -1;
             pumpkin_module.notif[i].appCreator = creator;
             pumpkin_module.notif[i].notifyType = notifyType;
             pumpkin_module.notif[i].priority = priority;
-            pumpkin_module.notif[i].ptr = ptr;
+            pumpkin_module.notif[i].ptr = ptr; // (callback + userdata)
             pumpkin_module.num_notif++;
             err = errNone;
           }
@@ -5246,7 +5351,7 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
 }
 
 Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 priority) {
-  AppRegistryNotification n;
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   UInt32 creator;
   char screator[8], stype[8];
   int i;
@@ -5258,15 +5363,15 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
       pumpkin_id2s(notifyType, stype);
 
       for (i = 0; i < pumpkin_module.num_notif; i++) {
-        if (pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType) {
+        if (pumpkin_module.notif[i].taskId == task->taskId && pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType) {
           debug(DEBUG_INFO, PUMPKINOS, "unregister notification type '%s' creator '%s' priority %d: removed", stype, screator, pumpkin_module.notif[i].priority);
           if (pumpkin_module.notif[i].ptr) {
             ptr_free(pumpkin_module.notif[i].ptr, TAG_NOTIF);
           } else {
-            n.appCreator = creator;
-            n.notifyType = notifyType;
-            n.priority = 0xFFFF; // invalid priority: remove (appCreator,notifyType)
-            AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+            //n.appCreator = creator;
+            //n.notifyType = notifyType;
+            //n.priority = 0xFFFF; // invalid priority: remove (appCreator,notifyType)
+            //AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
           }
           for (i++; i < pumpkin_module.num_notif; i++) {
             MemMove(&pumpkin_module.notif[i-1], &pumpkin_module.notif[i], sizeof(notif_registration_t));
@@ -5317,7 +5422,7 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
   notif_ptr_t *np;
   LocalID dbID;
   char name[dmDBNameLength], stype[8];
-  int i, j, n, handle, call;
+  int i, j, n;
 
   if (notify == NULL) {
     return sysErrParamErr;
@@ -5367,27 +5472,17 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
       if (selected[j].ptr) {
         if ((np = ptr_lock(selected[j].ptr, TAG_NOTIF)) != NULL) {
           notify->userDataP = np->userData68k ? (uint8_t *)pumpkin_heap_base() + np->userData68k : np->userData;
-
-          if (np->callback) {
-            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using callback %p", stype, selected[j].priority, name, np->callback);
-            handle = pumpkin_pause_task(name, &call);
-            if (call) np->callback(notify);
-            pumpkin_resume_task(handle);
-          } else if (np->callback68k) {
-            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using 68k callback 0x%08X", stype, selected[j].priority, name, np->callback68k);
-            handle = pumpkin_pause_task(name, &call);
-            if (call) CallNotifyProc(np->callback68k, notify);
-            pumpkin_resume_task(handle);
-          } else {
-            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
-            pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
-          }
+          debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" taskId %d userData %p",
+            stype, selected[j].priority, name, selected[j].taskId, notify->userDataP);
+          pumpkin_forward_notif(selected[j].taskId, notify, np->callback, np->callback68k);
           ptr_unlock(selected[j].ptr, TAG_NOTIF);
         }
       } else {
+        debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" taskId %d NO userData",
+          stype, selected[j].priority, name, selected[j].taskId);
         notify->userDataP = NULL;
-        debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" using launch code", stype, selected[j].priority, name);
-        pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
+        //pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
+        pumpkin_forward_notif(selected[j].taskId, notify, NULL, 0);
       }
     }
     xfree(selected);

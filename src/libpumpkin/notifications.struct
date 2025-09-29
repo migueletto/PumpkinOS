@@ -1,0 +1,131 @@
+name sysNotifyAppLaunchingEvent
+struct SysNotifyAppLaunchOrQuitType
+field UInt32 version
+field UInt32 dbID
+field UInt16 cardNo
+end
+
+name sysNotifyAppQuittingEvent
+struct SysNotifyAppLaunchOrQuitType
+field UInt32 version
+field UInt32 dbID
+field UInt16 cardNo
+end
+
+name sysNotifyAppCrashedEvent
+struct SysNotifyAppLaunchOrQuitType
+field UInt32 version
+field UInt32 dbID
+field UInt16 cardNo
+end
+
+name sysNotifyDisplayChangeEvent
+struct SysNotifyDisplayChangeDetailsType
+field UInt32 oldDepth
+field UInt32 newDepth
+end
+
+name sysNotifyDBCreatedEvent
+struct SysNotifyDBCreatedType
+field Char dbName dmDBNameLength
+field UInt32 creator
+field UInt32 type
+field LocalID newDBID
+field UInt16 cardNo
+field Boolean resDB
+field UInt8 padding
+end
+
+name sysNotifyDBDeletedEvent
+struct SysNotifyDBDeletedType
+field LocalID oldDBID
+field UInt16 cardNo
+field UInt16 attributes
+field Char dbName dmDBNameLength
+field UInt32 creator
+field UInt32 type
+end
+
+name sysNotifyDBChangedEvent
+struct SysNotifyDBChangedType
+Char dbName dmDBNameLength
+field LocalID dbID
+field UInt32 creator
+field UInt32 type
+field UInt32 crDate
+field UInt32 modDate
+field UInt32 bckUpDate
+field UInt32 modNum
+field LocalID appInfoID
+field LocalID sortInfoID
+field UInt16 attributes
+field UInt16 cardNo
+field UInt16 version
+field UInt16 fields
+field Char oldName dmDBNameLength
+field UInt32 oldCreator
+field UInt32 oldType
+field UInt16 oldAttributes
+field UInt16 padding
+end
+
+name sysNotifyTimeChangeEvent
+scalar Int32
+end
+
+name sysNotifyGPSDataEvent
+scalar UInt16
+end
+
+name sysNotifyVolumeMountedEvent
+struct VFSAnyMountParamType
+field UInt16 volRefNum
+field UInt16 reserved
+field UInt32 mountClass
+end
+
+name sysNotifyCardInsertedEvent
+pointer UInt16
+end
+
+name sysNotifyCardRemovedEvent
+pointer UInt16
+end
+
+name sysNotifyVolumeUnmountedEvent
+pointer UInt16
+end
+
+name sysNotifyLocaleChangedEvent
+struct SysNotifyLocaleChangedType
+field UInt16 oldLocale.language
+field UInt16 oldLocale.country
+field UInt16 newLocale.language
+field UInt16 newLocale.country
+end
+
+name sysNotifySelectDay
+struct SysNotifySelectDayDetailsType
+field Coord daySelectorP->bounds.topLeft.x
+field Coord daySelectorP->bounds.topLeft.y
+field Coord daySelectorP->bounds.extent.x
+field Coord daySelectorP->bounds.extent.x
+field Boolean daySelectorP->visible
+field UInt8 daySelectorP->reserved1
+field Int16 daySelectorP->visibleMonth
+field Int16 daySelectorP->visibleYear
+field Int16 daySelectorP->selected.second
+field Int16 daySelectorP->selected.minute
+field Int16 daySelectorP->selected.hour
+field Int16 daySelectorP->selected.day
+field Int16 daySelectorP->selected.month
+field Int16 daySelectorP->selected.year
+field Int16 daySelectorP->selected.weekDay
+field UInt8 daySelectorP->selectDayBy
+field UInt8 daySelectorP->reserved2
+field CString titleP
+field Boolean dayChanged
+field UInt8 padding[0]
+field UInt8 padding[1]
+field UInt8 padding[2]
+end

@@ -1,0 +1,237 @@
+cncNotifyProfileEvent
+UInt32 (cast as void *)
+
+sysNotifyCardInsertedEvent
+slot number (UInt16 ?) (cast as void *)
+
+sysNotifyCardRemovedEvent
+slot number (UInt16 ?) (cast as void *)
+
+sysNotifyVolumeUnmountedEvent
+volume refNum (UInt16 ?) (cast as void *)
+
+sysNotifyTimeChangeEvent
+Int32
+
+sysNotifySleepRequestEvent
+typedef struct {
+  UInt16 reason;
+  UInt16 deferSleep;
+} SleepEventParamType;
+
+sysNotifyDisplayChangeEvent
+typedef struct {
+  UInt32 oldDepth;
+  UInt32 newDepth;
+} SysNotifyDisplayChangeDetailsType;
+
+sysNotifyVolumeMountedEvent
+typedef struct {
+  UInt16 volRefNum;
+  UInt16 reserved;
+  UInt32 mountClass;
+} VFSAnyMountParamType;
+
+sysNotifyLocaleChangedEvent
+typedef struct {
+  UInt16 language;
+  UInt16 country;
+} LmLocaleType;
+typedef struct {
+  LmLocaleType oldLocale;
+  LmLocaleType newLocale;
+} SysNotifyLocaleChangedType;
+
+sysNotifyDBCreatedEvent
+typedef struct {
+  Char dbName[dmDBNameLength];
+  UInt32 creator;
+  UInt32 type;
+  LocalID newDBID;
+  UInt16 cardNo;
+  Boolean resDB;
+  UInt8 padding;
+} SysNotifyDBCreatedType;
+
+sysNotifyDBDeletedEvent
+typedef struct {
+  LocalID oldDBID;
+  UInt16 cardNo;
+  UInt16 attributes;
+  Char dbName[dmDBNameLength];
+  UInt32 creator;
+  UInt32 type;
+} SysNotifyDBDeletedType;
+
+sysNotifyDBChangedEvent
+typedef struct {
+  Char dbName[dmDBNameLength];
+  LocalID dbID;
+  UInt32 creator;
+  UInt32 type;
+  UInt32 crDate;
+  UInt32 modDate;
+  UInt32 bckUpDate;
+  UInt32 modNum;
+  LocalID appInfoID;
+  LocalID sortInfoID;
+  UInt16 attributes;
+  UInt16 cardNo;
+  UInt16 version;
+  UInt16 fields;
+  Char oldName[dmDBNameLength];
+  UInt32 oldCreator;
+  UInt32 oldType;
+  UInt16 oldAttributes;
+  UInt16 padding;
+} SysNotifyDBChangedType;
+
+sysNotifyNetLibIFMediaEvent
+typedef struct {
+  NetLibIFMediaEventNotificationTypeEnum eType;
+  UInt32 ifCreator;
+  UInt16 ifInstance;
+} SysNotifyNetLibIFMediaType;
+
+sysNotifyDeleteProtectedEvent
+typedef struct {
+  LocalID dbID;
+  UInt16 cardNo;
+  UInt16 attributes;
+  Char dbName[dmDBNameLength];
+  UInt32 creator;
+  UInt32 type;
+} SysNotifyDBInfoType;
+
+sysNotifyDBDirtyEvent
+typedef struct {
+  Char dbName[dmDBNameLength];
+  UInt32 creator;
+  UInt32 type;
+} SysNotifyDBDirtyType;
+
+sysNotifyAppLaunchingEvent
+typedef struct {
+  UInt32 version;
+  UInt32 dbID;
+  UInt16 cardNo;
+} SysNotifyAppLaunchOrQuitType;
+
+sysNotifyAppQuittingEvent
+typedef struct {
+  UInt32 version;
+  UInt32 dbID;
+  UInt16 cardNo;
+} SysNotifyAppLaunchOrQuitType;
+
+sysNotifyAppCrashedEvent
+typedef struct {
+  UInt32 version;
+  UInt32 dbID;
+  UInt16 cardNo;
+} SysNotifyAppLaunchOrQuitType;
+
+sysNotifyDisplayResizedEvent
+typedef struct {
+  RectangleType newBounds;
+} SysNotifyDisplayResizedDetailsType;
+
+sysNotifyInputAreaDrawingEvent
+typedef struct {
+  RectangleType updateBounds;
+  const BitmapType *bitmapP;
+  Boolean selected;
+  Boolean fullRedraw;
+  UInt16 padding;
+} SysNotifyInputAreaDrawingDetailsType;
+
+sysNotifyInputAreaPendownEvent
+typedef struct {
+  PointType where;
+} SysNotifyInputAreaPendownDetailType;
+
+sysNotifySelectDay
+typedef struct {
+  RectangleType bounds;
+  Boolean visible;
+  UInt8 reserved1;
+  Int16 visibleMonth;
+  Int16 visibleYear;
+  DateTimeType selected;
+  SelectDayType selectDayBy;
+  UInt8 reserved2;
+} DaySelectorType;
+typedef struct {
+  DaySelectorType *daySelectorP;
+  const Char *titleP;
+  Boolean dayChanged;
+  UInt8 padding[3];
+} SysNotifySelectDayDetailsType;
+
+sysNotifyVirtualCharHandlingEvent
+struct _KeyDownEventType {
+  WChar chr;
+  UInt16 keyCode;
+  UInt16 modifiers;
+};
+typedef struct {
+  UInt32 version;
+  struct _KeyDownEventType keyDown;
+} SysNotifyVirtualCharHandlingType;
+
+sysNotifyProcessPenStrokeEvent
+typedef struct {
+  UInt32 version;
+  PointType startPt;
+  PointType endPt;
+} SysNotifyPenStrokeType;
+
+sysNotifyHelperEvent
+#define kHelperAppMaxNameSize       48
+#define kHelperAppMaxActionNameSize 32
+typedef struct {
+  struct HelperNotifyEnumerateListTypeTag *nextP;
+  Char helperAppName[kHelperAppMaxNameSize];
+  Char actionName[kHelperAppMaxActionNameSize];
+  UInt32 helperAppID;
+  UInt32 serviceClassID;
+} HelperNotifyEnumerateListType;
+typedef struct {
+  UInt32 serviceClassID;
+  UInt32 helperAppID;
+} HelperNotifyValidateType;
+typedef struct {
+  UInt32 serviceClassID;
+  UInt32 helperAppID;
+  Char *dataP;
+  Char *displayedName;
+  void *detailsP;
+  Err err;
+} HelperNotifyExecuteType;
+typedef struct {
+  UInt16 version;
+  HelperNotifyActionCodeType actionCode;
+  union {
+    HelperNotifyEnumerateListType *enumerateP;
+    HelperNotifyValidateType *validateP;
+    HelperNotifyExecuteType *executeP;
+  } data;
+} HelperNotifyEventType;
+
+sysNotifyGotUsersAttention
+typedef struct {
+  AttnFlagsType flags;
+} AttnNotifyDetailsType;
+
+sysNotifyGPSDataEvent
+UInt16
+
+sysNotifyHSISerialPortInUseEvent          'hsiu'  // Sent when serial port is in use
+sysNotifyHSIPeripheralRespondedEvent      'hspr'  // Sent with peripheral response
+sysNotifyHSIPeripheralNotRespondingEvent  'hspn'  // Sent when peripheral does not respond
+sysNotifyHSINoConnectionEvent             'ncon'  // Sent on VID of no connection
+sysNotifyHSIUSBCradleEvent                sysPortUSBDesktop       // Sent on VID of USB Cradle
+sysNotifyHSIRS232CradleEvent              'rs2c'  // Sent on VID of RS232 Cradle
+sysNotifyHSIUSBPeripheralEvent            sysPortUSBPeripheral    // Sent on VID of USB Peripheral
+sysNotifyHSIRS232PeripheralEvent          'rs2p'  // Sent on VID of RS232 Peripheral
+sysNotifyHSIDebugEvent                    'dbug'  // Sent on VID of Debug

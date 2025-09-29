@@ -25,6 +25,9 @@
 #include "emupalmos.h"
 #include "trapnames.h"
 
+#include "notif_serde.h"
+#include "emu_notif_serde.h"
+
 #define TRAPS_SIZE 0x40000
 
 static const uint8_t SysFormPointerArrayToStrings_code[] = {
@@ -1101,9 +1104,11 @@ void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_detail
     } else {
       sys_strcpy(buf2, "<none>");
     }
-    debug(DEBUG_TRACE, "PALMOS", "SysNotifyParamType '%s' from '%s' details 0x%08X handled %d", buf1, buf2, notifyDetailsP, notify->handled);
+    debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyParamType '%s' from '%s' details 0x%08X handled %d", buf1, buf2, notifyDetailsP, notify->handled);
 
     if (notifyDetailsP) {
+      decode_notif(notify->notifyType, notifyDetailsP, (notif_union_t *)notify->notifyDetailsP);
+/*
       switch (notify->notifyType) {
         case sysNotifyDisplayChangeEvent: {
           SysNotifyDisplayChangeDetailsType *displayChange = (SysNotifyDisplayChangeDetailsType *)notify->notifyDetailsP;
@@ -1119,6 +1124,7 @@ void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_detail
         default:
         break;
       }
+*/
 
       if (free_details) {
         void *d = ram + notifyDetailsP;
@@ -1128,13 +1134,21 @@ void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_detail
   }
 }
 
-void encode_notify(uint32_t notifyP, SysNotifyParamType *notify, int alloc_details) {
+void encode_notify(uint32_t notifyP, SysNotifyParamType *notify, uint32_t detailsSize, int alloc_details) {
   if (notifyP && notify) {
     uint8_t *ram = pumpkin_heap_base();
     uint32_t notifyDetailsP = 0;
     uint8_t *notifyDetails;
 
     if (notify->notifyDetailsP) {
+      if (alloc_details) {
+        notifyDetails = pumpkin_heap_alloc(detailsSize, "notifyDetails");
+        notifyDetailsP = notifyDetails - ram;
+      } else {
+        notifyDetailsP = m68k_read_memory_32(notifyP + 8);
+      }
+      encode_notif(notify->notifyType, notifyDetailsP, (notif_union_t *)notify->notifyDetailsP);
+/*
       switch (notify->notifyType) {
         case sysNotifyDisplayChangeEvent: {
           SysNotifyDisplayChangeDetailsType *displayChange = (SysNotifyDisplayChangeDetailsType *)notify->notifyDetailsP;
@@ -1158,6 +1172,7 @@ void encode_notify(uint32_t notifyP, SysNotifyParamType *notify, int alloc_detai
         default:
         break;
       }
+*/
     }
 
     m68k_write_memory_32(notifyP +  0, notify->notifyType);
@@ -1535,7 +1550,7 @@ UInt8 reserved2;
 } SysNotifyParamType;
 */
 
-Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
+Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) {
   uint32_t a, argsSize, notifyOffset;
   uint8_t *p;
   Err err = dmErrInvalidParam;
@@ -1543,11 +1558,11 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify) {
   argsSize = sizeof(uint32_t);
   notifyOffset = argsSize;
 
-  if ((p = pumpkin_heap_alloc(argsSize + 4*sizeof(uint32_t) + sizeof(uint16_t), "CallNotify")) != NULL) {
+  if ((p = pumpkin_heap_alloc(argsSize + detailsSize, "CallNotify")) != NULL) {
     uint8_t *ram = pumpkin_heap_base();
     a = p - ram;
     m68k_write_memory_32(a, a + notifyOffset);
-    encode_notify(a + notifyOffset, notify, 1);
+    encode_notify(a + notifyOffset, notify, detailsSize, 1);
     err = call68K_func(0, addr, a, argsSize);
     decode_notify(a + notifyOffset, notify, 1);
     pumpkin_heap_free(p, "CallNotify");
@@ -1937,7 +1952,7 @@ static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
     case sysAppLaunchCmdNotify:
       p = MemPtrNew(sizeof(SysNotifyParamType));
       a = p - ram;
-      encode_notify(a, param, 1);
+      encode_notify(a, param, 0, 1);
       break;
   }
 
@@ -2303,7 +2318,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       if (state->panic) {
         SysFatalAlert(state->panic);
         xfree(state->panic);
-        pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
+        pumpkin_app_crashed();
       }
 
       if (paramBlock) {

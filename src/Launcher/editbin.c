@@ -8,7 +8,6 @@
 #include "resource.h"
 #include "resedit.h"
 #include "bytes.h"
-#include "xalloc.h"
 #include "debug.h"
 
 typedef struct {
@@ -272,7 +271,7 @@ Boolean editBinary(FormType *frm, char *title, MemHandle h) {
   data.frm = frm;
   data.handle = h;
   data.size = MemHandleSize(h);
-  data.p = xcalloc(1, data.size);
+  data.p = sys_calloc(1, data.size);
 
   if ((p = (UInt8 *)MemHandleLock(h)) != NULL) {
     MemMove(data.p, p, data.size);

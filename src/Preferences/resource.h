@@ -34,7 +34,6 @@
 #define lockedBorderCtl    1306
 #define backgroundCtl      1307
 #define imageCtl           1308
-#define taskbarCtl         1309
 
 #define okBtn              1401
 #define imageTrigger       1402

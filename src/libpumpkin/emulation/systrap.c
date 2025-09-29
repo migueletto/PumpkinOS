@@ -367,7 +367,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SysNotifyParamType notify;
       decode_notify(notifyP, &notify, 0);
       Err res = SysNotifyBroadcast(notifyP ? &notify : NULL);
-      encode_notify(notifyP, &notify, 0);
+      encode_notify(notifyP, &notify, 0, 0);
       debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyBroadcast(0x%08X): %d", notifyP, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
@@ -2882,7 +2882,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SysNotifyParamType notify;
       decode_notify(notifyP, &notify, 0);
       err = SysNotifyBroadcastDeferred(notifyP ? &notify : NULL, paramSize);
-      encode_notify(notifyP, &notify, 0);
+      encode_notify(notifyP, &notify, 0, 0);
       debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyBroadcastDeferred(0x%08X, %d): %d", notifyP, paramSize, err);
       m68k_set_reg(M68K_REG_D0, err);
     }

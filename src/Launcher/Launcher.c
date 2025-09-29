@@ -21,7 +21,6 @@
 #include "pumpkin.h"
 #include "emulation/emupalmosinc.h"
 #include "tos.h"
-#include "xalloc.h"
 #include "debug.h"
 
 #include "resource.h"
@@ -32,6 +31,8 @@
 #define MAX_ITEMS   1024
 #define MAX_NAME    256
 #define MAX_WIDGETS 8
+
+#define MAX_NOTIFICATIONS 8
 
 #define PARENT_DIR  ".."
 
@@ -74,6 +75,13 @@ typedef struct {
 } launcher_item_t;
 
 typedef struct {
+  UInt32 notifyType;
+  UInt32 creator;
+  LocalID dbID;
+  char name[dmDBNameLength];
+} launcher_notify_t;
+
+typedef struct {
   Int32 id;
   UInt32 formId;
   UInt16 panel, bitmapId;
@@ -108,6 +116,9 @@ typedef struct {
   Boolean updateTime;
   launcher_widget_t widgets[MAX_WIDGETS];
   UInt16 numWidgets, currentWidget;
+  launcher_notify_t notifications[MAX_NOTIFICATIONS];
+  UInt16 numNotifications;
+  Boolean useTaskbar, appCrashed, appQuit;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -441,7 +452,7 @@ static void launcherResetItems(launcher_data_t *data) {
   for (i = 0; i < data->numItems; i++) {
     if (data->item[i].iconWh) WinDeleteWindow(data->item[i].iconWh, false);
     if (data->item[i].invIconWh) WinDeleteWindow(data->item[i].invIconWh, false);
-    if (data->item[i].info) xfree(data->item[i].info);
+    if (data->item[i].info) sys_free(data->item[i].info);
   }
 
   MemSet(data->item, sizeof(data->item), 0);
@@ -694,7 +705,7 @@ static void launcherScanResources(launcher_data_t *data) {
           } else {
             StrNPrintF(buf, sizeof(buf)-1, "Form");
           }
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case alertRscType:
           alert = (AlertTemplateType *)p;
@@ -706,22 +717,22 @@ static void launcherScanResources(launcher_data_t *data) {
             default:                s = "Unknown";      break;
           }
           StrNPrintF(buf, sizeof(buf)-1, "%s alert", s);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case MenuRscType:
           menu = (MenuBarType *)p;
           StrNPrintF(buf, sizeof(buf)-1, "Menu with %d pulldown(s)", menu->numMenus);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case fontRscType:
           font = (FontType *)p;
           StrNPrintF(buf, sizeof(buf)-1, "Font V%d", font->v);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case fontExtRscType:
           font = (FontType *)p;
           StrNPrintF(buf, sizeof(buf)-1, "Font V%d", font->v);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case iconType:
         case bitmapRsc:
@@ -733,45 +744,45 @@ static void launcherScanResources(launcher_data_t *data) {
           s = (type == iconType) ? "Icon" : "Bitmap";
           chain = BmpGetNextBitmapAnyDensity(bmp) != NULL;
           StrNPrintF(buf, sizeof(buf)-1, "%s V%d, %dx%d, %d bpp%s", s, version, width, height, depth, chain ? " (chain)" : "");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case scriptEngineLua:
-          data->item[index].info = xstrdup("Lua script");
+          data->item[index].info = sys_strdup("Lua script");
           break;
         case scriptEngineJS:
-          data->item[index].info = xstrdup("JS script");
+          data->item[index].info = sys_strdup("JS script");
           break;
         case strRsc:
           s = (char *)p;
           StrNPrintF(buf, sizeof(buf)-1, "\"%s\"", s);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case constantRscType:
           value = (UInt32 *)p;
           StrNPrintF(buf, sizeof(buf)-1, "Constant %d (0x%08X)", *value, *value);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case wrdListRscType:
           StrNPrintF(buf, sizeof(buf)-1, "Word list");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case strListRscType:
           StrNPrintF(buf, sizeof(buf)-1, "String list");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case ainRsc:
           s = (char *)p;
           StrNPrintF(buf, sizeof(buf)-1, "App name \"%s\"", s);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case verRsc:
           s = (char *)p;
           StrNPrintF(buf, sizeof(buf)-1, "Version \"%s\"", s);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case defaultCategoryRscType:
           StrNPrintF(buf, sizeof(buf)-1, "Default category");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysRsrcTypeDlib:
           // id = SYS_OS * 64 + SYS_CPU * 8 + SYS_SIZE;
@@ -779,17 +790,17 @@ static void launcherScanResources(launcher_data_t *data) {
           sys_cpu = (id & 0x38) >> 3;
           sys_os  = (id & 0x1C0) >> 6;
           StrNPrintF(buf, sizeof(buf)-1, "Code (%d bits %s CPU for %s)", (sys_size == 1) ? 32 : 64, (sys_cpu == 1) ? "ARM" : "x86", (sys_os == 1) ? "Linux" : "Windows");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysFileTLibrary:
           StrNPrintF(buf, sizeof(buf)-1, "Library (68K)");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysRsrcTypeWinD:
           get2b(&width, p, 0);
           get2b(&height, p, 2);
           StrNPrintF(buf, sizeof(buf)-1, "Absolute window dimensions %dx%d", width, height);
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysResTAppCode:
           if (id == 0) {
@@ -797,23 +808,23 @@ static void launcherScanResources(launcher_data_t *data) {
           } else {
             StrNPrintF(buf, sizeof(buf)-1, "Code (68K)");
           }
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysResTAppGData:
           StrNPrintF(buf, sizeof(buf)-1, "Global data (68K)");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case sysResTAppPrefs:
           StrNPrintF(buf, sizeof(buf)-1, "App prefs (68K)");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case 'rloc':
           StrNPrintF(buf, sizeof(buf)-1, "Relocation (68K)");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
         case 'locs':
           StrNPrintF(buf, sizeof(buf)-1, "Localization");
-          data->item[index].info = xstrdup(buf);
+          data->item[index].info = sys_strdup(buf);
           break;
       }
 
@@ -2221,7 +2232,9 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
         TimeToAscii(dt.hour, dt.minute, tf, data->title);
         FrmSetTitle(frm, data->title);
         DrawBattery(true);
-        pumpkin_taskbar_update();
+        if (data->useTaskbar) {
+          pumpkin_taskbar_update();
+        }
       }
       updateFilter(data, frm, false);
       break;
@@ -2796,10 +2809,6 @@ static Boolean MainFormHandleEvent(EventPtr event) {
     case keyDownEvent:
       if (event->data.keyDown.modifiers & commandKeyMask) {
         switch (event->data.keyDown.chr) {
-          case vchrAppCrashed:
-            FrmCustomAlert(ErrorAlert, "An app has crashed and was terminated.", "", "");
-            // fall through
-          case vchrAppFinished:
           case vchrRefreshState:
             if (data->mode == launcher_task) {
               MenuEvent(taskCmd, data);
@@ -2901,15 +2910,28 @@ static Boolean ApplicationHandleEvent(EventPtr event) {
 static void CheckNotifications(void) {
   launcher_data_t *data = pumpkin_get_data();
   Boolean deploy = false, reload = false, updateTime = false;
+  Boolean appCrashed = false, appQuit = false;
 
   if (mutex_lock(data->mutex) == 0) {
     deploy = data->deploy;
     reload = data->reload;
     updateTime = data->updateTime;
+    appCrashed = data->appCrashed;
+    appQuit = data->appQuit;
     data->deploy = false;
     data->reload = false;
     data->updateTime = false;
+    data->appCrashed = false;
+    data->appQuit = false;
     mutex_unlock(data->mutex);
+  }
+
+  if (data->mode == launcher_task && (appCrashed || appQuit)) {
+    MenuEvent(taskCmd, data);
+  }
+
+  if (appCrashed) {
+    FrmCustomAlert(ErrorAlert, "An app has crashed and was terminated.", "", "");
   }
 
   if (deploy) {
@@ -2981,9 +3003,6 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
     reload = false;
 
     switch (notifyParamsP->notifyType) {
-      case sysNotifyDisplayChangeEvent:
-        debug(DEBUG_INFO, "Launcher", "sysNotifyDisplayChangeEvent ok");
-        break;
       case sysNotifySyncFinishEvent:
         if (!data->deploy) {
           debug(DEBUG_INFO, "Launcher", "sysNotifySyncFinishEvent deploy scheduled");
@@ -3016,7 +3035,9 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
           DmDatabaseInfo(0, launch->dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
           pumpkin_id2s(creator, screator);
           debug(DEBUG_INFO, "Launcher", "sysNotifyAppLaunchingEvent '%s' \"%s\"", screator, name);
-          pumpkin_taskbar_add(launch->dbID, creator, name);
+          if (data->useTaskbar) {
+            pumpkin_taskbar_add(launch->dbID, creator, name);
+	  }
         }
         break;
       case sysNotifyAppQuittingEvent:
@@ -3025,7 +3046,19 @@ static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
           DmDatabaseInfo(0, launch->dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
           pumpkin_id2s(creator, screator);
           debug(DEBUG_INFO, "Launcher", "sysNotifyAppQuittingEvent '%s' \"%s\"", screator, name);
-          pumpkin_taskbar_remove(launch->dbID);
+          if (data->useTaskbar) {
+            pumpkin_taskbar_remove(launch->dbID);
+	  }
+          data->appQuit = true;
+        }
+        break;
+      case sysNotifyAppCrashedEvent:
+        launch = (SysNotifyAppLaunchOrQuitType *)notifyParamsP->notifyDetailsP;
+        if (launch) {
+          DmDatabaseInfo(0, launch->dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
+          pumpkin_id2s(creator, screator);
+          debug(DEBUG_INFO, "Launcher", "sysNotifyAppCrashedEvent '%s' \"%s\"", screator, name);
+          data->appCrashed = true;
         }
         break;
       case sysNotifyTimeChangeEvent:
@@ -3215,7 +3248,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       break;
   }
 
-  data = xcalloc(1, sizeof(launcher_data_t));
+  data = sys_calloc(1, sizeof(launcher_data_t));
   pumpkin_set_data(data);
   data->mutex = mutex_create("launcher");
   data->lastMinute = -1;
@@ -3226,40 +3259,48 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 
   StrCopy(data->path, "/");
 
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,     LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,     LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDisplayChangeEvent, NULL, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,    LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent, LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppCrashedEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  //SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   NULL, sysNotifyNormalPriority, data);
 
   data->appListMenu = MenuInit(AppListMenu);
-  pumpkin_taskbar_create();
-  pumpkin_taskbar_add(pumpkin_get_app_localid(), pumpkin_get_app_creator(), APPNAME);
-  addWidgets(data);
+  data->useTaskbar = !(launchFlags & sysAppLaunchFlagFork);
+
+  if (data->useTaskbar) {
+    pumpkin_taskbar_create();
+    pumpkin_taskbar_add(pumpkin_get_app_localid(), pumpkin_get_app_creator(), APPNAME);
+    addWidgets(data);
+  }
 
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
   FrmCloseAllForms();
 
-  removeWidgets(data);
-  pumpkin_taskbar_destroy();
+  if (data->useTaskbar) {
+    removeWidgets(data);
+    pumpkin_taskbar_destroy();
+  }
+
   MenuDispose(data->appListMenu);
 
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,    sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,     sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,     sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent,  sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,   sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,    sysNotifyNormalPriority);
-  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDisplayChangeEvent, sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,   sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBCreatedEvent,    sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyDBDeletedEvent,    sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent, sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,  sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyAppCrashedEvent,   sysNotifyNormalPriority);
+  SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   sysNotifyNormalPriority);
 
   launcherResetItems(data);
   pumpkin_set_data(NULL);
   mutex_destroy(data->mutex);
-  xfree(data);
+  sys_free(data);
   if (!(launchFlags & sysAppLaunchFlagFork)) pumpkin_set_finish(1);
 
   return 0;

@@ -11,7 +11,6 @@
 #include "resource.h"
 #include "resedit.h"
 #include "bytes.h"
-#include "xalloc.h"
 #include "debug.h"
 
 #define MAX_TITLE 256
@@ -922,7 +921,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
       data.numBmps++;
     }
 
-    data.bmps = xcalloc(data.numBmps, sizeof(BitmapType *));
+    data.bmps = sys_calloc(data.numBmps, sizeof(BitmapType *));
     for (aux = bmp, index = 0; aux; aux = BmpGetNextBitmapAnyDensity(aux), index++) {
       data.bmps[index] = aux;
     }
@@ -941,7 +940,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     FrmSetEventHandler(frm, eventHandler);
     FrmDoDialog(frm);
 
-    xfree(data.bmps);
+    sys_free(data.bmps);
     MemHandleUnlock(h);
     r = data.dirty;
   }

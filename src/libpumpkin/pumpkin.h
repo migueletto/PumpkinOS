@@ -55,6 +55,7 @@ extern "C" {
 #define MSG_KEYDOWN 10
 #define MSG_KEYUP   11
 #define MSG_WIDGET  12
+#define MSG_NOTIFY  13
 #define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
@@ -94,10 +95,6 @@ extern "C" {
 #define vchrPumpkinMin     0x3000
 #define vchrPumpkinMax     0x30FF
 #define vchrRefreshState   vchrPumpkinMin
-#define vchrAppStarted     vchrPumpkinMin+1
-#define vchrAppFinished    vchrPumpkinMin+2
-#define vchrAppCrashed     vchrPumpkinMin+3
-#define vchrReloadState    vchrPumpkinMin+4
 
 #define sysAppLaunchFlagFork 0x8000
 
@@ -116,7 +113,6 @@ extern "C" {
 #define pLockModifiers         1
 #define pBorderWidth           2
 #define pBackgroundImage       3
-#define pTaskbar               4
 
 #define pMonoBackground        0
 #define pMonoSelectedBorder    1
@@ -173,6 +169,15 @@ typedef struct {
 
 typedef struct pumpkin_httpd_t pumpkin_httpd_t;
 
+typedef struct {
+  UInt32 taskId;
+  UInt16 cardNo;
+  LocalID dbID;
+  SysNotifyProcPtr callback;
+  UInt32 callback_m68k;
+  SysNotifyParamType *notify;
+} notify_broadcast_t;
+
 typedef enum {
   sto_key,
   dm_key,
@@ -206,6 +211,7 @@ typedef UInt32 PilotMainF(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
 Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, MemPtr cmdPBP, UInt32 *resultP, PilotMainF pilotMain);
 uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb);
 uint32_t pumpkin_fork(void);
+void pumpkin_app_crashed(void);
 
 void *pumpkin_heap_base(void);
 uint32_t pumpkin_heap_size(void);
@@ -567,7 +573,7 @@ void CallTableDrawItem(UInt32 addr, TableType *tableP, Int16 row, Int16 column, 
 Boolean CallTableSaveData(UInt32 addr, TableType *tableP, Int16 row, Int16 column);
 Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, Boolean editable, MemHandle *dataH, Int16 *dataOffset, Int16 *dataSize, FieldPtr fld);
 Int16 CallDmCompare(UInt32 addr, UInt32 rec1, UInt32 rec2, Int16 other, UInt32 rec1SortInfo, UInt32 rec2SortInfo, UInt32 appInfoH);
-Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notifyParamsP);
+Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notifyParamsP, UInt32 detailsSize);
 Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other);
 Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples);
 Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes);

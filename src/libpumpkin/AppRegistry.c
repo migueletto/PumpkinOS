@@ -100,7 +100,7 @@ static int AppRegistrySave(AppRegistryType *ar, int i) {
   sys_snprintf(path, sizeof(path)-1, "%s%4s.%08X.%d.%d", ar->regname, screator, ar->registry[i].creator, ar->registry[i].id, ar->registry[i].seq);
 
   if ((fd = sys_create(path, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-    debug(DEBUG_TRACE, "AppReg", "saving registry creator '%s' id %d seq %d", screator, ar->registry[i].id, ar->registry[i].seq);
+    debug(DEBUG_TRACE, "AppReg", "saving registry creator '%s' id %d seq %d size %d", screator, ar->registry[i].id, ar->registry[i].seq, ar->registry[i].size);
     if (ar->registry[i].data && ar->registry[i].size) sys_write(fd, (uint8_t *)ar->registry[i].data, ar->registry[i].size);
     sys_close(fd);
     r = 0;
@@ -322,6 +322,7 @@ static UInt16 AppRegistryCompatCallback(AppRegistryEntry *e, void *d, UInt16 siz
 static UInt16 AppRegistryNotificationCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
   AppRegistryNotification *n1 = (AppRegistryNotification *)e->data;
   AppRegistryNotification *n2 = (AppRegistryNotification *)d;
+  Boolean found;
   char screator[8], stype[8];
   int i, n;
 
@@ -330,8 +331,10 @@ static UInt16 AppRegistryNotificationCallback(AppRegistryEntry *e, void *d, UInt
   pumpkin_id2s(n2->notifyType, stype);
 
   if (set) {
+    found = false;
     for (i = 0; i < n; i++) {
       if (n1[i].appCreator == n2->appCreator && n1[i].notifyType == n2->notifyType) {
+        found = true;
         if (n2->priority > 0xFF) {
           // delete
           debug(DEBUG_INFO, "AppReg", "deleting notification %d: '%s' '%s' %d", i, screator, stype, n1[i].priority);
@@ -361,7 +364,7 @@ static UInt16 AppRegistryNotificationCallback(AppRegistryEntry *e, void *d, UInt
         break;
       }
     }
-    if (i == n) {
+    if (!found && i == n) {
       // add
       debug(DEBUG_INFO, "AppReg", "inserting notification %d: '%s' '%s' %d", n, screator, stype, n2->priority);
       n++;

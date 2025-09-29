@@ -299,6 +299,8 @@ typedef Err (*SysNotifyProcPtr)(SysNotifyParamType *notifyParamsP);
 #define sysNotifyAppQuittingEvent           'hapq'      // Sent right after an app has quit (normalLaunch only)
                                                         // Note: future OS releases might not send this notification.
 
+#define sysNotifyAppCrashedEvent            'hapc'		  // Sent if an app has crashed (PumpkinOS only)
+
 #define sysNotifyInsPtEnableEvent           'hipe'      // Sent at the start of InsPtEnable(). notifyDetailsP points to a Boolean: the enableIt param.
                                                         // Note: future OS releases might not send this notification.
 

@@ -4,7 +4,6 @@
 #include "resource.h"
 #include "resedit.h"
 #include "pumpkin.h"
-#include "xalloc.h"
 #include "debug.h"
 
 #define MAX_TITLE 64
@@ -267,7 +266,7 @@ static void fillObjectNames(form_edit_t *data) {
   UInt16 index;
   char buf[256];
 
-  data->itemText = xcalloc(data->formP->numObjects, sizeof(char *));
+  data->itemText = sys_calloc(data->formP->numObjects, sizeof(char *));
 
   for (index = 0; index < data->formP->numObjects; index++) {
     obj = data->formP->objects[index].object;
@@ -316,7 +315,7 @@ static void fillObjectNames(form_edit_t *data) {
         StrNPrintF(buf, sizeof(buf)-1, "Scroll %d", obj.scrollBar->id);
         break;
     }
-    data->itemText[index] = xstrdup(buf);
+    data->itemText[index] = sys_strdup(buf);
   }
 }
 
@@ -325,9 +324,9 @@ static void freeObjectNames(form_edit_t *data) {
 
   if (data->itemText) {
     for (index = 0; index < data->formP->numObjects; index++) {
-      if (data->itemText[index]) xfree(data->itemText[index]);
+      if (data->itemText[index]) sys_free(data->itemText[index]);
     }
-    xfree(data->itemText);
+    sys_free(data->itemText);
   }
 }
 
@@ -970,7 +969,7 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       data.formP->window.clippingBounds.bottom = height-1;
       data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
       data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
-      data.bounds = xcalloc(data.formP->numObjects, sizeof(RectangleType));
+      data.bounds = sys_calloc(data.formP->numObjects, sizeof(RectangleType));
       fillObjectNames(&data);
 
       index = FrmGetObjectIndex(frm, formGad);
@@ -987,7 +986,7 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       }
       pumpkin_destroy_form(data.formP);
       freeObjectNames(&data);
-      xfree(data.bounds);
+      sys_free(data.bounds);
 
       if (data.changed) {
         r = true;
