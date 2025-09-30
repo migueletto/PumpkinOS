@@ -56,6 +56,7 @@ extern "C" {
 #define MSG_KEYUP   11
 #define MSG_WIDGET  12
 #define MSG_NOTIFY  13
+#define MSG_LAUNCHC 14
 #define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
@@ -209,7 +210,6 @@ typedef enum {
 
 typedef UInt32 PilotMainF(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
 Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, MemPtr cmdPBP, UInt32 *resultP, PilotMainF pilotMain);
-uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb);
 uint32_t pumpkin_fork(void);
 void pumpkin_app_crashed(void);
 
@@ -271,7 +271,7 @@ int pumpkin_kill(uint32_t tid);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
-uint32_t pumpkin_get_details_size(void);
+uint32_t pumpkin_get_param_size(void);
 void *pumpkin_get_exception(void);
 void pumpkin_error_dialog(char *msg);
 void pumpkin_fatal_error(int finish);

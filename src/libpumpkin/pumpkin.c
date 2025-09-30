@@ -132,7 +132,7 @@ typedef struct {
   LocalID dbID;
   UInt32 creator;
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
-  uint32_t detailsSize;
+  uint32_t paramBlockSize;
   DmOpenRef bootRef;
   language_t *lang;
   ErrJumpBuf jmpbuf;
@@ -194,6 +194,12 @@ typedef struct {
   UInt32 priority;
   int ptr;
 } notif_registration_t;
+
+typedef struct {
+  uint32_t msg;
+  UInt16 cmd;
+  UInt16 flags;
+} launch_msg_t;
 
 typedef struct {
   int ev, arg1, arg2, arg3;
@@ -300,6 +306,7 @@ static pumpkin_module_t pumpkin_module;
 static thread_key_t *task_key;
 
 static void pumpkin_make_current(int i);
+static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb);
 
 void *pumpkin_heap_base(void) {
   return heap_base(heap_get());
@@ -1443,12 +1450,14 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
 
     pumpkin_set_osversion(pumpkin_module.osversion);
 
-    if (dbID) {
+    if (request->code == sysAppLaunchCmdNormalLaunch && dbID) {
       sendLaunchNotification(sysNotifyAppLaunchingEvent, dbID);
     }
 
     if (pilot_main) {
-      task->pilot_main = pilot_main;
+      if (request->code == sysAppLaunchCmdNormalLaunch) {
+        task->pilot_main = pilot_main;
+      }
       pumpkin_set_m68k(0);
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling pilot_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
@@ -1460,7 +1469,9 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
 
     } else {
-      task->pilot_main = emupalmos_main;
+      if (request->code == sysAppLaunchCmdNormalLaunch) {
+        task->pilot_main = emupalmos_main;
+      }
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
 //pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
@@ -1476,7 +1487,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       pumpkin_set_m68k(m68k);
     }
 
-    if (dbID) {
+    if (request->code == sysAppLaunchCmdNormalLaunch && dbID) {
       sendLaunchNotification(sysNotifyAppQuittingEvent, dbID);
     }
 
@@ -1813,6 +1824,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   SysFatalAlertFinish();
 
+  pumpkin_module.tasks[task->task_index].creator = 0;
   pumpkin_module.tasks[task->task_index].task_index = 0;
   pumpkin_module.tasks[task->task_index].active = 0;
   pumpkin_module.tasks[task->task_index].removed = 1;
@@ -1874,6 +1886,12 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   for (i = 0; i < pumpkin_module.num_tasks; i++) {
     if (task->serial[i]) pumpkin_heap_free(task->serial[i], "serial_descr");
+  }
+
+  for (i = 0; i < pumpkin_module.num_notif; i++) {
+    if (pumpkin_module.notif[i].appCreator == creator) {
+      pumpkin_module.notif[i].taskId = -1;
+    }
   }
 
   if (pumpkin_module.mode != 1) {
@@ -2004,8 +2022,12 @@ static int pumpkin_launch_action(void *arg) {
     pumpkin_local_finish(data->creator);
   }
 
-  if (data->request.code == sysAppLaunchCmdGoTo && data->request.param) {
-    pumpkin_heap_free(data->request.param, "GoToParams");
+  if (data->request.param) {
+    switch (data->request.code) {
+      case sysAppLaunchCmdGoTo:
+        pumpkin_heap_free(data->request.param, "LaunchParams");
+        break;
+    }
   }
 
   thread_set_name(TAG_APP);
@@ -2014,7 +2036,7 @@ static int pumpkin_launch_action(void *arg) {
 
   if (cont) {
     debug(DEBUG_INFO, PUMPKINOS, "switching to \"%s\"", launch.name);
-    pumpkin_launch_request(launch.name, launch.code, launch.param, launch.flags, NULL, 1);
+    pumpkin_launch_request(0, launch.name, launch.code, launch.param, launch.flags, NULL, 1);
   }
 
   return 0;
@@ -2285,13 +2307,93 @@ static int pumpkin_resume_task(int handle) {
   return r;
 }
 
-uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb) {
+static uint8_t *serialize_sysAppLaunchCmdSystemReset(void *p, UInt32 *size) {
+  SysAppLaunchCmdSystemResetType *param = p;
+  uint8_t *buf = sys_calloc(1, *size + 2);
+  UInt32 i = *size;
+  i += put1(param->hardReset, buf, i);
+  i += put1(param->createDefaultDB, buf, i);
+  *size = i;
+  return buf;
+}
+
+static int deserialize_sysAppLaunchCmdSystemReset(uint8_t *buf, UInt32 size, SysAppLaunchCmdSystemResetType *param) {
+  int r = -1;
+  if (size == 2) {
+    UInt32 i = 0;
+    i += get1((uint8_t *)&param->hardReset, buf, i);
+    i += get1((uint8_t *)&param->createDefaultDB, buf, i);
+    r = 0;
+  }
+  return r;
+}
+
+static uint8_t *serialize_launch(UInt16 cmd, void *param, UInt32 *size) {
+  switch (cmd) {
+    case sysAppLaunchCmdSystemReset:
+      return serialize_sysAppLaunchCmdSystemReset(param, size);
+  }
+
+  return NULL;
+}
+
+typedef union {
+  SysAppLaunchCmdSystemResetType p0;
+} launch_union_t;
+
+int deserialize_launch(UInt32 paramType, void *buf, UInt32 size, launch_union_t *param) {
+  switch (paramType) {
+    case sysAppLaunchCmdSystemReset:
+      return deserialize_sysAppLaunchCmdSystemReset(buf, size, &param->p0);
+    default:
+      break;
+  }
+  return -1;
+}
+
+static void pumpkin_forward_launch_code(UInt32 creator, char *name, UInt16 cmd, UInt8 *param, UInt16 flags) {
+  launch_request_t request;
+  launch_msg_t msg;
+  UInt32 size, i;
+  uint8_t *buf;
+
+  for (i = 0; i < pumpkin_module.num_tasks; i++) {
+    if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].creator == creator) break;
+  }
+
+  if (i == pumpkin_module.num_tasks) {
+    debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using call", cmd, name);
+    MemSet(&request, sizeof(launch_request_t), 0);
+    StrNCopy(request.name, name, dmDBNameLength-1);
+    request.code = cmd;
+    request.flags = flags;
+    request.param = param;
+    pumpkin_launch_sub(&request, 1);
+    return;
+  }
+
+  msg.msg = MSG_LAUNCHC;
+  msg.cmd = cmd;
+  msg.flags = flags;
+  size = sizeof(launch_msg_t);
+  if ((buf = serialize_launch(cmd, param, &size)) != NULL) {
+    sys_memcpy(buf, &msg, sizeof(launch_msg_t));
+    debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using message (%u bytes)", cmd, name, size);
+    debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
+    debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), size - sizeof(launch_msg_t));
+    thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
+    sys_free(buf);
+  }
+}
+
+static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, UInt8 *param, UInt16 flags, PilotMainF pilotMain, UInt16 opendb) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   client_request_t creq;
   GoToParamsType *gotoParam;
   ErrJumpBuf jmpbuf;
   BitmapType *bmp;
   WinHandle wh, draw;
+  UInt32 creator;
   void *old;
   void *win_module;
   void *fnt_module;
@@ -2315,7 +2417,7 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     case sysAppLaunchCmdNormalLaunch:
       break;
     case sysAppLaunchCmdGoTo:
-      if ((gotoParam = pumpkin_heap_alloc(sizeof(GoToParamsType), "GoToParams")) != NULL) {
+      if ((gotoParam = pumpkin_heap_alloc(sizeof(GoToParamsType), "LaunchParams")) != NULL) {
         xmemcpy(gotoParam, param, sizeof(GoToParamsType));
       }
       creq.data.launch.param = gotoParam;
@@ -2323,8 +2425,17 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
     case sysAppLaunchCmdPanelCalledFromApp:
       debug(DEBUG_ERROR, PUMPKINOS, "sysAppLaunchCmdPanelCalledFromApp not supported");
       return r;
+    case sysAppLaunchCmdSystemReset:
+      debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using call or message", cmd, name);
+      if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator) == errNone) {
+        if (mutex_lock(mutex) == 0) {
+          pumpkin_forward_launch_code(creator, name, cmd, param, flags);
+          mutex_unlock(mutex);
+        }
+      }
+      return r;
     default:
-      debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\"", cmd, name);
+      debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using pause/resume", cmd, name);
       handle = pumpkin_pause_task(name, &call_sub);
       if (call_sub) {
         debug(DEBUG_INFO, PUMPKINOS, "calling \"%s\" as subroutine", name);
@@ -2383,9 +2494,9 @@ uint32_t pumpkin_launch_request(char *name, UInt16 cmd, UInt8 *param, UInt16 fla
 }
 
 uint32_t pumpkin_fork(void) {
-  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  UInt32 result;
 
-  return pumpkin_launch_request(task->name, sysAppLaunchCmdNormalLaunch, NULL, sysAppLaunchFlagFork, NULL, 1);
+  return SysAppLaunch(0, pumpkin_get_app_localid(), sysAppLaunchFlagFork, sysAppLaunchCmdNormalLaunch, NULL, &result);
 }
 
 /*
@@ -2463,6 +2574,7 @@ uint32_t pumpkin_fork(void) {
   }
 */
 
+// Launch a specified application as a subroutine of the caller.
 Err SysAppLaunch(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, MemPtr cmdPBP, UInt32 *resultP) {
   return SysAppLaunchEx(cardNo, dbID, launchFlags, cmd, cmdPBP, resultP, NULL);
 }
@@ -2471,14 +2583,13 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   launch_request_t request;
   char name[dmDBNameLength];
-  UInt32 type;
   int r = -1;
 
   debug(DEBUG_INFO, PUMPKINOS, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
 
-  if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, NULL) == errNone) {
-    if (dbID != task->dbID) {
-      *resultP = pumpkin_launch_request(name, cmd, cmdPBP, launchFlags, pilotMain, 1);
+  if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+    if (dbID != task->dbID || (launchFlags & sysAppLaunchFlagFork)) {
+      *resultP = pumpkin_launch_request(dbID, name, cmd, cmdPBP, launchFlags, pilotMain, 1);
       r = 0;
     } else {
       debug(DEBUG_INFO, PUMPKINOS, "calling self with launchCode %d", cmd);
@@ -2673,51 +2784,53 @@ void pumpkin_forward_event(int i, EventType *event) {
 
 static void pumpkin_forward_notif(Int32 taskId, UInt32 creator, SysNotifyParamType *notify, SysNotifyProcPtr callback, UInt32 callback68k) {
   notif_msg_t msg;
+  DmSearchStateType stateInfo;
+  LocalID dbID;
   char snotify[8], screator[8];
   uint8_t *buf;
-  UInt32 size;
-  UInt16 i;
+  UInt32 size, result, i;
 
-  if (mutex_lock(mutex) == 0) {
-    if (taskId == -1) {
-      for (i = 0; i < pumpkin_module.num_tasks; i++) {
-        if (pumpkin_module.tasks[i].creator == creator) break;
+  if (taskId == -1) {
+    for (i = 0; i < pumpkin_module.num_tasks; i++) {
+      if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].creator == creator) break;
+    }
+    if (i < pumpkin_module.num_tasks) {
+      taskId = pumpkin_module.tasks[i].taskId;
+    } else {
+      pumpkin_id2s(notify->notifyType, snotify);
+      pumpkin_id2s(creator, screator);
+      debug(DEBUG_INFO, PUMPKINOS, "application '%s' not available for receiving notification '%s'", screator, snotify);
+      if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, creator, false, NULL, &dbID) == errNone) {
+        SysAppLaunch(0, dbID, sysAppLaunchFlagSubCall, sysAppLaunchCmdNotify, notify, &result);
       }
-      if (i < pumpkin_module.num_tasks) {
-        taskId = pumpkin_module.tasks[i].taskId;
-      } else {
+    }
+    return;
+  }
+
+  if (taskId != -1) {
+    for (i = 0; i < pumpkin_module.num_tasks; i++) {
+      if (pumpkin_module.tasks[i].taskId == taskId) break;
+    }
+    if (i < pumpkin_module.num_tasks) {
+      MemSet(&msg, sizeof(notif_msg_t), 0);
+      msg.msg = MSG_NOTIFY;
+      msg.callback = callback;
+      msg.callback68k = callback68k;
+      sys_memcpy(&msg.notify, notify, sizeof(SysNotifyParamType));
+      size = sizeof(notif_msg_t);
+      if ((buf = serialize_notif(notify->notifyType, msg.notify.notifyDetailsP, &size)) != NULL) {
+        msg.notify.notifyDetailsP = NULL;
+        sys_memcpy(buf, &msg, sizeof(notif_msg_t));
         pumpkin_id2s(notify->notifyType, snotify);
-        pumpkin_id2s(creator, screator);
-        debug(DEBUG_INFO, PUMPKINOS, "application '%s' not available for receiving notification '%s' (%u bytes)", screator, snotify, size);
+        debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
+        debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
+        debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+        thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
+        sys_free(buf);
       }
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "send notification to invalid taskId %d", taskId);
     }
-
-    if (taskId != -1) {
-      for (i = 0; i < pumpkin_module.num_tasks; i++) {
-        if (pumpkin_module.tasks[i].taskId == taskId) break;
-      }
-      if (i < pumpkin_module.num_tasks) {
-        MemSet(&msg, sizeof(notif_msg_t), 0);
-        msg.msg = MSG_NOTIFY;
-        msg.callback = callback;
-        msg.callback68k = callback68k;
-        sys_memcpy(&msg.notify, notify, sizeof(SysNotifyParamType));
-        size = sizeof(notif_msg_t);
-        if ((buf = serialize_notif(notify->notifyType, msg.notify.notifyDetailsP, &size)) != NULL) {
-          msg.notify.notifyDetailsP = NULL;
-          sys_memcpy(buf, &msg, sizeof(notif_msg_t));
-          pumpkin_id2s(notify->notifyType, snotify);
-          debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
-          debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
-          debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
-          thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
-          sys_free(buf);
-        }
-      } else {
-        debug(DEBUG_ERROR, PUMPKINOS, "send notification to invalid taskId %d", taskId);
-      }
-    }
-    mutex_unlock(mutex);
   }
 }
 
@@ -2942,6 +3055,7 @@ int pumpkin_sys_event(void) {
         for (j = 0; j < MAX_TASKS; j++) {
           if (pumpkin_module.tasks[j].removed) {
             wman_remove(pumpkin_module.wm, pumpkin_module.tasks[j].taskId, 1);
+            pumpkin_module.tasks[j].taskId = -1;
             pumpkin_module.tasks[j].removed = 0;
             pumpkin_module.render = 1;
           }
@@ -3417,7 +3531,9 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   client_request_t *creq;
   notif_msg_t *notif;
-  notif_union_t param;
+  notif_union_t nparam;
+  launch_msg_t *launch;
+  launch_union_t lparam;
   EventType event;
   UInt16 prev;
   unsigned char *buf;
@@ -3495,9 +3611,9 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
             pumpkin_id2s(notif->notify.notifyType, snotify);
             debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
             debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t));
-            deserialize_notif(notif->notify.notifyType, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t), &param);
+            deserialize_notif(notif->notify.notifyType, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t), &nparam);
             debug(DEBUG_INFO, PUMPKINOS, "received notification '%s' (%u bytes)", snotify, len);
-            notif->notify.notifyDetailsP = &param;
+            notif->notify.notifyDetailsP = &nparam;
             if (notif->callback) {
               debug(DEBUG_INFO, PUMPKINOS, "delivering notification via callback");
               notif->callback(&notif->notify);
@@ -3506,13 +3622,30 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
               CallNotifyProc(notif->callback68k, &notif->notify, len - sizeof(notif_msg_t));
             } else if (task->pilot_main) {
               debug(DEBUG_INFO, PUMPKINOS, "delivering notification via PilotMain");
-              task->detailsSize = len - sizeof(notif_msg_t);
+              task->paramBlockSize = 18 + len - sizeof(notif_msg_t);
               task->pilot_main(sysAppLaunchCmdNotify, &notif->notify, 0);
             } else {
               debug(DEBUG_ERROR, PUMPKINOS, "task has no callback or PilotMain for delivering notifications");
             }
           } else {
             debug(DEBUG_ERROR, PUMPKINOS, "wrong notification message length %u", len);
+          }
+          ev = 0;
+          break;
+        case MSG_LAUNCHC:
+          if (len >= sizeof(launch_msg_t)) {
+            launch = (launch_msg_t *)buf;
+            debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
+            debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
+            deserialize_launch(launch->cmd, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t), &lparam);
+            debug(DEBUG_INFO, PUMPKINOS, "received launch code %d (%u bytes)", launch->cmd, len);
+            if (task->pilot_main) {
+              debug(DEBUG_INFO, PUMPKINOS, "delivering launch code via PilotMain");
+              task->paramBlockSize = len - sizeof(launch_msg_t);
+              task->pilot_main(launch->cmd, &lparam, launch->flags);
+            } else {
+              debug(DEBUG_ERROR, PUMPKINOS, "task has no PilotMain for delivering launch codes");
+            }
           }
           ev = 0;
           break;
@@ -3577,9 +3710,9 @@ UInt32 pumpkin_get_app_creator(void) {
   return task ? task->creator : 0;
 }
 
-uint32_t pumpkin_get_details_size(void) {
+uint32_t pumpkin_get_param_size(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  return task ? task->detailsSize : 0;
+  return task ? task->paramBlockSize : 0;
 }
 
 int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe)) {
@@ -5412,6 +5545,7 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
   return err;
 }
 
+/*
 static Int32 compare_registration(void *e1, void *e2, void *otherP) {
   notif_registration_t *r1, *r2;
   Int32 p1, p2, r = 0;
@@ -5434,79 +5568,53 @@ static Int32 compare_registration(void *e1, void *e2, void *otherP) {
 
   return r;
 }
+*/
 
 Err SysNotifyBroadcast(SysNotifyParamType *notify) {
-  notif_registration_t *selected;
-  DmSearchStateType stateInfo;
   notif_ptr_t *np;
-  LocalID dbID;
-  char name[dmDBNameLength], stype[8];
-  int i, j, n;
+  char stype[8], screator[8];
+  int i, n;
 
   if (notify == NULL) {
     return sysErrParamErr;
   }
 
+  notify->handled = false;
+  notify->reserved2 = 0;
+  if (notify->broadcaster == 0) {
+    notify->broadcaster = pumpkin_get_app_creator();
+  }
+
   pumpkin_id2s(notify->notifyType, stype);
   debug(DEBUG_INFO, PUMPKINOS, "broadcast notification type '%s' begin", stype);
 
-  selected = NULL;
-  n = 0;
-
   if (mutex_lock(mutex) == 0) {
-    for (i = 0; i < pumpkin_module.num_notif; i++) {
+    for (i = 0, n = 0; i < pumpkin_module.num_notif; i++) {
       if (pumpkin_module.notif[i].notifyType == notify->notifyType) {
+        pumpkin_id2s(pumpkin_module.notif[i].appCreator, screator);
+
+        if (pumpkin_module.notif[i].ptr) {
+          if ((np = ptr_lock(pumpkin_module.notif[i].ptr, TAG_NOTIF)) != NULL) {
+            notify->userDataP = np->userData;
+            debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to '%s' taskId %d userData %p",
+              stype, pumpkin_module.notif[i].priority, screator, pumpkin_module.notif[i].taskId, notify->userDataP);
+            pumpkin_forward_notif(pumpkin_module.notif[i].taskId, pumpkin_module.notif[i].appCreator, notify, np->callback, np->callback68k);
+            ptr_unlock(pumpkin_module.notif[i].ptr, TAG_NOTIF);
+          }
+        } else {
+          debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to '%s' taskId %d NO userData",
+            stype, pumpkin_module.notif[i].priority, screator, pumpkin_module.notif[i].taskId);
+          notify->userDataP = NULL;
+          pumpkin_forward_notif(pumpkin_module.notif[i].taskId, pumpkin_module.notif[i].appCreator, notify, NULL, 0);
+        }
         n++;
       }
-    }
-
-    if (n > 0) {
-      if ((selected = xcalloc(n, sizeof(notif_registration_t))) != NULL) {
-        for (i = 0, j = 0; i < pumpkin_module.num_notif && j < n; i++) {
-          if (pumpkin_module.notif[i].notifyType == notify->notifyType) {
-            MemMove(&selected[j++], &pumpkin_module.notif[i], sizeof(notif_registration_t));
-          }
-        }
-      }
-    } else {
-      debug(DEBUG_INFO, PUMPKINOS, "no app registered for this notification type");
     }
     mutex_unlock(mutex);
   }
 
-  if (selected != NULL) {
-    notify->handled = false;
-    notify->reserved2 = 0;
-
-    if (notify->broadcaster == 0) {
-      notify->broadcaster = pumpkin_get_app_creator();
-    }
-
-    if (n > 1) {
-      SysQSortP(selected, n, sizeof(notif_registration_t), compare_registration, NULL);
-    }
-
-    for (j = 0; j < n; j++) {
-      if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, selected[j].appCreator, false, NULL, &dbID) != errNone) continue;
-      if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) != errNone) continue;
-
-      if (selected[j].ptr) {
-        if ((np = ptr_lock(selected[j].ptr, TAG_NOTIF)) != NULL) {
-          notify->userDataP = np->userData;
-          debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" taskId %d userData %p",
-            stype, selected[j].priority, name, selected[j].taskId, notify->userDataP);
-          pumpkin_forward_notif(selected[j].taskId, selected[j].appCreator, notify, np->callback, np->callback68k);
-          ptr_unlock(selected[j].ptr, TAG_NOTIF);
-        }
-      } else {
-        debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" taskId %d NO userData",
-          stype, selected[j].priority, name, selected[j].taskId);
-        notify->userDataP = NULL;
-        //pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
-        pumpkin_forward_notif(selected[j].taskId, selected[j].appCreator, notify, NULL, 0);
-      }
-    }
-    xfree(selected);
+  if (n == 0) {
+    debug(DEBUG_INFO, PUMPKINOS, "no app registered for notification type '%s", stype);
   }
 
   debug(DEBUG_INFO, PUMPKINOS, "broadcast notification type '%s' end", stype);
