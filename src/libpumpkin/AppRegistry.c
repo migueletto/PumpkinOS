@@ -209,8 +209,10 @@ static UInt16 AppRegistryProcess(AppRegistryType *ar, UInt32 creator, UInt16 id,
         ar->registry[i].creator = creator;
         ar->registry[i].id = id;
         ar->registry[i].seq = seq;
-        ar->registry[i].size = size;
-        ar->registry[i].data = size ? xcalloc(1, size) : NULL;
+        if (id != appRegistryNotification) {
+          ar->registry[i].size = size;
+          ar->registry[i].data = size ? xcalloc(1, size) : NULL;
+        }
         ar->registry[i].deleted = false;
         ar->ordered = false;
         pumpkin_id2s(creator, screator);
