@@ -2991,7 +2991,6 @@ int pumpkin_sys_event(void) {
         if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
           taskbar_draw(pumpkin_module.taskbar);
         } else {
-debug(1, "XXX", "taskbar not drawn");
 }
         if (pumpkin_module.wp->render) {
           pumpkin_module.wp->render(pumpkin_module.w);
