@@ -271,6 +271,7 @@ int pumpkin_kill(uint32_t tid);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
+uint32_t pumpkin_get_details_size(void);
 void *pumpkin_get_exception(void);
 void pumpkin_error_dialog(char *msg);
 void pumpkin_fatal_error(int finish);

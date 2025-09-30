@@ -3265,8 +3265,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppLaunchingEvent, LauncherNotificationHandler, sysNotifyNormalPriority, data);
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppQuittingEvent,  LauncherNotificationHandler, sysNotifyNormalPriority, data);
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppCrashedEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  //SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
-  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   NULL, sysNotifyNormalPriority, data);
+  SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
 
   data->appListMenu = MenuInit(AppListMenu);
   data->useTaskbar = !(launchFlags & sysAppLaunchFlagFork);

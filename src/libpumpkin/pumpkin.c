@@ -132,6 +132,7 @@ typedef struct {
   LocalID dbID;
   UInt32 creator;
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
+  uint32_t detailsSize;
   DmOpenRef bootRef;
   language_t *lang;
   ErrJumpBuf jmpbuf;
@@ -175,14 +176,12 @@ typedef struct {
 typedef struct {
   char *tag;
   SysNotifyProcPtr callback;
-  void *userData;
   uint32_t callback68k;
-  uint32_t userData68k;
+  void *userData;
 } notif_ptr_t;
 
 typedef struct {
   uint32_t msg;
-  uint32_t taskId;
   SysNotifyParamType notify;
   SysNotifyProcPtr callback;
   uint32_t callback68k;
@@ -481,7 +480,6 @@ void pumpkin_load_plugins(void) {
   }
 }
 
-/*
 static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
   AppRegistryNotification *n = (AppRegistryNotification *)p;
   char stype[8], screator[8];
@@ -490,6 +488,7 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt
   pumpkin_id2s(n->notifyType, stype);
 
   if (pumpkin_module.num_notif < MAX_NOTIF_REGISTER) {
+    pumpkin_module.notif[pumpkin_module.num_notif].taskId = -1;
     pumpkin_module.notif[pumpkin_module.num_notif].appCreator = n->appCreator;
     pumpkin_module.notif[pumpkin_module.num_notif].notifyType = n->notifyType;
     pumpkin_module.notif[pumpkin_module.num_notif].priority = n->priority;
@@ -500,7 +499,6 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt
     debug(DEBUG_ERROR, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: ignored (%d)", stype, screator, n->priority, pumpkin_module.num_notif);
   }
 }
-*/
 
 FontType *pumpkin_get_font(FontID fontId) {
   FontType *font = NULL;
@@ -619,7 +617,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.registry = AppRegistryInit(REGISTRY_DB);
 
   pumpkin_module.num_notif = 0;
-  //AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
+  AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
 
   emupalmos_init();
   if (ap && ap->mixer_init) ap->mixer_init();
@@ -2673,37 +2671,51 @@ void pumpkin_forward_event(int i, EventType *event) {
   }
 }
 
-static void pumpkin_forward_notif(Int32 taskId, SysNotifyParamType *notify, SysNotifyProcPtr callback, UInt32 callback68k) {
+static void pumpkin_forward_notif(Int32 taskId, UInt32 creator, SysNotifyParamType *notify, SysNotifyProcPtr callback, UInt32 callback68k) {
   notif_msg_t msg;
-  char snotify[8];
+  char snotify[8], screator[8];
   uint8_t *buf;
   UInt32 size;
   UInt16 i;
 
   if (mutex_lock(mutex) == 0) {
-    for (i = 0; i < pumpkin_module.num_tasks; i++) {
-      if (pumpkin_module.tasks[i].taskId == taskId) break;
-    }
-    if (i < pumpkin_module.num_tasks) {
-      MemSet(&msg, sizeof(notif_msg_t), 0);
-      msg.msg = MSG_NOTIFY;
-      msg.taskId = taskId;
-      msg.callback = callback;
-      msg.callback68k = callback68k;
-      sys_memcpy(&msg.notify, notify, sizeof(SysNotifyParamType));
-      size = sizeof(notif_msg_t);
-      if ((buf = serialize_notif(notify->notifyType, msg.notify.notifyDetailsP, &size)) != NULL) {
-        msg.notify.notifyDetailsP = NULL;
-        sys_memcpy(buf, &msg, sizeof(notif_msg_t));
-        pumpkin_id2s(notify->notifyType, snotify);
-        debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
-        debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
-        debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
-        thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
-        sys_free(buf);
+    if (taskId == -1) {
+      for (i = 0; i < pumpkin_module.num_tasks; i++) {
+        if (pumpkin_module.tasks[i].creator == creator) break;
       }
-    } else {
-      debug(DEBUG_ERROR, PUMPKINOS, "send notification to invalid taskId %d", taskId);
+      if (i < pumpkin_module.num_tasks) {
+        taskId = pumpkin_module.tasks[i].taskId;
+      } else {
+        pumpkin_id2s(notify->notifyType, snotify);
+        pumpkin_id2s(creator, screator);
+        debug(DEBUG_INFO, PUMPKINOS, "application '%s' not available for receiving notification '%s' (%u bytes)", screator, snotify, size);
+      }
+    }
+
+    if (taskId != -1) {
+      for (i = 0; i < pumpkin_module.num_tasks; i++) {
+        if (pumpkin_module.tasks[i].taskId == taskId) break;
+      }
+      if (i < pumpkin_module.num_tasks) {
+        MemSet(&msg, sizeof(notif_msg_t), 0);
+        msg.msg = MSG_NOTIFY;
+        msg.callback = callback;
+        msg.callback68k = callback68k;
+        sys_memcpy(&msg.notify, notify, sizeof(SysNotifyParamType));
+        size = sizeof(notif_msg_t);
+        if ((buf = serialize_notif(notify->notifyType, msg.notify.notifyDetailsP, &size)) != NULL) {
+          msg.notify.notifyDetailsP = NULL;
+          sys_memcpy(buf, &msg, sizeof(notif_msg_t));
+          pumpkin_id2s(notify->notifyType, snotify);
+          debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
+          debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
+          debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+          thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
+          sys_free(buf);
+        }
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "send notification to invalid taskId %d", taskId);
+      }
     }
     mutex_unlock(mutex);
   }
@@ -3495,6 +3507,7 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
               CallNotifyProc(notif->callback68k, &notif->notify, len - sizeof(notif_msg_t));
             } else if (task->pilot_main) {
               debug(DEBUG_INFO, PUMPKINOS, "delivering notification via PilotMain");
+              task->detailsSize = len - sizeof(notif_msg_t);
               task->pilot_main(sysAppLaunchCmdNotify, &notif->notify, 0);
             } else {
               debug(DEBUG_ERROR, PUMPKINOS, "task has no callback or PilotMain for delivering notifications");
@@ -3563,6 +3576,11 @@ LocalID pumpkin_get_app_localid(void) {
 UInt32 pumpkin_get_app_creator(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task ? task->creator : 0;
+}
+
+uint32_t pumpkin_get_details_size(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->detailsSize : 0;
 }
 
 int pumpkin_script_global_function(int pe, char *name, int (*f)(int pe)) {
@@ -5282,6 +5300,7 @@ static void notif_ptr_destructor(void *p) {
 
 Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyProcPtr callbackP, Int8 priority, void *userDataP) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  AppRegistryNotification n;
   UInt32 type, creator;
   notif_ptr_t *np;
   char screator[8], stype[8];
@@ -5296,8 +5315,8 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
 
         if (pumpkin_module.num_notif < MAX_NOTIF_REGISTER) {
           for (i = 0; i < pumpkin_module.num_notif; i++) {
-            if (pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType) {
-              debug(DEBUG_ERROR, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: duplicate", stype, screator, priority);
+            if (pumpkin_module.notif[i].appCreator == creator && pumpkin_module.notif[i].notifyType == notifyType && pumpkin_module.notif[i].ptr == 0) {
+              debug(DEBUG_INFO, PUMPKINOS, "register notification type '%s' creator '%s' priority %d: duplicate", stype, screator, priority);
               err = sysNotifyErrDuplicateEntry;
               break;
             }
@@ -5310,8 +5329,8 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
               np->tag = TAG_NOTIF;
               if (pumpkin_is_m68k()) {
                 np->callback68k = callbackP ? (uint8_t *)callbackP - (uint8_t *)pumpkin_heap_base() : 0;
-                np->userData68k = userDataP ? (uint8_t *)userDataP - (uint8_t *)pumpkin_heap_base() : 0;
-                debug(DEBUG_INFO, PUMPKINOS, "notification callback callback68k 0x%08X userData68k 0x%08X", np->callback68k, np->userData68k);
+                np->userData = userDataP;
+                debug(DEBUG_INFO, PUMPKINOS, "notification callback callback68k 0x%08X userData %p", np->callback68k, np->userData);
               } else {
                 np->callback = callbackP;
                 np->userData = userDataP;
@@ -5319,11 +5338,11 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
               }
               ptr = ptr_new(np, notif_ptr_destructor);
             } else {
-              debug(DEBUG_INFO, PUMPKINOS, "notification has no callback and no usedData");
-              //n.appCreator = creator;
-              //n.notifyType = notifyType;
-              //n.priority = priority;
-              //AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+              debug(DEBUG_INFO, PUMPKINOS, "notification has no callback and no userData");
+              n.appCreator = creator;
+              n.notifyType = notifyType;
+              n.priority = priority;
+              AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
               ptr = 0;
             }
             pumpkin_module.notif[i].taskId = task ? task->taskId : -1;
@@ -5352,6 +5371,7 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
 
 Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 priority) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  AppRegistryNotification n;
   UInt32 creator;
   char screator[8], stype[8];
   int i;
@@ -5368,10 +5388,10 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
           if (pumpkin_module.notif[i].ptr) {
             ptr_free(pumpkin_module.notif[i].ptr, TAG_NOTIF);
           } else {
-            //n.appCreator = creator;
-            //n.notifyType = notifyType;
-            //n.priority = 0xFFFF; // invalid priority: remove (appCreator,notifyType)
-            //AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+            n.appCreator = creator;
+            n.notifyType = notifyType;
+            n.priority = 0xFFFF; // invalid priority: remove (appCreator,notifyType)
+            AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
           }
           for (i++; i < pumpkin_module.num_notif; i++) {
             MemMove(&pumpkin_module.notif[i-1], &pumpkin_module.notif[i], sizeof(notif_registration_t));
@@ -5463,7 +5483,9 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
       notify->broadcaster = pumpkin_get_app_creator();
     }
 
-    SysQSortP(selected, n, sizeof(notif_registration_t *), compare_registration, NULL);
+    if (n > 1) {
+      SysQSortP(selected, n, sizeof(notif_registration_t), compare_registration, NULL);
+    }
 
     for (j = 0; j < n; j++) {
       if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, selected[j].appCreator, false, NULL, &dbID) != errNone) continue;
@@ -5471,10 +5493,10 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
 
       if (selected[j].ptr) {
         if ((np = ptr_lock(selected[j].ptr, TAG_NOTIF)) != NULL) {
-          notify->userDataP = np->userData68k ? (uint8_t *)pumpkin_heap_base() + np->userData68k : np->userData;
+          notify->userDataP = np->userData;
           debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to \"%s\" taskId %d userData %p",
             stype, selected[j].priority, name, selected[j].taskId, notify->userDataP);
-          pumpkin_forward_notif(selected[j].taskId, notify, np->callback, np->callback68k);
+          pumpkin_forward_notif(selected[j].taskId, selected[j].appCreator, notify, np->callback, np->callback68k);
           ptr_unlock(selected[j].ptr, TAG_NOTIF);
         }
       } else {
@@ -5482,7 +5504,7 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
           stype, selected[j].priority, name, selected[j].taskId);
         notify->userDataP = NULL;
         //pumpkin_launch_request(name, sysAppLaunchCmdNotify, (UInt8 *)notify, 0, NULL, 1);
-        pumpkin_forward_notif(selected[j].taskId, notify, NULL, 0);
+        pumpkin_forward_notif(selected[j].taskId, selected[j].appCreator, notify, NULL, 0);
       }
     }
     xfree(selected);

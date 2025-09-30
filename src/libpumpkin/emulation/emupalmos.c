@@ -1086,8 +1086,9 @@ void encode_VolumeInfoType(uint32_t volInfoP, VolumeInfoType *volInfo) {
   }
 }
 
-void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_details) {
+void decode_notify(uint32_t notifyP, SysNotifyParamType *notify) {
   char buf1[8], buf2[8];
+  notif_union_t param;
 
   if (notifyP && notify) {
     uint8_t *ram = pumpkin_heap_base();
@@ -1107,79 +1108,32 @@ void decode_notify(uint32_t notifyP, SysNotifyParamType *notify, int free_detail
     debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyParamType '%s' from '%s' details 0x%08X handled %d", buf1, buf2, notifyDetailsP, notify->handled);
 
     if (notifyDetailsP) {
+      notify->notifyDetailsP = &param;
       decode_notif(notify->notifyType, notifyDetailsP, (notif_union_t *)notify->notifyDetailsP);
-/*
-      switch (notify->notifyType) {
-        case sysNotifyDisplayChangeEvent: {
-          SysNotifyDisplayChangeDetailsType *displayChange = (SysNotifyDisplayChangeDetailsType *)notify->notifyDetailsP;
-          displayChange->oldDepth = m68k_read_memory_32(notifyDetailsP);
-          displayChange->newDepth = m68k_read_memory_32(notifyDetailsP + 4);
-        }
-        break;
-        case sysNotifyGPSDataEvent: {
-          UInt16 *data = (UInt16 *)notify->notifyDetailsP;
-          *data = m68k_read_memory_16(notifyDetailsP);
-        }
-        break;
-        default:
-        break;
-      }
-*/
-
-      if (free_details) {
-        void *d = ram + notifyDetailsP;
-        pumpkin_heap_free(d, "notifyDetails");
-      }
     }
   }
 }
 
-void encode_notify(uint32_t notifyP, SysNotifyParamType *notify, uint32_t detailsSize, int alloc_details) {
+void encode_notify(uint32_t notifyP, SysNotifyParamType *notify) {
   if (notifyP && notify) {
     uint8_t *ram = pumpkin_heap_base();
-    uint32_t notifyDetailsP = 0;
-    uint8_t *notifyDetails;
+    uint32_t notifyDetailsP, userDataP;
 
     if (notify->notifyDetailsP) {
-      if (alloc_details) {
-        notifyDetails = pumpkin_heap_alloc(detailsSize, "notifyDetails");
-        notifyDetailsP = notifyDetails - ram;
-      } else {
-        notifyDetailsP = m68k_read_memory_32(notifyP + 8);
-      }
+      notifyDetailsP = notifyP + 18; // after SysNotifyParamType
       encode_notif(notify->notifyType, notifyDetailsP, (notif_union_t *)notify->notifyDetailsP);
-/*
-      switch (notify->notifyType) {
-        case sysNotifyDisplayChangeEvent: {
-          SysNotifyDisplayChangeDetailsType *displayChange = (SysNotifyDisplayChangeDetailsType *)notify->notifyDetailsP;
-          if (alloc_details) {
-            notifyDetails = pumpkin_heap_alloc(2*sizeof(uint32_t), "notifyDetails");
-            notifyDetailsP = notifyDetails - ram;
-          } else {
-            notifyDetailsP = m68k_read_memory_32(notifyP + 8);
-          }
-          m68k_write_memory_32(notifyDetailsP + 0, displayChange->oldDepth);
-          m68k_write_memory_32(notifyDetailsP + 4, displayChange->newDepth);
-        }
-        break;
-        case sysNotifyGPSDataEvent: {
-          UInt16 *data = (UInt16 *)notify->notifyDetailsP;
-          notifyDetails = pumpkin_heap_alloc(sizeof(uint16_t), "notifyDetails");
-          notifyDetailsP = notifyDetails - ram;
-          m68k_write_memory_16(notifyDetailsP + 0, *data);
-        }
-        break;
-        default:
-        break;
-      }
-*/
+    } else {
+      notifyDetailsP = 0;
     }
+
+    userDataP = notify->userDataP ? ((uint8_t *)notify->userDataP - ram) : 0;
 
     m68k_write_memory_32(notifyP +  0, notify->notifyType);
     m68k_write_memory_32(notifyP +  4, notify->broadcaster);
     m68k_write_memory_32(notifyP +  8, notifyDetailsP);
-    m68k_write_memory_32(notifyP + 12, notify->userDataP ? ((uint8_t *)notify->userDataP - ram) : 0);
+    m68k_write_memory_32(notifyP + 12, userDataP);
     m68k_write_memory_8(notifyP +  16, notify->handled);
+    m68k_write_memory_8(notifyP +  17, 0); // reserved2
   }
 }
 
@@ -1551,20 +1505,20 @@ UInt8 reserved2;
 */
 
 Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) {
-  uint32_t a, argsSize, notifyOffset;
+  uint32_t a, argsSize, sysNotifyParamTypeSize, notifyOffset;
   uint8_t *p;
   Err err = dmErrInvalidParam;
 
   argsSize = sizeof(uint32_t);
+  sysNotifyParamTypeSize = 4*sizeof(UInt32) + 2*sizeof(UInt8);
   notifyOffset = argsSize;
 
-  if ((p = pumpkin_heap_alloc(argsSize + detailsSize, "CallNotify")) != NULL) {
+  if ((p = pumpkin_heap_alloc(argsSize + sysNotifyParamTypeSize + detailsSize, "CallNotify")) != NULL) {
     uint8_t *ram = pumpkin_heap_base();
     a = p - ram;
     m68k_write_memory_32(a, a + notifyOffset);
-    encode_notify(a + notifyOffset, notify, detailsSize, 1);
+    encode_notify(a + notifyOffset, notify);
     err = call68K_func(0, addr, a, argsSize);
-    decode_notify(a + notifyOffset, notify, 1);
     pumpkin_heap_free(p, "CallNotify");
   }
 
@@ -1946,27 +1900,26 @@ void emupalmos_memory_hooks(
 
 static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
   uint8_t *p = NULL;
-  uint32_t a;
+  uint32_t a, paramBlockSize;
 
   switch (launchCode) {
     case sysAppLaunchCmdNotify:
-      p = MemPtrNew(sizeof(SysNotifyParamType));
+      paramBlockSize = 18 + pumpkin_get_details_size(); // SysNotifyParamType + details
+      p = pumpkin_heap_alloc(paramBlockSize, "paramBlock");
       a = p - ram;
-      encode_notify(a, param, 0, 1);
+      debug(DEBUG_INFO, "EmuPalmOS", "alloc %u bytes for param block at %p (0x%08X)", paramBlockSize, p, a);
+      encode_notify(a, param);
       break;
   }
 
   return p;
 }
 
-static void freeParamBlock(uint16_t launchCode, void *param, uint8_t *p, uint8_t *ram) {
-  uint32_t a;
-
+static void freeParamBlock(uint16_t launchCode, uint8_t *p) {
   switch (launchCode) {
     case sysAppLaunchCmdNotify:
-      a = p - ram;
-      decode_notify(a, param, 1);
-      MemPtrFree(p);
+      debug(DEBUG_INFO, "EmuPalmOS", "free param block at %p", p);
+      pumpkin_heap_free(p, "paramBlock");
       break;
   }
 }
@@ -1985,6 +1938,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   emu_state_t *oldState, *state;
 
   ram = pumpkin_heap_base();
+  debug(DEBUG_INFO, "EmuPalmOS", "emupalmos_main launch code %d, param block %p, flags 0x%04X", launchCode, param, flags);
 
 #ifdef ARMEMU
   // amdc 0 segment
@@ -2322,7 +2276,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       }
 
       if (paramBlock) {
-        freeParamBlock(launchCode, param, paramBlock, ram);
+        freeParamBlock(launchCode, paramBlock);
       }
 
       pumpkin_set_local_storage(emu_key, oldState);
