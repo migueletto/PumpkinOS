@@ -1317,7 +1317,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
 
   if (err == errNone) {
     MemSet(&dbCreated, sizeof(dbCreated), 0);
-    dbCreated.newDBID = dbID;
+    dbCreated.newDBID = 0; // dbID's are not advertised, since they are local to the task
     dbCreated.creator = creator;
     dbCreated.type = type;
     dbCreated.resDB = attr & dmHdrAttrResDB;
@@ -1774,7 +1774,7 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           StoVfsUnlink(sto->session, buf);
 
           MemSet(&dbDeleted, sizeof(dbDeleted), 0);
-          dbDeleted.oldDBID = dbID;
+          dbDeleted.oldDBID = 0; // dbID's are not advertised, since they are local to the task
           dbDeleted.creator = db->creator;
           dbDeleted.type = db->type;
           dbDeleted.attributes = db->attributes;

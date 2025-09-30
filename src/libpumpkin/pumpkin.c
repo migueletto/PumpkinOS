@@ -35,6 +35,7 @@
 #include "color.h"
 #include "rgb.h"
 #include "notif_serde.h"
+#include "launch_serde.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -2307,50 +2308,6 @@ static int pumpkin_resume_task(int handle) {
   return r;
 }
 
-static uint8_t *serialize_sysAppLaunchCmdSystemReset(void *p, UInt32 *size) {
-  SysAppLaunchCmdSystemResetType *param = p;
-  uint8_t *buf = sys_calloc(1, *size + 2);
-  UInt32 i = *size;
-  i += put1(param->hardReset, buf, i);
-  i += put1(param->createDefaultDB, buf, i);
-  *size = i;
-  return buf;
-}
-
-static int deserialize_sysAppLaunchCmdSystemReset(uint8_t *buf, UInt32 size, SysAppLaunchCmdSystemResetType *param) {
-  int r = -1;
-  if (size == 2) {
-    UInt32 i = 0;
-    i += get1((uint8_t *)&param->hardReset, buf, i);
-    i += get1((uint8_t *)&param->createDefaultDB, buf, i);
-    r = 0;
-  }
-  return r;
-}
-
-static uint8_t *serialize_launch(UInt16 cmd, void *param, UInt32 *size) {
-  switch (cmd) {
-    case sysAppLaunchCmdSystemReset:
-      return serialize_sysAppLaunchCmdSystemReset(param, size);
-  }
-
-  return NULL;
-}
-
-typedef union {
-  SysAppLaunchCmdSystemResetType p0;
-} launch_union_t;
-
-int deserialize_launch(UInt32 paramType, void *buf, UInt32 size, launch_union_t *param) {
-  switch (paramType) {
-    case sysAppLaunchCmdSystemReset:
-      return deserialize_sysAppLaunchCmdSystemReset(buf, size, &param->p0);
-    default:
-      break;
-  }
-  return -1;
-}
-
 static void pumpkin_forward_launch_code(UInt32 creator, char *name, UInt16 cmd, UInt8 *param, UInt16 flags) {
   launch_request_t request;
   launch_msg_t msg;
@@ -2375,14 +2332,23 @@ static void pumpkin_forward_launch_code(UInt32 creator, char *name, UInt16 cmd, 
   msg.msg = MSG_LAUNCHC;
   msg.cmd = cmd;
   msg.flags = flags;
-  size = sizeof(launch_msg_t);
-  if ((buf = serialize_launch(cmd, param, &size)) != NULL) {
-    sys_memcpy(buf, &msg, sizeof(launch_msg_t));
-    debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using message (%u bytes)", cmd, name, size);
+
+  if (param) {
+    size = sizeof(launch_msg_t);
+    if ((buf = serialize_launch(cmd, param, &size)) != NULL) {
+      sys_memcpy(buf, &msg, sizeof(launch_msg_t));
+      debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using message (%u bytes)", cmd, name, size);
+      debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
+      debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), size - sizeof(launch_msg_t));
+      thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
+      sys_free(buf);
+    }
+  } else {
+    size = sizeof(launch_msg_t);
+    debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d (NO param) to \"%s\" using message (%u bytes)", cmd, name, size);
+    buf = (uint8_t *)&msg;
     debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
-    debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), size - sizeof(launch_msg_t));
     thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
-    sys_free(buf);
   }
 }
 
@@ -3636,13 +3602,15 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           if (len >= sizeof(launch_msg_t)) {
             launch = (launch_msg_t *)buf;
             debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
-            debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
-            deserialize_launch(launch->cmd, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t), &lparam);
+            if (len > sizeof(launch_msg_t)) {
+              debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
+              deserialize_launch(launch->cmd, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t), &lparam);
+	    }
             debug(DEBUG_INFO, PUMPKINOS, "received launch code %d (%u bytes)", launch->cmd, len);
             if (task->pilot_main) {
               debug(DEBUG_INFO, PUMPKINOS, "delivering launch code via PilotMain");
               task->paramBlockSize = len - sizeof(launch_msg_t);
-              task->pilot_main(launch->cmd, &lparam, launch->flags);
+              task->pilot_main(launch->cmd, task->paramBlockSize ? &lparam : NULL, launch->flags);
             } else {
               debug(DEBUG_ERROR, PUMPKINOS, "task has no PilotMain for delivering launch codes");
             }

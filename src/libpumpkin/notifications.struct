@@ -46,29 +46,6 @@ field UInt32 creator
 field UInt32 type
 end
 
-name sysNotifyDBChangedEvent
-struct SysNotifyDBChangedType
-Char dbName dmDBNameLength
-field LocalID dbID
-field UInt32 creator
-field UInt32 type
-field UInt32 crDate
-field UInt32 modDate
-field UInt32 bckUpDate
-field UInt32 modNum
-field LocalID appInfoID
-field LocalID sortInfoID
-field UInt16 attributes
-field UInt16 cardNo
-field UInt16 version
-field UInt16 fields
-field Char oldName dmDBNameLength
-field UInt32 oldCreator
-field UInt32 oldType
-field UInt16 oldAttributes
-field UInt16 padding
-end
-
 name sysNotifyTimeChangeEvent
 scalar Int32
 end

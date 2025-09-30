@@ -1,0 +1,21 @@
+name sysAppLaunchCmdSystemReset
+struct SysAppLaunchCmdSystemResetType
+field Boolean hardReset
+field Boolean createDefaultDB
+end
+
+name sysAppLaunchCmdAlarmTriggered
+struct SysAlarmTriggeredParamType
+field UInt32 ref
+field UInt32 alarmSeconds
+field Boolean purgeAlarm
+field UInt8 padding
+end
+
+name sysAppLaunchCmdDisplayAlarm
+struct SysDisplayAlarmParamType
+field UInt32 ref
+field UInt32 alarmSeconds
+field Boolean soundAlarm
+field UInt8 padding
+end
