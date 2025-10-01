@@ -205,6 +205,7 @@ typedef enum {
   fatal_key,
   emu_key,
   charattr_key,
+  data_key,
   last_key
 } local_storage_key_t;
 
