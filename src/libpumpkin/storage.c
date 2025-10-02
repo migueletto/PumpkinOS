@@ -11,6 +11,7 @@
 #include "pumpkin.h"
 #include "ssfn_font.h"
 #include "AppRegistry.h"
+#include "DDm.h"
 #include "debug.h"
 #include "storage.h"
 
@@ -4158,6 +4159,9 @@ int StoDeployFile(char *path, AppRegistryType *ar) {
                 pumpkin_id2s(type, stype);
                 pumpkin_id2s(creator, screator);
                 debug(DEBUG_INFO, "STOR", "installing new version of \"%s\" type '%s' creator '%s' from \"%s\"", name, stype, screator, path);
+
+                //DDmCreateDatabaseFromImage(p); // XXX test
+
                 if (DmCreateDatabaseFromImage(p) == errNone) {
                   debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
                   if (type == sysFileTApplication) {

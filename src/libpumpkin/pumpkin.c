@@ -22,6 +22,7 @@
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
 #include "language.h"
+#include "DDm.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "media.h"
@@ -216,6 +217,7 @@ typedef struct {
   window_t *w;
   heap_t *heap;
   mutex_t *fs_mutex;
+  DataMgrType *dm;
   int battery;
   int finish;
   int paused;
@@ -619,6 +621,8 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
+  pumpkin_module.dm = DataMgrInit("/app_data/");
+  DataMgrInitModule(pumpkin_module.dm);
 
   SysUInitModule(); // sto calls SysQSortP
 
@@ -1298,6 +1302,8 @@ int pumpkin_global_finish(void) {
 
   SysUFinishModule();
   StoFinish();
+  DataMgrFinishModule();
+  DataMgrFinish(pumpkin_module.dm);
   heap_finish(pumpkin_module.heap);
   thread_key_delete(task_key);
   mutex_destroy(pumpkin_module.fs_mutex);
