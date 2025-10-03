@@ -78,3 +78,13 @@ Err DDmQuickSort(DmOpenRef dbP, DmComparF *compar, Int16 other);
 Err DDmInsertionSort(DmOpenRef dbR, DmComparF *compar, Int16 other);
 UInt16 DDmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other);
 UInt16 DDmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other);
+
+UInt32 DMemHandleSize(MemHandle h);
+UInt32 DMemPtrSize(MemPtr p);
+MemHandle DMemPtrRecoverHandle(MemPtr p);
+MemHandle DMemHandleNew(UInt32 size);
+Err DMemHandleFree(MemHandle h);
+MemPtr DMemHandleLock(MemHandle h);
+Err DMemHandleUnlock(MemHandle h);
+LocalID DMemHandleToLocalID(MemHandle h);
+MemHandle DMemLocalIDToHandle(LocalID local);
