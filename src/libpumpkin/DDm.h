@@ -35,7 +35,6 @@ Err DDmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueI
 Err DDmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP);
 Err DDmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP);
 Err DDmMoveRecord(DmOpenRef dbP, UInt16 from, UInt16 to);
-MemHandle DDmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
 MemHandle DDmNewRecord(DmOpenRef dbP, UInt16 *atP, UInt32 size);
 Err DDmRemoveRecord(DmOpenRef dbP, UInt16 index);
 Err DDmDeleteRecord(DmOpenRef dbP, UInt16 index);
@@ -84,6 +83,9 @@ UInt32 DMemPtrSize(MemPtr p);
 MemHandle DMemPtrRecoverHandle(MemPtr p);
 MemHandle DMemHandleNew(UInt32 size);
 Err DMemHandleFree(MemHandle h);
+Err DMemChunkFree(MemPtr chunkDataP);
+Err DMemHandleResize(MemHandle h, UInt32 newSize);
+Err DMemPtrResize(MemPtr p, UInt32 newSize);
 MemPtr DMemHandleLock(MemHandle h);
 Err DMemHandleUnlock(MemHandle h);
 LocalID DMemHandleToLocalID(MemHandle h);

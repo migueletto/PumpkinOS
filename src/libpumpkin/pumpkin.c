@@ -1717,6 +1717,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   if (pumpkin_module.mode != 1) {
     task->heap = heap_init(NULL, HEAP_SIZE, SMALL_HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
+    DataMgrInitModule(pumpkin_module.dm);
   } else {
     task->heap = pumpkin_module.heap;
   }
@@ -1903,6 +1904,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   if (pumpkin_module.mode != 1) {
     StoFinish();
+    DataMgrInitModule(pumpkin_module.dm);
     heap_finish(task->heap);
   }
 
