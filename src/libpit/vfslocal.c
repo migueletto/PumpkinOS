@@ -253,6 +253,7 @@ static int vfs_local_read(vfs_fpriv_t *fpriv, uint8_t *buf, uint32_t len) {
   if (fpriv && buf) {
     if (fpriv->fd) {
       r = sys_read(fpriv->fd, buf, len);
+      debug(DEBUG_TRACE, "VFS", "read fd %d r %d", fpriv->fd, r);
     }
   }
 
@@ -277,6 +278,7 @@ static int vfs_local_close(vfs_fpriv_t *fpriv) {
   if (fpriv) {
     if (fpriv->fd) {
       r = sys_close(fpriv->fd);
+      debug(DEBUG_TRACE, "VFS", "close fd %d r %d", fpriv->fd, r);
     }
     xfree(fpriv);
   }
@@ -391,6 +393,7 @@ static vfs_fpriv_t *vfs_local_open(char *path, int mode, void *_data) {
   } else {
     fd = sys_open(aux, mode);
   }
+  debug(DEBUG_TRACE, "VFS", "open fd %d", fd);
 
   if (fd == -1) {
     debug_errno("VFS", "open(\"%s\", %d)", aux, mode);
