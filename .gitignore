@@ -1,6 +1,7 @@
 /bin
 /vfs/app_install
 /vfs/app_storage
+/vfs/app_data
 /vfs/app_card/PALM/Programs/*
 /tools
 /registry
