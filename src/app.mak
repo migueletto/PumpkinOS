@@ -55,8 +55,8 @@ $(STUBS).c: $(OBJS)
 res.flag: $(RCP) $(RCPDEP)
 	@echo Compiling resources
 	@mkdir -p resources
-	@$(PILRC) $(RCP) resources
+	@$(PILRC) $(RCPINC) $(RCP) resources
 	@touch res.flag
 
 clean:
-	@rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin res.flag
+	@rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin *.flag
