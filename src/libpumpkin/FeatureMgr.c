@@ -141,6 +141,10 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           *valueP = navVersion;
           err = errNone;
           break;
+        case sysFtrDefaultFont:
+          *valueP = stdFont;
+          err = errNone;
+          break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSystem %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
