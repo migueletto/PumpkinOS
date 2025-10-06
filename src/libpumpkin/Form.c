@@ -2620,6 +2620,22 @@ FormGadgetType *FrmNewGadget(FormType **formPP, UInt16 id, Coord x, Coord y, Coo
   return gadgetP;
 }
 
+// sends a frmObjectFocusTakeEvent event for an object
+void FrmNavObjectTakeFocus(const FormType *formP, UInt16 objID) {
+  // If one-handed navigation is not supported on the device this
+  // function calls FrmSetFocus() for field and table objects and does
+  // nothing for all other objects.
+  FormObjectKind kind;
+  UInt16 index;
+
+  if ((index = FrmGetObjectIndex(formP, objID)) != frmInvalidObjectId) {
+    kind = FrmGetObjectType(formP, index);
+    if (kind == frmControlObj || kind == frmTableObj) {
+      FrmSetFocus((FormType *)formP, index);
+    }
+  }
+}
+
 static int palign(int a, int i) {
   int r = i % a;
   return r ? (a - r) : 0;
