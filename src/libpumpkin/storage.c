@@ -2632,7 +2632,7 @@ MemHandle DmQueryNextInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 category) 
         if (db->ftype == STO_TYPE_REC) {
           for (; *indexP < db->numRecs; (*indexP)++) {
             ha = db->elements[*indexP];
-            if (!(ha->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (ha->d.rec.attr & dmRecAttrCategoryMask) == (category &= dmRecAttrCategoryMask))) {
+            if (!(ha->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (ha->d.rec.attr & dmRecAttrCategoryMask) == (category & dmRecAttrCategoryMask))) {
               if (!(ha->d.rec.attr & dmRecAttrSecret) || (dbRef->mode & dmModeShowSecret)) {
                 h = ha;
 
@@ -2861,7 +2861,7 @@ UInt16 DmPositionInCategory(DmOpenRef dbP, UInt16 index, UInt16 category) {
       if (db->ftype == STO_TYPE_REC && index < db->numRecs) {
         for (i = 0; i < db->numRecs; i++) {
           h = db->elements[i];
-          if (!(h->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (h->d.rec.attr & dmRecAttrCategoryMask) == (category &= dmRecAttrCategoryMask))) {
+          if (!(h->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (h->d.rec.attr & dmRecAttrCategoryMask) == (category & dmRecAttrCategoryMask))) {
             if (!(h->d.rec.attr & dmRecAttrSecret) || (dbRef->mode & dmModeShowSecret)) {
               if (i == index) break;
               pos++;
