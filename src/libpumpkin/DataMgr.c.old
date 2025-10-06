@@ -60,8 +60,6 @@
 typedef struct {
   UInt32 uniqueID;
   UInt16 attr;
-  struct DmHandle *h;
-  Boolean tempHandle;
 } DmRecIndex;
 
 typedef struct DmOpenType {
@@ -73,6 +71,8 @@ typedef struct DmOpenType {
   char name[dmDBNameLength];
   DmRecIndex *idxRec;
   UInt32 capRecs;
+  UInt32 numHandles, capHandles;
+  struct DmHandle **h;
   struct DmOpenType *prev, *next;
 } DmOpenType;
 
@@ -424,7 +424,7 @@ static void DataMgrWriteAppInfo(data_module_t *module, LocalID dbID, LocalID *ap
   }
 }
 
-static void DataMgrInsertIntoIndex(DmOpenType *db, DmHandle *h) {
+static void DataMgrInsertIntoIndex(DmOpenType *db, UInt16 index, UInt32 uniqueID, UInt16 attr) {
   UInt16 i;
 
   if (db->numRecs == db->capRecs) {
@@ -435,34 +435,33 @@ static void DataMgrInsertIntoIndex(DmOpenType *db, DmHandle *h) {
   }
   db->numRecs++;
 
-  if (h->d.rec.index < db->numRecs - 1) {
-    for (i = db->numRecs - 1; i > h->d.rec.index; i--) {
+  if (index < db->numRecs - 1) {
+    for (i = db->numRecs - 1; i > index; i--) {
       db->idxRec[i] = db->idxRec[i - 1];
     }
   }
 
-  db->idxRec[h->d.rec.index].uniqueID = h->d.rec.uniqueID;
-  db->idxRec[h->d.rec.index].attr = h->d.rec.attr;
-  db->idxRec[h->d.rec.index].h = h;
+  db->idxRec[index].uniqueID = uniqueID;
+  db->idxRec[index].attr = attr;
 }
 
-static DmHandle *DataMgrRemoveFromIndex(DmOpenType *db, UInt16 index, UInt32 *uniqueID, UInt16 *attr) {
+static int DataMgrRemoveFromIndex(DmOpenType *db, UInt16 index, UInt32 *uniqueID, UInt16 *attr) {
   UInt16 i;
-  DmHandle *h = NULL;
+  int r = -1;
 
   if (db->numRecs > 0 && index < db->numRecs) {
     if (index < db->numRecs - 1) {
       *uniqueID = db->idxRec[index].uniqueID;
       *attr = db->idxRec[index].attr;
-      h = db->idxRec[index].h;
       for (i = index; i < db->numRecs - 1; i++) {
         db->idxRec[i] = db->idxRec[i + 1];
       }
     }
     db->numRecs--;
+    r = 0;
   }
 
-  return h;
+  return r;
 }
 
 static int DataMgrWriteIndex(DmOpenType *db) {
@@ -522,7 +521,6 @@ static int DataMgrReadIndex(DmOpenType *db) {
       }
       db->idxRec[db->numRecs].uniqueID = uniqueID;
       db->idxRec[db->numRecs].attr = attr;
-      db->idxRec[db->numRecs].h = NULL;
     }
     vfs_close(f);
   }
@@ -1384,6 +1382,8 @@ Err DDmCloseDatabase(DmOpenRef dbP) {
         debug(DEBUG_ERROR, "DataMgr", "DmCloseDatabase \"%s\" db invalid mode 0x%04X", db->name, db->mode);
       }
 
+      if (db->h) sys_free(db->h);
+
       if (db->prev) {
         db->prev->next = db->next;
         if (db->next) db->next->prev = db->prev;
@@ -1543,14 +1543,8 @@ Err DDmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueI
     if (mutex_lock(module->dm->mutex) == 0) {
       if (db->ftype == DATAMGR_TYPE_REC) {
         if (index < db->numRecs) {
-          if (uniqueIDP) {
-            db->idxRec[index].uniqueID = *uniqueIDP;
-            if (db->idxRec[index].h) db->idxRec[index].h->d.rec.uniqueID = *uniqueIDP;
-          }
-          if (attrP) {
-            db->idxRec[index].attr = *attrP; 
-            if (db->idxRec[index].h) db->idxRec[index].h->d.rec.attr = *uniqueIDP;
-          }
+          if (uniqueIDP) db->idxRec[index].uniqueID = *uniqueIDP;
+          if (attrP) db->idxRec[index].attr = *attrP;
           err = errNone;
         }
       }
@@ -1586,9 +1580,8 @@ Err DDmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP
 Err DDmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
   DM_MODULE;
   DmOpenType *db;
-  DmHandle *h;
   UInt32 uniqueID;
-  UInt16 attr;
+  UInt16 attr, i;
   char name[16], buf[VFS_PATH];
   Err err = dmErrInvalidParam;
 
@@ -1598,11 +1591,24 @@ Err DDmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
       if (db->mode & dmModeWrite) {
         if (db->ftype == DATAMGR_TYPE_REC) {
           if (db->numRecs > 0 && index < db->numRecs) {
-            if ((h = DataMgrRemoveFromIndex(db, index, &uniqueID, &attr)) != NULL) {
-              h->htype = DATAMGR_TYPE_MEM;
+            if (DataMgrRemoveFromIndex(db, index, &uniqueID, &attr) == 0) {
               sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
               DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, 0x00, uniqueID, buf);
               vfs_unlink(module->dm->session, buf);
+
+              for (i = 0; i < db->numHandles; i++) {
+                if (db->h[i]->d.rec.index == index) {
+                  db->h[i]->d.rec.index = 0;
+                  db->h[i]->htype = DATAMGR_TYPE_MEM;
+                  *oldHP = db->h[i];
+                  for (; i < db->numHandles - 1; i++) {
+                    db->h[i] = db->h[i + 1];
+                  }
+                  db->numHandles--;
+                  break;
+                }
+              }
+
               db->modDate = TimGetSeconds();
               if (DataMgrWriteHeader(module, db->dbID, NULL, db) == 0) {
                 err = errNone;
@@ -1673,7 +1679,7 @@ static MemHandle DDmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p
             }
 
             if (writeIndex) {
-              DataMgrInsertIntoIndex(db, h);
+              DataMgrInsertIntoIndex(db, h->d.rec.index, h->d.rec.uniqueID, h->d.rec.attr);
               DataMgrWriteIndex(db);
             }
           }
@@ -1767,44 +1773,49 @@ static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, E
   if (dbP) {
     db = (DmOpenType *)dbP;
     if (index < db->numRecs) {
-      if (mutex_lock(module->dm->mutex) == 0) {
-        if (db->ftype == DATAMGR_TYPE_REC) {
-          if (recH) {
-            for (i = 0; i < db->numRecs; i++) {
-              if (recH == db->idxRec[i].h) {
-                err = callback(recH, data, false);
-                break;
-              }
-            }
+    if (mutex_lock(module->dm->mutex) == 0) {
+      if (db->ftype == DATAMGR_TYPE_REC) {
+        for (i = 0; i < db->numHandles; i++) {
+          if ((recH != NULL && recH == db->h[i]) || (db->h[i]->d.rec.index == index)) {
+            err = callback(db->h[i], data, false);
             mutex_unlock(module->dm->mutex);
             DataMgrCheckErr(err);
-            return recH;
+            return db->h[i];
           }
+        }
 
-          sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
-          DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, db->idxRec[index].attr & ATTR_MASK, db->idxRec[index].uniqueID, buf);
+        if (recH) {
+          mutex_unlock(module->dm->mutex);
+          DataMgrCheckErr(err);
+          return NULL;
+        }
 
-          if ((f = vfs_open(module->dm->session, buf, VFS_READ)) != NULL) {
-            if ((size = vfs_seek(f, 0, 1)) > 0) {
-              vfs_seek(f, 0, 0);
-              if ((h = DMemHandleNew(size)) != NULL) {
-                h->htype = DATAMGR_TYPE_REC;
-                if (vfs_read(f, h->buf, h->size) == h->size) {
-                  vfs_close(f);
-                  h->d.rec.uniqueID = db->idxRec[index].uniqueID;
-                  h->d.rec.attr = db->idxRec[index].attr;
-                  h->d.rec.index = index;
-                  err = callback(h, data, true);
-                  db->idxRec[index].h = h;
-                } else {
-                  vfs_close(f);
-                  err = dmErrMemError;
-                  DMemHandleFree(h);
-                  h = NULL;
-                }
-              } else {
-                err = dmErrMemError;
+        sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
+        DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, db->idxRec[index].attr & ATTR_MASK, db->idxRec[index].uniqueID, buf);
+
+        if ((f = vfs_open(module->dm->session, buf, VFS_READ)) != NULL) {
+          if ((size = vfs_seek(f, 0, 1)) > 0) {
+            vfs_seek(f, 0, 0);
+            if ((h = DMemHandleNew(size)) != NULL) {
+              h->htype = DATAMGR_TYPE_REC;
+              if (vfs_read(f, h->buf, h->size) == h->size) {
                 vfs_close(f);
+                h->d.rec.uniqueID = db->idxRec[index].uniqueID;
+                h->d.rec.attr = db->idxRec[index].attr;
+                h->d.rec.index = index;
+                err = callback(h, data, true);
+                if (db->numHandles == db->capHandles) {
+                  db->capHandles += CAP_SIZE;
+                  db->h = db->h ?
+                    sys_realloc(db->h, db->capHandles * sizeof(DmHandle *)):
+                    sys_calloc(db->capHandles, sizeof(DmHandle *));
+                }
+                db->h[db->numHandles++] = h;
+              } else {
+                vfs_close(f);
+                err = dmErrMemError;
+                DMemHandleFree(h);
+                h = NULL;
               }
             } else {
               err = dmErrMemError;
@@ -1812,9 +1823,13 @@ static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, E
             }
           } else {
             err = dmErrMemError;
+            vfs_close(f);
           }
+        } else {
+          err = dmErrMemError;
         }
-        mutex_unlock(module->dm->mutex);
+      }
+      mutex_unlock(module->dm->mutex);
       }
     }
   }
@@ -1977,15 +1992,16 @@ Err DDmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
   DmHandle *h;
   vfs_file_t *f;
   char name[16], buf[VFS_PATH];
+  UInt32 i;
   Err err = dmErrIndexOutOfRange;
 
   if (dbP) {
     if (mutex_lock(module->dm->mutex) == 0) {
       db = (DmOpenType *)dbP;
         if (db->ftype == DATAMGR_TYPE_REC) {
-          if (index < db->numRecs) {
-            h = db->idxRec[index].h;
-            if (h && h->d.rec.index == index) {
+          for (i = 0; i < db->numHandles; i++) {
+            if (db->h[i]->d.rec.index == index) {
+              h = db->h[i];
               if (h->useCount > 0) {
                 h->useCount--;
               } else {
@@ -2012,9 +2028,15 @@ Err DDmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
                 err = errNone;
               }
               if (h->useCount == 0) {
+                if (db->numHandles > 1 && i < db->numHandles - 1) {
+                  db->h[i] = db->h[db->numHandles - 1];
+                  db->h[db->numHandles - 1] = NULL;
+                } else {
+                  db->h[i] = NULL;
+                }
+                db->numHandles--;
                 pumpkin_heap_free(h->buf, "DmHandleBuf");
                 pumpkin_heap_free(h, "DmHandle");
-                db->idxRec[index].h = NULL;
               }
               mutex_unlock(module->dm->mutex);
               DataMgrCheckErr(err);
