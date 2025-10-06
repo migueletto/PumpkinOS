@@ -11,7 +11,7 @@
 static uint8_t disk[DISK_SIZE];
 
 static const uint8_t bdisk[BDISK_SIZE] = {
-#include "diskbin.h"
+#include "diskbin.txt"
 };
 
 static FATFS fatfs;
