@@ -67,7 +67,7 @@ typedef struct {
 typedef struct DmOpenType {
   LocalID dbID;
   UInt16 mode, numRecs, protect;
-  UInt32 ftype, readCount, writeCount, uniqueIDSeed;
+  UInt32 ftype, uniqueIDSeed;
   UInt32 creator, type, crDate, modDate, bckDate, modNum;
   UInt32 attributes, version, appInfoID, sortInfoID;
   char name[dmDBNameLength];
@@ -93,7 +93,8 @@ typedef struct {
   UInt32 comparF68K;
   Int16 other;
   MemHandle appInfoH;
-  DmOpenType *tmpDb;
+  DmOpenType *sortingDb;
+  UInt8 recInfo[8];
   Err lastErr;
 } data_module_t;
 
@@ -115,7 +116,6 @@ typedef struct DmHandle {
   union {
     struct {
       UInt32 uniqueID;
-      UInt16 index;
       UInt16 attr;
     } rec;
     struct {
@@ -128,6 +128,9 @@ typedef struct DmHandle {
 } DmHandle;
 
 static MemHandle DDmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean writeIndex);
+
+
+// Management functions
 
 static Boolean DataMgrValidName(UInt8 *buf) {
   Int32 i;
@@ -183,7 +186,6 @@ static void DataMgrName(char *path, char *name, int file, int id, uint32_t type,
         }
         sys_snprintf(&buf[n], VFS_PATH-n-1, "/%s.%08X.%d", st, type, id);
       } else {
-        //sys_snprintf(&buf[n], VFS_PATH-n-1, "/%08X.%02X", uniqueId, attr);
         sys_snprintf(&buf[n], VFS_PATH-n-1, "/%08X", uniqueId);
       }
       break;
@@ -424,7 +426,7 @@ static void DataMgrWriteAppInfo(data_module_t *module, LocalID dbID, LocalID *ap
   }
 }
 
-static void DataMgrInsertIntoIndex(DmOpenType *db, DmHandle *h) {
+static void DataMgrInsertIntoIndex(DmOpenType *db, DmHandle *h, UInt16 index) {
   UInt16 i;
 
   if (db->numRecs == db->capRecs) {
@@ -435,15 +437,15 @@ static void DataMgrInsertIntoIndex(DmOpenType *db, DmHandle *h) {
   }
   db->numRecs++;
 
-  if (h->d.rec.index < db->numRecs - 1) {
-    for (i = db->numRecs - 1; i > h->d.rec.index; i--) {
+  if (index < db->numRecs - 1) {
+    for (i = db->numRecs - 1; i > index; i--) {
       db->idxRec[i] = db->idxRec[i - 1];
     }
   }
 
-  db->idxRec[h->d.rec.index].uniqueID = h->d.rec.uniqueID;
-  db->idxRec[h->d.rec.index].attr = h->d.rec.attr;
-  db->idxRec[h->d.rec.index].h = h;
+  db->idxRec[index].uniqueID = h->d.rec.uniqueID;
+  db->idxRec[index].attr = h->d.rec.attr;
+  db->idxRec[index].h = h;
 }
 
 static DmHandle *DataMgrRemoveFromIndex(DmOpenType *db, UInt16 index, UInt32 *uniqueID, UInt16 *attr) {
@@ -530,13 +532,13 @@ static int DataMgrReadIndex(DmOpenType *db) {
   return r;
 }
 
-static int DataMgrGetFileLocks(data_module_t *module, DmOpenType *db, int *read_locks, int *write_locks) {
+static int DataMgrGetFileLocks(data_module_t *module, DmOpenType *db, UInt32 *readLocks, UInt32 *writeLocks) {
   char name[16], buf[VFS_PATH];
   vfs_file_t *f;
   int r = -1;
 
-  *read_locks = 0;
-  *write_locks = 0;
+  *readLocks = 0;
+  *writeLocks = 0;
 
   sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
   DataMgrName(module->dm->path, name, DATAMGR_FILE_LOCK, 0, 0, 0, 0, buf);
@@ -545,7 +547,7 @@ static int DataMgrGetFileLocks(data_module_t *module, DmOpenType *db, int *read_
     if ((f = vfs_open(module->dm->session, buf, VFS_READ)) != NULL) {
       sys_memset(buf, 0, sizeof(buf));
       if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-        if (sys_sscanf(buf, "read=%u\nwrite=%u\n", read_locks, write_locks) == 2) {
+        if (sys_sscanf(buf, "read=%u\nwrite=%u\n", readLocks, writeLocks) == 2) {
           r = 0;
         } else {
           debug(DEBUG_ERROR, "DataMgr", "invalid lock \"%s\"", buf);
@@ -561,7 +563,7 @@ static int DataMgrGetFileLocks(data_module_t *module, DmOpenType *db, int *read_
   return r;
 }
 
-static int DataMgrPutFileLocks(data_module_t *module, DmOpenType *db, int read_locks, int write_locks) {
+static int DataMgrPutFileLocks(data_module_t *module, DmOpenType *db, UInt32 readLocks, UInt32 writeLocks) {
   char name[16], buf[VFS_PATH];
   vfs_file_t *f;
   int n, r = -1;
@@ -570,7 +572,7 @@ static int DataMgrPutFileLocks(data_module_t *module, DmOpenType *db, int read_l
   DataMgrName(module->dm->path, name, DATAMGR_FILE_LOCK, 0, 0, 0, 0, buf);
 
   if ((f = vfs_open(module->dm->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-    sys_snprintf(buf, sizeof(buf)-1, "read=%u\nwrite=%u\n", read_locks, write_locks);
+    sys_snprintf(buf, sizeof(buf)-1, "read=%u\nwrite=%u\n", readLocks, writeLocks);
     n = sys_strlen(buf);
     if (vfs_write(f, (uint8_t *)buf, n) == n) {
       r = 0;
@@ -583,23 +585,39 @@ static int DataMgrPutFileLocks(data_module_t *module, DmOpenType *db, int read_l
   return r;
 }
 
+static void DataMgrCountAccess(data_module_t *module, LocalID dbID, UInt32 *readCount, UInt32 *writeCount) {
+  DmOpenType *db;
+
+  *readCount = 0;
+  *writeCount = 0;
+
+  for (db = module->db; db; db = db->next) {
+    if (db->dbID == dbID) {
+      if (db->mode & dmModeReadOnly) *readCount += 1;
+      if (db->mode & dmModeWrite) *writeCount += 1;
+    }
+  }
+}
+
 static int DataMgrLockForWriting(data_module_t *module, DmOpenType *db) {
-  int read_locks, write_locks;
+  UInt32 readCount, writeCount;
+  UInt32 readLocks, writeLocks;
   int r = -1;
 
-  if (DataMgrGetFileLocks(module, db, &read_locks, &write_locks) == 0) {
-    if (db->readCount < read_locks) {
+  DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
+
+  if (DataMgrGetFileLocks(module, db, &readLocks, &writeLocks) == 0) {
+    if (readCount < readLocks) {
       debug(DEBUG_ERROR, "DataMgr", "DataMgrLockForWriting file \"%s\" already locked for reading (other)", db->name);
-    } else if (db->writeCount < write_locks) {
+    } else if (writeCount < writeLocks) {
       debug(DEBUG_ERROR, "DataMgr", "DataMgrLockForWriting file \"%s\" already locked for writing (other)", db->name);
     } else {
-      if (db->readCount > 0) {
+      if (readCount > 0) {
         debug(DEBUG_INFO, "DataMgr", "DataMgrLockForWriting file \"%s\" already locked for reading (own)", db->name);
       }
-      debug(DEBUG_TRACE, "DataMgr", "DataMgrLockForWriting \"%s\" writeCount %d -> %d", db->name, db->writeCount, db->writeCount+1);
-      db->writeCount++;
-      write_locks++;
-      r = DataMgrPutFileLocks(module, db, read_locks, write_locks);
+      debug(DEBUG_TRACE, "DataMgr", "DataMgrLockForWriting \"%s\" writeCount %d -> %d", db->name, writeCount, writeCount+1);
+      writeLocks++;
+      r = DataMgrPutFileLocks(module, db, readLocks, writeLocks);
     }
   }
 
@@ -607,20 +625,22 @@ static int DataMgrLockForWriting(data_module_t *module, DmOpenType *db) {
 }
 
 static int DataMgrLockForReading(data_module_t *module, DmOpenType *db) {
-  int read_locks, write_locks;
+  UInt32 readCount, writeCount;
+  UInt32 readLocks, writeLocks;
   int r = -1;
 
-  if (DataMgrGetFileLocks(module, db, &read_locks, &write_locks) == 0) {
-    if (db->writeCount < write_locks) {
+  DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
+
+  if (DataMgrGetFileLocks(module, db, &readLocks, &writeLocks) == 0) {
+    if (writeCount < writeLocks) {
       debug(DEBUG_ERROR, "DataMgr", "DataMgrLockForReading file \"%s\" already locked for writing (other)", db->name);
     } else {
-      if (db->writeCount > 0) {
+      if (writeCount > 0) {
         debug(DEBUG_INFO, "DataMgr", "DataMgrLockForReading file \"%s\" already locked for writing (own)", db->name);
       }
-      debug(DEBUG_TRACE, "DataMgr", "DataMgrLockForReading \"%s\" readCount %d -> %d", db->name, db->readCount, db->readCount+1);
-      db->readCount++;
-      read_locks++;
-      r = DataMgrPutFileLocks(module, db, read_locks, write_locks);
+      debug(DEBUG_TRACE, "DataMgr", "DataMgrLockForReading \"%s\" readCount %d -> %d", db->name, readCount, readCount+1);
+      readLocks++;
+      r = DataMgrPutFileLocks(module, db, readLocks, writeLocks);
     }
   }
 
@@ -628,16 +648,18 @@ static int DataMgrLockForReading(data_module_t *module, DmOpenType *db) {
 }
 
 static int DataMgrUnlockForReading(data_module_t *module, DmOpenType *db) {
-  int read_locks, write_locks;
+  UInt32 readCount, writeCount;
+  UInt32 readLocks, writeLocks;
   int r = -1;
 
-  if (db->readCount > 0) {
-    if (DataMgrGetFileLocks(module, db, &read_locks, &write_locks) == 0) {
-      if (read_locks > 0) {
-        debug(DEBUG_TRACE, "DataMgr", "DataMgrUnlockForReading \"%s\" readCount %d -> %d", db->name, db->readCount, db->readCount-1);
-        db->readCount--;
-        read_locks--;
-        r = DataMgrPutFileLocks(module, db, read_locks, write_locks);
+  DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
+
+  if (readCount > 0) {
+    if (DataMgrGetFileLocks(module, db, &readLocks, &writeLocks) == 0) {
+      if (readLocks > 0) {
+        debug(DEBUG_TRACE, "DataMgr", "DataMgrUnlockForReading \"%s\" readCount %d -> %d", db->name, readCount, readCount-1);
+        readLocks--;
+        r = DataMgrPutFileLocks(module, db, readLocks, writeLocks);
       } else {
         debug(DEBUG_ERROR, "DataMgr", "DataMgrUnlockForReading file \"%s\" not locked for reading", db->name);
       }
@@ -650,15 +672,17 @@ static int DataMgrUnlockForReading(data_module_t *module, DmOpenType *db) {
 }
 
 static int DataMgrUnlockForWriting(data_module_t *module, DmOpenType *db) {
-  int read_locks, write_locks;
+  UInt32 readCount, writeCount;
+  UInt32 readLocks, writeLocks;
   int r = -1;
 
-  if (db->writeCount > 0) {
-    if (DataMgrGetFileLocks(module, db, &read_locks, &write_locks) == 0) {
-      if (write_locks > 0) {
-        db->writeCount--;
-        write_locks--;
-        r = DataMgrPutFileLocks(module, db, read_locks, write_locks);
+  DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
+
+  if (writeCount > 0) {
+    if (DataMgrGetFileLocks(module, db, &readLocks, &writeLocks) == 0) {
+      if (writeLocks > 0) {
+        writeLocks--;
+        r = DataMgrPutFileLocks(module, db, readLocks, writeLocks);
       } else {
         debug(DEBUG_ERROR, "DataMgr", "DataMgrUnlockForWriting file \"%s\" not locked for writing", db->name);
       }
@@ -733,6 +757,9 @@ Err DDmInit(void) {
   return 0;
 }
 
+
+// Database functions
+
 Err DDmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 attr, UInt32 uniqueIDSeed, Boolean overwrite) {
   DM_MODULE;
   char name[16], buf[VFS_PATH];
@@ -745,6 +772,7 @@ Err DDmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 a
 
   if (nameP) {
     if (mutex_lock(module->dm->mutex) == 0) {
+      sys_memset(&db, 0, sizeof(DmOpenType));
       dbID = DDmFindDatabase(0, nameP);
 
       if (dbID) {
@@ -889,7 +917,7 @@ Err DDmCreateDatabaseFromImage(MemPtr bufferP) {
     if (mutex_lock(module->dm->mutex) == 0) {
       if (DDmCreateDatabaseEx(name, creator, type, attr, uniqueIDSeed, true) == errNone) {
         if ((dbID = DDmFindDatabase(0, name)) != 0) {
-          DDmSetDatabaseInfo(0, dbID, NULL, NULL, &version, &creationDate, &modificationDate, &lastBackupDate, NULL, NULL, NULL, NULL, NULL);
+          DDmSetDatabaseInfo(0, dbID, NULL, NULL, &version, &creationDate, &modificationDate, &lastBackupDate, &modificationNumber, NULL, NULL, NULL, NULL);
           if ((db = DDmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
             if (numRecs > 0) {
               offsets = sys_calloc(numRecs, sizeof(UInt32));
@@ -936,12 +964,15 @@ Err DDmCreateDatabaseFromImage(MemPtr bufferP) {
                   db->capRecs = ((db->numRecs + CAP_SIZE - 1) / CAP_SIZE) * CAP_SIZE;
                   db->idxRec = sys_calloc(db->capRecs, sizeof(UInt32));
 
-                  for (j = 0, k = 0; j < numRecs; j++) {
+                  for (j = 0, k = 0; j < db->numRecs; j++) {
                     size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : DMemPtrSize(bufferP) - offsets[j];
                     if (attrs[j] & dmRecAttrDelete) continue;
                     debug(DEBUG_INFO, "DataMgr", "DmCreateDatabaseFromImage rec %d size %u", k, size);
                     index = k;
                     DDmNewRecordEx(db, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], false);
+                    db->idxRec[index].attr = attrs[j];
+                    db->idxRec[index].uniqueID = uniqueIDs[j];
+                    db->idxRec[index].h = NULL;
                     k++;
                   }
                 }
@@ -1022,12 +1053,14 @@ Err DDmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
   DmOpenType db;
   SysNotifyParamType notify;
   SysNotifyDBDeletedType dbDeleted;
+  UInt32 readCount, writeCount;
   char buf[VFS_PATH], buf2[VFS_PATH];
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(module->dm->mutex) == 0) {
     if (DataMgrReadHeader(module, dbID, NULL, &db) == 0) {
-      if (db.readCount > 0 || db.writeCount > 0) {
+      DataMgrCountAccess(module, db.dbID, &readCount, &writeCount);
+      if (readCount > 0 || writeCount > 0) {
         debug(DEBUG_ERROR, "DataMgr", "DmDeleteDatabase database dbID %u name \"%s\" is open", dbID & ~DBID_MASK, db.name);
       } else {
         debug(DEBUG_INFO, "DataMgr", "DmDeleteDatabase database dbID %u name \"%s\"", dbID & ~DBID_MASK, db.name);
@@ -1369,16 +1402,19 @@ DmOpenRef DDmOpenDBNoOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode) {
 Err DDmCloseDatabase(DmOpenRef dbP) {
   DM_MODULE;
   DmOpenType *db;
+  UInt32 readCount, writeCount;
   Err err = dmErrInvalidParam;
 
   if (dbP) {
     if (mutex_lock(module->dm->mutex) == 0) {
       db = (DmOpenType *)dbP;
+      DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
+
       if (db->mode & dmModeWrite) {
-        debug(DEBUG_TRACE, "DataMgr", "DmCloseDatabase \"%s\" writeCount %d -> %d", db->name, db->writeCount, db->writeCount-1);
+        debug(DEBUG_TRACE, "DataMgr", "DmCloseDatabase \"%s\" writeCount %d -> %d", db->name, writeCount, writeCount-1);
         if (DataMgrUnlockForWriting(module, db) == 0) err = errNone;
       } else if (db->mode & dmModeReadOnly) {
-        debug(DEBUG_TRACE, "DataMgr", "DmCloseDatabase \"%s\" readCount %d -> %d", db->name, db->readCount, db->readCount-1);
+        debug(DEBUG_TRACE, "DataMgr", "DmCloseDatabase \"%s\" readCount %d -> %d", db->name, readCount, readCount-1);
         if (DataMgrUnlockForReading(module, db) == 0) err = errNone;
       } else {
         debug(DEBUG_ERROR, "DataMgr", "DmCloseDatabase \"%s\" db invalid mode 0x%04X", db->name, db->mode);
@@ -1417,12 +1453,14 @@ DmOpenRef DDmNextOpenDatabase(DmOpenRef currentP) {
 Err DDmOpenDatabaseInfo(DmOpenRef dbP, LocalID *dbIDP, UInt16 *openCountP, UInt16 *modeP, UInt16 *cardNoP, Boolean *resDBP) {
   DM_MODULE;
   DmOpenType *db;
+  UInt32 readCount, writeCount;
   Err err = dmErrInvalidParam;
 
   if (dbP) {
     db = (DmOpenType *)dbP;
+    DataMgrCountAccess(module, db->dbID, &readCount, &writeCount);
     if (dbIDP) *dbIDP = db->dbID;
-    if (openCountP) *openCountP = db->readCount + db->writeCount;
+    if (openCountP) *openCountP = readCount + writeCount;
     if (modeP) *modeP = db->mode;
     if (cardNoP) *cardNoP = 0;
     if (resDBP) *resDBP = db->ftype == DATAMGR_TYPE_RES;
@@ -1462,6 +1500,9 @@ Err DDmGetLastErr(void) {
   DM_MODULE;
   return module->lastErr;
 }
+
+
+// Record functions
 
 UInt16 DDmNumRecords(DmOpenRef dbP) {
   DM_MODULE;
@@ -1621,6 +1662,7 @@ Err DDmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
 }
 
 Err DDmMoveRecord(DmOpenRef dbP, UInt16 from, UInt16 to) {
+  // TODO
   return 0;
 }
 
@@ -1645,7 +1687,6 @@ static MemHandle DDmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p
             h->owner = pumpkin_get_current();
             h->size = size;
             h->dbID = db->dbID;
-            h->d.rec.index = *atP;
             if (writeIndex) {
               h->d.rec.uniqueID = ++db->uniqueIDSeed;
               h->d.rec.attr = dmRecAttrDirty | dmRecAttrBusy;
@@ -1673,7 +1714,7 @@ static MemHandle DDmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p
             }
 
             if (writeIndex) {
-              DataMgrInsertIntoIndex(db, h);
+              DataMgrInsertIntoIndex(db, h, *atP);
               DataMgrWriteIndex(db);
             }
           }
@@ -1755,7 +1796,7 @@ Err DDmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
   return err;
 }
 
-static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, Err (*callback)(DmHandle *h, void *data, Boolean loaded), void *data) {
+static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 *index, DmHandle *recH, Err (*callback)(DmHandle *h, void *data, Boolean loaded), void *data) {
   DM_MODULE;
   DmOpenType *db;
   vfs_file_t *f;
@@ -1766,13 +1807,14 @@ static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, E
 
   if (dbP) {
     db = (DmOpenType *)dbP;
-    if (index < db->numRecs) {
+    if (*index < db->numRecs) {
       if (mutex_lock(module->dm->mutex) == 0) {
         if (db->ftype == DATAMGR_TYPE_REC) {
           if (recH) {
             for (i = 0; i < db->numRecs; i++) {
               if (recH == db->idxRec[i].h) {
                 err = callback(recH, data, false);
+                *index = i;
                 break;
               }
             }
@@ -1782,7 +1824,7 @@ static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, E
           }
 
           sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
-          DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, db->idxRec[index].attr & ATTR_MASK, db->idxRec[index].uniqueID, buf);
+          DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, db->idxRec[*index].attr & ATTR_MASK, db->idxRec[*index].uniqueID, buf);
 
           if ((f = vfs_open(module->dm->session, buf, VFS_READ)) != NULL) {
             if ((size = vfs_seek(f, 0, 1)) > 0) {
@@ -1791,11 +1833,10 @@ static MemHandle DDmQueryRecordEx(DmOpenRef dbP, UInt16 index, DmHandle *recH, E
                 h->htype = DATAMGR_TYPE_REC;
                 if (vfs_read(f, h->buf, h->size) == h->size) {
                   vfs_close(f);
-                  h->d.rec.uniqueID = db->idxRec[index].uniqueID;
-                  h->d.rec.attr = db->idxRec[index].attr;
-                  h->d.rec.index = index;
+                  h->d.rec.uniqueID = db->idxRec[*index].uniqueID;
+                  h->d.rec.attr = db->idxRec[*index].attr;
                   err = callback(h, data, true);
-                  db->idxRec[index].h = h;
+                  db->idxRec[*index].h = h;
                 } else {
                   vfs_close(f);
                   err = dmErrMemError;
@@ -1836,7 +1877,7 @@ static Err DDmQueryRecordCallback(DmHandle *h, void *data, Boolean loaded) {
 }
 
 MemHandle DDmQueryRecord(DmOpenRef dbP, UInt16 index) {
-  return DDmQueryRecordEx(dbP, index, NULL, DDmQueryRecordCallback, NULL);
+  return DDmQueryRecordEx(dbP, &index, NULL, DDmQueryRecordCallback, NULL);
 }
 
 static Err DDmGetRecordCallback(DmHandle *h, void *data, Boolean loaded) {
@@ -1853,11 +1894,43 @@ static Err DDmGetRecordCallback(DmHandle *h, void *data, Boolean loaded) {
 }
 
 MemHandle DDmGetRecord(DmOpenRef dbP, UInt16 index) {
-  return DDmQueryRecordEx(dbP, index, NULL, DDmGetRecordCallback, NULL);
+  return DDmQueryRecordEx(dbP, &index, NULL, DDmGetRecordCallback, NULL);
 }
 
 MemHandle DDmQueryNextInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 category) {
-  return 0;
+  DM_MODULE;
+  DmOpenType *db;
+  DmRecIndex *idx;
+  DmHandle *h = NULL;
+  Err err = dmErrInvalidParam;
+
+  if (dbP && indexP) {
+    if (mutex_lock(module->dm->mutex) == 0) {
+      db = (DmOpenType *)dbP;
+        if (db->ftype == DATAMGR_TYPE_REC) {
+          for (; *indexP < db->numRecs; (*indexP)++) {
+            idx = &db->idxRec[*indexP];
+            if (!(idx->attr & dmRecAttrDelete) && (category == dmAllCategories || (idx->attr & dmRecAttrCategoryMask) == (category & dmRecAttrCategoryMask))) {
+              if (!(idx->attr & dmRecAttrSecret) || (db->mode & dmModeShowSecret)) {
+                h = idx->h;
+                if (h == NULL) {
+                  h = DDmGetRecord(db, *indexP);
+                } else {
+                  h->useCount++;
+                  err = errNone;
+                }
+                break;
+              }
+            }
+          }
+          err = errNone;
+        }
+      mutex_unlock(module->dm->mutex);
+    }
+  }
+
+  DataMgrCheckErr(err);
+  return h;
 }
 
 UInt16 DDmPositionInCategory(DmOpenRef dbP, UInt16 index, UInt16 category) {
@@ -1968,7 +2041,7 @@ static Err DDmResizeRecordCallback(DmHandle *h, void *data, Boolean loaded) {
 }
 
 MemHandle DDmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
-  return DDmQueryRecordEx(dbP, index, NULL, DDmResizeRecordCallback, &newSize);
+  return DDmQueryRecordEx(dbP, &index, NULL, DDmResizeRecordCallback, &newSize);
 }
 
 Err DDmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
@@ -1985,41 +2058,39 @@ Err DDmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
         if (db->ftype == DATAMGR_TYPE_REC) {
           if (index < db->numRecs) {
             h = db->idxRec[index].h;
-            if (h && h->d.rec.index == index) {
-              if (h->useCount > 0) {
-                h->useCount--;
-              } else {
-                debug(DEBUG_ERROR, "DataMgr", "DmReleaseRecord database \"%s\" index %d useCount < 0", db->name, index);
-              }
-              if (dirty || (h->d.rec.attr & dmRecAttrDirty)) {
-                if (db->mode & dmModeWrite) {
-                  sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
-                  DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, 0x00, h->d.rec.uniqueID, buf);
-                  if ((f = vfs_open(module->dm->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-                    vfs_write(f, h->buf, h->size);
-                    vfs_close(f);
-                  }
-                  h->d.rec.attr &= ~dmRecAttrDirty;
+            if (h->useCount > 0) {
+              h->useCount--;
+            } else {
+              debug(DEBUG_ERROR, "DataMgr", "DmReleaseRecord database \"%s\" index %d useCount < 0", db->name, index);
+            }
+            if (dirty || (h->d.rec.attr & dmRecAttrDirty)) {
+              if (db->mode & dmModeWrite) {
+                sys_snprintf(name, sizeof(name)-1, "%u", db->dbID & ~DBID_MASK);
+                DataMgrName(module->dm->path, name, DATAMGR_FILE_ELEMENT, 0, 0, 0x00, h->d.rec.uniqueID, buf);
+                if ((f = vfs_open(module->dm->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
+                  vfs_write(f, h->buf, h->size);
+                  vfs_close(f);
+                }
+                h->d.rec.attr &= ~dmRecAttrDirty;
 
-                  db->modDate = TimGetSeconds();
-                  if (DataMgrWriteHeader(module, db->dbID, NULL, db) == 0) {
-                    err = errNone;
-                  }
-                } else {
-                  debug(DEBUG_ERROR, "DataMgr", "DmReleaseRecord database \"%s\" index %d dirty but read-only ", db->name, index);
+                db->modDate = TimGetSeconds();
+                if (DataMgrWriteHeader(module, db->dbID, NULL, db) == 0) {
+                  err = errNone;
                 }
               } else {
-                err = errNone;
+                debug(DEBUG_ERROR, "DataMgr", "DmReleaseRecord database \"%s\" index %d dirty but read-only ", db->name, index);
               }
-              if (h->useCount == 0) {
-                pumpkin_heap_free(h->buf, "DmHandleBuf");
-                pumpkin_heap_free(h, "DmHandle");
-                db->idxRec[index].h = NULL;
-              }
-              mutex_unlock(module->dm->mutex);
-              DataMgrCheckErr(err);
-              return err;
+            } else {
+              err = errNone;
             }
+            if (h->useCount == 0) {
+              pumpkin_heap_free(h->buf, "DmHandleBuf");
+              pumpkin_heap_free(h, "DmHandle");
+              db->idxRec[index].h = NULL;
+            }
+            mutex_unlock(module->dm->mutex);
+            DataMgrCheckErr(err);
+            return err;
           }
         }
     }
@@ -2037,18 +2108,19 @@ static Err DDmSearchRecordCallback(DmHandle *h, void *data, Boolean loaded) {
 UInt16 DDmSearchRecord(MemHandle recH, DmOpenRef *dbPP) {
   DM_MODULE;
   DmOpenType *db;
+  UInt16 index;
   DmHandle *h = NULL;
 
   *dbPP = NULL;
   for (db = module->db; db; db = db->next) {
-    h = DDmQueryRecordEx(db, 0, recH, DDmSearchRecordCallback, dbPP);
+    h = DDmQueryRecordEx(db, &index, recH, DDmSearchRecordCallback, dbPP);
     if (h) {
       *dbPP = db;
       break;
     }
   }
 
-  return h ? h->d.rec.index : -1;
+  return h ? index : -1;
 }
 
 Err DDmMoveCategory(DmOpenRef dbP, UInt16 toCategory, UInt16 fromCategory, Boolean dirty) {
@@ -2077,55 +2149,282 @@ Err DDmSet(void *recordP, UInt32 offset, UInt32 bytes, UInt8 value) {
   return 0;
 }
 
+static int DataMgrCompareHandle(const void *e1, const void *e2) {
+  DM_MODULE;
+  DmRecIndex *i1, *i2;
+  SortRecordInfoType r1, r2;
+  UInt16 index;
+  UInt32 a;
+  UInt8 *b;
+  int r = 0;
+
+  if (e1 && e2 && (module->comparF || module->comparF68K)) {
+    i1 = (DmRecIndex *)e1;
+    i2 = (DmRecIndex *)e2;
+
+    if (i1->h == NULL) {
+      index = i1 - module->sortingDb->idxRec;
+      debug(DEBUG_INFO, "DataMgr", "DataMgrSort loading temporary index %u from database \"%s\"", index, module->sortingDb->name);
+      i1->h = DDmGetRecord(module->sortingDb, index);
+      i1->tempHandle = true;
+    }
+
+    if (i2->h == NULL) {
+      index = i2 - module->sortingDb->idxRec;
+      debug(DEBUG_INFO, "DataMgr", "DataMgrSort loading temporary index %u from database \"%s\"", index, module->sortingDb->name);
+      i2->h = DDmGetRecord(module->sortingDb, index);
+      i2->tempHandle = true;
+    }
+
+    if (module->comparF) {
+      r1.attributes = i1->h->d.rec.attr;
+      r1.uniqueID[0] = (i1->h->d.rec.uniqueID >> 16) & 0xFF;
+      r1.uniqueID[1] = (i1->h->d.rec.uniqueID >>  8) & 0xFF;
+      r1.uniqueID[2] = (i1->h->d.rec.uniqueID >>  0) & 0xFF;
+
+      r2.attributes = i2->h->d.rec.attr;
+      r2.uniqueID[0] = (i2->h->d.rec.uniqueID >> 16) & 0xFF;
+      r2.uniqueID[1] = (i2->h->d.rec.uniqueID >>  8) & 0xFF;
+      r2.uniqueID[2] = (i2->h->d.rec.uniqueID >>  0) & 0xFF;
+
+      r = module->comparF(i1->h->buf, i2->h->buf, module->other, &r1, &r2, module->appInfoH);
+
+    } else if (module->comparF68K) {
+      module->recInfo[0] = i1->h->d.rec.attr;
+      module->recInfo[1] = (i1->h->d.rec.uniqueID >> 16) & 0xFF;
+      module->recInfo[2] = (i1->h->d.rec.uniqueID >>  8) & 0xFF;
+      module->recInfo[3] = (i1->h->d.rec.uniqueID >>  0) & 0xFF;
+
+      module->recInfo[4] = i2->h->d.rec.attr;
+      module->recInfo[5] = (i2->h->d.rec.uniqueID >> 16) & 0xFF;
+      module->recInfo[6] = (i2->h->d.rec.uniqueID >>  8) & 0xFF;
+      module->recInfo[7] = (i2->h->d.rec.uniqueID >>  0) & 0xFF;
+
+      b = module->heapBase;
+      a = module->appInfoH ? (UInt8 *)module->appInfoH - b : 0;
+      r = CallDmCompare(module->comparF68K, i1->h->buf ? i1->h->buf - b : 0, i2->h->buf ? i2->h->buf - b : 0, module->other, &module->recInfo[0] - b, &module->recInfo[4] - b, a);
+    }
+  }
+
+  return r;
+}
+
+static Err DataMgrSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 other) {
+  DM_MODULE;
+  DmOpenType *db;
+  UInt16 i;
+  Err err = dmErrInvalidParam;
+
+  if (dbP && (comparF || comparF68K)) {
+    db = (DmOpenType *)dbP;
+    if (db->mode & dmModeWrite) {
+      if (db->ftype == DATAMGR_TYPE_REC) {
+        if (db->numRecs > 1) {
+          module->comparF = comparF;
+          module->comparF68K = comparF68K;
+          module->other = other;
+          module->appInfoH = db->appInfoID ? DMemLocalIDToHandle(db->appInfoID) : NULL;
+          module->sortingDb = db;
+          for (i = 0; i < db->numRecs; i++) {
+            db->idxRec[i].tempHandle = false;
+          }
+          debug(DEBUG_INFO, "DataMgr", "DataMgrSort sorting database \"%s\" with %d records (%s)", db->name, db->numRecs, comparF ? "native" : "68K");
+          sys_qsort(db->idxRec, db->numRecs, sizeof(DmRecIndex), DataMgrCompareHandle);
+          for (i = 0; i < db->numRecs; i++) {
+            if (db->idxRec[i].tempHandle) {
+              DDmReleaseRecord(db, i, false);
+              db->idxRec[i].tempHandle = false;
+              db->idxRec[i].h = NULL;
+            }
+          }
+          module->sortingDb = NULL;
+          module->comparF = NULL;
+          module->comparF68K = 0;
+          module->other = 0;
+          module->appInfoH = NULL;
+          if (mutex_lock(module->dm->mutex) == 0) {
+            DataMgrWriteIndex(db);
+            mutex_unlock(module->dm->mutex);
+            err = errNone;
+          }
+        } else {
+          err = errNone;
+        }
+      }
+    }
+  }
+
+  DataMgrCheckErr(err);
+  return err;
+}
+
+Err DDmInsertionSort(DmOpenRef dbP, DmComparF *comparF, Int16 other) {
+  return DataMgrSort(dbP, comparF, 0, other);
+}
+
+Err DDmInsertionSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other) {
+  return DataMgrSort(dbP, NULL, comparF, other);
+}
+
+Err DDmQuickSort(DmOpenRef dbP, DmComparF *comparF, Int16 other) {
+  return DataMgrSort(dbP, comparF, 0, other);
+}
+
+Err DDmQuickSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other) {
+  return DataMgrSort(dbP, NULL, comparF, other);
+}
+
+static UInt16 DDmFindSortPositionBinary(DmOpenType *db, MemHandle appInfoH, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other, UInt16 start, UInt16 end, UInt16 level) {
+  DmRecIndex *idx;
+  SortRecordInfoType recInfo, *recInfoP;
+  UInt16 pivot, pos;
+  Int16 r;
+
+  pivot = start + (end - start + 1) / 2;
+  idx = &db->idxRec[pivot];
+  if (newRecordInfo) {
+    recInfo.attributes = idx->attr;
+    recInfo.uniqueID[0] = (idx->uniqueID >> 16) & 0xFF;
+    recInfo.uniqueID[1] = (idx->uniqueID >>  8) & 0xFF;
+    recInfo.uniqueID[2] = (idx->uniqueID >>  0) & 0xFF;
+    recInfoP = &recInfo;
+  } else {
+    recInfoP = NULL;
+  }
+
+  if (idx->h == NULL) {
+    debug(DEBUG_INFO, "DataMgr", "DmFindSortPositionBinary loading temporary index %u from database \"%s\"", pivot, db->name);
+    idx->h = DDmGetRecord(db, pivot);
+    idx->tempHandle = true;
+  }
+
+  r = compar(newRecord, idx->h->buf, other, newRecordInfo, recInfoP, appInfoH);
+  if (r == 0) {
+    pos = pivot;
+  } else if (r < 0) {
+    if (pivot > start) {
+      pos = DDmFindSortPositionBinary(db, appInfoH, newRecord, newRecordInfo, compar, other, start, pivot - 1, level + 1);
+    } else {
+      pos = pivot;
+    }
+  } else {
+    if (pivot < end) {
+      pos = DDmFindSortPositionBinary(db, appInfoH, newRecord, newRecordInfo, compar, other, pivot + 1, end, level + 1);
+    } else {
+      pos = end + 1;
+    }
+  }
+
+  return pos;
+}
+
+UInt16 DDmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other) {
+  DM_MODULE;
+  DmOpenType *db;
+  MemHandle appInfoH;
+  UInt16 i, start, end, pos = 0;
+  Err err = dmErrInvalidParam;
+
+  if (dbP && newRecord && compar) {
+    if (mutex_lock(module->dm->mutex) == 0) {
+      db = (DmOpenType *)dbP;
+      if (db->ftype == DATAMGR_TYPE_REC) {
+        if (db->numRecs > 0) {
+          appInfoH = db->appInfoID ? DMemLocalIDToHandle(db->appInfoID) : NULL;
+          start = 0;
+          end = db->numRecs - 1;
+          for (i = 0; i < db->numRecs; i++) {
+            db->idxRec[i].tempHandle = false;
+          }
+          pos = DDmFindSortPositionBinary(db, appInfoH, newRecord, newRecordInfo, compar, other, start, end, 0);
+          for (i = 0; i < db->numRecs; i++) {
+            if (db->idxRec[i].tempHandle) {
+              DDmReleaseRecord(db, i, false);
+              db->idxRec[i].tempHandle = false;
+              db->idxRec[i].h = NULL;
+            }
+          }
+        } else {
+          pos = 0;
+        }
+      }
+      mutex_unlock(module->dm->mutex);
+    }
+  }
+
+  DataMgrCheckErr(err);
+  return pos;
+}
+
+UInt16 DDmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other) {
+  return DDmFindSortPosition(dbP, newRecord, NULL, compar, other);
+}
+
+
+// Resource functions
+
 MemHandle DDmGetResource(DmResType type, DmResID resID) {
+  // TODO
   return 0;
 }
 
 MemHandle DDmGet1Resource(DmResType type, DmResID resID) {
+  // TODO
   return 0;
 }
 
 Err DDmReleaseResource(MemHandle resourceH) {
+  // TODO
   return 0;
 }
 
 MemHandle DDmResizeResource(MemHandle resourceH, UInt32 newSize) {
+  // TODO
   return 0;
 }
 
 DmOpenRef DDmNextOpenResDatabase(DmOpenRef dbP) {
+  // TODO
   return 0;
 }
 
 UInt16 DDmFindResourceType(DmOpenRef dbP, DmResType resType, UInt16 typeIndex) {
+  // TODO
   return 0;
 }
 
 UInt16 DDmFindResource(DmOpenRef dbP, DmResType resType, DmResID resID, MemHandle resH) {
+  // TODO
   return 0;
 }
 
 UInt16 DDmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP) {
+  // TODO
   return 0;
 }
 
 UInt16 DDmNumResources(DmOpenRef dbP) {
+  // TODO
   return 0;
 }
 
 Err DDmResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *resIDP, LocalID *chunkLocalIDP) {
+  // TODO
   return 0;
 }
 
 Err DDmSetResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *resIDP) {
+  // TODO
   return 0;
 }
 
 Err DDmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID resID) {
+  // TODO
   return 0;
 }
 
 Err DDmDetachResource(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
+  // TODO
   return 0;
 }
 
@@ -2186,71 +2485,17 @@ MemHandle DDmNewResource(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32
 }
 
 Err DDmRemoveResource(DmOpenRef dbP, UInt16 index) {
+  // TODO
   return 0;
 }
 
 MemHandle DDmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
+  // TODO
   return 0;
 }
 
-static Err DataMgrSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 other) {
-  DM_MODULE;
-  DmOpenType *db;
-  Err err = dmErrInvalidParam;
 
-  if (dbP && (comparF || comparF68K)) {
-    db = (DmOpenType *)dbP;
-    if (db->mode & dmModeWrite) {
-      if (db->ftype == DATAMGR_TYPE_REC) {
-        if (db->numRecs > 1) {
-          module->comparF = comparF;
-          module->comparF68K = comparF68K;
-          module->other = other;
-          module->appInfoH = db->appInfoID ? DMemLocalIDToHandle(db->appInfoID) : NULL;
-          module->tmpDb = db;
-          debug(DEBUG_INFO, "DataMgr", "DataMgrSort sorting database \"%s\" with %d records (%s)", db->name, db->numRecs, comparF ? "native" : "68K");
-          //sys_qsort(db->idxRec, db->numRecs, sizeof(DmRecIndex), DataMgrCompareHandle);
-          module->tmpDb = NULL;
-          module->comparF = NULL;
-          module->comparF68K = 0;
-          module->other = 0;
-          module->appInfoH = NULL;
-          //StoWriteIndex(sto, db);
-          err = errNone;
-        } else {
-          err = errNone;
-        }
-      }
-    }
-  }
-
-  DataMgrCheckErr(err);
-  return err;
-}
-
-Err DDmInsertionSort(DmOpenRef dbP, DmComparF *comparF, Int16 other) {
-  return DataMgrSort(dbP, comparF, 0, other);
-}
-
-Err DDmInsertionSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other) {
-  return DataMgrSort(dbP, NULL, comparF, other);
-}
-
-Err DDmQuickSort(DmOpenRef dbP, DmComparF *comparF, Int16 other) {
-  return DataMgrSort(dbP, comparF, 0, other);
-}
-
-Err DDmQuickSort68K(DmOpenRef dbP, UInt32 comparF, Int16 other) {
-  return DataMgrSort(dbP, NULL, comparF, other);
-}
-
-UInt16 DDmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newRecordInfo, DmComparF *compar, Int16 other) {
-  return 0;
-}
-
-UInt16 DDmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other) {
-  return 0;
-}
+// Memory Manager functions
 
 UInt32 DMemHandleSize(MemHandle h) {
   DM_MODULE;
