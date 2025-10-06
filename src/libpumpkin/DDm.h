@@ -69,7 +69,7 @@ Err DDmResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *r
 Err DDmSetResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *resIDP);
 Err DDmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID resID);
 Err DDmDetachResource(DmOpenRef dbP, UInt16 index, MemHandle *oldHP);
-MemHandle DDmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p);
+MemHandle DDmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p, Boolean updateIndex);
 MemHandle DDmNewResource(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size);
 Err DDmRemoveResource(DmOpenRef dbP, UInt16 index);
 MemHandle DDmGetResourceIndex(DmOpenRef dbP, UInt16 index);
