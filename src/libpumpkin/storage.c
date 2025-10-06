@@ -2600,7 +2600,7 @@ UInt16 DmNumRecordsInCategory(DmOpenRef dbP, UInt16 category) {
       if (db->ftype == STO_TYPE_REC) {
         for (i = 0; i < db->numRecs; i++) {
           h = db->elements[i];
-          if (!(h->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (h->d.rec.attr & dmRecAttrCategoryMask) == (category &= dmRecAttrCategoryMask))) {
+          if (!(h->d.rec.attr & dmRecAttrDelete) && (category == dmAllCategories || (h->d.rec.attr & dmRecAttrCategoryMask) == (category & dmRecAttrCategoryMask))) {
             if (!(h->d.rec.attr & dmRecAttrSecret) || (dbRef->mode & dmModeShowSecret)) {
               numRecs++;
             }
