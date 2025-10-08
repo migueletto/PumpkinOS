@@ -115,12 +115,28 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case intlTxtCharBounds: {
+      // WChar TxtCharBounds(const Char *inText, UInt32 inOffset, UInt32 *outStart, UInt32 *outEnd)
+      uint32_t inTextP = ARG32;
+      uint32_t inOffset = ARG32;
+      uint32_t outStartP = ARG32;
+      uint32_t outEndP = ARG32;
+      char *inText = emupalmos_trap_sel_in(inTextP, sysTrapIntlDispatch, sel, 0);
+      emupalmos_trap_sel_in(outStartP, sysTrapIntlDispatch, sel, 2);
+      emupalmos_trap_sel_in(outEndP, sysTrapIntlDispatch, sel, 3);
+      UInt32 outStart, outEnd;
+      WChar res = TxtCharBounds(inTextP ? inText : NULL, inOffset, outStartP ? &outStart : NULL, outEndP ? &outEnd : NULL);
+      if (outStartP) m68k_write_memory_32(outStartP, outStart);
+      if (outEndP) m68k_write_memory_32(outEndP, outEnd);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtCharBounds(0x%08X \"%s\", %u, 0x%08X, 0x%08X): %d", inTextP, inText, inOffset, outStartP, outEndP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     //case intlIntlInit:
     //case intlTxtByteAttr:
     //case intlTxtCharXAttr:
     //case intlTxtGetChar:
     //case intlTxtSetNextChar:
-    //case intlTxtCharBounds:
     //case intlTxtPrepFindString:
     //case intlTxtFindString:
     //case intlTxtWordBounds:
