@@ -114,7 +114,6 @@ typedef struct {
   int removed;
   int paused;
   int reserved;
-  script_ref_t obj;
   int screen_ptr;
   int dx, dy;
   int width, height;
@@ -209,6 +208,8 @@ typedef struct {
 } event_t;
 
 typedef struct {
+  int pe;
+  script_ref_t obj;
   script_engine_t *engine;
   window_provider_t *wp;
   audio_provider_t *ap;
@@ -905,6 +906,98 @@ static void pumpkin_dia_kbd(void) {
   } else {
     WinDeleteWindow(number_wh, false);
   }
+}
+
+void pumpkin_set_obj(int pe, script_ref_t obj) {
+  pumpkin_module.pe = pe;
+  pumpkin_module.obj = obj;
+}
+
+static int pumpkin_get_option(char *name, script_arg_t *value) {
+  script_arg_t key;
+
+  key.type = SCRIPT_ARG_STRING;
+  key.value.s = name;
+
+  return script_object_get(pumpkin_module.pe, pumpkin_module.obj, &key, value);
+}
+
+int pumpkin_get_boolean_option(char *name) {
+  script_arg_t value;
+  int n, r = 0;
+
+  if (pumpkin_get_option(name, &value) == 0) {
+    switch (value.type) {
+      case SCRIPT_ARG_LSTRING:
+        n = value.value.l.n < 4 ? value.value.l.n : 4;
+        r = sys_strncmp(value.value.l.s, "true", n) == 0 ? 1 : 0;
+        break;
+      case SCRIPT_ARG_INTEGER:
+        r = value.value.i ? 1 : 0;
+        break;
+      case SCRIPT_ARG_BOOLEAN:
+        r = value.value.i;
+        break;
+    }
+  }
+
+  return r;
+}
+
+int pumpkin_get_integer_option(char *name) {
+  script_arg_t value;
+  char buf[32];
+  int n, r = 0;
+
+  if (pumpkin_get_option(name, &value) == 0) {
+    switch (value.type) {
+      case SCRIPT_ARG_LSTRING:
+        n = value.value.l.n < sizeof(buf) ? value.value.l.n : sizeof(buf);
+        sys_strncpy(buf, value.value.l.s, n - 1);
+        r = sys_atoi(buf);
+        break;
+      case SCRIPT_ARG_INTEGER:
+        r = value.value.i;
+        break;
+      case SCRIPT_ARG_BOOLEAN:
+        r = value.value.i;
+        break;
+    }
+  }
+
+  return r;
+}
+
+uint32_t pumpkin_get_id_option(char *name) {
+  script_arg_t value;
+  uint32_t r = 0;
+
+  if (pumpkin_get_option(name, &value) == 0) {
+    switch (value.type) {
+      case SCRIPT_ARG_LSTRING:
+        if (value.value.l.n == 4) {
+          r = pumpkin_s2id(&r, value.value.l.s);
+        }
+        break;
+    }
+  }
+
+  return r;
+}
+
+char *pumpkin_get_string_option(char *name) {
+  script_arg_t value;
+  char *r = NULL;
+
+  if (pumpkin_get_option(name, &value) == 0) {
+    switch (value.type) {
+      case SCRIPT_ARG_LSTRING:
+        r = value.value.l.s;
+        break;
+    }
+  }
+
+  return r;
 }
 
 void pumpkin_set_mode(int mode, int dia, int depth) {
@@ -2353,8 +2446,8 @@ static void pumpkin_forward_launch_code(UInt32 creator, char *name, UInt16 cmd, 
     if ((buf = serialize_launch(cmd, param, &size)) != NULL) {
       sys_memcpy(buf, &msg, sizeof(launch_msg_t));
       debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using message (%u bytes)", cmd, name, size);
-      debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
-      debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), size - sizeof(launch_msg_t));
+      debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(launch_msg_t));
+      debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(launch_msg_t), size - sizeof(launch_msg_t));
       thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
       sys_free(buf);
     }
@@ -2362,7 +2455,7 @@ static void pumpkin_forward_launch_code(UInt32 creator, char *name, UInt16 cmd, 
     size = sizeof(launch_msg_t);
     debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d (NO param) to \"%s\" using message (%u bytes)", cmd, name, size);
     buf = (uint8_t *)&msg;
-    debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
+    debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(launch_msg_t));
     thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
   }
 }
@@ -2804,8 +2897,8 @@ static void pumpkin_forward_notif(Int32 taskId, UInt32 creator, SysNotifyParamTy
         sys_memcpy(buf, &msg, sizeof(notif_msg_t));
         pumpkin_id2s(notify->notifyType, snotify);
         debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
-        debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
-        debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+        debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(notif_msg_t));
+        debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
         thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
         sys_free(buf);
       }
@@ -3590,8 +3683,8 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           if (len >= sizeof(notif_msg_t)) {
             notif = (notif_msg_t *)buf;
             pumpkin_id2s(notif->notify.notifyType, snotify);
-            debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(notif_msg_t));
-            debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t));
+            debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(notif_msg_t));
+            debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t));
             deserialize_notif(notif->notify.notifyType, buf + sizeof(notif_msg_t), len - sizeof(notif_msg_t), &nparam);
             debug(DEBUG_INFO, PUMPKINOS, "received notification '%s' (%u bytes)", snotify, len);
             notif->notify.notifyDetailsP = &nparam;
@@ -3616,9 +3709,9 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
         case MSG_LAUNCHC:
           if (len >= sizeof(launch_msg_t)) {
             launch = (launch_msg_t *)buf;
-            debug_bytes(DEBUG_INFO, PUMPKINOS, buf, sizeof(launch_msg_t));
+            debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(launch_msg_t));
             if (len > sizeof(launch_msg_t)) {
-              debug_bytes(DEBUG_INFO, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
+              debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
               deserialize_launch(launch->cmd, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t), &lparam);
 	    }
             debug(DEBUG_INFO, PUMPKINOS, "received launch code %d (%u bytes)", launch->cmd, len);

@@ -260,6 +260,12 @@ int pumpkin_get_current(void);
 void pumpkin_set_fullrefresh(int fullrefresh);
 void pumpkin_set_taskbar(int enabled);
 
+void pumpkin_set_obj(int pe, script_ref_t obj);
+int pumpkin_get_boolean_option(char *name);
+int pumpkin_get_integer_option(char *name);
+uint32_t pumpkin_get_id_option(char *name);
+char *pumpkin_get_string_option(char *name);
+
 void pumpkin_set_secure(void *secure);
 int pumpkin_http_get(char *url, int timeout, int (*callback)(int ptr, void *_data), void *data);
 void pumpkin_http_abort(int handle);
