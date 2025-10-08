@@ -21,6 +21,7 @@
 #include "loadfile.h"
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
+#include "deploy.h"
 #include "language.h"
 #include "DDm.h"
 #include "storage.h"
@@ -217,6 +218,7 @@ typedef struct {
   window_t *w;
   heap_t *heap;
   mutex_t *fs_mutex;
+  vfs_session_t *session;
   DataMgrType *dm;
   int battery;
   int finish;
@@ -599,6 +601,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   if ((pumpkin_module.fs_mutex = mutex_create("fs")) == NULL) {
     return -1;
   }
+  pumpkin_module.session = vfs_open_session();
 
   task_key = thread_key();
 
@@ -617,7 +620,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.channels = 1;
   pumpkin_module.rate = 44100;
 
-  StoRemoveLocks(APP_STORAGE);
+  pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
   pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
@@ -657,7 +660,10 @@ static void registry_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 i
 }
 
 void pumpkin_deploy_files(char *path) {
-  StoDeployFiles(path, pumpkin_module.registry);
+  if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
+    pumpkin_deploy_files_session(pumpkin_module.session, path, pumpkin_module.registry);
+    mutex_unlock(pumpkin_module.fs_mutex);
+  }
 }
 
 void pumpkin_init_misc(void) {
@@ -1306,6 +1312,7 @@ int pumpkin_global_finish(void) {
   DataMgrFinish(pumpkin_module.dm);
   heap_finish(pumpkin_module.heap);
   thread_key_delete(task_key);
+  vfs_close_session(pumpkin_module.session);
   mutex_destroy(pumpkin_module.fs_mutex);
   mutex_destroy(mutex);
 
@@ -2193,7 +2200,7 @@ int pumpkin_launch(launch_request_t *request) {
 
         if (!AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
           debug(DEBUG_INFO, PUMPKINOS, "recreating registry");
-          StoRegistryCreate(pumpkin_module.registry, creator);
+          pumpkin_registry_create(pumpkin_module.registry, creator);
         }
 
         if (AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
@@ -5121,7 +5128,10 @@ static int pumpkin_httpd_install(int pe) {
   if (script_get_lstring(pe, 0, &s, &len) == 0) {
     if ((p = MemPtrNew(len)) != NULL) {
       MemMove(p, s, len);
-      r = StoDeployFileFromImage(p, len, pumpkin_module.registry);
+      if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
+        r = pumpkin_deploy_from_image(pumpkin_module.session, p, len, pumpkin_module.registry);
+      }
+      mutex_unlock(pumpkin_module.fs_mutex);
       MemPtrFree(p);
     }
   }

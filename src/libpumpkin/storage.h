@@ -1,22 +1,13 @@
 #ifndef PIT_STORAGE_H
 #define PIT_STORAGE_H
 
-void StoRemoveLocks(char *path);
 int StoInit(char *path, mutex_t *mutex);
 int StoRefresh(void);
 int StoFinish(void);
-int StoDeleteFile(char *path);
-void StoRegistryCreate(AppRegistryType *ar, UInt32 creator);
-int StoDeployFile(char *path, AppRegistryType *ar);
-int StoDeployFiles(char *path, AppRegistryType *ar);
-int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar);
 Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence);
 Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size);
 Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size);
 void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID);
-void *StoDecoded(MemHandle h);
-Boolean StoPtrDecoded(void *p);
-void StoPtrFree(void *p);
 void StoHeapWalk(uint32_t *p, uint32_t size, uint32_t task);
 
 MemHandle MemLocalIDToHandle(LocalID local);

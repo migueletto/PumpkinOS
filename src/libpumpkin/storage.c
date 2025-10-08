@@ -10,7 +10,6 @@
 #include "util.h"
 #include "pumpkin.h"
 #include "ssfn_font.h"
-#include "AppRegistry.h"
 #include "DDm.h"
 #include "debug.h"
 #include "storage.h"
@@ -147,7 +146,7 @@ static void *StoPtrRealloc(storage_handle_t *h, void *p, UInt32 size) {
   return p;
 }
 
-void StoPtrFree(void *p) {
+static void StoPtrFree(void *p) {
   void **q;
 
   if (p) {
@@ -656,28 +655,6 @@ static int StoWriteSortInfo(storage_t *sto, storage_db_t *db) {
   }
 
   return r;
-}
-
-void StoRemoveLocks(char *path) {
-  vfs_session_t *session;
-  vfs_dir_t *dir;
-  vfs_ent_t *ent;
-  char buf[VFS_PATH];
-
-  if ((session = vfs_open_session()) != NULL) {
-    if ((dir = StoVfsOpendir(session, path)) != NULL) {
-      for (;;) {
-        ent = StoVfsReaddir(dir);
-        if (ent == NULL) break;
-        if (ent->type != VFS_DIR) continue;
-        if (ent->name[0] == '.') continue;
-        sys_snprintf(buf, VFS_PATH-1, "%s%s/lock", path, ent->name);
-        StoVfsUnlink(session, buf);
-      }
-      vfs_closedir(dir);
-    }
-    vfs_close_session(session);
-  }
 }
 
 static vfs_ent_t *StoReadEnt(vfs_dir_t *dir) {
@@ -4076,206 +4053,6 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   return err;
 }
 
-int StoDeleteFile(char *name) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  return StoVfsUnlink(sto->session, name);
-}
-
-void StoRegistryCreate(AppRegistryType *ar, UInt32 creator) {
-  AppRegistryCompat c;
-  AppRegistrySize s;
-  AppRegistryPosition p;
-  DmOpenRef dbRef;
-  MemHandle h;
-  UInt16 width, height;
-  UInt8 *ptr;
-  int swidth, sheight;
-
-  c.compat = appCompatUnknown;
-  c.code = 0;
-  AppRegistrySet(ar, creator, appRegistryCompat, 0, &c);
-
-  pumpkin_get_window(&swidth, &sheight);
-  width = APP_SCREEN_WIDTH;
-  height = APP_SCREEN_HEIGHT;
-  if (pumpkin_get_density() == kDensityLow) {
-    width /= 2;
-    height /= 2;
-  }
-
-  if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
-    if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
-      if ((ptr = MemHandleLock(h)) != NULL) {
-        get2b(&width, ptr, 0);
-        get2b(&height, ptr, 2);
-        if (pumpkin_get_density() == kDensityLow) {
-          width /= 2;
-          height /= 2;
-        }
-        MemHandleUnlock(h);
-      }
-      DmReleaseResource(h);
-    }
-    DmCloseDatabase(dbRef);
-  }
-
-  s.width = width;
-  s.height = height;
-  AppRegistrySet(ar, creator, appRegistrySize, 0, &s);
-
-  p.x = (swidth - s.width) / 2;
-  p.y = (sheight - s.height) / 2;
-  AppRegistrySet(ar, creator, appRegistryPosition, 0, &p);
-}
-
-int StoDeployFile(char *path, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  vfs_file_t *f;
-  LocalID dbID;
-  UInt32 type, creator;
-  char name[dmDBNameLength], stype[8], screator[8], *ext;
-  uint32_t size, hsize;
-  uint8_t *p;
-  int r = -1;
-
-  if (path && (ext = getext(path)) != NULL && (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb"))) {
-    if ((f = StoVfsOpen(sto->session, path, VFS_READ)) != NULL) {
-      size = vfs_seek(f, 0, 1);
-      hsize = 78;
-      if (size > hsize && size != 0xfffffffful) {
-        vfs_seek(f, 0, 0);
-        if ((p = MemPtrNew(size)) != NULL) {
-          if (vfs_read(f, p, hsize) == hsize) {
-            sys_memset(name, 0, dmDBNameLength);
-            sys_memcpy(name, p, dmDBNameLength - 1);
-            if (name[0]) {
-              if ((dbID = DmFindDatabase(0, name)) != 0) {
-                debug(DEBUG_INFO, "STOR", "deleting old version of \"%s\"", name);
-                DmDeleteDatabase(0, dbID);
-              }
-              if (vfs_read(f, p + hsize, size - hsize) == size - hsize) {
-                get4b(&type, p, dmDBNameLength + 28);
-                get4b(&creator, p, dmDBNameLength + 32);
-                pumpkin_id2s(type, stype);
-                pumpkin_id2s(creator, screator);
-                debug(DEBUG_INFO, "STOR", "installing new version of \"%s\" type '%s' creator '%s' from \"%s\"", name, stype, screator, path);
-
-                //DDmCreateDatabaseFromImage(p); // XXX test
-
-                if (DmCreateDatabaseFromImage(p) == errNone) {
-                  debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
-                  if (type == sysFileTApplication) {
-                    StoRegistryCreate(ar, creator);
-                  }
-                  r = 0;
-                } else {
-                    debug(DEBUG_ERROR, "STOR", "error installing \"%s\"", name);
-                }
-              }
-            }
-          }
-          MemPtrFree(p);
-        }
-      }
-      vfs_close(f);
-    }
-  }
-
-  return r;
-}
-
-int StoDeployFileFromImage(uint8_t *p, uint32_t size, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  LocalID dbID;
-  UInt32 type, creator;
-  char name[dmDBNameLength], stype[8], screator[8];
-  uint32_t hsize;
-  int r = -1;
-
-  if (sto) {
-    if (mutex_lock(sto->mutex) == 0) {
-      hsize = 78;
-      if (size > hsize) {
-        sys_memset(name, 0, dmDBNameLength);
-        sys_memcpy(name, p, dmDBNameLength - 1);
-        if (name[0]) {
-          if ((dbID = DmFindDatabase(0, name)) != 0) {
-            debug(DEBUG_INFO, "STOR", "deleting old version of \"%s\"", name);
-            DmDeleteDatabase(0, dbID);
-          }
-          get4b(&type, p, dmDBNameLength + 28);
-          get4b(&creator, p, dmDBNameLength + 32);
-          pumpkin_id2s(type, stype);
-          pumpkin_id2s(creator, screator);
-          debug(DEBUG_INFO, "STOR", "installing new version of \"%s\" type '%s' creator '%s' from memory", name, stype, screator);
-
-          if (DmCreateDatabaseFromImage(p) == errNone) {
-            debug(DEBUG_INFO, "STOR", "installed \"%s\"", name);
-            if (type == sysFileTApplication) {
-              StoRegistryCreate(ar, creator);
-            }
-            r = 0;
-          } else {
-            debug(DEBUG_ERROR, "STOR", "error installing \"%s\"", name);
-          }
-        }
-      }
-      mutex_unlock(sto->mutex);
-    }
-  }
-
-  return r;
-}
-
-int StoDeployFiles(char *path, AppRegistryType *ar) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  vfs_dir_t *dir;
-  vfs_ent_t *ent;
-  char *ext, buf[VFS_PATH];
-  int spawner, rr, r = -1;
-
-  if (path) {
-    if ((dir = StoVfsOpendir(sto->session, path)) != NULL) {
-      spawner = pumpkin_get_spawner() == thread_get_handle();
-      if (!spawner) mutex_lock(sto->mutex);
-
-      for (r = 0; r == 0;) {
-        if ((ent = StoVfsReaddir(dir)) == NULL) break;
-        if (ent->type != VFS_FILE) continue;
-        ext = getext(ent->name);
-        if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
-          sys_memset(buf, 0, sizeof(buf));
-          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
-          rr = StoDeployFile(buf, ar);
-          StoVfsUnlink(sto->session, buf);
-          if (rr == 0) {
-            r = 0;
-          } else {
-            sys_snprintf(buf, sizeof(buf)-1, "Error deploying \"%s\"", ent->name);
-            debug(DEBUG_ERROR, "STOR", "StoDeployFiles: %s", buf);
-            if (!spawner) {
-              pumpkin_error_dialog(buf);
-            }
-          }
-        } else {
-          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
-          StoVfsUnlink(sto->session, buf);
-          sys_snprintf(buf, sizeof(buf)-1, "Cannot deploy file \"%s\"", ent->name);
-          debug(DEBUG_ERROR, "STOR", "StoDeployFiles: %s", buf);
-          if (!spawner) {
-            pumpkin_error_dialog(buf);
-          }
-        }
-      }
-
-      if (!spawner) mutex_unlock(sto->mutex);
-      vfs_closedir(dir);
-    }
-  }
-
-  return r;
-}
-
 void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h2, *handle = NULL;
@@ -4321,36 +4098,6 @@ static void StoDestroyConstant(void *p) {
 
 static void StoDestroyWordList(void *p) {
   MemChunkFree(p);
-}
-
-void *StoDecoded(MemHandle handle) {
-  storage_handle_t *h = (storage_handle_t *)handle;
-  void *decoded = NULL;
-
-  if (h) {
-    if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES) {
-      decoded = h->d.res.decoded;
-    } else {
-      debug(DEBUG_ERROR, "STOR", "StoDecoded %p invalid type 0x%04X", h, h->htype);
-    }
-  }
-
-  return decoded;
-}
-
-Boolean StoPtrDecoded(void *p) {
-  storage_handle_t *h;
-  Boolean r = false;
-
-  if (p) {
-    if ((h = StoPtrRecoverHandle(p)) != NULL) {
-      if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES && h->d.res.decoded == p) {
-        r = true;
-      }
-    }
-  }
-
-  return r;
 }
 
 static void StoDecodeResource(storage_handle_t *res) {
