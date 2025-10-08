@@ -3,6 +3,7 @@
 #include <DLServer.h>
 #include <Helper.h>
 #include <CharAttr.h>
+#include <HsNavCommon.h>
 
 #include "sys.h"
 #include "mutex.h"
@@ -194,7 +195,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SysLibTblEntryType tbl;
       uint8_t *p = SysLibTblEntry68K(refNum, &tbl);
       uint32_t a = emupalmos_trap_out(p);
-      debug(DEBUG_INFO, "EmuPalmOS", "SysLibTblEntry(%d): 0x%08X", refNum, a);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysLibTblEntry(%d): 0x%08X", refNum, a);
       m68k_set_reg(M68K_REG_A0, a);
       }
       break;
@@ -823,6 +824,10 @@ uint32_t palmos_systrap(uint16_t trap) {
       break;
     case sysTrapTsmDispatch:
       palmos_tsmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      break;
+    case sysTrapNavSelector:
+      selector = ARG16;
+      palmos_navtrap(sp, idx, selector);
       break;
     case sysTrapWinScreenMode: {
       // Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP)

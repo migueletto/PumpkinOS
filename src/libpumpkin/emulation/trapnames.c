@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
+#include <HsNavCommon.h>
 
 #include "sys.h"
 #include "bytes.h"
@@ -159,6 +160,20 @@ static char *tsm_traps[] = {
   "FepReset",
   "FepCommitAction",
   "FepOptionsList"
+};
+
+static char *nav_traps[] = {
+  "FrmCountObjectsInNavOrder",
+  "FrmGetNavOrder",
+  "FrmSetNavOrder",
+  "FrmGetNavEntry",
+  "FrmSetNavEntry",
+  "FrmGetNavState",
+  "FrmSetNavState",
+  "FrmNavDrawFocusRing",
+  "FrmNavRemoveFocusRing",
+  "FrmNavGetFocusRingInfo",
+  "FrmNavObjectTakeFocus"
 };
 
 void allTrapsInit(void) {
@@ -531,7 +546,8 @@ void trapHook(uint32_t pc, emu_state_t *state) {
 
 char *trapName(uint16_t trap, uint16_t *selector, int follow) {
   char *name = "unknown";
-  uint32_t d2;
+  uint32_t d2, sp;
+  uint16_t aux;
 
   *selector = 0xFFFF;
 
@@ -569,6 +585,14 @@ char *trapName(uint16_t trap, uint16_t *selector, int follow) {
       if (d2 < tsmMaxSelector) {
         name = follow ? tsm_traps[d2] : allTraps[trap].name;
         *selector = d2;
+      }
+      break;
+    case sysTrapNavSelector:
+      sp = m68k_get_reg(NULL, M68K_REG_SP);
+      aux = m68k_read_memory_16(sp);
+      if (aux <= NavSelectorFrmNavObjectTakeFocus) {
+        name = follow ? nav_traps[aux] : allTraps[trap].name;
+        *selector = aux;
       }
       break;
     default:
