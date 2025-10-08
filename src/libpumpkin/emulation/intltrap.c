@@ -17,7 +17,7 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
   switch (sel) {
     case intlTxtCharAttr: {
       // UInt16 TxtCharAttr(WChar inChar)
-      uint16_t inChar = ARG32;
+      uint16_t inChar = ARG16;
       UInt16 res = TxtCharAttr(inChar);
       debug(DEBUG_TRACE, "EmuPalmOS", "TxtCharAttr(%d): %d", inChar, res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -25,7 +25,7 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       break;
     case intlTxtCharSize: {
       // UInt16 TxtCharSize(WChar inChar)
-      uint16_t inChar = ARG32;
+      uint16_t inChar = ARG16;
       UInt16 res = TxtCharSize(inChar);
       debug(DEBUG_TRACE, "EmuPalmOS", "TxtCharSize(%d): %d", inChar, res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -34,8 +34,8 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     case intlTxtGetPreviousChar: {
       // UInt16 TxtGetPreviousChar(const Char *inText, UInt32 inOffset, WChar *outChar)
       uint32_t inTextP = ARG32;
-      uint16_t inOffset = ARG32;
-      uint16_t outCharP = ARG32;
+      uint32_t inOffset = ARG32;
+      uint32_t outCharP = ARG32;
       char *inText = emupalmos_trap_sel_in(inTextP, sysTrapIntlDispatch, sel, 0);
       WChar outChar;
       UInt16 res = TxtGetPreviousChar(inText, inOffset, &outChar);
@@ -47,8 +47,8 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     case intlTxtGetNextChar: {
       // UInt16 TxtGetNextChar(const Char *inText, UInt32 inOffset, WChar *outChar)
       uint32_t inTextP = ARG32;
-      uint16_t inOffset = ARG32;
-      uint16_t outCharP = ARG32;
+      uint32_t inOffset = ARG32;
+      uint32_t outCharP = ARG32;
       char *inText = emupalmos_trap_sel_in(inTextP, sysTrapIntlDispatch, sel, 0);
       emupalmos_trap_sel_in(outCharP, sysTrapIntlDispatch, sel, 2);
       WChar outChar;
