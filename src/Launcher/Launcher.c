@@ -151,10 +151,10 @@ static void ErrorDialog(char *msg, Err err, UInt16 num) {
   }
 }
 
-static void openErrorDialog(char *name, Err err) {
+static void openErrorDialog(char *name, Err err, UInt16 mode) {
   char buf[256];
 
-  StrNPrintF(buf, sizeof(buf)-1, "Could not open '%s' for writing.", name);
+  StrNPrintF(buf, sizeof(buf)-1, "Could not open '%s' for %s.", name, mode & dmModeWrite ? "writing" : "reading");
   ErrorDialog(buf, err, 0);
 }
 
@@ -1368,9 +1368,16 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
   MemHandle h;
   Boolean (*editor)(FormType *frm, char *title, MemHandle h) = NULL;
   char st[8], title[32];
-  UInt16 formId = 0;
+  UInt16 mode, formId = 0;
 
-  if ((dbRef = DmOpenDatabase(0, data->dbID, dmModeReadWrite)) != NULL) {
+  mode = dmModeReadWrite;
+  dbRef = DmOpenDatabase(0, data->dbID, mode);
+  if (dbRef == NULL) {
+    mode = dmModeReadOnly;
+    dbRef = DmOpenDatabase(0, data->dbID, mode);
+  }
+
+  if (dbRef != NULL) {
     if ((h = DmGet1Resource(item->type, item->id)) != NULL) {
       pumpkin_id2s(item->type, st);
       StrNPrintF(title, sizeof(title)-1, "%s %d", st, item->id);
@@ -1435,7 +1442,7 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
     }
     DmCloseDatabase(dbRef);
   } else {
-    openErrorDialog(data->name, DmGetLastErr());
+    openErrorDialog(data->name, DmGetLastErr(), mode);
   }
 }
 
@@ -1476,7 +1483,7 @@ static void editRecord(launcher_data_t *data, launcher_item_t *item) {
     }
     DmCloseDatabase(dbRef);
   } else {
-    openErrorDialog(data->name, DmGetLastErr());
+    openErrorDialog(data->name, DmGetLastErr(), dmModeReadWrite);
   }
 }
 
