@@ -19,6 +19,7 @@
 
 typedef struct {
   int pe;
+  script_ref_t obj;
   int width, height, density, hdepth, depth, abgr, mono, xfactor, yfactor, rotate;
   int software, fullscreen, fullrefresh, dia, taskbar, mode, osversion;
   char launcher[MAX_STR];
@@ -234,6 +235,7 @@ static int libos_action(void *arg) {
   pumpkin_set_mode(data->mode, data->dia, data->hdepth);
   pumpkin_set_spawner(thread_get_handle());
   pumpkin_set_fullrefresh(data->fullrefresh);
+  pumpkin_set_obj(data->pe, data->obj);
 
   if (data->mode == 0) {
     pumpkin_set_taskbar(data->taskbar);
@@ -260,7 +262,7 @@ static int libos_action(void *arg) {
 typedef enum {
   PARAM_WIDTH = 1, PARAM_HEIGHT, PARAM_DENSITY, PARAM_HDEPTH, PARAM_DEPTH, PARAM_ABGR, PARAM_XFACTOR, PARAM_YFACTOR, PARAM_ROTATE,
   PARAM_FULLSCREEN, PARAM_DIA, PARAM_TASKBAR, PARAM_MODE, PARAM_SOFTWARE, PARAM_FULLREFRESH,
-  PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION
+  PARAM_DRIVER, PARAM_LAUNCHER, PARAM_OSVERSION, PARAM_DEVICEID
 } param_id_t;
 
 typedef struct {
@@ -288,6 +290,7 @@ static param_t params[] = {
   { PARAM_DRIVER,       SCRIPT_ARG_LSTRING, "driver"       },
   { PARAM_LAUNCHER,     SCRIPT_ARG_LSTRING, "launcher"     },
   { PARAM_OSVERSION,    SCRIPT_ARG_LSTRING, "palmos"       },
+  { PARAM_DEVICEID,     SCRIPT_ARG_LSTRING, "deviceId"     },
   { 0, 0, NULL }
 };
 
@@ -306,7 +309,9 @@ static int libos_start(int pe) {
   }
 
   if ((data = sys_calloc(1, sizeof(libos_t))) != NULL) {
-    data->pe = pe;
+    data->pe = script_create(script_get_engine(pe));
+    data->obj = script_create_object(data->pe);
+
     data->wp = script_get_pointer(pe, WINDOW_PROVIDER);
     data->secure = script_get_pointer(pe, SECURE_PROVIDER);
 
@@ -352,6 +357,10 @@ static int libos_start(int pe) {
             case PARAM_LAUNCHER:
               sys_memset(data->launcher, 0, MAX_STR);
               sys_strncpy(data->launcher, v.value.l.s, v.value.l.n < MAX_STR ? v.value.l.n : MAX_STR);
+              break;
+            default:
+              debug(DEBUG_INFO, PUMPKINOS, "making parameter \"%s\" available", params[i].name);
+              script_object_set(data->pe, data->obj, &k, &v);
               break;
           }
         } else if (v.type != SCRIPT_ARG_NULL) {
