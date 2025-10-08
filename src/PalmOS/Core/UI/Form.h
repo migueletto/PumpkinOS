@@ -90,7 +90,8 @@ typedef struct FormObjAttrTag
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
 {
 	UInt16 usable			:1;	// Set if part of ui
-	UInt16 reserved		:15;	// pad it out
+	UInt16 drawn			:1;	// not part of PalmOS: PumpkinOS extension
+	UInt16 reserved		:14;	// pad it out
 }
 #endif
 FormObjAttrType;

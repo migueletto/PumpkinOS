@@ -353,7 +353,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = false;
-        if (formP->attr.visible) {
+        if (obj.label->attr.drawn) {
           if (obj.label->text) {
             old = FntSetFont(obj.label->fontID);
             max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
@@ -362,6 +362,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
             RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
             FntSetFont(old);
             erase = true;
+            obj.label->attr.drawn = 0;
           }
         }
         break;
@@ -485,6 +486,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           WinSetBackColor(oldb);
           WinSetTextColor(oldt);
           FntSetFont(old);
+          obj.label->attr.drawn = 1;
         }
         break;
       case frmGadgetObj:
@@ -3433,6 +3435,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
           debug(DEBUG_TRACE, "Form",  "object %d is a Label", j);
           form->objects[j].object.label = pumpkin_create_label(p, &i);
           form->objects[j].id = form->objects[j].object.label->id;
+          debug(DEBUG_TRACE, "Form",  "Label attr 0x%04X", form->objects[j].object.label->attr.usable);
           break;
         case frmTitleObj:
           debug(DEBUG_TRACE, "Form",  "object %d is a Title", j);
