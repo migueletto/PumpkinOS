@@ -591,7 +591,7 @@ Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *path
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   Err err = sysErrParamErr;
 
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetDefaultDirectory not implemented");
+  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetDefaultDirectory \"%s\" not implemented", fileTypeStr);
   checkvol(module, volRefNum);
 
   if (fileTypeStr && pathStr && bufLenP) {
