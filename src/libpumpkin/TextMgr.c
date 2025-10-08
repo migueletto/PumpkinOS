@@ -141,8 +141,15 @@ UInt16 TxtReplaceStr(Char *ioStr, UInt16 inMaxLen, const Char *inParamStr, UInt1
 }
 
 WChar TxtCharBounds(const Char *inText, UInt32 inOffset, UInt32 *outStart, UInt32 *outEnd) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtCharBounds not implemented");
-  return 0;
+  WChar c = 0;
+
+  if (inText) {
+    if (outStart) *outStart = inOffset;
+    if (outEnd) *outEnd = inOffset;
+    c = inText[inOffset];
+  }
+
+  return c;
 }
 
 UInt32 TxtGetTruncationOffset(const Char *inText, UInt32 inOffset) {
