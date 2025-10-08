@@ -3182,22 +3182,6 @@ static void removeWidgets(launcher_data_t *data) {
   }
 }
 
-static void test(void) {
-  LocalID dbID;
-  DmOpenRef dbRef;
-  MemHandle h;
-  char *s;
-
-  dbID = DDmFindDatabase(0, "Printcap");
-  dbRef = DDmOpenDatabase(0, dbID, dmModeReadOnly);
-  h = DDmGetRecord(dbRef, 0);
-  s = DMemHandleLock(h);
-  debug(1, "XXX", "%s", s);
-  DMemHandleUnlock(h);
-  DDmReleaseRecord(h, 0, false);
-  DDmCloseDatabase(dbRef);
-}
-
 #if defined(ANDROID) || defined(EMSCRIPTEN) || defined(KERNEL)
 UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #else
@@ -3293,7 +3277,6 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
     addWidgets(data);
   }
 
-  //test();
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
