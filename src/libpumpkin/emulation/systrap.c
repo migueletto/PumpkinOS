@@ -120,9 +120,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       char *name = (char *)emupalmos_trap_in(nameP, trap, 0);
       emupalmos_trap_in(refNumP, trap, 1);
       UInt16 refNum;
-      if (name && !StrCompare(name, NetLibName)) {
-        refNum = NetLibRefNum;
-      } else {
+      if (SysLibFind(name, &refNum) != errNone || refNum == 0) {
         refNum = SysLibFind68K(name);
       }
       err = refNum ? errNone : sysErrLibNotFound;
