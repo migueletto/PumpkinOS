@@ -41,6 +41,13 @@ extern "C" {
 #define CpmLibRefNum (MAX_SYSLIBS+4)
 #define CpmLibName   "CPM Library"
 
+#define PFilLibRefNum (MAX_SYSLIBS+5)
+#define PFilLibName  "FileBrowser-PFil"
+#define PFilCacheLibName  "FileBrowserCacheLib-PFil"
+
+#define PmUILibRefNum (MAX_SYSLIBS+6)
+#define PmUILibName  "PmUIUtilLib-PmUU"
+
 #define BUTTONS_HEIGHT 64
 
 #define MSG_KEY     1
