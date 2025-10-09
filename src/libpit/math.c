@@ -252,7 +252,7 @@ double sys_tan(double x) {
 }
 
 double sys_pi(void) {
-  return M_PI;
+  return 3.141592653589793;
 }
 
 double sys_sinh(double x) {
