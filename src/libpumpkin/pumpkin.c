@@ -220,7 +220,7 @@ typedef struct {
   heap_t *heap;
   mutex_t *fs_mutex;
   vfs_session_t *session;
-  DataMgrType *dm;
+  //DataMgrType *dm;
   int battery;
   int finish;
   int paused;
@@ -625,8 +625,8 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
-  pumpkin_module.dm = DataMgrInit("/app_data/");
-  DataMgrInitModule(pumpkin_module.dm);
+  //pumpkin_module.dm = DataMgrInit("/app_data/");
+  //DataMgrInitModule(pumpkin_module.dm);
 
   SysUInitModule(); // sto calls SysQSortP
 
@@ -1401,8 +1401,8 @@ int pumpkin_global_finish(void) {
 
   SysUFinishModule();
   StoFinish();
-  DataMgrFinishModule();
-  DataMgrFinish(pumpkin_module.dm);
+  //DataMgrFinishModule();
+  //DataMgrFinish(pumpkin_module.dm);
   heap_finish(pumpkin_module.heap);
   thread_key_delete(task_key);
   vfs_close_session(pumpkin_module.session);
@@ -1817,7 +1817,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   if (pumpkin_module.mode != 1) {
     task->heap = heap_init(NULL, HEAP_SIZE, SMALL_HEAP_SIZE, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
-    DataMgrInitModule(pumpkin_module.dm);
+    //DataMgrInitModule(pumpkin_module.dm);
   } else {
     task->heap = pumpkin_module.heap;
   }
@@ -1899,8 +1899,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       pumpkin_calibrate(0);
     }
   }
-
-  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppStarted, 0);
 
   return 0;
 }
@@ -2004,7 +2002,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   if (pumpkin_module.mode != 1) {
     StoFinish();
-    DataMgrInitModule(pumpkin_module.dm);
+    //DataMgrFinishModule();
     heap_finish(task->heap);
   }
 
@@ -2021,8 +2019,6 @@ static int pumpkin_local_finish(UInt32 creator) {
   }
 
   mutex_unlock(mutex);
-
-  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppFinished, 0);
 
   return 0;
 }
@@ -2095,8 +2091,6 @@ int pumpkin_launcher(char *name, int width, int height) {
 
 void pumpkin_app_crashed(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-
-  //pumpkin_forward_msg(0, MSG_KEY, WINDOW_KEY_CUSTOM, vchrAppCrashed, 0);
 
   if (task && task->dbID) {
     sendLaunchNotification(sysNotifyAppCrashedEvent, task->dbID);
