@@ -344,12 +344,14 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
 BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t type, int chain, uint32_t *dsize);
 FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);
 FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);
+OmOverlaySpecType *pumpkin_create_overlay(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);
 
 void pumpkin_destroy_alert(void *p);
 void pumpkin_destroy_menu(void *p);
 void pumpkin_destroy_bitmap(void *p);
 void pumpkin_destroy_font(void *p);
 void pumpkin_destroy_fontv2(void *p);
+void pumpkin_destroy_overlay(void *p);
 
 void *pumpkin_encode_bitmap(void *p, uint32_t *size);
 
@@ -427,6 +429,7 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
+MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
 MemHandle MemLocalIDToHandle(LocalID local);
 
 Char *StrDup(const Char *src);

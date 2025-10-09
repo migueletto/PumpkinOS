@@ -165,6 +165,42 @@ Err OmGetNextSystemLocale(Boolean iNewSearch, OmSearchStateType* ioStateInfoP, L
 			OMDISPATCH_TRAP(omGetNextSystemLocale);
 			
 
+// structures removed from PalmOS 4:
+
+typedef UInt16 OmOverlayKind;
+
+typedef struct {
+  OmOverlayKind overlayType;
+  UInt32 rscType;
+  UInt16 rscID;
+  UInt32 rscLength;
+  UInt32 rscChecksum;
+} OmOverlayRscType;
+
+typedef struct {
+  UInt16 version;
+  UInt32 flags;
+  UInt32 baseChecksum;
+  OmLocaleType targetLocale;
+  UInt32 baseDBType;
+  UInt32 baseDBCreator;
+  UInt32 baseDBCreateDate;
+  UInt32 baseDBModDate;
+  UInt16 numOverlays;
+  OmOverlayRscType overlays[0];
+} OmOverlaySpecType;
+
+// Flags for OmOverlaySpecType.flags field
+#define omSpecAttrForBase  1   // 'ovly' (in base) describes base itself
+#define omSpecAttrStripped 2   // Localized resources stripped (base only)
+//       omSpecAttr???     4   // ???
+
+// Values for OmOverlayKind
+#define omOverlayKindHide    0  // Hide base resource (not supported in version <= 3)
+#define omOverlayKindAdd     1  // Add new resource (not support in version <= 2)
+#define omOverlayKindReplace 2  // Replace base resource
+#define omOverlayKindBase    3  // Description of base resource itself (not supported in version <= 2)
+
 #ifdef __cplusplus
 	}
 #endif

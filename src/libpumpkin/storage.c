@@ -85,8 +85,10 @@ typedef struct storage_db_t {
 typedef struct DmOpenType {
   LocalID dbID;
   UInt16 mode;
+  MemHandle ovh;
   Boolean isOverlay;
-  struct DmOpenType *overlay;
+  OmOverlaySpecType *ov;
+  struct DmOpenType *overlayDb;
   struct DmOpenType *prev, *next;
 } DmOpenType;
 
@@ -113,7 +115,7 @@ typedef struct {
   UInt16 fontSize;
 } storage_t;
 
-static void StoDecodeResource(storage_handle_t *res);
+static void StoDecodeResource(storage_handle_t *res, Boolean decoded);
 
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
   void **q;
@@ -1524,7 +1526,7 @@ static int StoMapContents(storage_t *sto, storage_db_t *db) {
   return r;
 }
 
-static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode, Boolean setPath, Boolean overlay) {
+static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode, Boolean setPath, Boolean searchOverlay) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Boolean ok;
@@ -1580,16 +1582,29 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
       sto->dbRef = dbRef;
     }
 
-    if (overlay && resourceDB) {
-      OmGetCurrentLocale(&locale);
-      if (OmLocaleToOverlayDBName(dbName, &locale, overlayName) == errNone) {
-        if ((overlayID = DmFindDatabase(cardNo, overlayName)) != 0) {
-          debug(DEBUG_INFO, "STOR", "DmOpenDatabase opening overlay \"%s\"", overlayName);
-          dbRef->overlay = DmOpenDatabaseOverlay(cardNo, overlayID, mode, false, false);
-          if (dbRef->overlay) {
-            dbRef->overlay->isOverlay = true;
-            dbRef->overlay->next = dbRef;
+    if (searchOverlay && resourceDB && !(mode & dmModeWrite)) {
+      if ((dbRef->ovh = DmGet1Resource(omOverlayRscType, omOverlayRscID)) != NULL) {
+        if ((dbRef->ov = MemHandleLock(dbRef->ovh)) != NULL) {
+          OmGetCurrentLocale(&locale);
+          if (OmLocaleToOverlayDBName(dbName, &locale, overlayName) == errNone) {
+            debug(DEBUG_INFO, "STOR", "DmOpenDatabase searching overlay \"%s\" for language %d country %d", overlayName, locale.language, locale.country);
+            if ((overlayID = DmFindDatabase(cardNo, overlayName)) != 0) {
+              dbRef->overlayDb = DmOpenDatabaseOverlay(cardNo, overlayID, mode, false, false);
+              if (dbRef->overlayDb) {
+                dbRef->overlayDb->isOverlay = true;
+                dbRef->overlayDb->next = dbRef;
+              }
+            }
           }
+          if (!dbRef->overlayDb) {
+            MemHandleUnlock(dbRef->ovh);
+            DmReleaseResource(dbRef->ovh);
+            dbRef->ovh = NULL;
+            dbRef->ov = NULL;
+          }
+        } else {
+          DmReleaseResource(dbRef->ovh);
+          dbRef->ovh = NULL;
         }
       }
     }
@@ -1654,6 +1669,14 @@ Err DmCloseDatabase(DmOpenRef dbP) {
               break;
             case STO_TYPE_RES:
               debug(DEBUG_TRACE, "STOR", "DmCloseDatabase \"%s\" flush %d resources", db->name, db->numRecs);
+              if (dbRef->ovh) {
+                if (dbRef->ov) {
+                  MemHandleUnlock(dbRef->ovh);
+                  dbRef->ov = NULL;
+                }
+                DmReleaseResource(dbRef->ovh);
+                dbRef->ovh = NULL;
+              }
               for (i = 0; i < db->numRecs; i++) {
                 h = db->elements[i];
                 pumpkin_id2s(h->d.res.type, st);
@@ -1693,13 +1716,13 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                     h->buf = NULL;
                     h->htype &= ~STO_INFLATED;
                   } else {
-                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase resource %s %d could not be deflated (use=%d lock=%d)", st, h->d.res.id, h->useCount, h->lockCount);
+                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" resource %s %d could not be deflated (use=%d lock=%d)", db->name, st, h->d.res.id, h->useCount, h->lockCount);
                   }
                 }
               }
-              if (dbRef->overlay) {
+              if (dbRef->overlayDb) {
                 debug(DEBUG_INFO, "STOR", "DmCloseDatabase closing overlay");
-                DmCloseDatabase(dbRef->overlay);
+                DmCloseDatabase(dbRef->overlayDb);
               }
               break;
             case STO_TYPE_FILE:
@@ -2016,11 +2039,11 @@ DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
   return dbRef;
 }
 
-static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnly) {
+static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resID, Boolean firstOnly, Boolean decoded) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
-  DmOpenType *dbRef;
   vfs_file_t *f;
+  Boolean searchedOverlay;
   char buf[VFS_PATH], st[8];
   uint32_t i, found, load;
   storage_handle_t *h = NULL;
@@ -2028,9 +2051,12 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
 
   if (mutex_lock(sto->mutex) == 0) {
     pumpkin_id2s(type, st);
+    searchedOverlay = false;
     debug(DEBUG_TRACE, "STOR", "DmGetResourceEx searching resource %s %d first %d", st, resID, firstOnly);
-    for (dbRef = sto->dbRef, found = 0; dbRef && !found; dbRef = dbRef->next) {
-      if (dbRef->overlay) dbRef = dbRef->overlay;
+    if (dbRef == NULL) dbRef = sto->dbRef;
+    for (found = 0; dbRef && !found; dbRef = dbRef->next) {
+      if (!searchedOverlay && dbRef->overlayDb) dbRef = dbRef->overlayDb;
+      searchedOverlay = false;
       if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
       db = (storage_db_t *)(sto->base + dbRef->dbID);
       if (db->ftype != STO_TYPE_RES) continue;
@@ -2071,13 +2097,16 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
               err = errNone;
             }
             if (err == errNone) {
-              StoDecodeResource(h);
+              StoDecodeResource(h, decoded);
             }
           }
           break;
         }
       }
-      if (dbRef->isOverlay) continue;
+      if (dbRef->isOverlay && !found) {
+        searchedOverlay = true;
+        continue;
+      }
       if (firstOnly) break;
     }
 
@@ -2095,12 +2124,16 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
   return h;
 }
 
+MemHandle DmGetResourceDecoded(DmResType type, DmResID resID) {
+  return DmGetResourceEx(NULL, type, resID, false, true);
+}
+
 MemHandle DmGetResource(DmResType type, DmResID resID) {
-  return DmGetResourceEx(type, resID, false);
+  return DmGetResourceEx(NULL, type, resID, false, false);
 }
 
 MemHandle DmGet1Resource(DmResType type, DmResID resID) {
-  return DmGetResourceEx(type, resID, true);
+  return DmGetResourceEx(NULL, type, resID, true, false);
 }
 
 // Search all open resource databases for a resource by type and ID, or by pointer if it is non-NULL.
@@ -2164,7 +2197,7 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
           }
 
           if (err == errNone) {
-            StoDecodeResource(h);
+            StoDecodeResource(h, false);
           }
           break;
         }
@@ -2297,7 +2330,7 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
         }
 
         if (err == errNone) {
-          StoDecodeResource(h);
+          StoDecodeResource(h, false);
         }
       }
     }
@@ -3601,48 +3634,26 @@ UInt16 DmNumResources(DmOpenRef dbP) {
 void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
-  DmOpenType *dbRef;
   storage_handle_t *h;
-  UInt16 id, idaux, os, cpu, size;
-  uint32_t i;
+  DmOpenType *dbRef;
+  UInt16 id;
   char buf[VFS_PATH];
-  int first_load, dlib_found;
+  int first_load;
   void *lib = NULL;
 
   if (dbP && firstLoad) {
     if (mutex_lock(sto->mutex) == 0) {
-      dlib_found = 0;
-      dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
+      id = SYS_OS * 64 + SYS_CPU * 8 + SYS_SIZE;
+      debug(DEBUG_INFO, "STOR", "searching for dlib id %d (os=%d cpu=%d size=%d)", id, SYS_OS, SYS_CPU, SYS_SIZE);
+
+      if ((h = DmGetResourceEx((DmOpenType *)dbP, resType, id, true, false)) != NULL) {
+        dbRef = (DmOpenType *)dbP;
         db = (storage_db_t *)(sto->base + dbRef->dbID);
-        if (db->ftype == STO_TYPE_RES) {
-          id = SYS_OS * 64 + SYS_CPU * 8 + SYS_SIZE;
-          debug(DEBUG_INFO, "STOR", "searching for dlib id %d (os=%d cpu=%d size=%d)", id, SYS_OS, SYS_CPU, SYS_SIZE);
-          for (i = 0; i < db->numRecs; i++) {
-            h = db->elements[i];
-            if (h->d.res.type == resType) {
-              if (h->d.res.id == id) {
-                storage_name(sto, db->name, STO_FILE_ELEMENT, id, resType, 0, 0, buf);
-                lib = StoVfsLoadlib(sto->session, buf, &first_load);
-                *firstLoad = lib != NULL && first_load == 1;
-                break;
-              }
-              idaux = h->d.res.id;
-              os = idaux / 64;
-              idaux %= 64;
-              cpu = idaux / 8;
-              size = idaux % 8;
-              dlib_found = 1;
-              debug(DEBUG_INFO, "STOR", "ignoring dlib id %d (os=%d cpu=%d size=%d)", h->d.res.id, os, cpu, size);
-            }
-          }
-        }
+        storage_name(sto, db->name, STO_FILE_ELEMENT, id, resType, 0, 0, buf);
+        lib = StoVfsLoadlib(sto->session, buf, &first_load);
+        *firstLoad = lib != NULL && first_load == 1;
       }
       mutex_unlock(sto->mutex);
-
-      if (dlib_found && !lib) {
-        pumpkin_error_dialog("App was compiled for a different architecture");
-      }
     }
   }
 
@@ -4135,11 +4146,11 @@ static void StoDestroyWordList(void *p) {
   MemChunkFree(p);
 }
 
-static void StoDecodeResource(storage_handle_t *res) {
+static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   UInt8 *aux;
   uint32_t ftype32, dsize;
-  uint16_t ftype;
+  uint16_t ftype, version;
   char st[8];
   void *p;
   int i;
@@ -4223,9 +4234,20 @@ static void StoDecodeResource(storage_handle_t *res) {
         BmpDecompressBitmapChain(res, res->d.res.type, res->d.res.id);
         debug(DEBUG_TRACE, "STOR", "decoded size %d", res->size);
         break;
+      case omOverlayRscType:
+        get2b(&version, res->buf, 0);
+        if (version == 4) {
+          debug(DEBUG_TRACE, "STOR", "decoding overlay resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_overlay(res, res->buf, res->size, &dsize)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_overlay;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
+        }
+        break;
       case constantRscType:
         debug(DEBUG_TRACE, "STOR", "decoding constant resource %s %d", st, res->d.res.id);
-        if (!pumpkin_is_m68k() && res->size == sizeof(UInt32) && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
+        if ((!pumpkin_is_m68k() || decoded) && res->size == sizeof(UInt32) && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
           aux[0] = res->buf[3];
           aux[1] = res->buf[2];
           aux[2] = res->buf[1];
@@ -4237,7 +4259,7 @@ static void StoDecodeResource(storage_handle_t *res) {
         break;
       case wrdListRscType:
         debug(DEBUG_TRACE, "STOR", "decoding wordList resource %s %d", st, res->d.res.id);
-        if (!pumpkin_is_m68k() && (res->size & 1) == 0 && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
+        if ((!pumpkin_is_m68k() || decoded) && (res->size & 1) == 0 && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
           for (i = 0; i < res->size; i += 2) {
             aux[i] = res->buf[i+1];
             aux[i+1] = res->buf[i];

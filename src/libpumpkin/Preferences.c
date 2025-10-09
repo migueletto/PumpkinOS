@@ -223,6 +223,7 @@ static void initPrefs(SystemPreferencesType *prefs) {
 }
 
 int PrefInitModule(void) {
+  LmLocaleType systemLocale;
   UInt16 size;
 
   mutex = mutex_create("prefs");
@@ -240,6 +241,9 @@ int PrefInitModule(void) {
     pumpkin_set_preference(BOOT_CREATOR, PALMOS_PREFS_ID, &prefs, size, true);
   } else {
     debug(DEBUG_INFO, PALMOS_MODULE, "loading system preferences");
+    systemLocale.language = prefs.language;
+    systemLocale.country = prefs.country;
+    OmSetSystemLocale(&systemLocale);
   }
 
   if (DmFindDatabase(0, SAVED_PREFS) == 0) {

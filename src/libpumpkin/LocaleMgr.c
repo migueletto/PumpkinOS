@@ -30,7 +30,7 @@ Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
+  if ((h = DmGetResourceDecoded(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
       p++;
@@ -65,7 +65,7 @@ Err LmLocaleToIndex(const LmLocaleType *iLocale, UInt16 *oLocaleIndex) {
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
+  if ((h = DmGetResourceDecoded(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
       p++;
@@ -121,7 +121,7 @@ Err LmGetLocaleSetting(UInt16 iLocaleIndex, LmLocaleSettingChoice iChoice, void 
     return lmErrSettingDataOverflow;
   }
 
-  if ((h = DmGetResource(wrdListRscType, 22000)) != NULL) {
+  if ((h = DmGetResourceDecoded(wrdListRscType, 22000)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       num = numLocales(h);
       p++;
