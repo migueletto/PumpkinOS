@@ -461,6 +461,8 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
+char *PrefCountryCode(UInt32 i);
+char *PrefLanguageCode(UInt32 i);
 char *PrefCountryName(UInt32 i);
 char *PrefLanguageName(UInt32 i);
 Err LmTimeZoneToIndex(Int16 timeZone, UInt16 *ioLocaleIndex);

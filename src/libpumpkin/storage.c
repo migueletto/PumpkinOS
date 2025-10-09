@@ -85,6 +85,8 @@ typedef struct storage_db_t {
 typedef struct DmOpenType {
   LocalID dbID;
   UInt16 mode;
+  Boolean isOverlay;
+  struct DmOpenType *overlay;
   struct DmOpenType *prev, *next;
 } DmOpenType;
 
@@ -1522,11 +1524,16 @@ static int StoMapContents(storage_t *sto, storage_db_t *db) {
   return r;
 }
 
-DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
+static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode, Boolean setPath, Boolean overlay) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   Boolean ok;
+  LmLocaleType locale;
   DmOpenType *first, *dbRef = NULL;
+  LocalID overlayID;
+  Boolean resourceDB = false;
+  char dbName[dmDBNameLength];
+  char overlayName[dmDBNameLength];
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
@@ -1549,6 +1556,8 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
           dbRef->dbID = dbID;
           dbRef->mode = mode;
           StoMapContents(sto, db);
+          StrNCopy(dbName, db->name, dmDBNameLength-1);
+          resourceDB = db->ftype == STO_TYPE_RES;
           err = errNone;
         } else {
           pumpkin_heap_free(dbRef, "dbRef");
@@ -1562,16 +1571,36 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
   }
 
   if (dbRef) {
-    first = sto->dbRef;
-    if (first) {
-      first->prev = dbRef;
-      dbRef->next = first;
+    if (setPath) {
+      first = sto->dbRef;
+      if (first) {
+        first->prev = dbRef;
+        dbRef->next = first;
+      }
+      sto->dbRef = dbRef;
     }
-    sto->dbRef = dbRef;
+
+    if (overlay && resourceDB) {
+      OmGetCurrentLocale(&locale);
+      if (OmLocaleToOverlayDBName(dbName, &locale, overlayName) == errNone) {
+        if ((overlayID = DmFindDatabase(cardNo, overlayName)) != 0) {
+          debug(DEBUG_INFO, "STOR", "DmOpenDatabase opening overlay \"%s\"", overlayName);
+          dbRef->overlay = DmOpenDatabaseOverlay(cardNo, overlayID, mode, false, false);
+          if (dbRef->overlay) {
+            dbRef->overlay->isOverlay = true;
+            dbRef->overlay->next = dbRef;
+          }
+        }
+      }
+    }
   }
 
   StoCheckErr(err);
   return dbRef;
+}
+
+DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
+  return DmOpenDatabaseOverlay(cardNo, dbID, mode, true, true);
 }
 
 Err DmCloseDatabase(DmOpenRef dbP) {
@@ -1667,6 +1696,10 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                     debug(DEBUG_ERROR, "STOR", "DmCloseDatabase resource %s %d could not be deflated (use=%d lock=%d)", st, h->d.res.id, h->useCount, h->lockCount);
                   }
                 }
+              }
+              if (dbRef->overlay) {
+                debug(DEBUG_INFO, "STOR", "DmCloseDatabase closing overlay");
+                DmCloseDatabase(dbRef->overlay);
               }
               break;
             case STO_TYPE_FILE:
@@ -1948,7 +1981,7 @@ DmOpenRef DmOpenDatabaseByTypeCreator(UInt32 type, UInt32 creator, UInt16 mode) 
 }
 
 DmOpenRef DmOpenDBNoOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode) {
-  return DmOpenDatabase(cardNo, dbID, mode);
+  return DmOpenDatabaseOverlay(cardNo, dbID, mode, true, false);
 }
 
 DmOpenRef DmNextOpenDatabase(DmOpenRef currentP) {
@@ -1997,6 +2030,7 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
     pumpkin_id2s(type, st);
     debug(DEBUG_TRACE, "STOR", "DmGetResourceEx searching resource %s %d first %d", st, resID, firstOnly);
     for (dbRef = sto->dbRef, found = 0; dbRef && !found; dbRef = dbRef->next) {
+      if (dbRef->overlay) dbRef = dbRef->overlay;
       if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
       db = (storage_db_t *)(sto->base + dbRef->dbID);
       if (db->ftype != STO_TYPE_RES) continue;
@@ -2043,6 +2077,7 @@ static MemHandle DmGetResourceEx(DmResType type, DmResID resID, Boolean firstOnl
           break;
         }
       }
+      if (dbRef->isOverlay) continue;
       if (firstOnly) break;
     }
 

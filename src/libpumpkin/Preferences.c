@@ -519,6 +519,14 @@ DmOpenRef PrefOpenPreferenceDBV10(void) {
   return PrefOpenPreferenceDB(false);
 }
 
+char *PrefCountryCode(UInt32 i) {
+  return i < numCountries ? countryCodes[i] : NULL;
+}
+
+char *PrefLanguageCode(UInt32 i) {
+  return i < numLanguages ? languageCodes[i] : NULL;
+}
+
 char *PrefCountryName(UInt32 i) {
   return i < numCountries ? countryNames[i] : NULL;
 }
