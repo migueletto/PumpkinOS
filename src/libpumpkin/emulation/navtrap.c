@@ -43,7 +43,7 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       emupalmos_trap_sel_in(boundsInsideRingP, sysTrapNavSelector, sel, 3);
       emupalmos_trap_sel_in(ringStyleP, sysTrapNavSelector, sel, 4);
       if (objectIDP) m68k_write_memory_16(objectIDP, frmInvalidObjectId);
-      if (extraInfoP) m68k_write_memory_16(extraInfoP, 0);
+      if (extraInfoP) m68k_write_memory_16(extraInfoP, frmNavFocusRingNoExtraInfo);
       if (boundsInsideRingP) {
         m68k_write_memory_16(boundsInsideRingP, 0);
         m68k_write_memory_16(boundsInsideRingP + 2, 0);
@@ -51,7 +51,7 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
         m68k_write_memory_16(boundsInsideRingP + 6, 0);
       }
       if (ringStyleP) m68k_write_memory_16(ringStyleP, frmNavFocusRingStyleInvalid);
-      err = errNone;
+      err = uilibErrObjectNotFound;
       debug(DEBUG_TRACE, "EmuPalmOS", "FrmNavGetFocusRingInfo(0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X): %d",
         formP, objectIDP, extraInfoP, boundsInsideRingP, ringStyleP, err);
       }
