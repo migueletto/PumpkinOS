@@ -875,9 +875,19 @@ uint32_t palmos_systrap(uint16_t trap) {
       RGBColorType table[256];
       MemSet(table, sizeof(table), 0);
       if (operation == winPaletteSet && tableP) {
-        for (i = 0; i < paletteEntries; i++) {
-          decode_rgb(tableP + i*4, &table[i]);
-          debug(DEBUG_TRACE, "EmuPalmOS", "palette %d: %d,%d,%d", startIndex+i, table[i].r, table[i].g, table[i].b);
+        if (startIndex == WinUseTableIndexes) {
+          for (i = 0; i < paletteEntries && i < 256; i++) {
+            uint32_t index = m68k_read_memory_8(tableP + i*4);
+            decode_rgb(tableP + i*4, &table[i]);
+            debug(DEBUG_TRACE, "EmuPalmOS", "palette %d: %u,%u,%u (i=%d)", index, table[i].r, table[i].g, table[i].b, i);
+          }
+        } else {
+          for (i = 0; i < paletteEntries && i < 256; i++) {
+            if (startIndex+i >= 0 && startIndex+i < 256) {
+              decode_rgb(tableP + i*4, &table[i]);
+              debug(DEBUG_TRACE, "EmuPalmOS", "palette %d: %u,%u,%u (start=%d, i=%d)", startIndex+i, table[i].r, table[i].g, table[i].b, startIndex, i);
+            }
+          }
         }
       }
       err = WinPalette(operation, startIndex, paletteEntries, tableP ? table : NULL);
