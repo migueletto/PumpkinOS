@@ -2411,7 +2411,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
   dmin = 0xffffffff;
   imin = 0;
 
-  for (i = numEntries-1; i >= 0; i--) {
+  for (i = 0; i < numEntries; i++) {
     CtbGetEntry(colorTable, i, &entry);
 
     if (rgbP->r == entry.r && rgbP->g == entry.g && rgbP->b == entry.b) {
