@@ -338,12 +338,18 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
         if (setUsable) obj.field->attr.usable = false;
-        FldEraseField(obj.field);
+        if (obj.field->attr.visible) {
+          FldEraseField(obj.field);
+          obj.field->attr.visible = 0;
+        }
         break;
 
       case frmControlObj:
         if (setUsable) obj.control->attr.usable = false;
-        CtlEraseControl(obj.control);
+        if (obj.control->attr.visible) {
+          CtlEraseControl(obj.control);
+          obj.control->attr.visible = 0;
+        }
         break;
 
       case frmTitleObj:
@@ -353,7 +359,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = false;
-        if (obj.label->attr.drawn) {
+        if (obj.label->attr.visible) {
           if (obj.label->text) {
             old = FntSetFont(obj.label->fontID);
             max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
@@ -361,27 +367,30 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
             WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
             RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
             FntSetFont(old);
+            obj.label->attr.visible = 0;
             erase = true;
-            obj.label->attr.drawn = 0;
           }
         }
         break;
 
       case frmBitmapObj:
-        if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
-          if ((bitmapP = MemHandleLock(h)) != NULL) {
-            BmpGetDimensions(bitmapP, &width, &height, NULL);
-            RctSetRectangle(&rect, obj.bitmap->pos.x, obj.bitmap->pos.y, width, height);
-            erase = true;
-            MemHandleUnlock(h);
+        if (obj.bitmap->attr.visible) {
+          if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
+            if ((bitmapP = MemHandleLock(h)) != NULL) {
+              BmpGetDimensions(bitmapP, &width, &height, NULL);
+              RctSetRectangle(&rect, obj.bitmap->pos.x, obj.bitmap->pos.y, width, height);
+              MemHandleUnlock(h);
+              obj.bitmap->attr.visible = 0;
+              erase = true;
+            }
+            DmReleaseResource(h);
           }
-          DmReleaseResource(h);
         }
         break;
 
       case frmGadgetObj:
         if (setUsable) obj.gadget->attr.usable = false;
-        if (formP->attr.visible && (obj.gadget->handler || obj.gadget->m68k_handler)) {
+        if (obj.gadget->attr.visible && (obj.gadget->handler || obj.gadget->m68k_handler)) {
           formFill = UIColorGetTableEntryIndex(UIFormFill);
           oldb = WinSetBackColor(formFill);
           WinPushDrawState();
@@ -407,6 +416,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (setUsable) obj.table->attr.usable = 0;
         if (obj.table->attr.visible) {
           TblEraseTable(obj.table);
+          obj.table->attr.visible = 0;
         }
         break;
 
@@ -414,6 +424,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (setUsable) obj.scrollBar->attr.usable = 0;
         if (obj.scrollBar->attr.visible) {
           MemMove(&rect, &obj.scrollBar->bounds, sizeof(RectangleType));
+          obj.scrollBar->attr.visible = 0;
           erase = true;
         }
         break;
@@ -460,14 +471,16 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
         if (setUsable) obj.field->attr.usable = 1;
-        if (obj.field->attr.usable) {
+        if (obj.field->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           FldDrawField(obj.field);
+          obj.field->attr.visible = 1;
         }
         break;
       case frmControlObj:
         if (setUsable) obj.control->attr.usable = 1;
-        if (obj.control->attr.usable) {
+        if (obj.control->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           CtlDrawControl(obj.control);
+          obj.control->attr.visible = 1;
         }
         break;
       case frmLabelObj:
@@ -486,12 +499,12 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           WinSetBackColor(oldb);
           WinSetTextColor(oldt);
           FntSetFont(old);
-          obj.label->attr.drawn = 1;
+          obj.label->attr.visible = 1;
         }
         break;
       case frmGadgetObj:
         if (setUsable) obj.gadget->attr.usable = 1;
-        if (obj.gadget->attr.usable) {
+        if (obj.gadget->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           if (obj.gadget->m68k_handler || obj.gadget->handler) {
             oldb = WinSetBackColor(formFill);
             WinPushDrawState();
@@ -533,19 +546,21 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmTableObj:
         if (setUsable) obj.table->attr.usable = 1;
-        if (obj.table->attr.usable) {
+        if (obj.table->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           TblDrawTable(obj.table);
+          obj.table->attr.visible = 1;
         }
         break;
       case frmBitmapObj:
         if (setUsable) obj.bitmap->attr.usable = 1;
-        if (obj.bitmap->attr.usable) {
+        if (obj.bitmap->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           if ((h = DmGetResource(bitmapRsc, obj.bitmap->rscID)) != NULL) {
             if ((bitmapP = MemHandleLock(h)) != NULL) {
               mode = WinSetDrawMode(winPaint);
               WinPaintBitmap(bitmapP, obj.bitmap->pos.x, obj.bitmap->pos.y);
               WinSetDrawMode(mode);
               MemHandleUnlock(h);
+              obj.bitmap->attr.visible = 1;
             }
             DmReleaseResource(h);
           }
@@ -622,8 +637,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmScrollBarObj:
         if (setUsable) obj.scrollBar->attr.usable = 1;
-        if (obj.scrollBar->attr.usable) {
+        if (obj.scrollBar->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           SclDrawScrollBar(obj.scrollBar);
+          obj.scrollBar->attr.visible = 1;
         }
         break;
       default:
@@ -1222,6 +1238,7 @@ void FrmDrawForm(FormType *formP) {
     oldd = WinSetDrawWindow(FrmGetWindowHandle(formP));
     FrmDrawEmptyDialog(formP, &rect, margin, WinGetDisplayWindow());
 
+    formP->attr.drawing = 1;
     // draw form objects
     for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
       if (formP->objects[objIndex].objectType == frmControlObj) {
@@ -1232,6 +1249,7 @@ void FrmDrawForm(FormType *formP) {
       }
       FrmDrawObject(formP, objIndex, false);
     }
+    formP->attr.drawing = 0;
     formP->attr.visible = 1;
 
     WinSetDrawWindow(oldd);
@@ -3358,6 +3376,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     formAttr.inputTrigger       = (flags & 0x00000400) ? 1 : 0;
     formAttr.orientation        = (flags & 0x00000380) >> 7;
     formAttr.orientationTrigger = (flags & 0x00000040) ? 1 : 0;
+    formAttr.drawing            = 0;
     formAttr.reserved2          = 0;
 
     debug(DEBUG_TRACE, "Form", "form id %d attr usable %d save %d", formId, formAttr.usable, formAttr.saveBehind);

@@ -90,7 +90,7 @@ typedef struct FormObjAttrTag
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
 {
 	UInt16 usable			:1;	// Set if part of ui
-	UInt16 drawn			:1;	// not part of PalmOS: PumpkinOS extension
+	UInt16 visible			:1;	// not part of PalmOS: PumpkinOS extension
 	UInt16 reserved		:14;	// pad it out
 }
 #endif
@@ -309,7 +309,8 @@ typedef struct FormAttrTag
 	UInt16 inputTrigger       :1; // maps to PINInputTriggerStateType
 	UInt16 orientation        :3; // reserved for future use
 	UInt16 orientationTrigger :1; // reserved for future use
-	UInt16 reserved2          :6;
+	UInt16 drawing            :1;
+	UInt16 reserved2          :5;
 }
 #endif
 FormAttrType;
