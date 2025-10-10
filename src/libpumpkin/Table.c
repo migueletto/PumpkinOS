@@ -271,7 +271,7 @@ void TblRedrawTable(TableType *tableP) {
 void TblEraseTable(TableType *tableP) {
   IndexedColorType formFill, oldb;
 
-  if (tableP) {
+  if (tableP && tableP->attr.visible) {
     tableP->attr.visible = false;
 //debug(1, "XXX", "TblEraseTable selected=false");
     tableP->attr.selected = false;
