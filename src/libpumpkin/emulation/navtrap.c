@@ -28,6 +28,24 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       debug(DEBUG_TRACE, "EmuPalmOS", "FrmNavObjectTakeFocus(0x%08X, %d)", formP, objID);
       }
       break;
+    case NavSelectorFrmNavDrawFocusRing: {
+      // Err FrmNavDrawFocusRing(FormType* formP, UInt16 objectID, Int16 extraInfo,
+      //    RectangleType* boundsInsideRingP,
+      //    FrmNavFocusRingStyleEnum ringStyle, Boolean forceRestore)
+      uint32_t formP = ARG32;
+      uint16_t objectID = ARG16;
+      uint16_t extraInfo = ARG16;
+      uint32_t boundsInsideRingP = ARG32;
+      uint16_t ringStyle = ARG16;
+      uint8_t forceRestore = ARG8;
+      emupalmos_trap_sel_in(formP, sysTrapNavSelector, sel, 0);
+      emupalmos_trap_sel_in(boundsInsideRingP, sysTrapNavSelector, sel, 3);
+      err = errNone;
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmNavDrawFocusRing(0x%08X, %u, %d, 0x%08X, %u, %u): %d",
+        formP, objectID, extraInfo, boundsInsideRingP, ringStyle, forceRestore, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case NavSelectorFrmNavGetFocusRingInfo: {
       // Err FrmNavGetFocusRingInfo(const FormType *formP, UInt16 *objectIDP,
       //   Int16 *extraInfoP, RectangleType *boundsInsideRingP,
@@ -54,6 +72,7 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       err = uilibErrObjectNotFound;
       debug(DEBUG_TRACE, "EmuPalmOS", "FrmNavGetFocusRingInfo(0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X): %d",
         formP, objectIDP, extraInfoP, boundsInsideRingP, ringStyleP, err);
+      m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     default:
