@@ -1949,7 +1949,7 @@ UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boo
     case 4: b = b ? 0x0F : 0x00; break;
     case 8:
       if (isDefault) {
-        b = b ? 0xE6 : 0x00;
+        b = b ? 0xFF : 0x00;
       } else {
         b = b ? BmpRGBToIndex(0x00, 0x00, 0x00, colorTable) : BmpRGBToIndex(0xFF, 0xFF, 0xFF, colorTable);
       }

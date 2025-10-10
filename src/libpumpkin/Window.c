@@ -2401,8 +2401,8 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
   ColorTableType *colorTable;
   UInt16 numEntries;
   RGBColorType entry;
-  uint32_t i, d, dmin, imin;
-  int32_t dr, dg, db;
+  uint32_t d, dmin, imin;
+  int32_t dr, dg, db, i;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = module->colorTable;
@@ -2411,7 +2411,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
   dmin = 0xffffffff;
   imin = 0;
 
-  for (i = 0; i < numEntries; i++) {
+  for (i = numEntries-1; i >= 0; i--) {
     CtbGetEntry(colorTable, i, &entry);
 
     if (rgbP->r == entry.r && rgbP->g == entry.g && rgbP->b == entry.b) {
