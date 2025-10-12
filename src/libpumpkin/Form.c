@@ -210,6 +210,7 @@ FormType *FrmInitForm(UInt16 rscID) {
   FormType *formP = NULL;
   MemHandle h;
   UInt16 size;
+  char buf[64];
   void *p, *rsrc = NULL;
 
   // Forms live in the heap but are not chunks.
@@ -232,6 +233,7 @@ FormType *FrmInitForm(UInt16 rscID) {
     if (formP->window.windowFlags.modal && module->centerDialogs) {
       FrmCenterForm(formP);
     }
+    debug(DEBUG_TRACE, "Window", "FrmInitForm window %s", WinGetDescr(&formP->window, buf, sizeof(buf)));
   }
 
   return formP;
@@ -2561,7 +2563,7 @@ FormLabelType *FrmNewLabel(FormType **formPP, UInt16 id, const Char *textP, Coor
         labelP->pos.y = y;
         labelP->attr.usable = true;
         labelP->fontID = font;
-        labelP->marker = 0x5A5A;
+        labelP->marker = 'Labl';
         labelP->text = &labelP->buf[0];
         labelP->len = StrLen((char *)textP) + 1;
         StrCopy(labelP->text, textP);
@@ -2869,6 +2871,7 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
     c->attr.hasScrollBar = (attr & 0x0800) ? 1 : 0;
     c->attr.search       = (attr & 0x0400) ? 1 : 0;
     c->attr.reserved     = 0;
+    c->marker = 'List';
 
     c->numItems = numItems;
     c->font = font;
@@ -3093,7 +3096,7 @@ static FormLabelType *pumpkin_create_label(uint8_t *p, int *i) {
     c->attr.usable = (attr & 0x8000) ? 1 : 0;
     c->attr.reserved = 0;
     c->fontID = font;
-    c->marker = 0x5A5A;
+    c->marker = 'Labl';
     c->text = &c->buf[0];
     c->len = len;
     xmemcpy(c->text, text, len);

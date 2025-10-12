@@ -318,7 +318,18 @@ void CtlSetEnabled(ControlType *controlP, Boolean usable) {
 }
 
 void CtlSetUsable(ControlType *controlP, Boolean usable) {
+  ListType *listP;
+
   if (controlP) {
+    // ChemTable uses CtlSetUsable on a List, which is not correct.
+    // In PumpkinOS all Lists have an internal marker attribute initialized to 'List'.
+    // If we cast controlP to ListType and find the marker, assume the object is a List.
+    listP = (ListType *)controlP;
+    if (listP->marker == 'List') {
+      listP->attr.usable = usable;
+      return;
+    }
+
     controlP->attr.usable = usable;
   }
 }
@@ -431,10 +442,10 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
     // Many apps use CtlSetLabel to set the label of a FormLabelType, which is not correct.
     // PalmOS handles this well, but PumpkinOS can not, because the internal structures
     // of controls and labels are different. For this reason, in PumpkinOS all labels have
-    // an internal marker attribute initialized to 0x5A5A. If we cast controlP to FormLabelType
+    // an internal marker attribute initialized to 'Labl'. If we cast controlP to FormLabelType
     // and find the marker, assume the object is a FormLabelType.
     labelP = (FormLabelType *)controlP;
-    if (labelP->marker == 0x5A5A) {
+    if (labelP->marker == 'Labl') {
       if (labelP->text) {
         labelP->text = (char *)newLabel;
       }

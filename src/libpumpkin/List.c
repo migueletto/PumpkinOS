@@ -689,6 +689,7 @@ ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, 
         lstP->font = font;
         lstP->visibleItems = visibleItems;
         lstP->formP = formP;
+        lstP->marker = 'List';
 
         lstP->popupWin = WinCreateOffscreenWindow(width, height, nativeFormat, &err);
         if (err == errNone) {

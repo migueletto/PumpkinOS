@@ -211,7 +211,7 @@ typedef struct FormLabelTag
 	UInt8 						reserved;
 	Char *						text;
 
-  UInt16 marker;
+  UInt32 marker;
 	PointType extent;
   Int16 len;
   Char buf[0];

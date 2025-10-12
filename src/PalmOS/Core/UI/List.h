@@ -67,6 +67,7 @@ typedef struct ListType
   void *formP;
   UInt16 controlID;
   uint32_t m68k_drawfunc;
+  UInt32 marker;
   char *aux[1]; // pointer array allocated after list type header
 }
 #endif
