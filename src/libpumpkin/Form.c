@@ -2172,8 +2172,7 @@ void FrmCopyLabel(FormType *formP, UInt16 labelID, const Char *newLabel) {
         label = formP->objects[index].object.label;
         if (label->text) {
           StrNCopy(label->text, newLabel, label->len);
-          // XXX there is no visible attribute on the Label object!
-          if (formP->attr.usable && formP->attr.visible) {
+          if (formP->attr.usable && label->attr.usable && label->attr.visible) {
             FrmDrawObject(formP, index, false);
           }
         }
