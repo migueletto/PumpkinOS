@@ -127,8 +127,6 @@ typedef struct {
   BitmapType *bitmapP;
 } bmp_surface_t;
 
-static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
-static void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable);
 static UInt8 rgbToGray1(UInt16 r, UInt16 g, UInt16 b);
 static UInt8 rgbToGray2(UInt16 r, UInt16 g, UInt16 b);
 static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b);
@@ -501,6 +499,46 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   }
 
   return value;
+}
+
+char *BmpGetDescr(BitmapType *bitmapP, char *buf, UInt16 size) {
+  UInt16 version, depth, density, transp;
+  UInt32 v;
+  uint8_t *ram = pumpkin_heap_base();
+  Coord width, height;
+
+  if (bitmapP) {
+    version = BmpGetVersion(bitmapP);
+    depth = BmpGetBitDepth(bitmapP);
+    density = BmpGetDensity(bitmapP);
+    transp = BmpGetTransparentValue(bitmapP, &v);
+    switch (version) {
+      case  0: version = '0'; break;
+      case  1: version = '1'; break;
+      case  2: version = '2'; break;
+      case  3: version = '3'; break;
+      default: version = '?'; break;
+    }
+    switch (depth) {
+      case  1: depth = '1'; break;
+      case  2: depth = '2'; break;
+      case  4: depth = '4'; break;
+      case  8: depth = '8'; break;
+      case 16: depth = '6'; break;
+      default: depth = '?'; break;
+    }
+    switch (density) {
+      case kDensityLow:    density = 's'; break;
+      case kDensityDouble: density = 'd'; break;
+      default: density = '?'; break;
+    }
+    BmpGetDimensions(bitmapP, &width, &height, NULL);
+    StrNPrintF(buf, size-1, "%08X_%c%c%c%c_%dx%d", (uint8_t *)bitmapP - ram, version, depth, density, transp ? 't' : '.', width, height);
+  } else {
+    StrNCopy(buf, "null", size-1);
+  }
+
+  return buf;
 }
 
 BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const void *bitsP, const ColorTableType *colorTableP) {
@@ -1573,17 +1611,18 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   }
 }
 
-static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
-  Int32 dr, dg, db;
+UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
+  Int32 i, dr, dg, db;
   UInt16 numEntries;
-  UInt32 i, d, dmin, imin;
+  UInt32 d, dmin, imin;
   RGBColorType rgb;
 
   dmin = 0xffffffff;
   imin = 0;
   numEntries = CtbGetNumEntries(colorTable);
 
-  for (i = 0; i < numEntries; i++) {
+  //for (i = 0; i < numEntries; i++) {
+  for (i = numEntries-1; i >= 0; i--) {
     CtbGetEntry(colorTable, i, &rgb);
 
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
@@ -1605,7 +1644,7 @@ static UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *c
   return imin;
 }
 
-static void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable) {
+void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable) {
   RGBColorType rgb;
 
   CtbGetEntry(colorTable, i, &rgb);

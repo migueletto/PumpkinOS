@@ -425,6 +425,8 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
 void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename);
 void pumpkin_save_surface(surface_t *surface, char *filename);
 
+int32_t pumpkin_event_timeout(int32_t t);
+
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
@@ -461,6 +463,7 @@ WinDrawOperation WinGetDrawMode(void);
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
 void WinSetAsciiText(Boolean asciiText);
 void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
+char *WinGetDescr(WinHandle wh, char *buf, UInt16 size);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -507,6 +510,8 @@ BitmapType *BmpDecompressBitmap(BitmapType *bitmapP);
 void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID);
 Boolean BmpGetNoDither(const BitmapType *bitmapP);
 void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh);
+UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
+void BmpIndexToRGB(UInt8 i, UInt8 *red, UInt8 *green, UInt8 *blue, ColorTableType *colorTable);
 UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
 UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
 UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault);
@@ -514,6 +519,7 @@ UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSr
 UInt32 BmpConvertFrom16Bits(UInt32 b, UInt8 depth, ColorTableType *dstColorTable);
 BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle);
 BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal);
+char *BmpGetDescr(BitmapType *bitmapP, char *buf, UInt16 size);
 
 Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);
