@@ -5968,7 +5968,7 @@ int32_t pumpkin_event_timeout(int32_t t) {
       t = 10;
     } else {
       if (!task->evtTimeoutWarning) {
-        FrmCustomAlert(WarningOKAlert, "App is calling EvtGetEvent(0) repeatedly and will be throutled down.", NULL, NULL);
+        FrmCustomAlert(WarningOKAlert, "App is calling EvtGetEvent(0) repeatedly and will be throttled down.", NULL, NULL);
         task->evtTimeoutWarning = true;
       }
       t = -1;
