@@ -143,6 +143,9 @@ typedef struct {
   int num_syslibs;
   uint32_t taskId;
   void *exception;
+  uint64_t evtTimeoutLast;
+  uint32_t evtTimeoutCount;
+  Boolean evtTimeoutWarning;
   Err lastErr;
   heap_t *heap;
   int num_notifs;
@@ -3707,7 +3710,7 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
             if (len > sizeof(launch_msg_t)) {
               debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t));
               deserialize_launch(launch->cmd, buf + sizeof(launch_msg_t), len - sizeof(launch_msg_t), &lparam);
-	    }
+            }
             debug(DEBUG_INFO, PUMPKINOS, "received launch code %d (%u bytes)", launch->cmd, len);
             if (task->pilot_main) {
               debug(DEBUG_INFO, PUMPKINOS, "delivering launch code via PilotMain");
@@ -4520,7 +4523,7 @@ void *pumpkin_get_exception(void) {
 }
 
 void pumpkin_error_dialog(char *msg) {
-  FrmCustomAlert(10021, msg, "", "");
+  FrmCustomAlert(ErrOKAlert, msg, "", "");
 }
 
 void pumpkin_fatal_error(int finish) {
@@ -5946,6 +5949,36 @@ void pumpkin_audio_task_finish(void) {
     heap_finish(task->heap);
     xfree(task);
   }
+}
+
+int32_t pumpkin_event_timeout(int32_t t) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint64_t now;
+
+  if (t == 0) {
+    now = sys_get_clock();
+    if (task->evtTimeoutLast > 0 && now - task->evtTimeoutLast > 1000000) {
+      task->evtTimeoutCount = 0;
+    }
+    task->evtTimeoutLast = now;
+
+    if (task->evtTimeoutCount < 10) {
+      t = 0;
+    } else if (task->evtTimeoutCount < 20) {
+      t = 10;
+    } else {
+      if (!task->evtTimeoutWarning) {
+        FrmCustomAlert(WarningOKAlert, "App is calling EvtGetEvent(0) repeatedly and will be throutled down.", NULL, NULL);
+        task->evtTimeoutWarning = true;
+      }
+      t = -1;
+    }
+    if (task->evtTimeoutCount < 100) task->evtTimeoutCount++;
+  } else {
+    task->evtTimeoutCount = 0;
+  }
+
+  return t;
 }
 
 void pumpkin_set_lasterr(Err err) {

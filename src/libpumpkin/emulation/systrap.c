@@ -2451,7 +2451,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       // void EvtGetEvent(EventType *event, Int32 timeout)
       uint32_t eventP = ARG32;
       int32_t timeout = ARG32;
-      if (timeout == 0) timeout = 1; // XXX temporary fix to hungry apps
+      timeout = pumpkin_event_timeout(timeout);
       emupalmos_trap_in(eventP, trap, 0);
       EventType event;
       MemSet(&event, sizeof(EventType), 0);
