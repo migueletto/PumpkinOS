@@ -398,6 +398,8 @@ void CtlSetSliderValues(ControlType *ctlP, const UInt16 *minValueP, const UInt16
     if (maxValueP) sc->maxValue = *maxValueP;
     if (pageSizeP) sc->pageSize = *pageSizeP;
     if (valueP) sc->value = *valueP;
+    debug(DEBUG_TRACE, "Control", "CtlSetSliderValues control %d min %d max %d page %d value %d",
+      ctlP->id, sc->minValue, sc->maxValue, sc->pageSize, sc->value);
   }
 }
 
@@ -410,6 +412,8 @@ void CtlGetSliderValues(const ControlType *ctlP, UInt16 *minValueP, UInt16 *maxV
     if (maxValueP) *maxValueP = sc->maxValue;
     if (pageSizeP) *pageSizeP = sc->pageSize;
     if (valueP) *valueP = sc->value;
+    debug(DEBUG_TRACE, "Control", "CtlGetSliderValues control %d min %d max %d page %d value %d",
+      ctlP->id, sc->minValue, sc->maxValue, sc->pageSize, sc->value);
   }
 }
 

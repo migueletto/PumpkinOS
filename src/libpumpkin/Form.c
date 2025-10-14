@@ -2391,6 +2391,8 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         return;
     }
     WinScaleRectangle(rP);
+    debug(DEBUG_TRACE, "Form", "FrmGetObjectBounds index %d (%d,%d,%d,%d)",
+      objIndex, rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y);
   }
 }
 
@@ -2863,6 +2865,7 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
     c->bounds.topLeft.y = y; // form relative coordinate
     c->bounds.extent.x = w;
     c->bounds.extent.y = h;
+    debug(DEBUG_TRACE, "Form", "list id %d attr 0x%04X", id, attr);
     c->attr.usable       = (attr & 0x8000) ? 1 : 0;
     c->attr.enabled      = (attr & 0x4000) ? 1 : 0;
     c->attr.visible      = (attr & 0x2000) ? 1 : 0;

@@ -2258,7 +2258,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
       debug(DEBUG_INFO, "EmuPalmOS", "code  segment from 0x%08X to 0x%08X size 0x%04X", codeStart,  codeStart  + codeSize  - 1, codeSize);
       debug(DEBUG_INFO, "EmuPalmOS", "stack segment from 0x%08X to 0x%08X size 0x%04X", stackStart, stackStart + stackSize - 1, stackSize);
-      if (dataSize+aboveSize) debug(DEBUG_INFO, "EmuPalmOS", "data  segment from 0x%08X to 0x%08X size 0x%04X", dataStart,  dataStart  + dataSize + aboveSize - 1, dataSize+ aboveSize );
+      if (dataSize+aboveSize) debug(DEBUG_INFO, "EmuPalmOS", "data  segment from 0x%08X to 0x%08X size 0x%04X", dataStart,  dataStart  + dataSize + aboveSize - 1, dataSize+ aboveSize);
 
       if (!state->panic) {
         creator = pumpkin_get_app_creator();
