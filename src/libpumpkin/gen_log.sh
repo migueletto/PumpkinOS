@@ -4,13 +4,6 @@
 # SYS_TRAP sysTrapStrLen 0 UInt16 StrLen 1 const_Char_* src
 # SEL_TRAP sysTrapIntlDispatch intlTxtCharAttr UInt16 TxtCharAttr 1 WChar inChar
 
-# typedef struct {
-#   uint32_t trap;
-#   char *name;
-#   int nArgs;
-#   uint32_t argSize[16];
-# } trap_t;
-
 rm -f trapArgs.c
 
 awk -v tt=$1 '
@@ -26,7 +19,11 @@ BEGIN {
   ptr["sys_va_list"] = 1;
   ptr["..."]         = 1;
 
-  isize["Char"]      = 1;
+  tchar["Char"]      = 1;
+  tchar["char"]      = 1;
+
+  wchar["WChar"]     = 1;
+
   isize["Int8"]      = 1;
   isize["Int16"]     = 2;
   isize["Int32"]     = 4;
@@ -49,9 +46,7 @@ BEGIN {
   usize["DateFormatType"] = 1;
   usize["DateType"] = 2;
   usize["DlkCtlEnum"] = 1;
-  usize["DmResType"] = 4;
   usize["Err"] = 2;
-  usize["WChar"] = 2;
   usize["EvtSetAutoOffCmd"] = 1;
   usize["FileOpEnum"] = 1;
   usize["FileOriginEnum"] = 1;
@@ -112,6 +107,8 @@ BEGIN {
   usize["FlpFloat"] = 4;
   usize["FlpDouble"] = 8;
 
+  dmid["DmResType"] = 1;
+
   accessor[0] = "CtlGlueGetControlStyle";
   accessor[1] = "FldGlueGetLineInfo";
   accessor[2] = "FrmGlueGetObjectUsable";
@@ -143,13 +140,32 @@ BEGIN {
   accessor[28] = "CtlGlueIsGraphical";
   accessor[29] = "CtlGlueSetFrameStyle";
 
+  print "#define T_VOID 0" >> trapArgs;
+  print "#define T_SIG  1" >> trapArgs;
+  print "#define T_USIG 2" >> trapArgs;
+  print "#define T_CHAR 3" >> trapArgs;
+  print "#define T_WCHR 4" >> trapArgs;
+  print "#define T_HEX  5" >> trapArgs;
+  print "#define T_ID   6" >> trapArgs;
+  print "#define T_PTR  7" >> trapArgs;
+  print "#define T_STR  8" >> trapArgs;
+  print "" >> trapArgs;
+
+  print "typedef struct {" >> trapArgs;
+  print "  uint32_t type;" >> trapArgs;
+  print "  uint32_t size;" >> trapArgs;
+  print "  char *name;" >> trapArgs;
+  print "} trap_arg_t;" >> trapArgs;
+  print "" >> trapArgs;
+
   print "typedef struct {" >> trapArgs;
   print "  uint32_t trap;" >> trapArgs;
   print "  int32_t selector;" >> trapArgs;
   print "  char *name;" >> trapArgs;
-  print "  int rSize;" >> trapArgs;
-  print "  int nArgs;" >> trapArgs;
-  print "  uint32_t argSize[16];" >> trapArgs;
+  print "  uint32_t rtype;" >> trapArgs;
+  print "  uint32_t rsize;" >> trapArgs;
+  print "  uint32_t nargs;" >> trapArgs;
+  print "  trap_arg_t args[16];" >> trapArgs;
   print "} trap_t;" >> trapArgs;
   print "" >> trapArgs;
 
@@ -159,8 +175,6 @@ BEGIN {
   next;
 }
 $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
-  if ($2 == "sysTrapStrPrintF" || $2 == "sysTrapStrVPrintF") next;
-
   trap = $2;
   nargs = 0 + $6;
   selector = $3;
@@ -184,7 +198,7 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     else if (trap == "sysTrapSerialDispatch") name = substr(name, 4);
     else if (trap == "sysTrapTsmDispatch")   name = substr(name, 4);
     else if (trap == "sysTrapUdaMgrDispatch") name = substr(name, 4);
-    else if (trap == "sysTrapVFSMgr") name = "Vfs" substr(name, 8);
+    else if (trap == "sysTrapVFSMgr") name = "VFS" substr(name, 8);
     else if (trap == "sysTrapAccessorDispatch") {
       if (accessor[name]) name = accessor[name];
       else name = "Accessor" name;
@@ -195,34 +209,41 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
   if (substr(rtype, 1, 6) == "const_") {
     rtype = substr(rtype, 7);
   }
-  isptr = 0;
-  issigned = 0;
-  if (index(arg, "[")) {
-    size = 4;
-    isptr = 1;
-  } else if (rtype ~ /[*]$/) {
+  rtyp = "T_SIG";
+  if (rtype ~ /[*]$/) {
     rtype = substr(rtype, 1, length(rtype) - 2);
     size = 4;
-    isptr = 1;
+    rtyp = "T_PTR";
   } else if (rtype ~ /Ptr$/ || rtype ~ /Handle$/ || rtype ~ /Callback/) {
     size = 4;
-    isptr = 1;
+    rtyp = "T_PTR";
   } else if (ptr[rtype]) {
     size = 4;
-    isptr = 1;
+    rtyp = "T_PTR";
+  } else if (tchar[rtype]) {
+    size = 1;
+    rtyp = "T_CHAR";
+  } else if (wchar[rtype]) {
+    size = 2;
+    rtyp = "T_WCHR";
   } else if (isize[rtype]) {
     size = isize[rtype];
-    issigned = 1;
+    rtyp = "T_SIG";
   } else if (usize[rtype]) {
     size = usize[rtype];
+    rtyp = "T_USIG";
   } else if (rtype == "void") {
     size = 0;
+    rtyp = "T_VOID";
+  } else if (dmid[rtype]) {
+    size = 4;
+    rtyp = "T_ID";
   } else {
     size = "ERROR_" rtype;
   }
 
   if (selector == "0" && trap !~ /Dispatch$/) selector = "-1";
-  s = "  { " trap ", " selector ", \"" name "\", " size ", " nargs ", { ";
+  s = "  { .trap=" trap ", .selector=" selector ", .name=\"" name "\", .rtype=" rtyp ", .rsize=" size ", .nargs=" nargs ", .args={ ";
 
   for (i = 0; i < nargs; i++) {
     atype = $(7 + i*2);
@@ -230,38 +251,56 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     if (substr(atype, 1, 6) == "const_") {
       atype = substr(atype, 7);
     }
-    isptr = 0;
-    issigned = 0;
+    atyp = "T_SIG";
     if (index(arg, "[")) {
       size = 4;
-      isptr = 1;
+      atyp = "T_PTR";
     } else if (atype ~ /[*]$/) {
       atype = substr(atype, 1, length(atype) - 2);
       size = 4;
-      isptr = 1;
+      if (tchar[atype]) {
+        atyp = "T_STR";
+      } else {
+        atyp = "T_PTR";
+      }
     } else if (atype ~ /Ptr$/ || atype ~ /Handle$/ || atype ~ /Callback/) {
       size = 4;
-      isptr = 1;
+      atyp = "T_PTR";
     } else if (ptr[atype]) {
       size = 4;
-      isptr = 1;
+      atyp = "T_PTR";
+    } else if (tchar[atype]) {
+      size = 1;
+      atyp = "T_CHAR";
+    } else if (wchar[atype]) {
+      size = 2;
+      atyp = "T_WCHR";
     } else if (isize[atype]) {
       size = isize[atype];
-      issigned = 1;
+      atyp = "T_SIG";
     } else if (usize[atype]) {
       size = usize[atype];
+      atyp = "T_USIG";
+    } else if (dmid[atype]) {
+      size = 4;
+      atyp = "T_ID";
     } else {
       size = "ERROR_" atype;
     }
 
+    if (atyp == "T_USIG" && (arg == "flags" || arg ~ /Flags$/)) {
+      atyp = "T_HEX";
+    }
+
     if (i > 0) s = s ", ";
-    s = s size;
+    s = s "{ .type=" atyp ", .size=" size ", .name=\"" arg "\" }";
   }
 
-  s = s " },";
+  s = s " } },";
   print s >> trapArgs;
 }
 END {
+  print "  { .name = NULL } " >> trapArgs;
   print "};" >> trapArgs;
 }
 ' traps.txt
