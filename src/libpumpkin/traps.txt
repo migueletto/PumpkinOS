@@ -1755,3 +1755,4 @@ SYS_TRAP sysTrapPalmPrivate2 0 void PalmPrivate2 0
 SYS_TRAP sysTrapPalmPrivate3 0 void PalmPrivate3 0
 SYS_TRAP sysTrapPalmPrivate4 0 void PalmPrivate4 0
 SYS_TRAP sysTrapScrDefaultPaletteState 0 void ScrDefaultPaletteState 0
+SYS_TRAP sysTrapScrUpdateScreenBitmap 0 void sysTrapScrUpdateScreenBitmap 0
