@@ -32,7 +32,7 @@ typedef struct {
   WinDrawOperation transferMode;
   PatternType pattern;
   UInt8 patternData[8];
-  UnderlineModeType underlineMode; // XXX it is not being used. Change WinDrawChars() to use this attribute.
+  UnderlineModeType underlineMode;
   UInt16 density, width, height, depth, depth0, coordSys;
   Boolean nativeCoordSys;
   WinHandle displayWindow;
@@ -1995,6 +1995,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   UInt16 prev;
   UInt32 wch;
   Boolean v10;
+  Coord dx, dy;
   uint16_t ch;
   uint32_t i, mult;
   int32_t index;
@@ -2030,7 +2031,20 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         ch = pumpkin_map_char(wch, &f);
         if (v10 && ch == 0x80) ch = 0x19; // numeric space
         if (!module->asciiText || ch >= 32) {
-          x += FntDrawChar(f, wch, ch, 0, 1, x, y);
+          dx = FntDrawChar(f, wch, ch, 0, 1, x, y);
+          dy = FntCharHeight();
+          switch (module->underlineMode) {
+            case grayUnderline:
+              WinDrawGrayLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
+              break;
+            case solidUnderline:
+            case colorUnderline:
+              WinPaintLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
+              break;
+            case noUnderline:
+              break;
+          }
+          x += dx;
         }
       }
     } else {
@@ -2086,7 +2100,20 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           ch = pumpkin_map_char(wch, &f);
           if (v10 && ch == 0x80) ch = 0x19; // numeric space
           if (!module->asciiText || ch >= 32) {
-            x += FntDrawChar(f, wch, ch, index, mult, x, y);
+            dx = FntDrawChar(f, wch, ch, index, mult, x, y);
+            dy = FntCharHeight();
+            switch (module->underlineMode) {
+              case grayUnderline:
+                WinDrawGrayLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
+                break;
+              case solidUnderline:
+              case colorUnderline:
+                WinPaintLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
+                break;
+              case noUnderline:
+                break;
+            }
+            x += dx;
           }
         }
         WinSetCoordinateSystem(prev);
@@ -2185,6 +2212,7 @@ void WinInvertChars(const Char *chars, Int16 len, Coord x, Coord y) {
 
 UnderlineModeType WinSetUnderlineMode(UnderlineModeType mode) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  debug(DEBUG_TRACE, "Window", "WinSetUnderlineMode %d", mode);
   UnderlineModeType prev = module->underlineMode;
   module->underlineMode = mode;
   return prev;
