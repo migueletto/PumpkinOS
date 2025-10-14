@@ -108,6 +108,7 @@ BEGIN {
   usize["FlpDouble"] = 8;
 
   dmid["DmResType"] = 1;
+  rgb["RGBColorType"] = 1;
 
   accessor[0] = "CtlGlueGetControlStyle";
   accessor[1] = "FldGlueGetLineInfo";
@@ -149,6 +150,7 @@ BEGIN {
   print "#define T_ID   6" >> trapArgs;
   print "#define T_PTR  7" >> trapArgs;
   print "#define T_STR  8" >> trapArgs;
+  print "#define T_RGB  9" >> trapArgs;
   print "" >> trapArgs;
 
   print "typedef struct {" >> trapArgs;
@@ -260,6 +262,8 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
       size = 4;
       if (tchar[atype]) {
         atyp = "T_STR";
+      } else if (rgb[atype]) {
+        atyp = "T_RGB";
       } else {
         atyp = "T_PTR";
       }
