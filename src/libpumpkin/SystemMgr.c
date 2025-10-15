@@ -128,7 +128,7 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
   UInt16 flags;
 
   if (DmDatabaseInfo(cardNo, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
-    if (pumpkin_get_mode() != 0) {
+    if (pumpkin_get_mode() != 0 || cmd == sysAppLaunchCmdPanelCalledFromApp) {
       debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch calling \"%s\" cmd %d", name, cmd);
       flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
       SysAppLaunch(0, dbID, flags, cmd, cmdPBP, &result);

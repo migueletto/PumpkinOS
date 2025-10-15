@@ -2494,7 +2494,9 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, UIn
       creq.data.launch.param = gotoParam;
       break;
     case sysAppLaunchCmdPanelCalledFromApp:
-      debug(DEBUG_ERROR, PUMPKINOS, "sysAppLaunchCmdPanelCalledFromApp not supported");
+      pumpkin_error_dialog("Calling a panel is not supported.");
+      // XXX returning from the panel is not working yet
+      //r = pumpkin_launch_sub(&creq.data.launch, 1);
       return r;
     case sysAppLaunchCmdSystemReset:
       debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using call or message", cmd, name);
