@@ -475,7 +475,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = 1;
-        if (obj.label->attr.usable) {
+        if (obj.label->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           old = FntSetFont(obj.label->fontID);
           oldb = WinSetBackColor(objFill);
           oldt = WinSetTextColor(fieldText);
