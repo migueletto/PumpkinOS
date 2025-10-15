@@ -36,6 +36,9 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
       bar->pageSize = pageSize;
       redraw = true;
     }
+    if (bar->minValue == 0 && bar->maxValue == 0) {
+      redraw = true;
+    }
 
     if (redraw) {
       debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar must redraw");
@@ -64,7 +67,10 @@ void SclDrawScrollBar(ScrollBarType *bar) {
     oldb = WinSetBackColor(formFill);
     bar->attr.visible = false;
 
-    if (bar->minValue < bar->maxValue && bar->pageSize > 0) {
+    if (bar->minValue == 0 && bar->maxValue == 0) {
+      WinEraseRectangle(&bar->bounds, 0);
+
+    } else if (bar->minValue < bar->maxValue && bar->pageSize > 0) {
       WinEraseRectangle(&bar->bounds, 0);
       ah = bar->bounds.extent.x >= 6 ? 4 : 2;
 
