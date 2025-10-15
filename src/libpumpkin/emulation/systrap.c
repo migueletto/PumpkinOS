@@ -3144,6 +3144,20 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, result);
     }
       break;
+    case sysTrapErrAlertCustom: {
+      // Int16 ErrAlertCustom(Err errCode, Char *errMsgP, Char *preMsgP, Char *postMsgP)
+      uint16_t errCode = ARG16;
+      uint32_t errMsgP = ARG32;
+      uint32_t preMsgP = ARG32;
+      uint32_t postMsgP = ARG32;
+      char *errMsg = emupalmos_trap_in(errMsgP, trap, 1);
+      char *preMsg = emupalmos_trap_in(preMsgP, trap, 2);
+      char *postMsg = emupalmos_trap_in(postMsgP, trap, 3);
+      Int16 res = ErrAlertCustom(errCode, errMsg, preMsg, postMsg);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ErrAlertCustom(%u, 0x%08X, 0x%08X, 0x%08X): %d", errCode, errMsgP, preMsgP, postMsgP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
     case sysTrapPumpkinDebug: {
       // changes in M68K /opt/palmdev/<sdk>/include/Core/CoreTraps.h:
       // #define sysTrapPumpkinDebug 0xA506
