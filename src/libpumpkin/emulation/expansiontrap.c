@@ -57,8 +57,18 @@ static void encode_expcardinfo(uint32_t infoP, ExpCardInfoType *info) {
 
 void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel) {
   char buf[256];
+  Err err;
 
   switch (sel) {
+    case 8: {
+      // Err ExpCardPresent(UInt16 slotRefNum)
+      uint16_t slotRefNum = ARG16;
+      if (slotRefNum == 0) slotRefNum = 1;
+      err = ExpCardPresent(slotRefNum);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ExpCardPresent(%d): %d", slotRefNum, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case 9: {
       // Err ExpCardInfo(UInt16 slotRefNum, ExpCardInfoType *infoP)
       uint16_t slotRefNum = ARG16;
@@ -66,10 +76,26 @@ void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       if (slotRefNum == 0) slotRefNum = 1;
       ExpCardInfoType info;
       emupalmos_trap_sel_in(infoP, sysTrapExpansionDispatch, sel, 1);
-      Err res = ExpCardInfo(slotRefNum, infoP ? &info : NULL);
+      err = ExpCardInfo(slotRefNum, infoP ? &info : NULL);
       encode_expcardinfo(infoP, &info);
-      debug(DEBUG_TRACE, "EmuPalmOS", "ExpCardInfo(%d, 0x%08X): %d", slotRefNum, infoP, res);
-      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ExpCardInfo(%d, 0x%08X): %d", slotRefNum, infoP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case 10: {
+      // Err ExpSlotEnumerate(UInt16 *slotRefNumP, UInt32 *slotIteratorP)
+      uint16_t slotRefNumP = ARG32;
+      uint32_t slotIteratorP = ARG32;
+      emupalmos_trap_sel_in(slotRefNumP, sysTrapExpansionDispatch, sel, 0);
+      emupalmos_trap_sel_in(slotIteratorP, sysTrapExpansionDispatch, sel, 1);
+      UInt16 slotRefNum;
+      UInt32 slotIterator;
+      if (slotIteratorP) slotIterator = m68k_read_memory_32(slotIteratorP);
+      err = ExpSlotEnumerate(slotRefNumP ? &slotRefNum : NULL, slotIteratorP ? &slotIterator : NULL);
+      if (slotRefNumP) m68k_write_memory_16(slotRefNumP, slotRefNum);
+      if (slotIteratorP) m68k_write_memory_32(slotIteratorP, slotIterator);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ExpSlotEnumerate(0x%08X, 0x%08X): %d", slotRefNumP, slotIteratorP, err);
+      m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     default:
