@@ -39,9 +39,9 @@ int FntInitModule(UInt16 density) {
   // map all system fonts
   for (i = 0; i < 128; i++) {
     if (density == kDensityLow) {
-      module->fonts[i] = pumpkin_get_font(i);
+      module->fonts[i] = FntCopyFont(pumpkin_get_font(i));
     } else {
-      module->fontsv2[i] = (FontTypeV2 *)pumpkin_get_font(i);
+      module->fontsv2[i] = (FontTypeV2 *)FntCopyFont(pumpkin_get_font(i));
     }
   }
 
@@ -265,7 +265,7 @@ FontPtr FntCopyFont(FontPtr f) {
   if (!f) return NULL;
 
   if (f->v == 1) {
-    f1 = sys_calloc(1, sizeof(FontType));
+    f1 = pumpkin_heap_alloc(sizeof(FontType), "FontCopy");
     sys_memcpy(f1, f, sizeof(FontType));
     f1->column = sys_calloc(f->lastChar - f->firstChar + 1, sizeof(uint16_t));
     sys_memcpy(f1->column, f->column, (f->lastChar - f->firstChar + 1) * sizeof(uint16_t));
@@ -280,7 +280,7 @@ FontPtr FntCopyFont(FontPtr f) {
     f = f1;
   } else {
     ff = (FontTypeV2 *)f;
-    f2 = sys_calloc(1, sizeof(FontTypeV2));
+    f2 = pumpkin_heap_alloc(sizeof(FontTypeV2), "FontCopy");
     sys_memcpy(f2, ff, sizeof(FontTypeV2));
     f2->densities = sys_calloc(ff->densityCount, sizeof(FontDensityType));
     sys_memcpy(f2->densities, ff->densities, ff->densityCount * sizeof(FontDensityType));
@@ -332,7 +332,7 @@ void FntFreeFont(FontPtr f) {
       sys_free(f->column);
       sys_free(f->width);
       sys_free(f->data);
-      sys_free(f);
+      pumpkin_heap_free(f, "FontCopy");
     } else {
       ff = (FontTypeV2 *)f;
       for (j = 0; j < ff->densityCount; j++) {
@@ -345,7 +345,7 @@ void FntFreeFont(FontPtr f) {
       sys_free(ff->column);
       sys_free(ff->data);
       sys_free(ff->bmp);
-      sys_free(ff);
+      pumpkin_heap_free(ff, "FontCopy");
     }
   }
 }
