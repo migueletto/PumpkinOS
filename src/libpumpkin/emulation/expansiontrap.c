@@ -60,6 +60,19 @@ void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel) {
   Err err;
 
   switch (sel) {
+    case 3: {
+      // Err ExpSlotLibFind(UInt16 slotRefNum, UInt16 *slotLibRefNum)
+      uint16_t slotRefNum = ARG16;
+      uint32_t slotLibRefNumP = ARG32;
+      if (slotRefNum == 0) slotRefNum = 1;
+      UInt16 slotLibRefNum;
+      emupalmos_trap_sel_in(slotLibRefNum, sysTrapExpansionDispatch, sel, 1);
+      err = ExpSlotLibFind(slotRefNum, slotLibRefNumP ? &slotLibRefNum : NULL);
+      if (slotLibRefNumP) m68k_write_memory_16(slotLibRefNumP, slotLibRefNum);
+      debug(DEBUG_TRACE, "EmuPalmOS", "ExpSlotLibFind(%d, 0x%08X): %d", slotRefNum, slotLibRefNumP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case 8: {
       // Err ExpCardPresent(UInt16 slotRefNum)
       uint16_t slotRefNum = ARG16;
