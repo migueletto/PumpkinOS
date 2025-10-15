@@ -187,6 +187,7 @@ void TimAdjust(DateTimeType *dateTimeP, Int32 adjustment) {
 void TimeZoneToAscii(Int16 timeZone, const LmLocaleType *localeP, Char *string) {
   char s;
 
+  // XXX locale is being ignored
   if (string) {
     if (timeZone < 0) {
       timeZone = -timeZone;
