@@ -2375,7 +2375,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
     BmpSetBit8p(offset+rowBytes+1, dataSize, b); \
   }
 
-static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
+static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   UInt8 *bits, old, r1, g1, b1, r2, g2, b2, fg, bg;
   UInt32 offset, dataSize;
   UInt16 rowBytes;
@@ -2431,12 +2431,16 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = bits[offset];
-      bg = WinGetBackColor();
-      fg = WinGetForeColor();
-      if (b == bg) b = fg;
-      else if (b == fg) b = bg;
-      BmpSetBit8(offset, dataSize, b, dbl);
+      if (text) {
+        BmpSetBit8(offset, dataSize, b, dbl);
+      } else {
+        b = bits[offset];
+        bg = WinGetBackColor();
+        fg = WinGetForeColor();
+        if (b == bg) b = fg;
+        else if (b == fg) b = bg;
+        BmpSetBit8(offset, dataSize, b, dbl);
+      }
       break;
   }
 }
@@ -2451,7 +2455,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
     BmpSetBit16p(offset+rowBytes+2, dataSize, b); \
   }
 
-static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
+static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   RGBColorType rgb, aux;
   UInt8 *bits;
   UInt16 rowBytes, old, fg, bg;
@@ -2512,15 +2516,19 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      get2_16(&old, bits, offset);
-      WinSetBackColorRGB(NULL, &rgb);
-      WinSetForeColorRGB(NULL, &aux);
-      bg = rgb565(rgb.r, rgb.g, rgb.b);
-      fg = rgb565(aux.r, aux.g, aux.b);
-      if (old == bg) {
-        BmpSetBit16(offset, dataSize, fg, dbl);
-      } else if (old == fg) {
-        BmpSetBit16(offset, dataSize, bg, dbl);
+      if (text) {
+        BmpSetBit16(offset, dataSize, b, dbl);
+      } else {
+        get2_16(&old, bits, offset);
+        WinSetBackColorRGB(NULL, &rgb);
+        WinSetForeColorRGB(NULL, &aux);
+        bg = rgb565(rgb.r, rgb.g, rgb.b);
+        fg = rgb565(aux.r, aux.g, aux.b);
+        if (old == bg) {
+          BmpSetBit16(offset, dataSize, fg, dbl);
+        } else if (old == fg) {
+          BmpSetBit16(offset, dataSize, bg, dbl);
+        }
       }
       break;
     default:
@@ -2727,10 +2735,10 @@ void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, Wi
           BmpCopyBit4(b, transp, dst, dx, dy, mode, dbl);
           break;
         case 8:
-          BmpCopyBit8(b, transp, dst, dstColorTable, dx, dy, mode, dbl);
+          BmpCopyBit8(b, transp, dst, dstColorTable, dx, dy, mode, dbl, false);
           break;
         case 16:
-          BmpCopyBit16(b, transp, dst, dx, dy, mode, dbl);
+          BmpCopyBit16(b, transp, dst, dx, dy, mode, dbl, false);
           break;
         case 24:
           BmpCopyBit24(b, transp, dst, dx, dy, mode, dbl);
@@ -2910,10 +2918,10 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         BmpCopyBit4(dstPixel, srcTransp, dst, dx, dy, mode, dbl);
         break;
       case 8:
-        BmpCopyBit8(dstPixel, srcTransp, dst, dstColorTable, dx, dy, mode, dbl);
+        BmpCopyBit8(dstPixel, srcTransp, dst, dstColorTable, dx, dy, mode, dbl, text);
         break;
       case 16:
-        BmpCopyBit16(dstPixel, srcTransp, dst, dx, dy, mode, dbl);
+        BmpCopyBit16(dstPixel, srcTransp, dst, dx, dy, mode, dbl, text);
         break;
       case 24:
         BmpCopyBit24(dstPixel, srcTransp, dst, dx, dy, mode, dbl);
