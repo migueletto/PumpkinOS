@@ -728,6 +728,19 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "TimeToAscii(%u, %u, %u, 0x%08X \"%s\")", hours, minutes, timeFormat, stringP, string ? string : "");
       }
       break;
+    case sysTrapTimeZoneToAscii: {
+      // void TimeZoneToAscii(Int16 timeZone, const LmLocaleType *localeP, Char *string)
+      int16_t timeZone = ARG16;
+      uint32_t localeP = ARG32;
+      uint32_t stringP = ARG32;
+      emupalmos_trap_in(localeP, trap, 1);
+      char *string = (char *)emupalmos_trap_in(stringP, trap, 2);
+      LmLocaleType locale;
+      //XXX TimeZoneToAscii ignores locale parameter
+      TimeZoneToAscii(timeZone, localeP ? &locale : NULL, string);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TimeZoneToAscii(%d, 0x%08X, 0x%08X )", timeZone, localeP, stringP);
+      }
+      break;
     case sysTrapDateTemplateToAscii: {
       // UInt16 DateTemplateToAscii(const Char *templateP, UInt8 months, UInt8 days, UInt16 years, Char *stringP, Int16 stringLen)
       uint32_t templateP = ARG32;
