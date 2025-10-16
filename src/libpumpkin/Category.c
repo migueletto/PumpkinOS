@@ -353,16 +353,21 @@ void CategorySetTriggerLabel(ControlType *ctl, Char *name) {
 }
 
 void CategoryTruncateName(Char *name, UInt16 maxWidth) {
-  UInt16 len;
-
+  UInt16 len, width, ewidth;
 
   IN;
   if (name && name[0]) {
     len = StrLen(name);
-    if (FntCharsWidth(name, len) > maxWidth) {
-      len = FntWidthToOffset(name, len, maxWidth - FntCharWidth(chrEllipsis), NULL, NULL);
+    width = FntCharsWidth(name, len);
+    debug(DEBUG_TRACE, PALMOS_MODULE, "CategoryTruncateName name=\"%s\" len=%u width=%u maxWidth=%u", name, len, width, maxWidth);
+    if (width > maxWidth) {
+      ewidth = FntCharWidth(chrEllipsis);
+      len = FntWidthToOffset(name, len, maxWidth - ewidth, NULL, NULL);
+      debug(DEBUG_TRACE, PALMOS_MODULE, "CategoryTruncateName ewidth=%u FntWidthToOffset=%u len=%u", ewidth, maxWidth - ewidth, len);
       name[len] = chrEllipsis;
       name[len+1] = 0;
+      width = FntCharsWidth(name, len);
+      debug(DEBUG_TRACE, PALMOS_MODULE, "CategoryTruncateName new name=\"%s\" len=%u width=%u", name, len, width);
     }
   }
   OUTV;
