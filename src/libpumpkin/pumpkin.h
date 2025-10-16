@@ -430,7 +430,7 @@ int32_t pumpkin_event_timeout(int32_t t);
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
-MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p);
+MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr);
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
 MemHandle MemLocalIDToHandle(LocalID local);
 

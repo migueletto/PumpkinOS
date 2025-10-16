@@ -3190,7 +3190,7 @@ Err DmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
   return err;
 }
 
-MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
+MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h = NULL;
@@ -3216,8 +3216,13 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
             h->magic = STO_MAGIC;
             h->htype = STO_TYPE_REC | STO_INFLATED;
             h->owner = pumpkin_get_current();
-            h->d.rec.uniqueID = db->uniqueIDSeed++;
-            h->d.rec.attr = dmRecAttrDirty | dmRecAttrBusy;
+            if (setAttr) {
+              h->d.rec.uniqueID = uniqueID;
+              h->d.rec.attr = attr;
+            } else {
+              h->d.rec.uniqueID = db->uniqueIDSeed++;
+              h->d.rec.attr = dmRecAttrDirty | dmRecAttrBusy;
+            }
             h->buf = StoPtrNew(h, size, 0, 0);
             h->size = size;
             db->modDate = TimGetSeconds();
@@ -3262,7 +3267,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p) {
 }
 
 MemHandle DmNewRecord(DmOpenRef dbP, UInt16 *atP, UInt32 size) {
-  return DmNewRecordEx(dbP, atP, size, NULL);
+  return DmNewRecordEx(dbP, atP, size, NULL, 0, 0, false);
 }
 
 // Attach an existing chunk ID handle to a database as a record.
@@ -3954,9 +3959,9 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   char name[dmDBNameLength], st[8];
   UInt16 j, attr, version, numRecs, index, appInfoSize, sortInfoSize;
   UInt32 i, creationDate, modificationDate, lastBackupDate, modificationNumber, appInfo, sortInfo, type, creator, uniqueIDSeed, size, dummy32;
-  UInt32 *offsets, *resTypes, firstOffset;
-  UInt16 *resIDs;
-  UInt8 *database, recAttr, dummy8;
+  UInt32 *offsets, *resTypes, *uniqueIDs, firstOffset;
+  UInt16 *resIDs, *attrs;
+  UInt8 *database, dummy8;
   MemHandle appInfoH, sortInfoH;
   void *appInfoP, *sortInfoP;
   DmOpenType *dbRef;
@@ -4006,6 +4011,8 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
           if (numRecs > 0) {
             resTypes = MemPtrNew(numRecs * sizeof(UInt32));
             resIDs = MemPtrNew(numRecs * sizeof(UInt16));
+            uniqueIDs = MemPtrNew(numRecs * sizeof(UInt32));
+            attrs = MemPtrNew(numRecs * sizeof(UInt16));
             offsets = MemPtrNew(numRecs * sizeof(UInt32));
 
             if (attr & dmHdrAttrResDB) {
@@ -4025,19 +4032,20 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
             } else {
               for (j = 0; j < numRecs; j++) {
                 i += get4b(&offsets[j], database, i);
-                i += get1(&recAttr, database, i);
                 i += get1(&dummy8, database, i);
-                //uniqueID = ((UInt32)dummy8) << 16;
+                attrs[j] = dummy8;
                 i += get1(&dummy8, database, i);
-                //uniqueID |= ((UInt32)dummy8) << 8;
+                uniqueIDs[j] = ((UInt32)dummy8) << 16;
                 i += get1(&dummy8, database, i);
-                //uniqueID |= ((UInt32)dummy8);
+                uniqueIDs[j] |= ((UInt32)dummy8) << 8;
+                i += get1(&dummy8, database, i);
+                uniqueIDs[j] |= ((UInt32)dummy8);
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
                 index = dmMaxRecordIndex;
-                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]]);
+                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], true);
               }
               if (StoWriteIndex(sto, db) == 0) {
                 err = errNone;
