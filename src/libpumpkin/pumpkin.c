@@ -1461,6 +1461,17 @@ int pumpkin_kill(uint32_t tid) {
   return r;
 }
 
+static int pumpkin_normal_launch(uint16_t cmd) {
+  switch (cmd) {
+    case sysAppLaunchCmdNormalLaunch:
+    case sysAppLaunchCmdPanelCalledFromApp:
+    case sysAppLaunchCmdReturnFromPanel:
+      return 1;
+  }
+
+  return 0;
+}
+
 static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, void *param, uint16_t flags) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   LocalID oldDbID, dbID;
@@ -1477,7 +1488,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
         pilotMain(code, param, flags);
 
-        if (code != sysAppLaunchCmdNormalLaunch || pumpkin_module.mode != 0) {
+        if (!pumpkin_normal_launch(code) || pumpkin_module.mode != 0) {
           task->dbID = oldDbID;
           task->creator = oldCreator;
         }
@@ -1560,12 +1571,12 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
 
     pumpkin_set_osversion(pumpkin_module.osversion);
 
-    if (request->code == sysAppLaunchCmdNormalLaunch && dbID) {
+    if (pumpkin_normal_launch(request->code) && dbID) {
       sendLaunchNotification(sysNotifyAppLaunchingEvent, dbID);
     }
 
     if (pilot_main) {
-      if (request->code == sysAppLaunchCmdNormalLaunch) {
+      if (pumpkin_normal_launch(request->code)) {
         task->pilot_main = pilot_main;
       }
       pumpkin_set_m68k(0);
@@ -1576,10 +1587,10 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling pilot_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = pilot_main(request->code, request->param, request->flags);
       }
-      debug(DEBUG_INFO, PUMPKINOS, "pilot_main returned %u", r);
+      debug(DEBUG_INFO, PUMPKINOS, "pilot_main \"%s\" returned %u", request->name, r);
 
     } else {
-      if (request->code == sysAppLaunchCmdNormalLaunch) {
+      if (pumpkin_normal_launch(request->code)) {
         task->pilot_main = emupalmos_main;
       }
       m68k = pumpkin_is_m68k();
@@ -1593,11 +1604,11 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = emupalmos_main(request->code, request->param, request->flags);
       }
-      debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main returned %u", r);
+      debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main \"%s\" returned %u", request->name, r);
       pumpkin_set_m68k(m68k);
     }
 
-    if (request->code == sysAppLaunchCmdNormalLaunch && dbID) {
+    if (pumpkin_normal_launch(request->code) && dbID) {
       sendLaunchNotification(sysNotifyAppQuittingEvent, dbID);
     }
 
@@ -2138,11 +2149,20 @@ static int pumpkin_launch_action(void *arg) {
 
   thread_set_name(TAG_APP);
   debug(DEBUG_INFO, PUMPKINOS, "thread exiting");
+  StrNCopy(name, data->request.name, dmDBNameLength - 1);
   xfree(data);
 
   if (cont) {
-    debug(DEBUG_INFO, PUMPKINOS, "switching to \"%s\"", launch.name);
+    debug(DEBUG_INFO, PUMPKINOS, "switching from \"%s\" to \"%s\" (SysUIAppSwitch)", name, launch.name);
+    // In PumpkinOS, the parameter of sysAppLaunchCmdPanelCalledFromApp is set to the calling app's name ...
+    if (launch.code == sysAppLaunchCmdPanelCalledFromApp) launch.param = name;
     pumpkin_launch_request(0, launch.name, launch.code, launch.param, launch.flags, NULL, 1);
+  } else if (data->request.code == sysAppLaunchCmdPanelCalledFromApp) {
+    // ... so that the panel knows which app to call on sysAppLaunchCmdReturnFromPanel
+    StrNCopy(launch.name, (char *)data->request.param, dmDBNameLength - 1);
+    sys_free(data->request.param);
+    debug(DEBUG_INFO, PUMPKINOS, "switching from \"%s\" to \"%s\" (sysAppLaunchCmdReturnFromPanel)", name, launch.name);
+    pumpkin_launch_request(0, launch.name, sysAppLaunchCmdReturnFromPanel, NULL, 0, NULL, 1);
   }
 
   return 0;
@@ -2243,7 +2263,7 @@ int pumpkin_launch(launch_request_t *request) {
         pumpkin_module.tasks[index].reserved = 0;
       }
       wait_ack = -1;
-      if (request->code == sysAppLaunchCmdNormalLaunch) {
+      if (pumpkin_normal_launch(request->code)) {
         // if application is already running and launch code is sysAppLaunchCmdNormalLaunch, just make the application current
         pumpkin_make_current(running);
       } else if (request->code == sysAppLaunchCmdGoTo) {
@@ -2315,7 +2335,7 @@ int pumpkin_launch(launch_request_t *request) {
       data->taskId = pumpkin_module.nextTaskId++;
       xmemcpy(&data->request, request, sizeof(launch_request_t));
       data->texture = pumpkin_module.wp->create_texture(pumpkin_module.w, data->width, data->height);
-      if (type == sysFileTApplication) {
+      if (type == sysFileTApplication || type == sysFileTPanel) {
         wman_add(pumpkin_module.wm, data->taskId, data->texture, data->x, data->y, data->width, data->height);
       }
       debug(DEBUG_INFO, PUMPKINOS, "starting \"%s\" with launchCode %d", request->name, request->code);
@@ -2486,18 +2506,17 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, UIn
 
   switch (cmd) {
     case sysAppLaunchCmdNormalLaunch:
+    case sysAppLaunchCmdReturnFromPanel:
       break;
+    case sysAppLaunchCmdPanelCalledFromApp:
+      creq.data.launch.param = sys_strdup((char *)param);
+			break;
     case sysAppLaunchCmdGoTo:
       if ((gotoParam = pumpkin_heap_alloc(sizeof(GoToParamsType), "LaunchParams")) != NULL) {
         xmemcpy(gotoParam, param, sizeof(GoToParamsType));
       }
       creq.data.launch.param = gotoParam;
       break;
-    case sysAppLaunchCmdPanelCalledFromApp:
-      pumpkin_error_dialog("Calling a panel is not supported.");
-      // XXX returning from the panel is not working yet
-      //r = pumpkin_launch_sub(&creq.data.launch, 1);
-      return r;
     case sysAppLaunchCmdSystemReset:
       debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using call or message", cmd, name);
       if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator) == errNone) {
