@@ -438,9 +438,10 @@ after it is no longer in use (typically after the form containing the
 control is freed).
 */
 void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
+  FormType *formP;
   FormLabelType *labelP;
   Boolean visible;
-  UInt16 oldWidth, newWidth, middle;
+  UInt16 oldWidth, newWidth, middle, right;
 
   if (controlP && newLabel) {
     // Many apps use CtlSetLabel to set the label of a FormLabelType, which is not correct.
@@ -485,6 +486,15 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
       }
       controlP->bounds.extent.x = newWidth;
     }
+
+    formP = controlP->formP;
+    if (formP) {
+      right = formP->window.windowBounds.extent.x;
+      if (controlP->bounds.topLeft.x + controlP->bounds.extent.x >= right) {
+        controlP->bounds.topLeft.x = right - controlP->bounds.extent.x - 1;
+      }
+    }
+
     if (visible) {
       CtlDrawControl(controlP);
     }
