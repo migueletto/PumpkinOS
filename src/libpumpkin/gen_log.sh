@@ -109,6 +109,7 @@ BEGIN {
 
   dmid["DmResType"] = 1;
   rgb["RGBColorType"] = 1;
+  evt["EventType"] = 1;
 
   accessor[0] = "CtlGlueGetControlStyle";
   accessor[1] = "FldGlueGetLineInfo";
@@ -141,16 +142,17 @@ BEGIN {
   accessor[28] = "CtlGlueIsGraphical";
   accessor[29] = "CtlGlueSetFrameStyle";
 
-  print "#define T_VOID 0" >> trapArgs;
-  print "#define T_SIG  1" >> trapArgs;
-  print "#define T_USIG 2" >> trapArgs;
-  print "#define T_CHAR 3" >> trapArgs;
-  print "#define T_WCHR 4" >> trapArgs;
-  print "#define T_HEX  5" >> trapArgs;
-  print "#define T_ID   6" >> trapArgs;
-  print "#define T_PTR  7" >> trapArgs;
-  print "#define T_STR  8" >> trapArgs;
-  print "#define T_RGB  9" >> trapArgs;
+  print "#define T_VOID  0" >> trapArgs;
+  print "#define T_SIG   1" >> trapArgs;
+  print "#define T_USIG  2" >> trapArgs;
+  print "#define T_CHAR  3" >> trapArgs;
+  print "#define T_WCHR  4" >> trapArgs;
+  print "#define T_HEX   5" >> trapArgs;
+  print "#define T_ID    6" >> trapArgs;
+  print "#define T_PTR   7" >> trapArgs;
+  print "#define T_STR   8" >> trapArgs;
+  print "#define T_RGB   9" >> trapArgs;
+  print "#define T_EVT  10" >> trapArgs;
   print "" >> trapArgs;
 
   print "typedef struct {" >> trapArgs;
@@ -264,6 +266,8 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
         atyp = "T_STR";
       } else if (rgb[atype]) {
         atyp = "T_RGB";
+      } else if (evt[atype]) {
+        atyp = "T_EVT";
       } else {
         atyp = "T_PTR";
       }
