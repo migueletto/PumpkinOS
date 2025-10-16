@@ -4335,6 +4335,15 @@ case sysTrapSysHandleEvent: {
   debug(DEBUG_TRACE, "EmuPalmOS", "SysHandleEvent(eventP=0x%08X): %d", eventP, res);
 }
 break;
+case sysTrapSysUIBusy: {
+  // UInt16 SysUIBusy(Boolean set, Boolean value)
+  uint8_t set = ARG8;
+  uint8_t value = ARG8;
+  UInt16 res = SysUIBusy(set, value);
+  debug(DEBUG_TRACE, "EmuPalmOS", "SysUIBusy(%u, %u): %u", set, value, res);
+  m68k_set_reg(M68K_REG_D0, res);
+}
+break;
 case sysTrapSysUIAppSwitch: {
   // Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP)
   uint16_t cardNo = ARG16;
