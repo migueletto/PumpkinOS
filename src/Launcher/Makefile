@@ -4,7 +4,7 @@ include ../commonp.mak
 PROGRAM=Launcher
 RCP=resource.rcp
 APPNAME=Launcher
-APPID=Lnch
+APPID=lnch
 
 ifeq ($(OSNAME),Kernel)
 STATIC=1
