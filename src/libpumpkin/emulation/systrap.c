@@ -125,6 +125,7 @@ uint32_t palmos_systrap(uint16_t trap) {
         refNum = SysLibFind68K(name);
       }
       err = refNum ? errNone : sysErrLibNotFound;
+      if (refNum == 0) refNum = 0xffff;
       if (refNumP) m68k_write_memory_16(refNumP, refNum);
       debug(DEBUG_INFO, "EmuPalmOS", "SysLibFind(0x%08X \"%s\", 0x%08X): %d", nameP, name ? name : "", refNumP, err);
       m68k_set_reg(M68K_REG_D0, err);
@@ -736,7 +737,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(localeP, trap, 1);
       char *string = (char *)emupalmos_trap_in(stringP, trap, 2);
       LmLocaleType locale;
-      //XXX TimeZoneToAscii ignores locale parameter
+      decode_locale(localeP, &locale);
       TimeZoneToAscii(timeZone, localeP ? &locale : NULL, string);
       debug(DEBUG_TRACE, "EmuPalmOS", "TimeZoneToAscii(%d, 0x%08X, 0x%08X )", timeZone, localeP, stringP);
       }
@@ -837,6 +838,9 @@ uint32_t palmos_systrap(uint16_t trap) {
       break;
     case sysTrapTsmDispatch:
       palmos_tsmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
+      break;
+    case sysTrapLmDispatch:
+      palmos_lmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapNavSelector:
       selector = ARG16;
@@ -2434,7 +2438,13 @@ uint32_t palmos_systrap(uint16_t trap) {
       EventType event;
       if (eventP) decode_event(eventP, &event);
       EvtAddEventToQueue(eventP ? &event : NULL);
-      debug(DEBUG_TRACE, "EmuPalmOS", "EvtAddEventToQueue(0x%08X [0x%04X])", eventP, event.eType);
+      char *eventName = EvtGetEventName(event.eType);
+      if (eventName) {
+        debug(DEBUG_TRACE, "EmuPalmOS", "EvtAddEventToQueue(0x%08X [%s])", eventP, eventName);
+      } else {
+        debug(DEBUG_TRACE, "EmuPalmOS", "EvtAddEventToQueue(0x%08X [0x%04X])", eventP, event.eType);
+      }
+      if (eventP) encode_event(eventP, &event);
       }
       break;
     case sysTrapEvtEnqueueKey: {
@@ -2489,6 +2499,20 @@ uint32_t palmos_systrap(uint16_t trap) {
       EvtCopyEvent(&source, &dest);
       if (destP) encode_event(destP, &dest);
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtCopyEvent(0x%08X [0x%04X], 0x%08X)", sourceP, source.eType, destP);
+      }
+      break;
+    case sysTrapPenResetCalibration: {
+      // Err PenResetCalibration(void)
+      err = PenResetCalibration();
+      debug(DEBUG_TRACE, "EmuPalmOS", "PenResetCalibration(): %d", err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case sysTrapPenCalibrate: {
+      // Err PenCalibrate(PointType *digTopLeftP, PointType *digBotRightP, PointType *scrTopLeftP, PointType *scrBotRightP)
+      err = PenCalibrate(NULL, NULL, NULL, NULL);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PenCalibrate %d", err);
+      m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     case sysTrapPenSleep: {

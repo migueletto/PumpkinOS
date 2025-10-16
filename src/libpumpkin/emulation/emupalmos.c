@@ -399,6 +399,30 @@ void cpu_write_long(uint32_t address, uint32_t value) {
 void cpu_pulse_reset(void) {
 }
 
+void encode_string(uint32_t stringP, char *buf, uint32_t len) {
+  uint32_t i;
+
+  for (i = 0; i < len-1 && buf[i]; i++) {
+    m68k_write_memory_8(stringP + i, buf[i]);
+  }
+  m68k_write_memory_8(stringP + i, 0);
+}
+
+void decode_locale(uint32_t localeP, LmLocaleType *locale) {
+  if (localeP && locale) {
+    MemSet(locale, sizeof(LmLocaleType), 0);
+    locale->language = m68k_read_memory_16(localeP + 0);
+    locale->country  = m68k_read_memory_16(localeP + 2);
+  }
+}
+
+void encode_locale(uint32_t localeP, LmLocaleType *locale) {
+  if (localeP && locale) {
+    m68k_write_memory_16(localeP + 0, locale->language);
+    m68k_write_memory_16(localeP + 2, locale->country);
+  }
+}
+
 void decode_datetime(uint32_t dateTimeP, DateTimeType *dateTime) {
   if (dateTimeP && dateTime) {
     MemSet(dateTime, sizeof(DateTimeType), 0);
@@ -1134,13 +1158,6 @@ void encode_notify(uint32_t notifyP, SysNotifyParamType *notify) {
     m68k_write_memory_32(notifyP + 12, userDataP);
     m68k_write_memory_8(notifyP +  16, notify->handled);
     m68k_write_memory_8(notifyP +  17, 0); // reserved2
-  }
-}
-
-void encode_locale(uint32_t localeP, LmLocaleType *locale) {
-  if (localeP && locale) {
-    m68k_write_memory_16(localeP +  0, locale->language);
-    m68k_write_memory_16(localeP +  2, locale->country);
   }
 }
 

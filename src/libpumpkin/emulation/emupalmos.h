@@ -103,8 +103,11 @@ void cpu_write_word(uint32_t address, uint16_t value);
 void cpu_write_long(uint32_t address, uint32_t value);
 //int cpu_instr_callback(int pc);
 
+void encode_string(uint32_t stringP, char *buf, uint32_t len);
 void decode_rgb(uint32_t rgbP, RGBColorType *rgb);
 void encode_rgb(uint32_t rgbP, RGBColorType *rgb);
+void decode_locale(uint32_t localeP, LmLocaleType *locale);
+void encode_locale(uint32_t localeP, LmLocaleType *locale);
 void decode_datetime(uint32_t dateTimeP, DateTimeType *dateTime);
 void encode_datetime(uint32_t dateTimeP, DateTimeType *dateTime);
 void decode_event(uint32_t eventP, EventType *event);
@@ -144,6 +147,7 @@ void palmos_omtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_accessortrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_tsmtrap(uint32_t sp, uint16_t idx, uint32_t sel);
+void palmos_lmtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_netlibtrap(uint16_t trap);
 void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 
