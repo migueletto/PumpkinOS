@@ -218,13 +218,17 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
           // top arrow
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d top arrow", bar->id);
           if (bar->value > bar->minValue) {
+            bar->savePos = bar->value;
             SclAddRepeatEvent(bar, bar->value-1);
+            SclSetScrollBar(bar, bar->value-1, bar->minValue, bar->maxValue, bar->pageSize);
           }
         } else if (y >= bar->bounds.extent.y - ah) {
           // bottom arrow
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d bottom arrow", bar->id);
           if (bar->value < bar->maxValue) {
+            bar->savePos = bar->value;
             SclAddRepeatEvent(bar, bar->value+1);
+            SclSetScrollBar(bar, bar->value+1, bar->minValue, bar->maxValue, bar->pageSize);
           }
         } else {
           // rod
@@ -234,6 +238,8 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d rod value %d (%d)", bar->id, value, bar->value);
           if (value != bar->value) {
             SclAddRepeatEvent(bar, value);
+            SclSetScrollBar(bar, value, bar->minValue, bar->maxValue, bar->pageSize);
+            bar->savePos = bar->value;
           }
         }
         handled = true;
@@ -242,9 +248,13 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
       case sclRepeatEvent:
         debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent scrollBar %d value %d (%d)", bar->id, eventP->data.sclRepeat.newValue, bar->value);
         if (eventP->data.sclRepeat.scrollBarID == bar->id) {
-          bar->value = eventP->data.sclRepeat.newValue;
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent draw %d", bar->value);
-          SclDrawScrollBar(bar);
+          if (bar->savePos != bar->value) {
+            SclSetScrollBar(bar, bar->value + (bar->value > bar->savePos ? 5 : -5), bar->minValue, bar->maxValue, bar->pageSize);
+            bar->savePos = bar->value;
+          } else {
+            SclDrawScrollBar(bar);
+          }
           handled = true;
         }
         break;
