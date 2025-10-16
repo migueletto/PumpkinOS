@@ -105,11 +105,13 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path, AppRe
                 debug(DEBUG_INFO, PUMPKINOS, "installing new version of \"%s\" type '%s' creator '%s' from \"%s\"", name, stype, screator, path);
 
                 if (DmCreateDatabaseFromImage(p) == errNone) {
-                  debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
-                  if (type == sysFileTApplication) {
-                    pumpkin_registry_create(ar, creator);
+                  if ((dbID = DmFindDatabase(0, name)) != 0) {
+                    debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
+                    if (type == sysFileTApplication) {
+                      pumpkin_registry_create(ar, creator);
+                    }
+                    r = 0;
                   }
-                  r = 0;
                 } else {
                     debug(DEBUG_ERROR, PUMPKINOS, "error installing \"%s\"", name);
                 }
@@ -133,32 +135,32 @@ int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size,
   uint32_t hsize;
   int r = -1;
 
-      hsize = 78;
-      if (size > hsize) {
-        sys_memset(name, 0, dmDBNameLength);
-        sys_memcpy(name, p, dmDBNameLength - 1);
-        if (name[0]) {
-          if ((dbID = DmFindDatabase(0, name)) != 0) {
-            debug(DEBUG_INFO, PUMPKINOS, "deleting old version of \"%s\"", name);
-            DmDeleteDatabase(0, dbID);
-          }
-          get4b(&type, p, dmDBNameLength + 28);
-          get4b(&creator, p, dmDBNameLength + 32);
-          pumpkin_id2s(type, stype);
-          pumpkin_id2s(creator, screator);
-          debug(DEBUG_INFO, PUMPKINOS, "installing new version of \"%s\" type '%s' creator '%s' from memory", name, stype, screator);
-
-          if (DmCreateDatabaseFromImage(p) == errNone) {
-            debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
-            if (type == sysFileTApplication) {
-              pumpkin_registry_create(ar, creator);
-            }
-            r = 0;
-          } else {
-            debug(DEBUG_ERROR, PUMPKINOS, "error installing \"%s\"", name);
-          }
-        }
+  hsize = 78;
+  if (size > hsize) {
+    sys_memset(name, 0, dmDBNameLength);
+    sys_memcpy(name, p, dmDBNameLength - 1);
+    if (name[0]) {
+      if ((dbID = DmFindDatabase(0, name)) != 0) {
+        debug(DEBUG_INFO, PUMPKINOS, "deleting old version of \"%s\"", name);
+        DmDeleteDatabase(0, dbID);
       }
+      get4b(&type, p, dmDBNameLength + 28);
+      get4b(&creator, p, dmDBNameLength + 32);
+      pumpkin_id2s(type, stype);
+      pumpkin_id2s(creator, screator);
+      debug(DEBUG_INFO, PUMPKINOS, "installing new version of \"%s\" type '%s' creator '%s' from memory", name, stype, screator);
+
+      if (DmCreateDatabaseFromImage(p) == errNone) {
+        debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
+        if (type == sysFileTApplication) {
+          pumpkin_registry_create(ar, creator);
+        }
+        r = 0;
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "error installing \"%s\"", name);
+      }
+    }
+  }
 
   return r;
 }
