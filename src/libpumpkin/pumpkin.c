@@ -1474,9 +1474,11 @@ static int pumpkin_normal_launch(uint16_t cmd) {
 
 static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, void *param, uint16_t flags) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  SysAppLaunchCmdSystemResetType reset;
   LocalID oldDbID, dbID;
   DmOpenRef dbRef;
-  UInt32 oldCreator, creator;
+  Boolean callReset, callNormal;
+  UInt32 oldCreator, creator, appFlags;
 
   if ((dbID = DmFindDatabase(0, name)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
@@ -1486,7 +1488,35 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
         task->dbID = dbID;
         task->creator = creator;
 
-        pilotMain(code, param, flags);
+        callNormal = true;
+
+        if (code == sysAppLaunchCmdNormalLaunch) {
+          if (mutex_lock(mutex) == 0) {
+            appFlags = 0;
+            callReset = false;
+            if (!AppRegistryGet(pumpkin_module.registry, creator, appRegistryFlags, 0, &appFlags) || !(appFlags & appRegistryFlagReset)) {
+              appFlags |= appRegistryFlagReset;
+              AppRegistrySet(pumpkin_module.registry, creator, appRegistryFlags, 0, &appFlags);
+              callReset = true;
+            }
+            mutex_unlock(mutex);
+            if (callReset) {
+              // Defer a sysAppLaunchCmdSystemReset for when the app is called for the first time.
+              // It is not exactly a "reset", but it allows the app to initialize itself after being installed.
+              // The Note Pad app uses this launch code to create its database with a sample record.
+              debug(DEBUG_INFO, PUMPKINOS, "calling sysAppLaunchCmdSystemReset for \"%s\"", name);
+              reset.hardReset = false;
+              reset.createDefaultDB = true;
+              if (pilotMain(sysAppLaunchCmdSystemReset, &reset, 0) != 0) {
+                callNormal = false;
+              }
+            }
+          }
+        }
+
+        if (callNormal) {
+          pilotMain(code, param, flags);
+        }
 
         if (!pumpkin_normal_launch(code) || pumpkin_module.mode != 0) {
           task->dbID = oldDbID;
@@ -1691,7 +1721,7 @@ static void pumpkin_init_midi(void) {
           if ((p = MemHandleLock(h)) != NULL) {
             size = MemHandleSize(h);
             at = 0xFFFF;
-            DmNewRecordEx(dbRef, &at, size, p);
+            DmNewRecordEx(dbRef, &at, size, p, 0, 0, false);
             debug(DEBUG_INFO, PUMPKINOS, "adding MIDI sound %u at %u", id, at);
             MemHandleUnlock(h);
           }
@@ -2510,7 +2540,7 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, UIn
       break;
     case sysAppLaunchCmdPanelCalledFromApp:
       creq.data.launch.param = sys_strdup((char *)param);
-			break;
+      break;
     case sysAppLaunchCmdGoTo:
       if ((gotoParam = pumpkin_heap_alloc(sizeof(GoToParamsType), "LaunchParams")) != NULL) {
         xmemcpy(gotoParam, param, sizeof(GoToParamsType));
@@ -2680,7 +2710,7 @@ Err SysAppLaunchEx(UInt16 cardNo, LocalID dbID, UInt16 launchFlags, UInt16 cmd, 
   debug(DEBUG_INFO, PUMPKINOS, "SysAppLaunch dbID 0x%08X flags 0x%04X cmd %d param %p", dbID, launchFlags, cmd, cmdPBP);
 
   if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
-    if (dbID != task->dbID || (launchFlags & sysAppLaunchFlagFork)) {
+    if (!task || (task && dbID != task->dbID) || (launchFlags & sysAppLaunchFlagFork)) {
       *resultP = pumpkin_launch_request(dbID, name, cmd, cmdPBP, launchFlags, pilotMain, 1);
       r = 0;
     } else {

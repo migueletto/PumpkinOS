@@ -240,7 +240,7 @@ uint8_t cpu_read_byte(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd) {
       value = WinLegacyRead(address - state->screenStart);
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  byte 0x%08X = 0x%02X", address, value);
     } else {
@@ -270,7 +270,7 @@ uint16_t cpu_read_word(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd - 1) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
       value = WinLegacyRead(address - state->screenStart);
       value <<= 8;
       value |= WinLegacyRead(address - state->screenStart + 1);
@@ -309,7 +309,7 @@ uint32_t cpu_read_long(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && address >= state->screenStart && address < state->screenEnd - 3) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 3) {
       value = WinLegacyRead(address - state->screenStart);
       value <<= 24;
       b = WinLegacyRead(address - state->screenStart + 1);
@@ -340,7 +340,7 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
   } else {
     if (!emupalmos_check_address(address, 1, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
       WinLegacyWrite(address - state->screenStart, value);
     } else {
@@ -361,7 +361,7 @@ void cpu_write_word(uint32_t address, uint16_t value) {
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (address >= state->screenStart && address < state->screenEnd - 1) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
       WinLegacyWrite(address - state->screenStart,     (value >> 8) & 0xff);
       WinLegacyWrite(address - state->screenStart + 1,  value       & 0xff);
@@ -383,7 +383,7 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && address >= state->screenStart && address < state->screenEnd - 3) {
+    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
       WinLegacyWrite(address - state->screenStart,     (value >> 24) & 0xff);
       WinLegacyWrite(address - state->screenStart + 1, (value >> 16) & 0xff);
@@ -1918,8 +1918,16 @@ void emupalmos_memory_hooks(
 static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
   uint8_t *p = NULL;
   uint32_t a, paramBlockSize;
+  SysAppLaunchCmdSystemResetType *reset;
 
   switch (launchCode) {
+    case sysAppLaunchCmdSystemReset:
+      p = pumpkin_heap_alloc(2, "paramBlock");
+      a = p - ram;
+      reset = (SysAppLaunchCmdSystemResetType *)param;
+      m68k_write_memory_8(a + 0, reset->hardReset);
+      m68k_write_memory_8(a + 1, reset->createDefaultDB);
+      break;
     case sysAppLaunchCmdNotify:
       paramBlockSize = pumpkin_get_param_size(); // SysNotifyParamType + details
       p = pumpkin_heap_alloc(paramBlockSize, "paramBlock");
@@ -1953,8 +1961,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   uint8_t *ram = pumpkin_heap_base();
   m68ki_cpu_core main_cpu;
   emu_state_t *oldState, *state;
+  uint32_t r = 0;
 
-  ram = pumpkin_heap_base();
   debug(DEBUG_INFO, "EmuPalmOS", "emupalmos_main launch code %d, param block %p, flags 0x%04X", launchCode, param, flags);
 
 #ifdef ARMEMU
@@ -2005,7 +2013,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     MemHandleUnlock(hAmdc0);
     DmReleaseResource(hAmdc0);
 
-    return 0;
+    return r;
   }
 #endif
 
@@ -2290,6 +2298,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         SysFatalAlert(state->panic);
         xfree(state->panic);
         pumpkin_app_crashed();
+        r = 1;
       }
 
       if (paramBlock) {
@@ -2323,7 +2332,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     DmReleaseResource(hCodeN);
   }
 
-  return 0;
+  return r;
 }
 
 uint8_t *emupalmos_ram(void) {

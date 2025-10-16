@@ -301,6 +301,22 @@ static UInt16 AppRegistryDepthCallback(AppRegistryEntry *e, void *d, UInt16 size
   return sizeof(AppRegistryDepth);
 }
 
+static UInt16 AppRegistryFlagsCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
+  AppRegistryFlags *p1 = (AppRegistryFlags *)e->data;
+  AppRegistryFlags *p2 = (AppRegistryFlags *)d;
+  char st[8];
+
+  if (set) {
+    pumpkin_id2s(e->creator, st);
+    debug(DEBUG_INFO, "AppReg", "updating flags 0x%08X for '%s'", p2->flags, st);
+    p1->flags = p2->flags;
+  } else {
+    p2->flags = p1->flags;
+  }
+
+  return sizeof(AppRegistryFlags);
+}
+
 static UInt16 AppRegistryCompatCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
   AppRegistryCompat *c1 = (AppRegistryCompat *)e->data;
   AppRegistryCompat *c2 = (AppRegistryCompat *)d;
@@ -419,6 +435,9 @@ void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt1
     case appRegistryDepth:
       AppRegistryProcess(ar, creator, id, seq, AppRegistryDepthCallback, p, sizeof(AppRegistryDepth), true);
       break;
+    case appRegistryFlags:
+      AppRegistryProcess(ar, creator, id, seq, AppRegistryFlagsCallback, p, sizeof(AppRegistryFlags), true);
+      break;
     default:
       break;
   }
@@ -446,6 +465,9 @@ Boolean AppRegistryGet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UI
       break;
     case appRegistryDepth:
       r = AppRegistryProcess(ar, creator, id, seq, AppRegistryDepthCallback, p, sizeof(AppRegistryDepth), false);
+      break;
+    case appRegistryFlags:
+      r = AppRegistryProcess(ar, creator, id, seq, AppRegistryFlagsCallback, p, sizeof(AppRegistryFlags), false);
       break;
     default:
       break;
@@ -518,6 +540,9 @@ void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt1
           break;
         case appRegistryDepth:
           callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryDepth, ar->registry[i].data, 0, data);
+          break;
+        case appRegistryFlags:
+          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryFlags, ar->registry[i].data, 0, data);
           break;
         default:
           break;

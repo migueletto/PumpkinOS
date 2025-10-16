@@ -9,6 +9,7 @@ typedef enum {
   appRegistryUnsavedPref,
   appRegistryOSVersion,
   appRegistryDepth,
+  appRegistryFlags,
   appRegistryLast
 } AppRegistryID;
 
@@ -39,6 +40,10 @@ typedef struct {
   UInt16 depth;
 } AppRegistryDepth;
 
+typedef struct {
+  UInt32 flags;
+} AppRegistryFlags;
+
 enum {
   appCompatUnknown,
   appCompatOk,
@@ -46,6 +51,8 @@ enum {
   appCompatMajor,
   appCompatCrash
 };
+
+#define appRegistryFlagReset 1
 
 AppRegistryType *AppRegistryInit(char *regname);
 void AppRegistryFinish(AppRegistryType *ar);
