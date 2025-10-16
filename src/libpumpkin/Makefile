@@ -32,7 +32,7 @@ DARM_SOURCE=emulation/darm/armv7.c emulation/darm/armv7-tbl.c emulation/darm/dar
          emulation/darm/thumb2.c emulation/darm/thumb2-decoder.c emulation/darm/thumb2-tbl.c emulation/darm/thumb-tbl.c
 
 EMU_SOURCE=emulation/emupalmos.c emulation/omtrap.c emulation/pinstrap.c emulation/hdtrap.c emulation/serialtrap.c emulation/fstrap.c emulation/intltrap.c \
-        emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/tsmtrap.c emulation/navtrap.c emulation/netlibtrap.c emulation/gpdlibtrap.c \
+        emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/tsmtrap.c emulation/lmtrap.c emulation/navtrap.c emulation/netlibtrap.c emulation/gpdlibtrap.c \
         emulation/systrap.c emulation/trapnames.c emulation/m68k/m68kcpu.c emulation/m68k/m68kdasm.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
         emulation/emu_notif_serde.c emulation/emu_launch_serde.c $(ARM_SOURCE) $(DARM_SOURCE)
 

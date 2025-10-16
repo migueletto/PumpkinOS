@@ -964,11 +964,9 @@ static UInt32 getPattern(win_module_t *module, WinHandle wh, Coord x, Coord y, P
 
     switch (pattern) {
       case blackPattern:
-        //c = getColor(module, depth, false);
         c = getColor(module, depth, module->swapColors);
         break;
       case whitePattern:
-        //c = getColor(module, depth, true);
         c = getColor(module, depth, !module->swapColors);
         break;
       case grayPattern:
@@ -1819,9 +1817,14 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     remwx = remwy = 0;
     remdx = remdy = 0;
 
-    tcw = windowDepth == 16 ? module->textColor565 : module->textColor;
-    bcw = windowDepth == 16 ? module->backColor565 : module->backColor;
-    tcd = displayDepth == 16 ? module->textColor565 : module->textColor;
+    if (text) {
+      tcw = windowDepth  == 16 ? module->textColor565 : module->textColor;
+      tcd = displayDepth == 16 ? module->textColor565 : module->textColor;
+    } else {
+      tcw = windowDepth  == 16 ? module->foreColor565 : module->foreColor;
+      tcd = displayDepth == 16 ? module->foreColor565 : module->foreColor;
+    }
+    bcw = windowDepth  == 16 ? module->backColor565 : module->backColor;
     bcd = displayDepth == 16 ? module->backColor565 : module->backColor;
 
     pumpkin_dirty_region_mode(dirtyRegionBegin);
@@ -1938,6 +1941,7 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
   RectangleType rect;
   UInt16 bitmapDensity;
   uint8_t *bmp, *base, *end;
+  char bmpBuf[32];
   Coord w, h;
 
   if (bitmapP && module->drawWindow) {
@@ -1952,7 +1956,7 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
     }
 
     BmpGetDimensions(bitmapP, &w, &h, NULL);
-    debug(DEBUG_TRACE, "Window", "WinPaintBitmap %p %d,%d at %d,%d", bitmapP, w, h, x, y);
+    debug(DEBUG_TRACE, "Window", "WinPaintBitmap %s %p %d,%d at %d,%d", BmpGetDescr(bitmapP, bmpBuf, sizeof(bmpBuf)), bitmapP, w, h, x, y);
     windowBitmap = WinGetBitmap(module->drawWindow);
 
     if ((best = BmpGetBestBitmapEx(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
@@ -1965,7 +1969,7 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
         w <<= 1;
         h <<= 1;
       }
-      debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %p %d,%d at %d,%d", best, w, h, x, y);
+      debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %s %p %d,%d at %d,%d", BmpGetDescr(best, bmpBuf, sizeof(bmpBuf)), best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
       WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
     }
@@ -2273,6 +2277,7 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   if (foreColor >= 0 && foreColor < numEntries) {
     CtbGetEntry(colorTable, foreColor, &module->foreColorRGB);
     setColors(fore, module, foreColor);
+    module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
 //debug(1, "XXX", "WinSetForeColor %d 0x%04X %d,%d,%d", module->foreColor, module->foreColor565, module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetForeColor invalid color %d for depth %d (max %d)", foreColor, module->depth, numEntries-1);
@@ -2300,6 +2305,7 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
   if (backColor >= 0 && backColor < numEntries) {
     CtbGetEntry(colorTable, backColor, &module->backColorRGB);
     setColors(back, module, backColor);
+    module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetBackColor invalid color %d for depth %d (max %d)", backColor, module->depth, numEntries-1);
   }
@@ -3322,7 +3328,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
         hasSpace = true;
       }
       i++;
-      if (isLineBreak(c) || x + tw >= bounds->extent.x) {
+      if (isLineBreak(c) || x + tw > bounds->extent.x) {
         debug(DEBUG_TRACE, "Window", "WinDrawCharBox: line break x=%d tw=%d bounds=%d", x, tw, bounds->extent.x);
         if (!isLineBreak(c) && hasSpace) {
           span = lastSpaceOffset - start;
@@ -3514,7 +3520,7 @@ static UInt32 WinLegacyGetPixel(win_module_t *module, BitmapType *bitmapP, Color
   if (legacyDepth != depth) {
     switch (depth) {
       case 1:
-        value = BmpConvertFrom1Bit(value, legacyDepth, NULL, true);
+        value = BmpConvertFrom1Bit(value, legacyDepth, 0x0000, 0xFFFF);
         break;
       case 2:
         value = BmpConvertFrom2Bits(value, legacyDepth, NULL, true);
@@ -3662,7 +3668,7 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
         y = offset / cols;
         b = value;
         for (i = 0; i < 8; i++, x--) {
-          c = BmpConvertFrom1Bit(b & 0x01, realDepth, NULL, true);
+          c = BmpConvertFrom1Bit(b & 0x01, realDepth, 0x0000, 0xFFFF);
           WinLegacyDrawPixel(module, realDepth, c, x, y);
           b >>= 1;
         }

@@ -718,6 +718,11 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
       return NULL;
   }
 
+  // XXX NotePad creates a 1bpp bitmap 152 pixels wide, and checks if rowBytes is 20.
+  // The formula above for 1bpp gives 19 bytes, and NotePad throws a fatal exception because of this discrepancy.
+  // 19 bytes are enough to hold 152 pixels, but maybe PalmOS does not like odd rowBytes, so I increment it in this case.
+  if (rowBytes % 2) rowBytes++;
+
   newSize = BitmapV2HeaderSize;
 
   if (colorTableP) {
@@ -1981,27 +1986,18 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
   }
 }
 
-UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
+// In PalmOS, 1bpp bitmaps behave like fonts: in 8bpp or 16bpp displays they are rendered
+// using forground and background colors.
+
+UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, UInt32 fg, UInt32 bg) {
   switch (depth) {
     case 1: break;
     case 2: b = b ? 0x03 : 0x00; break;
     case 4: b = b ? 0x0F : 0x00; break;
     case 8:
-      if (isDefault) {
-        b = b ? 0xFF : 0x00;
-      } else {
-        b = b ? BmpRGBToIndex(0x00, 0x00, 0x00, colorTable) : BmpRGBToIndex(0xFF, 0xFF, 0xFF, colorTable);
-      }
-      break;
     case 16:
-      b = b ? 0x0000 : 0xFFFF;
-      break;
     case 24:
-      b = b ? 0x000000 : 0xFFFFFF;
-      break;
-    case 32:
-      b = b ? 0xFF000000 : 0xFFFFFFFF;
-      break;
+    case 32: b = b ? fg : bg; break;
   }
 
   return b;
@@ -2794,7 +2790,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       case 1:
         srcPixel = bits[sy * srcRowBytes + (sx >> 3)];
         srcPixel = (srcPixel >> (7 - (sx & 0x07))) & 1;
-        dstPixel = (dstDepth == 1) ? srcPixel : BmpConvertFrom1Bit(srcPixel, dstDepth, dstColorTable, isDstDefault);
+        dstPixel = (dstDepth == 1) ? srcPixel : BmpConvertFrom1Bit(srcPixel, dstDepth, tc, bc);
         break;
       case 2:
         srcPixel = bits[sy * srcRowBytes + (sx >> 2)];
