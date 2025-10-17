@@ -107,7 +107,8 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           err = errNone;
           break;
         case sysFtrNumOEMCompanyID:
-          *valueP = 'Palm';
+          *valueP = pumpkin_get_id_option("companyID");
+          if (*valueP == 0) *valueP = 'Palm';
           err = errNone;
           break;
         case sysFtrNumOEMDeviceID:
