@@ -16479,9 +16479,18 @@ static void m68k_op_link_16(m68k_state_t *m68k_state)
 {
 	uint* r_dst = &AY;
 
-	m68ki_push_32(*r_dst);
-	*r_dst = REG_A[7];
-	REG_A[7] = MASK_OUT_ABOVE_32(REG_A[7] + MAKE_INT_16(OPER_I_16()));
+	m68ki_push_32(*r_dst); // push A6
+	*r_dst = REG_A[7];     // A6 = A7
+	//REG_A[7] = MASK_OUT_ABOVE_32(REG_A[7] + MAKE_INT_16(OPER_I_16())); // A7 -= frame_size
+	int16_t frame_size = MAKE_INT_16(OPER_I_16());
+	REG_A[7] = MASK_OUT_ABOVE_32(REG_A[7] + frame_size);
+	if (frame_size < 0) {
+		frame_size = -frame_size;
+		int32_t reg = *r_dst;
+		for (int32_t i = 0; i < frame_size; i++) {
+			m68k_write_memory_8(reg - frame_size + i, 0);
+		}
+	}
 }
 
 
