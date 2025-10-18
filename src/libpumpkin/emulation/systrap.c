@@ -864,10 +864,6 @@ uint32_t palmos_systrap(uint16_t trap) {
       if (depthP) depth = m68k_read_memory_32(depthP);
       if (enableColorP) enableColor = m68k_read_memory_8(enableColorP);
       err = WinScreenMode(operation, widthP ? &width : NULL, heightP ? &height : NULL, depthP ? &depth : NULL, enableColorP ? &enableColor : NULL);
-      if (operation == winScreenModeGetSupportedDepths) {
-	// XXX some old apps do not work if 16-bits is set
-        //depth &= 0xff;
-      }
       debug(DEBUG_TRACE, "EmuPalmOS", "WinScreenMode(%d, 0x%08X [%d], 0x%08X [%d], 0x%08X [%d], 0x%08X [%d]): %d",
         operation, widthP, width, heightP, height, depthP, depth, enableColorP, enableColor, err);
       if (widthP) m68k_write_memory_32(widthP, width);

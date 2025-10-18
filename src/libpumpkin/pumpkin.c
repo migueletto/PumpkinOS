@@ -1772,7 +1772,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   LocalID dbID;
   UInt32 language;
   UInt16 size, depth;
-  char screator[8];
   uint32_t color;
   int j, ptr;
 
@@ -1883,7 +1882,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   switch (creator) {
     // XXX take these creators from the registry
     case 'MePt':
-      depth = 8;
+    case 'PPrs': // eReader
+      depth = pumpkin_module.depth >= 8 ? 8 : pumpkin_module.depth;
       break;
     default:
       depth = pumpkin_module.depth;
@@ -1891,8 +1891,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   }
 
   if (depth != pumpkin_module.depth) {
-    pumpkin_id2s(creator, screator);
-    debug(DEBUG_INFO, PUMPKINOS, "forcing 8bpp display for %s", screator);
+    debug(DEBUG_INFO, PUMPKINOS, "forcing %dbpp display for \"%s\"", depth, name);
   }
 
   UicInitModule();
