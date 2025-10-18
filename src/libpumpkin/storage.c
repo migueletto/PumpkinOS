@@ -386,13 +386,13 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
     sys_memset(buf, 0, sizeof(buf));
     if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-      if (sys_sscanf(buf, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-               &db->ftype, stype, screator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
+      if (sys_sscanf(buf, "ftype=%u\ntype='%c%c%c%c'\ncreator='%c%c%c%c'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+           &db->ftype, stype, stype+1, stype+2, stype+3, screator, screator+1, screator+2, screator+3,
+           &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 16) {
+        stype[4] = 0;
         pumpkin_s2id(&db->type, stype);
+        screator[4] = 0;
         pumpkin_s2id(&db->creator, screator);
-        r = 0;
-      } else if (sys_sscanf(buf, "ftype=%u\ntype=%u\ncreator=%u\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-               &db->ftype, &db->type, &db->creator, &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 10) {
         r = 0;
       } else {
         debug(DEBUG_ERROR, "STOR", "invalid header \"%s\"", buf);
