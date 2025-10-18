@@ -3468,7 +3468,7 @@ case sysTrapTblGetRowData: {
   int16_t row = ARG16;
   uint32_t res = TblGetRowData(tableP ? s_tableP : NULL, row);
   m68k_set_reg(M68K_REG_D0, res);
-  debug(DEBUG_INFO, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d): 0x%08X", tableP, row, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "TblGetRowData(tableP=0x%08X, row=%d): 0x%08X", tableP, row, res);
 }
 break;
 case sysTrapTblSetRowData: {
@@ -3478,7 +3478,7 @@ case sysTrapTblSetRowData: {
   int16_t row = ARG16;
   uint32_t data = ARG32;
   TblSetRowData(tableP ? s_tableP : NULL, row, data);
-  debug(DEBUG_INFO, "EmuPalmOS", "TblSetRowData(tableP=0x%08X, row=%d, data=0x%08X)", tableP, row, data);
+  debug(DEBUG_TRACE, "EmuPalmOS", "TblSetRowData(tableP=0x%08X, row=%d, data=0x%08X)", tableP, row, data);
 }
 break;
 case sysTrapTblRowInvalid: {
