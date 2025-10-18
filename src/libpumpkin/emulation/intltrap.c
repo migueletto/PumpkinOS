@@ -54,7 +54,18 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       WChar outChar;
       UInt16 res = TxtGetNextChar(inText, inOffset, &outChar);
       if (outCharP) m68k_write_memory_16(outCharP, outChar);
-      debug(DEBUG_TRACE, "EmuPalmOS", "TxtGetNextChar(0x%08X \"%s\", %d, 0x%08X): %d", inTextP, inText, inOffset, outCharP, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtGetNextChar(0x%08X \"%s\", %u, 0x%08X): %d", inTextP, inText, inOffset, outCharP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
+    case intlTxtSetNextChar: {
+      // UInt16 TxtSetNextChar(Char *ioText, UInt32 inOffset, WChar inChar)
+      uint32_t ioTextP = ARG32;
+      uint32_t inOffset = ARG32;
+      uint32_t inChar = ARG16;
+      char *ioText = emupalmos_trap_sel_in(ioTextP, sysTrapIntlDispatch, sel, 0);
+      UInt16 res = TxtSetNextChar(ioText, inOffset, inChar);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtSetNextChar(0x%08X \"%s\", %u, %u): %d", ioTextP, ioText, inOffset, inChar, res);
       m68k_set_reg(M68K_REG_D0, res);
     }
       break;
@@ -136,7 +147,6 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //case intlTxtByteAttr:
     //case intlTxtCharXAttr:
     //case intlTxtGetChar:
-    //case intlTxtSetNextChar:
     //case intlTxtPrepFindString:
     //case intlTxtFindString:
     //case intlTxtWordBounds:
