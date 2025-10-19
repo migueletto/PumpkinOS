@@ -1771,7 +1771,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   PumpkinPreferencesType prefs;
   LocalID dbID;
   UInt32 language;
-  UInt16 size, depth;
+  UInt16 size, density, depth;
   uint32_t color;
   int j, ptr;
 
@@ -1887,16 +1887,20 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       break;
     default:
       depth = pumpkin_module.depth;
+      density = pumpkin_module.density;
       break;
   }
 
+  if (density != pumpkin_module.density) {
+    debug(DEBUG_INFO, PUMPKINOS, "forcing %d density display for \"%s\"", density, name);
+  }
   if (depth != pumpkin_module.depth) {
-    debug(DEBUG_INFO, PUMPKINOS, "forcing %dbpp display for \"%s\"", depth, name);
+    debug(DEBUG_INFO, PUMPKINOS, "forcing %d bpp display for \"%s\"", depth, name);
   }
 
   UicInitModule();
-  WinInitModule(pumpkin_module.density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
-  FntInitModule(pumpkin_module.density);
+  WinInitModule(density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
+  FntInitModule(density);
   FrmInitModule();
   InsPtInitModule();
   FldInitModule();
