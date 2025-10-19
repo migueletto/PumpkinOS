@@ -16484,6 +16484,14 @@ static void m68k_op_link_16(m68k_state_t *m68k_state)
 	//REG_A[7] = MASK_OUT_ABOVE_32(REG_A[7] + MAKE_INT_16(OPER_I_16())); // A7 -= frame_size
 	int16_t frame_size = MAKE_INT_16(OPER_I_16());
 	REG_A[7] = MASK_OUT_ABOVE_32(REG_A[7] + frame_size);
+
+
+	// The "Mail" app from early Palm devices uses an unitialized local variable
+	// and it seems that, by luck, on PalmOS the value just happens to be zero.
+	// On PumpkinOS, however, the value on the stack is not zero, triggering the bug.
+	// This code zeroes the stack frame that was just allocated. It does no harm (I hope)
+	// and it helps fixing the bug in Mail.
+
 	if (frame_size < 0) {
 		frame_size = -frame_size;
 		int32_t reg = *r_dst;
