@@ -408,10 +408,8 @@ static void LstAdjust(ListType *listP) {
 void LstSetHeight(ListType *listP, Int16 visibleItems) {
   if (listP) {
     debug(DEBUG_TRACE, "List", "LstSetHeight new=%d, current=%d", visibleItems, listP->visibleItems);
-    if (visibleItems != listP->visibleItems) {
-      listP->visibleItems = visibleItems;
-      LstAdjust(listP);
-    }
+    listP->visibleItems = visibleItems;
+    LstAdjust(listP);
   }
 }
 
