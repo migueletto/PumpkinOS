@@ -1,67 +1,6 @@
 #include <PalmOS.h>
 
-#include "sys.h"
-#include "pwindow.h"
-#include "vfs.h"
-#include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
-
-static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
-  RectangleType rect;
-  RGBColorType rgb, old;
-  int red, green, blue;
-
-  if (controlP && controlP->attr.visible) {
-    debug(DEBUG_TRACE, "Control", "CtlInvertControl style %d control %d", controlP->style, controlP->id);
-    MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-
-    switch (controlP->style) {
-      case pushButtonCtl:
-        WinInvertRect(&rect, 0, isInverted);
-        WinDrawRectangleFrame(simpleFrame, &rect);
-        break;
-      case selectorTriggerCtl:
-        WinInvertRect(&rect, 0, isInverted);
-        WinDrawGrayRectangleFrame(simpleFrame, &rect);
-        break;
-      case colorTriggerCtl:
-        if (controlP->text && controlP->text[0] == '#') {
-          if (sys_sscanf(controlP->text, "#%02X%02X%02X", &red, &green, &blue) == 3) {
-            if (isInverted) {
-              rgb.r = red;
-              rgb.g = green;
-              rgb.b = blue;
-            } else {
-              rgb.r = red / 2;
-              rgb.g = green / 2;
-              rgb.b = blue / 2;
-            }
-            WinSetBackColorRGB(&rgb, &old);
-            WinEraseRectangle(&controlP->bounds, 0);
-            WinSetBackColorRGB(&old, NULL);
-          }
-        }
-        WinDrawGrayRectangleFrame(simpleFrame, &rect);
-        break;
-      case buttonCtl:
-      case repeatingButtonCtl:
-        switch (controlP->attr.frame) {
-          case standardButtonFrame:
-          case boldButtonFrame:
-            WinInvertRect(&rect, 3, isInverted);
-            WinDrawRectangleFrame(roundFrame, &rect);
-            break;
-          case noFrame:
-            WinInvertRect(&rect, 0, isInverted);
-            break;
-        }
-        break;
-      default:
-        return;
-    }
-  }
-}
 
 void CtlDrawControl(ControlType *controlP) {
   MemHandle h;
@@ -69,13 +8,12 @@ void CtlDrawControl(ControlType *controlP) {
   BitmapType *bmp;
   WinDrawOperation mode;
   PatternType oldPattern;
-  IndexedColorType objFill, objFore, oldb, oldf, oldt;
-  RGBColorType rgb;
+  IndexedColorType objFill, objFore, objSelFill, objSelFore, oldb, oldf, oldt;
+  RGBColorType rgb, oldRgb;
   RectangleType rect;
   Coord bw, bh;
   UInt16 rb, coordSys;
   FontID old;
-  Boolean wasVisible;
   int red, green, blue;
   Int16 tw, th, x, y;
 
@@ -83,14 +21,63 @@ void CtlDrawControl(ControlType *controlP) {
     debug(DEBUG_TRACE, "Control", "CtlDrawControl control %d style %d on %d", controlP->id, controlP->style, controlP->attr.on);
     objFill = UIColorGetTableEntryIndex(UIObjectFill);
     objFore = UIColorGetTableEntryIndex(UIObjectForeground);
+
+    objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+    objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+
     oldb = WinSetBackColor(objFill);
     oldf = WinSetForeColor(objFore);
     oldt = WinSetTextColor(objFore);
     oldPattern = WinGetPatternType();                                                                                                                                                       
     WinSetPatternType(blackPattern);                                                                                                                                                        
-    wasVisible = controlP->attr.visible;
     controlP->attr.visible = true;
 
+    if (controlP->attr.on && controlP->style != sliderCtl && controlP->style != feedbackSliderCtl && controlP->style != checkboxCtl) {
+      WinSetBackColor(objSelFill);
+      WinSetTextColor(objSelFore);
+    }
+
+    // erase the control background
+    switch (controlP->style) {
+      case buttonCtl:
+      case repeatingButtonCtl:
+        switch (controlP->attr.frame) {
+          case standardButtonFrame:
+          case boldButtonFrame:
+            WinEraseRectangle(&controlP->bounds, 3);
+            break;
+          case noFrame:
+            WinEraseRectangle(&controlP->bounds, 0);
+            break;
+        }
+        break;
+      case pushButtonCtl:
+      case selectorTriggerCtl:
+        WinEraseRectangle(&controlP->bounds, 0);
+        break;
+      case colorTriggerCtl:
+        if (controlP->text && controlP->text[0] == '#') {
+          if (sys_sscanf(controlP->text, "#%02X%02X%02X", &red, &green, &blue) == 3) {
+            if (controlP->attr.on) {
+              rgb.r = red / 2;
+              rgb.g = green / 2;
+              rgb.b = blue / 2;
+            } else {
+              rgb.r = red;
+              rgb.g = green;
+              rgb.b = blue;
+            }
+            WinSetBackColorRGB(&rgb, &oldRgb);
+            WinEraseRectangle(&controlP->bounds, 0);
+            WinSetBackColorRGB(&oldRgb, NULL);
+          }
+        }
+        break;
+      default:
+        break;
+    }
+
+    // draw control text or graphics
     switch (controlP->style) {
       case buttonCtl:
       case pushButtonCtl:
@@ -114,10 +101,9 @@ void CtlDrawControl(ControlType *controlP) {
 
               x = rect.topLeft.x + (rect.extent.x - bw) / 2;
               y = rect.topLeft.y + (rect.extent.y - bh) / 2;
-              WinDrawBitmap(bmp, x, y);
-
+              if (controlP->attr.on) WinSetForeColor(objSelFore);
+              WinPaintBitmap(bmp, x, y);
               WinSetCoordinateSystem(coordSys);
-
               MemHandleUnlock(h);
             }
             DmReleaseResource(h);
@@ -132,19 +118,10 @@ void CtlDrawControl(ControlType *controlP) {
             WinDrawChars(controlP->text, StrLen(controlP->text), x, y);
             FntSetFont(old);
           }
-        } else {
-          if (controlP->text && controlP->text[0] == '#') {
-            if (sys_sscanf(controlP->text, "#%02X%02X%02X", &red, &green, &blue) == 3) {
-              rgb.r = red;
-              rgb.g = green;
-              rgb.b = blue;
-              WinSetBackColorRGB(&rgb, NULL);
-              WinEraseRectangle(&controlP->bounds, 0);
-              WinSetBackColor(objFill);
-            }
-          }
         }
 
+	// draw the control frame (if any)
+        WinSetForeColor(objFore);
         switch (controlP->style) {
           case buttonCtl:
           case repeatingButtonCtl:
@@ -162,8 +139,7 @@ void CtlDrawControl(ControlType *controlP) {
             break;
           case pushButtonCtl:
             if (controlP->attr.frame != noButtonFrame) {
-              MemMove(&rect, &controlP->bounds, sizeof(RectangleType));
-              WinDrawRectangleFrame(simpleFrame, &rect);
+              WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
             }
             break;
           case selectorTriggerCtl:
@@ -172,10 +148,6 @@ void CtlDrawControl(ControlType *controlP) {
             break;
           default:
             break;
-        }
-
-        if (controlP->attr.on) {
-          CtlInvertControl(controlP, wasVisible);
         }
         break;
 
@@ -358,34 +330,28 @@ void CtlSetValue(ControlType *controlP, Int16 newValue) {
   SliderControlType *slider;
 
   if (controlP) {
-    /*if (controlP->attr.graphical) {
-      debug(DEBUG_TRACE, "Control", "CtlSetValue graphic control %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
-      CtlInvertControl(controlP);
-      controlP->attr.on = newValue ? true : false;
-    } else {*/
-      switch (controlP->style) {
-        case sliderCtl:
-        case feedbackSliderCtl:
-          debug(DEBUG_TRACE, "Control", "CtlSetValue slider %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
-          slider = (SliderControlType *)controlP;
-          slider->value = newValue;
-          if (controlP->attr.visible) {
-            CtlDrawControl(controlP);
-          }
-          break;
-        case pushButtonCtl:
-          debug(DEBUG_TRACE, "Control", "CtlSetValue pushButton %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
-          CtlUpdateGroup(controlP, newValue != 0);
-          break;
-        case checkboxCtl:
-          debug(DEBUG_TRACE, "Control", "CtlSetValue checkBox %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
-          CtlUpdateCheckboxGroup(controlP, newValue ? true : false);
-          break;
-        default:
-          debug(DEBUG_TRACE, "Control", "CtlSetValue type %d control %d value %d visible %d", controlP->style, controlP->id, newValue, controlP->attr.visible);
-          break;
-      }
-    //}
+    switch (controlP->style) {
+      case sliderCtl:
+      case feedbackSliderCtl:
+        debug(DEBUG_TRACE, "Control", "CtlSetValue slider %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
+        slider = (SliderControlType *)controlP;
+        slider->value = newValue;
+        if (controlP->attr.visible) {
+          CtlDrawControl(controlP);
+        }
+        break;
+      case pushButtonCtl:
+        debug(DEBUG_TRACE, "Control", "CtlSetValue pushButton %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
+        CtlUpdateGroup(controlP, newValue != 0);
+        break;
+      case checkboxCtl:
+        debug(DEBUG_TRACE, "Control", "CtlSetValue checkBox %d value %d visible %d", controlP->id, newValue, controlP->attr.visible);
+        CtlUpdateCheckboxGroup(controlP, newValue ? true : false);
+        break;
+      default:
+        debug(DEBUG_TRACE, "Control", "CtlSetValue type %d control %d value %d visible %d", controlP->style, controlP->id, newValue, controlP->attr.visible);
+        break;
+    }
   }
 }
 
@@ -518,21 +484,21 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value) {
   UInt16 objIndex;
 
   if (controlP->attr.on != value) {
-    controlP->attr.on = true;
-    debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d ON group %d visible %d", controlP->id, controlP->group, controlP->attr.visible);
+    controlP->attr.on = value;
+    debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d value %d group %d visible %d", controlP->id, value, controlP->group, controlP->attr.visible);
     if (controlP->attr.visible) {
-      CtlInvertControl(controlP, false);
+      CtlDrawControl(controlP);
     }
     formP = (FormType *)controlP->formP;
 
-    if (formP && controlP->group) {
+    if (formP && controlP->group && controlP->attr.on) {
       for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
         if (formP->objects[objIndex].objectType == frmControlObj) {
           control2P = formP->objects[objIndex].object.control;
           if (control2P->id != controlP->id && control2P->attr.on && control2P->group == controlP->group) {
-            debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d OFF group %d visible %d", controlP->id, controlP->group, controlP->attr.visible);
-            CtlInvertControl(control2P, true);
-            control2P->attr.on = !controlP->attr.on;
+            debug(DEBUG_TRACE, "Control", "CtlUpdateGroup control %d value %d group %d visible %d", controlP->id, 0, controlP->group, controlP->attr.visible);
+            control2P->attr.on = false;
+            CtlDrawControl(control2P);
           }
         }
       }
@@ -658,8 +624,8 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
           if (controlP->attr.on) {
-            CtlInvertControl(controlP, true);
             controlP->attr.on = false;
+            CtlDrawControl(controlP);
           }
         }
         handled = true;
@@ -679,8 +645,8 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       } else {
         if (!controlP->attr.on) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
-          CtlInvertControl(controlP, false);
           controlP->attr.on = true;
+          CtlDrawControl(controlP);
         }
       }
       handled = true;
@@ -729,11 +695,12 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       // XXX se e pushButton de grupo multiplo, precisa retornar para o membro que estava selecionado anteriormente
       if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
         if (controlP->attr.on) {
+          controlP->attr.on = false;
           if (controlP->style == buttonCtl && controlP->attr.visible) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit invert control %d to 0", controlP->id);
-            CtlInvertControl(controlP, true);
+            CtlDrawControl(controlP);
           }
-          controlP->attr.on = false;
+          //controlP->attr.on = false;
         } else {
           if (controlP->attr.visible) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit draw control %d on 0", controlP->id);
@@ -809,9 +776,9 @@ ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, con
         controlP->objIndex = formP->numObjects;
 
         if (formP->numObjects == 0) {
-          formP->objects = xcalloc(1, sizeof(FormObjListType));
+          formP->objects = sys_calloc(1, sizeof(FormObjListType));
         } else {
-          formP->objects = xrealloc(formP->objects, (formP->numObjects + 1) * sizeof(FormObjListType));
+          formP->objects = sys_realloc(formP->objects, (formP->numObjects + 1) * sizeof(FormObjListType));
         }
         formP->objects[formP->numObjects].objectType = frmControlObj;
         formP->objects[formP->numObjects].object.control = controlP;
