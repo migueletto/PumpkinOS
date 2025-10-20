@@ -523,14 +523,15 @@ void trapHook(uint32_t pc, emu_state_t *state) {
   instruction = m68k_read_memory_16(pc);
 
   if (instruction == 0x4E4F) {
+    trap = m68k_read_memory_16(pc + 2);
+    if (state->ldef && state->lt) state->ldef->hook(state->lt, pc, trap);
+
     if (debug_getsyslevel("Trap") == DEBUG_TRACE /*&&
         (state->stackp == 0 ||
          state->stackt[state->stackp-1] == sysTrapSysAppLaunch ||
          state->stackt[state->stackp-1] == sysTrapFrmDispatchEvent ||
          state->stackt[state->stackp-1] == sysTrapFrmHandleEvent)*/) {
 
-      trap = m68k_read_memory_16(pc + 2);
-      if (state->ldef && state->lt) state->ldef->hook(state->lt, pc, trap);
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
       state->stackt[state->stackp] = trap;

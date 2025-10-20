@@ -2103,8 +2103,8 @@ logtrap_t *logtrap_init(logtrap_def *def) {
   lt->def.data = def->data;
   if (def->target == NULL) lt->log_f = 1;
 
-  lt->def.hook = logtrap_hook;
-  lt->def.rethook = logtrap_rethook;
+  def->hook = logtrap_hook;
+  def->rethook = logtrap_rethook;
 
   for (i = 0; i < 0x10000; i++) {
     memset(&lt->allTraps[i], 0, sizeof(trap_t));
