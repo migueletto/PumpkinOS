@@ -361,9 +361,6 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
-if (address == 0x00077440 && value == 146) {
-debug(1, "XXX", "ah");
-}
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
@@ -903,13 +900,11 @@ void decode_rectangle(uint32_t rP, RectangleType *rect) {
     rect->topLeft.y = m68k_read_memory_16(rP + 2);
     rect->extent.x  = m68k_read_memory_16(rP + 4);
     rect->extent.y  = m68k_read_memory_16(rP + 6);
-debug(1, "XXX", "decode_rect %d,%d,%d,%d", rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
   }
 }
 
 void encode_rectangle(uint32_t rP, RectangleType *rect) {
   if (rP && rect) {
-debug(1, "XXX", "encode_rect %d,%d,%d,%d", rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
     m68k_write_memory_16(rP,     rect->topLeft.x);
     m68k_write_memory_16(rP + 2, rect->topLeft.y);
     m68k_write_memory_16(rP + 4, rect->extent.x);
