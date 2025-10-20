@@ -15,6 +15,7 @@
 #include "armemu.h"
 #endif
 #include "emupalmosinc.h"
+#include "logtrap.h"
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmos.h"
@@ -421,6 +422,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t enableIt = ARG8;
       AttnIndicatorEnable(enableIt);
       debug(DEBUG_TRACE, "EmuPalmOS", "AttnIndicatorEnable(%d)", enableIt);
+      }
+      break;
+    case sysTrapAttnIterate: {
+      // void AttnIterate(UInt16 cardNo, LocalID dbID, UInt32 iterationData)
+      uint16_t cardNo = ARG16;
+      uint32_t dbID = ARG32;
+      uint32_t iterationData = ARG32;
+      AttnIterate(cardNo, dbID, iterationData);
+      debug(DEBUG_TRACE, "EmuPalmOS", "AttnIterate(%d, 0x%08X, %u)", cardNo, dbID, iterationData);
       }
       break;
     case sysTrapDlkGetSyncInfo: {

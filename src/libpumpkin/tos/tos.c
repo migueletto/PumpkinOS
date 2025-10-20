@@ -10,6 +10,7 @@
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
+#include "logtrap.h"
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"

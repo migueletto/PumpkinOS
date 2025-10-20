@@ -110,6 +110,7 @@ BEGIN {
   dmid["DmResType"] = 1;
   rgb["RGBColorType"] = 1;
   evt["EventType"] = 1;
+  rct["RectangleType"] = 1;
 
   accessor[0] = "CtlGlueGetControlStyle";
   accessor[1] = "FldGlueGetLineInfo";
@@ -149,27 +150,32 @@ BEGIN {
   print "#define T_WCHR  4" >> trapArgs;
   print "#define T_HEX   5" >> trapArgs;
   print "#define T_ID    6" >> trapArgs;
-  print "#define T_PTR   7" >> trapArgs;
-  print "#define T_STR   8" >> trapArgs;
-  print "#define T_RGB   9" >> trapArgs;
-  print "#define T_EVT  10" >> trapArgs;
+  print "#define T_STR   7" >> trapArgs;
+  print "#define T_RGB   8" >> trapArgs;
+  print "#define T_EVT   9" >> trapArgs;
+  print "#define T_RCT  10" >> trapArgs;
   print "" >> trapArgs;
 
   print "typedef struct {" >> trapArgs;
   print "  uint32_t type;" >> trapArgs;
+  print "  uint32_t ptr;" >> trapArgs;
   print "  uint32_t size;" >> trapArgs;
   print "  char *name;" >> trapArgs;
   print "} trap_arg_t;" >> trapArgs;
   print "" >> trapArgs;
 
-  print "typedef struct {" >> trapArgs;
+  print "typedef struct trap_t {" >> trapArgs;
   print "  uint32_t trap;" >> trapArgs;
   print "  int32_t selector;" >> trapArgs;
   print "  char *name;" >> trapArgs;
   print "  uint32_t rtype;" >> trapArgs;
+  print "  uint32_t rptr;" >> trapArgs;
   print "  uint32_t rsize;" >> trapArgs;
   print "  uint32_t nargs;" >> trapArgs;
   print "  trap_arg_t args[16];" >> trapArgs;
+  print "  uint32_t capsel;" >> trapArgs;
+  print "  uint32_t numsel;" >> trapArgs;
+  print "  struct trap_t *selectors;" >> trapArgs;
   print "} trap_t;" >> trapArgs;
   print "" >> trapArgs;
 
@@ -214,16 +220,21 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     rtype = substr(rtype, 7);
   }
   rtyp = "T_SIG";
+  isptr = 0;
+
   if (rtype ~ /[*]$/) {
     rtype = substr(rtype, 1, length(rtype) - 2);
     size = 4;
-    rtyp = "T_PTR";
+    isptr = 1;
+    rtyp = "T_VOID";
   } else if (rtype ~ /Ptr$/ || rtype ~ /Handle$/ || rtype ~ /Callback/) {
     size = 4;
-    rtyp = "T_PTR";
+    isptr = 1;
+    rtyp = "T_VOID";
   } else if (ptr[rtype]) {
     size = 4;
-    rtyp = "T_PTR";
+    isptr = 1;
+    rtyp = "T_VOID";
   } else if (tchar[rtype]) {
     size = 1;
     rtyp = "T_CHAR";
@@ -247,61 +258,74 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
   }
 
   if (selector == "0" && trap !~ /Dispatch$/) selector = "-1";
-  s = "  { .trap=" trap ", .selector=" selector ", .name=\"" name "\", .rtype=" rtyp ", .rsize=" size ", .nargs=" nargs ", .args={ ";
+  s = "  { .trap=" trap ", .selector=" selector ", .name=\"" name "\", .rtype=" rtyp ", .rptr=" isptr ", .rsize=" size ", .nargs=" nargs ", .args={ ";
 
   for (i = 0; i < nargs; i++) {
     atype = $(7 + i*2);
     arg = $(7 + i*2 + 1);
+    isptr = 0;
+
     if (substr(atype, 1, 6) == "const_") {
       atype = substr(atype, 7);
     }
-    atyp = "T_SIG";
-    if (index(arg, "[")) {
+ 
+    j = index(atype, "_*");
+    if (j > 0) {
+      atype = substr(atype, 1, j-1);
+      atyp = "T_VOID";
       size = 4;
-      atyp = "T_PTR";
-    } else if (atype ~ /[*]$/) {
-      atype = substr(atype, 1, length(atype) - 2);
+      isptr = 1;
+    } else if (index(arg, "[")) {
+      atyp = "T_VOID";
       size = 4;
-      if (tchar[atype]) {
-        atyp = "T_STR";
-      } else if (rgb[atype]) {
-        atyp = "T_RGB";
-      } else if (evt[atype]) {
-        atyp = "T_EVT";
-      } else {
-        atyp = "T_PTR";
-      }
-    } else if (atype ~ /Ptr$/ || atype ~ /Handle$/ || atype ~ /Callback/) {
+      isptr = 1;
+    } else {
+      atyp = "T_SIG";
+    }
+
+    if (atype ~ /Ptr$/ || atype ~ /Handle$/ || atype ~ /Callback/) {
+      atyp = "T_VOID";
       size = 4;
-      atyp = "T_PTR";
+      isptr = 1;
     } else if (ptr[atype]) {
       size = 4;
-      atyp = "T_PTR";
+      isptr = 1;
+      atyp = "T_VOID";
+    } else if (rgb[atype]) {
+      atyp = "T_RGB";
+    } else if (evt[atype]) {
+      atyp = "T_EVT";
+    } else if (rct[atype]) {
+      atyp = "T_RCT";
     } else if (tchar[atype]) {
-      size = 1;
-      atyp = "T_CHAR";
+      if (isptr) {
+        atyp = "T_STR";
+      } else {
+        atyp = "T_CHAR";
+        size = 1;
+      }
     } else if (wchar[atype]) {
-      size = 2;
       atyp = "T_WCHR";
+      size = 2;
     } else if (isize[atype]) {
-      size = isize[atype];
       atyp = "T_SIG";
+      size = isize[atype];
     } else if (usize[atype]) {
-      size = usize[atype];
       atyp = "T_USIG";
+      size = usize[atype];
     } else if (dmid[atype]) {
-      size = 4;
       atyp = "T_ID";
-    } else {
+      size = 4;
+    } else if (!isptr) {
       size = "ERROR_" atype;
     }
 
-    if (atyp == "T_USIG" && (arg == "flags" || arg ~ /Flags$/)) {
+    if (atyp == "T_USIG" && (arg == "flags" || arg ~ /Flags$/ || arg ~ /^attributes/)) {
       atyp = "T_HEX";
     }
 
     if (i > 0) s = s ", ";
-    s = s "{ .type=" atyp ", .size=" size ", .name=\"" arg "\" }";
+    s = s "{ .type=" atyp ", .ptr=" isptr ", .size=" size ", .name=\"" arg "\" }";
   }
 
   s = s " } },";

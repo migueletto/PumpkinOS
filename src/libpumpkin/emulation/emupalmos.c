@@ -19,6 +19,7 @@
 #include "debug.h"
 #include "xalloc.h"
 
+#include "logtrap.h"
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"
@@ -1949,6 +1950,88 @@ static void freeParamBlock(uint16_t launchCode, uint8_t *p) {
   }
 }
 
+static void *logtrap_alloc(uint32_t size, void *data) {
+  return sys_calloc(1, size);
+}
+
+static void *logtrap_realloc(void *p, uint32_t size, void *data) {
+  return sys_realloc(p, size);
+}
+
+static void logtrap_free(void *p, void *data) {
+  sys_free(p);
+}
+
+static void logtrap_print(char *s, void *data) {
+  debug(DEBUG_INFO, "logtrap", "%s", s);
+}
+
+static uint8_t logtrap_read8(uint32_t addr, void *data) {
+  return cpu_read_byte(addr);
+}
+
+static uint16_t logtrap_read16(uint32_t addr, void *data) {
+  return cpu_read_word(addr);
+}
+
+static uint32_t logtrap_read32(uint32_t addr, void *data) {
+  return cpu_read_long(addr);
+}
+
+static uint32_t logtrap_getreg(uint32_t reg, void *data) {
+  uint32_t value = 0;
+
+  switch (reg) {
+    case logtrap_A0: value = m68k_get_reg(NULL, M68K_REG_A0); break;
+    case logtrap_D0: value = m68k_get_reg(NULL, M68K_REG_D0); break;
+    case logtrap_D2: value = m68k_get_reg(NULL, M68K_REG_D2); break;
+    case logtrap_SP: value = m68k_get_reg(NULL, M68K_REG_SP); break;
+  }
+
+  return value;
+}
+
+static void logtrap_install(emu_state_t *state, UInt32 creator) {
+  logtrap_def *def;
+  logtrap_t *lt;
+  UInt32 logtrap_creator;
+  char *logtrap;
+
+  if (state) {
+    if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
+      pumpkin_s2id(&logtrap_creator, logtrap);
+      if (logtrap_creator == creator) {
+        if ((def = sys_calloc(1, sizeof(logtrap_def))) != NULL) {
+          def->alloc = logtrap_alloc;
+          def->realloc = logtrap_realloc;
+          def->free = logtrap_free;
+          def->print = logtrap_print;
+          def->read8 = logtrap_read8;
+          def->read16 = logtrap_read16;
+          def->read32 = logtrap_read32;
+          def->getreg = logtrap_getreg;
+ 
+          if ((lt = logtrap_init(def)) != NULL) {
+            state->ldef = def;
+            state->lt = lt;
+          } else {
+            sys_free(def);
+          }
+        }
+      }
+    }
+  }
+}
+
+static void logtrap_deinstall(emu_state_t *state) {
+  if (state) {
+    if (state->lt) logtrap_finish(state->lt);
+    if (state->ldef) sys_free(state->ldef);
+    state->lt = NULL;
+    state->ldef = NULL;
+  }
+}
+
 uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   MemHandle hAmdc0, hAmdd0, hCode0, hCode1, hCodeN, hData0, hData, hStack, hSysAppInfo;
   uint8_t *amdc0, *amdd0, *code0, *code1, *data0, *data, *stack, *sysAppInfo, *paramBlock;
@@ -2287,11 +2370,13 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
       if (!state->panic) {
         creator = pumpkin_get_app_creator();
+        logtrap_install(state, creator);
         pumpkin_set_compat(creator, appCompatOk, 0);
         emupalmos_finish(0);
         for (; !emupalmos_finished() && !thread_must_end();) {
           m68k_execute(&state->m68k_state, 100000);
         }
+        logtrap_deinstall(state);
       }
 
       if (state->panic) {

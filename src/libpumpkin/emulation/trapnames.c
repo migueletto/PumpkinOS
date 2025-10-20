@@ -8,6 +8,7 @@
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
+#include "logtrap.h"
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"
@@ -489,6 +490,8 @@ void trapHook(uint32_t pc, emu_state_t *state) {
   char *name;
   int returning, ret;
 
+  if (state->ldef && state->lt) state->ldef->rethook(state->lt, pc);
+
   if (state->stackp && pc == state->stack[state->stackp-1]) {
     state->stackp--;
     trap = state->stackt[state->stackp];
@@ -527,6 +530,7 @@ void trapHook(uint32_t pc, emu_state_t *state) {
          state->stackt[state->stackp-1] == sysTrapFrmHandleEvent)*/) {
 
       trap = m68k_read_memory_16(pc + 2);
+      if (state->ldef && state->lt) state->ldef->hook(state->lt, pc, trap);
       sp = m68k_get_reg(NULL, M68K_REG_SP);
       idx = 0;
       state->stackt[state->stackp] = trap;

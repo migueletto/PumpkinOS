@@ -587,6 +587,7 @@ SEL_TRAP sysTrapIntlDispatch intlTxtTransliterate Err TxtTransliterate 5 const_C
 SEL_TRAP sysTrapIntlDispatch intlTxtWordBounds Boolean TxtWordBounds 5 const_Char_* inText UInt32 inLength UInt32 inOffset UInt32_* outStart UInt32_* outEnd
 SEL_TRAP sysTrapIntlDispatch intlTxtUpperChar WChar TxtUpperChar 1 WChar inChar
 SEL_TRAP sysTrapIntlDispatch intlTxtLowerChar WChar TxtLowerChar 1 WChar inChar
+SEL_TRAP sysTrapIntlDispatch intlIntlHandleEvent Boolean IntlHandleEvent 1 EventType_* event
 SEL_TRAP sysTrapLmDispatch lmGetLocaleSetting Err LmGetLocaleSetting 4 UInt16 iLocaleIndex LmLocaleSettingChoice iChoice void_* oValue UInt16 iValueSize
 SEL_TRAP sysTrapLmDispatch lmGetNumLocales UInt16 LmGetNumLocales 0
 SEL_TRAP sysTrapLmDispatch lmLocaleToIndex Err LmLocaleToIndex 2 const_LmLocaleType_* iLocale UInt16_* oLocaleIndex
@@ -598,6 +599,8 @@ SEL_TRAP sysTrapOmDispatch omGetSystemLocale void OmGetSystemLocale 1 LmLocaleTy
 SEL_TRAP sysTrapOmDispatch omLocaleToOverlayDBName Err OmLocaleToOverlayDBName 3 const_Char_* baseDBName const_LmLocaleType_* targetLocale Char_* overlayDBName
 SEL_TRAP sysTrapOmDispatch omOverlayDBNameToLocale Err OmOverlayDBNameToLocale 2 const_Char_* overlayDBName LmLocaleType_* overlayLocale
 SEL_TRAP sysTrapOmDispatch omSetSystemLocale Err OmSetSystemLocale 1 const_LmLocaleType_* systemLocale
+SEL_TRAP sysTrapOmDispatch omGetCurrentLocale void OmGetCurrentLocale 1 LmLocaleType_* currentLocale
+SEL_TRAP sysTrapOmDispatch omOpenOverlayDatabase void OmGetCurrentLocale 0
 SEL_TRAP sysTrapPinsDispatch pinFrmGetDIAPolicyAttr UInt16 FrmGetDIAPolicyAttr 1 FormType_* formP
 SEL_TRAP sysTrapPinsDispatch pinFrmSetDIAPolicyAttr Err FrmSetDIAPolicyAttr 2 FormType_* formP UInt16 diaPolicy
 SEL_TRAP sysTrapPinsDispatch pinPINGetInputAreaState UInt16 PINGetInputAreaState 0
@@ -615,7 +618,7 @@ SEL_TRAP sysTrapPinsDispatch pinWinSetConstraintsSize Err WinSetConstraintsSize 
 SEL_TRAP sysTrapSerialDispatch sysSerialClearErr Err SrmClearErr 1 UInt16 portId
 SEL_TRAP sysTrapSerialDispatch sysSerialClose Err SrmClose 1 UInt16 portId
 SEL_TRAP sysTrapSerialDispatch sysSerialControl Err SrmControl 4 UInt16 portId UInt16 op void_* valueP UInt16_* valueLenP
-SEL_TRAP sysTrapSerialDispatch sysSerialCustomControl Err SrmCustomControl 5 UInt16 portId UInt16 opCode UInt32 creator void_* valueP UInt16_* valueLenP
+SEL_TRAP sysTrapSerialDispatch sysSerialCustomControl Err SrmCustomControl 5 UInt16 portId UInt16 opCode DmResType creator void_* valueP UInt16_* valueLenP
 SEL_TRAP sysTrapSerialDispatch sysSerialGetDeviceCount Err SrmGetDeviceCount 1 UInt16_* numOfDevicesP
 SEL_TRAP sysTrapSerialDispatch sysSerialGetDeviceInfo Err SrmGetDeviceInfo 2 UInt32 deviceID DeviceInfoType_* deviceInfoP
 SEL_TRAP sysTrapSerialDispatch sysSerialGetStatus Err SrmGetStatus 3 UInt16 portId UInt32_* statusFieldP UInt16_* lineErrsP
@@ -641,6 +644,8 @@ SEL_TRAP sysTrapSerialDispatch sysSerialSleep Err SrmSleep 0
 SEL_TRAP sysTrapSerialDispatch sysSerialWake Err SrmWake 0
 SEL_TRAP sysTrapTsmDispatch tsmGetFepMode TsmFepModeType TsmGetFepMode 1 void_* nullParam
 SEL_TRAP sysTrapTsmDispatch tsmSetFepMode TsmFepModeType TsmSetFepMode 2 void_* nullParam TsmFepModeType inNewMode
+SEL_TRAP sysTrapTsmDispatch tsmDrawMode void TsmDrawMode 0
+SEL_TRAP sysTrapTsmDispatch tsmHandleEvent void TsmHandleEvent 0
 #SEL_TRAP sysTrapUdaMgrDispatch sysUdaControl Err UDAControl 3 UDAObjectType_* ioObject UInt16 parameter ... ap
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeReaderNew UDAReaderType_* UDAExchangeReaderNew 1 ExgSocketType_* socket
 SEL_TRAP sysTrapUdaMgrDispatch sysUdaExchangeWriterNew UDAWriterType_* UDAExchangeWriterNew 2 ExgSocketType_* socket UDABufferSize bufferSize
@@ -674,7 +679,7 @@ SEL_TRAP sysTrapVFSMgr vfsTrapGetDefaultDirectory Err VFSGetDefaultDirectory 4 U
 SEL_TRAP sysTrapVFSMgr vfsTrapImportDatabaseFromFile Err VFSImportDatabaseFromFile 4 UInt16 volRefNum const_Char_* pathNameP UInt16_* cardNoP LocalID_* dbIDP
 SEL_TRAP sysTrapVFSMgr vfsTrapImportDatabaseFromFileCustom Err VFSImportDatabaseFromFileCustom 6 UInt16 volRefNum const_Char_* pathNameP UInt16_* cardNoP LocalID_* dbIDP VFSImportProcPtr importProcP void_* userDataP
 SEL_TRAP sysTrapVFSMgr vfsTrapInit Err VFSInit 0
-SEL_TRAP sysTrapVFSMgr vfsTrapInstallFSLib Err VFSInstallFSLib 2 UInt32 creator UInt16_* fsLibRefNumP
+SEL_TRAP sysTrapVFSMgr vfsTrapInstallFSLib Err VFSInstallFSLib 2 DmResType creator UInt16_* fsLibRefNumP
 SEL_TRAP sysTrapVFSMgr vfsTrapRegisterDefaultDirectory Err VFSRegisterDefaultDirectory 3 const_Char_* fileTypeStr UInt32 mediaType const_Char_* pathStr
 SEL_TRAP sysTrapVFSMgr vfsTrapRemoveFSLib Err VFSRemoveFSLib 1 UInt16 fsLibRefNum
 SEL_TRAP sysTrapVFSMgr vfsTrapUnregisterDefaultDirectory Err VFSUnregisterDefaultDirectory 2 const_Char_* fileTypeStr UInt32 mediaType
@@ -686,6 +691,7 @@ SEL_TRAP sysTrapVFSMgr vfsTrapVolumeMount Err VFSVolumeMount 3 UInt8 flags UInt1
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeSetLabel Err VFSVolumeSetLabel 2 UInt16 volRefNum const_Char_* labelP
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeSize Err VFSVolumeSize 3 UInt16 volRefNum UInt32_* volumeUsedP UInt32_* volumeTotalP
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeUnmount Err VFSVolumeUnmount 1 UInt16 volRefNum
+SEL_TRAP sysTrapVFSMgr vfsTrapPrivate1 void VFSPrivate1 0
 SER_LIB sysLibTrapClose 0 Err SerClose 1 UInt16 refNum
 SER_LIB sysLibTrapCustom 0 Err SerGetSettings 2 UInt16 refNum SerSettingsPtr settingsP
 SER_LIB sysLibTrapCustom+1 0 Err SerSetSettings 2 UInt16 refNum SerSettingsPtr settingsP
@@ -763,7 +769,7 @@ SYS_TRAP sysLibTrapClose 0 Err SysLibClose 1 UInt16 refNum
 SYS_TRAP sysLibTrapOpen 0 Err SysLibOpen 1 UInt16 refNum
 SYS_TRAP sysLibTrapSleep 0 Err SysLibSleep 1 UInt16 refNum
 SYS_TRAP sysLibTrapWake 0 Err SysLibWake 1 UInt16 refNum
-SYS_TRAP sysTrapAbtShowAbout 0 void AbtShowAbout 1 UInt32 creator
+SYS_TRAP sysTrapAbtShowAbout 0 void AbtShowAbout 1 DmResType creator
 SYS_TRAP sysTrapAlmAlarmCallback 0 void AlmAlarmCallback 0
 SYS_TRAP sysTrapAlmCancelAll 0 void AlmCancelAll 0
 SYS_TRAP sysTrapAlmDisplayAlarm 0 Boolean AlmDisplayAlarm 1 Boolean okToDisplay
@@ -864,7 +870,7 @@ SYS_TRAP sysTrapDmArchiveRecord 0 Err DmArchiveRecord 2 DmOpenRef dbP UInt16 ind
 SYS_TRAP sysTrapDmAttachRecord 0 Err DmAttachRecord 4 DmOpenRef dbP UInt16_* atP MemHandle newH MemHandle_* oldHP
 SYS_TRAP sysTrapDmAttachResource 0 Err DmAttachResource 4 DmOpenRef dbP MemHandle newH DmResType resType DmResID resID
 SYS_TRAP sysTrapDmCloseDatabase 0 Err DmCloseDatabase 1 DmOpenRef dbP
-SYS_TRAP sysTrapDmCreateDatabase 0 Err DmCreateDatabase 5 UInt16 cardNo const_Char_* nameP UInt32 creator UInt32 type Boolean resDB
+SYS_TRAP sysTrapDmCreateDatabase 0 Err DmCreateDatabase 5 UInt16 cardNo const_Char_* nameP DmResType creator DmResType type Boolean resDB
 SYS_TRAP sysTrapDmCreateDatabaseFromImage 0 Err DmCreateDatabaseFromImage 1 MemPtr bufferP
 SYS_TRAP sysTrapDmDatabaseInfo 0 Err DmDatabaseInfo 13 UInt16 cardNo LocalID dbID Char_* nameP UInt16_* attributesP UInt16_* versionP UInt32_* crDateP UInt32_* modDateP UInt32_* bckUpDateP UInt32_* modNumP LocalID_* appInfoIDP LocalID_* sortInfoIDP UInt32_* typeP UInt32_* creatorP
 SYS_TRAP sysTrapDmDatabaseProtect 0 Err DmDatabaseProtect 3 UInt16 cardNo LocalID dbID Boolean protect
@@ -885,7 +891,7 @@ SYS_TRAP sysTrapDmGetAppInfoID 0 LocalID DmGetAppInfoID 1 DmOpenRef dbP
 SYS_TRAP sysTrapDmGetDatabase 0 LocalID DmGetDatabase 2 UInt16 cardNo UInt16 index
 SYS_TRAP sysTrapDmGetDatabaseLockState 0 void DmGetDatabaseLockState 4 DmOpenRef dbR UInt8_* highest UInt32_* count UInt32_* busy
 SYS_TRAP sysTrapDmGetLastErr 0 Err DmGetLastErr 0
-SYS_TRAP sysTrapDmGetNextDatabaseByTypeCreator 0 Err DmGetNextDatabaseByTypeCreator 7 Boolean newSearch DmSearchStatePtr stateInfoP UInt32 type UInt32 creator Boolean onlyLatestVers UInt16_* cardNoP LocalID_* dbIDP
+SYS_TRAP sysTrapDmGetNextDatabaseByTypeCreator 0 Err DmGetNextDatabaseByTypeCreator 7 Boolean newSearch DmSearchStatePtr stateInfoP DmResType type DmResType creator Boolean onlyLatestVers UInt16_* cardNoP LocalID_* dbIDP
 SYS_TRAP sysTrapDmGetRecord 0 MemHandle DmGetRecord 2 DmOpenRef dbP UInt16 index
 SYS_TRAP sysTrapDmGetResource 0 MemHandle DmGetResource 2 DmResType type DmResID resID
 SYS_TRAP sysTrapDmGetResourceIndex 0 MemHandle DmGetResourceIndex 2 DmOpenRef dbP UInt16 index
@@ -904,7 +910,7 @@ SYS_TRAP sysTrapDmNumRecordsInCategory 0 UInt16 DmNumRecordsInCategory 2 DmOpenR
 SYS_TRAP sysTrapDmNumResources 0 UInt16 DmNumResources 1 DmOpenRef dbP
 SYS_TRAP sysTrapDmOpenDBNoOverlay 0 DmOpenRef DmOpenDBNoOverlay 3 UInt16 cardNo LocalID dbID UInt16 mode
 SYS_TRAP sysTrapDmOpenDatabase 0 DmOpenRef DmOpenDatabase 3 UInt16 cardNo LocalID dbID UInt16 mode
-SYS_TRAP sysTrapDmOpenDatabaseByTypeCreator 0 DmOpenRef DmOpenDatabaseByTypeCreator 3 UInt32 type UInt32 creator UInt16 mode
+SYS_TRAP sysTrapDmOpenDatabaseByTypeCreator 0 DmOpenRef DmOpenDatabaseByTypeCreator 3 DmResType type DmResType creator UInt16 mode
 SYS_TRAP sysTrapDmOpenDatabaseInfo 0 Err DmOpenDatabaseInfo 6 DmOpenRef dbP LocalID_* dbIDP UInt16_* openCountP UInt16_* modeP UInt16_* cardNoP Boolean_* resDBP
 SYS_TRAP sysTrapDmPositionInCategory 0 UInt16 DmPositionInCategory 3 DmOpenRef dbP UInt16 index UInt16 category
 SYS_TRAP sysTrapDmQueryNextInCategory 0 MemHandle DmQueryNextInCategory 3 DmOpenRef dbP UInt16_* indexP UInt16 category
@@ -991,15 +997,15 @@ SYS_TRAP sysTrapExgNotifyReceive 0 Err ExgNotifyReceive 2 ExgSocketType_* socket
 SYS_TRAP sysTrapExgNotifyReceiveV35 0 Err ExgNotifyReceiveV35 1 ExgSocketType_* socketP
 SYS_TRAP sysTrapExgPut 0 Err ExgPut 1 ExgSocketType_* socketP
 SYS_TRAP sysTrapExgReceive 0 UInt32 ExgReceive 4 ExgSocketType_* socketP void_* bufP UInt32 bufLen Err_* err
-SYS_TRAP sysTrapExgRegisterData 0 Err ExgRegisterData 3 UInt32 creatorID UInt16 id const_Char_* dataTypesP
-SYS_TRAP sysTrapExgRegisterDatatype 0 Err ExgRegisterDatatype 5 UInt32 creatorID UInt16 id const_Char_* dataTypesP const_Char_* descriptionsP UInt16 flags
+SYS_TRAP sysTrapExgRegisterData 0 Err ExgRegisterData 3 DmResType creatorID UInt16 id const_Char_* dataTypesP
+SYS_TRAP sysTrapExgRegisterDatatype 0 Err ExgRegisterDatatype 5 DmResType creatorID UInt16 id const_Char_* dataTypesP const_Char_* descriptionsP UInt16 flags
 SYS_TRAP sysTrapExgRequest 0 Err ExgRequest 1 ExgSocketType_* socketP
 SYS_TRAP sysTrapExgSend 0 UInt32 ExgSend 4 ExgSocketType_* socketP const_void_* bufP UInt32 bufLen Err_* err
-SYS_TRAP sysTrapExgSetDefaultApplication 0 Err ExgSetDefaultApplication 3 UInt32 creatorID UInt16 id const_Char_* dataTypeP
+SYS_TRAP sysTrapExgSetDefaultApplication 0 Err ExgSetDefaultApplication 3 DmResType creatorID UInt16 id const_Char_* dataTypeP
 SYS_TRAP sysTrapFileClose 0 Err FileClose 1 FileHand stream
 SYS_TRAP sysTrapFileControl 0 Err FileControl 4 FileOpEnum op FileHand stream void_* valueP Int32_* valueLenP
 SYS_TRAP sysTrapFileDelete 0 Err FileDelete 2 UInt16 cardNo const_Char_* nameP
-SYS_TRAP sysTrapFileOpen 0 FileHand FileOpen 6 UInt16 cardNo const_Char_* nameP UInt32 type UInt32 creator UInt32 openMode Err_* errP
+SYS_TRAP sysTrapFileOpen 0 FileHand FileOpen 6 UInt16 cardNo const_Char_* nameP UInt32 type DmResType creator UInt32 openMode Err_* errP
 SYS_TRAP sysTrapFileReadLow 0 Int32 FileReadLow 7 FileHand stream void_* baseP Int32 offset Boolean dataStoreBased Int32 objSize Int32 numObj Err_* errP
 SYS_TRAP sysTrapFileSeek 0 Err FileSeek 3 FileHand stream Int32 offset FileOriginEnum origin
 SYS_TRAP sysTrapFileTell 0 Int32 FileTell 3 FileHand stream Int32_* fileSizeP Err_* errP
@@ -1151,14 +1157,14 @@ SYS_TRAP sysTrapFrmUpdateForm 0 void FrmUpdateForm 2 UInt16 formId UInt16 update
 SYS_TRAP sysTrapFrmUpdateScrollers 0 void FrmUpdateScrollers 5 FormType_* formP UInt16 upIndex UInt16 downIndex Boolean scrollableUp Boolean scrollableDown
 SYS_TRAP sysTrapFrmValidatePtr 0 Boolean FrmValidatePtr 1 const_FormType_* formP
 SYS_TRAP sysTrapFrmVisible 0 Boolean FrmVisible 1 const_FormType_* formP
-SYS_TRAP sysTrapFtrGet 0 Err FtrGet 3 UInt32 creator UInt16 featureNum UInt32_* valueP
+SYS_TRAP sysTrapFtrGet 0 Err FtrGet 3 DmResType creator UInt16 featureNum UInt32_* valueP
 SYS_TRAP sysTrapFtrGetByIndex 0 Err FtrGetByIndex 5 UInt16 index Boolean romTable UInt32_* creatorP UInt16_* numP UInt32_* valueP
 SYS_TRAP sysTrapFtrInit 0 Err FtrInit 0
-SYS_TRAP sysTrapFtrPtrFree 0 Err FtrPtrFree 2 UInt32 creator UInt16 featureNum
-SYS_TRAP sysTrapFtrPtrNew 0 Err FtrPtrNew 4 UInt32 creator UInt16 featureNum UInt32 size void_*_* newPtrP
-SYS_TRAP sysTrapFtrPtrResize 0 Err FtrPtrResize 4 UInt32 creator UInt16 featureNum UInt32 newSize void_*_* newPtrP
-SYS_TRAP sysTrapFtrSet 0 Err FtrSet 3 UInt32 creator UInt16 featureNum UInt32 newValue
-SYS_TRAP sysTrapFtrUnregister 0 Err FtrUnregister 2 UInt32 creator UInt16 featureNum
+SYS_TRAP sysTrapFtrPtrFree 0 Err FtrPtrFree 2 DmResType creator UInt16 featureNum
+SYS_TRAP sysTrapFtrPtrNew 0 Err FtrPtrNew 4 DmResType creator UInt16 featureNum UInt32 size void_*_* newPtrP
+SYS_TRAP sysTrapFtrPtrResize 0 Err FtrPtrResize 4 DmResType creator UInt16 featureNum UInt32 newSize void_*_* newPtrP
+SYS_TRAP sysTrapFtrSet 0 Err FtrSet 3 DmResType creator UInt16 featureNum UInt32 newValue
+SYS_TRAP sysTrapFtrUnregister 0 Err FtrUnregister 2 DmResType creator UInt16 featureNum
 SYS_TRAP sysTrapGrfAddMacro 0 Err GrfAddMacro 3 const_Char_* nameP UInt8_* macroDataP UInt16 dataLen
 SYS_TRAP sysTrapGrfAddPoint 0 Err GrfAddPoint 1 PointType_* pt
 SYS_TRAP sysTrapGrfBeginStroke 0 Err GrfBeginStroke 3 const_PointType_* startPtP const_RectangleType_* boundsP Boolean liveInk
@@ -1326,14 +1332,14 @@ SYS_TRAP sysTrapPenSleep 0 Err PenSleep 0
 SYS_TRAP sysTrapPenWake 0 Err PenWake 0
 SYS_TRAP sysTrapPhoneNumberLookup 0 void PhoneNumberLookup 1 FieldType_* fldP
 SYS_TRAP sysTrapPhoneNumberLookupCustom 0 void PhoneNumberLookupCustom 3 FieldType_* fldP AddrLookupParamsType_* params Boolean useClipboard
-SYS_TRAP sysTrapPrefGetAppPreferences 0 Int16 PrefGetAppPreferences 5 UInt32 creator UInt16 id void_* prefs UInt16_* prefsSize Boolean saved
+SYS_TRAP sysTrapPrefGetAppPreferences 0 Int16 PrefGetAppPreferences 5 DmResType creator UInt16 id void_* prefs UInt16_* prefsSize Boolean saved
 SYS_TRAP sysTrapPrefGetAppPreferencesV10 0 Boolean PrefGetAppPreferencesV10 4 UInt32 type Int16 version void_* prefs UInt16 prefsSize
 SYS_TRAP sysTrapPrefGetPreference 0 UInt32 PrefGetPreference 1 SystemPreferencesChoice choice
 SYS_TRAP sysTrapPrefGetPreferences 0 void PrefGetPreferences 1 SystemPreferencesPtr p
 SYS_TRAP sysTrapPrefOpenPreferenceDB 0 DmOpenRef PrefOpenPreferenceDB 1 Boolean saved
 SYS_TRAP sysTrapPrefOpenPreferenceDBV10 0 DmOpenRef PrefOpenPreferenceDBV10 0
-SYS_TRAP sysTrapPrefSetAppPreferences 0 void PrefSetAppPreferences 6 UInt32 creator UInt16 id Int16 version const_void_* prefs UInt16 prefsSize Boolean saved
-SYS_TRAP sysTrapPrefSetAppPreferencesV10 0 void PrefSetAppPreferencesV10 4 UInt32 creator Int16 version void_* prefs UInt16 prefsSize
+SYS_TRAP sysTrapPrefSetAppPreferences 0 void PrefSetAppPreferences 6 DmResType creator UInt16 id Int16 version const_void_* prefs UInt16 prefsSize Boolean saved
+SYS_TRAP sysTrapPrefSetAppPreferencesV10 0 void PrefSetAppPreferencesV10 4 DmResType creator Int16 version void_* prefs UInt16 prefsSize
 SYS_TRAP sysTrapPrefSetPreference 0 void PrefSetPreference 2 SystemPreferencesChoice choice UInt32 value
 SYS_TRAP sysTrapPrefSetPreferences 0 void PrefSetPreferences 1 SystemPreferencesPtr p
 SYS_TRAP sysTrapPrgHandleEvent 0 Boolean PrgHandleEvent 2 ProgressType_* prgGP EventType_* eventP
@@ -1379,7 +1385,7 @@ SYS_TRAP sysTrapSlkSetSocketListener 0 Err SlkSetSocketListener 2 UInt16 socket 
 SYS_TRAP sysTrapSlkSocketRefNum 0 Err SlkSocketPortID 2 UInt16 socket UInt16_* portIDP
 SYS_TRAP sysTrapSlkSocketSetTimeout 0 Err SlkSocketSetTimeout 2 UInt16 socket Int32 timeout
 SYS_TRAP sysTrapSlkSysPktDefaultResponse 0 Err SlkSysPktDefaultResponse 2 SlkPktHeaderPtr headerP void_* bodyP
-SYS_TRAP sysTrapSndCreateMidiList 0 Boolean SndCreateMidiList 4 UInt32 creator Boolean multipleDBs UInt16_* wCountP MemHandle_* entHP
+SYS_TRAP sysTrapSndCreateMidiList 0 Boolean SndCreateMidiList 4 DmResType creator Boolean multipleDBs UInt16_* wCountP MemHandle_* entHP
 SYS_TRAP sysTrapSndDoCmd 0 Err SndDoCmd 3 void_* channelP SndCommandPtr cmdP Boolean noWait
 SYS_TRAP sysTrapSndGetDefaultVolume 0 void SndGetDefaultVolume 3 UInt16_* alarmAmpP UInt16_* sysAmpP UInt16_* masterAmpP
 SYS_TRAP sysTrapSndInit 0 Err SndInit 0
@@ -1434,7 +1440,7 @@ SYS_TRAP sysTrapSysBinarySearch 0 Boolean SysBinarySearch 8 const_void_* baseP U
 SYS_TRAP sysTrapSysBroadcastActionCode 0 Err SysBroadcastActionCode 2 UInt16 cmd MemPtr cmdPBP
 SYS_TRAP sysTrapSysColdBoot 0 void SysColdBoot 5 void_* card0P UInt32 card0Size void_* card1P UInt32 card1Size UInt32 sysCardHeaderOffset
 SYS_TRAP sysTrapSysCopyStringResource 0 void SysCopyStringResource 2 Char_* string Int16 theID
-SYS_TRAP sysTrapSysCreateDataBaseList 0 Boolean SysCreateDataBaseList 5 UInt32 type UInt32 creator UInt16_* dbCount MemHandle_* dbIDs Boolean lookupName
+SYS_TRAP sysTrapSysCreateDataBaseList 0 Boolean SysCreateDataBaseList 5 DmResType type DmResType creator UInt16_* dbCount MemHandle_* dbIDs Boolean lookupName
 SYS_TRAP sysTrapSysCreatePanelList 0 Boolean SysCreatePanelList 2 UInt16_* panelCount MemHandle_* panelIDs
 SYS_TRAP sysTrapSysCurAppDatabase 0 Err SysCurAppDatabase 2 UInt16_* cardNoP LocalID_* dbIDP
 SYS_TRAP sysTrapSysDisableInts 0 UInt16 SysDisableInts 0
@@ -1718,6 +1724,7 @@ SYS_TRAP sysTrapBltCopyRectangle 0 void BltCopyRectangle 0
 SYS_TRAP sysTrapBltDrawChars 0 void BltDrawChars 0
 SYS_TRAP sysTrapBltLineRoutine 0 void BltLineRoutine 0
 SYS_TRAP sysTrapBltRectangleRoutine 0 void BltRectangleRoutine 0
+SYS_TRAP sysTrapScrCompress 0 void ScrCompress 0
 SYS_TRAP sysTrapScrDecompress 0 void ScrDecompress 0
 SYS_TRAP sysTrapUIColorInit 0 void UIColorInit 0
 SYS_TRAP sysTrapHwrPreDebugInit 0 void HwrPreDebugInit 0

@@ -22,6 +22,7 @@
 *.pyc
 *_serde.h
 *_serde.c
+trapArgs.c
 xdg-*.c
 xdg-*.h
 syscalls_stubs.txt

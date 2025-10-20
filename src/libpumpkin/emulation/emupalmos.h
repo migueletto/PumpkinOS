@@ -89,6 +89,8 @@ typedef struct {
   void (*write_long)(uint32_t address, uint32_t value);
   void *extra;
   int disasm;
+  logtrap_def *ldef;
+  logtrap_t *lt;
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);
