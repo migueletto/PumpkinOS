@@ -2288,8 +2288,14 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
         formP->objects[objIndex].object.label->pos.y = bounds->topLeft.y;
         break;
       case frmListObj:
-        debug(DEBUG_TRACE, "Form", "FrmSetObjectBounds list %d (%d,%d,%d,%d)",
-          formP->objects[objIndex].object.list->id, bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
+        debug(DEBUG_TRACE, "Form", "FrmSetObjectBounds list %d (%d,%d,%d,%d) -> (%d,%d,%d,%d)",
+          formP->objects[objIndex].object.list->id,
+          formP->objects[objIndex].object.list->bounds.topLeft.x,
+          formP->objects[objIndex].object.list->bounds.topLeft.y,
+          formP->objects[objIndex].object.list->bounds.extent.x,
+          formP->objects[objIndex].object.list->bounds.extent.y,
+          bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
+
         MemMove(&formP->objects[objIndex].object.list->bounds, bounds, sizeof(RectangleType));
         WinDeleteWindow(formP->objects[objIndex].object.list->popupWin, true);
         formP->objects[objIndex].object.list->popupWin = WinCreateOffscreenWindow(bounds->extent.x, bounds->extent.y, nativeFormat, &err);
@@ -2829,7 +2835,7 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
   *i += get1(&dummy8, p, *i);
   *i += get4b(&dummy32, p, *i);
   *i += get4b(&dummy32, p, *i);
-  debug(DEBUG_TRACE, "Form", "list id %d (%d,%d,%d,%d)", id, x, y, w, h);
+  debug(DEBUG_TRACE, "Form", "list id %d (%d,%d,%d,%d) font %d", id, x, y, w, h, font);
 
   // the list border must be drawn outside the list area, so adjust position and dimensions
   if (x >= 1) x -= 1;
