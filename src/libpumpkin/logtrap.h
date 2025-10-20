@@ -6,7 +6,6 @@
 typedef struct logtrap_t logtrap_t;
 
 typedef struct {
-  char *target;
   void *(*alloc)(uint32_t size, void *data);
   void *(*realloc)(void *p, uint32_t size, void *data);
   void (*free)(void *p, void *data);
@@ -22,4 +21,6 @@ typedef struct {
 } logtrap_def;
 
 logtrap_t *logtrap_init(logtrap_def *def);
+void logtrap_start(logtrap_t *lt, char *appname);
 void logtrap_finish(logtrap_t *lt);
+char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int follow);

@@ -35,7 +35,6 @@ BEGIN {
   usize["UInt8"]     = 1;
   usize["UInt16"]    = 2;
   usize["UInt32"]    = 4;
-  usize["LocalID"]   = 4;
   usize["AttnFlagsType"] = 4;
   usize["AttnLevelType"] = 2;
   usize["BitmapCompressionType"] = 1;
@@ -111,6 +110,9 @@ BEGIN {
   rgb["RGBColorType"] = 1;
   evt["EventType"] = 1;
   rct["RectangleType"] = 1;
+  datetime["DateTimeType"] = 1;
+  bmp["BitmapType"] = 1;
+  localid["LocalID"] = 1;
 
   accessor[0] = "CtlGlueGetControlStyle";
   accessor[1] = "FldGlueGetLineInfo";
@@ -154,6 +156,9 @@ BEGIN {
   print "#define T_RGB   8" >> trapArgs;
   print "#define T_EVT   9" >> trapArgs;
   print "#define T_RCT  10" >> trapArgs;
+  print "#define T_LOC  11" >> trapArgs;
+  print "#define T_DATE 12" >> trapArgs;
+  print "#define T_BMP  13" >> trapArgs;
   print "" >> trapArgs;
 
   print "typedef struct {" >> trapArgs;
@@ -175,6 +180,7 @@ BEGIN {
   print "  trap_arg_t args[16];" >> trapArgs;
   print "  uint32_t capsel;" >> trapArgs;
   print "  uint32_t numsel;" >> trapArgs;
+  print "  uint32_t maxsel;" >> trapArgs;
   print "  struct trap_t *selectors;" >> trapArgs;
   print "} trap_t;" >> trapArgs;
   print "" >> trapArgs;
@@ -224,9 +230,13 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
 
   if (rtype ~ /[*]$/) {
     rtype = substr(rtype, 1, length(rtype) - 2);
+    if (bmp[rtype]) {
+      rtyp = "T_BMP";
+    } else {
+      rtyp = "T_VOID";
+    }
     size = 4;
     isptr = 1;
-    rtyp = "T_VOID";
   } else if (rtype ~ /Ptr$/ || rtype ~ /Handle$/ || rtype ~ /Callback/) {
     size = 4;
     isptr = 1;
@@ -253,6 +263,9 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
   } else if (dmid[rtype]) {
     size = 4;
     rtyp = "T_ID";
+  } else if (localid[rtype]) {
+    size = 4;
+    rtyp = "T_LOC";
   } else {
     size = "ERROR_" rtype;
   }
@@ -297,6 +310,13 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
       atyp = "T_EVT";
     } else if (rct[atype]) {
       atyp = "T_RCT";
+    } else if (datetime[atype]) {
+      atyp = "T_DATE";
+    } else if (bmp[atype]) {
+      atyp = "T_BMP";
+    } else if (localid[atype]) {
+      atyp = "T_LOC";
+      size = 4;
     } else if (tchar[atype]) {
       if (isptr) {
         atyp = "T_STR";

@@ -19,7 +19,6 @@
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmos.h"
-#include "trapnames.h"
 #include "debug.h"
 
 // not mapped:
@@ -68,7 +67,7 @@ uint32_t palmos_systrap(uint16_t trap) {
 
   // MathLib seems to use trap numbers like 0x0306 instead of 0xA306.
   trap = (trap & 0x0FFF) | 0xA000;
-  s = trapName(trap, &selector, 0);
+  s = logtrap_trapname(state->lt, trap, &selector, 0);
   debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X begin (%s) pc=0x%08X", trap, s ? s : "unknown", m68k_get_reg(NULL, M68K_REG_PC));
 
   if (palmos_systrap_gen(trap)) {
@@ -244,7 +243,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t procP = ARG32;
       uint16_t selector;
       emupalmos_trap_in(procP, trap, 1);
-      char *s = trapName(trapNum, &selector, 0);
+      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
       Err res = sysErrParamErr;
       debug(DEBUG_INFO, "EmuPalmOS", "SysSetTrapAddress(0x%04X [ %s ], 0x%08X): %d", trapNum, s ? s : "unknown", procP, res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -255,7 +254,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t trapNum = ARG16;
       uint32_t a = 0;
       uint16_t selector;
-      char *s = trapName(trapNum, &selector, 0);
+      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
       if (s) {
         a = pumpkin_heap_size() + (trapNum << 2);
       }
@@ -3283,7 +3282,7 @@ uint32_t palmos_systrap(uint16_t trap) {
         }
       } else {
         uint16_t selector;
-        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", trapName(trap, &selector, 0));
+        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", logtrap_trapname(state->lt, trap, &selector, 0));
         emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       }
       break;

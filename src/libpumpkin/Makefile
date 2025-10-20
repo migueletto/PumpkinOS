@@ -33,7 +33,7 @@ DARM_SOURCE=emulation/darm/armv7.c emulation/darm/armv7-tbl.c emulation/darm/dar
 
 EMU_SOURCE=emulation/emupalmos.c emulation/omtrap.c emulation/pinstrap.c emulation/hdtrap.c emulation/serialtrap.c emulation/fstrap.c emulation/intltrap.c \
         emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/tsmtrap.c emulation/lmtrap.c emulation/navtrap.c emulation/netlibtrap.c emulation/gpdlibtrap.c \
-        emulation/systrap.c emulation/trapnames.c emulation/m68k/m68kcpu.c emulation/m68k/m68kdasm.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
+        emulation/systrap.c emulation/m68k/m68kcpu.c emulation/m68k/m68kdasm.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
         emulation/emu_notif_serde.c emulation/emu_launch_serde.c $(ARM_SOURCE) $(DARM_SOURCE)
 
 TOS_SOURCE=tos/tos.c tos/gemdos_impl.c tos/bios_impl.c tos/xbios_impl.c tos/vdi.c tos/aes.c
@@ -115,7 +115,7 @@ logtrap.o: trapArgs.c logtrap.c
 	@echo Compiling logtrap.c
 	@$(CC) $(CFLAGS) -c -o $@ logtrap.c
 
-trapArgs.c: traps.txt
+trapArgs.c: traps.txt gen_log.sh
 	@echo Generating $@
 	@./gen_log.sh 0
 

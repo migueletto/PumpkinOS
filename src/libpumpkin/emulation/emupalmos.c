@@ -24,7 +24,6 @@
 #include "m68k/m68kcpu.h"
 #include "emupalmosinc.h"
 #include "emupalmos.h"
-#include "trapnames.h"
 
 #include "notif_serde.h"
 #include "emu_notif_serde.h"
@@ -151,6 +150,7 @@ void emupalmos_disasm(int disasm) {
 }
 
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   char name[64], argument[64], selector[64], buf[256], *s;
   uint8_t *ram = pumpkin_heap_base();
   uint32_t size = pumpkin_heap_size();
@@ -159,7 +159,7 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
   if (address > size-4) {
     m68k_pulse_halt();
 
-    s = trapName(trap, &sl, 0);
+    s = logtrap_trapname(state->lt, trap, &sl, 0);
     if (s) {
       sys_snprintf(name, sizeof(name)-1, "%s", s);
     } else {
@@ -361,6 +361,9 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
+if (address == 0x00077440 && value == 146) {
+debug(1, "XXX", "ah");
+}
     WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
     if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
@@ -900,11 +903,13 @@ void decode_rectangle(uint32_t rP, RectangleType *rect) {
     rect->topLeft.y = m68k_read_memory_16(rP + 2);
     rect->extent.x  = m68k_read_memory_16(rP + 4);
     rect->extent.y  = m68k_read_memory_16(rP + 6);
+debug(1, "XXX", "decode_rect %d,%d,%d,%d", rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
   }
 }
 
 void encode_rectangle(uint32_t rP, RectangleType *rect) {
   if (rP && rect) {
+debug(1, "XXX", "encode_rect %d,%d,%d,%d", rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y);
     m68k_write_memory_16(rP,     rect->topLeft.x);
     m68k_write_memory_16(rP + 2, rect->topLeft.y);
     m68k_write_memory_16(rP + 4, rect->extent.x);
@@ -1662,15 +1667,23 @@ static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
   uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
-  uint16_t trap, selector;
+  uint16_t trap, selector, instruction;
   char buf[128], buf2[128], *s;
   int i;
 
-  trapHook(pc, state);
+  //trapHook(pc, state);
+
+  if (state->ldef && state->lt) state->ldef->rethook(state->lt, pc);
+
+  instruction = m68k_read_memory_16(pc);
+  if (instruction == 0x4E4F) {
+    trap = m68k_read_memory_16(pc + 2);
+    if (state->ldef && state->lt) state->ldef->hook(state->lt, pc, trap);
+  }
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
     trap = (pc - size) >> 2;
-    if ((s = trapName(trap, &selector, 0)) != NULL) {
+    if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct call to trap %s (pc 0x%08X)", s, pc);
       uint32_t a7 = m68k_get_reg(NULL, M68K_REG_A7);
       m68k_set_reg(M68K_REG_A7, a7+4);
@@ -1758,7 +1771,7 @@ static void emupalmos_destroy(emu_state_t *state) {
 
 int emupalmos_init(void) {
   m68k_init_once();
-  allTrapsInit();
+  //allTrapsInit();
 
   return 0;
 }
@@ -1998,27 +2011,29 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
   char *logtrap;
 
   if (state) {
-    if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
-      pumpkin_s2id(&logtrap_creator, logtrap);
-      if (logtrap_creator == creator) {
-        debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
-        if ((def = sys_calloc(1, sizeof(logtrap_def))) != NULL) {
-          def->alloc = logtrap_alloc;
-          def->realloc = logtrap_realloc;
-          def->free = logtrap_free;
-          def->print = logtrap_print;
-          def->read8 = logtrap_read8;
-          def->read16 = logtrap_read16;
-          def->read32 = logtrap_read32;
-          def->getreg = logtrap_getreg;
+    if ((def = sys_calloc(1, sizeof(logtrap_def))) != NULL) {
+      def->alloc = logtrap_alloc;
+      def->realloc = logtrap_realloc;
+      def->free = logtrap_free;
+      def->print = logtrap_print;
+      def->read8 = logtrap_read8;
+      def->read16 = logtrap_read16;
+      def->read32 = logtrap_read32;
+      def->getreg = logtrap_getreg;
  
-          if ((lt = logtrap_init(def)) != NULL) {
-            state->ldef = def;
-            state->lt = lt;
-          } else {
-            sys_free(def);
+      if ((lt = logtrap_init(def)) != NULL) {
+        state->ldef = def;
+        state->lt = lt;
+
+        if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
+          pumpkin_s2id(&logtrap_creator, logtrap);
+          if (logtrap_creator == creator) {
+            debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
+            logtrap_start(lt, NULL);
           }
         }
+      } else {
+        sys_free(def);
       }
     }
   }
@@ -2027,7 +2042,6 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
 static void logtrap_deinstall(emu_state_t *state) {
   if (state) {
     if (state->lt) {
-      debug(DEBUG_INFO, "logtrap", "deinstalling logtrap");
       logtrap_finish(state->lt);
       if (state->ldef) sys_free(state->ldef);
       state->lt = NULL;
@@ -2435,4 +2449,9 @@ emu_state_t *m68k_get_emu_state(void) {
 m68k_state_t *m68k_get_state(void) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   return &state->m68k_state;
+}
+
+char *m68k_trapname(uint16_t trap, uint16_t *selector, int follow) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  return logtrap_trapname(state->lt, trap, selector, follow);
 }

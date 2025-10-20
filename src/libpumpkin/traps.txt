@@ -1457,7 +1457,7 @@ SYS_TRAP sysTrapSysGetOSVersionString 0 Char_* SysGetOSVersionString 0
 SYS_TRAP sysTrapSysGetStackInfo 0 Boolean SysGetStackInfo 2 MemPtr_* startPP MemPtr_* endPP
 SYS_TRAP sysTrapSysGetTrapAddress 0 void_* SysGetTrapAddress 1 UInt16 trapNum
 SYS_TRAP sysTrapSysGraffitiReferenceDialog 0 void SysGraffitiReferenceDialog 1 ReferenceType referenceType
-SYS_TRAP sysTrapSysHandleEvent 0 Boolean SysHandleEvent 1 EventPtr eventP
+SYS_TRAP sysTrapSysHandleEvent 0 Boolean SysHandleEvent 1 EventType_* eventP
 SYS_TRAP sysTrapSysInit 0 void SysInit 0
 SYS_TRAP sysTrapSysInsertionSort 0 void SysInsertionSort 5 void_* baseP UInt16 numOfElements Int16 width CmpFuncPtr comparF Int32 other
 SYS_TRAP sysTrapSysKernelInfo 0 Err SysKernelInfo 1 void_* paramP
