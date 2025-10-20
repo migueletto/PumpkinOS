@@ -212,7 +212,7 @@ void palmos_accessortrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       // void FrmGlueSetLabelFont(FormType *formP, UInt16 labelID, FontID fontID)
       uint32_t formP = ARG32;
       uint16_t labelID = ARG16;
-      uint16_t fontID = ARG16;
+      uint8_t fontID = ARG8;
       FormType *form = (FormType *)emupalmos_trap_sel_in(formP, sysTrapAccessorDispatch, sel, 0);
       FrmGlueSetLabelFont(form, labelID, fontID);
       debug(DEBUG_TRACE, "EmuPalmOS", "FrmGlueSetLabelFont(0x%08X, %u, %u)", formP, labelID, fontID);
@@ -239,7 +239,7 @@ void palmos_accessortrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     case 20: {
       // void LstGlueSetFont(ListType *listP, FontID fontID)
       uint32_t listP = ARG32;
-      uint16_t fontID = ARG16;
+      uint8_t fontID = ARG8;
       ListType *lst = (ListType *)emupalmos_trap_sel_in(listP, sysTrapAccessorDispatch, sel, 0);
       LstGlueSetFont(lst, fontID);
       debug(DEBUG_TRACE, "EmuPalmOS", "LstGlueSetFont(0x%08X, %u)", listP, fontID);
