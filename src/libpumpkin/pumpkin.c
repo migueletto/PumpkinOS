@@ -1884,6 +1884,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     case 'MePt':
     case 'PPrs': // eReader
       depth = pumpkin_module.depth >= 8 ? 8 : pumpkin_module.depth;
+      density = pumpkin_module.density;
       break;
     default:
       depth = pumpkin_module.depth;
