@@ -2001,6 +2001,7 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
     if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
       pumpkin_s2id(&logtrap_creator, logtrap);
       if (logtrap_creator == creator) {
+        debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
         if ((def = sys_calloc(1, sizeof(logtrap_def))) != NULL) {
           def->alloc = logtrap_alloc;
           def->realloc = logtrap_realloc;
@@ -2025,10 +2026,13 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
 
 static void logtrap_deinstall(emu_state_t *state) {
   if (state) {
-    if (state->lt) logtrap_finish(state->lt);
-    if (state->ldef) sys_free(state->ldef);
-    state->lt = NULL;
-    state->ldef = NULL;
+    if (state->lt) {
+      debug(DEBUG_INFO, "logtrap", "deinstalling logtrap");
+      logtrap_finish(state->lt);
+      if (state->ldef) sys_free(state->ldef);
+      state->lt = NULL;
+      state->ldef = NULL;
+    }
   }
 }
 
