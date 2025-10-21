@@ -531,7 +531,8 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
   if (fldP && eventP) {
     switch (eventP->eType) {
       case keyDownEvent:
-        if (fldP->attr.usable && fldP->attr.editable && fldP->attr.hasFocus && !(eventP->data.keyDown.modifiers & commandKeyMask)) {
+        if (fldP->attr.usable && fldP->attr.editable && (fldP->attr.hasFocus || fldP->selFirstPos < fldP->selLastPos) &&
+            !(eventP->data.keyDown.modifiers & commandKeyMask)) {
           switch (eventP->data.keyDown.chr) {
             case '\b':
               if (!deleteSelection(fldP)) {
@@ -824,12 +825,15 @@ void FldSetUsable(FieldType *fldP, Boolean usable) {
 }
 
 void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) {
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
+
   IN;
   if (fldP) {
     if (startPosition < fldP->textLen && endPosition <= fldP->textLen && startPosition <= endPosition) {
       fldP->selFirstPos = startPosition;
       fldP->selLastPos = endPosition;
       FldRecalculateField(fldP, true);
+      module->activeField = fldP;
     }
   }
   OUTV;
@@ -1178,9 +1182,12 @@ void FldDelete(FieldType *fldP, UInt16 start, UInt16 end) {
 
     if (start == 0 && end >= fldP->textLen) {
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldDelete all");
-      MemSet(fldP->text, fldP->maxChars, 0);
+      if (end > fldP->textLen) end = fldP->textLen;
+      MemSet(fldP->text, end, 0);
+      fldP->selFirstPos = fldP->selLastPos = 0;
       fldP->textLen = 0;
       fldP->pos = 0;
+      fldP->attr.hasFocus = 1;
 
     } else {
       if (end > fldP->textLen) end = fldP->textLen;
