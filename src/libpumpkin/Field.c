@@ -917,6 +917,7 @@ void FldSetScrollPosition(FieldType *fldP, UInt16 pos) {
   IN;
   if (fldP && fldP->totalLines > 0) {
     fldP->top = 0;
+    row = 0;
     FldRenderField(fldP, false, false, pos, &row, NULL);
     debug(DEBUG_INFO, PALMOS_MODULE, "FldSetScrollPosition offset %d, top %d -> %d", pos, fldP->top, row);
     fldP->top = row;
