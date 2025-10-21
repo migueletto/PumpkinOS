@@ -2475,7 +2475,7 @@ void WinIndexToRGB(IndexedColorType i, RGBColorType *rgbP) {
   if (rgbP) {
     colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
     if (colorTable == NULL) colorTable = module->colorTable;
-    BmpIndexToRGB(i, &rgbP->r, &rgbP->g, &rgbP->g, colorTable);
+    BmpIndexToRGB(i, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
     rgbP->index = i;
   }
 }
