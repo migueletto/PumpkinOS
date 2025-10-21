@@ -683,7 +683,7 @@ SEL_TRAP sysTrapVFSMgr vfsTrapInstallFSLib Err VFSInstallFSLib 2 DmResType creat
 SEL_TRAP sysTrapVFSMgr vfsTrapRegisterDefaultDirectory Err VFSRegisterDefaultDirectory 3 const_Char_* fileTypeStr UInt32 mediaType const_Char_* pathStr
 SEL_TRAP sysTrapVFSMgr vfsTrapRemoveFSLib Err VFSRemoveFSLib 1 UInt16 fsLibRefNum
 SEL_TRAP sysTrapVFSMgr vfsTrapUnregisterDefaultDirectory Err VFSUnregisterDefaultDirectory 2 const_Char_* fileTypeStr UInt32 mediaType
-SEL_TRAP sysTrapVFSMgr vfsTrapVolumeEnumerate Err VFSVolumeEnumerate 2 UInt16_* volRefNumP UInt32_* volIteratorP
+SEL_TRAP sysTrapVFSMgr vfsTrapVolumeEnumerate Err VFSVolumeEnumerate 2 UInt16_* 1volRefNumP UInt32_* volIteratorP
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeFormat Err VFSVolumeFormat 3 UInt8 flags UInt16 fsLibRefNum VFSAnyMountParamPtr vfsMountParamP
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeGetLabel Err VFSVolumeGetLabel 3 UInt16 volRefNum Char_* labelP UInt16 bufLen
 SEL_TRAP sysTrapVFSMgr vfsTrapVolumeInfo Err VFSVolumeInfo 2 UInt16 volRefNum VolumeInfoType_* volInfoP
@@ -791,11 +791,11 @@ SYS_TRAP sysTrapBmpBitsSize 0 UInt16 BmpBitsSize 1 const_BitmapType_* bitmapP
 SYS_TRAP sysTrapBmpColortableSize 0 UInt16 BmpColortableSize 1 const_BitmapType_* bitmapP
 SYS_TRAP sysTrapBmpCompress 0 Err BmpCompress 2 BitmapType_* bitmapP BitmapCompressionType compType
 SYS_TRAP sysTrapBmpCreate 0 BitmapType_* BmpCreate 5 Coord width Coord height UInt8 depth ColorTableType_* colortableP UInt16_* error
-SYS_TRAP sysTrapBmpDelete 0 Err BmpDelete 1 BitmapType_* bitmapP
+SYS_TRAP sysTrapBmpDelete 0 Err BmpDelete 1 BitmapType_* 2bitmapP
 SYS_TRAP sysTrapBmpGetBitDepth 0 UInt8 BmpGetBitDepth 1 const_BitmapType_* bitmapP
 SYS_TRAP sysTrapBmpGetBits 0 void_* BmpGetBits 1 BitmapType_* bitmapP
 SYS_TRAP sysTrapBmpGetColortable 0 ColorTableType_* BmpGetColortable 1 BitmapType_* bitmapP
-SYS_TRAP sysTrapBmpGetDimensions 0 void BmpGetDimensions 4 const_BitmapType_* bitmapP Coord_* widthP Coord_* heightP UInt16_* rowBytesP
+SYS_TRAP sysTrapBmpGetDimensions 0 void BmpGetDimensions 4 const_BitmapType_* bitmapP Coord_* 1widthP Coord_* 1heightP UInt16_* 1rowBytesP
 SYS_TRAP sysTrapBmpGetNextBitmap 0 BitmapType_* BmpGetNextBitmap 1 BitmapType_* bitmapP
 SYS_TRAP sysTrapBmpGetSizes 0 void BmpGetSizes 3 const_BitmapType_* bitmapP UInt32_* dataSizeP UInt32_* headerSizeP
 SYS_TRAP sysTrapBmpSize 0 UInt16 BmpSize 1 const_BitmapType_* bitmapP
@@ -872,7 +872,7 @@ SYS_TRAP sysTrapDmAttachResource 0 Err DmAttachResource 4 DmOpenRef dbP MemHandl
 SYS_TRAP sysTrapDmCloseDatabase 0 Err DmCloseDatabase 1 DmOpenRef dbP
 SYS_TRAP sysTrapDmCreateDatabase 0 Err DmCreateDatabase 5 UInt16 cardNo const_Char_* nameP DmResType creator DmResType type Boolean resDB
 SYS_TRAP sysTrapDmCreateDatabaseFromImage 0 Err DmCreateDatabaseFromImage 1 MemPtr bufferP
-SYS_TRAP sysTrapDmDatabaseInfo 0 Err DmDatabaseInfo 13 UInt16 cardNo LocalID dbID Char_* nameP UInt16_* attributesP UInt16_* versionP UInt32_* crDateP UInt32_* modDateP UInt32_* bckUpDateP UInt32_* modNumP LocalID_* appInfoIDP LocalID_* sortInfoIDP UInt32_* typeP UInt32_* creatorP
+SYS_TRAP sysTrapDmDatabaseInfo 0 Err DmDatabaseInfo 13 UInt16 cardNo LocalID dbID Char_* 1nameP UInt16_* 1attributesP UInt16_* 1versionP UInt32_* 1crDateP UInt32_* 1modDateP UInt32_* 1bckUpDateP UInt32_* 1modNumP LocalID_* 1appInfoIDP LocalID_* 1sortInfoIDP UInt32_* 1typeP UInt32_* 1creatorP
 SYS_TRAP sysTrapDmDatabaseProtect 0 Err DmDatabaseProtect 3 UInt16 cardNo LocalID dbID Boolean protect
 SYS_TRAP sysTrapDmDatabaseSize 0 Err DmDatabaseSize 5 UInt16 cardNo LocalID dbID UInt32_* numRecordsP UInt32_* totalBytesP UInt32_* dataBytesP
 SYS_TRAP sysTrapDmDeleteCategory 0 Err DmDeleteCategory 2 DmOpenRef dbR UInt16 categoryNum
@@ -891,7 +891,7 @@ SYS_TRAP sysTrapDmGetAppInfoID 0 LocalID DmGetAppInfoID 1 DmOpenRef dbP
 SYS_TRAP sysTrapDmGetDatabase 0 LocalID DmGetDatabase 2 UInt16 cardNo UInt16 index
 SYS_TRAP sysTrapDmGetDatabaseLockState 0 void DmGetDatabaseLockState 4 DmOpenRef dbR UInt8_* highest UInt32_* count UInt32_* busy
 SYS_TRAP sysTrapDmGetLastErr 0 Err DmGetLastErr 0
-SYS_TRAP sysTrapDmGetNextDatabaseByTypeCreator 0 Err DmGetNextDatabaseByTypeCreator 7 Boolean newSearch DmSearchStatePtr stateInfoP DmResType type DmResType creator Boolean onlyLatestVers UInt16_* cardNoP LocalID_* dbIDP
+SYS_TRAP sysTrapDmGetNextDatabaseByTypeCreator 0 Err DmGetNextDatabaseByTypeCreator 7 Boolean newSearch DmSearchStatePtr stateInfoP DmResType type DmResType creator Boolean onlyLatestVers UInt16_* 1cardNoP LocalID_* 1dbIDP
 SYS_TRAP sysTrapDmGetRecord 0 MemHandle DmGetRecord 2 DmOpenRef dbP UInt16 index
 SYS_TRAP sysTrapDmGetResource 0 MemHandle DmGetResource 2 DmResType type DmResID resID
 SYS_TRAP sysTrapDmGetResourceIndex 0 MemHandle DmGetResourceIndex 2 DmOpenRef dbP UInt16 index
@@ -911,7 +911,7 @@ SYS_TRAP sysTrapDmNumResources 0 UInt16 DmNumResources 1 DmOpenRef dbP
 SYS_TRAP sysTrapDmOpenDBNoOverlay 0 DmOpenRef DmOpenDBNoOverlay 3 UInt16 cardNo LocalID dbID UInt16 mode
 SYS_TRAP sysTrapDmOpenDatabase 0 DmOpenRef DmOpenDatabase 3 UInt16 cardNo LocalID dbID UInt16 mode
 SYS_TRAP sysTrapDmOpenDatabaseByTypeCreator 0 DmOpenRef DmOpenDatabaseByTypeCreator 3 DmResType type DmResType creator UInt16 mode
-SYS_TRAP sysTrapDmOpenDatabaseInfo 0 Err DmOpenDatabaseInfo 6 DmOpenRef dbP LocalID_* dbIDP UInt16_* openCountP UInt16_* modeP UInt16_* cardNoP Boolean_* resDBP
+SYS_TRAP sysTrapDmOpenDatabaseInfo 0 Err DmOpenDatabaseInfo 6 DmOpenRef dbP LocalID_* 1dbIDP UInt16_* 1openCountP UInt16_* 1modeP UInt16_* 1cardNoP Boolean_* 1resDBP
 SYS_TRAP sysTrapDmPositionInCategory 0 UInt16 DmPositionInCategory 3 DmOpenRef dbP UInt16 index UInt16 category
 SYS_TRAP sysTrapDmQueryNextInCategory 0 MemHandle DmQueryNextInCategory 3 DmOpenRef dbP UInt16_* indexP UInt16 category
 SYS_TRAP sysTrapDmQueryRecord 0 MemHandle DmQueryRecord 2 DmOpenRef dbP UInt16 index
@@ -960,7 +960,7 @@ SYS_TRAP sysTrapEvtEventAvail 0 Boolean EvtEventAvail 0
 SYS_TRAP sysTrapEvtFlushKeyQueue 0 Err EvtFlushKeyQueue 0
 SYS_TRAP sysTrapEvtFlushNextPenStroke 0 Err EvtFlushNextPenStroke 0
 SYS_TRAP sysTrapEvtFlushPenQueue 0 Err EvtFlushPenQueue 0
-SYS_TRAP sysTrapEvtGetEvent 0 void EvtGetEvent 2 EventType_* event Int32 timeout
+SYS_TRAP sysTrapEvtGetEvent 0 void EvtGetEvent 2 EventType_* 1event Int32 timeout
 SYS_TRAP sysTrapEvtGetPen 0 void EvtGetPen 3 Int16_* pScreenX Int16_* pScreenY Boolean_* pPenDown
 SYS_TRAP sysTrapEvtGetPenBtnList 0 const_PenBtnInfoType_* EvtGetPenBtnList 1 UInt16_* numButtons
 SYS_TRAP sysTrapEvtGetSilkscreenAreaList 0 const_SilkscreenAreaType_* EvtGetSilkscreenAreaList 1 UInt16_* numAreas
@@ -1073,7 +1073,7 @@ SYS_TRAP sysTrapFntAverageCharWidth 0 Int16 FntAverageCharWidth 0
 SYS_TRAP sysTrapFntBaseLine 0 Int16 FntBaseLine 0
 SYS_TRAP sysTrapFntCharHeight 0 Int16 FntCharHeight 0
 SYS_TRAP sysTrapFntCharWidth 0 Int16 FntCharWidth 1 Char ch
-SYS_TRAP sysTrapFntCharsInWidth 0 void FntCharsInWidth 4 const_Char_* string Int16_* stringWidthP Int16_* stringLengthP Boolean_* fitWithinWidth
+SYS_TRAP sysTrapFntCharsInWidth 0 void FntCharsInWidth 4 const_Char_* string Int16_* stringWidthP Int16_* stringLengthP Boolean_* 1fitWithinWidth
 SYS_TRAP sysTrapFntCharsWidth 0 Int16 FntCharsWidth 2 const_Char_* chars Int16 len
 SYS_TRAP sysTrapFntDefineFont 0 Err FntDefineFont 2 FontID font FontType_* fontP
 SYS_TRAP sysTrapFntDescenderHeight 0 Int16 FntDescenderHeight 0
@@ -1108,17 +1108,17 @@ SYS_TRAP sysTrapFrmGetControlGroupSelection 0 UInt16 FrmGetControlGroupSelection
 SYS_TRAP sysTrapFrmGetControlValue 0 Int16 FrmGetControlValue 2 const_FormType_* formP UInt16 objIndex
 SYS_TRAP sysTrapFrmGetFirstForm 0 FormType_* FrmGetFirstForm 0
 SYS_TRAP sysTrapFrmGetFocus 0 UInt16 FrmGetFocus 1 const_FormType_* formP
-SYS_TRAP sysTrapFrmGetFormBounds 0 void FrmGetFormBounds 2 const_FormType_* formP RectangleType_* rP
+SYS_TRAP sysTrapFrmGetFormBounds 0 void FrmGetFormBounds 2 const_FormType_* formP RectangleType_* 1rP
 SYS_TRAP sysTrapFrmGetFormId 0 UInt16 FrmGetFormId 1 const_FormType_* formP
 SYS_TRAP sysTrapFrmGetFormPtr 0 FormType_* FrmGetFormPtr 1 UInt16 formId
 SYS_TRAP sysTrapFrmGetGadgetData 0 void_* FrmGetGadgetData 2 const_FormType_* formP UInt16 objIndex
 SYS_TRAP sysTrapFrmGetLabel 0 const_Char_* FrmGetLabel 2 const_FormType_* formP UInt16 labelID
 SYS_TRAP sysTrapFrmGetNumberOfObjects 0 UInt16 FrmGetNumberOfObjects 1 const_FormType_* formP
-SYS_TRAP sysTrapFrmGetObjectBounds 0 void FrmGetObjectBounds 3 const_FormType_* formP UInt16 objIndex RectangleType_* rP
+SYS_TRAP sysTrapFrmGetObjectBounds 0 void FrmGetObjectBounds 3 const_FormType_* formP UInt16 objIndex RectangleType_* 1rP
 SYS_TRAP sysTrapFrmGetObjectId 0 UInt16 FrmGetObjectId 2 const_FormType_* formP UInt16 objIndex
 SYS_TRAP sysTrapFrmGetObjectIndex 0 UInt16 FrmGetObjectIndex 2 const_FormType_* formP UInt16 objID
 SYS_TRAP sysTrapFrmGetObjectIndexFromPtr 0 UInt16 FrmGetObjectIndexFromPtr 2 const_FormType_* formP void_* objP
-SYS_TRAP sysTrapFrmGetObjectPosition 0 void FrmGetObjectPosition 4 const_FormType_* formP UInt16 objIndex Coord_* x Coord_* y
+SYS_TRAP sysTrapFrmGetObjectPosition 0 void FrmGetObjectPosition 4 const_FormType_* formP UInt16 objIndex Coord_* 1x Coord_* 1y
 SYS_TRAP sysTrapFrmGetObjectPtr 0 void_* FrmGetObjectPtr 2 const_FormType_* formP UInt16 objIndex
 SYS_TRAP sysTrapFrmGetObjectType 0 FormObjectKind FrmGetObjectType 2 const_FormType_* formP UInt16 objIndex
 SYS_TRAP sysTrapFrmGetTitle 0 const_Char_* FrmGetTitle 1 const_FormType_* formP
@@ -1157,7 +1157,7 @@ SYS_TRAP sysTrapFrmUpdateForm 0 void FrmUpdateForm 2 UInt16 formId UInt16 update
 SYS_TRAP sysTrapFrmUpdateScrollers 0 void FrmUpdateScrollers 5 FormType_* formP UInt16 upIndex UInt16 downIndex Boolean scrollableUp Boolean scrollableDown
 SYS_TRAP sysTrapFrmValidatePtr 0 Boolean FrmValidatePtr 1 const_FormType_* formP
 SYS_TRAP sysTrapFrmVisible 0 Boolean FrmVisible 1 const_FormType_* formP
-SYS_TRAP sysTrapFtrGet 0 Err FtrGet 3 DmResType creator UInt16 featureNum UInt32_* valueP
+SYS_TRAP sysTrapFtrGet 0 Err FtrGet 3 DmResType creator UInt16 featureNum UInt32_* 1valueP
 SYS_TRAP sysTrapFtrGetByIndex 0 Err FtrGetByIndex 5 UInt16 index Boolean romTable UInt32_* creatorP UInt16_* numP UInt32_* valueP
 SYS_TRAP sysTrapFtrInit 0 Err FtrInit 0
 SYS_TRAP sysTrapFtrPtrFree 0 Err FtrPtrFree 2 DmResType creator UInt16 featureNum
@@ -1314,7 +1314,7 @@ SYS_TRAP sysTrapMenuDispose 0 void MenuDispose 1 MenuBarType_* menuP
 SYS_TRAP sysTrapMenuDrawMenu 0 void MenuDrawMenu 1 MenuBarType_* menuP
 SYS_TRAP sysTrapMenuEraseStatus 0 void MenuEraseStatus 1 MenuBarType_* menuP
 SYS_TRAP sysTrapMenuGetActiveMenu 0 MenuBarType_* MenuGetActiveMenu 0
-SYS_TRAP sysTrapMenuHandleEvent 0 Boolean MenuHandleEvent 3 MenuBarType_* menuP EventType_* event UInt16_* error
+SYS_TRAP sysTrapMenuHandleEvent 0 Boolean MenuHandleEvent 3 MenuBarType_* menuP EventType_* event UInt16_* 1error
 SYS_TRAP sysTrapMenuHideItem 0 Boolean MenuHideItem 1 UInt16 id
 SYS_TRAP sysTrapMenuInit 0 MenuBarType_* MenuInit 1 UInt16 resourceId
 SYS_TRAP sysTrapMenuSetActiveMenu 0 MenuBarType_* MenuSetActiveMenu 1 MenuBarType_* menuP
@@ -1332,7 +1332,7 @@ SYS_TRAP sysTrapPenSleep 0 Err PenSleep 0
 SYS_TRAP sysTrapPenWake 0 Err PenWake 0
 SYS_TRAP sysTrapPhoneNumberLookup 0 void PhoneNumberLookup 1 FieldType_* fldP
 SYS_TRAP sysTrapPhoneNumberLookupCustom 0 void PhoneNumberLookupCustom 3 FieldType_* fldP AddrLookupParamsType_* params Boolean useClipboard
-SYS_TRAP sysTrapPrefGetAppPreferences 0 Int16 PrefGetAppPreferences 5 DmResType creator UInt16 id void_* prefs UInt16_* prefsSize Boolean saved
+SYS_TRAP sysTrapPrefGetAppPreferences 0 Int16 PrefGetAppPreferences 5 DmResType creator UInt16 id void_* prefs UInt16_* 1prefsSize Boolean saved
 SYS_TRAP sysTrapPrefGetAppPreferencesV10 0 Boolean PrefGetAppPreferencesV10 4 UInt32 type Int16 version void_* prefs UInt16 prefsSize
 SYS_TRAP sysTrapPrefGetPreference 0 UInt32 PrefGetPreference 1 SystemPreferencesChoice choice
 SYS_TRAP sysTrapPrefGetPreferences 0 void PrefGetPreferences 1 SystemPreferencesPtr p
@@ -1414,7 +1414,7 @@ SYS_TRAP sysTrapStrCat 0 Char_* StrCat 2 Char_* dst const_Char_* src
 SYS_TRAP sysTrapStrChr 0 Char_* StrChr 2 const_Char_* str WChar chr
 SYS_TRAP sysTrapStrCompare 0 Int16 StrCompare 2 const_Char_* s1 const_Char_* s2
 SYS_TRAP sysTrapStrCompareAscii 0 Int16 StrCompareAscii 2 const_Char_* s1 const_Char_* s2
-SYS_TRAP sysTrapStrCopy 0 Char_* StrCopy 2 Char_* dst const_Char_* src
+SYS_TRAP sysTrapStrCopy 0 Char_* StrCopy 2 Char_* 1dst const_Char_* src
 SYS_TRAP sysTrapStrDelocalizeNumber 0 Char_* StrDelocalizeNumber 3 Char_* s Char thousandSeparator Char decimalSeparator
 SYS_TRAP sysTrapStrIToA 0 Char_* StrIToA 2 Char_* s Int32 i
 SYS_TRAP sysTrapStrIToH 0 Char_* StrIToH 2 Char_* s UInt32 i
@@ -1424,7 +1424,7 @@ SYS_TRAP sysTrapStrNCaselessCompare 0 Int16 StrNCaselessCompare 3 const_Char_* s
 SYS_TRAP sysTrapStrNCat 0 Char_* StrNCat 3 Char_* dst const_Char_* src Int16 n
 SYS_TRAP sysTrapStrNCompare 0 Int16 StrNCompare 3 const_Char_* s1 const_Char_* s2 Int32 n
 SYS_TRAP sysTrapStrNCompareAscii 0 Int16 StrNCompareAscii 3 const_Char_* s1 const_Char_* s2 Int32 n
-SYS_TRAP sysTrapStrNCopy 0 Char_* StrNCopy 3 Char_* dst const_Char_* src Int16 n
+SYS_TRAP sysTrapStrNCopy 0 Char_* StrNCopy 3 Char_* 1dst const_Char_* src Int16 n
 SYS_TRAP sysTrapStrPrintF 0 Int16 StrPrintF 3 Char_* s const_Char_* formatStr ... ap
 SYS_TRAP sysTrapStrStr 0 Char_* StrStr 2 const_Char_* str const_Char_* token
 SYS_TRAP sysTrapStrToLower 0 Char_* StrToLower 2 Char_* dst const_Char_* src
@@ -1442,7 +1442,7 @@ SYS_TRAP sysTrapSysColdBoot 0 void SysColdBoot 5 void_* card0P UInt32 card0Size 
 SYS_TRAP sysTrapSysCopyStringResource 0 void SysCopyStringResource 2 Char_* string Int16 theID
 SYS_TRAP sysTrapSysCreateDataBaseList 0 Boolean SysCreateDataBaseList 5 DmResType type DmResType creator UInt16_* dbCount MemHandle_* dbIDs Boolean lookupName
 SYS_TRAP sysTrapSysCreatePanelList 0 Boolean SysCreatePanelList 2 UInt16_* panelCount MemHandle_* panelIDs
-SYS_TRAP sysTrapSysCurAppDatabase 0 Err SysCurAppDatabase 2 UInt16_* cardNoP LocalID_* dbIDP
+SYS_TRAP sysTrapSysCurAppDatabase 0 Err SysCurAppDatabase 2 UInt16_* 1cardNoP LocalID_* 1dbIDP
 SYS_TRAP sysTrapSysDisableInts 0 UInt16 SysDisableInts 0
 SYS_TRAP sysTrapSysDoze 0 void SysDoze 1 Boolean onlyNMI
 SYS_TRAP sysTrapSysErrString 0 Char_* SysErrString 3 Err err Char_* strP UInt16 maxLen
@@ -1528,7 +1528,7 @@ SYS_TRAP sysTrapTblEditing 0 Boolean TblEditing 1 const_TableType_* tableP
 SYS_TRAP sysTrapTblEraseTable 0 void TblEraseTable 1 TableType_* tableP
 SYS_TRAP sysTrapTblFindRowData 0 Boolean TblFindRowData 3 const_TableType_* tableP UIntPtr data Int16_* rowP
 SYS_TRAP sysTrapTblFindRowID 0 Boolean TblFindRowID 3 const_TableType_* tableP UInt16 id Int16_* rowP
-SYS_TRAP sysTrapTblGetBounds 0 void TblGetBounds 2 const_TableType_* tableP RectangleType_* rP
+SYS_TRAP sysTrapTblGetBounds 0 void TblGetBounds 2 const_TableType_* tableP RectangleType_* 1rP
 SYS_TRAP sysTrapTblGetColumnSpacing 0 Coord TblGetColumnSpacing 2 const_TableType_* tableP Int16 column
 SYS_TRAP sysTrapTblGetColumnWidth 0 Coord TblGetColumnWidth 2 const_TableType_* tableP Int16 column
 SYS_TRAP sysTrapTblGetCurrentField 0 FieldType_* TblGetCurrentField 1 const_TableType_* tableP
@@ -1542,7 +1542,7 @@ SYS_TRAP sysTrapTblGetNumberOfRows 0 Int16 TblGetNumberOfRows 1 const_TableType_
 SYS_TRAP sysTrapTblGetRowData 0 UIntPtr TblGetRowData 2 const_TableType_* tableP Int16 row
 SYS_TRAP sysTrapTblGetRowHeight 0 Coord TblGetRowHeight 2 const_TableType_* tableP Int16 row
 SYS_TRAP sysTrapTblGetRowID 0 UInt16 TblGetRowID 2 const_TableType_* tableP Int16 row
-SYS_TRAP sysTrapTblGetSelection 0 Boolean TblGetSelection 3 const_TableType_* tableP Int16_* rowP Int16_* columnP
+SYS_TRAP sysTrapTblGetSelection 0 Boolean TblGetSelection 3 const_TableType_* tableP Int16_* 1rowP Int16_* 1columnP
 SYS_TRAP sysTrapTblGetTopRow 0 Int16 TblGetTopRow 1 const_TableType_* tableP
 SYS_TRAP sysTrapTblGrabFocus 0 void TblGrabFocus 3 TableType_* tableP Int16 row Int16 column
 SYS_TRAP sysTrapTblHandleEvent 0 Boolean TblHandleEvent 2 TableType_* tableP EventType_* event
@@ -1593,7 +1593,7 @@ SYS_TRAP sysTrapTimeToAscii 0 void TimeToAscii 4 UInt8 hours UInt8 minutes TimeF
 SYS_TRAP sysTrapTimeZoneToAscii 0 void TimeZoneToAscii 3 Int16 timeZone const_LmLocaleType_* localeP Char_* string
 SYS_TRAP sysTrapUIBrightnessAdjust 0 void UIBrightnessAdjust 0
 SYS_TRAP sysTrapUIColorGetTableEntryIndex 0 IndexedColorType UIColorGetTableEntryIndex 1 UIColorTableEntries which
-SYS_TRAP sysTrapUIColorGetTableEntryRGB 0 void UIColorGetTableEntryRGB 2 UIColorTableEntries which RGBColorType_* rgbP
+SYS_TRAP sysTrapUIColorGetTableEntryRGB 0 void UIColorGetTableEntryRGB 2 UIColorTableEntries which RGBColorType_* 1rgbP
 SYS_TRAP sysTrapUIColorPopTable 0 Err UIColorPopTable 0
 SYS_TRAP sysTrapUIColorPushTable 0 Err UIColorPushTable 0
 SYS_TRAP sysTrapUIColorSetTableEntry 0 Err UIColorSetTableEntry 2 UIColorTableEntries which const_RGBColorType_* rgbP
@@ -1631,9 +1631,9 @@ SYS_TRAP sysTrapWinFillLine 0 void WinFillLine 4 Coord x1 Coord y1 Coord x2 Coor
 SYS_TRAP sysTrapWinFillRectangle 0 void WinFillRectangle 2 const_RectangleType_* rP UInt16 cornerDiam
 SYS_TRAP sysTrapWinGetActiveWindow 0 WinHandle WinGetActiveWindow 0
 SYS_TRAP sysTrapWinGetBitmap 0 BitmapType_* WinGetBitmap 1 WinHandle winHandle
-SYS_TRAP sysTrapWinGetBounds 0 void WinGetBounds 2 WinHandle winH RectangleType_* rP
+SYS_TRAP sysTrapWinGetBounds 0 void WinGetBounds 2 WinHandle winH RectangleType_* 1rP
 SYS_TRAP sysTrapWinGetClip 0 void WinGetClip 1 RectangleType_* rP
-SYS_TRAP sysTrapWinGetDisplayExtent 0 void WinGetDisplayExtent 2 Coord_* extentX Coord_* extentY
+SYS_TRAP sysTrapWinGetDisplayExtent 0 void WinGetDisplayExtent 2 Coord_* 1extentX Coord_* 1extentY
 SYS_TRAP sysTrapWinGetDisplayWindow 0 WinHandle WinGetDisplayWindow 0
 SYS_TRAP sysTrapWinGetDrawWindow 0 WinHandle WinGetDrawWindow 0
 SYS_TRAP sysTrapWinGetDrawWindowBounds 0 void WinGetDrawWindowBounds 1 RectangleType_* rP
@@ -1673,7 +1673,7 @@ SYS_TRAP sysTrapWinRestoreBits 0 void WinRestoreBits 3 WinHandle winHandle Coord
 SYS_TRAP sysTrapWinSaveBits 0 WinHandle WinSaveBits 2 const_RectangleType_* source UInt16_* error
 SYS_TRAP sysTrapWinScreenInit 0 void WinScreenInit 0
 SYS_TRAP sysTrapWinScreenLock 0 UInt8_* WinScreenLock 1 WinLockInitType initMode
-SYS_TRAP sysTrapWinScreenMode 0 Err WinScreenMode 5 WinScreenModeOperation operation UInt32_* widthP UInt32_* heightP UInt32_* depthP Boolean_* enableColorP
+SYS_TRAP sysTrapWinScreenMode 0 Err WinScreenMode 5 WinScreenModeOperation operation UInt32_* 1widthP UInt32_* 1heightP UInt32_* 1depthP Boolean_* 1enableColorP
 SYS_TRAP sysTrapWinScreenUnlock 0 void WinScreenUnlock 0
 SYS_TRAP sysTrapWinScrollRectangle 0 void WinScrollRectangle 4 const_RectangleType_* rP WinDirectionType direction Coord distance RectangleType_* vacatedP
 SYS_TRAP sysTrapWinSetActiveWindow 0 void WinSetActiveWindow 1 WinHandle winHandle

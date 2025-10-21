@@ -3,15 +3,21 @@
 # 2025-10-20 12:57:03.230595 I 06745 spacewar logtrap: 0x0006EB6C: trap 0xA055    DmNewRecord(ptr_0000E3C0, uint{0}, 2036) ...
 # 2025-10-20 12:57:03.230672 I 06745 spacewar logtrap: 0x0006EB70: trap 0xA055    DmNewRecord(ptr_0000E3C0, uint{0}, 2036): ptr_0000EB00
 
-awk '
+pos=$1
+
+if [ -z "$pos" ]; then
+  pos=6
+fi
+
+awk -v pos=$pos '
 BEGIN {
   next_ptr = 1;
   next_localid = 1;
 }
 
-$6 == "logtrap:" && $7 ~ /^0x/ {
-  s = $10;
-  for (i = 11; i <= NF; i++) {
+$pos == "logtrap:" && $(pos+1) ~ /^0x/ {
+  s = $(pos + 4);
+  for (i = pos + 5; i <= NF; i++) {
     s = s " " $i;
   }
 

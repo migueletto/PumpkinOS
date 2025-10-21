@@ -2208,7 +2208,7 @@ static char hex(uint8_t n) {
   return n < 10 ? '0' + n : 'A' + n - 10;
 }
 
-static void log(logtrap_t *lt, char *fmt, ...) {
+static void logtrap_log(logtrap_t *lt, char *fmt, ...) {
   char tmp[1024], buf[1024];
   uint32_t i, j;
   va_list ap;
@@ -2327,10 +2327,10 @@ static char *id2s(uint32_t ID, char *s) {
   return s;
 }
 
-static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t size, uint32_t value, uint32_t value0, char *aux, uint32_t len) {
+static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t size, uint32_t io, uint32_t value, uint32_t value0, char *aux, uint32_t len, int isret) {
   char str[128], sid[8], *ename;
   uint8_t red, green, blue;
-  uint16_t etype, width, height, depth, density, version;
+  uint16_t etype, width, height, depth, density, version, printarg, isize;
   int16_t sec, min, hour, day, mon, year;
   int16_t x, y, dx, dy;
   uint32_t j;
@@ -2339,113 +2339,171 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
 
   if (ptr) {
     if (value) {
+      printarg = (isret && !(io & OMIT_OUT)) || (!isret && !(io & OMIT_IN));
+      switch (size) {
+        case 1: isize = 8; break;
+        case 2: isize = 16; break;
+        case 4: isize = 32; break;
+        case 8: isize = 64; break;
+        default: isize = 0; // should not happen
+      }
+
       switch (type) {
         case T_VOID:
           snprintf(aux, len - 1, "ptr_%08X", value);
           break;
         case T_STR:
-          for (j = 0; j < sizeof(str) - 1; j++) {
-            str[j] = lt->def.read8(value + j, lt->def.data);
-            if (str[j] == 0) break;
+          if (printarg) {
+            for (j = 0; j < sizeof(str) - 1; j++) {
+              str[j] = lt->def.read8(value + j, lt->def.data);
+              if (str[j] == 0) break;
+            }
+            str[j] = 0;
+            snprintf(aux, len - 1, "\"%s\"", str);
+          } else {
+            snprintf(aux, len - 1, "str_%08X", value);
           }
-          str[j] = 0;
-          snprintf(aux, len - 1, "\"%s\"", str);
           break;
         case T_RGB:
-          red   = lt->def.read8(value + 1, lt->def.data);
-          green = lt->def.read8(value + 2, lt->def.data);
-          blue  = lt->def.read8(value + 3, lt->def.data);
-          snprintf(aux, len - 1, "rgb{%d,%d,%d}", red, green, blue);
+          if (printarg) {
+            red   = lt->def.read8(value + 1, lt->def.data);
+            green = lt->def.read8(value + 2, lt->def.data);
+            blue  = lt->def.read8(value + 3, lt->def.data);
+            snprintf(aux, len - 1, "rgb{ptr_%08X %d,%d,%d}", value, red, green, blue);
+          } else {
+            snprintf(aux, len - 1, "rgb{ptr_%08X}", value);
+          }
         break;
         case T_EVT:
-          etype = lt->def.read16(value, lt->def.data);
-          ename = event_name(etype);
-          if (ename) {
-            snprintf(aux, len - 1, "event{%d 0x%04X %s}", etype, etype, ename);
+          if (printarg) {
+            etype = lt->def.read16(value, lt->def.data);
+            ename = event_name(etype);
+            if (ename) {
+              snprintf(aux, len - 1, "event{ptr_%08X %d 0x%04X %s}", value, etype, etype, ename);
+            } else {
+              snprintf(aux, len - 1, "event{ptr_%08X %d 0x%04X}", value, etype, etype);
+            }
           } else {
-            snprintf(aux, len - 1, "event{%d 0x%04X}", etype, etype);
+            snprintf(aux, len - 1, "event{ptr_%08X}", value);
           }
           break;
         case T_RCT:
-          x = lt->def.read16(value, lt->def.data);
-          y = lt->def.read16(value + 2, lt->def.data);
-          dx = lt->def.read16(value + 4, lt->def.data);
-          dy = lt->def.read16(value + 6, lt->def.data);
-          snprintf(aux, len - 1, "rect{%d,%d,%d,%d}", x, y, dx, dy);
+          if (printarg) {
+            x = lt->def.read16(value, lt->def.data);
+            y = lt->def.read16(value + 2, lt->def.data);
+            dx = lt->def.read16(value + 4, lt->def.data);
+            dy = lt->def.read16(value + 6, lt->def.data);
+            snprintf(aux, len - 1, "rect{ptr_%08X %d,%d,%d,%d}", value, x, y, dx, dy);
+          } else {
+            snprintf(aux, len - 1, "rect{ptr_%08X}", value);
+          }
           break;
         case T_DATE:
-          sec  = lt->def.read16(value,     lt->def.data);
-          min  = lt->def.read16(value +  2, lt->def.data);
-          hour = lt->def.read16(value +  4, lt->def.data);
-          day  = lt->def.read16(value +  6, lt->def.data);
-          mon  = lt->def.read16(value +  8, lt->def.data);
-          year = lt->def.read16(value + 10, lt->def.data);
-          //wday = lt->def.read16(value + 12, lt->def.data);
-          snprintf(aux, len - 1, "date{%04d-%02d-%02d %02d:%02d:%02d}", year, mon, day, hour, min, sec);
+          if (printarg) {
+            sec  = lt->def.read16(value,      lt->def.data);
+            min  = lt->def.read16(value +  2, lt->def.data);
+            hour = lt->def.read16(value +  4, lt->def.data);
+            day  = lt->def.read16(value +  6, lt->def.data);
+            mon  = lt->def.read16(value +  8, lt->def.data);
+            year = lt->def.read16(value + 10, lt->def.data);
+            //wday = lt->def.read16(value + 12, lt->def.data);
+            snprintf(aux, len - 1, "date{ptr_%08X %04d-%02d-%02d %02d:%02d:%02d}", value, year, mon, day, hour, min, sec);
+          } else {
+            snprintf(aux, len - 1, "date{ptr_%08X}", value);
+          }
           break;
         case T_BMP:
-          width   = lt->def.read16(value    , lt->def.data);
-          height  = lt->def.read16(value + 2, lt->def.data);
-          version = lt->def.read8(value  + 9, lt->def.data);
-          depth   = version == 0 ? 1 : lt->def.read8(value + 8, lt->def.data);
-          density = version < 3 ? 72 : lt->def.read16(value + 14, lt->def.data);
-          snprintf(aux, len - 1, "bmp{ptr_%08X V%u %ub %ux%u %u}", value, version, depth, width, height, density);
+          if (printarg) {
+            width   = lt->def.read16(value    , lt->def.data);
+            height  = lt->def.read16(value + 2, lt->def.data);
+            version = lt->def.read8(value  + 9, lt->def.data);
+            depth   = version == 0 ? 1 : lt->def.read8(value + 8, lt->def.data);
+            density = version < 3 ? 72 : lt->def.read16(value + 14, lt->def.data);
+            snprintf(aux, len - 1, "bmp{ptr_%08X V%u %ub %ux%u %u}", value, version, depth, width, height, density);
+          } else {
+            snprintf(aux, len - 1, "bmp{ptr_%08X}", value);
+          }
           break;
         case T_SIG:
-          sig = 0;
-          if (!(value % 2))
-          switch (size) {
-            case 1: sig = (int8_t)(lt->def.read8(value, lt->def.data) & 0xFF); break;
-            case 2: sig = (int16_t)(lt->def.read16(value, lt->def.data) & 0xFFFF); break;
-            case 4: sig = (int32_t)lt->def.read32(value, lt->def.data); break;
-            default: sig = 0; break;
+          if (printarg) {
+            sig = 0;
+            if (!(value % 2))
+            switch (size) {
+              case 1: sig = (int8_t)(lt->def.read8(value, lt->def.data) & 0xFF); break;
+              case 2: sig = (int16_t)(lt->def.read16(value, lt->def.data) & 0xFFFF); break;
+              case 4: sig = (int32_t)lt->def.read32(value, lt->def.data); break;
+              default: sig = 0; break;
+            }
+            snprintf(aux, len - 1, "int%d{ptr_%08X %d}", isize, value, sig);
+          } else {
+            snprintf(aux, len - 1, "int%d{ptr_%08X}", isize, value);
           }
-          snprintf(aux, len - 1, "int{%d}", sig);
           break;
         case T_USIG:
-          usig = 0;
-          if (!(value % 2))
-          switch (size) {
-            case 1: usig = lt->def.read8(value, lt->def.data); break;
-            case 2: usig = lt->def.read16(value, lt->def.data); break;
-            case 4: usig = lt->def.read32(value, lt->def.data); break;
-            default: usig = 0; break;
+          if (printarg) {
+            usig = 0;
+            if (!(value % 2))
+            switch (size) {
+              case 1: usig = lt->def.read8(value, lt->def.data); break;
+              case 2: usig = lt->def.read16(value, lt->def.data); break;
+              case 4: usig = lt->def.read32(value, lt->def.data); break;
+              default: usig = 0; break;
+            }
+            snprintf(aux, len - 1, "uint%d{ptr_%08X %u}", isize, value, usig);
+          } else {
+            snprintf(aux, len - 1, "uint%d{ptr_%08X}", isize, value);
           }
-          snprintf(aux, len - 1, "uint{%u}", usig);
-          break; case T_HEX:
-          usig = 0;
-          if (!(value % 2))
-          switch (size) {
-            case 1:
-              usig = lt->def.read8(value, lt->def.data);
-              snprintf(aux, len - 1, "uint{0x%02X}", usig);
-              break;
-            case 2:
-              usig = lt->def.read16(value, lt->def.data);
-              snprintf(aux, len - 1, "uint{0x%04X}", usig);
-              break;
-            case 4:
-              usig = lt->def.read32(value, lt->def.data);
-              snprintf(aux, len - 1, "uint{0x%08X}", usig);
-              break;
+          break;
+        case T_HEX:
+          if (printarg) {
+            usig = 0;
+            if (!(value % 2))
+            switch (size) {
+              case 1:
+                usig = lt->def.read8(value, lt->def.data);
+                snprintf(aux, len - 1, "uint8{ptr_%08X 0x%02X}", value, usig);
+                break;
+              case 2:
+                usig = lt->def.read16(value, lt->def.data);
+                snprintf(aux, len - 1, "uint16{ptr_%08X 0x%04X}", value, usig);
+                break;
+              case 4:
+                usig = lt->def.read32(value, lt->def.data);
+                snprintf(aux, len - 1, "uint32{ptr_%08X 0x%08X}", value, usig);
+                break;
+            }
+          } else {
+            snprintf(aux, len - 1, "uint%d{ptr_%08X}", isize, value);
           }
           break;
         case T_WCHR:
-          usig = 0;
-          if (!(value % 2))
-          usig = lt->def.read16(value, lt->def.data);
-          snprintf(aux, len - 1, "wchar{0x%04X}", usig);
+          if (printarg) {
+            usig = 0;
+            if (!(value % 2))
+            usig = lt->def.read16(value, lt->def.data);
+            snprintf(aux, len - 1, "wchar{ptr_%08X 0x%04X}", value, usig);
+          } else {
+            snprintf(aux, len - 1, "wchar{ptr_%08X}", value);
+          }
           break;
         case T_ID:
-          usig = 0;
-          if (!(value % 2))
-          usig = lt->def.read32(value, lt->def.data);
-          id2s(usig, sid);
-          snprintf(aux, len - 1, "id{'%s'}", sid);
+          if (printarg) {
+            usig = 0;
+            if (!(value % 2))
+            usig = lt->def.read32(value, lt->def.data);
+            id2s(usig, sid);
+            snprintf(aux, len - 1, "id{ptr_%08X '%s'}", value, sid);
+          } else {
+            snprintf(aux, len - 1, "id{ptr_%08X}", value);
+          }
           break;
         case T_LOC:
-          usig = lt->def.read32(value, lt->def.data);
-          snprintf(aux, len - 1, "localid{localid_%08X}", usig);
+          if (printarg) {
+            usig = lt->def.read32(value, lt->def.data);
+            snprintf(aux, len - 1, "localid{ptr_%08X localid_%08X}", value, usig);
+          } else {
+            snprintf(aux, len - 1, "localid{ptr_%08X}", value);
+          }
           break;
         default:
           snprintf(aux, len - 1, "type_%u", type);
@@ -2518,13 +2576,15 @@ static char *spaces(uint32_t n) {
   return buf;
 }
 
-static void print_params(logtrap_t *lt, trap_t *trap, uint32_t sp, char *buf, uint32_t len) {
+static void print_params(logtrap_t *lt, trap_t *trap, uint32_t sp, char *buf, uint32_t len, int isret) {
   uint32_t value, value0, idx, i;
   char aux[256];
 
   idx = 0;
   buf[0] = 0;
+
   for (i = 0; i < trap->nargs; i++) {
+    value0 = 0;
     if (trap->args[i].ptr) {
       value = lt->def.read32(sp + idx, lt->def.data);
       idx += 4;
@@ -2553,7 +2613,7 @@ static void print_params(logtrap_t *lt, trap_t *trap, uint32_t sp, char *buf, ui
           break;
       }
     }
-    param_value(lt, trap->args[i].type, trap->args[i].ptr, trap->args[i].size, value, value0, aux, sizeof(aux));
+    param_value(lt, trap->args[i].type, trap->args[i].ptr, trap->args[i].size, trap->args[i].io, value, value0, aux, sizeof(aux), isret);
     if (i > 0) strncat(buf, ", ", len - strlen(buf) - 1);
     strncat(buf, aux, len - strlen(buf) - 1);
   }
@@ -2608,21 +2668,21 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       }
 
       if (lt->log_f) {
-        param_value(lt, rtype, rptr, rsize, value, value0, &rbuf[2], sizeof(rbuf) - 2);
+        param_value(lt, rtype, rptr, rsize, 0, value, value0, &rbuf[2], sizeof(rbuf) - 2, 1);
       }
     }
 
     if (lt->log_f) {
       if (lt->allTraps[trap].numsel == 0) {
         if (lt->allTraps[trap].rsize == 8) sp += 4;
-        print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf));
-        log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf, rbuf);
+        print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf), 1);
+        logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf, rbuf);
       } else {
         if (lt->allTraps[trap].selectors[selector].rsize == 8) sp += 4;
-        print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf));
+        print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf), 1);
         s = lt->allTraps[trap].selectors[selector].name;
         if (s == NULL) s = "unknown";
-        log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc, trap, selector, spaces(lt->stackp), s, buf, rbuf);
+        logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc, trap, selector, spaces(lt->stackp), s, buf, rbuf);
       }
     }
 
@@ -2639,7 +2699,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
             buf[i] = 0;
             if (strcmp(buf, lt->appname) == 0) {
               lt->log_dbID = lt->def.read32(sp + 2, lt->def.data);
-              log(lt, "Monitoring dbID 0x%08X for \"%s\"", lt->log_dbID, lt->appname);
+              logtrap_log(lt, "Monitoring dbID 0x%08X for \"%s\"", lt->log_dbID, lt->appname);
             }
           }
         }
@@ -2649,7 +2709,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
         if (lt->appname && lt->log_f == 0 && lt->log_dbRef == 0 && lt->log_dbID != 0 && value != 0) {
           if (lt->def.read32(sp + 2, lt->def.data) == lt->log_dbID) {
             lt->log_dbRef = value;
-            log(lt, "Monitoring dbRef 0x%08X for dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
+            logtrap_log(lt, "Monitoring dbRef 0x%08X for dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
           }
         }
         break;
@@ -2659,14 +2719,14 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
           value = lt->def.read32(sp, lt->def.data);    // SysAppInfoType **
           value = lt->def.read32(value, lt->def.data); // SysAppInfoType *
           if (lt->def.read32(value + 16, lt->def.data) == lt->log_dbRef) {
-            log(lt, "Logging system calls for dbRef 0x%08X dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
+            logtrap_log(lt, "Logging system calls for dbRef 0x%08X dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
             lt->log_f = 1;
           }
         }
         break;
       case sysTrapSysAppExit:
         if (lt->log_f) {
-          log(lt, "Stop logging system calls for dbRef 0x%08X dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
+          logtrap_log(lt, "Stop logging system calls for dbRef 0x%08X dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
           lt->log_dbID = 0;
           lt->log_dbRef = 0;
           lt->log_f = 0;
@@ -2715,14 +2775,14 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc, uint16_t trap) {
       if (lt->log_f) {
         if (lt->allTraps[trap].numsel == 0) {
           if (lt->allTraps[trap].rsize == 8) sp += 4;
-          print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf));
-          log(lt, "0x%08X: trap 0x%04X    %s%s(%s) ...", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf);
+          print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf), 0);
+          logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s) ...", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf);
         } else {
           if (lt->allTraps[trap].selectors[selector].rsize == 8) sp += 4;
-          print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf));
+          print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf), 0);
           s = lt->allTraps[trap].selectors[selector].name;
           if (s == NULL) s = "unknown";
-          log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s) ...", pc, trap, selector, spaces(lt->stackp), s, buf);
+          logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s) ...", pc, trap, selector, spaces(lt->stackp), s, buf);
         }
       }
       lt->stackt[lt->stackp] = trap;

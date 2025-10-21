@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define logtrap_A0 1
 #define logtrap_D0 2
 #define logtrap_D2 3
@@ -24,3 +28,7 @@ logtrap_t *logtrap_init(logtrap_def *def);
 void logtrap_start(logtrap_t *lt, char *appname);
 void logtrap_finish(logtrap_t *lt);
 char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int follow);
+
+#ifdef __cplusplus
+};
+#endif

@@ -161,26 +161,31 @@ BEGIN {
   print "#define T_BMP  13" >> trapArgs;
   print "" >> trapArgs;
 
+  print "#define OMIT_IN  1" >> trapArgs;
+  print "#define OMIT_OUT 2" >> trapArgs;
+  print "" >> trapArgs;
+
   print "typedef struct {" >> trapArgs;
-  print "  uint32_t type;" >> trapArgs;
-  print "  uint32_t ptr;" >> trapArgs;
-  print "  uint32_t size;" >> trapArgs;
+  print "  uint16_t type;" >> trapArgs;
+  print "  uint16_t ptr;" >> trapArgs;
+  print "  uint16_t size;" >> trapArgs;
+  print "  uint16_t io;" >> trapArgs;
   print "  char *name;" >> trapArgs;
   print "} trap_arg_t;" >> trapArgs;
   print "" >> trapArgs;
 
   print "typedef struct trap_t {" >> trapArgs;
-  print "  uint32_t trap;" >> trapArgs;
-  print "  int32_t selector;" >> trapArgs;
+  print "  uint16_t trap;" >> trapArgs;
+  print "  int16_t selector;" >> trapArgs;
   print "  char *name;" >> trapArgs;
-  print "  uint32_t rtype;" >> trapArgs;
-  print "  uint32_t rptr;" >> trapArgs;
-  print "  uint32_t rsize;" >> trapArgs;
-  print "  uint32_t nargs;" >> trapArgs;
+  print "  uint16_t rtype;" >> trapArgs;
+  print "  uint16_t rptr;" >> trapArgs;
+  print "  uint16_t rsize;" >> trapArgs;
+  print "  uint16_t nargs;" >> trapArgs;
   print "  trap_arg_t args[16];" >> trapArgs;
-  print "  uint32_t capsel;" >> trapArgs;
-  print "  uint32_t numsel;" >> trapArgs;
-  print "  uint32_t maxsel;" >> trapArgs;
+  print "  uint16_t capsel;" >> trapArgs;
+  print "  uint16_t numsel;" >> trapArgs;
+  print "  uint16_t maxsel;" >> trapArgs;
   print "  struct trap_t *selectors;" >> trapArgs;
   print "} trap_t;" >> trapArgs;
   print "" >> trapArgs;
@@ -212,7 +217,7 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     else if (trap == "sysTrapOmDispatch")    name = "O" substr(name, 2);
     else if (trap == "sysTrapPinsDispatch")  name = substr(name, 4);
     else if (trap == "sysTrapSerialDispatch") name = substr(name, 4);
-    else if (trap == "sysTrapTsmDispatch")   name = substr(name, 4);
+    else if (trap == "sysTrapTsmDispatch")   name = "T" substr(name, 2);
     else if (trap == "sysTrapUdaMgrDispatch") name = substr(name, 4);
     else if (trap == "sysTrapVFSMgr") name = "VFS" substr(name, 8);
     else if (trap == "sysTrapAccessorDispatch") {
@@ -277,6 +282,15 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     atype = $(7 + i*2);
     arg = $(7 + i*2 + 1);
     isptr = 0;
+
+    io = substr(arg, 1, 1);
+    if (io ~ /[012]/) {
+      arg = substr(arg, 2);
+      if (io == "1") io = "OMIT_IN";
+      else if (io == "2") io = "OMIT_OUT";
+    } else {
+      io = "0";
+    }
 
     if (substr(atype, 1, 6) == "const_") {
       atype = substr(atype, 7);
@@ -345,7 +359,7 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
     }
 
     if (i > 0) s = s ", ";
-    s = s "{ .type=" atyp ", .ptr=" isptr ", .size=" size ", .name=\"" arg "\" }";
+    s = s "{ .type=" atyp ", .ptr=" isptr ", .size=" size ", .io=" io ", .name=\"" arg "\" }";
   }
 
   s = s " } },";
