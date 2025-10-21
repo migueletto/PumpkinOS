@@ -2867,7 +2867,7 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
             } else {
               recInfo = 0;
             }
-            if (CallDmCompare(compar, newRecord, h->buf - sto->base, other, newRecordInfo, recInfo, appInfo) > 0) {
+            if (CallDmCompare(compar, newRecord, h->buf - sto->base, other, newRecordInfo, recInfo, appInfo) < 0) {
               pos = i;
               err = errNone;
               break;
@@ -2877,7 +2877,6 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
             pos = i;
             err = errNone;
           }
-          //pos = i + 1;
           pumpkin_heap_free(recInfoP, "recInfo");
         } else {
           pos = 0;
@@ -4193,6 +4192,7 @@ static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
         }
         break;
       case 'pFNT': // XXX SmallBasic defines a v1 font resource with type 'pFNT'
+      case '_Fnt': // XXX HandyShop2 defines a v1 font resource with type '_Fnt'
         get2b(&ftype, res->buf, 0);
         if (ftype == 0x9000) {
           debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);

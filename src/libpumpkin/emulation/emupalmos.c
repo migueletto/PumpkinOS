@@ -1490,6 +1490,7 @@ Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, B
 Int16 CallDmCompare(UInt32 addr, UInt32 rec1, UInt32 rec2, Int16 other, UInt32 rec1SortInfo, UInt32 rec2SortInfo, UInt32 appInfoH) {
   uint32_t a, argsSize;
   uint8_t *p;
+  uint32_t aux;
   Int16 r = 0;
 
   debug(DEBUG_TRACE, "EmuPalmOS", "CallDmCompare(0x%08X, 0x%08X, 0x%08X, %d, 0x%08X, 0x%08X, 0x%08X", addr, rec1, rec2, other, rec1SortInfo, rec2SortInfo, appInfoH);
@@ -1504,8 +1505,9 @@ Int16 CallDmCompare(UInt32 addr, UInt32 rec1, UInt32 rec2, Int16 other, UInt32 r
     m68k_write_memory_32(a + 10, rec1SortInfo);
     m68k_write_memory_32(a + 14, rec2SortInfo);
     m68k_write_memory_32(a + 18, appInfoH);
-    r = call68K_func(0, addr, a, argsSize);
+    aux = call68K_func(0, addr, a, argsSize);
     pumpkin_heap_free(p, "CallDmCompare");
+    r = (int16_t)((int32_t)aux);
   }
 
   return r;
