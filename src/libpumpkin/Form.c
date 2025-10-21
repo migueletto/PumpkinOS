@@ -254,17 +254,21 @@ void FrmSetActiveForm(FormType *formP) {
     WinSetDrawWindow(&module->currentForm->window);
     MenuSetActiveMenu(module->currentForm->mbar);
 
-    xmemset(&event, 0, sizeof(EventType));
-    event.eType = winExitEvent;
-    event.data.winExit.exitWindow = wh;
-    event.data.winExit.enterWindow = WinGetActiveWindow();
-    EvtAddEventToQueue(&event);
+    if (wh != WinGetActiveWindow()) {
+      if (wh != NULL) {
+        xmemset(&event, 0, sizeof(EventType));
+        event.eType = winExitEvent;
+        event.data.winExit.exitWindow = wh;
+        event.data.winExit.enterWindow = WinGetActiveWindow();
+        EvtAddEventToQueue(&event);
+      }
 
-    xmemset(&event, 0, sizeof(EventType));
-    event.eType = winEnterEvent;
-    event.data.winEnter.exitWindow = wh;
-    event.data.winEnter.enterWindow = WinGetActiveWindow();
-    EvtAddEventToQueue(&event);
+      xmemset(&event, 0, sizeof(EventType));
+      event.eType = winEnterEvent;
+      event.data.winEnter.exitWindow = wh;
+      event.data.winEnter.enterWindow = WinGetActiveWindow();
+      EvtAddEventToQueue(&event);
+    }
   }
 }
 
