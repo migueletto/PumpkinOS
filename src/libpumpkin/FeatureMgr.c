@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 
+#include "RegistryMgr.h"
 #include "debug.h"
 
 #define MAX_FEATURES 32
@@ -28,6 +29,8 @@ typedef struct {
 typedef struct {
   feature_t features[MAX_FEATURES];
   UInt32 numFeatures;
+  RegFeatureType *reg;
+  UInt32 regSize;
 } ftr_module_t;
 
 int FtrInitModule(void) {
@@ -36,7 +39,8 @@ int FtrInitModule(void) {
   if ((module = sys_calloc(1, sizeof(ftr_module_t))) == NULL) {
     return -1;
   }
-
+ 
+  module->reg = pumpkin_reg_get(pumpkin_get_app_creator(), regFeatureID, &module->regSize);
   pumpkin_set_local_storage(ftr_key, module);
 
   return 0;
@@ -46,6 +50,7 @@ int FtrFinishModule(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
 
   if (module) {
+    if (module->reg) MemPtrFree(module->reg);
     sys_free(module);
   }
 
@@ -60,10 +65,21 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Int32 osversion;
+  RegFeatureType *reg;
+  char st[8];
   Err err = ftrErrNoSuchFeature;
 
   *valueP = 0;
   if (ptr) *ptr = false;
+
+  for (reg = module->reg, i = 0; i < module->regSize; reg++, i += sizeof(RegFeatureType)) {
+    if (creator == reg->creator && featureNum == reg->number) {
+      *valueP = reg->value;
+      pumpkin_id2s(creator, st);
+      debug(DEBUG_INFO, "Feature", "FtrGet override featureNum %d for creator '%s': %u (0x%08X)", featureNum, st, *valueP, *valueP);
+      err = errNone;
+    }
+  }
 
   switch (creator) {
     case sysFileCSystem:

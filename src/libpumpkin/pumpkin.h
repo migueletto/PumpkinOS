@@ -672,6 +672,9 @@ int GPSFinishModule(void);
 int CharAttrInitModule(void);
 int CharAttrFinishModule(void);
 
+void *pumpkin_reg_get(DmResType type, UInt16 id, UInt32 *size);
+Err pumpkin_reg_set(DmResType type, UInt16 id, void *p, UInt32 size);
+
 void pumpkin_crash_log(UInt32 creator, int code, char *msg);
 void pumpkin_test_exception(int fatal);
 

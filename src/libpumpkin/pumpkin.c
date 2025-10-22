@@ -21,6 +21,7 @@
 #include "loadfile.h"
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
+#include "RegistryMgr.h"
 #include "deploy.h"
 #include "language.h"
 #include "DDm.h"
@@ -264,6 +265,7 @@ typedef struct {
   pumpkin_plugin_t *plugin[MAX_PLUGINS];
   int num_plugins;
   AppRegistryType *registry;
+  RegMgrType *rm;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
   FontType *fontPtr[128];
@@ -633,6 +635,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   SysUInitModule(); // sto calls SysQSortP
 
+  pumpkin_module.rm = RegInit();
   pumpkin_module.registry = AppRegistryInit(REGISTRY_DB);
 
   pumpkin_module.num_notif = 0;
@@ -1401,6 +1404,7 @@ int pumpkin_global_finish(void) {
   }
 
   AppRegistryFinish(pumpkin_module.registry);
+  RegFinish(pumpkin_module.rm);
 
   SysUFinishModule();
   StoFinish();
@@ -1413,6 +1417,14 @@ int pumpkin_global_finish(void) {
   mutex_destroy(mutex);
 
   return 0;
+}
+
+void *pumpkin_reg_get(DmResType type, UInt16 id, UInt32 *size) {
+  return RegGet(pumpkin_module.rm, type, id, size);
+}
+
+Err pumpkin_reg_set(DmResType type, UInt16 id, void *p, UInt32 size) {
+  return RegSet(pumpkin_module.rm, type, id, p, size);
 }
 
 static void task_destructor(void *p) {
