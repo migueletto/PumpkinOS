@@ -115,7 +115,7 @@ void AppRegistryFinish(AppRegistryType *ar) {
   if (ar) {
     if (ar->registry) {
       for (i = 0; i < ar->num; i++) {
-        if (!ar->registry[i].deleted && ar->registry[i].id != appRegistrySavedPref && ar->registry[i].id != appRegistryUnsavedPref) {
+        if (!ar->registry[i].deleted) {
           AppRegistrySave(ar, i);
         }
         if (ar->registry[i].data) xfree(ar->registry[i].data);
@@ -317,26 +317,6 @@ static UInt16 AppRegistryFlagsCallback(AppRegistryEntry *e, void *d, UInt16 size
   return sizeof(AppRegistryFlags);
 }
 
-static UInt16 AppRegistryCompatCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
-  AppRegistryCompat *c1 = (AppRegistryCompat *)e->data;
-  AppRegistryCompat *c2 = (AppRegistryCompat *)d;
-  char st[8];
-
-  if (set) {
-    if (c2->compat == appCompatUnknown || c2->compat >= c1->compat) {
-      pumpkin_id2s(e->creator, st);
-      debug(DEBUG_INFO, "AppReg", "updating compatibility %d (%d) for '%s'", c2->compat, c2->code, st);
-      c1->compat = c2->compat;
-      c1->code = c2->code;
-    }
-  } else {
-    c2->compat = c1->compat;
-    c2->code = c1->code;
-  }
-
-  return sizeof(AppRegistryCompat);
-}
-
 static UInt16 AppRegistryNotificationCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
   AppRegistryNotification *n1 = (AppRegistryNotification *)e->data;
   AppRegistryNotification *n2 = (AppRegistryNotification *)d;
@@ -398,28 +378,8 @@ static UInt16 AppRegistryNotificationCallback(AppRegistryEntry *e, void *d, UInt
   return sizeof(AppRegistryNotification);
 }
 
-static UInt16 AppRegistryPreferenceCallback(AppRegistryEntry *e, void *d, UInt16 size, Boolean set) {
-  char st[8];
-
-  if (set) {
-    pumpkin_id2s(e->creator, st);
-    debug(DEBUG_INFO, "AppReg", "updating preference %d for '%s'", e->seq, st);
-    MemMove(e->data, d, e->size);
-  } else {
-    if (d) {
-      if (size == 0) size = e->size;
-      MemMove(d, e->data, size <= e->size ? size : e->size);
-    }
-  }
-
-  return e->size;
-}
-
 void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt16 seq, void *p) {
   switch (id) {
-    case appRegistryCompat:
-      AppRegistryProcess(ar, creator, id, seq, AppRegistryCompatCallback, p, sizeof(AppRegistryCompat), true);
-      break;
     case appRegistrySize:
       AppRegistryProcess(ar, creator, id, seq, AppRegistrySizeCallback, p, sizeof(AppRegistrySize), true);
       break;
@@ -443,17 +403,10 @@ void AppRegistrySet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt1
   }
 }
 
-void AppRegistrySetPreference(AppRegistryType *ar, UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved) {
-  AppRegistryProcess(ar, creator, saved ? appRegistrySavedPref : appRegistryUnsavedPref, seq, AppRegistryPreferenceCallback, p, size, true);
-}
-
 Boolean AppRegistryGet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UInt16 seq, void *p) {
   UInt16 r = 0;
 
   switch (id) {
-    case appRegistryCompat:
-      r = AppRegistryProcess(ar, creator, id, seq, AppRegistryCompatCallback, p, sizeof(AppRegistryCompat), false);
-      break;
     case appRegistrySize:
       r = AppRegistryProcess(ar, creator, id, seq, AppRegistrySizeCallback, p, sizeof(AppRegistrySize), false);
       break;
@@ -474,10 +427,6 @@ Boolean AppRegistryGet(AppRegistryType *ar, UInt32 creator, AppRegistryID id, UI
   }
 
   return r > 0;
-}
-
-UInt16 AppRegistryGetPreference(AppRegistryType *ar, UInt32 creator, UInt16 seq, void *p, UInt16 size, Boolean saved) {
-  return AppRegistryProcess(ar, creator, saved ? appRegistrySavedPref : appRegistryUnsavedPref, seq, AppRegistryPreferenceCallback, p, size, false);
 }
 
 static Int32 compare_entry(void *e1, void *e2, void *otherP) {
@@ -515,9 +464,6 @@ void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt1
       if (id && ar->registry[i].id != id) continue;
 
       switch (ar->registry[i].id) {
-        case appRegistryCompat:
-          callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryCompat, ar->registry[i].data, 0, data);
-          break;
         case appRegistrySize:
           callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistrySize, ar->registry[i].data, 0, data);
           break;
@@ -530,10 +476,6 @@ void AppRegistryEnum(AppRegistryType *ar, void (*callback)(UInt32 creator, UInt1
           for (j = 0; j < num; j++) {
             callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryNotification, &n[j], 0, data);
           }
-          break;
-        case appRegistrySavedPref:
-        case appRegistryUnsavedPref:
-          callback(ar->registry[i].creator, ar->registry[i].seq, index, ar->registry[i].id, ar->registry[i].data, ar->registry[i].size, data);
           break;
         case appRegistryOSVersion:
           callback(ar->registry[i].creator, ar->registry[i].seq, index, appRegistryOSVersion, ar->registry[i].data, 0, data);

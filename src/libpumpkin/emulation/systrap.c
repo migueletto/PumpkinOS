@@ -7,7 +7,6 @@
 
 #include "sys.h"
 #include "mutex.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "bytes.h"

@@ -14,7 +14,6 @@
 #ifdef ARMEMU
 #include "armemu.h"
 #endif
-#include "AppRegistry.h"
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -139,7 +138,6 @@ void emupalmos_panic(char *msg, int code) {
   emupalmos_finish(1);
 
   creator = pumpkin_get_app_creator();
-  pumpkin_set_compat(creator, appCompatCrash, code);
   pumpkin_crash_log(creator, code, msg);
 }
 
@@ -296,7 +294,6 @@ uint32_t cpu_read_long(uint32_t address) {
     if (state->m68k_state.s_m68ki_cpu.palmos) {
       switch (address) {
         case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
-          pumpkin_set_osversion(10);
           WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
           value = state->screenStart;
           debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
@@ -2094,7 +2091,6 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     palmos_systrap_init(state);
 
     creator = pumpkin_get_app_creator();
-    pumpkin_set_compat(creator, appCompatOk, 0);
     emupalmos_finish(0);
 
     arm_native_call(amdc0 - ram, amdd0 - ram, 0);
@@ -2386,7 +2382,6 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       if (!state->panic) {
         creator = pumpkin_get_app_creator();
         logtrap_install(state, creator);
-        pumpkin_set_compat(creator, appCompatOk, 0);
         emupalmos_finish(0);
         for (; !emupalmos_finished() && !thread_must_end();) {
           m68k_execute(&state->m68k_state, 100000);

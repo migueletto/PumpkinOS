@@ -7,7 +7,6 @@
 #include "vfs.h"
 #include "bytes.h"
 #include "pumpkin.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "debug.h"
 #include "xalloc.h"

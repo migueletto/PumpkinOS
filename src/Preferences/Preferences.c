@@ -4,7 +4,6 @@
 #include "resource.h"
 #include "thread.h"
 #include "mutex.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "debug.h"

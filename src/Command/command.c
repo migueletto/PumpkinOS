@@ -5,7 +5,6 @@
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
-#include "AppRegistry.h"
 #include "pfont.h"
 #include "graphic.h"
 #include "ptr.h"

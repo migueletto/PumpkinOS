@@ -2,7 +2,6 @@
 
 #include "sys.h"
 #include "mutex.h"
-#include "AppRegistry.h"
 #include "pumpkin.h"
 #include "storage.h"
 #include "file.h"

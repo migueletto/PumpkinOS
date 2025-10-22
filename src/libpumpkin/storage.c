@@ -3739,6 +3739,39 @@ UInt16 DmFindResourceType(DmOpenRef dbP, DmResType resType, UInt16 typeIndex) {
   return index;
 }
 
+UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+  storage_db_t *db;
+  storage_handle_t *h;
+  DmOpenType *dbRef;
+  uint32_t i;
+  Err err = dmErrResourceNotFound;
+  UInt16 idx, index = 0xFFFF;
+
+  if (dbP) {
+    dbRef = (DmOpenType *)dbP;
+    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
+      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (db->ftype == STO_TYPE_RES) {
+        for (i = 0, idx = 0; i < db->numRecs; i++) {
+          h = db->elements[i];
+          if (h->d.res.id == resID) {
+            if (idx == idIndex) {
+              index = i;
+              err = errNone;
+              break;
+            }
+            idx++;
+          }
+        }
+      }
+    }
+  }
+
+  StoCheckErr(err);
+  return index;
+}
+
 Err DmGetLastErr(void) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   return sto->lastErr;

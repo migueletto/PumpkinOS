@@ -291,10 +291,6 @@ void pumpkin_error_dialog(char *msg);
 void pumpkin_fatal_error(int finish);
 void pumpkin_generic_error(char *msg, int code);
 void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height);
-void pumpkin_create_compat(uint32_t creator);
-void pumpkin_set_compat(uint32_t creator, int compat, int code);
-void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), void *data);
-void pumpkin_compat_log(void);
 void pumpkin_set_lasterr(Err err);
 Err pumpkin_get_lasterr(void);
 const char *pumpkin_error_msg(Err err);
@@ -432,6 +428,7 @@ Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr);
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
+UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex);
 MemHandle MemLocalIDToHandle(LocalID local);
 
 Char *StrDup(const Char *src);

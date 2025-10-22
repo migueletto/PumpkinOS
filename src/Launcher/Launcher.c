@@ -16,7 +16,6 @@
 #include "bytes.h"
 #include "util.h"
 #include "surface.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "DDm.h"
 #include "pumpkin.h"
@@ -65,7 +64,7 @@ typedef struct {
   UInt32 size;
   UInt16 id, index;
   UInt16 numRecs;
-  UInt16 compat, code, width, height;
+  UInt16 width, height;
   Boolean rsrc, dir, m68k, uptodate;
   char name[MAX_NAME];
   char *info;
@@ -320,22 +319,6 @@ static Int16 compareItemSize(void *e1, void *e2, Int32 other) {
   return 0;
 }
 
-static Int16 compareItemCompat(void *e1, void *e2, Int32 other) {
-  launcher_item_t *item1, *item2;
-
-  item1 = (launcher_item_t *)(other ? e2 : e1);
-  item2 = (launcher_item_t *)(other ? e1 : e2);
-
-  if (item1 && item2) {
-    if (item1->compat < item2->compat) return -1;
-    if (item1->compat > item2->compat) return 1;
-    if (item1->code < item2->code) return -1;
-    if (item1->code > item2->code) return 1;
-  }
-
-  return 0;
-}
-
 static Int16 compareItemWidthHeight(void *e1, void *e2, Int32 other) {
   launcher_item_t *item1, *item2;
 
@@ -438,9 +421,6 @@ static void sortItems(launcher_data_t *data) {
           break;
         case 1:
           SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemWidthHeight, data->dir);
-          break;
-        case 2:
-          SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemCompat, data->dir);
           break;
       }
       break;
@@ -931,34 +911,6 @@ static void launcherScanTasks(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "found %d tasks", data->numItems);
 }
 
-static void compat_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *_data) {
-  launcher_data_t *data = (launcher_data_t *)_data;
-  AppRegistryCompat *c;
-  AppRegistrySize *s;
-
-  if (data->numItems < MAX_ITEMS) {
-    switch (id) {
-      case appRegistryCompat:
-        data->numItems++;
-        c = (AppRegistryCompat *)p;
-        data->item[data->numItems-1].type = sysFileTApplication;
-        data->item[data->numItems-1].creator = creator;
-        data->item[data->numItems-1].compat = c->compat;
-        data->item[data->numItems-1].code = c->code;
-        break;
-      case appRegistrySize:
-        if (data->numItems > 0) {
-          s = (AppRegistrySize *)p;
-          data->item[data->numItems-1].type = sysFileTApplication;
-          data->item[data->numItems-1].creator = creator;
-          data->item[data->numItems-1].width = s->width;
-          data->item[data->numItems-1].height = s->height;
-        }
-        break;
-    }
-  }
-}
-
 static void launcherScanRegistry(launcher_data_t *data) {
   FontID old;
 
@@ -970,7 +922,6 @@ static void launcherScanRegistry(launcher_data_t *data) {
   FntSetFont(old);
 
   data->numItems = 0;
-  pumpkin_enum_compat(compat_callback, data);
 
   sortItems(data);
   debug(DEBUG_INFO, "Launcher", "found %d registries", data->numItems);
@@ -1281,7 +1232,7 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
 }
 
 static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
-  char buf[128], *s;
+  char buf[128];
   UInt16 bmpId;
 
   firstColumn(data, x, y, inverted);
@@ -1290,53 +1241,8 @@ static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, i
   x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), false, inverted);
 
   if (item) {
-    switch (item->compat) {
-      case appCompatUnknown:
-        StrCopy(buf, "Unknown");
-        bmpId = questionBmp;
-        break;
-      case appCompatOk:
-        StrCopy(buf, "Good");
-        bmpId = okBmp;
-        break;
-      case appCompatMinor:
-        StrCopy(buf, "Minor problem");
-        bmpId = warningBmp;
-        break;
-      case appCompatMajor:
-        StrCopy(buf, "Major problem");
-        bmpId = warningBmp;
-        break;
-      case appCompatCrash:
-        switch (item->code) {
-          case EMUPALMOS_INVALID_ADDRESS:
-            s = "invalid address";
-            break;
-          case EMUPALMOS_INVALID_INSTRUCTION:
-            s = "invalid instruction";
-            break;
-          case EMUPALMOS_INVALID_TRAP:
-            s = "invalid trap";
-            break;
-          case EMUPALMOS_INVALID_XREF:
-            s = "invalid xref";
-            break;
-          case EMUPALMOS_GENERIC_ERROR:
-            s = "other error";
-            break;
-          default:
-            s = "unknown";
-            break;
-        }
-        StrNPrintF(buf, sizeof(buf)-1, "Crash: %s", s);
-        bmpId = errorBmp;
-        break;
-      default:
-        bmpId = errorBmp;
-        break;
-    }
+    bmpId = errorBmp;
     x = printBmpColumn(data, item, NULL, buf, bmpId, x, y, 32 * FntCharWidth('w'), inverted);
-
   } else {
     x = printColumn(data, item, pumpkin_get_mode() == 0 ? "Compatibility" : "Compat.", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
   }

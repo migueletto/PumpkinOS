@@ -5,7 +5,6 @@
 #include "thread.h"
 #include "mutex.h"
 #include "media.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "grail.h"

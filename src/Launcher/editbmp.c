@@ -5,7 +5,6 @@
 #include "sys.h"
 #include "mutex.h"
 #include "pumpkin.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "rgb.h"
 #include "resource.h"

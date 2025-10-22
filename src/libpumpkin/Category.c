@@ -6,7 +6,6 @@
 #include "vfs.h"
 #include "bytes.h"
 #include "emupalmosinc.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "debug.h"

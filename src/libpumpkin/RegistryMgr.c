@@ -41,7 +41,7 @@ void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size) {
   DmOpenRef dbRef;
   UInt16 index;
   MemHandle h;
-  void *p, *r = NULL;
+  void *r, *p = NULL;
 
   if (rm && size && mutex_lock(rm->mutex) == 0) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
@@ -52,7 +52,6 @@ void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size) {
             if ((r = MemHandleLock(h)) != NULL) {
               if ((p = MemPtrNew(*size)) != NULL) {
                 MemMove(p, r, *size);
-                r = errNone;
               }
               MemHandleUnlock(h);
             }
@@ -65,7 +64,63 @@ void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size) {
     mutex_unlock(rm->mutex);
   }
 
-  return r;
+  return p;
+}
+
+void *RegGetById(RegMgrType *rm, UInt16 id, UInt32 *size) {
+  LocalID dbID;
+  DmOpenRef dbRef;
+  MemHandle h;
+  UInt32 allocSize, resSize, offset;
+  UInt16 i, index;
+  UInt8 *p = NULL;
+  void *r;
+
+  if (rm && mutex_lock(rm->mutex) == 0) {
+    if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
+      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+        allocSize = 65536;
+        offset = 0;
+        p = MemPtrNew(allocSize);
+        *size = 0;
+
+        for (i = 0; p; i++) {
+          if ((index = DmFindResourceID(dbRef, id, i)) == 0xFFFF) break;
+          if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
+            if ((r = MemHandleLock(h)) != NULL) {
+              resSize = MemHandleSize(h);
+              if (offset + resSize > allocSize) {
+                allocSize = offset + resSize + 65536;
+                if (MemPtrResize(p, allocSize) != errNone) {
+                  MemPtrFree(p);
+                  p = NULL;
+                }
+              }
+              if (p) {
+                MemMove(p + offset, r, resSize);
+                offset += resSize;
+              }
+              MemHandleUnlock(h);
+            }
+            DmReleaseResource(h);
+          }
+        }
+        DmCloseDatabase(dbRef);
+
+        if (p) {
+          if (MemPtrResize(p, offset) == errNone) {
+            *size = offset;
+          } else {
+            MemPtrFree(p);
+            p = NULL;
+          }
+        }
+      }
+    }
+    mutex_unlock(rm->mutex);
+  }
+
+  return p;
 }
 
 Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size) {
@@ -95,6 +150,28 @@ Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size) {
             MemHandleUnlock(h);
           }
           DmReleaseResource(h);
+        }
+        DmCloseDatabase(dbRef);
+      }
+    }
+    mutex_unlock(rm->mutex);
+  }
+
+  return err;
+}
+
+Err RegDelete(RegMgrType *rm, DmResType type) {
+  LocalID dbID;
+  DmOpenRef dbRef;
+  UInt16 i, index;
+  Err err = -1;
+
+  if (rm && mutex_lock(rm->mutex) == 0) {
+    if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
+      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadWrite)) != NULL) {
+        for (i = 0; ; i++) {
+          if ((index = DmFindResourceType(dbRef, type, i)) == 0xFFFF) break;
+          DmRemoveResource(dbRef, index);
         }
         DmCloseDatabase(dbRef);
       }

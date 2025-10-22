@@ -75,7 +75,6 @@
 #define FONT_LOW_BASE    9100
 
 #define CRASH_LOG   "crash.log"
-#define COMPAT_LIST "log/compat.txt"
 
 #define PUMPKIN_USER_AGENT  PUMPKINOS
 #define PUMPKIN_SERVER_NAME PUMPKINOS
@@ -654,21 +653,9 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   return 0;
 }
 
-static void registry_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
-  Boolean saved;
-  char buf[8];
-
-  saved = id == appRegistrySavedPref;
-  if (pumpkin_get_preference(creator, seq, NULL, 0, saved) == 0) {
-    pumpkin_id2s(creator, buf);
-    debug(DEBUG_INFO, PUMPKINOS, "migrate %s preference for creator %s, id %d, size %d bytes", saved ? "saved" : "unsaved", buf, seq, size);
-    pumpkin_set_preference(creator, seq, p, size, saved);
-  }
-}
-
 void pumpkin_deploy_files(char *path) {
   if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
-    pumpkin_deploy_files_session(pumpkin_module.session, path, pumpkin_module.registry);
+    pumpkin_deploy_files_session(pumpkin_module.session, path);
     mutex_unlock(pumpkin_module.fs_mutex);
   }
 }
@@ -704,11 +691,6 @@ void pumpkin_init_misc(void) {
 
   pumpkin_module.lockKey = prefs.value[pLockKey];
   pumpkin_module.lockModifiers = prefs.value[pLockModifiers];
-
-  AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistrySavedPref, NULL);
-  AppRegistryEnum(pumpkin_module.registry, registry_callback, 0, appRegistryUnsavedPref, NULL);
-  AppRegistryDelete(REGISTRY_DB, appRegistrySavedPref);
-  AppRegistryDelete(REGISTRY_DB, appRegistryUnsavedPref);
 }
 
 void pumpkin_set_spawner(int handle) {
@@ -1487,10 +1469,11 @@ static int pumpkin_normal_launch(uint16_t cmd) {
 static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, void *param, uint16_t flags) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   SysAppLaunchCmdSystemResetType reset;
+  RegFlagsType *regFlagsP, regFlags;
   LocalID oldDbID, dbID;
   DmOpenRef dbRef;
   Boolean callReset, callNormal;
-  UInt32 oldCreator, creator, appFlags;
+  UInt32 oldCreator, creator, regSize;
 
   if ((dbID = DmFindDatabase(0, name)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
@@ -1504,13 +1487,22 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
         if (code == sysAppLaunchCmdNormalLaunch) {
           if (mutex_lock(mutex) == 0) {
-            appFlags = 0;
             callReset = false;
-            if (!AppRegistryGet(pumpkin_module.registry, creator, appRegistryFlags, 0, &appFlags) || !(appFlags & appRegistryFlagReset)) {
-              appFlags |= appRegistryFlagReset;
-              AppRegistrySet(pumpkin_module.registry, creator, appRegistryFlags, 0, &appFlags);
+
+            if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
+              if (!(regFlagsP->flags & regFlagReset)) {
+                regFlagsP->flags |= regFlagReset;
+                pumpkin_reg_set(creator, regFlagsID, regFlagsP, regSize);
+                callReset = true;
+              }
+              MemPtrFree(regFlagsP);
+            } else {
+              regFlags.osVersion = pumpkin_get_osversion();
+              regFlags.flags = regFlagReset;
+              pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
               callReset = true;
             }
+
             mutex_unlock(mutex);
             if (callReset) {
               // Defer a sysAppLaunchCmdSystemReset for when the app is called for the first time.
@@ -1580,7 +1572,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       debug(DEBUG_INFO, PUMPKINOS, "searching PilotMain in dlib");
       if ((dbID = DmFindDatabase(0, request->name)) != 0) {
         DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
-        pumpkin_set_compat(creator, appCompatOk, 0);
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
           if ((lib = DmResourceLoadLib(dbRef, sysRsrcTypeDlib, &firstLoad)) != NULL) {
             debug(DEBUG_INFO, PUMPKINOS, "dlib resource loaded (first %d)", firstLoad ? 1 : 0);
@@ -1610,8 +1601,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_ERROR, PUMPKINOS, "database '%s' not found", request->name);
       }
     }
-
-    pumpkin_set_osversion(pumpkin_module.osversion);
 
     if (pumpkin_normal_launch(request->code) && dbID) {
       sendLaunchNotification(sysNotifyAppLaunchingEvent, dbID);
@@ -1781,8 +1770,10 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
+  RegDisplayType *regDisplay;
+  RegFlagsType *regFlags;
   LocalID dbID;
-  UInt32 language;
+  UInt32 language, regSize;
   UInt16 size, density, depth;
   uint32_t color;
   int j, ptr;
@@ -1904,11 +1895,28 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       break;
   }
 
+  if ((regFlags = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
+    task->osversion = regFlags->osVersion;
+    debug(DEBUG_INFO, PUMPKINOS, "overriding OS version=%d for \"%s\"", depth, name);
+    MemPtrFree(regFlags);
+  } else {
+    task->osversion = pumpkin_module.osversion;
+  }
+
+  if ((regDisplay = pumpkin_reg_get(creator, regDisplayID, &regSize)) != NULL) {
+    depth = regDisplay->depth <= pumpkin_module.depth ? regDisplay->depth : pumpkin_module.depth;
+    density = regDisplay->density <= pumpkin_module.density ? regDisplay->density : pumpkin_module.density;
+    MemPtrFree(regDisplay);
+  } else {
+    depth = pumpkin_module.depth;
+    density = pumpkin_module.density;
+  }
+
   if (density != pumpkin_module.density) {
-    debug(DEBUG_INFO, PUMPKINOS, "forcing %d density display for \"%s\"", density, name);
+    debug(DEBUG_INFO, PUMPKINOS, "overriding display density=%d for \"%s\"", density, name);
   }
   if (depth != pumpkin_module.depth) {
-    debug(DEBUG_INFO, PUMPKINOS, "forcing %d bpp display for \"%s\"", depth, name);
+    debug(DEBUG_INFO, PUMPKINOS, "overriding display depth=%d for \"%s\"", depth, name);
   }
 
   UicInitModule();
@@ -1969,7 +1977,8 @@ void pumpkin_local_refresh(void) {
 
 static int pumpkin_local_finish(UInt32 creator) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  AppRegistryPosition p;
+  RegWindowType *regWin;
+  UInt32 regSize;
   int i, x, y;
 
   if (mutex_lock(mutex) == -1) {
@@ -1981,9 +1990,11 @@ static int pumpkin_local_finish(UInt32 creator) {
   if (pumpkin_module.wm) {
     if (creator) {
       if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId, &x, &y) == 0) {
-        p.x = x;
-        p.y = y;
-        AppRegistrySet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p);
+        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
+          regWin->x = x;
+          regWin->y = y;
+          pumpkin_reg_set(creator, regWindowID, regWin, sizeof(RegWindowType));
+        }
       }
     }
   }
@@ -2134,7 +2145,6 @@ int pumpkin_launcher(char *name, int width, int height) {
       wman_add(pumpkin_module.wm, 0, texture, 0, 0, width, height);
       MemSet(&request, sizeof(launch_request_t), 0);
 #if defined(ANDROID) || defined(KERNEL)
-      pumpkin_set_compat(creator, appCompatOk, 0);
       extern UInt32 LauncherPilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags);
       request.pilot_main = LauncherPilotMain;
 #endif
@@ -2270,9 +2280,8 @@ void pumpkin_send_deploy(void) {
 
 int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
-  AppRegistrySize s;
-  AppRegistryPosition p;
-  UInt32 type, creator;
+  RegWindowType *regWin;
+  UInt32 type, creator, regSize;
   launch_data_t *data;
   client_request_t creq;
   int i, running, index, wait_ack, r = -1;
@@ -2354,21 +2363,19 @@ int pumpkin_launch(launch_request_t *request) {
         data->x = (pumpkin_module.width - data->width) / 2;
         data->y = (pumpkin_module.height - data->height) / 2;
 
-        if (!AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
+        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) == NULL) {
           debug(DEBUG_INFO, PUMPKINOS, "recreating registry");
-          pumpkin_registry_create(pumpkin_module.registry, creator);
+          pumpkin_registry_create(creator);
         }
 
-        if (AppRegistryGet(pumpkin_module.registry, creator, appRegistrySize, 0, &s)) {
-          data->width = s.width;
-          data->height = s.height;
+        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
+          data->x = regWin->x;
+          data->y = regWin->y;
+          data->width = regWin->width;
+          data->height = regWin->height;
           debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
-        }
-
-        if (pumpkin_module.mode == 0 && AppRegistryGet(pumpkin_module.registry, creator, appRegistryPosition, 0, &p)) {
-          data->x = p.x;
-          data->y = p.y;
           debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry", data->x, data->y);
+          MemPtrFree(regWin);
         }
       }
 
@@ -4608,43 +4615,13 @@ void pumpkin_fatal_error(int finish) {
 }
 
 void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height) {
-  AppRegistrySize s;
-  s.width = width;
-  s.height = height;
-  AppRegistrySet(pumpkin_module.registry, creator, appRegistrySize, 0, &s);
-}
+  RegWindowType *regWin;
+  UInt32 regSize;
 
-void pumpkin_set_compat(uint32_t creator, int compat, int code) {
-  AppRegistryCompat c;
-  c.compat = compat;
-  c.code = code;
-  AppRegistrySet(pumpkin_module.registry, creator, appRegistryCompat, 0, &c);
-}
-
-void pumpkin_enum_compat(void (*callback)(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data), void *data) {
-  AppRegistryEnum(pumpkin_module.registry, callback, 0, 0, data);
-}
-
-static void compat_callback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
-  AppRegistryCompat *c;
-  char buf[256], st[8];
-  int fd;
-
-  if (id == appRegistryCompat) {
-    c = (AppRegistryCompat *)p;
-    fd = *((int *)data);
-    pumpkin_id2s(creator, st);
-    sys_snprintf(buf, sizeof(buf)-1, "%s;%d;%d\n", st, c->compat, c->code);
-    sys_write(fd, (uint8_t *)buf, sys_strlen(buf));
-  }
-}
-
-void pumpkin_compat_log(void) {
-  int fd;
-
-  if ((fd = sys_create(COMPAT_LIST, SYS_WRITE | SYS_TRUNC, 0622)) != -1) {
-    AppRegistryEnum(pumpkin_module.registry, compat_callback, 0, 0, &fd);
-    sys_close(fd);
+  if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
+    regWin->width = width;
+    regWin->width = height;
+    pumpkin_reg_set(creator, regWindowID, regWin, sizeof(RegWindowType));
   }
 }
 
@@ -4882,33 +4859,13 @@ void pumpkin_trace(uint16_t trap) {
 }
 
 void pumpkin_set_osversion(int version) {
-  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-
-  if (version < 0) {
-    pumpkin_module.osversion = -version;
-    debug(DEBUG_INFO, PUMPKINOS, "set global os version %d", pumpkin_module.osversion);
-  } else if (task) {
-    task->osversion = version;
-    debug(DEBUG_INFO, PUMPKINOS, "set task os version %d", task->osversion);
-  }
+  debug(DEBUG_INFO, PUMPKINOS, "setting global OS version=%d", version);
+  pumpkin_module.osversion = version;
 }
 
 int pumpkin_get_osversion(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  AppRegistryOSVersion osv;
-  int osversion;
-
-  if (task) {
-    if (AppRegistryGet(pumpkin_module.registry, task->creator, appRegistryOSVersion, 0, &osv)) {
-      osversion = osv.osversion;
-    } else {
-      osversion = task->osversion;
-    }
-  } else {
-    osversion = pumpkin_module.osversion;
-  }
-
-  return osversion;
+  return task ? task->osversion : pumpkin_module.osversion;
 }
 
 void pumpkin_set_m68k(int m68k) {
@@ -5013,7 +4970,7 @@ void pumpkin_delete_preferences(UInt32 creator, Boolean saved) {
 }
 
 void pumpkin_delete_registry(UInt32 creator) {
-  AppRegistryDeleteByCreator(pumpkin_module.registry, creator);
+  RegDelete(pumpkin_module.rm, creator);
 }
 
 void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wHeight, Coord width, Coord height, char *filename) {
@@ -5286,7 +5243,7 @@ static int pumpkin_httpd_install(int pe) {
     if ((p = MemPtrNew(len)) != NULL) {
       MemMove(p, s, len);
       if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
-        r = pumpkin_deploy_from_image(pumpkin_module.session, p, len, pumpkin_module.registry);
+        r = pumpkin_deploy_from_image(pumpkin_module.session, p, len);
       }
       mutex_unlock(pumpkin_module.fs_mutex);
       MemPtrFree(p);

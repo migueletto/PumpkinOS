@@ -8,7 +8,6 @@
 #include "bytes.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "debug.h"
 #include "xalloc.h"

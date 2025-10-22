@@ -6,7 +6,6 @@
 #include "pwindow.h"
 #include "vfs.h"
 #include "bytes.h"
-#include "AppRegistry.h"
 #include "storage.h"
 #include "pumpkin.h"
 #include "debug.h"

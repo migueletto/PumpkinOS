@@ -1,7 +1,7 @@
 #include <PalmOS.h>
 
 #include "pumpkin.h"
-#include "AppRegistry.h"
+#include "RegistryMgr.h"
 #include "bytes.h"
 #include "vfs.h"
 #include "util.h"
@@ -26,19 +26,15 @@ void pumpkin_remove_locks(vfs_session_t *session, char *path) {
   }
 }
 
-void pumpkin_registry_create(AppRegistryType *ar, UInt32 creator) {
-  AppRegistryCompat c;
-  AppRegistrySize s;
-  AppRegistryPosition p;
+void pumpkin_registry_create(UInt32 creator) {
+  RegFlagsType *regFlagsP, regFlags;
+  RegWindowType regWin;
   DmOpenRef dbRef;
   MemHandle h;
+  UInt32 regSize;
   UInt16 width, height;
   UInt8 *ptr;
   int swidth, sheight;
-
-  c.compat = appCompatUnknown;
-  c.code = 0;
-  AppRegistrySet(ar, creator, appRegistryCompat, 0, &c);
 
   pumpkin_get_window(&swidth, &sheight);
   width = APP_SCREEN_WIDTH;
@@ -64,16 +60,22 @@ void pumpkin_registry_create(AppRegistryType *ar, UInt32 creator) {
     DmCloseDatabase(dbRef);
   }
 
-  s.width = width;
-  s.height = height;
-  AppRegistrySet(ar, creator, appRegistrySize, 0, &s);
+  if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
+    MemPtrFree(regFlagsP);
+  } else {
+    regFlags.osVersion = pumpkin_get_osversion();
+    regFlags.flags = regFlagReset;
+    pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
+  }
 
-  p.x = (swidth - s.width) / 2;
-  p.y = (sheight - s.height) / 2;
-  AppRegistrySet(ar, creator, appRegistryPosition, 0, &p);
+  regWin.width = width;
+  regWin.height = height;
+  regWin.x = (swidth - regWin.width) / 2;
+  regWin.y = (sheight - regWin.height) / 2;
+  pumpkin_reg_set(creator, regWindowID, &regWin, sizeof(RegWindowType));
 }
 
-static int pumpkin_deploy_file_session(vfs_session_t *session, char *path, AppRegistryType *ar) {
+static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
   vfs_file_t *f;
   LocalID dbID;
   UInt32 type, creator;
@@ -108,7 +110,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path, AppRe
                   if ((dbID = DmFindDatabase(0, name)) != 0) {
                     debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
                     if (type == sysFileTApplication) {
-                      pumpkin_registry_create(ar, creator);
+                      pumpkin_registry_create(creator);
                     }
                     r = 0;
                   }
@@ -128,7 +130,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path, AppRe
   return r;
 }
 
-int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size, AppRegistryType *ar) {
+int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size) {
   LocalID dbID;
   UInt32 type, creator;
   char name[dmDBNameLength], stype[8], screator[8];
@@ -153,7 +155,7 @@ int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size,
       if (DmCreateDatabaseFromImage(p) == errNone) {
         debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
         if (type == sysFileTApplication) {
-          pumpkin_registry_create(ar, creator);
+          pumpkin_registry_create(creator);
         }
         r = 0;
       } else {
@@ -165,7 +167,7 @@ int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size,
   return r;
 }
 
-int pumpkin_deploy_files_session(vfs_session_t *session, char *path, AppRegistryType *ar) {
+int pumpkin_deploy_files_session(vfs_session_t *session, char *path) {
   vfs_dir_t *dir;
   vfs_ent_t *ent;
   char *ext, buf[VFS_PATH];
@@ -180,7 +182,7 @@ int pumpkin_deploy_files_session(vfs_session_t *session, char *path, AppRegistry
         if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
           sys_memset(buf, 0, sizeof(buf));
           sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
-          rr = pumpkin_deploy_file_session(session, buf, ar);
+          rr = pumpkin_deploy_file_session(session, buf);
           vfs_unlink(session, buf);
           if (rr == 0) {
             r = 0;

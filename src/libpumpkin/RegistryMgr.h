@@ -4,6 +4,9 @@ typedef struct RegMgrType RegMgrType;
 #define regFeatureID    2
 #define regDisplayID    3
 #define regWindowID     4
+#define regNotifID      5
+
+#define regFlagReset    1
 
 typedef struct {
   UInt16 osVersion;
@@ -28,8 +31,16 @@ typedef struct {
   UInt16 height;
 } RegWindowType;
 
+typedef struct {
+  UInt32 appCreator;
+  UInt32 notifyType;
+  UInt32 priority;
+} RegNotificationType;
+
 RegMgrType *RegInit(void);
 void RegFinish(RegMgrType *rm);
 
 void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size);
+void *RegGetById(RegMgrType *rm, UInt16 id, UInt32 *size);
 Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size);
+Err RegDelete(RegMgrType *rm, DmResType type);

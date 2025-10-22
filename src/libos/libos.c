@@ -219,7 +219,7 @@ static int libos_action(void *arg) {
   }
 
   if (data->osversion > 0) {
-    pumpkin_set_osversion(-data->osversion);
+    pumpkin_set_osversion(data->osversion);
   }
   pumpkin_set_density(data->density);
   pumpkin_set_depth(data->depth);
