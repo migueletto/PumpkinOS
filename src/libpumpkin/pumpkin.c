@@ -619,7 +619,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.dragging = -1;
   pumpkin_module.nextTaskId = 1;
   pumpkin_module.battery = 100;
-  pumpkin_module.osversion = 50;
+  pumpkin_module.osversion = 54;
 
   pumpkin_module.pcm = PCM_S16;
   pumpkin_module.channels = 1;
