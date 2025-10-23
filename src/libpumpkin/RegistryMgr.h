@@ -1,17 +1,37 @@
 typedef struct RegMgrType RegMgrType;
 
-#define regFlagsID      1
-#define regFeatureID    2
-#define regDisplayID    3
-#define regWindowID     4
-#define regNotifID      5
+#define regOsID         1
+#define regFlagsID      2
+#define regPositionID   3
+#define regDimensionID  4
+#define regDisplayID    5
+#define regFeatureID    6
+#define regNotifID      7
 
 #define regFlagReset    1
 
 typedef struct {
-  UInt16 osVersion;
+  UInt16 version;
+} RegOsType;
+
+typedef struct {
   UInt32 flags;
 } RegFlagsType;
+
+typedef struct {
+  UInt16 x;
+  UInt16 y;
+} RegPositionType;
+
+typedef struct {
+  UInt16 width;
+  UInt16 height;
+} RegDimensionType;
+
+typedef struct {
+  UInt16 density;
+  UInt16 depth;
+} RegDisplayType;
 
 typedef struct {
   UInt32 creator;
@@ -20,19 +40,7 @@ typedef struct {
 } RegFeatureType;
 
 typedef struct {
-  UInt16 density;
-  UInt16 depth;
-} RegDisplayType;
-
-typedef struct {
-  UInt16 x;
-  UInt16 y;
-  UInt16 width;
-  UInt16 height;
-} RegWindowType;
-
-typedef struct {
-  UInt32 appCreator;
+  UInt32 creator;
   UInt32 notifyType;
   UInt32 priority;
 } RegNotificationType;

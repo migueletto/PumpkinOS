@@ -81,11 +81,12 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
     }
   }
 
+  osversion = pumpkin_get_osversion();
+
   switch (creator) {
     case sysFileCSystem:
       switch (featureNum) {
         case sysFtrNumROMVersion:
-          osversion = pumpkin_get_osversion();
           *valueP = sysMakeROMVersion(osversion / 10, osversion % 10, 0, sysROMStageRelease, 0);
           err = errNone;
           break;
@@ -106,62 +107,81 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           err = errNone;
           break;
         case sysFtrNumNotifyMgrVersion:
-          *valueP = sysNotifyVersionNum;
-          err = errNone;
+          if (osversion >= 35) {
+            *valueP = sysNotifyVersionNum;
+            err = errNone;
+          }
           break;
         case sysFtrNumBacklight:
           *valueP = 0;
           err = errNone;
           break;
         case sysFtrNumDisplayDepth:
-          if (WinScreenMode(winScreenModeGetDefaults, NULL, NULL, valueP, NULL) == errNone) {
+          if (osversion >= 30 && WinScreenMode(winScreenModeGetDefaults, NULL, NULL, valueP, NULL) == errNone) {
             err = errNone;
           }
           break;
         case sysFtrNumWinVersion:
-          *valueP = pumpkin_get_density() == kDensityDouble ? 4 : 3;
-          err = errNone;
+          if (osversion >= 40) {
+            *valueP = pumpkin_get_density() == kDensityDouble ? 4 : 3;
+            err = errNone;
+          }
           break;
         case sysFtrNumOEMCompanyID:
-          *valueP = pumpkin_get_id_option("companyID");
-          if (*valueP == 0) *valueP = 'Palm';
-          err = errNone;
+          if (osversion >= 35) {
+            *valueP = pumpkin_get_id_option("companyID");
+            if (*valueP == 0) *valueP = 'Palm';
+            err = errNone;
+          }
           break;
         case sysFtrNumOEMDeviceID:
-          *valueP = pumpkin_get_id_option("deviceID");
-          if (*valueP == 0) *valueP = 'Pmpk';
-          err = errNone;
+          if (osversion >= 35) {
+            *valueP = pumpkin_get_id_option("deviceID");
+            if (*valueP == 0) *valueP = 'Pmpk';
+            err = errNone;
+          }
           break;
         case sysFtrNumOEMHALID:
-          *valueP = 1;
-          err = errNone;
+          if (osversion >= 35) {
+            *valueP = 1;
+            err = errNone;
+          }
           break;
         case sysFtrNumInputAreaFlags:
-          if (pumpkin_dia_enabled()) {
+          if (osversion >= 50 && pumpkin_dia_enabled()) {
             *valueP = grfFtrInputAreaFlagDynamic /*| grfFtrInputAreaFlagCollapsible*/;
             err = errNone;
           }
           break;
         case sysFtrNumAccessorTrapPresent:
-          *valueP = 1;
-          err = errNone;
+          if (osversion >= 40) {
+            *valueP = 1;
+            err = errNone;
+          }
           break;
         case sysFtrNumUIHardwareFlags:
-          // XXX check if device has a keyboard (a Raspberry PI with just a touch screen should not set these flags)
-          *valueP = sysFtrNumUIHardwareHas5Way /*| sysFtrNumUIHardwareHasKbd*/;
-          err = errNone;
+          if (osversion >= 50) {
+            // XXX check if device has a keyboard (a Raspberry PI with just a touch screen should not set these flags)
+            *valueP = sysFtrNumUIHardwareHas5Way /*| sysFtrNumUIHardwareHasKbd*/;
+            err = errNone;
+          }
           break;
         case sysFtrNumDmAutoBackup:
+          // XXX from which OS version ?
           *valueP = 0;
           err = errNone;
           break;
         case sysFtrNumFiveWayNavVersion:
-          *valueP = navVersion;
-          err = errNone;
+          if (osversion >= 54) {
+            *valueP = navVersion;
+            err = errNone;
+          }
           break;
         case sysFtrDefaultFont:
-          *valueP = stdFont;
-          err = errNone;
+          if (osversion >= 31) {
+            *valueP = stdFont;
+            err = errNone;
+          }
           break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSystem %d not defined", featureNum);
@@ -250,6 +270,24 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
 
 Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP) {
   return FtrGetEx(creator, featureNum, valueP, NULL);
+}
+
+Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP) {
+  Boolean ptr;
+  UInt32 value;
+  UInt8 *ram;
+  Err err;
+
+  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone && ptr) {
+    if (ptr) {
+      ram = pumpkin_heap_base();
+      *valueP = ram + value;
+    } else {
+      err = ftrErrNoSuchFeature;
+    }
+  }
+
+  return err;
 }
 
 // A feature that you define in this manner remains defined until the

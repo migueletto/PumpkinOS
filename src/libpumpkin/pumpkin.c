@@ -1128,6 +1128,10 @@ void pumpkin_set_depth(int depth) {
   debug(DEBUG_INFO, PUMPKINOS, "screen depth is %d", pumpkin_module.depth);
 }
 
+int pumpkin_get_depth(void) {
+  return pumpkin_module.depth;
+}
+
 void pumpkin_refresh_desktop(void) {
   PumpkinPreferencesType prefs;
 
@@ -1470,6 +1474,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   SysAppLaunchCmdSystemResetType reset;
   RegFlagsType *regFlagsP, regFlags;
+  RegOsType regOS;
   LocalID oldDbID, dbID;
   DmOpenRef dbRef;
   Boolean callReset, callNormal;
@@ -1497,10 +1502,14 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
               }
               MemPtrFree(regFlagsP);
             } else {
-              regFlags.osVersion = pumpkin_get_osversion();
               regFlags.flags = regFlagReset;
               pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
               callReset = true;
+            }
+
+            if (pumpkin_reg_get(creator, regOsID, &regSize) == NULL) {
+              regOS.version = pumpkin_get_default_osversion();
+              pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
             }
 
             mutex_unlock(mutex);
@@ -1771,7 +1780,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
   RegDisplayType *regDisplay;
-  RegFlagsType *regFlags;
+  RegOsType *regOS;
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size, density, depth;
@@ -1895,10 +1904,10 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
       break;
   }
 
-  if ((regFlags = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
-    task->osversion = regFlags->osVersion;
-    debug(DEBUG_INFO, PUMPKINOS, "overriding OS version=%d for \"%s\"", depth, name);
-    MemPtrFree(regFlags);
+  if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
+    task->osversion = regOS->version;
+    debug(DEBUG_INFO, PUMPKINOS, "overriding OS version=%d for \"%s\"", regOS->version, name);
+    MemPtrFree(regOS);
   } else {
     task->osversion = pumpkin_module.osversion;
   }
@@ -1977,8 +1986,7 @@ void pumpkin_local_refresh(void) {
 
 static int pumpkin_local_finish(UInt32 creator) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  RegWindowType *regWin;
-  UInt32 regSize;
+  RegPositionType regPos;
   int i, x, y;
 
   if (mutex_lock(mutex) == -1) {
@@ -1990,11 +1998,9 @@ static int pumpkin_local_finish(UInt32 creator) {
   if (pumpkin_module.wm) {
     if (creator) {
       if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId, &x, &y) == 0) {
-        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
-          regWin->x = x;
-          regWin->y = y;
-          pumpkin_reg_set(creator, regWindowID, regWin, sizeof(RegWindowType));
-        }
+        regPos.x = x;
+        regPos.y = y;
+        pumpkin_reg_set(creator, regPositionID, &regPos, sizeof(RegPositionType));
       }
     }
   }
@@ -2280,7 +2286,8 @@ void pumpkin_send_deploy(void) {
 
 int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
-  RegWindowType *regWin;
+  RegPositionType *regPos;
+  RegDimensionType *regDim;
   UInt32 type, creator, regSize;
   launch_data_t *data;
   client_request_t creq;
@@ -2363,19 +2370,23 @@ int pumpkin_launch(launch_request_t *request) {
         data->x = (pumpkin_module.width - data->width) / 2;
         data->y = (pumpkin_module.height - data->height) / 2;
 
-        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) == NULL) {
+        if ((regPos = pumpkin_reg_get(creator, regPositionID, &regSize)) == NULL) {
           debug(DEBUG_INFO, PUMPKINOS, "recreating registry");
           pumpkin_registry_create(creator);
         }
 
-        if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
-          data->x = regWin->x;
-          data->y = regWin->y;
-          data->width = regWin->width;
-          data->height = regWin->height;
-          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
+        if ((regPos = pumpkin_reg_get(creator, regPositionID, &regSize)) != NULL) {
+          data->x = regPos->x;
+          data->y = regPos->y;
           debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry", data->x, data->y);
-          MemPtrFree(regWin);
+          MemPtrFree(regPos);
+        }
+
+        if ((regDim = pumpkin_reg_get(creator, regDimensionID, &regSize)) != NULL) {
+          data->width = regDim->width;
+          data->height = regDim->height;
+          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
+          MemPtrFree(regDim);
         }
       }
 
@@ -4615,14 +4626,11 @@ void pumpkin_fatal_error(int finish) {
 }
 
 void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height) {
-  RegWindowType *regWin;
-  UInt32 regSize;
+  RegDimensionType regDim;
 
-  if ((regWin = pumpkin_reg_get(creator, regWindowID, &regSize)) != NULL) {
-    regWin->width = width;
-    regWin->width = height;
-    pumpkin_reg_set(creator, regWindowID, regWin, sizeof(RegWindowType));
-  }
+  regDim.width = width;
+  regDim.width = height;
+  pumpkin_reg_set(creator, regDimensionID, &regDim, sizeof(RegDimensionType));
 }
 
 void pumpkin_crash_log(UInt32 creator, int code, char *msg) {
@@ -4861,6 +4869,10 @@ void pumpkin_trace(uint16_t trap) {
 void pumpkin_set_osversion(int version) {
   debug(DEBUG_INFO, PUMPKINOS, "setting global OS version=%d", version);
   pumpkin_module.osversion = version;
+}
+
+int pumpkin_get_default_osversion(void) {
+  return pumpkin_module.osversion;
 }
 
 int pumpkin_get_osversion(void) {

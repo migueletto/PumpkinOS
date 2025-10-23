@@ -6,7 +6,8 @@
 #define EditFormForm    1006
 #define EditBinForm     1007
 #define EditImgForm     1008
-#define AboutForm       1009
+#define RegistryForm    1009
+#define AboutForm       1010
 
 #define MainMenu        1001
 #define AppListMenu     1101
@@ -44,6 +45,15 @@
 #define frmpropCtl  1028
 #define objpropCtl  1029
 #define surfaceGad  1030
+#define osCtl       1031
+#define osList      1032
+#define singleCtl   1033
+#define doubleCtl   1034
+#define depth1Ctl   1035
+#define depth2Ctl   1036
+#define depth4Ctl   1037
+#define depth8Ctl   1038
+#define depth16Ctl  1039
 
 #define moveBmp     2001
 #define drawBmp     2002

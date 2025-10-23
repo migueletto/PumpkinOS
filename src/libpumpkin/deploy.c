@@ -28,7 +28,9 @@ void pumpkin_remove_locks(vfs_session_t *session, char *path) {
 
 void pumpkin_registry_create(UInt32 creator) {
   RegFlagsType *regFlagsP, regFlags;
-  RegWindowType regWin;
+  RegOsType regOS;
+  RegDimensionType regDim;
+  RegPositionType regPos;
   DmOpenRef dbRef;
   MemHandle h;
   UInt32 regSize;
@@ -63,16 +65,20 @@ void pumpkin_registry_create(UInt32 creator) {
   if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
     MemPtrFree(regFlagsP);
   } else {
-    regFlags.osVersion = pumpkin_get_osversion();
     regFlags.flags = regFlagReset;
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
   }
 
-  regWin.width = width;
-  regWin.height = height;
-  regWin.x = (swidth - regWin.width) / 2;
-  regWin.y = (sheight - regWin.height) / 2;
-  pumpkin_reg_set(creator, regWindowID, &regWin, sizeof(RegWindowType));
+  regOS.version = pumpkin_get_default_osversion();
+  pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
+
+  regDim.width = width;
+  regDim.height = height;
+  pumpkin_reg_set(creator, regDimensionID, &regDim, sizeof(RegDimensionType));
+
+  regPos.x = (swidth - regDim.width) / 2;
+  regPos.y = (sheight - regDim.height) / 2;
+  pumpkin_reg_set(creator, regPositionID, &regPos, sizeof(RegPositionType));
 }
 
 static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {

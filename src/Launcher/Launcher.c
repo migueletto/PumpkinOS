@@ -6,6 +6,7 @@
 #include "sys.h"
 #include "resedit.h"
 #include "editsurf.h"
+#include "editreg.h"
 #include "script.h"
 #include "thread.h"
 #include "mutex.h"
@@ -53,8 +54,7 @@ typedef enum {
   launcher_rsrc,
   launcher_rec,
   launcher_file,
-  launcher_task,
-  launcher_registry
+  launcher_task
 } launcher_mode_t;
 
 typedef struct {
@@ -319,22 +319,6 @@ static Int16 compareItemSize(void *e1, void *e2, Int32 other) {
   return 0;
 }
 
-static Int16 compareItemWidthHeight(void *e1, void *e2, Int32 other) {
-  launcher_item_t *item1, *item2;
-
-  item1 = (launcher_item_t *)(other ? e2 : e1);
-  item2 = (launcher_item_t *)(other ? e1 : e2);
-
-  if (item1 && item2) {
-    if (item1->width < item2->width) return -1;
-    if (item1->width > item2->width) return 1;
-    if (item1->height < item2->height) return -1;
-    if (item1->height > item2->height) return 1;
-  }
-
-  return 0;
-}
-
 static void sortItems(launcher_data_t *data) {
   switch (data->mode) {
     case launcher_app:
@@ -411,16 +395,6 @@ static void sortItems(launcher_data_t *data) {
           break;
         case 1:
           SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemName, data->dir);
-          break;
-      }
-      break;
-    case launcher_registry:
-      switch (data->sort) {
-        case 0:
-          SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemTypeCreator, data->dir);
-          break;
-        case 1:
-          SysQSort(data->item, data->numItems, sizeof(launcher_item_t), compareItemWidthHeight, data->dir);
           break;
       }
       break;
@@ -911,22 +885,6 @@ static void launcherScanTasks(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "found %d tasks", data->numItems);
 }
 
-static void launcherScanRegistry(launcher_data_t *data) {
-  FontID old;
-
-  launcherResetItems(data);
-
-  old = FntSetFont(stdFont);
-  data->cellHeight = FntCharHeight() + 2;
-  data->cellWidth = data->gadRect.extent.x;
-  FntSetFont(old);
-
-  data->numItems = 0;
-
-  sortItems(data);
-  debug(DEBUG_INFO, "Launcher", "found %d registries", data->numItems);
-}
-
 static void launcherScanRecords(launcher_data_t *data) {
   MemHandle h;
   UInt16 num, index = 0;
@@ -979,9 +937,6 @@ static void launcherScan(launcher_data_t *data) {
       break;
     case launcher_task:
       launcherScanTasks(data);
-      break;
-    case launcher_registry:
-      launcherScanRegistry(data);
       break;
   }
 }
@@ -1228,25 +1183,6 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
   x = printColumn(data, item, "ID", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
   x = spaceColumn(data, x, y, 10);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? (item->m68k ? m68kBmp : pumpkinBmp) : 0, x, y, 28 * FntCharWidth('a'), inverted);
-  lastColumn(data, x, y);
-}
-
-static void printRegistry(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
-  char buf[128];
-  UInt16 bmpId;
-
-  firstColumn(data, x, y, inverted);
-  x = printColumn(data, item, "Creator", item ? pumpkin_id2s(item->creator, buf) : NULL, x, y, 8 * FntCharWidth('w'), false, inverted);
-  if (item) StrNPrintF(buf, sizeof(buf)-1, "%ux%u", item->width, item->height);
-  x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), false, inverted);
-
-  if (item) {
-    bmpId = errorBmp;
-    x = printBmpColumn(data, item, NULL, buf, bmpId, x, y, 32 * FntCharWidth('w'), inverted);
-  } else {
-    x = printColumn(data, item, pumpkin_get_mode() == 0 ? "Compatibility" : "Compat.", NULL, x, y, 32 * FntCharWidth('w'), false, inverted);
-  }
-
   lastColumn(data, x, y);
 }
 
@@ -1613,16 +1549,6 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
               WinEraseRectangle(&rect, 0);
             }
             break;
-          case launcher_registry:
-            if (i == 0) {
-              printRegistry(data, NULL, x, y, false);
-            } else if (i-1 + data->topItem < data->numItems) {
-              printRegistry(data, &data->item[i-1 + data->topItem], x, y, false);
-            } else {
-              RctSetRectangle(&rect, x, y, iw, ih);
-              WinEraseRectangle(&rect, 0);
-            }
-            break;
         }
 
         x += iw;
@@ -1805,24 +1731,6 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 printTask(data, &data->item[i], x, y, true);
               } else {
                 printTask(data, &data->item[i], x, y, false);
-              }
-            }
-          }
-          break;
-        case launcher_registry:
-          if (row == 0) {
-            x = event->screenX - gad->rect.topLeft.x;
-            y = gad->rect.topLeft.y + 2;
-            columnClicked(data, x, y, event->eType == frmGadgetEnterEvent);
-          } else {
-            i = (row-1) * ncols + col + data->topItem;
-            if (i < data->numItems) {
-              x = gad->rect.topLeft.x + col * iw;
-              y = gad->rect.topLeft.y + 2 + row * ih;
-              if (event->eType == frmGadgetEnterEvent) {
-                printRegistry(data, &data->item[i], x, y, true);
-              } else {
-                printRegistry(data, &data->item[i], x, y, false);
               }
             }
           }
@@ -2203,11 +2111,6 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
       updateFilter(data, frm, false);
       if (update) DrawBattery(true);
       break;
-    case launcher_registry:
-      if (title) FrmSetTitle(frm, "Registry");
-      updateFilter(data, frm, false);
-      if (update) DrawBattery(true);
-      break;
   }
 }
 
@@ -2546,17 +2449,6 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       frm->mbar = data->mainMenu;
       MenuSetActiveMenu(frm->mbar);
       break;
-    case registryCmd:
-      data->mode = launcher_registry;
-      data->sort = 0;
-      data->dir = 0;
-      frm = FrmGetActiveForm();
-      launcherScan(data);
-      refresh(frm, data);
-      UpdateStatus(frm, data, true);
-      frm->mbar = data->mainMenu;
-      MenuSetActiveMenu(frm->mbar);
-      break;
     case runCmd:
       if (data->mode == launcher_app_small && data->prev >= 0 && data->item[data->prev].creator != AppID) {
         data->top = false;
@@ -2577,6 +2469,14 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
             refresh(frm, data);
             UpdateStatus(frm, data, true);
           }
+        }
+      }
+      break;
+    case registryCmd:
+      if (data->mode == launcher_app_small && data->prev >= 0 && data->item[data->prev].creator != AppID) {
+        if ((frm = FrmInitForm(RegistryForm)) != NULL) {
+          editRegistry(frm, data->item[data->prev].creator, data->item[data->prev].name);
+          FrmDeleteForm(frm);
         }
       }
       break;

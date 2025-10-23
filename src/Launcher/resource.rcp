@@ -29,7 +29,6 @@ BEGIN
     MENUITEM "Databases"    dbCmd       "D"
     MENUITEM "Files"        fileCmd     "F"
     MENUITEM "Tasks"        taskCmd     "T"
-    MENUITEM "Registry"     registryCmd "R"
   END
 END
 
@@ -48,13 +47,13 @@ BEGIN
     MENUITEM "Databases"    dbCmd       "D"
     MENUITEM "Files"        fileCmd     "F"
     MENUITEM "Tasks"        taskCmd     "T"
-    MENUITEM "Registry"     registryCmd "R"
   END
 
   PULLDOWN "Action"
   BEGIN
-    MENUITEM "Run"    runCmd "R"
-    MENUITEM "Delete" delCmd "D"
+    MENUITEM "Run"      runCmd "R"
+    MENUITEM "Delete"   delCmd "D"
+    MENUITEM "Registry" registryCmd "E"
   END
 END
 
@@ -124,6 +123,34 @@ BEGIN
   TITLE "Image"
   GADGET ID surfaceGad 0 15 236 160
   BUTTON "Done"  okBtn CENTER BOTTOM@196 AUTO AUTO
+END
+
+FORM RegistryForm 2 66 156 92
+USABLE
+MODAL
+SAVEBEHIND
+DEFAULTBTNID cancelBtn
+BEGIN
+  TITLE "Registry"
+
+  LABEL "PalmOS:" ID 2001 AT (4 16) USABLE FONT 1
+  POPUPTRIGGER "5.4" ID osCtl AT (PREVRIGHT+8 PREVTOP 16 13) USABLE LEFTANCHOR FONT 0
+  LIST "1.0" "2.0" "3.3" "3.5" "4.1" "5.4" ID osList AT (PREVLEFT+8 PREVTOP 16 55) NONUSABLE VISIBLEITEMS 6 FONT 0
+  POPUPLIST ID osCtl osList
+
+  LABEL "Density:" ID 2002 AT (4 32) USABLE FONT 1
+  PUSHBUTTON "Single" singleCtl PREVRIGHT+8 PREVTOP AUTO AUTO GROUP 1
+  PUSHBUTTON "Double" doubleCtl PREVRIGHT+1 PREVTOP PREVWIDTH PREVHEIGHT GROUP 1
+
+  LABEL "Depth:" ID 2003 AT (4 PREVBOTTOM+6) USABLE FONT 1
+  PUSHBUTTON  "1" depth1Ctl  PREVRIGHT+8 PREVTOP AUTO      AUTO       GROUP 2
+  PUSHBUTTON  "2" depth2Ctl  PREVRIGHT+1 PREVTOP 12        PREVHEIGHT GROUP 2
+  PUSHBUTTON  "4" depth4Ctl  PREVRIGHT+1 PREVTOP PREVWIDTH PREVHEIGHT GROUP 2
+  PUSHBUTTON  "8" depth8Ctl  PREVRIGHT+1 PREVTOP PREVWIDTH PREVHEIGHT GROUP 2
+  PUSHBUTTON "16" depth16Ctl PREVRIGHT+1 PREVTOP PREVWIDTH PREVHEIGHT GROUP 2
+
+  BUTTON "Ok" okBtn 50 BOTTOM@88 AUTO AUTO
+  BUTTON "Cancel" cancelBtn PREVRIGHT+4 PREVTOP AUTO AUTO
 END
 
 FORM AboutForm 2 2 156 156

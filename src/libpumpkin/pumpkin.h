@@ -251,6 +251,7 @@ void pumpkin_set_input(int num, int width, int height);
 void pumpkin_set_density(int density);
 int pumpkin_get_density(void);
 void pumpkin_set_depth(int depth);
+int pumpkin_get_depth(void);
 void pumpkin_refresh_desktop(void);
 void pumpkin_set_background(int depth, uint8_t r, uint8_t g, uint8_t b);
 void pumpkin_set_border(int depth, int size, uint8_t rsel, uint8_t gsel, uint8_t bsel, uint8_t r, uint8_t g, uint8_t b);
@@ -401,6 +402,7 @@ void pumpkin_delete_preferences(UInt32 creator, Boolean saved);
 void pumpkin_delete_registry(UInt32 creator);
 
 void pumpkin_set_osversion(int version);
+int pumpkin_get_default_osversion(void);
 int pumpkin_get_osversion(void);
 void pumpkin_set_m68k(int m68k);
 int pumpkin_is_m68k(void);
@@ -620,6 +622,8 @@ void AbtShowAboutPumpkin(UInt32 creator);
 
 WChar TxtUpperChar(WChar inChar);
 WChar TxtLowerChar(WChar inChar);
+
+Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP);
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow);
 void *WinReinitModule(void *module);
