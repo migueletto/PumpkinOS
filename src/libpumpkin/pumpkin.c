@@ -126,6 +126,7 @@ typedef struct {
   int tracing;
   int m68k;
   char name[dmDBNameLength];
+  uint16_t density, depth;
   uint32_t alarm_time;
   uint32_t alarm_data;
   uint32_t eventKeyMask;
@@ -1783,7 +1784,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   RegOsType *regOS;
   LocalID dbID;
   UInt32 language, regSize;
-  UInt16 size, density, depth;
+  UInt16 size;
   uint32_t color;
   int j, ptr;
 
@@ -1900,24 +1901,24 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   }
 
   if ((regDisplay = pumpkin_reg_get(creator, regDisplayID, &regSize)) != NULL) {
-    depth = regDisplay->depth <= pumpkin_module.depth ? regDisplay->depth : pumpkin_module.depth;
-    density = regDisplay->density <= pumpkin_module.density ? regDisplay->density : pumpkin_module.density;
+    task->depth = regDisplay->depth <= pumpkin_module.depth ? regDisplay->depth : pumpkin_module.depth;
+    task->density = regDisplay->density <= pumpkin_module.density ? regDisplay->density : pumpkin_module.density;
     MemPtrFree(regDisplay);
   } else {
-    depth = pumpkin_module.depth;
-    density = pumpkin_module.density;
+    task->depth = pumpkin_module.depth;
+    task->density = pumpkin_module.density;
   }
 
-  if (density != pumpkin_module.density) {
-    debug(DEBUG_INFO, PUMPKINOS, "overriding display density=%d for \"%s\"", density, name);
+  if (task->density != pumpkin_module.density) {
+    debug(DEBUG_INFO, PUMPKINOS, "overriding display density=%d for \"%s\"", task->density, name);
   }
-  if (depth != pumpkin_module.depth) {
-    debug(DEBUG_INFO, PUMPKINOS, "overriding display depth=%d for \"%s\"", depth, name);
+  if (task->depth != pumpkin_module.depth) {
+    debug(DEBUG_INFO, PUMPKINOS, "overriding display depth=%d for \"%s\"", task->depth, name);
   }
 
   UicInitModule();
-  WinInitModule(density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, depth, NULL);
-  FntInitModule(density);
+  WinInitModule(task->density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, task->depth, NULL);
+  FntInitModule(task->density);
   FrmInitModule();
   InsPtInitModule();
   FldInitModule();
