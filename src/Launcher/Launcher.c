@@ -3002,6 +3002,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 #endif
 {
   launcher_data_t *data;
+  FormType *formP;
   UInt32 value;
 
   switch (cmd) {
@@ -3093,6 +3094,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   FrmCenterDialogs(true);
   FrmGotoForm(MainForm);
   EventLoop(data);
+  formP = FrmGetActiveForm();
+  if (formP->formId == MainForm) formP->mbar = data->mainMenu;
   FrmCloseAllForms();
 
   if (data->useTaskbar) {
