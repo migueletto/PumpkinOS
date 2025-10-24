@@ -119,6 +119,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     // update OS version
     index = FrmGetObjectIndex(frm, osList);
     lst = FrmGetObjectPtr(frm, index);
+    i = LstGetSelection(lst);
     if ((text = LstGetSelectionText(lst, i)) != NULL) {
       if ((regOS.version = parseVersion(text)) > 0) {
         pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
