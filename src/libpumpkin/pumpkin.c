@@ -1891,19 +1891,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   language = PrefGetPreference(prefLanguage);
   task->lang = LanguageInit(language);
 
-  switch (creator) {
-    // XXX take these creators from the registry
-    case 'MePt':
-    case 'PPrs': // eReader
-      depth = pumpkin_module.depth >= 8 ? 8 : pumpkin_module.depth;
-      density = pumpkin_module.density;
-      break;
-    default:
-      depth = pumpkin_module.depth;
-      density = pumpkin_module.density;
-      break;
-  }
-
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
     task->osversion = regOS->version;
     debug(DEBUG_INFO, PUMPKINOS, "overriding OS version=%d for \"%s\"", regOS->version, name);
