@@ -1486,7 +1486,7 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
   BitmapType *dstBmp;
   UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
-  UInt16 depth;
+  UInt16 depth, srcRowBytes, dstRowBytes;
   Boolean clipping;
   Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
   UInt8 *srcBits, *dstBits;
@@ -1514,8 +1514,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     BmpGetSizes(dstBmp, &dstSize, NULL);
     srcBits = BmpGetBits(srcBmp);
     dstBits = BmpGetBits(dstBmp);
-    BmpGetDimensions(srcBmp, &srcWidth, &srcHeight, NULL);
-    BmpGetDimensions(dstBmp, &dstWidth, &dstHeight, NULL);
+    BmpGetDimensions(srcBmp, &srcWidth, &srcHeight, &srcRowBytes);
+    BmpGetDimensions(dstBmp, &dstWidth, &dstHeight, &dstRowBytes);
     clipping = (dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top);
 
     if (rect == NULL && dstX == 0 && dstY == 0 && srcSize == dstSize && !clipping) {
@@ -1624,8 +1624,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
             srcRect.topLeft.x = 0;
           }
           if (srcRect.extent.x > 0 && srcRect.extent.y > 0) {
-            srcLineSize = srcWidth * pixelSize;
-            dstLineSize = dstWidth * pixelSize;
+            srcLineSize = srcRowBytes;
+            dstLineSize = dstRowBytes;
             len = srcRect.extent.x * pixelSize;
             if (srcBmp == dstBmp && dstRect.topLeft.y > srcRect.topLeft.y) {
               srcOffset = (srcRect.topLeft.y + srcRect.extent.y) * srcLineSize + srcRect.topLeft.x * pixelSize;
