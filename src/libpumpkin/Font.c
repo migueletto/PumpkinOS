@@ -38,9 +38,9 @@ int FntInitModule(UInt16 density) {
   // map all system fonts
   for (i = 0; i < 128; i++) {
     if (density == kDensityLow) {
-      module->fonts[i] = FntCopyFont(pumpkin_get_font(i));
+      module->fonts[i] = FntCopyFont(pumpkin_get_font(i, kDensityLow));
     } else {
-      module->fontsv2[i] = (FontTypeV2 *)FntCopyFont(pumpkin_get_font(i));
+      module->fontsv2[i] = (FontTypeV2 *)FntCopyFont(pumpkin_get_font(i, kDensityDouble));
     }
   }
 
