@@ -268,7 +268,8 @@ typedef struct {
   RegMgrType *rm;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
-  FontType *fontPtr[128];
+  FontType *fontPtrV1[128];
+  FontType *fontPtrV2[128];
   event_t events[MAX_EVENTS];
   int nev, iev, oev;
   calibration_t calibration;
@@ -518,38 +519,43 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt
   }
 }
 
-FontType *pumpkin_get_font(FontID fontId) {
+FontType *pumpkin_get_font(FontID fontId, UInt16 density) {
   FontType *font = NULL;
 
-  if (fontId >= 0 && fontId < 128 && pumpkin_module.fontPtr[fontId]) {
-    font = pumpkin_module.fontPtr[fontId];
+  if (fontId >= 0 && fontId < 128) {
+    font = density == kDensityLow ? pumpkin_module.fontPtrV1[fontId] : pumpkin_module.fontPtrV2[fontId];
   }
 
   return font;
 }
 
 static void pumpkin_load_fonts(void) {
-  UInt16 index, resId;
+  UInt16 index;
   FontID fontId;
-  DmResType type;
   MemHandle handle;
   FontPtr f;
 
-  type = pumpkin_module.density == kDensityLow ? fontRscType : fontExtRscType;
-
   for (index = 0; systemFonts[index] >= 0; index++) {
     fontId = systemFonts[index];
-    resId = pumpkin_module.density == kDensityLow ? FONT_LOW_BASE : FONT_DOUBLE_BASE;
-    resId += fontId;
 
-    if ((handle = DmGetResource(type, resId)) != NULL) {
+    if ((handle = DmGetResource(fontRscType, FONT_LOW_BASE + fontId)) != NULL) {
       if ((f = MemHandleLock(handle)) != NULL) {
-        pumpkin_module.fontPtr[fontId] = FntCopyFont(f);
+        pumpkin_module.fontPtrV1[fontId] = FntCopyFont(f);
         MemHandleUnlock(handle);
       }
       DmReleaseResource(handle);
     } else {
-      debug(DEBUG_ERROR, PUMPKINOS, "built-in nfnt %d font resource not found", fontId);
+      debug(DEBUG_ERROR, PUMPKINOS, "built-in V1 font resource id %d not found", fontId);
+    }
+
+    if ((handle = DmGetResource(fontExtRscType, FONT_DOUBLE_BASE + fontId)) != NULL) {
+      if ((f = MemHandleLock(handle)) != NULL) {
+        pumpkin_module.fontPtrV2[fontId] = FntCopyFont(f);
+        MemHandleUnlock(handle);
+      }
+      DmReleaseResource(handle);
+    } else {
+      debug(DEBUG_ERROR, PUMPKINOS, "built-in V2 font resource id %d not found", fontId);
     }
   }
 }
@@ -558,8 +564,11 @@ static void pumpkin_unload_fonts(void) {
   UInt16 fontId;
 
   for (fontId = 0; fontId < 128; fontId++) {
-    if (pumpkin_module.fontPtr[fontId]) {
-      FntFreeFont((FontPtr)pumpkin_module.fontPtr[fontId]);
+    if (pumpkin_module.fontPtrV1[fontId]) {
+      FntFreeFont((FontPtr)pumpkin_module.fontPtrV1[fontId]);
+    }
+    if (pumpkin_module.fontPtrV2[fontId]) {
+      FntFreeFont((FontPtr)pumpkin_module.fontPtrV2[fontId]);
     }
   }
 }
@@ -1064,24 +1073,24 @@ static void pumpkin_image_background(RGBColorType *rgb, UInt16 id, UInt16 mode) 
 
             switch (mode) {
               case 0: // top left
-                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, 0, true);
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, 0, true, false);
                 break;
               case 1: // top right
-                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, 0, true);
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, 0, true, false);
                 break;
               case 2: // bottom left
-                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, pumpkin_module.height - height, true);
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, 0, pumpkin_module.height - height, true, false);
                 break;
               case 3: // bottom right
-                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, pumpkin_module.height - height, true);
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, pumpkin_module.width - width, pumpkin_module.height - height, true, false);
                 break;
               case 4: // center
-                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, (pumpkin_module.width - width) / 2, (pumpkin_module.height - height) / 2, true);
+                BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, (pumpkin_module.width - width) / 2, (pumpkin_module.height - height) / 2, true, false);
                 break;
               case 5: // tiled
                 for (y = 0; y < pumpkin_module.height; y += height) {
                   for (x = 0; x < pumpkin_module.width; x += width) {
-                    BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, x, y, true);
+                    BmpDrawSurface(bmp, 0, 0, width, height, pumpkin_module.background, x, y, true, false);
                   }
                 }
                 break;
@@ -1765,7 +1774,7 @@ static void pumpkin_init_icon(void) {
         BmpGetTransparentValue(bmp, &transparentValue);
         debug(DEBUG_INFO, PUMPKINOS, "set icon %dx%d, density %d, depth %d, transparent 0x%08X", width, height, density, depth, transparentValue);
         icon = surface_create(width, height, pumpkin_module.encoding);
-        BmpDrawSurface(bmp, 0, 0, width, height, icon, 0, 0, true);
+        BmpDrawSurface(bmp, 0, 0, width, height, icon, 0, 0, true, false);
         raw = (uint32_t *)icon->getbuffer(icon->data, &len);
         pumpkin_module.wp->icon(pumpkin_module.w, raw, width, height);
         surface_destroy(icon);
@@ -1909,15 +1918,25 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     task->density = pumpkin_module.density;
   }
 
+  width = task->width;
+  height = task->height;
+
   if (task->density != pumpkin_module.density) {
     debug(DEBUG_INFO, PUMPKINOS, "overriding display density=%d for \"%s\"", task->density, name);
+    if (task->density == kDensityLow) {
+      width >>= 1;
+      height >>= 1;
+    }
   }
   if (task->depth != pumpkin_module.depth) {
     debug(DEBUG_INFO, PUMPKINOS, "overriding display depth=%d for \"%s\"", task->depth, name);
   }
 
+  pumpkin_module.tasks[i].density = task->density;
+  pumpkin_module.tasks[i].depth = task->depth;
+
   UicInitModule();
-  WinInitModule(task->density, pumpkin_module.tasks[i].width, pumpkin_module.tasks[i].height, task->depth, NULL);
+  WinInitModule(task->density, width, height, task->depth, NULL);
   FntInitModule(task->density);
   FrmInitModule();
   InsPtInitModule();
@@ -3152,7 +3171,7 @@ int pumpkin_set_lockable(int lockable) {
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
-  int i, j, x, y, tx, ty, ev, tmp, len;
+  int i, j, x, y, tx, ty, ev, tmp, len, mult;
   int paused, wait, r = -1;
   void *bits;
   Int32 taskId;
@@ -3392,6 +3411,11 @@ int pumpkin_sys_event(void) {
           pumpkin_module.dragged = 1;
 
         } else if (i != -1 && pumpkin_module.tasks[i].active) {
+          mult = 1;
+          if (pumpkin_module.tasks[i].density == kDensityLow && pumpkin_module.density == kDensityDouble) {
+            mult = 2;
+          }
+
           if (pumpkin_module.locked) {
             if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[i].taskId, &tx, &ty) == 0) {
               x -= tx;
@@ -3399,7 +3423,7 @@ int pumpkin_sys_event(void) {
               if (x < 0) x = 0; else if (x >= pumpkin_module.tasks[i].width) x = pumpkin_module.tasks[i].width - 1;
               if (y < 0) y = 0; else if (y >= pumpkin_module.tasks[i].height) y = pumpkin_module.tasks[i].height - 1;
               if (pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) {
-                pumpkin_forward_msg(i, MSG_MOTION, x, y, 0);
+                pumpkin_forward_msg(i, MSG_MOTION, x/mult, y/mult, 0);
               }
               pumpkin_module.tasks[i].penX = x;
               pumpkin_module.tasks[i].penY = y;
@@ -3415,7 +3439,7 @@ int pumpkin_sys_event(void) {
                 // try not to flood the task with penMove events
                 if ((pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) &&
                     (now - pumpkin_module.tasks[i].lastMotion) > 5000) {
-                  pumpkin_forward_msg(i, MSG_MOTION, x, y, 0);
+                  pumpkin_forward_msg(i, MSG_MOTION, x/mult, y/mult, 0);
                   pumpkin_module.tasks[i].lastMotion = now;
                 }
                 pumpkin_module.tasks[i].penX = x;
@@ -3470,8 +3494,14 @@ void pumpkin_status(int *x, int *y, uint32_t *keyMask, uint32_t *modMask, uint32
   if (mutex_lock(mutex) == 0) {
     i = pumpkin_module.current_task;
     if (i != -1 && i == task->task_index) {
-      if (x) *x = pumpkin_module.tasks[i].penX;
-      if (y) *y = pumpkin_module.tasks[i].penY;
+      if (x) {
+        *x = pumpkin_module.tasks[i].penX;
+        if (task->density == kDensityLow && pumpkin_module.density == kDensityDouble) *x = *x / 2;
+      }
+      if (y) {
+        *y = pumpkin_module.tasks[i].penY;
+        if (task->density == kDensityLow && pumpkin_module.density == kDensityDouble) *y = *y / 2;
+      }
       if (keyMask) *keyMask = pumpkin_module.keyMask;
       if (modMask) *modMask = pumpkin_module.modMask;
       if (buttonMask) *buttonMask = pumpkin_module.buttonMask;
@@ -4081,6 +4111,13 @@ void pumpkin_screen_unlock(void *scr, int x0, int y0, int x1, int y1) {
   if (x1 > screen->x1) screen->x1 = x1;
   if (y1 > screen->y1) screen->y1 = y1;
 
+  if (task->density == kDensityLow && pumpkin_module.density == kDensityDouble) {
+    if (screen->x0 > 0) screen->x0 <<= 1;
+    if (screen->x1 > 0) screen->x1 = (screen->x1 << 1) + 1;
+    if (screen->y0 > 0) screen->y0 <<= 1;
+    if (screen->y1 > 0) screen->y1 = (screen->y1 << 1) + 1;
+  }
+
   if (screen->x0 < 0) screen->x0 = 0;
   else if (screen->x0 >= task->width) screen->x0 = task->width-1;
   if (screen->x1 < 0) screen->x1 = 0;
@@ -4121,38 +4158,59 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen;
   BitmapType *bmp;
+  Boolean dbl;
   Coord sx, sy;
+  int xd, yd, wd, hd;
 
   if (!task) return;
 
 //debug(1, "XXX", "pumpkin_screen_dirty (%d,%d,%d,%d) ...", x, y, w, h);
   if (wh) {
-    WinGetPosition(wh, &sx, &sy);
-    switch (pumpkin_module.density) {
-      case kDensityDouble: sx *= 2; sy *= 2; break;
-      default: break;
+    switch (task->density) {
+      case kDensityLow:
+        dbl = pumpkin_module.density == kDensityDouble;
+        break;
+      case kDensityDouble:
+        dbl = false;
+        break;
     }
 
     if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
-//debug(1, "XXX", "pumpkin_screen_dirty BmpDrawSurface (%d,%d,%d,%d) %d,%d", x, y, w, h, sx+x, sy+y);
-      bmp = WinGetBitmap(wh);
-      BmpDrawSurface(bmp, x, y, w, h, screen->surface, sx+x, sy+y, true);
+      WinGetPosition(wh, &sx, &sy);
+      if (pumpkin_module.density == kDensityDouble) {
+        sx <<= 1;
+        sy <<= 1;
+      }
 
-      x += sx;
-      y += sy;
+      if (dbl) {
+        xd = x << 1;
+        yd = y << 1;
+        wd = w << 1;
+        hd = h << 1;
+      } else {
+        xd = x;
+        yd = y;
+        wd = w;
+        hd = h;
+      }
+//debug(1, "XXX", "pumpkin_screen_dirty BmpDrawSurface (%d,%d,%d,%d) %d,%d", x, y, w, h, sx+x, sy+y);
+      xd += sx;
+      yd += sy;
+      bmp = WinGetBitmap(wh);
+      BmpDrawSurface(bmp, x, y, w, h, screen->surface, xd, yd, true, dbl);
 //debug(1, "XXX", "pumpkin_screen_dirty x=%d y=%d", x, y);
 //debug(1, "XXX", "pumpkin_screen_dirty dirty before (%d,%d,%d,%d)", screen->x0, screen->y0, screen->x1, screen->y1);
 
-      if (x < screen->x0) screen->x0 = x;
-      if (x+w-1 > screen->x1) screen->x1 = x+w-1;
+      if (xd < screen->x0) screen->x0 = xd;
+      if (xd+wd-1 > screen->x1) screen->x1 = xd+wd-1;
 
       if (screen->x0 < 0) screen->x0 = 0;
       else if (screen->x0 >= task->width) screen->x0 = task->width-1;
       if (screen->x1 < 0) screen->x1 = 0;
       else if (screen->x1 >= task->width) screen->x1 = task->width-1;
 
-      if (y < screen->y0) screen->y0 = y;
-      if (y+h-1 > screen->y1) screen->y1 = y+h-1;
+      if (yd < screen->y0) screen->y0 = yd;
+      if (yd+hd-1 > screen->y1) screen->y1 = yd+hd-1;
 
       if (screen->y0 < 0) screen->y0 = 0;
       else if (screen->y0 >= task->height) screen->y0 = task->height-1;
@@ -4989,7 +5047,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
   if ((surface = surface_create(wWidth, wHeight, SURFACE_ENCODING_ARGB)) != NULL) {
     oldDensity = BmpGetDensity(bmp);
     BmpSetDensity(bmp, kDensityLow);
-    BmpDrawSurface(bmp, 0, 0, wWidth, wHeight, surface, 0, 0, false);
+    BmpDrawSurface(bmp, 0, 0, wWidth, wHeight, surface, 0, 0, false, false);
     BmpSetDensity(bmp, oldDensity);
 
     card = VFS_CARD;

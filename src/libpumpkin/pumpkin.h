@@ -385,7 +385,7 @@ void pumpkin_load_plugins(void);
 pumpkin_plugin_t *pumpkin_get_plugin(UInt32 type, UInt32 id);
 void pumpkin_enum_plugins(UInt32 type, void (*callback)(pumpkin_plugin_t *plugin, void *data), void *data);
 
-FontType *pumpkin_get_font(FontID font);
+FontType *pumpkin_get_font(FontID font, UInt16 density);
 
 int pumpkin_clipboard_add_text(char *text, int length);
 int pumpkin_clipboard_append_text(char *text, int length);
@@ -492,7 +492,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
 void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl);
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc);
 BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error);
-void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp);
+void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp, Boolean dbl);
 IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y);
 UInt32 BmpGetPixelValue(BitmapType *bitmapP, Coord x, Coord y);
 Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP);

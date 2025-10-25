@@ -1822,13 +1822,24 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
   return err;
 }
 
-void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x, Coord y, Boolean useTransp) {
+static void BmpDrawSurfaceSetPixel(Coord x, Coord y, Coord i, Coord j, UInt32 c, Boolean dbl, surface_t *surface) {
+  if (dbl) {
+    surface->setpixel(surface->data, x+2*j, y+2*i, c);
+    surface->setpixel(surface->data, x+2*j, y+2*i+1, c);
+    surface->setpixel(surface->data, x+2*j+1, y+2*i, c);
+    surface->setpixel(surface->data, x+2*j+1, y+2*i+1, c);
+  } else {
+    surface->setpixel(surface->data, x+j, y+i, c);
+  }
+}
+
+void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, surface_t *surface, Coord x0, Coord y0, Boolean useTransp, Boolean dbl) {
   ColorTableType *colorTable;
   UInt32 offset, transparentValue, c;
   Int32 offsetb;
   UInt8 *bits, b, alpha, red, green, blue, gray;
   UInt16 depth, rowBytes, rgb;
-  Coord width, height, i, j, k;
+  Coord width, height, i, j, k, x, y;
   Boolean le, leBits, transp;
 
   if (bitmapP && surface && w > 0 && h > 0) {
@@ -1840,6 +1851,16 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
     bits = BmpGetBits(bitmapP);
 
     if (bits) {
+      // scale down surface coordinates (if needed)
+      if (dbl) {
+        x = x0 >> 1;
+        y = y0 >> 1;
+      } else {
+        x = x0;
+        y = y0;
+      }
+
+      // check bounds
       if (sx < 0) {
         w += sx;
         x -= sx;
@@ -1857,6 +1878,12 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
         h = height - sy;
       }
 
+      // scale up surface coordinates (if needed)
+      if (dbl) {
+        x0 = x << 1;
+        y0 = y << 1;
+      }
+
       if (w > 0 && h > 0) {
         transp = BmpGetTransparentValue(bitmapP, &transparentValue);
         depth = BmpGetBitDepth(bitmapP);
@@ -1871,7 +1898,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 b = bits[offset + k] & (1 << offsetb);
                 gray = gray1values[b ? 1 : 0];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
-                surface->setpixel(surface->data, x+j, y+i, c);
+                BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 offsetb--;
                 if (offsetb == -1) {
                   offsetb = 7;
@@ -1889,7 +1916,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 b = (bits[offset + k] & (3 << offsetb)) >> offsetb;
                 gray = gray2values[b];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
-                surface->setpixel(surface->data, x+j, y+i, c);
+                BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 offsetb -= 2;
                 if (offsetb == -2) {
                   offsetb = 6;
@@ -1909,7 +1936,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 b = (bits[offset + k] & (0xf << (4-offsetb))) >> (4-offsetb);
                 BmpIndexToRGB(b, &red, &green, &blue, colorTable);
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                surface->setpixel(surface->data, x+j, y+i, c);
+                BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 offsetb += 4;
                 if (offsetb == 8) {
                   offsetb = 0;
@@ -1928,7 +1955,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 if (!useTransp || !transp || b != transparentValue) {
                   BmpIndexToRGB(b, &red, &green, &blue, colorTable);
                   c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                  surface->setpixel(surface->data, x+j, y+i, c);
+                  BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 }
               }
             }
@@ -1946,7 +1973,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                   green = g565(rgb);
                   blue  = b565(rgb);
                   c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                  surface->setpixel(surface->data, x+j, y+i, c);
+                  BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 }
               }
             }
@@ -1960,7 +1987,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 blue  = bits[offset + k + 2];
                 if (!useTransp || !transp || rgb24(red, green, blue) != transparentValue) {
                   c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                  surface->setpixel(surface->data, x+j, y+i, c);
+                  BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 }
               }
             }
@@ -1974,7 +2001,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
                 green = bits[offset + k + 2];
                 blue  = bits[offset + k + 3];
                 c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, useTransp ? alpha : 0xff);
-                surface->setpixel(surface->data, x+j, y+i, c);
+                BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
               }
             }
             break;
