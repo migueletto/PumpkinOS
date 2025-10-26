@@ -404,6 +404,7 @@ typedef uint32 uint64;
 #define CALLBACK_PC_CHANGED  m68ki_cpu.pc_changed_callback
 #define CALLBACK_SET_FC      m68ki_cpu.set_fc_callback
 #define CALLBACK_INSTR_HOOK  m68ki_cpu.instr_hook_callback
+#define CALLBACK_INSTR_HOOK2 m68ki_cpu.instr_hook_callback2
 
 
 
@@ -554,6 +555,7 @@ typedef uint32 uint64;
 //		#define m68ki_instr_hook(pc) M68K_INSTRUCTION_CALLBACK(pc)
 //	#else
 		#define m68ki_instr_hook(pc) CALLBACK_INSTR_HOOK(pc)
+		#define m68ki_instr_hook2(pc) CALLBACK_INSTR_HOOK2(pc)
 //	#endif
 #else
 	#define m68ki_instr_hook(pc)
@@ -1008,6 +1010,7 @@ typedef struct
 	void (*pc_changed_callback)(unsigned int new_pc); /* Called when the PC changes by a large amount */
 	void (*set_fc_callback)(unsigned int new_fc);     /* Called when the CPU function code changes */
 	int (*instr_hook_callback)(unsigned int pc);      /* Called every instruction cycle prior to execution */
+	int (*instr_hook_callback2)(unsigned int pc);     /* Called every instruction cycle after execution */
 
   int palmos;
   int tos;

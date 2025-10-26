@@ -788,6 +788,12 @@ void m68k_set_instr_hook_callback(int  (*callback)(unsigned int pc))
 	CALLBACK_INSTR_HOOK = callback ? callback : default_instr_hook_callback;
 }
 
+void m68k_set_instr_hook2_callback(int  (*callback)(unsigned int pc))
+{
+  M68K_GET_STATE;
+	CALLBACK_INSTR_HOOK2 = callback ? callback : NULL;
+}
+
 /* Set the CPU type. */
 void m68k_set_cpu_type(unsigned int cpu_type)
 {
@@ -1025,6 +1031,8 @@ int m68k_execute(m68k_state_t *m68k_state, int num_cycles)
 			REG_IR = m68ki_read_imm_16();
 			m68ki_instruction_jump_table[REG_IR](m68k_state);
 			USE_CYCLES(CYC_INSTRUCTION[REG_IR]);
+
+			m68ki_instr_hook2(REG_PPC);
 
 			/* Trace m68k_exception, if necessary */
 			m68ki_exception_if_trace(); /* auto-disable (see m68kcpu.h) */

@@ -2,19 +2,24 @@
 #include "sys.h"
 
 #define memset    sys_memset
+#define memcpy    sys_memcpy
+#define qsort     sys_qsort
+#define vsnprintf sys_vsnprintf
 #define snprintf  sys_snprintf
+#define sprintf   sys_sprintf
 #define strcmp    sys_strcmp
 #define strcpy    sys_strcpy
 #define strlen    sys_strlen
 #define strncat   sys_strncat
+#define strcat    sys_strcat
 #define strdup    sys_strdup
-#define vsnprintf sys_vsnprintf
 #define va_list   sys_va_list
 #define va_start  sys_va_start
 #define va_end    sys_va_end
 
 #else
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -2071,6 +2076,8 @@
 
 #include "trapArgs.c"
 
+#include "m68kdasm.c"
+
 struct logtrap_t {
   logtrap_def def;
   char *appname;
@@ -2083,6 +2090,7 @@ struct logtrap_t {
   uint32_t log_f;
   int allTrapsInited;
   trap_t allTraps[0x10000];
+  m68k_disassemble_t dis;
 };
 
 typedef union {
@@ -2192,7 +2200,8 @@ static char *nav_traps[] = {
   "FrmNavObjectTakeFocus"
 };
 
-static void logtrap_hook(logtrap_t *lt, uint32_t pc, uint16_t trap);
+static void logtrap_hook(logtrap_t *lt, uint32_t pc);
+static void logtrap_hook2(logtrap_t *lt, uint32_t pc);
 static void logtrap_rethook(logtrap_t *lt, uint32_t pc);
 
 static char *event_name(uint16_t eType) {
@@ -2248,9 +2257,15 @@ logtrap_t *logtrap_init(logtrap_def *def) {
   lt->def.read16 = def->read16;
   lt->def.read32 = def->read32;
   lt->def.getreg = def->getreg;
+  lt->def.disasm = def->disasm;
   lt->def.data = def->data;
 
+  lt->dis.read16 = def->read16;
+  lt->dis.read32 = def->read32;
+  lt->dis.data = def->data;
+
   def->hook = logtrap_hook;
+  def->hook2 = logtrap_hook2;
   def->rethook = logtrap_rethook;
 
   for (i = 0; i < 0x10000; i++) {
@@ -2300,6 +2315,10 @@ void logtrap_start(logtrap_t *lt, char *appname) {
       lt->log_f = 1;
     }
   }
+}
+
+int logtrap_started(logtrap_t *lt) {
+  return lt ? lt->log_f : 0;
 }
 
 void logtrap_finish(logtrap_t *lt) {
@@ -2736,10 +2755,27 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
   }
 }
 
-static void logtrap_hook(logtrap_t *lt, uint32_t pc, uint16_t trap) {
-  char *s, buf[1024];
-  uint32_t sp, selector;
+static void hex_opcodes(logtrap_t *lt, char *buf, uint32_t pc, uint32_t length) {
+  char *ptr = buf;
 
+  for (; length > 0; length -= 2) {
+    sprintf(ptr, "%04x", lt->def.read16(pc, lt->def.data));
+    pc += 2;
+    ptr += 4;
+    if (length > 2) *ptr++ = ' ';
+  }
+}
+
+static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
+  uint32_t instruction, sp, selector;
+  char *s, buf[1024];
+  uint16_t trap;
+
+  instruction = lt->def.read16(pc, lt->def.data);
+  // check if it is a trap instruction
+  if (instruction != 0x4E4F) return;
+
+  trap = lt->def.read16(pc + 2, lt->def.data);
   sp = lt->def.getreg(logtrap_SP, lt->def.data);
 
   switch (trap) {
@@ -2771,7 +2807,7 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc, uint16_t trap) {
       break;
 
     default:
-      selector = lt->def.getreg(logtrap_D2, lt->def.data);
+      selector = lt->def.getreg(logtrap_D0 + 2, lt->def.data);
       if (lt->log_f) {
         if (lt->allTraps[trap].numsel == 0) {
           if (lt->allTraps[trap].rsize == 8) sp += 4;
@@ -2792,6 +2828,39 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc, uint16_t trap) {
   }
 }
 
+static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
+  uint32_t instr_size, used, r, d, i;
+  char buf[1024], buf2[128], aux[32], buf3[256];
+
+  if (lt->def.disasm) {
+    instr_size = m68k_disasm(&lt->dis, buf, pc, M68K_CPU_TYPE_68020, &used);
+    hex_opcodes(lt, buf2, pc, instr_size);
+    buf3[0] = 0;
+
+    if (used) {
+      strcpy(buf3, " (");
+      for (i = 0; i < 8; i++) {
+        r = logtrap_D0 + i;
+        if (used & (1 << r)) {
+          d = lt->def.getreg(r, lt->def.data);
+          snprintf(aux, sizeof(aux)-1, " D%u=%d 0x%08X", i, d, d);
+          strncat(buf3, aux, sizeof(buf3) - strlen(buf3) - 1);
+        }
+      }
+      for (i = 0; i < 8; i++) {
+        r = logtrap_A0 + i;
+        if (used & (1 << r)) {
+          snprintf(aux, sizeof(aux)-1, " A%u=0x%08X", i, lt->def.getreg(r, lt->def.data));
+          strncat(buf3, aux, sizeof(buf3) - strlen(buf3) - 1);
+        }
+      }
+      strncat(buf3, " )", sizeof(buf3) - strlen(buf3) - 1);
+    }
+
+    logtrap_log(lt, "%08X: %-20s: %s%s", pc, buf2, buf, buf3);
+  }
+}
+
 char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int follow) {
   char *name = "unknown";
   uint32_t d2, sp;
@@ -2800,7 +2869,7 @@ char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int fol
   *selector = 0xFFFF;
 
   if (lt->allTraps[trap].numsel > 0) {
-    d2 = lt->def.getreg(logtrap_D2, lt->def.data);
+    d2 = lt->def.getreg(logtrap_D0 + 2, lt->def.data);
     if (d2 <= lt->allTraps[trap].selectors[d2].maxsel) {
       name = follow ? lt->allTraps[trap].selectors[d2].name : lt->allTraps[trap].name;
       *selector = d2;

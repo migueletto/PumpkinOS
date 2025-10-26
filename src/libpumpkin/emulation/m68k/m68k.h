@@ -293,6 +293,7 @@ void m68k_set_fc_callback(void  (*callback)(unsigned int new_fc));
  * Default behavior: do nothing.
  */
 void m68k_set_instr_hook_callback(int  (*callback)(unsigned int pc));
+void m68k_set_instr_hook2_callback(int  (*callback)(unsigned int pc));
 
 
 
@@ -374,23 +375,6 @@ unsigned int m68k_get_reg(void* context, m68k_register_t reg);
 
 /* Poke values into the internals of the currently running CPU context */
 void m68k_set_reg(m68k_register_t reg, unsigned int value);
-
-/* Check if an instruction is valid for the specified CPU type */
-unsigned int m68k_is_valid_instruction(unsigned int instruction, unsigned int cpu_type);
-
-/* Disassemble 1 instruction using the epecified CPU type at pc.  Stores
- * disassembly in str_buff and returns the size of the instruction in bytes.
- */
-unsigned int m68k_disassemble(char* str_buff, unsigned int pc, unsigned int cpu_type);
-
-/* Same as above but accepts raw opcode data directly rather than fetching
- * via the read/write interfaces.
- */
-unsigned int m68k_disassemble_raw(char* str_buff, unsigned int pc, const unsigned char* opdata, const unsigned char* argdata, unsigned int cpu_type);
-
-void m68k_disassemble_range(unsigned int start, unsigned int end, unsigned int cpu_type);
-
-void m68k_make_hex(char *buf, unsigned int pc, unsigned int length);
 
 /* ======================================================================== */
 /* ============================== MAME STUFF ============================== */

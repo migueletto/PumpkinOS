@@ -507,25 +507,6 @@ static void write_long(uint32_t address, uint32_t value) {
 }
 
 static int cpu_instr_callback(unsigned int pc) {
-  emu_state_t *state = m68k_get_emu_state();
-  tos_data_t *data = (tos_data_t *)state->extra;
-  uint32_t instr_size, d[8], a[8];
-  char buf[128], buf2[128];
-  int i;
-
-  if (data->debug_m68k) {
-    instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68000);
-    m68k_make_hex(buf2, pc, instr_size);
-    for (i = 0; i < 8; i++) {
-      d[i] = m68k_get_reg(NULL, M68K_REG_D0 + i);
-      a[i] = m68k_get_reg(NULL, M68K_REG_A0 + i);
-    }
-    debug(DEBUG_TRACE, "M68K", "A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A4=0x%08X,A5=0x%08X,A6=0x%08X,A7=0x%08X",
-      a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
-    debug(DEBUG_TRACE, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d)",
-      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
-  }
-
   return 0;
 }
 
@@ -943,9 +924,9 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       );
 
       if (data.debug_m68k) {
-        debug(DEBUG_INFO, "TOS", "text disassembly begin");
-        m68k_disassemble_range(textStart, dataStart, M68K_CPU_TYPE_68000);
-        debug(DEBUG_INFO, "TOS", "text disassembly end");
+        //debug(DEBUG_INFO, "TOS", "text disassembly begin");
+        //m68k_disassemble_range(textStart, dataStart, M68K_CPU_TYPE_68000);
+        //debug(DEBUG_INFO, "TOS", "text disassembly end");
       }
 
       for (; !emupalmos_finished() && !thread_must_end();) {

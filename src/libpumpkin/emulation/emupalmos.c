@@ -260,8 +260,7 @@ uint16_t cpu_read_word(uint32_t address) {
   if (state->read_word) return state->read_word(address);
 
   if ((address & 1) == 0 && address >= size && address < (size + TRAPS_SIZE)) {
-    debug(DEBUG_TRACE, "EmuPalmOS", "returning RTS for address 0x%08X", address);
-    return 0x4E75; // RTS
+    return 0x4E75; // simulated a RTS for direct call to trap addresses
   }
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
@@ -1160,6 +1159,7 @@ void encode_notify(uint32_t notifyP, SysNotifyParamType *notify) {
 }
 
 static int cpu_instr_callback(unsigned int pc);
+static int cpu_instr_callback2(unsigned int pc);
 
 // unsigned long Call68KFuncType(const void *emulStateP, unsigned long trapOrFunction, const void *argsOnStackP, unsigned long argsSizeAndwantA0)
 static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint32_t argsOnStackP, uint32_t argsSizeAndwantA0) {
@@ -1226,6 +1226,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_set_reg(M68K_REG_A4, a4);
     m68k_set_reg(M68K_REG_A5, a5);
     m68k_set_instr_hook_callback(cpu_instr_callback);
+    m68k_set_instr_hook2_callback(cpu_instr_callback2);
 
     m68k_state = m68k_get_state();
     for (; !emupalmos_finished() && !thread_must_end();) {
@@ -1607,83 +1608,27 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
 }
 #endif
 
-static void make_hex(char *buf, unsigned int pc, unsigned int length) {
-  char *ptr = buf;
-
-  for (; length > 0; length -= 2) {
-    sys_sprintf(ptr, "%04x", cpu_read_word(pc));
-    pc += 2;
-    ptr += 4;
-    if (length > 2) *ptr++ = ' ';
-  }
-}
-
-/*
-static void print_regs(void) {
-  char buf[1024], aux[16];
-  uint32_t d[8], a[8];
-  int i;
-
-  d[0] = m68k_get_reg(NULL, M68K_REG_D0);
-  d[1] = m68k_get_reg(NULL, M68K_REG_D1);
-  d[2] = m68k_get_reg(NULL, M68K_REG_D2);
-  d[3] = m68k_get_reg(NULL, M68K_REG_D3);
-  d[4] = m68k_get_reg(NULL, M68K_REG_D4);
-  d[5] = m68k_get_reg(NULL, M68K_REG_D5);
-  d[6] = m68k_get_reg(NULL, M68K_REG_D6);
-  d[7] = m68k_get_reg(NULL, M68K_REG_D7);
-  a[0] = m68k_get_reg(NULL, M68K_REG_A0);
-  a[1] = m68k_get_reg(NULL, M68K_REG_A1);
-  a[2] = m68k_get_reg(NULL, M68K_REG_A2);
-  a[3] = m68k_get_reg(NULL, M68K_REG_A3);
-  a[4] = m68k_get_reg(NULL, M68K_REG_A4);
-  a[5] = m68k_get_reg(NULL, M68K_REG_A5);
-  a[6] = m68k_get_reg(NULL, M68K_REG_A6);
-  a[7] = m68k_get_reg(NULL, M68K_REG_A7);
-
-  buf[0] = 0;
-  for (i = 0; i < 8; i++) {
-    sys_sprintf(aux, " D%d=%08X", i, d[i]);
-    sys_strcat(buf, aux);
-  }
-  debug(DEBUG_INFO, "EmuPalmOS", "%s", buf);
-
-  buf[0] = 0;
-  for (i = 0; i < 8; i++) {
-    sys_sprintf(aux, " A%d=%08X", i, a[i]);
-    sys_strcat(buf, aux);
-  }
-  debug(DEBUG_INFO, "EmuPalmOS", "%s", buf);
-}
-*/
-
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t size = pumpkin_heap_size();
-  uint32_t instr_size, d[8], a0, a1, a2, a3, a4, a5, a6, a7;
-  uint16_t trap, selector, instruction;
-  char buf[128], buf2[128], *s;
-  int i;
+  uint16_t trap, selector;
+  char buf[128], *s;
 
-  //trapHook(pc, state);
-
-  if (state->ldef && state->lt) state->ldef->rethook(state->lt, pc);
-
-  instruction = m68k_read_memory_16(pc);
-  if (instruction == 0x4E4F) {
-    trap = m68k_read_memory_16(pc + 2);
-    if (state->ldef && state->lt) state->ldef->hook(state->lt, pc, trap);
+  if (state->ldef && state->lt) {
+    state->ldef->rethook(state->lt, pc);
+    state->ldef->hook(state->lt, pc);
   }
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
     trap = (pc - size) >> 2;
     if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct call to trap %s (pc 0x%08X)", s, pc);
+      if (logtrap_started(state->lt)) {
+        debug(DEBUG_INFO, "logtrap", "simulating a direct call to trap %s (pc 0x%08X)", s, pc);
+      }
       uint32_t a7 = m68k_get_reg(NULL, M68K_REG_A7);
       m68k_set_reg(M68K_REG_A7, a7+4);
       palmos_systrap(0xA000 | trap);
       m68k_set_reg(M68K_REG_A7, a7);
-      debug(DEBUG_TRACE, "EmuPalmOS", "returned from trap %s (pc 0x%08X)", s, pc);
       return 0;
     }
     sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X unknown (pc 0x%08X)", trap, pc);
@@ -1691,24 +1636,14 @@ static int cpu_instr_callback(unsigned int pc) {
     return -1;
   }
 
-  if (state->disasm) {
-    instr_size = m68k_disassemble(buf, pc, M68K_CPU_TYPE_68020);
-    make_hex(buf2, pc, instr_size);
-    for (i = 0; i <= M68K_REG_D7; i++) {
-      d[i] = m68k_get_reg(NULL, M68K_REG_D0 + i);
-    }
-    a0 = m68k_get_reg(NULL, M68K_REG_A0);
-    a1 = m68k_get_reg(NULL, M68K_REG_A1);
-    a2 = m68k_get_reg(NULL, M68K_REG_A2);
-    a3 = m68k_get_reg(NULL, M68K_REG_A3);
-    a4 = m68k_get_reg(NULL, M68K_REG_A4);
-    a5 = m68k_get_reg(NULL, M68K_REG_A5);
-    a6 = m68k_get_reg(NULL, M68K_REG_A6);
-    a7 = m68k_get_reg(NULL, M68K_REG_A7);
-    debug(DEBUG_INFO, "M68K", "A0=0x%08X,A1=0x%08X,A2=0x%08X,A3=0x%08X,A4=0x%08X,A5=0x%08X,A6=0x%08X,A7=0x%08X",
-      a0, a1, a2, a3, a4, a5, a6, a7);
-    debug(DEBUG_INFO, "M68K", "%08X: %-20s: %s (%d,%d,%d,%d,%d,%d,%d,%d)",
-      pc, buf2, buf, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+  return 0;
+}
+
+static int cpu_instr_callback2(unsigned int pc) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+
+  if (state->ldef && state->lt && state->ldef->hook2) {
+    state->ldef->hook2(state->lt, pc);
   }
 
   return 0;
@@ -1986,16 +1921,17 @@ static uint32_t logtrap_read32(uint32_t addr, void *data) {
 }
 
 static uint32_t logtrap_getreg(uint32_t reg, void *data) {
-  uint32_t value = 0;
-
-  switch (reg) {
-    case logtrap_A0: value = m68k_get_reg(NULL, M68K_REG_A0); break;
-    case logtrap_D0: value = m68k_get_reg(NULL, M68K_REG_D0); break;
-    case logtrap_D2: value = m68k_get_reg(NULL, M68K_REG_D2); break;
-    case logtrap_SP: value = m68k_get_reg(NULL, M68K_REG_SP); break;
+  if (reg == logtrap_SP) {
+    reg = M68K_REG_SP;
+  } else if (reg >= logtrap_A0 && reg < logtrap_A0 + 8) {
+    reg = M68K_REG_A0 + reg - logtrap_A0;
+  } else if (reg >= logtrap_D0 && reg < logtrap_D0 + 8) {
+    reg = M68K_REG_D0 + reg - logtrap_D0;
+  } else {
+    return 0;
   }
 
-  return value;
+  return m68k_get_reg(NULL, reg);
 }
 
 static void logtrap_install(emu_state_t *state, UInt32 creator) {
@@ -2014,6 +1950,7 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
       def->read16 = logtrap_read16;
       def->read32 = logtrap_read32;
       def->getreg = logtrap_getreg;
+      def->disasm = state->disasm;
  
       if ((lt = logtrap_init(def)) != NULL) {
         state->ldef = def;
@@ -2372,6 +2309,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       m68k_set_reg(M68K_REG_SP, a7);
       m68k_set_reg(M68K_REG_A5, a5);
       m68k_set_instr_hook_callback(cpu_instr_callback);
+      m68k_set_instr_hook2_callback(cpu_instr_callback2);
 
       palmos_systrap_init(state);
 
