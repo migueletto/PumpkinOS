@@ -1645,8 +1645,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       }
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
-//pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-//task->tracing = 1;
+      //task->tracing = 1;
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
         r = pumpkin_pilotmain(request->name, emupalmos_main, request->code, request->param, request->flags);
@@ -1654,6 +1653,7 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = emupalmos_main(request->code, request->param, request->flags);
       }
+      //task->tracing = 0;
       debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main \"%s\" returned %u", request->name, r);
       pumpkin_set_m68k(m68k);
     }
@@ -4906,7 +4906,7 @@ void pumpkin_trace(uint16_t trap) {
       case sysTrapWinRestoreBits:
       case sysTrapWinScrollRectangle:
         debug(DEBUG_INFO, PUMPKINOS, "tracing 0x%04X", trap);
-        SysTaskDelay(20);
+        SysTaskDelay(40);
         break;
     }
   }
