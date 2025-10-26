@@ -730,6 +730,12 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
     handleSize = textHandle ? MemHandleSize(textHandle) : 0;
     if (handleSize > fldP->maxChars) {
       fldP->maxChars = handleSize;
+      if (fldP->textBuf) {
+        fldP->textBuf = pumpkin_heap_realloc(fldP->textBuf, fldP->maxChars, "FieldTextBuf");
+        debug(DEBUG_TRACE, "Field", "FldSetText realloc textBuf=%p size=%d", fldP->textBuf, fldP->maxChars);
+        fldP->text = fldP->textBuf;
+        fldP->textLen = 0;
+      }
     }
 
     if (fldP->textBuf == NULL) {
