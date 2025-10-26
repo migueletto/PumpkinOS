@@ -1310,9 +1310,23 @@ void FrmSetFocus(FormType *formP, UInt16 fieldIndex) {
   }
 }
 
+//Return the visual bounds of the form; the region returned includes the form’s frame.
 void FrmGetFormBounds(const FormType *formP, RectangleType *rP) {
   if (formP && rP) {
     MemMove(rP, &formP->window.windowBounds, sizeof(RectangleType));
+
+    // if the form is modal, take into account the form's frame
+    if (formP->window.windowFlags.modal) {
+      if (formP->window.windowBounds.topLeft.x >= 2) {
+        rP->topLeft.x -= 2;
+        rP->extent.x += 4;
+      }
+      if (formP->window.windowBounds.topLeft.y >= 2) {
+        rP->topLeft.y -= 2;
+        rP->extent.y += 4;
+      }
+    }
+
     WinScaleRectangle(rP);
   }
 }
