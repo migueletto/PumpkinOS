@@ -1536,7 +1536,9 @@ Err BmpSetDensity(BitmapType *bitmapP, UInt16 density) {
 
 Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentValueP) {
   Boolean hasTransparentValue, r = false;
+  ColorTableType *colorTable;
   UInt16 colorTableSize;
+  UInt32 t;
   Boolean le;
 
   if (transparentValueP) *transparentValueP = 0;
@@ -1553,6 +1555,19 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
             if (hasTransparentValue) {
               colorTableSize =  BmpColortableSize(bitmapP);
               get4(transparentValueP, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
+
+              switch (BmpGetBitDepth(bitmapP)) {
+                case 16: // convert from RGB to 16 bits
+                  t = *transparentValueP;
+                  *transparentValueP = rgb565((t >> 16) & 0xff, (t >> 8) & 0xff, t & 0xff);
+                  break;
+                case 8: // convert from RGB to palette color
+                  colorTable = BmpGetColortable((BitmapType *)bitmapP);
+                  if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+                  t = *transparentValueP;
+                  *transparentValueP = BmpRGBToIndex((t >> 16) & 0xff, (t >> 8) & 0xff, t & 0xff, colorTable);
+                  break;
+              }
             } else {
               *transparentValueP = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldTransparentIndex);
             }
