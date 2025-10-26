@@ -190,7 +190,7 @@ void taskbar_update(taskbar_t *tb) {
   WinSetDrawWindow(oldDrawWindow);
   WinSetCoordinateSystem(prevCoordSys);
 
-  BmpDrawSurface(tb->bmp, 0, 0, tb->width, tb->height, tb->surface, 0, 0, true);
+  BmpDrawSurface(tb->bmp, 0, 0, tb->width, tb->height, tb->surface, 0, 0, true, false);
 }
 
 taskbar_t *taskbar_create(window_provider_t *wp, window_t *w, uint16_t density, uint32_t x, uint32_t y, uint32_t width, uint32_t height, int encoding) {

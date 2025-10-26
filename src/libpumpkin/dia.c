@@ -79,7 +79,7 @@ static void update_area(dia_t *dia, RectangleType *r, UInt16 y0) {
   uint8_t *raw;
   int len;
 
-  BmpDrawSurface(WinGetBitmap(dia->wh), r->topLeft.x, r->topLeft.y, r->extent.x, r->extent.y, dia->surface, r->topLeft.x, r->topLeft.y, true);
+  BmpDrawSurface(WinGetBitmap(dia->wh), r->topLeft.x, r->topLeft.y, r->extent.x, r->extent.y, dia->surface, r->topLeft.x, r->topLeft.y, true, false);
   raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
   dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, r->topLeft.x, r->topLeft.y, r->extent.x, r->extent.y);
   dia->wp->draw_texture_rect(dia->w, dia->graffiti,
@@ -283,7 +283,7 @@ static void draw_symbol(dia_t *dia, int cond, int s, int i) {
   WinPopDrawState();
   WinSetDrawWindow(prev);
 
-  BmpDrawSurface(WinGetBitmap(dia->wh), x, y, fw, fh, dia->surface, x, y, true);
+  BmpDrawSurface(WinGetBitmap(dia->wh), x, y, fw, fh, dia->surface, x, y, true, false);
 
   raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
   dia->wp->update_texture_rect(dia->w, dia->graffiti, raw, x, y, fw, fh);
@@ -376,7 +376,7 @@ int dia_update(dia_t *dia) {
     draw_graffiti_state(dia);
     draw_trigger(dia);
 
-    BmpDrawSurface(WinGetBitmap(dia->wh), 0, 0, dia->width, dia->graffiti_height, dia->surface, 0, 0, true);
+    BmpDrawSurface(WinGetBitmap(dia->wh), 0, 0, dia->width, dia->graffiti_height, dia->surface, 0, 0, true, false);
 
     raw = (uint8_t *)dia->surface->getbuffer(dia->surface->data, &len);
     dia->wp->update_texture(dia->w, dia->graffiti, raw);
