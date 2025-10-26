@@ -306,10 +306,10 @@ PDI_LIB PdiLibTrapWriterNew 0 PdiWriterType_* PdiWriterNew 3 UInt16 libRefnum UD
 PDI_LIB sysLibTrapClose 0 Err PdiLibClose 1 UInt16 libRefnum
 PDI_LIB sysLibTrapOpen 0 Err PdiLibOpen 1 UInt16 libRefnum
 SEL_TRAP sysTrapAccessorDispatch 0 ControlStyleType CtlGlueGetControlStyle 1 const_ControlType_* ctlP
-SEL_TRAP sysTrapAccessorDispatch 1 Boolean FldGlueGetLineInfo 4 const_FieldType_* fldP UInt16 lineNum UInt16_* startP UInt16_* lengthP
+SEL_TRAP sysTrapAccessorDispatch 1 Boolean FldGlueGetLineInfo 4 const_FieldType_* fldP UInt16 lineNum UInt16_* 1startP UInt16_* 1lengthP
 SEL_TRAP sysTrapAccessorDispatch 2 Boolean FrmGlueGetObjectUsable 2 const_FormType_* formP UInt16 objIndex
 SEL_TRAP sysTrapAccessorDispatch 3 BitmapCompressionType BmpGlueGetCompressionType 1 const_BitmapType_* bitmapP
-SEL_TRAP sysTrapAccessorDispatch 4 Boolean BmpGlueGetTransparentValue 2 const_BitmapType_* bitmapP UInt32_* transparentValueP
+SEL_TRAP sysTrapAccessorDispatch 4 Boolean BmpGlueGetTransparentValue 2 const_BitmapType_* bitmapP UInt32_* 1transparentValueP
 SEL_TRAP sysTrapAccessorDispatch 5 void BmpGlueSetTransparentValue 2 BitmapType_* bitmapP UInt32 transparentValue
 SEL_TRAP sysTrapAccessorDispatch 6 FontID CtlGlueGetFont 1 const_ControlType_* ctlP
 SEL_TRAP sysTrapAccessorDispatch 7 void CtlGlueSetFont 2 ControlType_* ctlP FontID fontID
@@ -430,20 +430,20 @@ SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpCreateBitmapV3 BitmapTypeV3_* B
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetCompressionType BitmapCompressionType BmpGetCompressionType 1 const_BitmapType_* bitmapP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetDensity UInt16 BmpGetDensity 1 const_BitmapType_* bitmapP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetNextBitmapAnyDensity BitmapType_* BmpGetNextBitmapAnyDensity 1 BitmapType_* bitmapP
-SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetTransparentValue Boolean BmpGetTransparentValue 2 const_BitmapType_* bitmapP UInt32_* transparentValueP
+SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetTransparentValue Boolean BmpGetTransparentValue 2 const_BitmapType_* bitmapP UInt32_* 1transparentValueP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpGetVersion UInt8 BmpGetVersion 1 const_BitmapType_* bitmapP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpSetDensity Err BmpSetDensity 2 BitmapType_* bitmapP UInt16 density
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorBmpSetTransparentValue void BmpSetTransparentValue 2 BitmapType_* bitmapP UInt32 transparentValue
-SEL_TRAP sysTrapHighDensityDispatch HDSelectorEvtGetPenNative void EvtGetPenNative 4 WinHandle winH Int16_* pScreenX Int16_* pScreenY Boolean_* pPenDown
+SEL_TRAP sysTrapHighDensityDispatch HDSelectorEvtGetPenNative void EvtGetPenNative 4 WinHandle winH Int16_* 1pScreenX Int16_* 1pScreenY Boolean_* 1pPenDown
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinGetCoordinateSystem UInt16 WinGetCoordinateSystem 0
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinGetScalingMode UInt32 WinGetScalingMode 0
-SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinGetSupportedDensity Err WinGetSupportedDensity 1 UInt16_* densityP
+SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinGetSupportedDensity Err WinGetSupportedDensity 1 UInt16_* 1densityP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinPaintRoundedRectangleFrame void WinPaintRoundedRectangleFrame 4 const_RectangleType_* rP Coord width Coord cornerRadius Coord shadowWidth
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinPaintTiledBitmap void WinPaintTiledBitmap 2 BitmapType_* bitmapP RectangleType_* rectP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinScaleCoord Coord WinScaleCoord 2 Coord coord Boolean ceiling
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinScalePoint void WinScalePoint 2 PointType_* pointP Boolean ceiling
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinScaleRectangle void WinScaleRectangle 1 RectangleType_* rectP
-SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinScreenGetAttribute Err WinScreenGetAttribute 2 WinScreenAttrType selector UInt32_* attrP
+SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinScreenGetAttribute Err WinScreenGetAttribute 2 WinScreenAttrType selector UInt32_* 1attrP
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinSetCoordinateSystem UInt16 WinSetCoordinateSystem 1 UInt16 coordSys
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinSetScalingMode UInt32 WinSetScalingMode 1 UInt32 mode
 SEL_TRAP sysTrapHighDensityDispatch HDSelectorWinUnscaleCoord Coord WinUnscaleCoord 2 Coord coord Boolean ceiling
@@ -1351,12 +1351,12 @@ SYS_TRAP sysTrapPwdExists 0 Boolean PwdExists 0
 SYS_TRAP sysTrapPwdRemove 0 void PwdRemove 0
 SYS_TRAP sysTrapPwdSet 0 void PwdSet 2 Char_* oldPassword Char_* newPassword
 SYS_TRAP sysTrapPwdVerify 0 Boolean PwdVerify 1 Char_* string
-SYS_TRAP sysTrapRctCopyRectangle 0 void RctCopyRectangle 2 const_RectangleType_* srcRectP RectangleType_* dstRectP
-SYS_TRAP sysTrapRctGetIntersection 0 void RctGetIntersection 3 const_RectangleType_* r1P const_RectangleType_* r2P RectangleType_* r3P
+SYS_TRAP sysTrapRctCopyRectangle 0 void RctCopyRectangle 2 const_RectangleType_* srcRectP RectangleType_* 1dstRectP
+SYS_TRAP sysTrapRctGetIntersection 0 void RctGetIntersection 3 const_RectangleType_* r1P const_RectangleType_* r2P RectangleType_* 1r3P
 SYS_TRAP sysTrapRctInsetRectangle 0 void RctInsetRectangle 2 RectangleType_* rP Coord insetAmt
 SYS_TRAP sysTrapRctOffsetRectangle 0 void RctOffsetRectangle 3 RectangleType_* rP Coord deltaX Coord deltaY
 SYS_TRAP sysTrapRctPtInRectangle 0 Boolean RctPtInRectangle 3 Coord x Coord y const_RectangleType_* rP
-SYS_TRAP sysTrapRctSetRectangle 0 void RctSetRectangle 5 RectangleType_* rP Coord left Coord top Coord width Coord height
+SYS_TRAP sysTrapRctSetRectangle 0 void RctSetRectangle 5 RectangleType_* 1rP Coord left Coord top Coord width Coord height
 SYS_TRAP sysTrapResLoadConstant 0 UInt32 ResLoadConstant 1 UInt16 rscID
 SYS_TRAP sysTrapResLoadForm 0 void_* ResLoadForm 1 UInt16 rscID
 SYS_TRAP sysTrapResLoadMenu 0 void_* ResLoadMenu 1 UInt16 rscID
@@ -1585,7 +1585,7 @@ SYS_TRAP sysTrapTimDateTimeToSeconds 0 UInt32 TimDateTimeToSeconds 1 const_DateT
 SYS_TRAP sysTrapTimGetSeconds 0 UInt32 TimGetSeconds 0
 SYS_TRAP sysTrapTimGetTicks 0 UInt32 TimGetTicks 0
 SYS_TRAP sysTrapTimInit 0 Err TimInit 0
-SYS_TRAP sysTrapTimSecondsToDateTime 0 void TimSecondsToDateTime 2 UInt32 seconds DateTimeType_* dateTimeP
+SYS_TRAP sysTrapTimSecondsToDateTime 0 void TimSecondsToDateTime 2 UInt32 seconds DateTimeType_* 1dateTimeP
 SYS_TRAP sysTrapTimSetSeconds 0 void TimSetSeconds 1 UInt32 seconds
 SYS_TRAP sysTrapTimTimeZoneToUTC 0 UInt32 TimTimeZoneToUTC 3 UInt32 seconds Int16 timeZone Int16 daylightSavingAdjustment
 SYS_TRAP sysTrapTimUTCToTimeZone 0 UInt32 TimUTCToTimeZone 3 UInt32 seconds Int16 timeZone Int16 daylightSavingAdjustment
@@ -1632,20 +1632,20 @@ SYS_TRAP sysTrapWinFillRectangle 0 void WinFillRectangle 2 const_RectangleType_*
 SYS_TRAP sysTrapWinGetActiveWindow 0 WinHandle WinGetActiveWindow 0
 SYS_TRAP sysTrapWinGetBitmap 0 BitmapType_* WinGetBitmap 1 WinHandle winHandle
 SYS_TRAP sysTrapWinGetBounds 0 void WinGetBounds 2 WinHandle winH RectangleType_* 1rP
-SYS_TRAP sysTrapWinGetClip 0 void WinGetClip 1 RectangleType_* rP
+SYS_TRAP sysTrapWinGetClip 0 void WinGetClip 1 RectangleType_* 1rP
 SYS_TRAP sysTrapWinGetDisplayExtent 0 void WinGetDisplayExtent 2 Coord_* 1extentX Coord_* 1extentY
 SYS_TRAP sysTrapWinGetDisplayWindow 0 WinHandle WinGetDisplayWindow 0
 SYS_TRAP sysTrapWinGetDrawWindow 0 WinHandle WinGetDrawWindow 0
-SYS_TRAP sysTrapWinGetDrawWindowBounds 0 void WinGetDrawWindowBounds 1 RectangleType_* rP
+SYS_TRAP sysTrapWinGetDrawWindowBounds 0 void WinGetDrawWindowBounds 1 RectangleType_* 1rP
 SYS_TRAP sysTrapWinGetFirstWindow 0 WinHandle WinGetFirstWindow 0
-SYS_TRAP sysTrapWinGetFramesRectangle 0 void WinGetFramesRectangle 3 FrameType frame const_RectangleType_* rP RectangleType_* obscuredRect
-SYS_TRAP sysTrapWinGetPattern 0 void WinGetPattern 1 CustomPatternType_* patternP
+SYS_TRAP sysTrapWinGetFramesRectangle 0 void WinGetFramesRectangle 3 FrameType frame const_RectangleType_* rP RectangleType_* 1obscuredRect
+SYS_TRAP sysTrapWinGetPattern 0 void WinGetPattern 1 CustomPatternType_* 1patternP
 SYS_TRAP sysTrapWinGetPatternType 0 PatternType WinGetPatternType 0
 SYS_TRAP sysTrapWinGetPixel 0 IndexedColorType WinGetPixel 2 Coord x Coord y
-SYS_TRAP sysTrapWinGetPixelRGB 0 Err WinGetPixelRGB 3 Coord x Coord y RGBColorType_* rgbP
-SYS_TRAP sysTrapWinGetWindowExtent 0 void WinGetWindowExtent 2 Coord_* extentX Coord_* extentY
-SYS_TRAP sysTrapWinGetWindowFrameRect 0 void WinGetWindowFrameRect 2 WinHandle winHandle RectangleType_* r
-SYS_TRAP sysTrapWinIndexToRGB 0 void WinIndexToRGB 2 IndexedColorType i RGBColorType_* rgbP
+SYS_TRAP sysTrapWinGetPixelRGB 0 Err WinGetPixelRGB 3 Coord x Coord y RGBColorType_* 1rgbP
+SYS_TRAP sysTrapWinGetWindowExtent 0 void WinGetWindowExtent 2 Coord_* 1extentX Coord_* 1extentY
+SYS_TRAP sysTrapWinGetWindowFrameRect 0 void WinGetWindowFrameRect 2 WinHandle winHandle RectangleType_* 1r
+SYS_TRAP sysTrapWinIndexToRGB 0 void WinIndexToRGB 2 IndexedColorType i RGBColorType_* 1rgbP
 SYS_TRAP sysTrapWinInitializeWindow 0 void WinInitializeWindow 1 WinHandle winHandle
 SYS_TRAP sysTrapWinInvertChars 0 void WinInvertChars 4 const_Char_* chars Int16 len Coord x Coord y
 SYS_TRAP sysTrapWinInvertLine 0 void WinInvertLine 4 Coord x1 Coord y1 Coord x2 Coord y2
@@ -1675,24 +1675,24 @@ SYS_TRAP sysTrapWinScreenInit 0 void WinScreenInit 0
 SYS_TRAP sysTrapWinScreenLock 0 UInt8_* WinScreenLock 1 WinLockInitType initMode
 SYS_TRAP sysTrapWinScreenMode 0 Err WinScreenMode 5 WinScreenModeOperation operation UInt32_* 1widthP UInt32_* 1heightP UInt32_* 1depthP Boolean_* 1enableColorP
 SYS_TRAP sysTrapWinScreenUnlock 0 void WinScreenUnlock 0
-SYS_TRAP sysTrapWinScrollRectangle 0 void WinScrollRectangle 4 const_RectangleType_* rP WinDirectionType direction Coord distance RectangleType_* vacatedP
+SYS_TRAP sysTrapWinScrollRectangle 0 void WinScrollRectangle 4 const_RectangleType_* rP WinDirectionType direction Coord distance RectangleType_* 1vacatedP
 SYS_TRAP sysTrapWinSetActiveWindow 0 void WinSetActiveWindow 1 WinHandle winHandle
 SYS_TRAP sysTrapWinSetBackColor 0 IndexedColorType WinSetBackColor 1 IndexedColorType backColor
-SYS_TRAP sysTrapWinSetBackColorRGB 0 void WinSetBackColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* prevRgbP
+SYS_TRAP sysTrapWinSetBackColorRGB 0 void WinSetBackColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* 1prevRgbP
 SYS_TRAP sysTrapWinSetBounds 0 void WinSetBounds 2 WinHandle winHandle const_RectangleType_* rP
 SYS_TRAP sysTrapWinSetClip 0 void WinSetClip 1 const_RectangleType_* rP
-SYS_TRAP sysTrapWinSetColors 0 void WinSetColors 4 const_RGBColorType_* newForeColorP RGBColorType_* oldForeColorP const_RGBColorType_* newBackColorP RGBColorType_* oldBackColorP
+SYS_TRAP sysTrapWinSetColors 0 void WinSetColors 4 const_RGBColorType_* newForeColorP RGBColorType_* 1oldForeColorP const_RGBColorType_* newBackColorP RGBColorType_* 1oldBackColorP
 SYS_TRAP sysTrapWinSetDrawMode 0 WinDrawOperation WinSetDrawMode 1 WinDrawOperation newMode
 SYS_TRAP sysTrapWinSetDrawWindow 0 WinHandle WinSetDrawWindow 1 WinHandle winHandle
 SYS_TRAP sysTrapWinSetForeColor 0 IndexedColorType WinSetForeColor 1 IndexedColorType foreColor
-SYS_TRAP sysTrapWinSetForeColorRGB 0 void WinSetForeColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* prevRgbP
+SYS_TRAP sysTrapWinSetForeColorRGB 0 void WinSetForeColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* 1prevRgbP
 SYS_TRAP sysTrapWinSetPattern 0 void WinSetPattern 1 const_CustomPatternType_* patternP
 SYS_TRAP sysTrapWinSetPatternType 0 void WinSetPatternType 1 PatternType newPattern
 SYS_TRAP sysTrapWinSetTextColor 0 IndexedColorType WinSetTextColor 1 IndexedColorType textColor
-SYS_TRAP sysTrapWinSetTextColorRGB 0 void WinSetTextColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* prevRgbP
+SYS_TRAP sysTrapWinSetTextColorRGB 0 void WinSetTextColorRGB 2 const_RGBColorType_* newRgbP RGBColorType_* 1prevRgbP
 SYS_TRAP sysTrapWinSetUnderlineMode 0 UnderlineModeType WinSetUnderlineMode 1 UnderlineModeType mode
 SYS_TRAP sysTrapWinValidateHandle 0 Boolean WinValidateHandle 1 WinHandle winHandle
-SYS_TRAP sysTrapWinWindowToDisplayPt 0 void WinWindowToDisplayPt 2 Coord_* extentX Coord_* extentY
+SYS_TRAP sysTrapWinWindowToDisplayPt 0 void WinWindowToDisplayPt 2 Coord_* 1extentX Coord_* 1extentY
 # undocumented system traps:
 SYS_TRAP sysTrapMemStoreInit 0 void MemStoreInit 0
 SYS_TRAP sysTrapMemHeapPtr 0 void MemHeapPtr 0
