@@ -20,7 +20,6 @@
 #include "storage.h"
 #include "DDm.h"
 #include "pumpkin.h"
-#include "emulation/emupalmosinc.h"
 #include "tos.h"
 #include "debug.h"
 

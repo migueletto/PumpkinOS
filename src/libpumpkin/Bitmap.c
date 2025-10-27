@@ -16,7 +16,6 @@
 #include "pumpkin.h"
 #include "debug.h"
 #include "xalloc.h"
-#include "emupalmosinc.h"
 
 typedef enum {
   BitmapFlagCompressed,
