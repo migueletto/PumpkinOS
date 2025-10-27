@@ -10,6 +10,7 @@
 #include "wav.h"
 #include "bytes.h"
 #include "ptr.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 #include "pumpkin.h"
 #include "debug.h"

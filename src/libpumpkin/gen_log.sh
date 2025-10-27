@@ -165,31 +165,6 @@ BEGIN {
   print "#define OMIT_OUT 2" >> trapArgs;
   print "" >> trapArgs;
 
-  print "typedef struct {" >> trapArgs;
-  print "  uint16_t type;" >> trapArgs;
-  print "  uint16_t ptr;" >> trapArgs;
-  print "  uint16_t size;" >> trapArgs;
-  print "  uint16_t io;" >> trapArgs;
-  print "  char *name;" >> trapArgs;
-  print "} trap_arg_t;" >> trapArgs;
-  print "" >> trapArgs;
-
-  print "typedef struct trap_t {" >> trapArgs;
-  print "  uint16_t trap;" >> trapArgs;
-  print "  int16_t selector;" >> trapArgs;
-  print "  char *name;" >> trapArgs;
-  print "  uint16_t rtype;" >> trapArgs;
-  print "  uint16_t rptr;" >> trapArgs;
-  print "  uint16_t rsize;" >> trapArgs;
-  print "  uint16_t nargs;" >> trapArgs;
-  print "  trap_arg_t args[16];" >> trapArgs;
-  print "  uint16_t capsel;" >> trapArgs;
-  print "  uint16_t numsel;" >> trapArgs;
-  print "  uint16_t maxsel;" >> trapArgs;
-  print "  struct trap_t *selectors;" >> trapArgs;
-  print "} trap_t;" >> trapArgs;
-  print "" >> trapArgs;
-
   print "static trap_t trapArgs[] = {" >> trapArgs;
 }
 /^#/ {

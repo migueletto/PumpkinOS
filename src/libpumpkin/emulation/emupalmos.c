@@ -1610,13 +1610,15 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
 
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  logtrap_def *def;
   uint32_t size = pumpkin_heap_size();
   uint16_t trap, selector;
   char buf[128], *s;
 
-  if (state->ldef && state->lt) {
-    state->ldef->rethook(state->lt, pc);
-    state->ldef->hook(state->lt, pc);
+  def = logtrap_get_def();
+  if (def && state->lt) {
+    def->rethook(state->lt, pc);
+    def->hook(state->lt, pc);
   }
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
@@ -1641,9 +1643,12 @@ static int cpu_instr_callback(unsigned int pc) {
 
 static int cpu_instr_callback2(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  logtrap_def *def;
 
-  if (state->ldef && state->lt && state->ldef->hook2) {
-    state->ldef->hook2(state->lt, pc);
+  def = logtrap_get_def();
+
+  if (def && state->lt && def->hook2) {
+    def->hook2(state->lt, pc);
   }
 
   return 0;
@@ -1698,9 +1703,60 @@ static void emupalmos_destroy(emu_state_t *state) {
   }
 }
 
-int emupalmos_init(void) {
+static void *logtrap_alloc(uint32_t size, void *data) {
+  return sys_calloc(1, size);
+} 
+  
+static void *logtrap_realloc(void *p, uint32_t size, void *data) {
+  return sys_realloc(p, size);
+} 
+  
+static void logtrap_free(void *p, void *data) {
+  sys_free(p);
+} 
+
+static void logtrap_print(char *s, void *data) {
+  debug(DEBUG_INFO, "logtrap", "%s", s);
+} 
+        
+static uint8_t logtrap_read8(uint32_t addr, void *data) {
+  return cpu_read_byte(addr);
+}         
+
+static uint16_t logtrap_read16(uint32_t addr, void *data) {
+  return cpu_read_word(addr);
+} 
+  
+static uint32_t logtrap_read32(uint32_t addr, void *data) {
+  return cpu_read_long(addr);
+}
+
+static uint32_t logtrap_getreg(uint32_t reg, void *data) {
+  if (reg == logtrap_SP) {
+    reg = M68K_REG_SP;
+  } else if (reg >= logtrap_A0 && reg < logtrap_A0 + 8) {
+    reg = M68K_REG_A0 + reg - logtrap_A0;
+  } else if (reg >= logtrap_D0 && reg < logtrap_D0 + 8) {
+    reg = M68K_REG_D0 + reg - logtrap_D0;
+  } else {
+    return 0;
+  }
+
+  return m68k_get_reg(NULL, reg);
+}
+
+int emupalmos_init(logtrap_def *def) {
+  def->alloc = logtrap_alloc;
+  def->realloc = logtrap_realloc;
+  def->free = logtrap_free;
+  def->print = logtrap_print;
+  def->read8 = logtrap_read8;
+  def->read16 = logtrap_read16;
+  def->read32 = logtrap_read32;
+  def->getreg = logtrap_getreg;
+  logtrap_global_init(def);
+
   m68k_init_once();
-  //allTrapsInit();
 
   return 0;
 }
@@ -1892,48 +1948,6 @@ static void freeParamBlock(uint16_t launchCode, uint8_t *p) {
   }
 }
 
-static void *logtrap_alloc(uint32_t size, void *data) {
-  return sys_calloc(1, size);
-}
-
-static void *logtrap_realloc(void *p, uint32_t size, void *data) {
-  return sys_realloc(p, size);
-}
-
-static void logtrap_free(void *p, void *data) {
-  sys_free(p);
-}
-
-static void logtrap_print(char *s, void *data) {
-  debug(DEBUG_INFO, "logtrap", "%s", s);
-}
-
-static uint8_t logtrap_read8(uint32_t addr, void *data) {
-  return cpu_read_byte(addr);
-}
-
-static uint16_t logtrap_read16(uint32_t addr, void *data) {
-  return cpu_read_word(addr);
-}
-
-static uint32_t logtrap_read32(uint32_t addr, void *data) {
-  return cpu_read_long(addr);
-}
-
-static uint32_t logtrap_getreg(uint32_t reg, void *data) {
-  if (reg == logtrap_SP) {
-    reg = M68K_REG_SP;
-  } else if (reg >= logtrap_A0 && reg < logtrap_A0 + 8) {
-    reg = M68K_REG_A0 + reg - logtrap_A0;
-  } else if (reg >= logtrap_D0 && reg < logtrap_D0 + 8) {
-    reg = M68K_REG_D0 + reg - logtrap_D0;
-  } else {
-    return 0;
-  }
-
-  return m68k_get_reg(NULL, reg);
-}
-
 static void logtrap_install(emu_state_t *state, UInt32 creator) {
   logtrap_def *def;
   logtrap_t *lt;
@@ -1941,30 +1955,16 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
   char *logtrap;
 
   if (state) {
-    if ((def = sys_calloc(1, sizeof(logtrap_def))) != NULL) {
-      def->alloc = logtrap_alloc;
-      def->realloc = logtrap_realloc;
-      def->free = logtrap_free;
-      def->print = logtrap_print;
-      def->read8 = logtrap_read8;
-      def->read16 = logtrap_read16;
-      def->read32 = logtrap_read32;
-      def->getreg = logtrap_getreg;
-      def->disasm = state->disasm;
- 
-      if ((lt = logtrap_init(def)) != NULL) {
-        state->ldef = def;
-        state->lt = lt;
+    def = logtrap_get_def();
+    if ((lt = logtrap_init(def)) != NULL) {
+      state->lt = lt;
 
-        if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
-          pumpkin_s2id(&logtrap_creator, logtrap);
-          if (logtrap_creator == creator) {
-            debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
-            logtrap_start(lt, NULL);
-          }
+      if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
+        pumpkin_s2id(&logtrap_creator, logtrap);
+        if (logtrap_creator == creator) {
+          debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
+          logtrap_start(lt, state->disasm, NULL);
         }
-      } else {
-        sys_free(def);
       }
     }
   }
@@ -1974,9 +1974,7 @@ static void logtrap_deinstall(emu_state_t *state) {
   if (state) {
     if (state->lt) {
       logtrap_finish(state->lt);
-      if (state->ldef) sys_free(state->ldef);
       state->lt = NULL;
-      state->ldef = NULL;
     }
   }
 }

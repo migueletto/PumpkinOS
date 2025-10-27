@@ -5,6 +5,7 @@
 #include "pwindow.h"
 #include "vfs.h"
 #include "pumpkin.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 #include "debug.h"
 

@@ -4,6 +4,7 @@
 #include "RAM.h"
 #include "CPU.h"
 #include "soc_IC.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 #include "debug.h"
 #include "xalloc.h"

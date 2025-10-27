@@ -7,6 +7,7 @@
 #include "MMU.h"
 #include "armem.h"
 #include "darm.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 #include "disasm.h"
 #include "debug.h"

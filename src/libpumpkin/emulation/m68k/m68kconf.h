@@ -198,6 +198,7 @@
 
 
 #include "sys.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 
 #define m68k_read_memory_8(A) cpu_read_byte(A)

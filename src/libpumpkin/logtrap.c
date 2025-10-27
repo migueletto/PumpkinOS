@@ -2079,7 +2079,17 @@
 #include "m68kdasm.c"
 
 struct logtrap_t {
-  logtrap_def def;
+  void *(*alloc)(uint32_t size, void *data);
+  void *(*realloc)(void *p, uint32_t size, void *data);
+  void (*free)(void *p, void *data);
+  void (*print)(char *s, void *data);
+  uint8_t (*read8)(uint32_t addr, void *data);
+  uint16_t (*read16)(uint32_t addr, void *data);
+  uint32_t (*read32)(uint32_t addr, void *data);
+  uint32_t (*getreg)(uint32_t reg, void *data);
+  int disasm;
+  void *data;
+
   char *appname;
   uint32_t stackp;
   uint32_t stack[MAX_STACK];
@@ -2088,8 +2098,7 @@ struct logtrap_t {
   uint32_t log_dbID;
   uint32_t log_dbRef;
   uint32_t log_f;
-  int allTrapsInited;
-  trap_t allTraps[0x10000];
+  trap_t *allTraps;
   m68k_disassemble_t dis;
 };
 
@@ -2238,76 +2247,81 @@ static void logtrap_log(logtrap_t *lt, char *fmt, ...) {
   }
   buf[j] = 0;
 
-  lt->def.print(buf, lt->def.data);
+  lt->print(buf, lt->data);
 }
 
-logtrap_t *logtrap_init(logtrap_def *def) {
-  logtrap_t *lt;
+int logtrap_global_init(logtrap_def *def) {
   uint32_t trap, selector, i;
-
-  if (def == NULL || (lt = def->alloc(sizeof(logtrap_t), def->data)) == NULL) {
-    return NULL;
-  }
-
-  lt->def.alloc = def->alloc;
-  lt->def.realloc = def->realloc;
-  lt->def.free = def->free;
-  lt->def.print = def->print;
-  lt->def.read8 = def->read8;
-  lt->def.read16 = def->read16;
-  lt->def.read32 = def->read32;
-  lt->def.getreg = def->getreg;
-  lt->def.disasm = def->disasm;
-  lt->def.data = def->data;
-
-  lt->dis.read16 = def->read16;
-  lt->dis.read32 = def->read32;
-  lt->dis.data = def->data;
 
   def->hook = logtrap_hook;
   def->hook2 = logtrap_hook2;
   def->rethook = logtrap_rethook;
 
   for (i = 0; i < 0x10000; i++) {
-    memset(&lt->allTraps[i], 0, sizeof(trap_t));
-    lt->allTraps[i].name = "unknown";
+    def->allTraps[i].name = "unknown";
   }
 
   for (i = 0; trapArgs[i].name; i++) {
     trap = trapArgs[i].trap;
     selector = trapArgs[i].selector;
     if (selector == (uint32_t)-1) {
-      lt->allTraps[trap] = trapArgs[i];
+      def->allTraps[trap] = trapArgs[i];
     } else {
-      if (lt->allTraps[trap].trap == 0) {
-        lt->allTraps[trap].trap = trap;
-        lt->allTraps[trap].name = "dispatch";
-        lt->allTraps[trap].capsel = selector < 256 ? 256 : selector + 256;
-        lt->allTraps[trap].numsel = 1;
-        if (selector > lt->allTraps[trap].maxsel) lt->allTraps[trap].maxsel = selector;
-        lt->allTraps[trap].selectors = (trap_t *)def->alloc(lt->allTraps[trap].capsel * sizeof(trap_t), def->data);
-        lt->allTraps[trap].selectors[selector] = trapArgs[i];
+      if (def->allTraps[trap].trap == 0) {
+        def->allTraps[trap].trap = trap;
+        def->allTraps[trap].name = "dispatch";
+        def->allTraps[trap].capsel = selector < 64 ? 64 : selector + 64;
+        def->allTraps[trap].numsel = 1;
+        if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
+        def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
+        def->allTraps[trap].selectors[selector] = trapArgs[i];
       } else {
-        if (selector >= lt->allTraps[trap].capsel) {
-          lt->allTraps[trap].capsel = selector + 256;
-          if (lt->allTraps[trap].selectors) {
-            lt->allTraps[trap].selectors = (trap_t *)def->realloc(lt->allTraps[trap].selectors, lt->allTraps[trap].capsel * sizeof(trap_t), def->data);
+        if (selector >= def->allTraps[trap].capsel) {
+          def->allTraps[trap].capsel = selector + 64;
+          if (def->allTraps[trap].selectors) {
+            def->allTraps[trap].selectors = (trap_t *)def->realloc(def->allTraps[trap].selectors, def->allTraps[trap].capsel * sizeof(trap_t), def->data);
           } else {
-            lt->allTraps[trap].selectors = (trap_t *)def->alloc(lt->allTraps[trap].capsel * sizeof(trap_t), def->data);
+            def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
           }
         }
-        lt->allTraps[trap].selectors[selector] = trapArgs[i];
-        lt->allTraps[trap].numsel++;
-        if (selector > lt->allTraps[trap].maxsel) lt->allTraps[trap].maxsel = selector;
+        def->allTraps[trap].selectors[selector] = trapArgs[i];
+        def->allTraps[trap].numsel++;
+        if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
       }
     }
+  }
+
+  return 0;
+}
+
+logtrap_t *logtrap_init(logtrap_def *def) {
+  logtrap_t *lt = NULL;
+
+  if (def != NULL && (lt = def->alloc(sizeof(logtrap_t), def->data)) != NULL) {
+    lt->alloc = def->alloc;
+    lt->realloc = def->realloc;
+    lt->free = def->free;
+    lt->print = def->print;
+    lt->read8 = def->read8;
+    lt->read16 = def->read16;
+    lt->read32 = def->read32;
+    lt->getreg = def->getreg;
+    lt->data = def->data;
+
+    lt->allTraps = def->allTraps;
+
+    lt->dis.read16 = def->read16;
+    lt->dis.read32 = def->read32;
+    lt->dis.data = def->data;
   }
 
   return lt;
 }
 
-void logtrap_start(logtrap_t *lt, char *appname) {
+void logtrap_start(logtrap_t *lt, int disasm, char *appname) {
   if (lt) {
+    lt->disasm = disasm;
+
     if (appname) {
       lt->appname = strdup(appname);
       lt->log_f = 0;
@@ -2322,14 +2336,9 @@ int logtrap_started(logtrap_t *lt) {
 }
 
 void logtrap_finish(logtrap_t *lt) {
-  uint32_t i;
-
   if (lt) {
-    for (i = 0; i < 0x10000; i++) {
-      if (lt->allTraps[i].selectors) lt->def.free(lt->allTraps[i].selectors, lt->def.data);
-    }
-    if (lt->appname) lt->def.free(lt->appname, lt->def.data);
-    lt->def.free(lt, lt->def.data);
+    if (lt->appname) lt->free(lt->appname, lt->data);
+    lt->free(lt, lt->data);
   }
 }
 
@@ -2374,7 +2383,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_STR:
           if (printarg) {
             for (j = 0; j < sizeof(str) - 1; j++) {
-              str[j] = lt->def.read8(value + j, lt->def.data);
+              str[j] = lt->read8(value + j, lt->data);
               if (str[j] == 0) break;
             }
             str[j] = 0;
@@ -2385,9 +2394,9 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           break;
         case T_RGB:
           if (printarg) {
-            red   = lt->def.read8(value + 1, lt->def.data);
-            green = lt->def.read8(value + 2, lt->def.data);
-            blue  = lt->def.read8(value + 3, lt->def.data);
+            red   = lt->read8(value + 1, lt->data);
+            green = lt->read8(value + 2, lt->data);
+            blue  = lt->read8(value + 3, lt->data);
             snprintf(aux, len - 1, "rgb{ptr_%08X %d,%d,%d}", value, red, green, blue);
           } else {
             snprintf(aux, len - 1, "rgb{ptr_%08X}", value);
@@ -2395,7 +2404,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         break;
         case T_EVT:
           if (printarg) {
-            etype = lt->def.read16(value, lt->def.data);
+            etype = lt->read16(value, lt->data);
             ename = event_name(etype);
             if (ename) {
               snprintf(aux, len - 1, "event{ptr_%08X %d 0x%04X %s}", value, etype, etype, ename);
@@ -2408,10 +2417,10 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           break;
         case T_RCT:
           if (printarg) {
-            x = lt->def.read16(value, lt->def.data);
-            y = lt->def.read16(value + 2, lt->def.data);
-            dx = lt->def.read16(value + 4, lt->def.data);
-            dy = lt->def.read16(value + 6, lt->def.data);
+            x = lt->read16(value, lt->data);
+            y = lt->read16(value + 2, lt->data);
+            dx = lt->read16(value + 4, lt->data);
+            dy = lt->read16(value + 6, lt->data);
             snprintf(aux, len - 1, "rect{ptr_%08X %d,%d,%d,%d}", value, x, y, dx, dy);
           } else {
             snprintf(aux, len - 1, "rect{ptr_%08X}", value);
@@ -2419,13 +2428,13 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           break;
         case T_DATE:
           if (printarg) {
-            sec  = lt->def.read16(value,      lt->def.data);
-            min  = lt->def.read16(value +  2, lt->def.data);
-            hour = lt->def.read16(value +  4, lt->def.data);
-            day  = lt->def.read16(value +  6, lt->def.data);
-            mon  = lt->def.read16(value +  8, lt->def.data);
-            year = lt->def.read16(value + 10, lt->def.data);
-            //wday = lt->def.read16(value + 12, lt->def.data);
+            sec  = lt->read16(value,      lt->data);
+            min  = lt->read16(value +  2, lt->data);
+            hour = lt->read16(value +  4, lt->data);
+            day  = lt->read16(value +  6, lt->data);
+            mon  = lt->read16(value +  8, lt->data);
+            year = lt->read16(value + 10, lt->data);
+            //wday = lt->read16(value + 12, lt->data);
             snprintf(aux, len - 1, "date{ptr_%08X %04d-%02d-%02d %02d:%02d:%02d}", value, year, mon, day, hour, min, sec);
           } else {
             snprintf(aux, len - 1, "date{ptr_%08X}", value);
@@ -2433,11 +2442,11 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           break;
         case T_BMP:
           if (printarg) {
-            width   = lt->def.read16(value    , lt->def.data);
-            height  = lt->def.read16(value + 2, lt->def.data);
-            version = lt->def.read8(value  + 9, lt->def.data);
-            depth   = version == 0 ? 1 : lt->def.read8(value + 8, lt->def.data);
-            density = version < 3 ? 72 : lt->def.read16(value + 14, lt->def.data);
+            width   = lt->read16(value    , lt->data);
+            height  = lt->read16(value + 2, lt->data);
+            version = lt->read8(value  + 9, lt->data);
+            depth   = version == 0 ? 1 : lt->read8(value + 8, lt->data);
+            density = version < 3 ? 72 : lt->read16(value + 14, lt->data);
             snprintf(aux, len - 1, "bmp{ptr_%08X V%u %ub %ux%u %u}", value, version, depth, width, height, density);
           } else {
             snprintf(aux, len - 1, "bmp{ptr_%08X}", value);
@@ -2448,9 +2457,9 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
             sig = 0;
             if (!(value % 2))
             switch (size) {
-              case 1: sig = (int8_t)(lt->def.read8(value, lt->def.data) & 0xFF); break;
-              case 2: sig = (int16_t)(lt->def.read16(value, lt->def.data) & 0xFFFF); break;
-              case 4: sig = (int32_t)lt->def.read32(value, lt->def.data); break;
+              case 1: sig = (int8_t)(lt->read8(value, lt->data) & 0xFF); break;
+              case 2: sig = (int16_t)(lt->read16(value, lt->data) & 0xFFFF); break;
+              case 4: sig = (int32_t)lt->read32(value, lt->data); break;
               default: sig = 0; break;
             }
             snprintf(aux, len - 1, "int%d{ptr_%08X %d}", isize, value, sig);
@@ -2463,9 +2472,9 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
             usig = 0;
             if (!(value % 2))
             switch (size) {
-              case 1: usig = lt->def.read8(value, lt->def.data); break;
-              case 2: usig = lt->def.read16(value, lt->def.data); break;
-              case 4: usig = lt->def.read32(value, lt->def.data); break;
+              case 1: usig = lt->read8(value, lt->data); break;
+              case 2: usig = lt->read16(value, lt->data); break;
+              case 4: usig = lt->read32(value, lt->data); break;
               default: usig = 0; break;
             }
             snprintf(aux, len - 1, "uint%d{ptr_%08X %u}", isize, value, usig);
@@ -2479,15 +2488,15 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
             if (!(value % 2))
             switch (size) {
               case 1:
-                usig = lt->def.read8(value, lt->def.data);
+                usig = lt->read8(value, lt->data);
                 snprintf(aux, len - 1, "uint8{ptr_%08X 0x%02X}", value, usig);
                 break;
               case 2:
-                usig = lt->def.read16(value, lt->def.data);
+                usig = lt->read16(value, lt->data);
                 snprintf(aux, len - 1, "uint16{ptr_%08X 0x%04X}", value, usig);
                 break;
               case 4:
-                usig = lt->def.read32(value, lt->def.data);
+                usig = lt->read32(value, lt->data);
                 snprintf(aux, len - 1, "uint32{ptr_%08X 0x%08X}", value, usig);
                 break;
             }
@@ -2499,7 +2508,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           if (printarg) {
             usig = 0;
             if (!(value % 2))
-            usig = lt->def.read16(value, lt->def.data);
+            usig = lt->read16(value, lt->data);
             snprintf(aux, len - 1, "wchar{ptr_%08X 0x%04X}", value, usig);
           } else {
             snprintf(aux, len - 1, "wchar{ptr_%08X}", value);
@@ -2509,7 +2518,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           if (printarg) {
             usig = 0;
             if (!(value % 2))
-            usig = lt->def.read32(value, lt->def.data);
+            usig = lt->read32(value, lt->data);
             id2s(usig, sid);
             snprintf(aux, len - 1, "id{ptr_%08X '%s'}", value, sid);
           } else {
@@ -2518,7 +2527,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
           break;
         case T_LOC:
           if (printarg) {
-            usig = lt->def.read32(value, lt->def.data);
+            usig = lt->read32(value, lt->data);
             snprintf(aux, len - 1, "localid{ptr_%08X localid_%08X}", value, usig);
           } else {
             snprintf(aux, len - 1, "localid{ptr_%08X}", value);
@@ -2605,26 +2614,26 @@ static void print_params(logtrap_t *lt, trap_t *trap, uint32_t sp, char *buf, ui
   for (i = 0; i < trap->nargs; i++) {
     value0 = 0;
     if (trap->args[i].ptr) {
-      value = lt->def.read32(sp + idx, lt->def.data);
+      value = lt->read32(sp + idx, lt->data);
       idx += 4;
     } else {
       switch (trap->args[i].size) {
         case 1:
-          value = lt->def.read8(sp + idx, lt->def.data) & 0xFF;
+          value = lt->read8(sp + idx, lt->data) & 0xFF;
           idx += 2;
           break;
         case 2:
-          value = lt->def.read16(sp + idx, lt->def.data) & 0xFFFF;
+          value = lt->read16(sp + idx, lt->data) & 0xFFFF;
           idx += 2;
           break;
         case 4:
-          value = lt->def.read32(sp + idx, lt->def.data);
+          value = lt->read32(sp + idx, lt->data);
           idx += 4;
           break;
         case 8:
-          value = lt->def.read32(sp + idx, lt->def.data);
+          value = lt->read32(sp + idx, lt->data);
           idx += 4;
-          value0 = lt->def.read32(sp + idx, lt->def.data);
+          value0 = lt->read32(sp + idx, lt->data);
           idx += 4;
           break;
         default:
@@ -2646,7 +2655,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
   char *s;
 
   if (lt->stackp && pc == lt->stack[lt->stackp-1]) {
-    sp = lt->def.getreg(logtrap_SP, lt->def.data);
+    sp = lt->getreg(logtrap_SP, lt->data);
     value = 0;
     lt->stackp--;
     trap = lt->stackt[lt->stackp];
@@ -2666,9 +2675,9 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
     if (rsize > 0) {
       if (lt->log_f) strcpy(rbuf, ": ");
       if (rtype == T_VOID || rtype == T_STR || rtype == T_BMP) {
-        value = lt->def.getreg(logtrap_A0, lt->def.data);
+        value = lt->getreg(logtrap_A0, lt->data);
       } else {
-        value = lt->def.getreg(logtrap_D0, lt->def.data);
+        value = lt->getreg(logtrap_D0, lt->data);
       }
 
       value0 = 0;
@@ -2680,9 +2689,9 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
           value &= 0xFFFF;
           break;
         case 8:
-          addr = lt->def.getreg(logtrap_A0, lt->def.data);
-          value  = lt->def.read32(addr, lt->def.data);
-          value0 = lt->def.read32(addr+4, lt->def.data);
+          addr = lt->getreg(logtrap_A0, lt->data);
+          value  = lt->read32(addr, lt->data);
+          value0 = lt->read32(addr+4, lt->data);
           break;
       }
 
@@ -2709,15 +2718,15 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       case sysTrapDmDatabaseInfo:
         // Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP, ...
         if (lt->appname && lt->log_f == 0 && lt->log_dbID == 0 && value == 0) {
-          name = lt->def.read32(sp + 6, lt->def.data);
+          name = lt->read32(sp + 6, lt->data);
           if (name) {
             for (i = 0; i < sizeof(buf) - 1; i++) {
-              buf[i] = lt->def.read8(name + i, lt->def.data);
+              buf[i] = lt->read8(name + i, lt->data);
               if (buf[i] == 0) break;
             }
             buf[i] = 0;
             if (strcmp(buf, lt->appname) == 0) {
-              lt->log_dbID = lt->def.read32(sp + 2, lt->def.data);
+              lt->log_dbID = lt->read32(sp + 2, lt->data);
               logtrap_log(lt, "Monitoring dbID 0x%08X for \"%s\"", lt->log_dbID, lt->appname);
             }
           }
@@ -2726,7 +2735,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       case sysTrapDmOpenDatabase:
         // DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode)
         if (lt->appname && lt->log_f == 0 && lt->log_dbRef == 0 && lt->log_dbID != 0 && value != 0) {
-          if (lt->def.read32(sp + 2, lt->def.data) == lt->log_dbID) {
+          if (lt->read32(sp + 2, lt->data) == lt->log_dbID) {
             lt->log_dbRef = value;
             logtrap_log(lt, "Monitoring dbRef 0x%08X for dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
           }
@@ -2735,9 +2744,9 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       case sysTrapSysAppStartup:
         // Err SysAppStartup(SysAppInfoPtr *appInfoPP, MemPtr *prevGlobalsP, MemPtr *globalsPtrP)
         if (lt->appname && lt->log_f == 0 && lt->log_dbRef != 0 && value == 0) {
-          value = lt->def.read32(sp, lt->def.data);    // SysAppInfoType **
-          value = lt->def.read32(value, lt->def.data); // SysAppInfoType *
-          if (lt->def.read32(value + 16, lt->def.data) == lt->log_dbRef) {
+          value = lt->read32(sp, lt->data);    // SysAppInfoType **
+          value = lt->read32(value, lt->data); // SysAppInfoType *
+          if (lt->read32(value + 16, lt->data) == lt->log_dbRef) {
             logtrap_log(lt, "Logging system calls for dbRef 0x%08X dbID 0x%08X", lt->log_dbRef, lt->log_dbID);
             lt->log_f = 1;
           }
@@ -2759,7 +2768,7 @@ static void hex_opcodes(logtrap_t *lt, char *buf, uint32_t pc, uint32_t length) 
   char *ptr = buf;
 
   for (; length > 0; length -= 2) {
-    sprintf(ptr, "%04x", lt->def.read16(pc, lt->def.data));
+    sprintf(ptr, "%04x", lt->read16(pc, lt->data));
     pc += 2;
     ptr += 4;
     if (length > 2) *ptr++ = ' ';
@@ -2771,12 +2780,12 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
   char *s, buf[1024];
   uint16_t trap;
 
-  instruction = lt->def.read16(pc, lt->def.data);
+  instruction = lt->read16(pc, lt->data);
   // check if it is a trap instruction
   if (instruction != 0x4E4F) return;
 
-  trap = lt->def.read16(pc + 2, lt->def.data);
-  sp = lt->def.getreg(logtrap_SP, lt->def.data);
+  trap = lt->read16(pc + 2, lt->data);
+  sp = lt->getreg(logtrap_SP, lt->data);
 
   switch (trap) {
     case sysTrapHwrDisableDataWrites:
@@ -2807,7 +2816,7 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
       break;
 
     default:
-      selector = lt->def.getreg(logtrap_D0 + 2, lt->def.data);
+      selector = lt->getreg(logtrap_D0 + 2, lt->data);
       if (lt->log_f) {
         if (lt->allTraps[trap].numsel == 0) {
           if (lt->allTraps[trap].rsize == 8) sp += 4;
@@ -2832,7 +2841,7 @@ static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
   uint32_t instr_size, used, r, d, i;
   char buf[1024], buf2[128], aux[32], buf3[256];
 
-  if (lt->def.disasm) {
+  if (lt->disasm) {
     instr_size = m68k_disasm(&lt->dis, buf, pc, M68K_CPU_TYPE_68020, &used);
     hex_opcodes(lt, buf2, pc, instr_size);
     buf3[0] = 0;
@@ -2842,7 +2851,7 @@ static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
       for (i = 0; i < 8; i++) {
         r = logtrap_D0 + i;
         if (used & (1 << r)) {
-          d = lt->def.getreg(r, lt->def.data);
+          d = lt->getreg(r, lt->data);
           snprintf(aux, sizeof(aux)-1, " D%u=%d 0x%08X", i, d, d);
           strncat(buf3, aux, sizeof(buf3) - strlen(buf3) - 1);
         }
@@ -2850,7 +2859,7 @@ static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
       for (i = 0; i < 8; i++) {
         r = logtrap_A0 + i;
         if (used & (1 << r)) {
-          snprintf(aux, sizeof(aux)-1, " A%u=0x%08X", i, lt->def.getreg(r, lt->def.data));
+          snprintf(aux, sizeof(aux)-1, " A%u=0x%08X", i, lt->getreg(r, lt->data));
           strncat(buf3, aux, sizeof(buf3) - strlen(buf3) - 1);
         }
       }
@@ -2869,14 +2878,14 @@ char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int fol
   *selector = 0xFFFF;
 
   if (lt->allTraps[trap].numsel > 0) {
-    d2 = lt->def.getreg(logtrap_D0 + 2, lt->def.data);
+    d2 = lt->getreg(logtrap_D0 + 2, lt->data);
     if (d2 <= lt->allTraps[trap].maxsel) {
       name = follow ? lt->allTraps[trap].selectors[d2].name : lt->allTraps[trap].name;
       *selector = d2;
     }
   } else if (trap == sysTrapNavSelector) {
-    sp = lt->def.getreg(logtrap_SP, lt->def.data);
-    aux = lt->def.read16(sp, lt->def.data);
+    sp = lt->getreg(logtrap_SP, lt->data);
+    aux = lt->read16(sp, lt->data);
     if (aux <= NavSelectorFrmNavObjectTakeFocus) {
       name = follow ? nav_traps[aux] : lt->allTraps[trap].name;
       *selector = aux;

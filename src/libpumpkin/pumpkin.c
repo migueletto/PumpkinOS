@@ -19,6 +19,7 @@
 #include "template.h"
 #include "iterator.h"
 #include "loadfile.h"
+#include "logtrap.h"
 #include "emupalmosinc.h"
 #include "AppRegistry.h"
 #include "RegistryMgr.h"
@@ -278,6 +279,7 @@ typedef struct {
   void *local_storage[last_key];
   char *mount;
   Int32 widget_id;
+  logtrap_def ltdef;
 } pumpkin_module_t;
 
 typedef union {
@@ -650,7 +652,8 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.num_notif = 0;
   AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
 
-  emupalmos_init();
+  emupalmos_init(&pumpkin_module.ltdef);
+
   if (ap && ap->mixer_init) ap->mixer_init();
 
   if ((fd = sys_open(CRASH_LOG, SYS_WRITE)) == -1) {
@@ -661,6 +664,10 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   }
 
   return 0;
+}
+
+logtrap_def *logtrap_get_def(void) {
+  return &pumpkin_module.ltdef;
 }
 
 void pumpkin_deploy_files(char *path) {

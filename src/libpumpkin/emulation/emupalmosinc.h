@@ -6,7 +6,7 @@
 #define EMUPALMOS_UNDECODED_EVENT     6
 #define EMUPALMOS_GENERIC_ERROR       9
 
-int emupalmos_init(void);
+int emupalmos_init(logtrap_def *def);
 uint32_t emupalmos_main(uint16_t code, void *param, uint16_t flags);
 uint8_t *emupalmos_ram(void);
 void emupalmos_finish(int f);
