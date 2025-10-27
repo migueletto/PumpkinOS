@@ -622,7 +622,7 @@ static void drawImage(FormType *frm, UInt16 i, RectangleType *rect) {
     
       src = surface_create(width, height, SURFACE_ENCODING_RGB565);
       dst = surface_create(bw, bh, SURFACE_ENCODING_RGB565);
-      BmpDrawSurface(bmp, 0, 0, width, height, src, 0, 0, false);
+      BmpDrawSurface(bmp, 0, 0, width, height, src, 0, 0, false, false);
       surface_scale(src, dst);
       bits = surface_buffer(dst, &len);
       thumb2 = BmpCreate(bw, bh, BmpGetBitDepth(bmp), NULL, &error);
