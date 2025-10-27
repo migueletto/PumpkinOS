@@ -2653,7 +2653,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
     selector = lt->stacksel[lt->stackp];
     rbuf[0] = 0;
 
-    if (lt->allTraps[trap].numsel == 0) {
+    if (lt->allTraps[trap].numsel == 0 || selector >= lt->allTraps[trap].maxsel) {
       rtype = lt->allTraps[trap].rtype;
       rsize = lt->allTraps[trap].rsize;
       rptr = lt->allTraps[trap].rptr;
@@ -2870,7 +2870,7 @@ char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int fol
 
   if (lt->allTraps[trap].numsel > 0) {
     d2 = lt->def.getreg(logtrap_D0 + 2, lt->def.data);
-    if (d2 <= lt->allTraps[trap].selectors[d2].maxsel) {
+    if (d2 <= lt->allTraps[trap].maxsel) {
       name = follow ? lt->allTraps[trap].selectors[d2].name : lt->allTraps[trap].name;
       *selector = d2;
     }
