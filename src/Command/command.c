@@ -48,6 +48,8 @@
 #define COLS 80
 #define ROWS 25
 
+#define MAX_HELP 256
+
 typedef struct {
   char *name;
   int (*function)(int pe, void *data);
@@ -101,6 +103,7 @@ typedef struct {
   char name[dmDBNameLength];
   void *lib;
   int crlf;
+  char help[MAX_HELP];
 } command_ext_t;
 
 struct command_internal_data_t {
@@ -122,6 +125,7 @@ struct command_internal_data_t {
   SndStreamRef sound;
   command_prefs_t prefs;
   FileRef in, out;
+  UInt16 num_ext;
   command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
   command_builtin_t def_commands[MAX_DEF_CMDS];
   Int32 ndefs;
@@ -1771,6 +1775,13 @@ static int command_script_help(int pe, void *data) {
   for (i = 0; i < idata->ndefs; i++) {
     print_command_help(idata, &idata->def_commands[i]);
   }
+  for (i = 0; i < idata->num_ext; i++) {
+    if (idata->ext_commands[i].help[0]) {
+      command_puts(idata, idata->ext_commands[i].help);
+      command_putc(idata, '\r');
+      command_putc(idata, '\n');
+    }
+  }
 
   return 0;
 }
@@ -1925,6 +1936,13 @@ static void command_load_external_commands(command_internal_data_t *idata) {
               }
               DmReleaseResource(h);
             }
+            if ((h = DmGet1Resource(commandHelpType, 1000)) != NULL) {
+              if ((s = MemHandleLock(h)) != NULL) {
+                StrNCopy(idata->ext_commands[i].help, s, MAX_HELP-1);
+                MemHandleUnlock(h);
+              }
+              DmReleaseResource(h);
+            }
             if ((h = DmGet1Resource(commandSafeType, 1000)) != NULL) {
               if ((s = MemHandleLock(h)) != NULL) {
                 safe = s[0] != 0; 
@@ -1971,6 +1989,7 @@ static void command_load_external_commands(command_internal_data_t *idata) {
       }
     }
   }
+  idata->num_ext = i;
 }
 
 static Err StartApplication(void *param) {

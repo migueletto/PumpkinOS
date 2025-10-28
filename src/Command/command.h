@@ -1,6 +1,7 @@
 #define commandExternalType 'CmdE'
 
 #define commandNameType 'CmdN'
+#define commandHelpType 'CmdH'
 #define commandSafeType 'CmdS'
 #define commandCRLFType 'CmdL'
 

@@ -1,2 +1,3 @@
 HEX "CmdN" ID 1000 "rcpexport" 0x00
+HEX "CmdH" ID 1000 "rcpexport(appname, rcpfile): Extract resources from a PRC into a RCP file" 0x00
 HEX "CmdS" ID 1000 0x01
