@@ -192,8 +192,10 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
     case sysFileCSerialMgr:
       switch (featureNum) {
         case sysFtrNewSerialPresent:
-          *valueP = 1;
-          err = errNone;
+          if (osversion >= 35) {
+            *valueP = 1;
+            err = errNone;
+          }
           break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSerialMgr %d not defined", featureNum);
@@ -204,8 +206,10 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
     case sysFileCExpansionMgr:
       switch (featureNum) {
         case expFtrIDVersion:
-          *valueP = expMgrVersionNum;
-          err = errNone;
+          if (osversion >= 40) {
+            *valueP = expMgrVersionNum;
+            err = errNone;
+          }
           break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCExpansionMgr %d not defined", featureNum);
@@ -216,8 +220,10 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
     case sysFileCVFSMgr:
       switch (featureNum) {
         case vfsFtrIDVersion:
-          *valueP = vfsMgrVersionNum;
-          err = errNone;
+          if (osversion >= 40) {
+            *valueP = vfsMgrVersionNum;
+            err = errNone;
+          }
           break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCVFSMgr %d not defined", featureNum);
@@ -229,8 +235,10 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
       if (pumpkin_dia_enabled()) {
         switch (featureNum) {
           case pinFtrAPIVersion:
-            *valueP = pinAPIVersion1_1;
-            err = errNone;
+            if (osversion >= 50) {
+              *valueP = pinAPIVersion1_1;
+              err = errNone;
+            }
             break;
           default:
             debug(DEBUG_ERROR, "Feature", "FtrGet pinCreator %d not defined", featureNum);
