@@ -54,6 +54,7 @@ typedef struct {
 
 logtrap_def *logtrap_get_def(void);
 int logtrap_global_init(logtrap_def *def);
+void logtrap_global_finish(logtrap_def *def);
 logtrap_t *logtrap_init(logtrap_def *def);
 void logtrap_start(logtrap_t *lt, int disasm, char *appname);
 int logtrap_started(logtrap_t *lt);

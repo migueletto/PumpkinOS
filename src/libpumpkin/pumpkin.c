@@ -1409,6 +1409,8 @@ int pumpkin_global_finish(void) {
   AppRegistryFinish(pumpkin_module.registry);
   RegFinish(pumpkin_module.rm);
 
+  logtrap_global_finish(&pumpkin_module.ltdef);
+
   SysUFinishModule();
   StoFinish();
   //DataMgrFinishModule();
