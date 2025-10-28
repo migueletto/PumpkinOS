@@ -1192,7 +1192,8 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
 
 void FrmDrawForm(FormType *formP) {
   WinHandle oldd, olda;
-  IndexedColorType formFill;
+  RGBColorType rgb;
+  IndexedColorType black, formFill;
   RectangleType rect;
   UInt16 objIndex;
   Int16 margin;
@@ -1202,8 +1203,10 @@ void FrmDrawForm(FormType *formP) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
     // if this is not done, SimCity draws scrollbars in white
+    rgb.r = rgb.g = rgb.b = 0;
+    black = WinRGBToIndex(&rgb);
+    WinSetForeColor(black);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
-    WinSetForeColor(0xFF);
     WinSetBackColor(formFill);
     WinSetPatternType(blackPattern);
 
