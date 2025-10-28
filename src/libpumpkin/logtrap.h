@@ -49,7 +49,7 @@ typedef struct {
   void (*hook2)(logtrap_t *lt, uint32_t pc);
   void (*rethook)(logtrap_t *lt, uint32_t pc);
 
-  trap_t allTraps[0x10000];
+  trap_t allTraps[0x1000];
 } logtrap_def;
 
 logtrap_def *logtrap_get_def(void);

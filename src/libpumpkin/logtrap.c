@@ -2257,36 +2257,39 @@ int logtrap_global_init(logtrap_def *def) {
   def->hook2 = logtrap_hook2;
   def->rethook = logtrap_rethook;
 
-  for (i = 0; i < 0x10000; i++) {
+  for (i = 0; i < 0x1000; i++) {
     def->allTraps[i].name = "unknown";
   }
 
   for (i = 0; trapArgs[i].name; i++) {
     trap = trapArgs[i].trap;
-    selector = trapArgs[i].selector;
-    if (selector == (uint32_t)-1) {
-      def->allTraps[trap] = trapArgs[i];
-    } else {
-      if (def->allTraps[trap].trap == 0) {
-        def->allTraps[trap].trap = trap;
-        def->allTraps[trap].name = "dispatch";
-        def->allTraps[trap].capsel = selector < 64 ? 64 : selector + 64;
-        def->allTraps[trap].numsel = 1;
-        if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
-        def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
-        def->allTraps[trap].selectors[selector] = trapArgs[i];
+    if (trap >= 0xA000 && trap < 0xB000) {
+      trap -= 0xA000;
+      selector = trapArgs[i].selector;
+      if (selector == (uint32_t)-1) {
+        def->allTraps[trap] = trapArgs[i];
       } else {
-        if (selector >= def->allTraps[trap].capsel) {
-          def->allTraps[trap].capsel = selector + 64;
-          if (def->allTraps[trap].selectors) {
-            def->allTraps[trap].selectors = (trap_t *)def->realloc(def->allTraps[trap].selectors, def->allTraps[trap].capsel * sizeof(trap_t), def->data);
-          } else {
-            def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
+        if (def->allTraps[trap].trap == 0) {
+          def->allTraps[trap].trap = trap;
+          def->allTraps[trap].name = "dispatch";
+          def->allTraps[trap].capsel = selector < 64 ? 64 : selector + 64;
+          def->allTraps[trap].numsel = 1;
+          if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
+          def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
+          def->allTraps[trap].selectors[selector] = trapArgs[i];
+        } else {
+          if (selector >= def->allTraps[trap].capsel) {
+            def->allTraps[trap].capsel = selector + 64;
+            if (def->allTraps[trap].selectors) {
+              def->allTraps[trap].selectors = (trap_t *)def->realloc(def->allTraps[trap].selectors, def->allTraps[trap].capsel * sizeof(trap_t), def->data);
+            } else {
+              def->allTraps[trap].selectors = (trap_t *)def->alloc(def->allTraps[trap].capsel * sizeof(trap_t), def->data);
+            }
           }
+          def->allTraps[trap].selectors[selector] = trapArgs[i];
+          def->allTraps[trap].numsel++;
+          if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
         }
-        def->allTraps[trap].selectors[selector] = trapArgs[i];
-        def->allTraps[trap].numsel++;
-        if (selector > def->allTraps[trap].maxsel) def->allTraps[trap].maxsel = selector;
       }
     }
   }
@@ -2651,7 +2654,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
   char buf[1024], rbuf[256];
   uint32_t sp, name, value, value0, addr, selector;
   uint32_t rtype, rsize, rptr;
-  uint16_t trap, i;
+  uint16_t trap, rtrap, i;
   char *s;
 
   if (lt->stackp && pc == lt->stack[lt->stackp-1]) {
@@ -2659,58 +2662,61 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
     value = 0;
     lt->stackp--;
     trap = lt->stackt[lt->stackp];
-    selector = lt->stacksel[lt->stackp];
-    rbuf[0] = 0;
+    if (trap >= 0xA000 && trap < 0xB000) {
+      rtrap = trap - 0xA000;
+      selector = lt->stacksel[lt->stackp];
+      rbuf[0] = 0;
 
-    if (lt->allTraps[trap].numsel == 0 || selector >= lt->allTraps[trap].maxsel) {
-      rtype = lt->allTraps[trap].rtype;
-      rsize = lt->allTraps[trap].rsize;
-      rptr = lt->allTraps[trap].rptr;
-    } else {
-      rtype = lt->allTraps[trap].selectors[selector].rtype;
-      rsize = lt->allTraps[trap].selectors[selector].rsize;
-      rptr = lt->allTraps[trap].selectors[selector].rptr;
-    }
-
-    if (rsize > 0) {
-      if (lt->log_f) strcpy(rbuf, ": ");
-      if (rtype == T_VOID || rtype == T_STR || rtype == T_BMP) {
-        value = lt->getreg(logtrap_A0, lt->data);
+      if (lt->allTraps[rtrap].numsel == 0 || selector >= lt->allTraps[rtrap].maxsel) {
+        rtype = lt->allTraps[rtrap].rtype;
+        rsize = lt->allTraps[rtrap].rsize;
+        rptr = lt->allTraps[rtrap].rptr;
       } else {
-        value = lt->getreg(logtrap_D0, lt->data);
+        rtype = lt->allTraps[rtrap].selectors[selector].rtype;
+        rsize = lt->allTraps[rtrap].selectors[selector].rsize;
+        rptr = lt->allTraps[rtrap].selectors[selector].rptr;
       }
 
-      value0 = 0;
-      switch (rsize) {
-        case 1:
-          value &= 0xFF;
-          break;
-        case 2:
-          value &= 0xFFFF;
-          break;
-        case 8:
-          addr = lt->getreg(logtrap_A0, lt->data);
-          value  = lt->read32(addr, lt->data);
-          value0 = lt->read32(addr+4, lt->data);
-          break;
+      if (rsize > 0) {
+        if (lt->log_f) strcpy(rbuf, ": ");
+        if (rtype == T_VOID || rtype == T_STR || rtype == T_BMP) {
+          value = lt->getreg(logtrap_A0, lt->data);
+        } else {
+          value = lt->getreg(logtrap_D0, lt->data);
+        }
+
+        value0 = 0;
+        switch (rsize) {
+          case 1:
+            value &= 0xFF;
+            break;
+          case 2:
+            value &= 0xFFFF;
+            break;
+          case 8:
+            addr = lt->getreg(logtrap_A0, lt->data);
+            value  = lt->read32(addr, lt->data);
+            value0 = lt->read32(addr+4, lt->data);
+            break;
+        }
+
+        if (lt->log_f) {
+          param_value(lt, rtype, rptr, rsize, 0, value, value0, &rbuf[2], sizeof(rbuf) - 2, 1);
+        }
       }
 
       if (lt->log_f) {
-        param_value(lt, rtype, rptr, rsize, 0, value, value0, &rbuf[2], sizeof(rbuf) - 2, 1);
-      }
-    }
-
-    if (lt->log_f) {
-      if (lt->allTraps[trap].numsel == 0) {
-        if (lt->allTraps[trap].rsize == 8) sp += 4;
-        print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf), 1);
-        logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf, rbuf);
-      } else {
-        if (lt->allTraps[trap].selectors[selector].rsize == 8) sp += 4;
-        print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf), 1);
-        s = lt->allTraps[trap].selectors[selector].name;
-        if (s == NULL) s = "unknown";
-        logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc, trap, selector, spaces(lt->stackp), s, buf, rbuf);
+        if (lt->allTraps[rtrap].numsel == 0) {
+          if (lt->allTraps[rtrap].rsize == 8) sp += 4;
+          print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
+          logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf, rbuf);
+        } else {
+          if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
+          print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 1);
+          s = lt->allTraps[rtrap].selectors[selector].name;
+          if (s == NULL) s = "unknown";
+          logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc, trap, selector, spaces(lt->stackp), s, buf, rbuf);
+        }
       }
     }
 
@@ -2778,7 +2784,7 @@ static void hex_opcodes(logtrap_t *lt, char *buf, uint32_t pc, uint32_t length) 
 static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
   uint32_t instruction, sp, selector;
   char *s, buf[1024];
-  uint16_t trap;
+  uint16_t trap, rtrap;
 
   instruction = lt->read16(pc, lt->data);
   // check if it is a trap instruction
@@ -2817,17 +2823,20 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
 
     default:
       selector = lt->getreg(logtrap_D0 + 2, lt->data);
-      if (lt->log_f) {
-        if (lt->allTraps[trap].numsel == 0) {
-          if (lt->allTraps[trap].rsize == 8) sp += 4;
-          print_params(lt, &lt->allTraps[trap], sp, buf, sizeof(buf), 0);
-          logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s) ...", pc, trap, spaces(lt->stackp), lt->allTraps[trap].name, buf);
-        } else {
-          if (lt->allTraps[trap].selectors[selector].rsize == 8) sp += 4;
-          print_params(lt, &lt->allTraps[trap].selectors[selector], sp, buf, sizeof(buf), 0);
-          s = lt->allTraps[trap].selectors[selector].name;
-          if (s == NULL) s = "unknown";
-          logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s) ...", pc, trap, selector, spaces(lt->stackp), s, buf);
+      if (trap >= 0xA000 && trap < 0xB000) {
+        rtrap = trap - 0xA000;
+        if (lt->log_f) {
+          if (lt->allTraps[rtrap].numsel == 0) {
+            if (lt->allTraps[rtrap].rsize == 8) sp += 4;
+            print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 0);
+            logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s) ...", pc, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf);
+          } else {
+            if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
+            print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 0);
+            s = lt->allTraps[rtrap].selectors[selector].name;
+            if (s == NULL) s = "unknown";
+            logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s) ...", pc, trap, selector, spaces(lt->stackp), s, buf);
+          }
         }
       }
       lt->stackt[lt->stackp] = trap;
@@ -2872,26 +2881,29 @@ static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
 
 char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int follow) {
   char *name = "unknown";
-  uint32_t d2, sp;
+  uint32_t rtrap, d2, sp;
   uint16_t aux;
 
   *selector = 0xFFFF;
 
-  if (lt->allTraps[trap].numsel > 0) {
-    d2 = lt->getreg(logtrap_D0 + 2, lt->data);
-    if (d2 <= lt->allTraps[trap].maxsel) {
-      name = follow ? lt->allTraps[trap].selectors[d2].name : lt->allTraps[trap].name;
-      *selector = d2;
+  if (trap >= 0xA000 && trap < 0xB000) {
+    rtrap = trap - 0xA000;
+    if (lt->allTraps[rtrap].numsel > 0) {
+      d2 = lt->getreg(logtrap_D0 + 2, lt->data);
+      if (d2 <= lt->allTraps[rtrap].maxsel) {
+        name = follow ? lt->allTraps[rtrap].selectors[d2].name : lt->allTraps[rtrap].name;
+        *selector = d2;
+      }
+    } else if (trap == sysTrapNavSelector) {
+      sp = lt->getreg(logtrap_SP, lt->data);
+      aux = lt->read16(sp, lt->data);
+      if (aux <= NavSelectorFrmNavObjectTakeFocus) {
+        name = follow ? nav_traps[aux] : lt->allTraps[rtrap].name;
+        *selector = aux;
+      }
+    } else {
+      if (lt->allTraps[rtrap].name) name = lt->allTraps[rtrap].name;
     }
-  } else if (trap == sysTrapNavSelector) {
-    sp = lt->getreg(logtrap_SP, lt->data);
-    aux = lt->read16(sp, lt->data);
-    if (aux <= NavSelectorFrmNavObjectTakeFocus) {
-      name = follow ? nav_traps[aux] : lt->allTraps[trap].name;
-      *selector = aux;
-    }
-  } else {
-    if (lt->allTraps[trap].name) name = lt->allTraps[trap].name;
   }
 
   return name;
