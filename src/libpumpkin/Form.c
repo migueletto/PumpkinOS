@@ -1581,15 +1581,22 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
 
+    // "Subhunt" draws the form and then calls FrmDoDialog().
+    // So, if the form is already visible, do not call FrmDrawForm() again here.
+
     if (formP->handler || formP->m68k_handler) {
       MemSet(&event, sizeof(EventType), 0);
       event.eType = frmOpenEvent;
       event.data.frmOpen.formID = formP->formId;
       if (!FrmDispatchEvent(&event)) {
-        FrmDrawForm(formP);
+        if (!formP->attr.visible) {
+          FrmDrawForm(formP);
+        }
       }
     } else {
-      FrmDrawForm(formP);
+      if (!formP->attr.visible) {
+        FrmDrawForm(formP);
+      }
     }
 
     for (index = 0, found = false; index < formP->numObjects; index++) {
