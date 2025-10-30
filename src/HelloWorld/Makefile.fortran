@@ -1,0 +1,10 @@
+PROGRAM=HelloWorld
+OBJS=PalmOS.fo HelloWorld.fo
+RCP=resource.rcp
+RCPINC=-D FORTRAN
+APPNAME=Hello World
+APPID=HeWo
+
+include ../common.mak
+include ../commonp.mak
+include ../app.mak

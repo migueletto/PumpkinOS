@@ -96,6 +96,7 @@ LUAPLAT=linux
 OS=Linux
 OSDEFS=$(MBITS) -DLINUX $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
 CC=gcc
+FC=gfortran
 
 else ifeq ($(OSNAME),Msys)
 SYS_OS=2
@@ -182,6 +183,7 @@ SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_END
 CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar $(OPTIMIZATION) -fPIC -fno-stack-protector -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS) -DLOGTRAP_SYS
 CFLAGS=$(CPPFLAGS) -ffreestanding -std=c99
 HOSTCFLAGS=-Wall
+FFLAGS=-fPIC $(OPTIMIZATION)
 
 ifneq ($(REAL_OSNAME),Msys)
 COLOR_GREEN=\033[0;1;32m
@@ -203,3 +205,7 @@ endif
 %.wasm : %.c
 	@echo Compiling $<
 	@$(EM_CC) $(CFLAGS) -c -o $@ $<
+
+%.fo: %.f90
+	@echo Compiling $<
+	@$(FC) $(FFLAGS) -c -o $@ $<

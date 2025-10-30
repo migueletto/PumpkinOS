@@ -1,143 +1,86 @@
 module HelloWorld
 use iso_c_binding
+use PalmOS
 implicit none
 
-type, bind(C) :: EventType
-  integer(c_int16_t) :: eType
-end type EventType
-
-integer(c_int16_t), parameter :: menuEvent    = 21
-integer(c_int16_t), parameter :: appStopEvent = 22
-integer(c_int16_t), parameter :: frmLoadEvent = 23
-
-integer(c_int16_t), parameter :: mainForm = 1000
-
-interface
-  subroutine FrmGotoForm(formId) bind(C, name="FrmGotoForm")
-    use iso_c_binding
-    implicit none
-    integer(c_int16_t), value :: formId
-  end subroutine FrmGotoForm
-
-  subroutine FrmCloseAllForms() bind(C, name="FrmCloseAllForms")
-  end subroutine FrmCloseAllForms
-
-  subroutine EvtGetEvent(event, timeout) bind(C, name="EvtGetEvent")
-    use iso_c_binding
-    import :: EventType
-    implicit none
-    type(EventType) :: event
-    integer(c_int32_t), value :: timeout
-  end subroutine EvtGetEvent
-
-  function SysHandleEvent(event) result(handled) bind(C, name="SysHandleEvent")
-    use iso_c_binding
-    import :: EventType
-    implicit none
-    type(EventType) :: event
-    logical :: handled
-  end function SysHandleEvent
-
-  function MenuHandleEvent(menu, event, error) result(handled) bind(C, name="MenuHandleEvent")
-    use iso_c_binding
-    import :: EventType
-    implicit none
-    type(c_ptr) :: menu
-    type(EventType) :: event
-    logical :: handled
-    integer(c_int16_t) :: error
-  end function MenuHandleEvent
-
-  subroutine FrmDispatchEvent(event) bind(C, name="FrmDispatchEvent")
-    use iso_c_binding
-    import :: EventType
-    implicit none
-    type(EventType) :: event
-  end subroutine FrmDispatchEvent
-
-  function FrmGetActiveForm() result(frm) bind(C, name="FrmGetActiveForm")
-    use iso_c_binding
-    implicit none
-    type(c_ptr) :: frm
-  end function FrmGetActiveForm
-
-  subroutine FrmDrawForm(frm) bind(C, name="FrmDrawForm")
-    use iso_c_binding
-    implicit none
-    type(c_ptr) :: frm
-  end subroutine FrmDrawForm
-
-  function FrmInitForm(formId) result(frm) bind(C, name="FrmInitForm")
-    use iso_c_binding
-    implicit none
-    integer(c_int16_t), value :: formId
-    type(c_ptr) :: frm
-  end function FrmInitForm
-
-  subroutine FrmSetActiveForm(frm) bind(C, name="FrmSetActiveForm")
-    use iso_c_binding
-    implicit none
-    type(c_ptr) :: frm
-  end subroutine FrmSetActiveForm
-
-  subroutine FrmSetEventHandler(frm) bind(C, name="FrmSetEventHandler")
-    use iso_c_binding
-    implicit none
-    type(c_ptr) :: frm
-  end subroutine FrmSetEventHandler
-end interface
+integer(c_int16_t), parameter :: mainForm  = 1000
+integer(c_int16_t), parameter :: aboutForm = 1001
+integer(c_int16_t), parameter :: aboutCmd  = 1
 
 contains
 
-function MainFormHandleEvent(event) result(handled)
+function MainFormHandleEvent(event)
   type(EventType) :: event
-  logical :: handled
-  handled = .false.
+  logical :: MainFormHandleEvent
+  type(c_ptr) :: frm
+  integer(c_int16_t) :: itemID, buttonID
+
+  if (event%eType == frmOpenEvent) then
+    frm = FrmGetActiveForm()
+    call FrmDrawForm(frm)
+    MainFormHandleEvent = .true.
+  else if (event%eType == menuEvent) then
+    itemID = event%data(1)
+    if (itemID == aboutCmd) then
+      frm = FrmInitform(aboutForm)
+      buttonID = FrmDoDialog(frm)
+      call FrmDeleteForm(frm)
+    end if
+    MainFormHandleEvent = .true.
+  else
+    MainFormHandleEvent = .false.
+  end if
 end function MainFormHandleEvent
 
-function ApplicationHandleEvent(event) result(handled)
+function ApplicationHandleEvent(event)
   type(EventType) :: event
-  logical :: handled
+  logical :: ApplicationHandleEvent
   type(c_ptr) :: frm
+  integer(c_int16_t) :: formID
+  procedure(EventHandler), pointer :: eventHandlerPtr
 
-  handled = .false.
-
-  if (event%eType == 23) then
-    frm = FrmInitform(mainForm)
+  if (event%eType == frmLoadEvent) then
+    formID = event%data(1)
+    frm = FrmInitform(formID)
     call FrmSetActiveForm(frm)
-    call FrmSetEventHandler(frm)
-    handled = .true.
+    if (formID == mainForm) then
+      eventHandlerPtr => MainFormHandleEvent
+      call FrmSetEventHandler(frm, eventHandlerPtr)
+    end if
+    ApplicationHandleEvent = .true.
+  else
+    ApplicationHandleEvent = .false.
   end if
 end function ApplicationHandleEvent
 
 subroutine EventLoop()
   type(EventType) :: event
+  integer(c_intptr_t) :: menu = 0
   integer(c_int16_t) :: error
-  type(c_ptr), pointer :: menu => null()
 
   do
     call EvtGetEvent(event, -1)
-    if (SysHandleEvent(event)) continue
-    if (MenuHandleEvent(menu, event, error)) continue
-    if (ApplicationHandleEvent(event)) continue
+    if (SysHandleEvent(event)) cycle
+    if (MenuHandleEvent(menu, event, error)) cycle
+    if (ApplicationHandleEvent(event)) cycle
     call FrmDispatchEvent(event)
     if (event%eType == appStopEvent) exit
   end do
 end subroutine EventLoop
 
-function PilotMain(cmd, cmdPBP, launchFlags) result(r) bind(C, name="PilotMain")
+function PilotMain(cmd, cmdPBP, launchFlags) bind(C, name="PilotMain")
   integer(c_int16_t), value :: cmd
-  type(c_ptr) :: cmdPBP
+  type(c_ptr), value :: cmdPBP
   integer(c_int16_t), value :: launchFlags
-  integer(c_int32_t) :: r
+  integer(c_int32_t) :: PilotMain
 
-  if (cmd == 0) then
+  if (cmd == sysAppLaunchCmdNormalLaunch) then
     call FrmGotoForm(mainForm)
     call EventLoop()
     call FrmCloseAllForms()
   end if
 
-  r = 0
+  PilotMain = 0
 end function PilotMain
 
 end module HelloWorld

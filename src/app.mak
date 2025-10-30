@@ -59,4 +59,4 @@ res.flag: $(RCP) $(RCPDEP)
 	@touch res.flag
 
 clean:
-	@rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin *.flag
+	@rm -f $(PRC) $(PROGRAM).prc $(PROGRAM).dlib $(OBJS) $(DLIB) $(STUBS).c $(STUBS_OPT) $(STUBS).txt resources/*.bin *.flag *.mod

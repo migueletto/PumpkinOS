@@ -20,6 +20,8 @@
 *.pdb
 *.log
 *.pyc
+*.mod
+*.fo
 *_serde.h
 *_serde.c
 trapArgs.c
