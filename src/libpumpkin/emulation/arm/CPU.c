@@ -836,10 +836,10 @@ static uint64_t cpuPrv64FromHalves(uint64_t hi, uint32_t lo)
 	//better than shifting in almost all compilers
 	union {
 		struct {
-			#if SYS_ENDIAN == LITTLE_ENDIAN
+			#if SYS_ENDIAN == 1
 				uint32_t lo;
 				uint32_t hi;
-			#elif  SYS_ENDIAN == BIG_ENDIAN
+			#elif  SYS_ENDIAN == 2
 				uint32_t hi;
 				uint32_t lo;
 			#else

@@ -368,7 +368,7 @@ enum SndSampleTag {
 	sndInt32Little	= 0x14,
 	sndFloatBig		= 0x24,
 	sndFloatLittle	= 0x34,
-#if SYS_ENDIAN == BIG_ENDIAN
+#if SYS_ENDIAN == 2
 	sndInt16		= sndInt16Big,			// native-endian
 	sndInt16Opposite= sndInt16Little,		// opposite of native-endian 
 	sndInt32		= sndInt32Big,		

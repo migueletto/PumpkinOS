@@ -1440,7 +1440,7 @@ UInt16 BtLibSecurityNumTrustedDeviceRecords( UInt16 btLibRefNum, Boolean persist
 	 (((x) & 0xFF00) <<  8) | \
 	 (((x) & 0x00FF) << 24))
 
-#if  SYS_ENDIAN == BIG_ENDIAN
+#if  SYS_ENDIAN == 2
 // convert SDP byte orders (SDP is Big Endian)
 // convert network long to host long
 #define 		BtLibSdpNToHL(x)  (x)
@@ -1472,7 +1472,7 @@ UInt16 BtLibSecurityNumTrustedDeviceRecords( UInt16 btLibRefNum, Boolean persist
 
 #define		BtLibL2CapHToNS(x) _BtLibNetSwap16(x)
 
-#elif  SYS_ENDIAN == LITTLE_ENDIAN
+#elif  SYS_ENDIAN == 1
 // convert SDP byte orders (SDP is Big Endian)
 // convert network long to host long
 #define 		BtLibSdpNToHL(x)  _BtLibNetSwap32(x)

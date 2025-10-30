@@ -191,9 +191,9 @@ debug(1, "XXX", "icacheFetch memAccess2");
 		//icache reads in words, but code requests may come in halfwords
 		//on BE hosts this means we need to swap the order of halfwords
 		// (to unswap what he had already swapped)
-		#if SYS_ENDIAN == BIG_ENDIAN
+		#if SYS_ENDIAN == 2
 			*(uint16_t*)buf = *(uint16_t*)(line->data + (off ^ 2));
-		#elif SYS_ENDIAN == LITTLE_ENDIAN
+		#elif SYS_ENDIAN == 1
 			*(uint16_t*)buf = *(uint16_t*)(line->data + off);
 		#else
 			#error "WTF"

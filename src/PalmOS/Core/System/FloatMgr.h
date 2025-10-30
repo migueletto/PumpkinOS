@@ -160,7 +160,7 @@ typedef union {
 #define __SECOND32(x) *((UInt32 *) &x + 1)
 #define __ALL32(x) *((UInt32 *) &x)
 
-#if SYS_ENDIAN == LITTLE_ENDIAN
+#if SYS_ENDIAN == 1
 #define __LO32(x) *((UInt32 *) &x)
 #define __HI32(x) *((UInt32 *) &x + 1)
 #define __HIX 1

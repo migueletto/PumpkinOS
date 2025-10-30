@@ -150,6 +150,7 @@ void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_tsmtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_lmtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_netlibtrap(uint16_t trap);
+void palmos_gpdlibtrap(uint16_t trap);
 void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);

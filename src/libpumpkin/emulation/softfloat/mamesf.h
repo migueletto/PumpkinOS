@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------------
 | One of the macros `BIGENDIAN' or `LITTLEENDIAN' must be defined.
 *----------------------------------------------------------------------------*/
-#if SYS_ENDIAN == LITTLE_ENDIAN
+#if SYS_ENDIAN == 1
 #define LITTLEENDIAN
 #else
 #define BIGENDIAN

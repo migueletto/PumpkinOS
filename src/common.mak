@@ -19,47 +19,47 @@ endif
 
 ifeq ($(findstring arm,$(MACHINE)),arm)
 SYS_CPU=1
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 ifeq ($(BITS),)
 BITS=32
 endif
 else ifeq ($(MACHINE),aarch64)
 SYS_CPU=1
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 ifeq ($(BITS),)
 BITS=32
 endif
 MBITS=
 else ifeq ($(MACHINE),x86_64)
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=64
 endif
 MBITS=
 else ifeq ($(MACHINE),x86_32)
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
 MBITS=-m$(BITS)
 endif
 else ifeq ($(MACHINE),i686)
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
 endif
 MBITS=-m$(BITS)
 else ifeq ($(MACHINE),i386)
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 SYS_CPU=2
 ifeq ($(BITS),)
 BITS=32
 endif
 MBITS=-m$(BITS)
 else ifeq ($(MACHINE),ppc64le)
-SYS_ENDIAN=LITTLE_ENDIAN
+SYS_ENDIAN=1
 SYS_CPU=3
 # ppc64 would be BIG_ENDIAN 4?
 else
