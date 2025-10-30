@@ -2203,7 +2203,6 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
   UInt16 rowBytes;
-  RGBColorType rgb;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
@@ -2222,16 +2221,14 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winErase:        // write backColor if the source pixel is transparent
       if (transp) {
-        WinSetBackColorRGB(NULL, &rgb);
-        b = ((rgb.r == 0 && rgb.g == 0 && rgb.b == 0) ? 0 : 1) << shift;
-        BmpSetBit1(offset, mask, dataSize, b, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit1(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winMask:         // write backColor if the source pixel is not transparent
       if (!transp) {
-        WinSetBackColorRGB(NULL, &rgb);
-        b = ((rgb.r == 0 && rgb.g == 0 && rgb.b == 0) ? 0 : 1) << shift;
-        BmpSetBit1(offset, mask, dataSize, b, dbl);
+        bg = WinGetBackColor();
+        BmpSetBit1(offset, mask, dataSize, bg, dbl);
       }
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
