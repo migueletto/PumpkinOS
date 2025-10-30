@@ -30,6 +30,9 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
     case NetLibRefNum:
       palmos_netlibtrap(trap);
       break;
+    case GPDLibRefNum:
+      palmos_gpdlibtrap(trap);
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X refNum %d not mapped", trap, refNum);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
