@@ -311,9 +311,15 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
 }
 
 WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
-  WinHandle wh;
+  WinHandle wh, drawWindow;
 
   // XXX The docs say "uses the bitmap and drawing state of the current draw window", but it is not happening here
+
+  drawWindow = WinGetDrawWindow();
+  debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d) drawWindow (%d,%d,%d,%d)",
+    frame, modal, focusable,
+    bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y,
+    drawWindow->windowBounds.topLeft.x, drawWindow->windowBounds.topLeft.y, drawWindow->windowBounds.extent.x, drawWindow->windowBounds.extent.y);
 
   if ((wh = WinCreateOffscreenWindow(bounds->extent.x, bounds->extent.y, nativeFormat, error)) != NULL) {
     wh->windowBounds.topLeft.x = bounds->topLeft.x;
