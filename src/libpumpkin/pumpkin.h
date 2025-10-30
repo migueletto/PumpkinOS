@@ -100,8 +100,8 @@ extern "C" {
 
 #define sysAnyPluginId  0xFFFFFFFF
 
-#define vchrPumpkinMin     0x3000
-#define vchrPumpkinMax     0x30FF
+#define vchrPumpkinMin     0x4000
+#define vchrPumpkinMax     0x40FF
 #define vchrRefreshState   vchrPumpkinMin
 
 #define sysAppLaunchFlagFork 0x8000
