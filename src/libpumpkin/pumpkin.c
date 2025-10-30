@@ -287,6 +287,11 @@ typedef union {
   uint8_t c[4];
 } creator_id_t;
 
+typedef struct {
+  surface_t *surface;
+  UInt32 creator;
+} save_screen_t;
+
 struct pumpkin_httpd_t {
   char prefix[256];
   int pe;
@@ -3177,6 +3182,40 @@ int pumpkin_set_lockable(int lockable) {
   return r;
 }
 
+static void save_screen_callback(void *context, void *screen, int size) {
+  save_screen_t *scr = (save_screen_t *)context;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  char buf[8];
+        
+  pumpkin_id2s(scr->creator, buf);
+          
+  debug(DEBUG_INFO, PUMPKINOS, "save screen app '%s', dimension %dx%d, size %d", buf, scr->surface->width, scr->surface->height, size);
+        
+  if ((dbID = DmFindDatabase(0, SCREEN_DB)) == 0) {
+    DmCreateDatabase(0, SCREEN_DB, 'Scrn', 'Data', true);
+  }     
+        
+  if ((dbID = DmFindDatabase(0, SCREEN_DB)) != 0) {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
+      DmNewResourceEx(dbRef, scr->creator, 1, size, screen);
+      DmCloseDatabase(dbRef);
+    }       
+  }         
+}           
+            
+static void save_screen(void) {   
+  task_screen_t *screen;
+  save_screen_t scr;
+
+  if ((screen = ptr_lock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN))) {
+    scr.surface = screen->surface;
+    scr.creator = pumpkin_module.tasks[pumpkin_module.current_task].creator;
+    surface_save_mem(screen->surface, 0, &scr, save_screen_callback);
+    ptr_unlock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN);
+  }
+}
+
 int pumpkin_sys_event(void) {
   uint64_t now;
   int arg1, arg2, w, h;
@@ -3309,11 +3348,20 @@ int pumpkin_sys_event(void) {
               pumpkin_module.render = 1;
             }
           }
-          pumpkin_forward_msg(i, MSG_KEYDOWN, arg1, 0, 0);
+
+          if (arg1 == WINDOW_KEY_F12) {
+            save_screen();
+          } else {
+            pumpkin_forward_msg(i, MSG_KEYDOWN, arg1, 0, 0);
+          }
         }
         pumpkin_set_key(arg1);
         break;
       case WINDOW_KEYUP:
+        if (arg1 == WINDOW_KEY_F12) {
+          pumpkin_reset_key(arg1);
+          break;
+        }
         if (arg1 && i != -1 && pumpkin_module.tasks[i].active) {
           pumpkin_forward_msg(i, MSG_KEYUP, arg1, 0, 0);
         }
@@ -3537,39 +3585,6 @@ int pumpkin_event_peek(void) {
   return thread_server_peek();
 }
 
-static void save_screen_callback(void *context, void *data, int size) {
-  surface_t *surface = (surface_t *)context;
-  UInt32 creator;
-  LocalID dbID;
-  DmOpenRef dbRef;
-  char buf[8];
-
-  creator = pumpkin_get_app_creator();
-  pumpkin_id2s(creator, buf);
-
-  debug(DEBUG_INFO, PUMPKINOS, "save screen app '%s', dimension %dx%d, size %d", buf, surface->width, surface->height, size);
-
-  if ((dbID = DmFindDatabase(0, SCREEN_DB)) == 0) {
-    DmCreateDatabase(0, SCREEN_DB, 'Scrn', 'Data', true);
-  }
-
-  if ((dbID = DmFindDatabase(0, SCREEN_DB)) != 0) {
-    if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-      DmNewResourceEx(dbRef, pumpkin_get_app_creator(), 1, size, data);
-      DmCloseDatabase(dbRef);
-    }
-  }
-}
-
-static void save_screen(void) {
-  task_screen_t *screen;
-
-  if ((screen = ptr_lock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN))) {
-    surface_save_mem(screen->surface, 0, screen->surface, save_screen_callback);
-    ptr_unlock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN);
-  }
-}
-
 static void pumpkin_update_single_app(void) {
   int x, y, w, h;
   uint64_t now;
@@ -3628,7 +3643,7 @@ static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *
           }
           break;
         case WINDOW_KEYUP:
-          if (arg1 == WINDOW_KEY_F10) {
+          if (arg1 == WINDOW_KEY_F12) {
             save_screen();
             ev = 0;
           } else {
@@ -6056,13 +6071,13 @@ int32_t pumpkin_event_timeout(int32_t t) {
     if (task->evtTimeoutCount < 10) {
       t = 0;
     } else if (task->evtTimeoutCount < 20) {
-      //t = 10;
+      t = 10;
     } else {
       if (!task->evtTimeoutWarning) {
         FrmCustomAlert(WarningOKAlert, "App is calling EvtGetEvent(0) repeatedly.", NULL, NULL);
         task->evtTimeoutWarning = true;
       }
-      //t = -1;
+      t = 10;
     }
     if (task->evtTimeoutCount < 100) task->evtTimeoutCount++;
   } else {
