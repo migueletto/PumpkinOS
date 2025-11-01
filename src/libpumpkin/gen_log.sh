@@ -82,6 +82,7 @@ BEGIN {
   usize["CncProfileID"] = 1;
   usize["FontDefaultType"] = 1;
   usize["WinScreenAttrType"] = 1;
+  usize["FieldAttrType"] = 2;
   usize["HostBoolType"] = 4;
   usize["HostSignalType"] = 4;
   usize["HostControlSelectorType"] = 2;
@@ -329,7 +330,7 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
       size = "ERROR_" atype;
     }
 
-    if (atyp == "T_USIG" && (arg == "flags" || arg ~ /Flags$/ || arg ~ /^attributes/)) {
+    if (atyp == "T_USIG" && (arg == "flags" || arg ~ /Flags$/ || arg ~ /^attributes/ || arg ~ /^attr/)) {
       atyp = "T_HEX";
     }
 
