@@ -985,8 +985,8 @@ static UInt32 getPattern(win_module_t *module, WinHandle wh, Coord x, Coord y, P
         c = (rx == ry) ? c1 : c2;
         break;
       case customPattern:
-        c1 = getColor(module, depth, false);
-        c2 = getColor(module, depth, true);
+        c1 = getColor(module, depth, !module->swapColors);
+        c2 = getColor(module, depth, module->swapColors);
         rx = x % 8;
         ry = y % 8;
         b = module->patternData[ry] << rx;
@@ -1369,13 +1369,11 @@ void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 
 void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  RGBColorType back, fore;
   Coord x1, y1, x2, y2, y, d, aux;
 
   if (rP) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
-    WinSetBackColorRGB(NULL, &back);
-    WinSetForeColorRGB(&back, &fore);
+    module->swapColors = true;
 
     x1 = rP->topLeft.x;
     y1 = rP->topLeft.y;
@@ -1404,7 +1402,7 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
       d++;
     }
 
-    WinSetForeColorRGB(&fore, NULL);
+    module->swapColors = false;
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
