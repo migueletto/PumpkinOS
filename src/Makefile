@@ -1,6 +1,6 @@
 include common.mak
 
-DIRS=../bin ../lib ../tools ../vfs/app_card/PALM/Programs ../vfs/app_install ../vfs/app_storage ../registry
+DIRS=../bin ../lib ../tools ../vfs/app_card/PALM/Programs ../vfs/app_install ../vfs/app_storage
 BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos libshell BOOT Launcher Preferences Command vi LuaSyntax MemoPad AddressBook ToDoList DateBook
 
 ifeq ($(OSNAME),GNU/Linux)

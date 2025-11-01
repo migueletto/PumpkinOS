@@ -21,7 +21,6 @@
 #include "loadfile.h"
 #include "logtrap.h"
 #include "emupalmosinc.h"
-#include "AppRegistry.h"
 #include "RegistryMgr.h"
 #include "deploy.h"
 #include "language.h"
@@ -265,7 +264,6 @@ typedef struct {
   uint32_t nextTaskId;
   pumpkin_plugin_t *plugin[MAX_PLUGINS];
   int num_plugins;
-  AppRegistryType *registry;
   RegMgrType *rm;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
@@ -506,6 +504,7 @@ void pumpkin_load_plugins(void) {
   }
 }
 
+/*
 static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt16 id, void *p, UInt16 size, void *data) {
   AppRegistryNotification *n = (AppRegistryNotification *)p;
   char stype[8], screator[8];
@@ -525,6 +524,7 @@ static void SysNotifyLoadCallback(UInt32 creator, UInt16 seq, UInt16 index, UInt
     debug(DEBUG_ERROR, PUMPKINOS, "load notification type '%s' creator '%s' priority %d: ignored (%d)", stype, screator, n->priority, pumpkin_module.num_notif);
   }
 }
+*/
 
 FontType *pumpkin_get_font(FontID fontId, UInt16 density) {
   FontType *font = NULL;
@@ -652,10 +652,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   SysUInitModule(); // sto calls SysQSortP
 
   pumpkin_module.rm = RegInit();
-  pumpkin_module.registry = AppRegistryInit(REGISTRY_DB);
-
   pumpkin_module.num_notif = 0;
-  AppRegistryEnum(pumpkin_module.registry, SysNotifyLoadCallback, 0, appRegistryNotification, NULL);
 
   emupalmos_init(&pumpkin_module.ltdef);
 
@@ -1411,7 +1408,6 @@ int pumpkin_global_finish(void) {
     xfree(pumpkin_module.plugin[i]);
   }
 
-  AppRegistryFinish(pumpkin_module.registry);
   RegFinish(pumpkin_module.rm);
 
   logtrap_global_finish(&pumpkin_module.ltdef);
@@ -1501,7 +1497,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
   RegOsType regOS;
   LocalID oldDbID, dbID;
   DmOpenRef dbRef;
-  Boolean callReset, callNormal;
+  Boolean callNormal;
   UInt32 oldCreator, creator, regSize;
 
   if ((dbID = DmFindDatabase(0, name)) != 0) {
@@ -1516,28 +1512,23 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, vo
 
         if (code == sysAppLaunchCmdNormalLaunch) {
           if (mutex_lock(mutex) == 0) {
-            callReset = false;
-
             if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
-              if (!(regFlagsP->flags & regFlagReset)) {
-                regFlagsP->flags |= regFlagReset;
-                pumpkin_reg_set(creator, regFlagsID, regFlagsP, regSize);
-                callReset = true;
-              }
+              regFlags.flags = regFlagsP->flags;
               MemPtrFree(regFlagsP);
             } else {
               regFlags.flags = regFlagReset;
-              pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
-              callReset = true;
             }
 
             if (pumpkin_reg_get(creator, regOsID, &regSize) == NULL) {
               regOS.version = pumpkin_get_default_osversion();
               pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
             }
-
             mutex_unlock(mutex);
-            if (callReset) {
+
+            if (regFlags.flags & regFlagReset) {
+              regFlags.flags &= ~regFlagReset;
+              pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
+
               // Defer a sysAppLaunchCmdSystemReset for when the app is called for the first time.
               // It is not exactly a "reset", but it allows the app to initialize itself after being installed.
               // The Note Pad app uses this launch code to create its database with a sample record.
@@ -5614,7 +5605,6 @@ static void notif_ptr_destructor(void *p) {
 
 Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyProcPtr callbackP, Int8 priority, void *userDataP) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  AppRegistryNotification n;
   UInt32 type, creator;
   notif_ptr_t *np;
   char screator[8], stype[8];
@@ -5652,11 +5642,13 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
               }
               ptr = ptr_new(np, notif_ptr_destructor);
             } else {
+/*
               debug(DEBUG_INFO, PUMPKINOS, "notification has no callback and no userData");
               n.appCreator = creator;
               n.notifyType = notifyType;
               n.priority = priority;
               AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+*/
               ptr = 0;
             }
             pumpkin_module.notif[i].taskId = task ? task->taskId : -1;
@@ -5685,7 +5677,6 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
 
 Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 priority) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  AppRegistryNotification n;
   UInt32 creator;
   char screator[8], stype[8];
   int i;
@@ -5702,10 +5693,12 @@ Err SysNotifyUnregister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, Int8 pri
           if (pumpkin_module.notif[i].ptr) {
             ptr_free(pumpkin_module.notif[i].ptr, TAG_NOTIF);
           } else {
+/*
             n.appCreator = creator;
             n.notifyType = notifyType;
             n.priority = 0xFFFF; // invalid priority: remove (appCreator,notifyType)
             AppRegistrySet(pumpkin_module.registry, creator, appRegistryNotification, 0, &n);
+*/
           }
           for (i++; i < pumpkin_module.num_notif; i++) {
             MemMove(&pumpkin_module.notif[i-1], &pumpkin_module.notif[i], sizeof(notif_registration_t));

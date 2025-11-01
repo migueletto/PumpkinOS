@@ -14,7 +14,7 @@ EOF
 
 unix2dos PumpkinOS/README.txt
 
-zip PumpkinOS.$1.Windows.x86_64.zip PumpkinOS/README.txt PumpkinOS/LICENSE PumpkinOS/pumpkin.exe PumpkinOS/pumpkin.bat PumpkinOS/pumpkin.vbs PumpkinOS/bin/*.dll PumpkinOS/lib/*.dll PumpkinOS/registry PumpkinOS/script/pumpkin.lua PumpkinOS/vfs/app_storage PumpkinOS/vfs/app_install/*.prc PumpkinOS/vfs/app_card/PALM/Programs/Command
+zip PumpkinOS.$1.Windows.x86_64.zip PumpkinOS/README.txt PumpkinOS/LICENSE PumpkinOS/pumpkin.exe PumpkinOS/pumpkin.bat PumpkinOS/pumpkin.vbs PumpkinOS/bin/*.dll PumpkinOS/lib/*.dll PumpkinOS/script/pumpkin.lua PumpkinOS/vfs/app_storage PumpkinOS/vfs/app_install/*.prc PumpkinOS/vfs/app_card/PALM/Programs/Command
 
 rm PumpkinOS/README.txt
 
