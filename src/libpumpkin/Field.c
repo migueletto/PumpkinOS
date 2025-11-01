@@ -135,24 +135,52 @@ void FldSetActiveField(FieldType *fldP) {
   }
 }
 
+static UInt16 FldNextWord(FieldType *fldP, UInt16 i, UInt16 *width, char *word, UInt16 max) {
+  FontType *f;
+  UInt32 wch;
+  UInt16 j, n, total;
+  UInt8 c;
+
+  *width = 0;
+  total = 0;
+
+  for (j = 0; j < max; j++) {
+    n = pumpkin_next_char((UInt8 *)fldP->text, i, fldP->textLen, &wch);
+    c = pumpkin_map_char(wch, &f);
+    word[j] = (char)c;
+    if (c <= ' ') {
+      if (j == 0) {
+        *width += FntFontCharWidth(f, c);
+        total += n;
+        j++;
+      }
+      break;
+    }
+    *width += FntFontCharWidth(f, c);
+    total += n;
+    i += n;
+  }
+  word[j] = 0;
+
+  return total;
+}
+
 static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16 offset, UInt16 *offsetRow, UInt16 *topOffset) {
   fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
   IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt, oldBack, back;
   WinDrawOperation prev;
   RectangleType clip, aux;
   UInt16 th, tw, row, col, bottom, x, y, n, i;
-  FontType *f;
-  UInt32 wch;
   Boolean posFound, insPtEnable, valueSet;
   FontID old;
-  UInt8 c;
+  char word[64];
 
   IN;
   if (fldP) {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "field draw=%d setPos=%d", draw, setPos);
     old = FntSetFont(fldP->fontID);
     th = FntCharHeight();
     bottom = fldP->top + fldP->rect.extent.y / th;
+    debug(DEBUG_TRACE, PALMOS_MODULE, "field draw=%d setPos=%d top=%d bottom=%d", draw, setPos, fldP->top, bottom);
     fldP->numUsedLines = 0;
     row = col = 0;
     x = 1;
@@ -175,9 +203,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
     WinSetAsciiText(true);
     debug(DEBUG_TRACE, PALMOS_MODULE, "begin text %d chars", fldP->textLen);
     for (i = 0; i < fldP->textLen; i += n) {
-      n = pumpkin_next_char((UInt8 *)fldP->text, i, fldP->textLen, &wch);
-      c = pumpkin_map_char(wch, &f);
-      tw = FntFontCharWidth(f, c);
+      n = FldNextWord(fldP, i, &tw, word, sizeof(word)-1);
 
       if (offsetRow && !valueSet && i >= offset) {
         *offsetRow = row;
@@ -206,9 +232,9 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         posFound = true;
       }
 
-      debug(DEBUG_TRACE, PALMOS_MODULE, "c='%c' col=%d row=%d", c, col, row);
+      debug(DEBUG_TRACE, PALMOS_MODULE, "word=\"%s\" col=%d row=%d", word, col, row);
 
-      if (c == '\n') {
+      if (!StrCompare(word, "\n")) {
         debug(DEBUG_TRACE, PALMOS_MODULE, "linefeed");
         if (!posFound && setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < fldP->rect.topLeft.x + fldP->rect.extent.x) {
           InsPtSetHeight(th - 2);
@@ -236,7 +262,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           }
         }
       } else {
-        if (x + tw >= fldP->rect.extent.x) {
+        if (x + tw > fldP->rect.extent.x) {
           debug(DEBUG_TRACE, PALMOS_MODULE, "overflow x: %d + %d >= %d", x, tw, fldP->rect.extent.x);
           x = 1;
           col = 0;
@@ -257,24 +283,28 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           }
           back = (fldP->selFirstPos <= i && i < fldP->selLastPos) ? fieldBackHigh : fieldBack;
           oldBack = WinSetBackColor(back);
-          debug(DEBUG_TRACE, PALMOS_MODULE, "draw '%c' col=%d row=%d x=%d y=%d", c, col, row, x, y);
+          //debug(DEBUG_TRACE, PALMOS_MODULE, "draw '%c' col=%d row=%d x=%d y=%d", c, col, row, x, y);
+          debug(DEBUG_TRACE, PALMOS_MODULE, "draw \"%s\" col=%d row=%d x=%d y=%d", word, col, row, x, y);
           if (fldP->attr.editable && fldP->attr.underlined) {
             RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
             WinSetClip(&clip);
-            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            //WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
             WinSetBackColor(oldBack);
             RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1, tw, 1);
             WinSetClip(&clip);
             prev = WinSetDrawMode(winOverlay);
-            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            //WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
             WinSetDrawMode(prev);
             WinResetClip();
           } else {
-            WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            //WinPaintChar(c, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
           }
         }
-        debug(DEBUG_TRACE, PALMOS_MODULE, "col %d -> %d", col, col+1);
-        debug(DEBUG_TRACE, PALMOS_MODULE, "x %d -> %d", x, x+tw);
+        //debug(DEBUG_TRACE, PALMOS_MODULE, "col %d -> %d", col, col+1);
+        //debug(DEBUG_TRACE, PALMOS_MODULE, "x %d -> %d", x, x+tw);
         col++;
         x += tw;
       }
@@ -940,7 +970,7 @@ UInt16 FldGetTextLength(const FieldType *fldP) {
 }
 
 void FldScrollField(FieldType *fldP, UInt16 linesToScroll, WinDirectionType direction) {
-  UInt16 top;
+  UInt16 top, visibleLines;
 
   IN;
   if (fldP) {
@@ -949,7 +979,14 @@ void FldScrollField(FieldType *fldP, UInt16 linesToScroll, WinDirectionType dire
         top = (fldP->top >= linesToScroll) ? fldP->top - linesToScroll : 0;
         break;
       case winDown:
-        top = (fldP->top + linesToScroll) <= fldP->totalLines ? fldP->top + linesToScroll : fldP->totalLines - 1;
+        if (fldP->top + linesToScroll > fldP->totalLines) {
+          linesToScroll = fldP->totalLines - fldP->top;
+        }
+        top = fldP->top + linesToScroll;
+        visibleLines = FldGetVisibleLines(fldP);
+        if (fldP->totalLines - top < visibleLines) {
+          top = fldP->totalLines - visibleLines;
+        }
         break;
       default:
         top = fldP->top;
@@ -985,8 +1022,22 @@ Boolean FldScrollable(const FieldType *fldP, WinDirectionType direction) {
   return scrollable;
 }
 
+// Return the number of lines that can be displayed within the visible
+// bounds of the field, regardless of what text is stored in the field.
 UInt16 FldGetVisibleLines(const FieldType *fldP) {
-  return fldP ? fldP->numUsedLines : 0;
+  RectangleType rect;
+  FontID old;
+  UInt16 th, num = 0;
+
+  if (fldP) {
+    FldGetBounds(fldP, &rect);
+    old = FntSetFont(fldP->fontID);
+    th = FntCharHeight();
+    FntSetFont(old);
+    num = th > 0 ? rect.extent.y / th : 0;
+  }
+
+  return num;
 }
 
 UInt16 FldGetTextHeight(const FieldType *fldP) {
