@@ -3050,12 +3050,27 @@ case sysTrapFldGetAttributes: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t attrP = ARG32;
-  union {
-    UInt16 bits;
-    FieldAttrType fields;
-  } attr;
-  FldGetAttributes(fldP ? s_fldP : NULL, attrP ? &attr.fields : NULL);
-  if (attrP) m68k_write_memory_16(attrP, attr.bits);
+  UInt16 attrBits;
+  FieldAttrType attrFields;
+  FldGetAttributes(fldP ? s_fldP : NULL, attrP ? &attrFields : NULL);
+  if (attrP) {
+    attrBits = 0;
+    if (attrFields.usable)       attrBits |= 0x8000;
+    if (attrFields.visible)      attrBits |= 0x4000;
+    if (attrFields.editable)     attrBits |= 0x2000;
+    if (attrFields.singleLine)   attrBits |= 0x1000;
+    if (attrFields.hasFocus)     attrBits |= 0x0800;
+    if (attrFields.dynamicSize)  attrBits |= 0x0400;
+    if (attrFields.insPtVisible) attrBits |= 0x0200;
+    if (attrFields.dirty)        attrBits |= 0x0100;
+    attrBits |= attrFields.underlined    << 6;
+    attrBits |= attrFields.justification << 4;
+    if (attrFields.autoShift)    attrBits |= 0x0008;
+    if (attrFields.hasScrollBar) attrBits |= 0x0004;
+    if (attrFields.numeric)      attrBits |= 0x0002;
+    if (attrFields.reserved)     attrBits |= 0x0001;
+    m68k_write_memory_16(attrP, attrBits);
+  }
   debug(DEBUG_TRACE, "EmuPalmOS", "FldGetAttributes(fldP=0x%08X, attrP=0x%08X)", fldP, attrP);
 }
 break;
@@ -3064,12 +3079,26 @@ case sysTrapFldSetAttributes: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t attrP = ARG32;
-  union {
-    UInt16 bits;
-    FieldAttrType fields;
-  } attr;
-  attr.bits = attrP ? m68k_read_memory_16(attrP) : 0;
-  FldSetAttributes(fldP ? s_fldP : NULL, attrP ? &attr.fields : NULL);
+  UInt16 attrBits;
+  FieldAttrType attrFields;
+  attrBits = attrP ? m68k_read_memory_16(attrP) : 0;
+  if (attrP) {
+    attrFields.usable        = (attrBits & 0x8000) ? 1 : 0;
+    attrFields.visible       = (attrBits & 0x4000) ? 1 : 0;
+    attrFields.editable      = (attrBits & 0x2000) ? 1 : 0;
+    attrFields.singleLine    = (attrBits & 0x1000) ? 1 : 0;
+    attrFields.hasFocus      = (attrBits & 0x0800) ? 1 : 0;
+    attrFields.dynamicSize   = (attrBits & 0x0400) ? 1 : 0;
+    attrFields.insPtVisible  = (attrBits & 0x0200) ? 1 : 0;
+    attrFields.dirty         = (attrBits & 0x0100) ? 1 : 0;
+    attrFields.underlined    = (attrBits & 0x00c0) >> 6;
+    attrFields.justification = (attrBits & 0x0030) >> 4;
+    attrFields.autoShift     = (attrBits & 0x0008) ? 1 : 0;
+    attrFields.hasScrollBar  = (attrBits & 0x0004) ? 1 : 0;
+    attrFields.numeric       = (attrBits & 0x0002) ? 1 : 0;
+    attrFields.reserved      = (attrBits & 0x0001) ? 1 : 0;
+  }
+  FldSetAttributes(fldP ? s_fldP : NULL, attrP ? &attrFields : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "FldSetAttributes(fldP=0x%08X, attrP=0x%08X)", fldP, attrP);
 }
 break;

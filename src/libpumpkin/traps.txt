@@ -1025,7 +1025,7 @@ SYS_TRAP sysTrapFldDirty 0 Boolean FldDirty 1 const_FieldType_* fldP
 SYS_TRAP sysTrapFldDrawField 0 void FldDrawField 1 FieldType_* fldP
 SYS_TRAP sysTrapFldEraseField 0 void FldEraseField 1 FieldType_* fldP
 SYS_TRAP sysTrapFldFreeMemory 0 void FldFreeMemory 1 FieldType_* fldP
-SYS_TRAP sysTrapFldGetAttributes 0 void FldGetAttributes 2 const_FieldType_* fldP FieldAttrPtr attrP
+SYS_TRAP sysTrapFldGetAttributes 0 void FldGetAttributes 2 const_FieldType_* fldP FieldAttrType_* 1attrP
 SYS_TRAP sysTrapFldGetBounds 0 void FldGetBounds 2 const_FieldType_* fldP RectanglePtr rect
 SYS_TRAP sysTrapFldGetFont 0 FontID FldGetFont 1 const_FieldType_* fldP
 SYS_TRAP sysTrapFldGetInsPtPosition 0 UInt16 FldGetInsPtPosition 1 const_FieldType_* fldP
