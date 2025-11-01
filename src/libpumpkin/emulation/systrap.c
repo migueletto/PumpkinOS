@@ -2953,6 +2953,12 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
     }
       break;
+    case sysTrapGsiInitialize: {
+      // void GsiInitialize(void)
+      GsiInitialize();
+      debug(DEBUG_TRACE, "EmuPalmOS", "GsiInitialize()");
+    }
+      break;
     case sysTrapGsiSetShiftState: {
       // void GsiSetShiftState(const UInt16 lockFlags, const UInt16 tempShift)
       uint16_t lockFlags = ARG16;
