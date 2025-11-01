@@ -1173,6 +1173,7 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     old = WinSetForeColor(formFrame);
     oldPattern = WinGetPatternType();
     WinSetPatternType(blackPattern);
+    WinEraseRectangle(rect, 0); // necessary to erase rounded corners
     WinDrawRectangle(rect, margin);
     WinSetPatternType(oldPattern);
     WinSetForeColor(old);
@@ -1874,20 +1875,23 @@ UInt16 FrmCustomResponseAlert(UInt16 alertId, const Char *s1, const Char *s2, co
 }
 
 static void frmHelpControls(FormType *formP, FieldType *fldP) {
+  ControlType *ctl;
   UInt16 index;
 
   index = FrmGetObjectIndex(formP, 10404);
+  ctl = FrmGetObjectPtr(formP, index);
   if (!FldScrollable(fldP, winUp)) {
-    FrmHideObject(formP, index);
+    CtlSetLabel(ctl, "\x03"); // up arrow, grayed out
   } else {
-    FrmShowObject(formP, index);
+    CtlSetLabel(ctl, "\x01"); // up arrow, normal
   }
 
   index = FrmGetObjectIndex(formP, 10405);
+  ctl = FrmGetObjectPtr(formP, index);
   if (!FldScrollable(fldP, winDown)) {
-    FrmHideObject(formP, index);
+    CtlSetLabel(ctl, "\x04"); // down arrow, grayed out
   } else {
-    FrmShowObject(formP, index);
+    CtlSetLabel(ctl, "\x02"); // down arrow, normal
   }
 }
 
@@ -1900,7 +1904,9 @@ static void frmHelpPage(Boolean up) {
   index = FrmGetObjectIndex(formP, 10402);
   fldP = (FieldType *)FrmGetObjectPtr(formP, index);
   n = FldGetVisibleLines(fldP);
-  FldScrollField(fldP, n, up ? winUp : winDown);
+  // increment is n-1 so that the last line appears at the top
+  // of the next page when scrolling down
+  FldScrollField(fldP, n > 0 ? n-1 : 0, up ? winUp : winDown);
   frmHelpControls(formP, fldP);
 }
 
