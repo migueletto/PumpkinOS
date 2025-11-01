@@ -4288,7 +4288,7 @@ static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
         break;
       case constantRscType:
         debug(DEBUG_TRACE, "STOR", "decoding constant resource %s %d", st, res->d.res.id);
-        if ((!pumpkin_is_m68k() || decoded) && res->size == sizeof(UInt32) && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
+        if (res->size == sizeof(UInt32) && (aux = StoNewDecodedResource(res, res->size, 0, 0)) != NULL) {
           aux[0] = res->buf[3];
           aux[1] = res->buf[2];
           aux[2] = res->buf[1];
@@ -4544,8 +4544,9 @@ Err MemChunkFree(MemPtr chunkDataP) {
 
 Err MemMove(void *dstP, const void *sP, Int32 numBytes) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
-  sys_memmove(dstP, sP, numBytes);
+  //if (dstP == NULL || sP == NULL) ErrFatalDisplayEx("MemMove NULL", 1);
+  // XXX TealPaint calls MemMove with sp == NULL
+  if (dstP && sP) sys_memmove(dstP, sP, numBytes);
   StoCheckErr(errNone);
   return errNone;
 }
