@@ -402,6 +402,22 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       debug(DEBUG_TRACE, "EmuPalmOS", "VFSRemoveFSLib(fsLibRefNum=%d): %d", fsLibRefNum, res);
     }
     break;
+    case vfsTrapFileDBGetResource: {
+      // Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *resHP)
+      uint32_t refP = ARG32;
+      uint32_t type = ARG32;
+      uint16_t resID = ARG16;
+      uint32_t resHP = ARG32;
+      FileRefProxy *ref = (FileRefProxy *)emupalmos_trap_sel_in(refP, sysTrapFileSystemDispatch, sel, 0);
+      FileRef fileRef = ref ? ref->ref : NULL;
+      emupalmos_trap_sel_in(resHP, sysTrapFileSystemDispatch, sel, 3);
+      MemHandle resH;
+      Err res = VFSFileDBGetResource(fileRef, type, resID, resHP ? &resH : NULL);
+      if (resHP) m68k_write_memory_32(resHP, emupalmos_trap_out(resH));
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSFileDBGetResource(fileRef=%d): %d", refP, res);
+    }
+    break;
     case vfsTrapFileDBInfo: {
       // Err VFSFileDBInfo(FileRef ref, Char *nameP,
       //    UInt16 *attributesP, UInt16 *versionP, UInt32 *crDateP,
