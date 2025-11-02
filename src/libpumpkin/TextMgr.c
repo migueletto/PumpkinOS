@@ -84,8 +84,7 @@ UInt16 TxtGetNextChar(const Char *inText, UInt32 inOffset, WChar *outChar) {
 }
 
 WChar TxtGetChar(const Char *inText, UInt32 inOffset) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtGetChar not implemented");
-  return 0;
+  return inText ? inText[inOffset] : 0;
 }
 
 UInt16 TxtSetNextChar(Char *ioText, UInt32 inOffset, WChar inChar) {

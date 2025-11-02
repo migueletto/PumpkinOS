@@ -32,6 +32,16 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, res);
     }
       break;
+    case intlTxtGetChar: {
+      // WChar TxtGetChar(const Char *inText, UInt32 inOffset)
+      uint32_t inTextP = ARG32;
+      uint32_t inOffset = ARG32;
+      char *inText = emupalmos_trap_sel_in(inTextP, sysTrapIntlDispatch, sel, 0);
+      UInt16 res = TxtGetChar(inText, inOffset);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtGetChar(0x%08X \"%s\", %d): %d", inTextP, inText, inOffset, res);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+      break;
     case intlTxtGetPreviousChar: {
       // UInt16 TxtGetPreviousChar(const Char *inText, UInt32 inOffset, WChar *outChar)
       uint32_t inTextP = ARG32;
@@ -147,7 +157,6 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //case intlIntlInit:
     //case intlTxtByteAttr:
     //case intlTxtCharXAttr:
-    //case intlTxtGetChar:
     //case intlTxtPrepFindString:
     //case intlTxtFindString:
     //case intlTxtWordBounds:
