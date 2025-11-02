@@ -51,6 +51,7 @@ typedef struct {
   RGBColorType defaultPalette8[256];
   UInt8 legacyDepth;
   int numPush;
+  Boolean immediate;
 } win_module_t;
 
 typedef struct {
@@ -101,6 +102,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   }
 
   pumpkin_set_local_storage(win_key, module);
+
+  module->immediate = pumpkin_get_boolean_option("immediate");
 
   module->density = density;
   module->width = width;
@@ -860,11 +863,18 @@ void pumpkin_dirty_region_mode(dirty_region_e d) {
       break;
     case dirtyRegionEnd:
       module->dirty_level--;
-      if (module->dirty_level == 0) {
+      if (!module->immediate && module->dirty_level == 0) {
         if (module->x1 <= module->x2 && module->y1 <= module->y2) {
           pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
         }
       }
+      break;
+    case dirtyRegionReset:
+      module->x1 = 32767;
+      module->x2 = 0;
+      module->y1 = 32767;
+      module->y2 = 0;
+      module->dirty_level = 0;
       break;
   }
 }
@@ -875,6 +885,16 @@ static void pumpkin_dirty_region_coords(win_module_t *module, Coord x1, Coord y1
   if (y1 < module->y1) module->y1 = y1;
   if (y2 > module->y2) module->y2 = y2;
 //debug(1, "XXX", "coords %d %d %d %d", x1, y1, x2, y2);
+
+  if (module->immediate) {
+    if (module->x1 <= module->x2 && module->y1 <= module->y2) {
+      pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
+      module->x1 = 32767;
+      module->x2 = 0;
+      module->y1 = 32767;
+      module->y2 = 0;
+    }
+  }
 }
 
 static void WinPutBit(win_module_t *module, UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation mode, Boolean dbl) {
@@ -1799,8 +1819,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     dblw = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
     hlfw = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
-    dbld = bitmapDensity == kDensityLow && displayDensity == kDensityDouble;
-    hlfd = bitmapDensity == kDensityDouble && displayDensity == kDensityLow;
+    //dbld = bitmapDensity == kDensityLow && displayDensity == kDensityDouble;
+    //hlfd = bitmapDensity == kDensityDouble && displayDensity == kDensityLow;
+    dbld = dblw;
+    hlfd = hlfw;
 
     if (dblw) {
       iw = 2;

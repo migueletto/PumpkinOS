@@ -15,6 +15,7 @@ UInt16 SysFatalAlert(const Char *msg) {
   UInt16 index;
 
   debug(DEBUG_ERROR, "System", "SysFatalAlert: %s", msg);
+  pumpkin_dirty_region_mode(dirtyRegionReset);
   WinSetCoordinateSystem(kCoordinatesStandard);
 
   if ((formP = FrmInitForm(10400)) != NULL) {

@@ -329,7 +329,8 @@ void *pumpkin_get_subdata(void);
 
 typedef enum {
   dirtyRegionBegin,
-  dirtyRegionEnd
+  dirtyRegionEnd,
+  dirtyRegionReset
 } dirty_region_e;
 
 void pumpkin_dirty_region_mode(dirty_region_e d);
