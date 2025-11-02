@@ -166,15 +166,21 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
           cattr->loadDataCallback(tableP, row, column, false, &dataH, &dataOffset, &dataSize, &tableP->currentField);
         }
 
-        if (cattr->m68k_drawfunc) {
-          CallTableDrawItem(cattr->m68k_drawfunc, tableP, row, column, &rect);
-        } else if (cattr->drawCallback) {
-          cattr->drawCallback(tableP, row, column, &rect);
-        } else {
-          th = FntCharHeight();
-          WinSetForeColor(fieldLine);
-          WinDrawLine(rect.topLeft.x, rect.topLeft.y + th - 1, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + th - 1);
+        // apparently, the field line must be drawn even if a custom draw function is installed
+        th = FntCharHeight();
+        WinSetForeColor(fieldLine);
+        WinDrawLine(rect.topLeft.x, rect.topLeft.y + th - 1, rect.topLeft.x + rect.extent.x - 1, rect.topLeft.y + th - 1);
 
+        if (cattr->m68k_drawfunc) {
+          if (dataH != NULL && dataSize > 0) {
+            // only call draw function if dataSize > 0 ("Date Book" for 68K would crash is this case)
+            CallTableDrawItem(cattr->m68k_drawfunc, tableP, row, column, &rect);
+          }
+        } else if (cattr->drawCallback) {
+          if (dataH != NULL && dataSize > 0) {
+            cattr->drawCallback(tableP, row, column, &rect);
+          }
+        } else {
           prev = WinSetDrawMode(winOverlay);
           if (dataH) {
             if ((s = MemHandleLock(dataH)) != NULL) {
@@ -911,7 +917,7 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
       case textWithNoteTableItem:
       case narrowTextTableItem:
         MemSet(&tableP->currentField, sizeof(FieldType), 0);
-        tableP->currentField.id = 0; // XXX
+        tableP->currentField.id = 0xFFFE; // XXX
         TblGetItemBounds(tableP, row, column, &rect);
         if (item->itemType == narrowTextTableItem) {
           rect.extent.x -= item->intValue;
@@ -937,7 +943,7 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
             err = cattr->loadDataCallback(tableP, row, column, true, &dataH, &dataOffset, &dataSize, &tableP->currentField);
           }
           if (err == errNone) {
-            if (dataH) {
+            if (dataH && dataSize > 0) {
 //debug(1, "XXX", "table grabFocus FldSetText offset %d size %d", dataOffset, dataSize);
               FldSetText(&tableP->currentField, dataH, dataOffset, dataSize);
             }
@@ -971,10 +977,14 @@ static Boolean TblSaveData(TableType *tableP, UInt16 row, UInt16 col) {
         case textTableItem:
         case textWithNoteTableItem:
         case narrowTextTableItem:
-          if (cattr->m68k_savefunc) {
-            r = CallTableSaveData(cattr->m68k_savefunc, tableP, row, col);
-          } else if (cattr->saveDataCallback) {
-            r = cattr->saveDataCallback(tableP, row, col);
+          if (tableP->currentField.formP != NULL && tableP->currentField.id == 0xFFFE && FldDirty(&tableP->currentField)) {
+            if (cattr->m68k_savefunc) {
+              debug(DEBUG_TRACE, "Table", "calling m68k_savefunc");
+              r = CallTableSaveData(cattr->m68k_savefunc, tableP, row, col);
+              debug(DEBUG_TRACE, "Table", "called m68k_savefunc");
+            } else if (cattr->saveDataCallback) {
+              r = cattr->saveDataCallback(tableP, row, col);
+            }
           }
           break;
         default:
@@ -997,6 +1007,7 @@ void TblReleaseFocus(TableType *tableP) {
 //debug(1, "XXX", "table %d TblReleaseFocus editing=false", tableP->id);
     tableP->attr.editing = false;
     tableP->attr.selected = false;
+    tableP->currentField.id = 0;
     tableP->currentField.formP = NULL;
   }
 }
