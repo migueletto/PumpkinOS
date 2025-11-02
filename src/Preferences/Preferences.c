@@ -192,7 +192,8 @@ static Boolean DatetimeFormHandleEvent(EventType *event) {
           locale.country = prefs.country;
           if (SelectTimeZone(&timeZone, &locale, "Set Time Zone", true, false)) {
             PrefSetPreference(prefTimeZone, timeZone);
-            PrefSetPreference(prefCountry, locale.country);
+            // XXX do not set country when setting time zone
+            //PrefSetPreference(prefCountry, locale.country);
             FrmUpdateForm(datetimeForm, 0);
           }
           handled = true;
