@@ -1532,7 +1532,7 @@ SYS_TRAP sysTrapTblGetBounds 0 void TblGetBounds 2 const_TableType_* tableP Rect
 SYS_TRAP sysTrapTblGetColumnSpacing 0 Coord TblGetColumnSpacing 2 const_TableType_* tableP Int16 column
 SYS_TRAP sysTrapTblGetColumnWidth 0 Coord TblGetColumnWidth 2 const_TableType_* tableP Int16 column
 SYS_TRAP sysTrapTblGetCurrentField 0 FieldType_* TblGetCurrentField 1 const_TableType_* tableP
-SYS_TRAP sysTrapTblGetItemBounds 0 void TblGetItemBounds 4 const_TableType_* tableP Int16 row Int16 column RectangleType_* rP
+SYS_TRAP sysTrapTblGetItemBounds 0 void TblGetItemBounds 4 const_TableType_* tableP Int16 row Int16 column RectangleType_* 1rP
 SYS_TRAP sysTrapTblGetItemFont 0 FontID TblGetItemFont 3 const_TableType_* tableP Int16 row Int16 column
 SYS_TRAP sysTrapTblGetItemInt 0 Int16 TblGetItemInt 3 const_TableType_* tableP Int16 row Int16 column
 SYS_TRAP sysTrapTblGetItemPtr 0 void_* TblGetItemPtr 3 const_TableType_* tableP Int16 row Int16 column
