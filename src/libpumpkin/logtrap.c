@@ -2719,13 +2719,13 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
         if (lt->allTraps[rtrap].numsel == 0) {
           if (lt->allTraps[rtrap].rsize == 8) sp += 4;
           print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
-          logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf, rbuf);
+          logtrap_log(lt, "0x%08X: trap 0x%04X    %s%s(%s)%s", pc-4, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf, rbuf);
         } else {
           if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
           print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 1);
           s = lt->allTraps[rtrap].selectors[selector].name;
           if (s == NULL) s = "unknown";
-          logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc, trap, selector, spaces(lt->stackp), s, buf, rbuf);
+          logtrap_log(lt, "0x%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc-4, trap, selector, spaces(lt->stackp), s, buf, rbuf);
         }
       }
     }
