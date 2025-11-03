@@ -44,7 +44,7 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
   UInt16 column, len, th, tw, w, year, month, day, i;
   UInt32 seconds;
   DateTimeType dt;
-  IndexedColorType fieldBack, fieldText, fieldLine, objFore, oldb, oldf, oldt;
+  IndexedColorType fieldBack, fieldText, fieldLine, objFore, objSelFore, objSelFill, oldb, oldf, oldt;
   WinDrawOperation prev;
   Int16 dataOffset, dataSize;
   MemHandle dataH;
@@ -54,6 +54,8 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
   ListType *list;
   FontID old;
   char *s, buf[16];
+  Int16 currentRow, currentCol;
+  Boolean selected;
 
   debug(DEBUG_TRACE, "Table", "TblDrawTableRow id %d row %d", tableP->id, row);
   seconds = TimGetSeconds();
@@ -62,12 +64,16 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
   fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
   fieldText = UIColorGetTableEntryIndex(UIFieldText);
   fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
+  objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+  objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
 
   objFore = UIColorGetTableEntryIndex(UIObjectForeground);
-  oldb = WinSetBackColor(fieldBack);
   oldf = WinSetForeColor(objFore);
+  oldb = WinSetBackColor(fieldBack);
   oldt = WinSetTextColor(fieldText);
   i = row * tableP->numColumns;
+
+  selected = TblGetSelection(tableP, &currentRow, &currentCol);
 
   for (column = 0; column < tableP->numColumns; column++, i++) {
     if (!tableP->columnAttrs[column].usable) continue;
@@ -78,18 +84,28 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
     item = &tableP->items[i];
     old = FntSetFont(item->fontID);
     TblGetItemBounds(tableP, row, column, &rect);
-    WinSetBackColor(fieldBack);
     WinSetForeColor(objFore);
+    WinSetBackColor(fieldBack);
     WinSetTextColor(fieldText);
 
-    if (item->itemType != customTableItem) {
+    if (item->itemType != customTableItem && tableP->rowAttrs[row].invalid) {
       WinEraseRectangle(&rect, 0);
+    }
+
+    // XXX find out what is the exact condition for drawing cells in inverted color
+    if (0 && selected && currentRow == row) {
+      // invert colors for selected item
+      WinSetBackColor(objSelFill);
+      WinSetTextColor(objSelFore);
+      WinEraseRectangle(&rect, 3);
     }
 
     switch (item->itemType) {
       case checkboxTableItem:
+        prev = WinSetDrawMode(winOverlay);
         FntSetFont(checkboxFont);
-        WinDrawChar(item->intValue ? 1 : 0, rect.topLeft.x, rect.topLeft.y);
+        WinPaintChar(item->intValue ? 1 : 0, rect.topLeft.x, rect.topLeft.y);
+        WinSetDrawMode(prev);
         break;
       case customTableItem:
          // Application-defined cell. The height of the item is fixed at 11 pixels.
@@ -134,9 +150,11 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         }
         break;
       case numericTableItem:
+        prev = WinSetDrawMode(winOverlay);
         FntSetFont(boldFont);
         StrNPrintF(buf, sizeof(buf)-1, "%d", item->intValue);
-        WinDrawChars(buf, StrLen(buf), rect.topLeft.x+1, rect.topLeft.y);
+        WinPaintChars(buf, StrLen(buf), rect.topLeft.x+1, rect.topLeft.y);
+        WinSetDrawMode(prev);
         debug(DEBUG_TRACE, "Table", "TblDrawTable numericTableItem (%d,%d) = %d", row, column, item->intValue);
         break;
       case popupTriggerTableItem:
@@ -168,6 +186,13 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
           debug(DEBUG_TRACE, "Table", "called m68k_loadfunc (draw)");
         } else if (cattr->loadDataCallback) {
           cattr->loadDataCallback(tableP, row, column, false, &dataH, &dataOffset, &dataSize, &tableP->currentField);
+        }
+
+        if (item->itemType == textWithNoteTableItem) {
+          // textWithNoteTableItem does not draw underline below the note icon
+          FntSetFont(symbolFont);
+          rect.extent.x -= FntCharWidth(0x0B);
+          FntSetFont(item->fontID);
         }
 
         // apparently, the field line must be drawn even if a custom draw function is installed
@@ -205,9 +230,10 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         }
 
         if (item->itemType == textWithNoteTableItem) {
+          prev = WinSetDrawMode(winOverlay);
           FntSetFont(symbolFont);
-          rect.extent.x -= FntCharWidth(0x0B);
-          WinDrawChar(0x0B, rect.topLeft.x + rect.extent.x, rect.topLeft.y);
+          WinPaintChar(0x0B, rect.topLeft.x + rect.extent.x, rect.topLeft.y);
+          WinSetDrawMode(prev);
         }
         break;
       case timeTableItem:
@@ -365,6 +391,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
             event.data.tblEnter.column = column;
             debug(DEBUG_TRACE, "Table", "penDownEvent row=%d col=%d send tblEnterEvent", row, column);
             EvtAddEventToQueue(&event);
+
             handled = true;
           }
         } else {
@@ -442,9 +469,14 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
       if (eventP->data.tblEnter.tableID == tableP->id) {
         debug(DEBUG_TRACE, "Table", "tblEnterEvent table %d", tableP->id);
 //debug(1, "XXX", "tblEnterEvent in table");
+        if (tableP->attr.selected) {
+          TblMarkRowInvalid(tableP, tableP->currentRow);
+        }
         TblSetSelection(tableP, eventP->data.tblEnter.row, eventP->data.tblEnter.column);
         TblGrabFocus(tableP, eventP->data.tblEnter.row, eventP->data.tblEnter.column);
 //debug(1, "XXX", "tblEnterEvent in table select row=%d col=%d", eventP->data.tblEnter.row, eventP->data.tblEnter.column);
+        TblMarkRowInvalid(tableP, eventP->data.tblEnter.row);
+        TblDrawTableIfInvalid(tableP, true);
         handled = true;
       }
       break;
@@ -513,19 +545,16 @@ void TblGetItemBounds(const TableType *tableP, Int16 row, Int16 column, Rectangl
 
 void TblSelectItem(TableType *tableP, Int16 row, Int16 column) {
   Int16 currentRow, currentCol;
-  RectangleType rect;
 
   if (tableP && row >= 0 && row < tableP->numRows && column >= 0 && column < tableP->numColumns) {
     if (TblGetSelection(tableP, &currentRow, &currentCol)) {
       // unhighligh previous item
-      TblGetItemBounds(tableP, currentRow, currentCol, &rect);
-      WinInvertRect(&rect, 0, true);
+      TblMarkRowInvalid(tableP, currentRow);
     }
 
-    TblSetSelection(tableP, row, column);
     // highligh new item
-    TblGetItemBounds(tableP, row, column, &rect);
-    WinInvertRect(&rect, 0, false);
+    TblSetSelection(tableP, row, column);
+    TblMarkRowInvalid(tableP, row);
   }
 }
 
@@ -562,12 +591,10 @@ void TblSetItemStyle(TableType *tableP, Int16 row, Int16 column, TableItemStyleT
 
 void TblUnhighlightSelection(TableType *tableP) {
   Int16 currentRow, currentCol;
-  RectangleType rect;
 
   if (tableP) {
     if (TblGetSelection(tableP, &currentRow, &currentCol)) {
-      TblGetItemBounds(tableP, currentRow, currentCol, &rect);
-      WinInvertRect(&rect, 0, true);
+      TblMarkRowInvalid(tableP, currentRow);
     }
 //debug(1, "XXX", "TblUnhighlightSelection selected=false");
     tableP->attr.selected = false;
