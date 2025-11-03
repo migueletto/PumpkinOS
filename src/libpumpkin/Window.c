@@ -2181,7 +2181,10 @@ void WinPaintChar(WChar theChar, Coord x, Coord y) {
 void WinDrawChars(const Char *chars, Int16 len, Coord x, Coord y) {
   debug(DEBUG_TRACE, "Window", "WinDrawChars(\"%.*s\", %d, %d)", len, chars, x, y);
   WinDrawOperation prev = WinSetDrawMode(winPaint);
+  PatternType oldp = WinGetPatternType();
+  WinSetPatternType(blackPattern);
   WinDrawCharsC((uint8_t *)chars, len, x, y, 0);
+  WinSetPatternType(oldp);
   WinSetDrawMode(prev);
 }
 
