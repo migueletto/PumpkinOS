@@ -2436,6 +2436,38 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
   }
 }
 
+UInt32 WinGetForeColorU(void) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+
+  switch (module->depth) {
+    case  1:
+    case  2:
+    case  4:
+    case  8:
+      return module->foreColor;
+    case 16:
+      return module->foreColor565;
+  }
+
+  return 0;
+}
+
+UInt32 WinGetBackColorU(void) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+
+  switch (module->depth) {
+    case  1:
+    case  2:
+    case  4:
+    case  8:
+      return module->backColor;
+    case 16:
+      return module->backColor565;
+  }
+
+  return 0;
+}
+
 void WinGetPattern(CustomPatternType *patternP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (patternP) {

@@ -464,6 +464,8 @@ void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
 void WinSetAsciiText(Boolean asciiText);
 void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
 char *WinGetDescr(WinHandle wh, char *buf, UInt16 size);
+UInt32 WinGetForeColorU(void);
+UInt32 WinGetBackColorU(void);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);
@@ -593,7 +595,7 @@ Int32 SysRandom32(Int32 newSeed);
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data);
 Boolean CallFormHandler(UInt32 addr, EventType *event);
-Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt8 cmd, EventType *eventP);
+Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt16 cmd, EventType *eventP);
 void CallListDrawItem(UInt32 addr, Int16 i, RectangleType *rect, char **text);
 void CallTableDrawItem(UInt32 addr, TableType *tableP, Int16 row, Int16 column, RectangleType *rect);
 Boolean CallTableSaveData(UInt32 addr, TableType *tableP, Int16 row, Int16 column);

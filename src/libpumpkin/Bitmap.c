@@ -2489,7 +2489,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 
 static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
-  RGBColorType rgb, aux;
+  RGBColorType rgb;
   UInt8 *bits;
   UInt16 rowBytes, old, fg, bg;
   UInt32 offset, dataSize;
@@ -2510,14 +2510,14 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winErase:        // write backColor if the source pixel is transparent
       if (transp) {
-        WinSetBackColorRGB(NULL, &rgb);
-        BmpSetBit16(offset, dataSize, rgb565(rgb.r, rgb.g, rgb.b), dbl);
+        bg = WinGetBackColorU();
+        BmpSetBit16(offset, dataSize, bg, dbl);
       }
       break;
     case winMask:         // write backColor if the source pixel is not transparent
       if (!transp) {
-        WinSetBackColorRGB(NULL, &rgb);
-        BmpSetBit16(offset, dataSize, rgb565(rgb.r, rgb.g, rgb.b), dbl);
+        bg = WinGetBackColorU();
+        BmpSetBit16(offset, dataSize, bg, dbl);
       }
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
@@ -2553,10 +2553,8 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
         BmpSetBit16(offset, dataSize, b, dbl);
       } else {
         get2_16(&old, bits, offset);
-        WinSetBackColorRGB(NULL, &rgb);
-        WinSetForeColorRGB(NULL, &aux);
-        bg = rgb565(rgb.r, rgb.g, rgb.b);
-        fg = rgb565(aux.r, aux.g, aux.b);
+        bg = WinGetBackColorU();
+        fg = WinGetForeColorU();
         if (old == bg) {
           BmpSetBit16(offset, dataSize, fg, dbl);
         } else if (old == fg) {
