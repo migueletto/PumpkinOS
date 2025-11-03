@@ -293,7 +293,9 @@ static Boolean FrmDispatchEventInternal(FormType *formP, EventType *eventP) {
 
   if (formP) {
     if (formP->m68k_handler) {
+      debug(DEBUG_TRACE, "Form", "FrmDispatchEvent calling form m68k_handler");
       if (CallFormHandler(formP->m68k_handler, eventP)) r = true;
+      debug(DEBUG_TRACE, "Form", "FrmDispatchEvent called form m68k_handler r=%d", r);
     } else if (formP->handler) {
       if (formP->handler(eventP)) r = true;
     }
@@ -317,7 +319,8 @@ Boolean FrmDispatchEvent(EventType *eventP) {
 
   if (formP) {
     r = FrmDispatchEventInternal(formP, eventP);
-    if (!r && formP) {
+    if (!r) {
+      debug(DEBUG_TRACE, "Form", "FrmDispatchEvent calling FrmHandleEvent");
       r = FrmHandleEvent(formP, eventP);
     }
   }

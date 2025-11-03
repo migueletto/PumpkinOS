@@ -95,7 +95,9 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
          // Application-defined cell. The height of the item is fixed at 11 pixels.
         rect.extent.y = 11;
         if (cattr->m68k_drawfunc) {
+          debug(DEBUG_TRACE, "Table", "calling m68k_drawfunc (draw)");
           CallTableDrawItem(cattr->m68k_drawfunc, tableP, row, column, &rect);
+          debug(DEBUG_TRACE, "Table", "called m68k_drawfunc (draw)");
         } else if (cattr->drawCallback) {
           cattr->drawCallback(tableP, row, column, &rect);
         }
@@ -161,7 +163,9 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         dataSize = 0;
 
         if (cattr->m68k_loadfunc) {
+          debug(DEBUG_TRACE, "Table", "calling m68k_loadfunc (draw)");
           CallTableLoadData(cattr->m68k_loadfunc, tableP, row, column, false, &dataH, &dataOffset, &dataSize, &tableP->currentField);
+          debug(DEBUG_TRACE, "Table", "called m68k_loadfunc (draw)");
         } else if (cattr->loadDataCallback) {
           cattr->loadDataCallback(tableP, row, column, false, &dataH, &dataOffset, &dataSize, &tableP->currentField);
         }
@@ -174,7 +178,9 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         if (cattr->m68k_drawfunc) {
           if (dataH != NULL && dataSize > 0) {
             // only call draw function if dataSize > 0 ("Date Book" for 68K would crash is this case)
+            debug(DEBUG_TRACE, "Table", "calling m68k_drawfunc (draw)");
             CallTableDrawItem(cattr->m68k_drawfunc, tableP, row, column, &rect);
+            debug(DEBUG_TRACE, "Table", "called m68k_drawfunc (draw)");
           }
         } else if (cattr->drawCallback) {
           if (dataH != NULL && dataSize > 0) {
@@ -210,7 +216,9 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         break;
       case tallCustomTableItem:
         if (cattr->m68k_drawfunc) {
+          debug(DEBUG_TRACE, "Table", "calling m68k_drawfunc (draw)");
           CallTableDrawItem(cattr->m68k_drawfunc, tableP, row, column, &rect);
+          debug(DEBUG_TRACE, "Table", "called m68k_drawfunc (draw)");
         } else if (cattr->drawCallback) {
           cattr->drawCallback(tableP, row, column, &rect);
         }
@@ -938,7 +946,9 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
 
         if (cattr->m68k_loadfunc || cattr->loadDataCallback) {
           if (cattr->m68k_loadfunc) {
+            debug(DEBUG_TRACE, "Table", "calling m68k_loadfunc (focus)");
             err = CallTableLoadData(cattr->m68k_loadfunc, tableP, row, column, true, &dataH, &dataOffset, &dataSize, &tableP->currentField);
+            debug(DEBUG_TRACE, "Table", "called m68k_loadfunc (focus)");
           } else {
             err = cattr->loadDataCallback(tableP, row, column, true, &dataH, &dataOffset, &dataSize, &tableP->currentField);
           }
