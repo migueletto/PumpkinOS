@@ -1365,7 +1365,7 @@ Boolean CallFormHandler(UInt32 addr, EventType *eventP) {
   return handled;
 }
 
-Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt8 cmd, EventType *eventP) {
+Boolean CallGadgetHandler(UInt32 addr, FormGadgetTypeInCallback *gadgetP, UInt16 cmd, EventType *eventP) {
   uint32_t a, argsSize, gadgetOffset, eventOffset;
   uint8_t *p;
   Boolean handled = false;
@@ -1467,7 +1467,7 @@ Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, B
     m68k_write_memory_32(a, (uint8_t *)tableP - ram);
     m68k_write_memory_16(a + sizeof(uint32_t), row);
     m68k_write_memory_16(a + sizeof(uint32_t) + sizeof(int16_t), column);
-    m68k_write_memory_16(a + sizeof(uint32_t) + 2*sizeof(int16_t), editable);
+    m68k_write_memory_8(a + sizeof(uint32_t) + 2*sizeof(int16_t), editable); // Boolean takes 2 bytes on the stack, but is written as a byte
     m68k_write_memory_32(a + sizeof(uint32_t) + 3*sizeof(int16_t), a + handleOffset);
     m68k_write_memory_32(a + sizeof(uint32_t) + 3*sizeof(int16_t) + sizeof(uint32_t), a + dOffset);
     m68k_write_memory_32(a + sizeof(uint32_t) + 3*sizeof(int16_t) + 2*sizeof(uint32_t), a + dOffset + 2);
