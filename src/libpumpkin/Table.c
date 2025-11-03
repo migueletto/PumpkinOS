@@ -108,6 +108,7 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         WinSetDrawMode(prev);
         break;
       case customTableItem:
+        prev = WinSetDrawMode(winOverlay);
          // Application-defined cell. The height of the item is fixed at 11 pixels.
         rect.extent.y = 11;
         if (cattr->m68k_drawfunc) {
@@ -117,6 +118,7 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
         } else if (cattr->drawCallback) {
           cattr->drawCallback(tableP, row, column, &rect);
         }
+        WinSetDrawMode(prev);
         break;
       case dateTableItem:
         // Non-editable date in the form month/day, or a dash if the date value is -1.
@@ -405,9 +407,12 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
     case penUpEvent:
 //debug(1, "XXX", "table %d penUp", tableP->id);
       MemSet(&event, sizeof(EventType), 0);
-      if (RctPtInRectangle(eventP->screenX, eventP->screenY, &tableP->bounds)) {
-        row = TblScreenToRow(tableP, eventP->screenY);
-        column = TblScreenToColumn(tableP, eventP->screenX);
+      if (RctPtInRectangle(eventP->screenX, eventP->screenY, &tableP->bounds) && tableP->attr.selected) {
+        // when penUpEvent is received, use the pen coordinates of the previous penDownEvent,
+        // that is, the use the currently selected row. This prevents an error in Date Book in which
+        // the sequence penDown -> penMove -> penUp would select a different cell on penUp an raise an error.
+        row = tableP->currentRow;
+        column = tableP->currentColumn;
 //debug(1, "XXX", "ZZZ penUpEvent in table row=%d col=%d", row, column);
         if (tableP->rowAttrs[row].usable && tableP->columnAttrs[column].usable) {
           event.eType = tblSelectEvent;
