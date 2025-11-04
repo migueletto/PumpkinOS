@@ -1541,6 +1541,22 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
   if (mutex_lock(sto->mutex) == 0) {
     if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
       db = (storage_db_t *) (sto->base + dbID);
+
+      if (pumpkin_is_m68k() && (mode & dmModeWrite)) {
+        // In PumpkinOS, the database formats for Date Book and To Do List are incompatible with the
+        // corresponding formats in PalmOS. Because of this, if a 68K app opens one of these databases in write mode
+        // with the intention of writing records, it will corrupt the database. So we deny access here.
+        // In theory, even reading records from the database will cause problems for the app, but there are other ligitimate
+        // uses of calling DmOpenDatabase() in read mode.
+        switch (db->creator) {
+          case sysFileCDatebook:
+          case sysFileCToDo:
+            mutex_unlock(sto->mutex);
+            ErrFatalDisplayEx("68K app tried to open Date Book / To Do List database in write mode.", 1);
+            return NULL;
+        }
+      }
+
       if ((dbRef = pumpkin_heap_alloc(sizeof(DmOpenType), "dbRef")) != NULL) {
         if (dbID == sto->watchID) {
           debug(DEBUG_INFO, "STOR", "WATCH DmOpenDatabase(0x%08X, 0x%04X): %p", dbID, mode, dbRef);
