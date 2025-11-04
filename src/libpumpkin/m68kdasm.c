@@ -1236,6 +1236,7 @@ static void d68020_bfexts(m68k_disassemble_t *dis)
   } else
     sprintf(width, "%d", g_5bit_data_table[extension&31]);
   sprintf(dis->g_dasm_str, "bfexts  %s {%s:%s}, D%d; (2+)", get_ea_mode_str_8s(dis->g_cpu_ir), offset, width, (extension>>12)&7);
+  USED_D((extension>>12)&7);
 }
 
 static void d68020_bfextu(m68k_disassemble_t *dis)
@@ -1475,6 +1476,10 @@ f e d c b a 9 8 7 6 5 4 3 2 1 0
     (extension>>16)&7, extension&7, (extension>>22)&7, (extension>>6)&7,
     BIT_1F(extension) ? 'A' : 'D', (extension>>28)&7,
     BIT_F(extension) ? 'A' : 'D', (extension>>12)&7);
+  USED_D((extension>>16)&7);
+  USED_D(extension&7);
+  USED_D((extension>>22)&7);
+  USED_D((extension>>6)&7);
 }
 
 static void d68020_cas2_32(m68k_disassemble_t *dis)
@@ -1486,6 +1491,10 @@ static void d68020_cas2_32(m68k_disassemble_t *dis)
     (extension>>16)&7, extension&7, (extension>>22)&7, (extension>>6)&7,
     BIT_1F(extension) ? 'A' : 'D', (extension>>28)&7,
     BIT_F(extension) ? 'A' : 'D', (extension>>12)&7);
+  USED_D((extension>>16)&7);
+  USED_D(extension&7);
+  USED_D((extension>>22)&7);
+  USED_D((extension>>6)&7);
 }
 
 static void d68000_chk_16(m68k_disassemble_t *dis)
@@ -1711,6 +1720,7 @@ static void d68020_cpdbcc(m68k_disassemble_t *dis)
   extension2 = read_imm_16();
   new_pc += make_int_16(read_imm_16());
   sprintf(dis->g_dasm_str, "%ddb%-4s D%d,%s; %x (extension = %x) (2-3)", (dis->g_cpu_ir>>9)&7, g_cpcc[extension1&0x3f], dis->g_cpu_ir&7, get_imm_str_s16(), new_pc, extension2);
+  USED_D(dis->g_cpu_ir&7);
 }
 
 static void d68020_cpgen(m68k_disassemble_t *dis)
@@ -2046,6 +2056,7 @@ static void d68040_fpu(m68k_disassemble_t *dis)
 
         case 7:    // packed decimal w/dynamic k-factor (register)
           sprintf(dis->g_dasm_str, "fmove%s   FP%d, %s {D%d}", float_data_format[(w2>>10)&7], dst_reg, get_ea_mode_str_32s(dis->g_cpu_ir), (w2>>4)&7);
+          USED_D((w2>>4)&7);
           break;
 
         default:
@@ -2083,6 +2094,7 @@ static void d68040_fpu(m68k_disassemble_t *dis)
       if ((w2>>11) & 1)  // dynamic register list
       {
         sprintf(dis->g_dasm_str, "fmovem.x   %s, D%d", get_ea_mode_str_32s(dis->g_cpu_ir), (w2>>4)&7);
+        USED_D((w2>>4)&7);
       }
       else  // static register list
       {
@@ -2116,6 +2128,7 @@ static void d68040_fpu(m68k_disassemble_t *dis)
       if ((w2>>11) & 1)  // dynamic register list
       {
         sprintf(dis->g_dasm_str, "fmovem.x   D%d, %s", (w2>>4)&7, get_ea_mode_str_32s(dis->g_cpu_ir));
+        USED_D((w2>>4)&7);
       }
       else  // static register list
       {
@@ -2204,12 +2217,14 @@ static void d68000_lsr_s_32(m68k_disassemble_t *dis)
 static void d68000_lsr_r_8(m68k_disassemble_t *dis)
 {
   sprintf(dis->g_dasm_str, "lsr.b   D%d, D%d", (dis->g_cpu_ir>>9)&7, dis->g_cpu_ir&7);
+  USED_D((dis->g_cpu_ir>>9)&7);
   USED_D(dis->g_cpu_ir&7);
 }
 
 static void d68000_lsr_r_16(m68k_disassemble_t *dis)
 {
   sprintf(dis->g_dasm_str, "lsr.w   D%d, D%d", (dis->g_cpu_ir>>9)&7, dis->g_cpu_ir&7);
+  USED_D((dis->g_cpu_ir>>9)&7);
   USED_D(dis->g_cpu_ir&7);
 }
 
@@ -2440,8 +2455,11 @@ static void d68000_movem_pd_16(m68k_disassemble_t *dis)
       if(buffer[0] != 0)
         strcat(buffer, "/");
       sprintf(buffer+strlen(buffer), "D%d", first);
-      if(run_length > 0)
+      USED_D(first);
+      if(run_length > 0) {
         sprintf(buffer+strlen(buffer), "-D%d", first + run_length);
+        USED_D(first + run_length);
+      }
     }
   }
   for(i=0;i<8;i++)
