@@ -487,7 +487,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           oldb = WinSetBackColor(objFill);
           oldt = WinSetTextColor(fieldText);
           max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
-          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
+          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*6);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
           rect.extent.y = FntCharHeight()*totalLines;
           obj.label->extent.x = max;
@@ -1712,7 +1712,7 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char 
     labelY = 20;
 
     labelW = 156 - labelX;
-    RctSetRectangle(&rect, labelX, labelY, labelW, FntCharHeight()*5);
+    RctSetRectangle(&rect, labelX, labelY, labelW, FntCharHeight()*6);
     if (msg && msg[0]) {
       WinDrawCharBox(msg, StrLen(msg), boldFont, &rect, false, &totalLines, NULL, NULL, NULL, 0);
     } else {
