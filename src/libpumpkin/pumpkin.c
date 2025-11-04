@@ -6053,6 +6053,7 @@ void pumpkin_audio_task_finish(void) {
 int32_t pumpkin_event_timeout(int32_t t) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   uint64_t now;
+  uint16_t r;
 
   if (t == 0) {
     now = sys_get_clock();
@@ -6061,16 +6062,20 @@ int32_t pumpkin_event_timeout(int32_t t) {
     }
     task->evtTimeoutLast = now;
 
-    if (task->evtTimeoutCount < 10) {
-      t = 0;
-    } else if (task->evtTimeoutCount < 20) {
-      t = 10;
-    } else {
+    if (task->evtTimeoutCount >= 20) {
       if (!task->evtTimeoutWarning) {
-        FrmCustomAlert(WarningOKAlert, "App is calling EvtGetEvent(0) repeatedly.", NULL, NULL);
+        r = FrmCustomAlert(ConfirmationOKCancelAlert, "App is calling EvtGetEvent(0) repeatedly (busy waiting). Click OK to continue execution or Cancel to terminate it.", "", "");
         task->evtTimeoutWarning = true;
+
+        if (r == 1) {
+          // Cancel button was clicked
+          if (pumpkin_is_m68k()) {
+            emupalmos_finish(1);
+          } else {
+            pumpkin_fatal_error(1);
+          }
+        }
       }
-      t = 10;
     }
     if (task->evtTimeoutCount < 100) task->evtTimeoutCount++;
   } else {
