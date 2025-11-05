@@ -102,7 +102,9 @@ void CtlDrawControl(ControlType *controlP) {
               x = rect.topLeft.x + (rect.extent.x - bw) / 2;
               y = rect.topLeft.y + (rect.extent.y - bh) / 2;
               if (controlP->attr.on) WinSetForeColor(objSelFore);
+              mode = WinSetDrawMode(controlP->attr.on ? winPaintInverse : winPaint);
               WinPaintBitmap(bmp, x, y);
+              WinSetDrawMode(mode);
               WinSetCoordinateSystem(coordSys);
               MemHandleUnlock(h);
             }
