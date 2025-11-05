@@ -2538,13 +2538,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
       if (!transp) {
-        rgb.r = r565(b);
-        rgb.g = g565(b);
-        rgb.b = b565(b);
-        rgb.r ^= 0xff;
-        rgb.g ^= 0xff;
-        rgb.b ^= 0xff;
-        BmpSetBit16(offset, dataSize, rgb565(rgb.r, rgb.g, rgb.b), dbl);
+        BmpSetBit16(offset, dataSize, b ^ 0xffff, dbl);
       }
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
