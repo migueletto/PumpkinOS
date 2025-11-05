@@ -408,9 +408,11 @@ void pumpkin_heap_dump(void) {
   }
 }
 
+#if defined(HEAP_DEBUG)
 int pumpkin_heap_debug_access(uint32_t offset, uint32_t size, int read) {
   return heap_debug_access(heap_get(), offset, size, read);
 }
+#endif
 
 heap_t *heap_get(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
@@ -4110,6 +4112,9 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
       case kDensityDouble:
         dbl = false;
         break;
+      default:
+        dbl = false;
+        break;
     }
 
     if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
@@ -5666,7 +5671,7 @@ static Int32 compare_registration(void *e1, void *e2, void *otherP) {
 Err SysNotifyBroadcast(SysNotifyParamType *notify) {
   notif_ptr_t *np;
   char stype[8], screator[8];
-  int i, n;
+  int i, n = 0;
 
   if (notify == NULL) {
     return sysErrParamErr;

@@ -3342,8 +3342,8 @@ int sys_fork_exec(char *filename, char *argv[], int fd) {
       if (fd != -1) {
         close(0);
         close(1);
-        dup(fd);
-        dup(fd);
+        if (dup(fd)) {}
+        if (dup(fd)) {}
       }
 
       execve(filename, argv, envp);

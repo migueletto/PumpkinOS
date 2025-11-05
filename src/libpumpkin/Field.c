@@ -187,6 +187,8 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
     y = 0;
     insPtEnable = false;
     valueSet = false;
+    oldb = oldf = oldt = 0;
+    fieldBackHigh = fieldBack = 0;
 
     if (draw) {
       fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
