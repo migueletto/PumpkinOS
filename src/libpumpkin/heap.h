@@ -14,6 +14,9 @@ void *heap_realloc(heap_t *heap, void *p, sys_size_t size);
 void heap_free(heap_t *heap, void *p);
 
 void heap_exhausted_error(void);
+
+#if defined(HEAP_DEBUG)
 int heap_debug_access(void *p, uint32_t offset, uint32_t size, int read);
+#endif
 
 #endif
