@@ -1917,9 +1917,22 @@ void emupalmos_memory_hooks(
 static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
   uint8_t *p = NULL;
   uint32_t a, paramBlockSize;
+  GoToParamsType *goTo;
   SysAppLaunchCmdSystemResetType *reset;
 
   switch (launchCode) {
+    case sysAppLaunchCmdGoTo:
+      p = pumpkin_heap_alloc(18, "paramBlock");
+      a = p - ram;
+      goTo = (GoToParamsType *)param;
+      m68k_write_memory_16(a +  0, goTo->searchStrLen);
+      m68k_write_memory_16(a +  2, goTo->dbCardNo);
+      m68k_write_memory_32(a +  4, goTo->dbID);
+      m68k_write_memory_16(a +  8, goTo->recordNum);
+      m68k_write_memory_16(a + 10, goTo->matchPos);
+      m68k_write_memory_16(a + 12, goTo->matchFieldNum);
+      m68k_write_memory_32(a + 14, goTo->matchCustom);
+      break;
     case sysAppLaunchCmdSystemReset:
       p = pumpkin_heap_alloc(2, "paramBlock");
       a = p - ram;

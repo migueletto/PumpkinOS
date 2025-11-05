@@ -19,3 +19,14 @@ field UInt32 alarmSeconds
 field Boolean soundAlarm
 field UInt8 padding
 end
+
+name sysAppLaunchCmdGoTo
+struct GoToParamsType
+field Int16 searchStrLen
+field UInt16 dbCardNo
+field LocalID dbID
+field UInt16 recordNum
+field UInt16 matchPos
+field UInt16 matchFieldNum
+field UInt32 matchCustom
+end

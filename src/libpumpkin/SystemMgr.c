@@ -135,11 +135,11 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
       return errNone;
     }
 
-    debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch registering switch to \"%s\" cmd %d", name, cmd);
+    debug(DEBUG_INFO, PALMOS_MODULE, "SysUIAppSwitch registering switch to \"%s\" cmd %d param %p", name, cmd, cmdPBP);
     MemSet(&module->request, sizeof(launch_request_t), 0);
     StrNCopy(module->request.name, name, dmDBNameLength);
     module->request.code = cmd;
-    // XXX there is no way to know the size of cmdPB
+    module->request.param = cmdPBP;
   }
 
   MemSet(&event, sizeof(EventType), 0);

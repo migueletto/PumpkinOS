@@ -4379,9 +4379,13 @@ case sysTrapSysUIAppSwitch: {
   LocalID dbID = ARG32;
   uint16_t cmd = ARG16;
   uint32_t cmdPBP = ARG32;
-  void *l_cmdPBP = cmdPBP ? ram + cmdPBP : NULL;
+  launch_union_t *param = NULL;
+  if (cmdPBP) {
+    param = sys_calloc(1, sizeof(launch_union_t)); // XXX not being freed
+    deserialize_launch(cmd, ram + cmdPBP, sizeof(launch_union_t), param);
+  }
   debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch(cardNo=%d, dbID=0x%08X, cmd=%d, cmdPBP=0x%08X)", cardNo, dbID, cmd, cmdPBP);
-  Err res = SysUIAppSwitch(cardNo, dbID, cmd, cmdPBP ? l_cmdPBP : 0);
+  Err res = SysUIAppSwitch(cardNo, dbID, cmd, param);
   m68k_set_reg(M68K_REG_D0, res);
 }
 break;

@@ -181,7 +181,7 @@ $1 == "end" {
     if (has_cstring) {
       print "  if (size >= " size ") {" >> source;
     } else {
-      print "  if (size == " size extra_size ") {" >> source;
+      print "  if (size >= " size extra_size ") {" >> source;
     }
     print "    UInt32 i = 0;" >> source;
     if (has_cstring) print "    UInt16 len;" >> source;
