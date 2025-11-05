@@ -4379,14 +4379,19 @@ case sysTrapSysUIAppSwitch: {
   LocalID dbID = ARG32;
   uint16_t cmd = ARG16;
   uint32_t cmdPBP = ARG32;
-  launch_union_t *param = NULL;
+  launch_union_t param;
+  int r = 0;
   if (cmdPBP) {
-    param = sys_calloc(1, sizeof(launch_union_t)); // XXX not being freed
-    deserialize_launch(cmd, ram + cmdPBP, sizeof(launch_union_t), param);
+    r = decode_launch(cmd, cmdPBP, &param);
   }
-  debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch(cardNo=%d, dbID=0x%08X, cmd=%d, cmdPBP=0x%08X)", cardNo, dbID, cmd, cmdPBP);
-  Err res = SysUIAppSwitch(cardNo, dbID, cmd, param);
+  Err res = sysErrParamErr;
+  if (r == 0) {
+    res = SysUIAppSwitch(cardNo, dbID, cmd, cmdPBP ? &param : NULL);
+  } else {
+    debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch invalid param type %d", cmd);
+  }
   m68k_set_reg(M68K_REG_D0, res);
+  debug(DEBUG_TRACE, "EmuPalmOS", "SysUIAppSwitch(cardNo=%d, dbID=0x%08X, cmd=%d, cmdPBP=0x%08X)", cardNo, dbID, cmd, cmdPBP);
 }
 break;
 case sysTrapSysCurAppDatabase: {
@@ -4409,10 +4414,19 @@ case sysTrapSysAppLaunch: {
   uint16_t launchFlags = ARG16;
   uint16_t cmd = ARG16;
   uint32_t cmdPBP = ARG32;
-  void *l_cmdPBP = cmdPBP ? ram + cmdPBP : NULL;
   uint32_t resultP = ARG32;
   UInt32 l_resultP;
-  Err res = SysAppLaunch(cardNo, dbID, launchFlags, cmd, cmdPBP ? l_cmdPBP : 0, resultP ? &l_resultP : NULL);
+  launch_union_t param;
+  int r = 0;
+  if (cmdPBP) {
+    r = decode_launch(cmd, cmdPBP, &param);
+  }
+  Err res = sysErrParamErr;
+  if (r == 0) {
+    res = SysAppLaunch(cardNo, dbID, launchFlags, cmd, cmdPBP ? &param : NULL, resultP ? &l_resultP : NULL);
+  } else {
+    debug(DEBUG_TRACE, "EmuPalmOS", "SysAppLaunch invalid param type %d", cmd);
+  }
   if (resultP) m68k_write_memory_32(resultP, l_resultP);
   m68k_set_reg(M68K_REG_D0, res);
   debug(DEBUG_TRACE, "EmuPalmOS", "SysAppLaunch(cardNo=%d, dbID=0x%08X, launchFlags=%d, cmd=%d, cmdPBP=0x%08X, resultP=0x%08X [%d]): %d", cardNo, dbID, launchFlags, cmd, cmdPBP, resultP, l_resultP, res);

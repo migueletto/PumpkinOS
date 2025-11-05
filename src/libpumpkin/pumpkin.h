@@ -10,6 +10,7 @@
 #include "surface.h"
 #include "gps.h"
 #include "pumpkin_syscall_id.h"
+#include "launch_serde.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,7 +150,8 @@ typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
   UInt16 flags;
-  void *param;
+  Boolean hasParam;
+  launch_union_t param;
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   UInt16 opendb;
 } launch_request_t;

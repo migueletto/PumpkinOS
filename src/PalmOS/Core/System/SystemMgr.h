@@ -541,6 +541,11 @@ typedef struct {
  }SysAppLaunchCmdPnpsType;
 
 
+// PumpkinOS extension
+typedef struct {
+  char name[dmDBNameLength];
+} PanelAppType;
+
 /************************************************************
  * Structure of Application info for an application. Applications
  *  do not necessarily have to be on their own thread - there

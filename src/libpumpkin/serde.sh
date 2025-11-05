@@ -41,6 +41,8 @@ BEGIN {
   emusrc = "emulation/emu_" kind "_serde.c"
 
   print NOTICE > header;
+  print "#ifndef " kind "_serde_h" > header;
+  print "#define " kind "_serde_h" > header;
 
   print NOTICE > source;
   print "#include <PalmOS.h>" >> source;
@@ -265,12 +267,12 @@ $1 == "end" {
         print "  offset += 4;" >> emusrc;
       } else if (lengths[i]) {
         print "  for (UInt32 i = 0; i < " lengths[i] "; i++) {" >> emusrc;
-	print "  " writem[1] "(buf + offset + i, param->" fields[i] "[i]);" >> emusrc;
+        print "  " writem[1] "(buf + offset + i, param->" fields[i] "[i]);" >> emusrc;
         print "  }" >> emusrc;
         print "  offset += " lengths[i] ";" >> emusrc;
       } else {
         sz = sizes[field_types[i]];
-	print "  " writem[sz] "(buf + offset, param->" fields[i] ");" >> emusrc;
+        print "  " writem[sz] "(buf + offset, param->" fields[i] ");" >> emusrc;
         print "  offset += " sz ";" >> emusrc;
       }
     }
@@ -317,22 +319,29 @@ END {
   print "  return -1;" >> source;
   print "}" >> source;
 
+  print "#endif" >> header;
+
   print "" >> emuhdr;
-  print "void decode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param);" >> emuhdr;
-  print "void decode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param) {" >> emusrc;
+  print "int decode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param);" >> emuhdr;
+  print "int decode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param) {" >> emusrc;
+  print "  int r = 0;" >> emusrc;
   print "  switch (paramType) {" >> emusrc;
   for (i = 0; i < num_names; i++) {
     print "    case " names[i] ":" >> emusrc;
-    print "      return decode_" names[i] "(buf, &param->p" i ");" >> emusrc;
+    print "      decode_" names[i] "(buf, &param->p" i ");" >> emusrc;
+    print "      break;" >> emusrc;
   }
   print "    default:" >> emusrc;
+  print "      r = -1;" >> emusrc;
   print "      break;" >> emusrc;
   print "  }" >> emusrc;
+  print "  return r;" >> emusrc;
   print "}" >> emusrc;
 
   print "" >> emusrc;
-  print "void encode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param);" >> emuhdr;
-  print "void encode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param) {" >> emusrc;
+  print "int encode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param);" >> emuhdr;
+  print "int encode_" kind "(UInt32 paramType, UInt32 buf, " kind "_union_t *param) {" >> emusrc;
+  print "  int r = 0;" >> emusrc;
   print "  switch (paramType) {" >> emusrc;
   for (i = 0; i < num_names; i++) {
     print "    case " names[i] ":" >> emusrc;
@@ -340,8 +349,10 @@ END {
     print "      break;" >> emusrc;
   }
   print "    default:" >> emusrc;
+  print "      r = -1;" >> emusrc;
   print "      break;" >> emusrc;
   print "  }" >> emusrc;
+  print "  return r;" >> emusrc;
   print "}" >> emusrc;
 
 }

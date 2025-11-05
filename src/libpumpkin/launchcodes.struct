@@ -1,3 +1,5 @@
+# do not change the order of the structs in this file
+
 name sysAppLaunchCmdSystemReset
 struct SysAppLaunchCmdSystemResetType
 field Boolean hardReset
@@ -29,4 +31,9 @@ field UInt16 recordNum
 field UInt16 matchPos
 field UInt16 matchFieldNum
 field UInt32 matchCustom
+end
+
+name sysAppLaunchCmdPanelCalledFromApp
+struct PanelAppType
+field char name 32
 end

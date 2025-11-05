@@ -139,7 +139,10 @@ Err SysUIAppSwitch(UInt16 cardNo, LocalID dbID, UInt16 cmd, MemPtr cmdPBP) {
     MemSet(&module->request, sizeof(launch_request_t), 0);
     StrNCopy(module->request.name, name, dmDBNameLength);
     module->request.code = cmd;
-    module->request.param = cmdPBP;
+    if (cmdPBP) {
+      module->request.hasParam = true;
+      MemMove(&module->request.param, cmdPBP, sizeof(launch_union_t));
+    }
   }
 
   MemSet(&event, sizeof(EventType), 0);

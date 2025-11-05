@@ -24,6 +24,8 @@
 #include "emupalmosinc.h"
 #include "emupalmos.h"
 
+#include "launch_serde.h"
+#include "emu_launch_serde.h"
 #include "notif_serde.h"
 #include "emu_notif_serde.h"
 
@@ -1917,28 +1919,17 @@ void emupalmos_memory_hooks(
 static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
   uint8_t *p = NULL;
   uint32_t a, paramBlockSize;
-  GoToParamsType *goTo;
-  SysAppLaunchCmdSystemResetType *reset;
 
   switch (launchCode) {
     case sysAppLaunchCmdGoTo:
       p = pumpkin_heap_alloc(18, "paramBlock");
       a = p - ram;
-      goTo = (GoToParamsType *)param;
-      m68k_write_memory_16(a +  0, goTo->searchStrLen);
-      m68k_write_memory_16(a +  2, goTo->dbCardNo);
-      m68k_write_memory_32(a +  4, goTo->dbID);
-      m68k_write_memory_16(a +  8, goTo->recordNum);
-      m68k_write_memory_16(a + 10, goTo->matchPos);
-      m68k_write_memory_16(a + 12, goTo->matchFieldNum);
-      m68k_write_memory_32(a + 14, goTo->matchCustom);
+      encode_launch(launchCode, a, (launch_union_t *)param);
       break;
     case sysAppLaunchCmdSystemReset:
       p = pumpkin_heap_alloc(2, "paramBlock");
       a = p - ram;
-      reset = (SysAppLaunchCmdSystemResetType *)param;
-      m68k_write_memory_8(a + 0, reset->hardReset);
-      m68k_write_memory_8(a + 1, reset->createDefaultDB);
+      encode_launch(launchCode, a, (launch_union_t *)param);
       break;
     case sysAppLaunchCmdNotify:
       paramBlockSize = pumpkin_get_param_size(); // SysNotifyParamType + details

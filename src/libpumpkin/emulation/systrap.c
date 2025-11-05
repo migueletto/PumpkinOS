@@ -19,6 +19,7 @@
 #include "m68k/m68kcpu.h"
 #include "emupalmos.h"
 #include "launch_serde.h"
+#include "emu_launch_serde.h"
 #include "debug.h"
 
 // not mapped:
