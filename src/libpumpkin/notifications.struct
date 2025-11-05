@@ -106,3 +106,7 @@ field UInt8 padding[0]
 field UInt8 padding[1]
 field UInt8 padding[2]
 end
+
+name sysNotifySyncFinishEvent
+none
+end

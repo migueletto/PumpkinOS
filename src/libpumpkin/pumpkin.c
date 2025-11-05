@@ -2914,7 +2914,9 @@ static void pumpkin_forward_notif(Int32 taskId, UInt32 creator, SysNotifyParamTy
         pumpkin_id2s(notify->notifyType, snotify);
         debug(DEBUG_INFO, PUMPKINOS, "sending notification '%s' (%u bytes)", snotify, size);
         debug_bytes(DEBUG_TRACE, PUMPKINOS, buf, sizeof(notif_msg_t));
-        debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+        if (size > sizeof(notif_msg_t)) {
+          debug_bytes(DEBUG_TRACE, PUMPKINOS, buf + sizeof(notif_msg_t), size - sizeof(notif_msg_t));
+        }
         thread_client_write(pumpkin_module.tasks[i].handle, buf, size);
         sys_free(buf);
       }

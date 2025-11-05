@@ -80,6 +80,13 @@ $1 == "name" {
   names[num_names] = name;
   next;
 }
+$1 == "none" {
+  pointer = "";
+  scalar = "";
+  struct = "";
+  structs[num_names] = "uint32_t";
+  next;
+}
 $1 == "pointer" {
   pointer = $2;
   scalar = "";
@@ -133,7 +140,7 @@ $1 == "end" {
     print "  uint8_t *buf = sys_calloc(1, *size + " size ");" >> source;
     print "  UInt32 i = *size;" >> source;
     print "  i += " put[size] "((" put_type[size] ")*param, buf, i);" >> source;
-  } else {
+  } else if (struct) {
     print "  " struct " *param = p;" >> source;
     print "  uint8_t *buf = sys_calloc(1, *size + " size extra_size ");" >> source;
     if (has_cstring) print "  UInt16 len;" >> source;
@@ -153,6 +160,9 @@ $1 == "end" {
         print "  i += " put[sz] "(param->" fields[i] ", buf, i);" >> source;
       }
     }
+  } else {
+    print "  uint8_t *buf = sys_calloc(1, *size);" >> source;
+    print "  UInt32 i = *size;" >> source;
   }
   print "  *size = i;" >> source;
   print "  return buf;" >> source;
@@ -176,7 +186,7 @@ $1 == "end" {
     print "  return r;" >> source;
     print "}" >> source;
     print "" >> source;
-  } else {
+  } else if (struct) {
     print "int deserialize_" name "(uint8_t *buf, UInt32 size, " struct " *param);" >> header;
     print "int deserialize_" name "(uint8_t *buf, UInt32 size, " struct " *param) {" >> source;
     print "  int r = -1;" >> source;
@@ -206,6 +216,12 @@ $1 == "end" {
     print "  return r;" >> source;
     print "}" >> source;
     print "" >> source;
+  } else {
+    print "int deserialize_" name "(uint8_t *buf, UInt32 size, void *param);" >> header;
+    print "int deserialize_" name "(uint8_t *buf, UInt32 size, void *param) {" >> source;
+    print "  return 0;" >> source;
+    print "}" >> source;
+    print "" >> source;
   }
 
   if (pointer) {
@@ -233,7 +249,7 @@ $1 == "end" {
     print "}" >> emusrc;
     print "" >> emusrc;
 
-  } else {
+  } else if (struct) {
     print "void decode_" name "(UInt32 buf, " struct " *param);" >> emuhdr;
     print "void decode_" name "(UInt32 buf, " struct " *param) {" >> emusrc;
     print "  MemSet(param, sizeof(" struct "), 0);" >> emusrc;
@@ -276,6 +292,16 @@ $1 == "end" {
         print "  offset += " sz ";" >> emusrc;
       }
     }
+    print "}" >> emusrc;
+    print "" >> emusrc;
+  } else {
+    print "void decode_" name "(UInt32 buf, void *param);" >> emuhdr;
+    print "void decode_" name "(UInt32 buf, void *param) {" >> emusrc;
+    print "}" >> emusrc;
+    print "" >> emusrc;
+
+    print "void encode_" name "(UInt32 buf, void *param);" >> emuhdr;
+    print "void encode_" name "(UInt32 buf, void *param) {" >> emusrc;
     print "}" >> emusrc;
     print "" >> emusrc;
   }
