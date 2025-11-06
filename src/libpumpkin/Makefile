@@ -19,7 +19,7 @@ endif
 endif
 
 CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -DARMEMU -ffreestanding \
-    $(HEAP_DEBUG) $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN) $(GIT_TAG_NAME)
+    $(HEAP_DEBUG) $(LOGTRAP) $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN) $(GIT_TAG_NAME)
 
 GPSLIB_SOURCE=GPSLib68K.c
 

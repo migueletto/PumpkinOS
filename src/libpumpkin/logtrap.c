@@ -2300,9 +2300,11 @@ int logtrap_global_init(logtrap_def *def) {
 void logtrap_global_finish(logtrap_def *def) {
   uint32_t i;
 
-  for (i = 0; i < 0x1000; i++) {
-    if (def->allTraps[i].selectors) {
-      def->free(def->allTraps[i].selectors, def->data);
+  if (def) {
+    for (i = 0; i < 0x1000; i++) {
+      if (def->allTraps[i].selectors) {
+        def->free(def->allTraps[i].selectors, def->data);
+      }
     }
   }
 }

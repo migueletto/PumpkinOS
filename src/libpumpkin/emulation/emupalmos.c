@@ -1612,16 +1612,17 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
 
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  logtrap_def *def;
   uint32_t size = pumpkin_heap_size();
   uint16_t trap, selector;
   char buf[128], *s;
 
-  def = logtrap_get_def();
+#if defined(LOGTRAP)
+  logtrap_def *def = logtrap_get_def();
   if (def && state->lt) {
     def->rethook(state->lt, pc);
     def->hook(state->lt, pc);
   }
+#endif
 
   if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
     trap = (pc - size) >> 2;
@@ -1644,6 +1645,7 @@ static int cpu_instr_callback(unsigned int pc) {
 }
 
 static int cpu_instr_callback2(unsigned int pc) {
+#if defined(LOGTRAP)
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   logtrap_def *def;
 
@@ -1652,7 +1654,7 @@ static int cpu_instr_callback2(unsigned int pc) {
   if (def && state->lt && def->hook2) {
     def->hook2(state->lt, pc);
   }
-
+#endif
   return 0;
 }
 
@@ -1960,7 +1962,7 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
 
   if (state) {
     def = logtrap_get_def();
-    if ((lt = logtrap_init(def)) != NULL) {
+    if (def && (lt = logtrap_init(def)) != NULL) {
       state->lt = lt;
 
       if ((logtrap = pumpkin_get_string_option("logtrap")) != NULL) {
