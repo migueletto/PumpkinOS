@@ -2260,13 +2260,15 @@ void FrmSetControlGroupSelection(const FormType *formP, UInt8 groupNum, UInt16 c
     if (index != frmInvalidObjectId) {
       if (FrmGetObjectType(formP, index) == frmControlObj) {
         control = (ControlType *)FrmGetObjectPtr(formP, index);
-        if (control && control->group == groupNum) {
+        // XXX Date Book uses a groupNum that does not match the controls's group.
+        // the test below would fail in this case. Is groupNum ignored ???
+        //if (control && control->group == groupNum) {
           if (control->style == pushButtonCtl) {
             CtlUpdateGroup(control, true);
           } else if (control->style == checkboxCtl) {
             CtlUpdateCheckboxGroup(control, true);
           }
-        }
+        //}
       }
     }
   }
