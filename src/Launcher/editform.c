@@ -65,6 +65,7 @@ static const dynamic_form_item_t controlPropertiesItems[] = {
   { "Position:", numPairItem,  0 },
   { "Size:",     numPairItem,  0 },
   { "Font:",     numericItem,  4 },
+  { "Group:",    numericItem,  4 },
   { "Usable",    checkboxItem, 0 },
   { NULL,        alphaItem,    0 }
 };
@@ -74,6 +75,7 @@ static const dynamic_form_item_t graphicControlPropertiesItems[] = {
   { "Style:",     numericItem,  2 },
   { "Position:",  numPairItem,  0 },
   { "Size:",      numPairItem,  0 },
+  { "Group:",     numericItem,  4 },
   { "Usable",     checkboxItem, 0 },
   { NULL,         alphaItem,    0 }
 };
@@ -452,7 +454,8 @@ static void controlPropertiesCallback(FormType *frm, dynamic_form_phase_t phase,
       setFieldNum(frm, 1004, rect.extent.x, false);
       setFieldNum(frm, 1005, rect.extent.y, false);
       setFieldNum(frm, 1006, ctl->font, false);
-      setControlValue(frm, 1007, ctl->attr.usable);
+      setFieldNum(frm, 1007, ctl->group, false);
+      setControlValue(frm, 1008, ctl->attr.usable);
       break;
     case getProperties:
       getField(frm, 1000, buf, sizeof(buf));
@@ -469,7 +472,8 @@ static void controlPropertiesCallback(FormType *frm, dynamic_form_phase_t phase,
       rect.extent.y = getFieldNum(frm, 1005);
       FrmSetObjectBounds(data->formP, data->selected, &rect);
       ctl->font = getFieldNum(frm, 1006);
-      ctl->attr.usable = getControlValue(frm, 1007);
+      ctl->group = getFieldNum(frm, 1007);
+      ctl->attr.usable = getControlValue(frm, 1008);
       data->changed = true;
       break;
     case finishForm:
@@ -494,6 +498,7 @@ static void graphicControlPropertiesCallback(FormType *frm, dynamic_form_phase_t
       setFieldNum(frm, 1003, rect.topLeft.y, false);
       setFieldNum(frm, 1004, rect.extent.x, false);
       setFieldNum(frm, 1005, rect.extent.y, false);
+      setFieldNum(frm, 1006, ctl->group, false);
       setControlValue(frm, 1006, ctl->attr.usable);
       break;
     case getProperties:
@@ -504,7 +509,8 @@ static void graphicControlPropertiesCallback(FormType *frm, dynamic_form_phase_t
       rect.extent.x = getFieldNum(frm, 1004);
       rect.extent.y = getFieldNum(frm, 1005);
       FrmSetObjectBounds(data->formP, data->selected, &rect);
-      ctl->attr.usable = getControlValue(frm, 1006);
+      ctl->group = getFieldNum(frm, 1006);
+      ctl->attr.usable = getControlValue(frm, 1007);
       data->changed = true;
       break;
     case finishForm:
