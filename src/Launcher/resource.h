@@ -55,21 +55,21 @@
 #define depth8Ctl   1038
 #define depth16Ctl  1039
 
-#define moveBmp     2001
-#define drawBmp     2002
-#define pickBmp     2003
-#define prevBmp     2004
-#define nextBmp     2005
-#define transpBmp   2006
-#define folderBmp   2007
-#define pumpkinBmp  2008
-#define m68kBmp     2009
-#define errorBmp    2010
-#define warningBmp  2011
-#define questionBmp 2012
-#define okBmp       2013
-#define frmpropBmp  2014
-#define objpropBmp  2015
+#define moveBmp     52001
+#define drawBmp     52002
+#define pickBmp     52003
+#define prevBmp     52004
+#define nextBmp     52005
+#define transpBmp   52006
+#define folderBmp   52007
+#define pumpkinBmp  52008
+#define m68kBmp     52009
+#define errorBmp    52010
+#define warningBmp  52011
+#define questionBmp 52012
+#define okBmp       52013
+#define frmpropBmp  52014
+#define objpropBmp  52015
 
 #define fakeFnt     2001
 
