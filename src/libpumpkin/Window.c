@@ -112,7 +112,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->depth0 = depth;
   module->legacyDepth = 1;
 
-  module->pattern = whitePattern;
+  module->pattern = blackPattern;
   module->coordSys = kCoordinatesStandard;
 
   module->foreColor565 = 0x0000; // black
@@ -1334,12 +1334,36 @@ static void WinPaintRectangleF(const RectangleType *rP, Int16 width, Int16 corne
   }
 }
 
+static UInt16 WinPrepareCoordsys(RectangleType *rP, RectangleType *scaledRect, Int16 *width, UInt16 *corner) {
+  UInt16 coordSys, density;
+  BitmapType *bmp;
+  WinHandle wh;
+
+  MemMove(scaledRect, rP, sizeof(RectangleType));
+  coordSys = WinGetCoordinateSystem();
+  if (coordSys == kCoordinatesStandard && WinGetDrawMode() != winPaint) {
+    wh = WinGetDrawWindow();
+    bmp = WinGetBitmap(wh);
+    density = BmpGetDensity(bmp);
+    if (density == kDensityDouble) {
+      // use double coordinates to preserve font shape
+      WinSetCoordinateSystem(kCoordinatesDouble);
+      if (scaledRect) WinScaleRectangle(scaledRect);
+      if (width) *width = WinScaleCoord(*width, false);
+      if (corner) *corner = WinScaleCoord(*corner, false);
+    }
+  }
+
+  return coordSys;
+}
+
 void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  PatternType oldp = module->pattern;
-  module->pattern = blackPattern; // XXX is this correct ? if it is not blackPattern, ChemTable does not paint the whole cell
-  WinPaintRectangleF(rP, 1, cornerDiam, true, false);
-  module->pattern = oldp;
+  RectangleType scaled;
+  Int16 coordSys, width;
+
+  coordSys = WinPrepareCoordsys((RectangleType *)rP, &scaled, &width, &cornerDiam);
+  WinPaintRectangleF(&scaled, width, cornerDiam, true, false);
+  WinSetCoordinateSystem(coordSys);
 }
 
 void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
@@ -1363,6 +1387,8 @@ void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (rP) {
+    debug(DEBUG_TRACE, "Window", "WinInvertRectangle([%d, %d, %d, %d], %d)",
+      rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, cornerDiam);
     invertPrefix();
     RectangleType rect;
     MemMove(&rect, rP, sizeof(RectangleType));
