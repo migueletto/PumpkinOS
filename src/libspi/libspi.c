@@ -16,10 +16,10 @@ typedef struct {
   spi_t *spi;
 } libspi_t;
 
-#if defined LINUX
-static spi_provider_t provider_sys;
-#elif defined RPI
+#if defined RPI
 static spi_provider_t provider_bcm;
+#elif defined LINUX
+static spi_provider_t provider_sys;
 #endif
 
 static void spi_destructor(void *p) {
@@ -51,10 +51,10 @@ static int libspi_open(int pe) {
         if ((ptr = ptr_new(spi, spi_destructor)) != -1) {
           r = script_push_integer(pe, ptr);
         } else {
-#if defined LINUX
-          spi_close(spi->spi);
-#elif defined RPI
+#if defined RPI
           spi_bcm_close(spi->spi);
+#elif defined LINUX
+          spi_close(spi->spi);
 #endif
           sys_free(spi);
         }
@@ -109,17 +109,17 @@ static int libspi_transfer(int pe) {
 }
 
 int libspi_load(void) {
-#if defined LINUX
-  sys_memset(&provider_sys, 0, sizeof(spi_provider_t));
-  provider_sys.open = spi_open;
-  provider_sys.close = spi_close;
-  provider_sys.transfer = spi_transfer;
-#elif defined RPI
+#if defined RPI
   spi_bcm_begin();
   sys_memset(&provider_bcm, 0, sizeof(spi_provider_t));
   provider_bcm.open = spi_bcm_open;
   provider_bcm.close = spi_bcm_close;
   provider_bcm.transfer = spi_bcm_transfer;
+#elif defined LINUX
+  sys_memset(&provider_sys, 0, sizeof(spi_provider_t));
+  provider_sys.open = spi_open;
+  provider_sys.close = spi_close;
+  provider_sys.transfer = spi_transfer;
 #endif
 
   return 0;
@@ -135,12 +135,12 @@ int libspi_unload(void) {
 
 int libspi_init(int pe, script_ref_t obj) {
   if (script_get_pointer(pe, SPI_PROVIDER) == NULL) {
-#if defined LINUX
-    debug(DEBUG_INFO, "SPI", "registering %s", SPI_PROVIDER);
-    script_set_pointer(pe, SPI_PROVIDER, &provider_sys);
-#elif defined RPI
+#if defined RPI
     debug(DEBUG_INFO, "SPI", "registering %s", SPI_PROVIDER);
     script_set_pointer(pe, SPI_PROVIDER, &provider_bcm);
+#elif defined LINUX
+    debug(DEBUG_INFO, "SPI", "registering %s", SPI_PROVIDER);
+    script_set_pointer(pe, SPI_PROVIDER, &provider_sys);
 #endif
   }
 

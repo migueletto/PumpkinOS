@@ -17,7 +17,7 @@ if not lib then
 end
 
 if lib.setup then
-  lib.setup(320, 480, 0, 1, 24, 25, 20000000)
+  lib.setup(320, 480, 0, 1, 536, 537, 20000000)
 end
 
 pit.mount("./vfs/", "/")

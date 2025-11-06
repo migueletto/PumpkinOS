@@ -1,8 +1,8 @@
 include ../common.mak
 
-PROGRAM=libbcm2835
+PROGRAM=libspi
 
-ifeq ($(RPI),1)
+ifneq ($(RPI),)
 CUSTOMFLAGS=-I$(SRC)/libbcm2835
 LIBS=-lbcm2835
 SOURCE=libspi.c spi_bcm.c

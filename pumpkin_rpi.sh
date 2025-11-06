@@ -12,11 +12,13 @@ del_gpio() {
   fi
 }
 
-add_gpio 24
-add_gpio 25
+export LANG=en_US.UTF-8
+
+add_gpio 536  # 512 + 24
+add_gpio 537  # 512 + 25
 echo -e '\033[?17;0;0c' > /dev/tty1
 
-./pumpkin -d 1 -f pumpkin.log -s libscriptlua ./script/pumpkin.lua
+gdb --args ./pumpkin -d 1 -f pumpkin.log -s libscriptlua ./script/pumpkin_rpi.lua
 
-del_gpio 24
-del_gpio 25
+del_gpio 536
+del_gpio 537

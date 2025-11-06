@@ -9,6 +9,7 @@
 #include "gpiosys.h"
 #endif
 #ifdef RPI
+#include "bcm2835.h"
 #include "gpiobcm.h"
 #endif
 #include "debug.h"
@@ -247,6 +248,7 @@ int libgpio_load(void) {
 #endif
 
 #ifdef RPI
+  bcm2835_init();
   sys_memset(&provider_bcm, 0, sizeof(gpio_provider_t));
   provider_bcm.open = gpio_bcm_open;
   provider_bcm.close = gpio_bcm_close;

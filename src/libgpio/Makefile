@@ -2,7 +2,7 @@ include ../common.mak
 
 PROGRAM=libgpio
 
-ifeq ($(RPI),1)
+ifneq ($(RPI),)
 CUSTOMFLAGS=-DBCM2835 -I$(SRC)/libbcm2835
 LIBS=-lbcm2835
 RPI_SOURCE=gpiobcm.c
