@@ -1359,7 +1359,7 @@ static UInt16 WinPrepareCoordsys(RectangleType *rP, RectangleType *scaledRect, I
 
 void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   RectangleType scaled;
-  Int16 coordSys, width;
+  Int16 coordSys, width = 1;
 
   coordSys = WinPrepareCoordsys((RectangleType *)rP, &scaled, &width, &cornerDiam);
   WinPaintRectangleF(&scaled, width, cornerDiam, true, false);
