@@ -8,7 +8,7 @@
 #include "ads7846.h"
 #include "debug.h"
 
-#define MIN_PRESSURE 25
+#define MIN_PRESSURE 20
 
 typedef struct {
   spi_provider_t *spip;
@@ -287,7 +287,7 @@ static int window_event2(window_t *window, int wait, int *arg1, int *arg2) {
   *arg1 = 1;
   *arg2 = 0;
 
-  debug(DEBUG_TRACE, "WAVESHARE", "button down");
+  debug(DEBUG_TRACE, "WAVESHARE", "button down x=%d y=%d", ws->x, ws->y);
   return WINDOW_BUTTONDOWN;
 }
 
@@ -298,6 +298,7 @@ static void window_status(window_t *window, int *x, int *y, int *buttons) {
     *x = ws->x;
     *y = ws->y;
     *buttons = ws->down ? 1 : 0;
+    debug(DEBUG_TRACE, "WAVESHARE", "status x=%d y=%d down=%d", ws->x, ws->y, ws->down);
   }
 }
 
