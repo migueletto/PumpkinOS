@@ -2618,6 +2618,7 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, lau
     frm_module = FrmReinitModule(NULL);
     fld_module = FldReinitModule(NULL);
     menu_module = MenuReinitModule(NULL);
+    InsPtEnable(false);
     m68k = pumpkin_is_m68k();
     launched = pumpkin_is_launched();
     pumpkin_launched(1);
@@ -2633,6 +2634,7 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, lau
     pumpkin_set_data(data);
     pumpkin_set_m68k(m68k);
     pumpkin_launched(launched);
+    InsPtEnable(false);
     UIColorRestoreTable(old);
     WinReinitModule(win_module);
     FntReinitModule(fnt_module);
