@@ -501,7 +501,7 @@ DumpFont(const char *pchFileName,
         if (row == 0)
         {
           width = strlen(s1);
-          if (fntOW[fntNo][curChar].width == -1)
+          if (fntOW[fntNo][curChar].width == (char)-1)
             fntOW[fntNo][curChar].width = width;
         }
         else if (width != (int)strlen(s1))
@@ -602,6 +602,14 @@ DumpFont(const char *pchFileName,
   // dump CharInfoTag
   DumpBytes(&fntOW[fntNo][header[h_firstChar]],
             (header[h_lastChar] - header[h_firstChar] + 1 + missingChar) * 2);
+
+/*
+  for (x = 0; x < header[h_lastChar] - header[h_firstChar] + 1 + missingChar; x++) {
+    uint16_t w = fntOW[fntNo][header[h_firstChar] + x].offset;
+    w = (w << 8) | fntOW[fntNo][header[h_firstChar] + x].width;
+    EmitW(w);
+  }
+*/
 
   free(fl.szFilename);
 }
@@ -750,7 +758,7 @@ DumpFontFamily( int fntNo, int version, unsigned int densityCount, FNTFAMDEF * f
           if (row == 0)
           {
             width = strlen(s1);
-            if (fntOW[fntNo][curChar].width == -1)
+            if (fntOW[fntNo][curChar].width == (char)-1)
             {
               fntOW[fntNo][curChar].width = width;
               if (singleOW && width * firstEntry->density != singleOW[curChar].width * fontFamilyEntries->density)
@@ -893,6 +901,14 @@ DumpFontFamily( int fntNo, int version, unsigned int densityCount, FNTFAMDEF * f
       // dump CharInfoTag
       DumpBytes(&fntOW[fntNo][header[h_firstChar]],
           (header[h_lastChar] - header[h_firstChar] + 1 + missingChar) * 2);
+/*
+      for (x = 0; x < header[h_lastChar] - header[h_firstChar] + 1 + missingChar; x++) {
+        uint16_t w = fntOW[fntNo][header[h_firstChar] + x].offset;
+        w = (w << 8) | fntOW[fntNo][header[h_firstChar] + x].width;
+        EmitW(w);
+      }
+*/
+
       EmitW(0xFFFF);
 
       // detach the single density metrics so they won't be overwritten
