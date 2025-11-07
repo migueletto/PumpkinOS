@@ -2438,15 +2438,17 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       }
       break;
     case taskCmd:
-      data->mode = launcher_task;
-      data->sort = 0;
-      data->dir = 0;
-      frm = FrmGetActiveForm();
-      launcherScan(data);
-      refresh(frm, data);
-      UpdateStatus(frm, data, true);
-      frm->mbar = data->mainMenu;
-      MenuSetActiveMenu(frm->mbar);
+      if (pumpkin_get_mode() == 0) {
+        data->mode = launcher_task;
+        data->sort = 0;
+        data->dir = 0;
+        frm = FrmGetActiveForm();
+        launcherScan(data);
+        refresh(frm, data);
+        UpdateStatus(frm, data, true);
+        frm->mbar = data->mainMenu;
+        MenuSetActiveMenu(frm->mbar);
+      }
       break;
     case runCmd:
       if (data->mode == launcher_app_small && data->prev >= 0 && data->item[data->prev].creator != AppID) {
@@ -2572,7 +2574,8 @@ static Boolean MainFormHandleEvent(EventPtr event) {
     case frmOpenEvent:
     case frmUpdateEvent:
       frm = FrmGetActiveForm();
-      data->mainMenu = frm->mbar;
+      frm->mbar = data->mainMenu;
+      MenuSetActiveMenu(frm->mbar);
       gadIndex = FrmGetObjectIndex(frm, iconsGad);
       FrmGetObjectBounds(frm, gadIndex, &data->gadRect);
       sclIndex = FrmGetObjectIndex(frm, iconsScl);
@@ -3081,7 +3084,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyAppCrashedEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifyTimeChangeEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
 
-  data->appListMenu = MenuInit(AppListMenu);
+  data->mainMenu = MenuInit(pumpkin_get_mode() == 0 ? MainMenu : ReducedMainMenu);
+  data->appListMenu = MenuInit(pumpkin_get_mode() == 0 ? AppListMenu : ReducedAppListMenu);
   data->useTaskbar = !(launchFlags & sysAppLaunchFlagFork);
 
   if (data->useTaskbar) {
@@ -3090,11 +3094,13 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
     addWidgets(data);
   }
 
-  FrmCenterDialogs(true);
+  if (pumpkin_get_mode() == 0) {
+    FrmCenterDialogs(true);
+  }
   FrmGotoForm(MainForm);
   EventLoop(data);
   formP = FrmGetActiveForm();
-  if (formP->formId == MainForm) formP->mbar = data->mainMenu;
+  formP->mbar = NULL;
   FrmCloseAllForms();
 
   if (data->useTaskbar) {
@@ -3102,6 +3108,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
     pumpkin_taskbar_destroy();
   }
 
+  MenuDispose(data->mainMenu);
   MenuDispose(data->appListMenu);
 
   SysNotifyUnregister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,   sysNotifyNormalPriority);

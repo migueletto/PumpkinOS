@@ -9,8 +9,10 @@
 #define RegistryForm    1009
 #define AboutForm       1010
 
-#define MainMenu        1001
-#define AppListMenu     1101
+#define MainMenu           1001
+#define ReducedMainMenu    1002
+#define AppListMenu        1003
+#define ReducedAppListMenu 1004
 
 #define ErrorAlert     1001
 #define InfoAlert      1002

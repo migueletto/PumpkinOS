@@ -3,7 +3,6 @@
 FORM MainForm 0 0 160 160
 USABLE
 NOFRAME
-MENUID MainMenu
 BEGIN
   TITLE "Pumpkin"
   GADGET    ID iconsGad     0 15 153 145
@@ -15,10 +14,8 @@ MENU MainMenu
 BEGIN
   PULLDOWN "Pumpkin"
   BEGIN
-#ifndef KERNEL
     MENUITEM "Exit"         shutdownCmd "E"
     MENUITEM "Fork"         forkCmd     "F"
-#endif
     MENUITEM "About"        aboutCmd    "A"
   END
 
@@ -29,6 +26,23 @@ BEGIN
     MENUITEM "Databases"    dbCmd       "D"
     MENUITEM "Files"        fileCmd     "F"
     MENUITEM "Tasks"        taskCmd     "T"
+  END
+END
+
+MENU ReducedMainMenu
+BEGIN
+  PULLDOWN "Pumpkin"
+  BEGIN
+    MENUITEM "Exit"         shutdownCmd "E"
+    MENUITEM "About"        aboutCmd    "A"
+  END
+
+  PULLDOWN "View"
+  BEGIN
+    MENUITEM "Applications" appCmd      "A"
+    MENUITEM "App. list"    appSmallCmd "L"
+    MENUITEM "Databases"    dbCmd       "D"
+    MENUITEM "Files"        fileCmd     "F"
   END
 END
 
@@ -47,6 +61,30 @@ BEGIN
     MENUITEM "Databases"    dbCmd       "D"
     MENUITEM "Files"        fileCmd     "F"
     MENUITEM "Tasks"        taskCmd     "T"
+  END
+
+  PULLDOWN "Action"
+  BEGIN
+    MENUITEM "Run"      runCmd "R"
+    MENUITEM "Delete"   delCmd "D"
+    MENUITEM "Registry" registryCmd "E"
+  END
+END
+
+MENU ReducedAppListMenu
+BEGIN
+  PULLDOWN "Pumpkin"
+  BEGIN
+    MENUITEM "Exit"     shutdownCmd "S"
+    MENUITEM "About"    aboutCmd    "A"
+  END
+
+  PULLDOWN "View"
+  BEGIN
+    MENUITEM "Applications" appCmd      "A"
+    MENUITEM "App. list"    appSmallCmd "L"
+    MENUITEM "Databases"    dbCmd       "D"
+    MENUITEM "Files"        fileCmd     "F"
   END
 
   PULLDOWN "Action"
