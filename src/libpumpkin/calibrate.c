@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 
 #include "sys.h"
+#include "thread.h"
 #include "pwindow.h"
 #include "pfont.h"
 #include "graphic.h"
@@ -8,7 +9,8 @@
 #include "calibrate.h"
 #include "debug.h"
 
-static const char *msg = "Tap on the screen";
+static const char *tapmsg = "Tap on the target";
+static const char *errmsg = "Error, try again";
 
 static void set_calibration(int32_t *lcdx, int32_t *lcdy, int32_t *tpx, int32_t *tpy, calibration_t *c) {
   c->div = ((tpx[0] - tpx[2]) * (tpy[1] - tpy[2])) -
@@ -73,22 +75,27 @@ void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int hei
     black = surface_color_rgb(encoding, NULL, 0, 0x00, 0x00, 0x00, 0xff);
     red = depth >= 8 ? surface_color_rgb(encoding, NULL, 0, 0xff, 0x00, 0x00, 0xff) : black;
     raw = (uint8_t *)surface->getbuffer(surface->data, &len);
-    surface_rectangle(surface, 0, 0, width-1, height-1, 1, white);
     radius = width / 10;
 
     font = 6;
-    fw = surface_font_chars_width(NULL, font, (char *)msg, sys_strlen(msg));
     fh = surface_font_height(NULL, font);
-    tx = (width - fw) / 2;
     ty = height / 2 + radius + fh;
-    surface_print(surface, tx, ty, (char *)msg, NULL, font, black, white);
+
+    fw = surface_font_chars_width(NULL, font, (char *)tapmsg, sys_strlen(tapmsg));
+    tx = (width - fw) / 2;
+
+    surface_rectangle(surface, 0, 0, width-1, height-1, 1, white);
+    surface_print(surface, tx, ty, (char *)tapmsg, NULL, font, black, white);
     wp->update_texture_rect(w, texture, raw, 0, 0, width, height);
     wp->draw_texture_rect(w, texture, 0, 0, width, height, 0, 0);
     if (wp->render) wp->render(w);
 
-    for (i = 0; i < 3;) {
+    fw = surface_font_chars_width(NULL, font, (char *)errmsg, sys_strlen(errmsg));
+    tx = (width - fw) / 2;
+    ty += 2*fh;
+
+    for (i = 0; i < 3 && !thread_must_end();) {
       debug(DEBUG_INFO, "TOUCH", "calibrating point %d", i+1);
-      wp->draw_texture_rect(w, texture, 0, 0, width, height, 0, 0);
       drawTarget(i, red, width, height, radius, &x, &y, surface);
       wp->update_texture_rect(w, texture, raw, x - radius, y - radius, radius*2, radius*2);
       wp->draw_texture_rect(w, texture, x - radius, y - radius, radius*2, radius*2, x - radius, y - radius);
@@ -96,7 +103,15 @@ void calibrate(window_provider_t *wp, window_t *w, int depth, int width, int hei
       lcdx[i] = x;
       lcdy[i] = y;
       r = wp->average(w, &tpx[i], &tpy[i], -1);
-      if (r == -1) break;
+      if (r == -1) {
+        surface_print(surface, tx, ty, (char *)errmsg, NULL, font, red, white);
+        wp->update_texture_rect(w, texture, raw, tx, ty, fw, fh);
+        wp->draw_texture_rect(w, texture, tx, ty, fw, fh, tx, ty);
+        continue;
+      }
+      surface_rectangle(surface, tx, ty, tx + fw - 1, ty + fh - 1, 1, white);
+      wp->update_texture_rect(w, texture, raw, tx, ty, fw, fh);
+      wp->draw_texture_rect(w, texture, tx, ty, fw, fh, tx, ty);
       if (r == 0) continue;
       debug(DEBUG_INFO, "TOUCH", "target (%3d,%3d) clicked (%3d,%3d)", lcdx[i], lcdy[i], tpx[i], tpy[i]);
       drawTarget(i, white, width, height, radius, &x, &y, surface);
