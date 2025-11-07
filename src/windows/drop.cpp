@@ -139,7 +139,6 @@ bool FileDropTarget::DropData(HWND hwnd, IDataObject *pDataObject) {
   STGMEDIUM stgmed;
   HDROP hDrop;
   HRESULT r;
-  client_request_t creq;
   char *buf;
   int i, numFiles, size;
   bool ok = false;
@@ -166,10 +165,7 @@ bool FileDropTarget::DropData(HWND hwnd, IDataObject *pDataObject) {
         ok = true;
       }
       if (ok) {
-        debug(DEBUG_TRACE, "WIN32", "send MSG_DEPLOY");
-        xmemset(&creq, 0, sizeof(client_request_t));
-        creq.type = MSG_DEPLOY;
-        thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+        pumpkin_send_deploy();
       }
       ReleaseStgMedium(&stgmed);
     }

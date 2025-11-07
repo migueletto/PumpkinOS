@@ -2284,11 +2284,19 @@ static int pumpkin_wait_ack(int port, uint32_t *reply) {
 
 void pumpkin_send_deploy(void) {
   client_request_t creq;
+  SysNotifyParamType notify;
 
-  debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
-  sys_memset(&creq, 0, sizeof(client_request_t));
-  creq.type = MSG_DEPLOY;
-  thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+  if (pumpkin_module.mode == 0) {
+    debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
+    sys_memset(&creq, 0, sizeof(client_request_t));
+    creq.type = MSG_DEPLOY;
+    thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+  } else {
+    MemSet(&notify, sizeof(notify), 0);
+    notify.notifyType = sysNotifySyncFinishEvent;
+    notify.broadcaster = sysNotifyBroadcasterCode;
+    SysNotifyBroadcast(&notify);
+  }
 }
 
 int pumpkin_launch(launch_request_t *request) {
@@ -5700,7 +5708,11 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
             notify->userDataP = np->userData;
             debug(DEBUG_INFO, PUMPKINOS, "send notification type '%s' priority %d to '%s' taskId %d userData %p",
               stype, pumpkin_module.notif[i].priority, screator, pumpkin_module.notif[i].taskId, notify->userDataP);
-            pumpkin_forward_notif(pumpkin_module.notif[i].taskId, pumpkin_module.notif[i].appCreator, notify, np->callback, np->callback68k);
+            if (pumpkin_module.mode == 0) {
+              pumpkin_forward_notif(pumpkin_module.notif[i].taskId, pumpkin_module.notif[i].appCreator, notify, np->callback, np->callback68k);
+            } else {
+              np->callback(notify);
+            }
             ptr_unlock(pumpkin_module.notif[i].ptr, TAG_NOTIF);
           }
         } else {
