@@ -5700,7 +5700,7 @@ Err SysNotifyBroadcast(SysNotifyParamType *notify) {
 
   if (mutex_lock(mutex) == 0) {
     for (i = 0, n = 0; i < pumpkin_module.num_notif; i++) {
-      if (pumpkin_module.notif[i].notifyType == notify->notifyType) {
+      if (pumpkin_module.notif[i].notifyType == notify->notifyType && pumpkin_module.notif[i].appCreator != pumpkin_get_app_creator()) {
         pumpkin_id2s(pumpkin_module.notif[i].appCreator, screator);
 
         if (pumpkin_module.notif[i].ptr) {
