@@ -88,6 +88,7 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
       switch (featureNum) {
         case sysFtrNumROMVersion:
           *valueP = sysMakeROMVersion(osversion / 10, osversion % 10, 0, sysROMStageRelease, 0);
+          debug(DEBUG_INFO, "Feature", "FtrGet sysFtrNumROMVersion 0x%08X", *valueP);
           err = errNone;
           break;
         case sysFtrNumProcessorID:
