@@ -1,0 +1,21 @@
+CC        = m68k-palmos-gcc
+CFLAGS    = -O2 -Wall -Wno-switch
+BUILDPRC  = build-prc
+PILRC     = ../../tools/pilrc
+PROG      = HelloWorld
+OBJS      = HelloWorld.o
+
+all: $(PROG).prc
+
+$(PROG).prc: $(PROG) res.flag
+	$(BUILDPRC) $(PROG).def $(PROG) resources/*.bin
+
+$(PROG): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $(PROG)
+
+res.flag: resource.rcp
+	$(PILRC) resource.rcp resources
+	touch res.flag
+
+clean:
+	rm -f *.o $(PROG) $(PROG).prc resources/*.bin res.flag
