@@ -130,6 +130,7 @@ typedef struct {
   uint32_t alarm_data;
   uint32_t eventKeyMask;
   uint64_t lastMotion;
+  int dirty_level;
   texture_t *texture;
   LocalID dbID;
   UInt32 creator;
@@ -4105,6 +4106,31 @@ void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1) {
   }
 }
 
+void pumpkin_dirty_region_mode(dirty_region_e d) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  task_screen_t *screen;
+
+  switch (d) {
+    case dirtyRegionBegin:
+      task->dirty_level++;
+      break;
+    case dirtyRegionEnd:
+      if (task->dirty_level > 0) task->dirty_level--;
+      if (task->dirty_level == 0) {
+        if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
+          if (screen->x0 <= screen->x1 && screen->y0 <= screen->y1) {
+            screen->dirty = 1;
+          }
+          ptr_unlock(task->screen_ptr, TAG_SCREEN);
+        }
+      }
+      break;
+    case dirtyRegionReset:
+      task->dirty_level = 0;
+      break;
+  }
+}
+
 void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen;
@@ -4173,7 +4199,6 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 
 //debug(1, "XXX", "pumpkin_screen_dirty dirty (%d,%d,%d,%d)", screen->x0, screen->y0, screen->x1, screen->y1);
 
-      screen->dirty = 1;
       ptr_unlock(task->screen_ptr, TAG_SCREEN);
     }
 

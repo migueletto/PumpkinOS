@@ -1639,8 +1639,8 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
   imin = 0;
   numEntries = CtbGetNumEntries(colorTable);
 
-  //for (i = 0; i < numEntries; i++) {
-  for (i = numEntries-1; i >= 0; i--) {
+  //for (i = numEntries-1; i >= 0; i--) {
+  for (i = 0; i < numEntries; i++) {
     CtbGetEntry(colorTable, i, &rgb);
 
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {

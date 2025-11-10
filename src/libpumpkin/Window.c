@@ -38,8 +38,6 @@ typedef struct {
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
-  int dirty_level;
-  Coord x1, y1, x2, y2;
   DrawStateType state[DrawStateStackSize];
   Boolean asciiText;
   UInt8 fullCcolorTable[2 + 256 * 4];
@@ -51,7 +49,6 @@ typedef struct {
   RGBColorType defaultPalette8[256];
   UInt8 legacyDepth;
   int numPush;
-  Boolean immediate;
 } win_module_t;
 
 typedef struct {
@@ -102,8 +99,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   }
 
   pumpkin_set_local_storage(win_key, module);
-
-  module->immediate = pumpkin_get_boolean_option("immediate");
 
   module->density = density;
   module->width = width;
@@ -182,7 +177,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   } else {
     module->displayWindow = pumpkin_heap_alloc(sizeof(WindowType), "Window");
     module->displayWindow->windowFlags.freeBitmap = true;
-    module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, NULL, &err);
+    module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, module->colorTable, &err);
     module->displayWindow->density = module->density;
 
     module->displayWindow->clippingBounds.left = 0;
@@ -533,7 +528,7 @@ void WinRestoreBits(WinHandle winHandle, Coord destX, Coord destY) {
 
 void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *bitmapP;
+  BitmapType *bitmapP, *newBitmapP;
   Err err;
 
   pointFrom(module, module->density, &extentX, &extentY);
@@ -543,11 +538,12 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   module->displayWindow->windowBounds.extent.x = module->width/2;
   module->displayWindow->windowBounds.extent.y = module->height/2;
   bitmapP = WinGetBitmap(module->displayWindow);
+  newBitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, BmpGetColortable(bitmapP), &err);
   if (bitmapP) {
     debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
     BmpDelete(bitmapP);
   }
-  module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, NULL, &err);
+  module->displayWindow->bitmapP = newBitmapP;
   WinDirectAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
 }
 
@@ -601,9 +597,9 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinSetCoordinateSystem(prevCoordSys);
     WinScreenGetAttribute(winScreenDensity, &density);
     WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
-    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+    old = winHandle->bitmapP;
+    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, BmpGetColortable(old), &err);
     if (bmp) {
-      old = winHandle->bitmapP;
       winHandle->bitmapP = bmp;
       debug(DEBUG_TRACE, "Window", "WinSetBounds BmpDelete %p", old);
       BmpDelete(old);
@@ -848,68 +844,23 @@ void WinAdjustCoordsInv(Coord *x, Coord *y) {
   pointFrom(module, module->density, x, y);
 }
 
-void pumpkin_dirty_region_mode(dirty_region_e d) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-
-  switch (d) {
-    case dirtyRegionBegin:
-      if (module->dirty_level == 0) {
-        module->x1 = 32767;
-        module->x2 = 0;
-        module->y1 = 32767;
-        module->y2 = 0;
-      }
-      module->dirty_level++;
-      break;
-    case dirtyRegionEnd:
-      module->dirty_level--;
-      if (!module->immediate && module->dirty_level == 0) {
-        if (module->x1 <= module->x2 && module->y1 <= module->y2) {
-          pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
-        }
-      }
-      break;
-    case dirtyRegionReset:
-      module->x1 = 32767;
-      module->x2 = 0;
-      module->y1 = 32767;
-      module->y2 = 0;
-      module->dirty_level = 0;
-      break;
-  }
+static void WinDirtyRegion(WinHandle wh, Coord x1, Coord y1, Coord x2, Coord y2) {
+  pumpkin_screen_dirty(wh, x1, y1, x2 - x1 + 1, y2 - y1 + 1);
 }
 
-static void pumpkin_dirty_region_coords(win_module_t *module, Coord x1, Coord y1, Coord x2, Coord y2) {
-  if (x1 < module->x1) module->x1 = x1;
-  if (x2 > module->x2) module->x2 = x2;
-  if (y1 < module->y1) module->y1 = y1;
-  if (y2 > module->y2) module->y2 = y2;
-//debug(1, "XXX", "coords %d %d %d %d", x1, y1, x2, y2);
-
-  if (module->immediate) {
-    if (module->x1 <= module->x2 && module->y1 <= module->y2) {
-      pumpkin_screen_dirty(module->displayWindow, module->x1, module->y1, module->x2 - module->x1 + 1, module->y2 - module->y1 + 1);
-      module->x1 = 32767;
-      module->x2 = 0;
-      module->y1 = 32767;
-      module->y2 = 0;
-    }
-  }
-}
-
-static void WinPutBit(win_module_t *module, UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation mode, Boolean dbl) {
+static void WinPutBit(UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation mode, Boolean dbl, Boolean update) {
   BmpPutBit(b, false, WinGetBitmap(wh), x, y, mode, dbl);
-  if (wh == module->displayWindow) {
+  if (update) {
     int i = dbl ? 1 : 0;
-    pumpkin_dirty_region_coords(module, x, y, x+i, y+i);
+    WinDirtyRegion(wh, x, y, x+i, y+i);
   }
 }
 
-static void WinCopyBit(win_module_t *module, BitmapType *src, Coord sx, Coord sy, WinHandle wh, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
-  BmpCopyBit(src, sx, sy, dst, dx, dy, mode, dbl, text, tc, bc);
-  if (wh == module->displayWindow) {
+static void WinCopyBit(BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc, Boolean update) {
+  BmpCopyBit(src, sx, sy, WinGetBitmap(wh), dx, dy, mode, dbl, text, tc, bc);
+  if (update) {
     int i = dbl ? 1 : 0;
-    pumpkin_dirty_region_coords(module, dx, dy, dx+i, dy+i);
+    WinDirtyRegion(wh, dx, dy, dx+i, dy+i);
   }
 }
 
@@ -927,7 +878,7 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
 
     if (CLIPW_OK(wh, cx, cy)) {
       dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
-      WinPutBit(module, windowColor, wh, cx, cy, mode, dbl);
+      WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || wh == module->displayWindow);
 
       if (wh == module->activeWindow && wh != module->displayWindow) {
         cx = x;
@@ -940,7 +891,7 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
           y0 <<= 1;
         }
         dbl = module->displayWindow->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
-        WinPutBit(module, displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl);
+        WinPutBit(displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl, false);
       }
     }
   } else {
@@ -1706,9 +1657,9 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     debug(DEBUG_ERROR, "Window", "WinCopyBitmap density or depth does not match");
   }
 
-  if (dirtyRect && dst == module->displayWindow) {
+  if (dirtyRect && (dst == module->activeWindow || dst == module->displayWindow)) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
-    pumpkin_dirty_region_coords(module, dirtyRect->topLeft.x, dirtyRect->topLeft.y, dirtyRect->topLeft.x+dirtyRect->extent.x-1, dirtyRect->topLeft.y+dirtyRect->extent.y-1);
+    WinDirtyRegion(dst, dirtyRect->topLeft.x, dirtyRect->topLeft.y, dirtyRect->topLeft.x+dirtyRect->extent.x-1, dirtyRect->topLeft.y+dirtyRect->extent.y-1);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
@@ -1887,9 +1838,9 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       dx = dx0;
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
-          WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, windowBitmap, wx, wy, mode, dblw, text, tcw, bcw);
+          WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || wh == module->displayWindow);
           if (blitDisplay) {
-            WinCopyBit(module, bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, displayBitmap, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd);
+            WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd, false);
           }
         }
         switch (iw) {
@@ -3011,7 +2962,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         break;
     }
 
-    wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+    wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, module->colorTable, &err);
     if (wh->bitmapP) {
       debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %s format %d", WinGetDescr(wh, buf, sizeof(buf)), format);
       wh->windowFlags.offscreen = true;
@@ -3132,6 +3083,8 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
               }
             }
             //broadcastDisplayChange(module->depth, module->depth);
+            pumpkin_dirty_region_mode(dirtyRegionReset);
+            WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
             err = errNone;
           }
           break;
@@ -3166,6 +3119,8 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
               break;
           }
           //broadcastDisplayChange(module->depth, module->depth);
+          pumpkin_dirty_region_mode(dirtyRegionReset);
+          WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
           err = errNone;
           break;
       }
@@ -3322,8 +3277,10 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           }
 
           BmpDelete(module->displayWindow->bitmapP);
-          module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, NULL, &err);
+          module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, module->colorTable, &err);
           module->depth = depth;
+          pumpkin_dirty_region_mode(dirtyRegionReset);
+          WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
 
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
             UIColorSetTableEntry(entry, &module->uiColor[entry]);

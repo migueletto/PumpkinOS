@@ -149,6 +149,7 @@ void FrmGotoForm(UInt16 formId) {
 
 static Err FrmInitFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
+  ColorTableType *colorTable;
   RectangleType rect;
   FormList *p;
   Coord width, height, xmargin, ymargin, w, h;
@@ -177,7 +178,8 @@ static Err FrmInitFormInternal(FormType *formP) {
 
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
-  formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, NULL, &err);
+  colorTable = pumpkin_defaultcolorTable();
+  formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
   formP->window.density = density;
 
   RctSetRectangle(&rect, 0, 0, width, height);
