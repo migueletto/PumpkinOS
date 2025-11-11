@@ -3850,6 +3850,7 @@ surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect) {
   return surface;
 }
 
+UInt8 BmpRGBToIndex0(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
 UInt8 BmpRGBToIndex1(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
 UInt8 BmpRGBToIndex2(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable);
 
@@ -3862,7 +3863,7 @@ static void BmpRGBToIndexKDT(UInt8 red, UInt8 green, UInt8 blue, struct kdtree *
   kd_nearest(kdt, pos);
 }
 
-void WinTest(void) {
+UInt32 WinTest(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable = module->colorTable8;
   uint64_t t;
@@ -3883,11 +3884,12 @@ void WinTest(void) {
     red   = SysRandom(0);
     green = SysRandom(0);
     blue  = SysRandom(0);
-    //BmpRGBToIndex(red, green, blue, colorTable);
-    BmpRGBToIndexKDT(red, green, blue, kdt);
+    BmpRGBToIndex0(red, green, blue, colorTable);
+    //BmpRGBToIndexKDT(red, green, blue, kdt);
   }
   dt = (UInt32)(sys_get_clock() - t);
-  debug(1, "XXX", "dt=%u", dt);
 
   kd_free(kdt);
+
+  return dt;
 }
