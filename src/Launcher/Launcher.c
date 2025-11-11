@@ -2370,13 +2370,10 @@ static void deleteApplication(launcher_item_t *item) {
   }
 }
 
-UInt32 WinTest(void);
-
 static void MenuEvent(UInt16 id, launcher_data_t *data) {
   FormPtr frm;
   UInt16 flags;
   UInt32 result;
-  UInt32 t;
 
   switch (id) {
     case shutdownCmd:
@@ -2490,10 +2487,6 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       }
       break;
     case aboutCmd:
-      t = WinTest();
-      t += WinTest();
-      t += WinTest();
-      debug(1, "XXX", "dt=%u", t / 3);
       LauncherAboutForm(AboutForm);
       break;
   }

@@ -1629,155 +1629,6 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   }
 }
 
-UInt8 BmpRGBToIndex2(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
-  Int32 dr, dg, db;
-  UInt16 numEntries;
-  UInt32 i, d, dmin, imin;
-  RGBColorType rgb;
-            
-  dmin = 0xffffffff;
-  imin = 0; 
-  numEntries = CtbGetNumEntries(colorTable);
-        
-  for (i = 0; i < numEntries; i++) {
-    CtbGetEntry(colorTable, i, &rgb);
-   
-/*
-    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
-      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
-      return i;
-    }
-*/
-    dr = (Int32)red - (Int32)rgb.r;
-    dr = dr * dr;
-    dg = (Int32)green - (Int32)rgb.g;
-    dg = dg * dg;
-    db = (Int32)blue - (Int32)rgb.b;
-    db = db * db;
-    d = dr + dg + db;
-    if (d < dmin) {
-      dmin = d;
-      imin = i;
-    }
-  }
-
-  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
-  return imin;
-}
-
-UInt8 BmpRGBToIndex1(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
-  Int32 dr, dg, db;
-  UInt16 numEntries;
-  UInt32 i, d, dmin, imin;
-  RGBColorType rgb;
-            
-  dmin = 0xffffffff;
-  imin = 0; 
-  numEntries = CtbGetNumEntries(colorTable);
-        
-  //for (i = numEntries-1; i >= 0; i--) {
-  for (i = 0; i < numEntries; i++) {
-    CtbGetEntry(colorTable, i, &rgb);
-   
-/*
-    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
-      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
-      return i;
-    }
-*/
-    dr = (Int32)red - (Int32)rgb.r;
-    dr = dr * dr;
-    dg = (Int32)green - (Int32)rgb.g;
-    dg = dg * dg;
-    db = (Int32)blue - (Int32)rgb.b;
-    db = db * db;
-    d = (UInt32)sys_sqrt(dr + dg + db);
-    if (d < dmin) {
-      dmin = d;
-      imin = i;
-    }
-  }
-
-  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
-  return imin;
-}
-
-#define INVGAMMACORRECTION(t) \
-  (((t) <= 0.0404482362771076) ? \
-  ((t)/12.92) : sys_pow(((t) + 0.055)/1.055, 2.4))
-
-#define LABF(t) \
-  ((t >= 8.85645167903563082e-3) ? \
-  sys_pow(t,0.333333333333333) : (841.0/108.0)*(t) + (4.0/29.0))
-
-#define WHITEPOINT_X  0.950456
-#define WHITEPOINT_Y  1.0
-#define WHITEPOINT_Z  1.088754
-
-static void Rgb2Xyz(double *X, double *Y, double *Z, double R, double G, double B) {
-  R = INVGAMMACORRECTION(R);
-  G = INVGAMMACORRECTION(G);
-  B = INVGAMMACORRECTION(B);
-  *X = (double)(0.4123955889674142161*R + 0.3575834307637148171*G + 0.1804926473817015735*B);
-  *Y = (double)(0.2125862307855955516*R + 0.7151703037034108499*G + 0.07220049864333622685*B);
-  *Z = (double)(0.01929721549174694484*R + 0.1191838645808485318*G + 0.9504971251315797660*B);
-}
-
-static void Xyz2Lab(double *L, double *a, double *b, double X, double Y, double Z) {
-  X /= WHITEPOINT_X;
-  Y /= WHITEPOINT_Y;
-  Z /= WHITEPOINT_Z;
-  X = LABF(X);
-  Y = LABF(Y);
-  Z = LABF(Z);
-  *L = 116*Y - 16;
-  *a = 500*(X - Y);
-  *b = 200*(Y - Z);
-}
-
-static void Rgb2Lab(double *L, double *a, double *b, double R, double G, double B) {
-  double X, Y, Z;
-  Rgb2Xyz(&X, &Y, &Z, R, G, B);
-  Xyz2Lab(L, a, b, X, Y, Z);
-}
-
-UInt8 BmpRGBToIndex0(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
-  double L, a, b, L1, a1, b1, dL, da, db;
-  UInt16 numEntries;
-  UInt32 i, d, dmin, imin;
-  RGBColorType rgb;
-
-  dmin = 0xffffffff;
-  imin = 0;
-  numEntries = CtbGetNumEntries(colorTable);
-
-  Rgb2Lab(&L, &a, &b, red, green, blue);
-
-  for (i = 0; i < numEntries; i++) {
-    CtbGetEntry(colorTable, i, &rgb);
-
-/*
-    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
-      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
-      return i;
-    }
-*/
-
-    Rgb2Lab(&L1, &a1, &b1, rgb.r, rgb.g, rgb.b);
-    dL = L1 - L;
-    da = a1 - a;
-    db = b1 - b;
-    d = (UInt32)sys_sqrt(dL*dL + da*da + db*db);
-    if (d < dmin) {
-      dmin = d;
-      imin = i;
-    }
-  }
-
-  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
-  return imin;
-}
-
 UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
   Int32 i, dr, dg, db;
   UInt16 numEntries;
@@ -1788,16 +1639,13 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
   imin = 0;
   numEntries = CtbGetNumEntries(colorTable);
 
-  //for (i = numEntries-1; i >= 0; i--) {
   for (i = 0; i < numEntries; i++) {
     CtbGetEntry(colorTable, i, &rgb);
 
-/*
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
-      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
+      debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
       return i;
     }
-*/
     // Manhattan distance, not accurate but not too slow
     dr = (Int32)red - (Int32)rgb.r;
     if (dr < 0) dr = -dr;
@@ -1812,7 +1660,7 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
     }
   }
 
-  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
+  debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
   return imin;
 }
 
