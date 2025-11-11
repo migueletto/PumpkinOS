@@ -2370,6 +2370,8 @@ static void deleteApplication(launcher_item_t *item) {
   }
 }
 
+void WinTest(void);
+
 static void MenuEvent(UInt16 id, launcher_data_t *data) {
   FormPtr frm;
   UInt16 flags;
@@ -2487,6 +2489,7 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       }
       break;
     case aboutCmd:
+      WinTest();
       LauncherAboutForm(AboutForm);
       break;
   }

@@ -69,7 +69,7 @@ static Boolean getBitN(BitmapType *bmp, UInt32 x, UInt32 y, int n, UInt32 *index
     case  8:
       colorTable = BmpGetColortable(bmp);
       if (colorTable == NULL) {
-        colorTable = pumpkin_defaultcolorTable();
+        colorTable = WinGetColorTable(0);
       }
       b = BmpGetPixelValue(bmp, x, y);
       *index = b;
@@ -198,7 +198,7 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
     case  8:
       color = data->color8;
       colorTable = BmpGetColortable(data->bmps[data->index]);
-      if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+      if (colorTable == NULL) colorTable = WinGetColorTable(0);
       numEntries = CtbGetNumEntries(colorTable);
       if (color < numEntries) {
         CtbGetEntry(colorTable, color, &rgb);
@@ -436,7 +436,7 @@ static Boolean paletteGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
           case  8:
             colorTable = BmpGetColortable(bmp);
             if (colorTable == NULL) {
-              colorTable = pumpkin_defaultcolorTable();
+              colorTable = WinGetColorTable(0);
             }
             CtbGetEntry(colorTable, data->color8, &rgb);
             break;

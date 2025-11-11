@@ -178,7 +178,7 @@ static Err FrmInitFormInternal(FormType *formP) {
 
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
-  colorTable = pumpkin_defaultcolorTable();
+  colorTable = WinGetColorTable(depth);
   formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
   formP->window.density = density;
 

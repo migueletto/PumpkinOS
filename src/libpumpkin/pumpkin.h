@@ -322,7 +322,6 @@ surface_t *pumpkin_screen_lock(void **scr);
 void pumpkin_screen_unlock(void *scr, int x0, int y0, int x1, int y1);
 int pumpkin_change_display(int width, int height);
 void pumpkin_calibrate(int restore);
-ColorTableType *pumpkin_defaultcolorTable(void);
 
 void pumpkin_set_data(void *data);
 void *pumpkin_get_data(void);
@@ -468,6 +467,7 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
 char *WinGetDescr(WinHandle wh, char *buf, UInt16 size);
 UInt32 WinGetForeColorU(void);
 UInt32 WinGetBackColorU(void);
+ColorTableType *WinGetColorTable(Int16 depth);
 
 int PrefInitModule(void);
 int PrefFinishModule(void);

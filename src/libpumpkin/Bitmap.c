@@ -888,7 +888,7 @@ static uint32_t BmpSurfaceColorRgb(void *data, int red, int green, int blue, int
         color = transparentValue;
       } else {
         colorTable = BmpGetColortable(bsurf->bitmapP);
-        if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+        if (colorTable == NULL) colorTable = WinGetColorTable(0);
         color = BmpRGBToIndex(red, green, blue, colorTable);
       }
       break;
@@ -932,7 +932,7 @@ static void BmpSurfaceRgbColor(void *data, uint32_t color, int *red, int *green,
       break;
     case 8:
       colorTable = BmpGetColortable(bsurf->bitmapP);
-      if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+      if (colorTable == NULL) colorTable = WinGetColorTable(0);
       BmpIndexToRGB(color & 0xFF, &r, &g, &b, colorTable);
       *red   = r;
       *green = g;
@@ -1562,7 +1562,7 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
                   break;
                 case 8: // convert from RGB to palette color
                   colorTable = BmpGetColortable((BitmapType *)bitmapP);
-                  if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+                  if (colorTable == NULL) colorTable = WinGetColorTable(0);
                   t = *transparentValueP;
                   *transparentValueP = BmpRGBToIndex((t >> 16) & 0xff, (t >> 8) & 0xff, t & 0xff, colorTable);
                   break;
@@ -1629,21 +1629,22 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   }
 }
 
-UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
+UInt8 BmpRGBToIndex2(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
   Int32 i, dr, dg, db;
   UInt16 numEntries;
   UInt32 d, dmin, imin;
   RGBColorType rgb;
-
+            
   dmin = 0xffffffff;
-  imin = 0;
+  imin = 0; 
   numEntries = CtbGetNumEntries(colorTable);
-
+        
   //for (i = numEntries-1; i >= 0; i--) {
   for (i = 0; i < numEntries; i++) {
     CtbGetEntry(colorTable, i, &rgb);
-
+   
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
+      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
       return i;
     }
     dr = (Int32)red - (Int32)rgb.r;
@@ -1659,6 +1660,78 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
     }
   }
 
+  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
+  return imin;
+}
+
+UInt8 BmpRGBToIndex1(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
+  Int32 i, dr, dg, db;
+  UInt16 numEntries;
+  UInt32 d, dmin, imin;
+  RGBColorType rgb;
+            
+  dmin = 0xffffffff;
+  imin = 0; 
+  numEntries = CtbGetNumEntries(colorTable);
+        
+  //for (i = numEntries-1; i >= 0; i--) {
+  for (i = 0; i < numEntries; i++) {
+    CtbGetEntry(colorTable, i, &rgb);
+   
+    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
+      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
+      return i;
+    }
+    dr = (Int32)red - (Int32)rgb.r;
+    dr = sys_sqrt(dr * dr);
+    dg = (Int32)green - (Int32)rgb.g;
+    dg = sys_sqrt(dg * dg);
+    db = (Int32)blue - (Int32)rgb.b;
+    db = sys_sqrt(db * db);
+    d = dr + dg + db;
+    if (d < dmin) {
+      dmin = d;
+      imin = i;
+    }
+  }
+
+  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
+  return imin;
+}
+
+UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTable) {
+  Int32 i, dr, dg, db;
+  UInt16 numEntries;
+  UInt32 d, dmin, imin;
+  RGBColorType rgb;
+
+  dmin = 0xffffffff;
+  imin = 0;
+  numEntries = CtbGetNumEntries(colorTable);
+
+  //for (i = numEntries-1; i >= 0; i--) {
+  for (i = 0; i < numEntries; i++) {
+    CtbGetEntry(colorTable, i, &rgb);
+
+    if (red == rgb.r && green == rgb.g && blue == rgb.b) {
+      //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
+      return i;
+    }
+    // Manhattan distance, not accurate but not too slow
+    dr = (Int32)red - (Int32)rgb.r;
+    if (dr < 0) dr = -dr;
+    dg = (Int32)green - (Int32)rgb.g;
+    if (dg < 0) dg = -dg;
+    db = (Int32)blue - (Int32)rgb.b;
+    if (db < 0) db = -db;
+    d = dr + dg + db;
+    if (d < dmin) {
+      dmin = d;
+      imin = i;
+    }
+  }
+
+  //debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
   return imin;
 }
 
@@ -1698,21 +1771,21 @@ IndexedColorType BmpGetPixel(BitmapType *bitmapP, Coord x, Coord y) {
         red   = r565(value);
         green = g565(value);
         blue  = b565(value);
-        b = BmpRGBToIndex(red, green, blue, pumpkin_defaultcolorTable());
+        b = BmpRGBToIndex(red, green, blue, WinGetColorTable(0));
         break;
       case 24:
         value = BmpGetPixelValue(bitmapP, x, y);
         red   = r24(value);
         green = g24(value);
         blue  = b24(value);
-        b = BmpRGBToIndex(red, green, blue, pumpkin_defaultcolorTable());
+        b = BmpRGBToIndex(red, green, blue, WinGetColorTable(0));
         break;
       case 32:
         value = BmpGetPixelValue(bitmapP, x, y);
         red   = r32(value);
         green = g32(value);
         blue  = b32(value);
-        b = BmpRGBToIndex(red, green, blue, pumpkin_defaultcolorTable());
+        b = BmpRGBToIndex(red, green, blue, WinGetColorTable(0));
         break;
     }
   }
@@ -1803,7 +1876,7 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
       case  8:
         b = BmpGetPixelValue(bitmapP, x, y);
         colorTable = BmpGetColortable(bitmapP);
-        if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+        if (colorTable == NULL) colorTable = WinGetColorTable(0);
         BmpIndexToRGB(b, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
         break;
       case 16:
@@ -1941,7 +2014,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             break;
           case 4:
             colorTable = BmpGetColortable(bitmapP);
-            if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+            if (colorTable == NULL) colorTable = WinGetColorTable(0);
             offset = sy * rowBytes + sx / 2;
             for (i = 0; i < h; i++, offset += rowBytes) {
               offsetb = (sx % 2) << 2;
@@ -1961,7 +2034,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             break;
           case 8:
             colorTable = BmpGetColortable(bitmapP);
-            if (colorTable == NULL) colorTable = pumpkin_defaultcolorTable();
+            if (colorTable == NULL) colorTable = WinGetColorTable(0);
             offset = sy * rowBytes + sx;
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0; j < w; j++) {
@@ -2130,6 +2203,10 @@ static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b) {
 
 UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
   RGBColorType rgb;
+
+  if (depth == 8 && isSrcDefault && isDstDefault) {
+    return b;
+  }
 
   CtbGetEntry(srcColorTable, b, &rgb);
 
@@ -2741,7 +2818,7 @@ void BmpPutBit(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, Wi
   BmpGetDimensions(dst, &width, &height, NULL);
 
   if (dst && dx >= 0 && dx < width && dy >= 0 && dy < height) {
-    colorTable = pumpkin_defaultcolorTable();
+    colorTable = WinGetColorTable(0);
     dstColorTable = BmpGetColortable(dst);
     if (dstColorTable == NULL) {
       dstColorTable = colorTable;
@@ -2780,7 +2857,7 @@ void BmpSetPixel(BitmapType *bitmapP, Coord x, Coord y, UInt32 value) {
 }
 
 void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc) {
-  ColorTableType *srcColorTable, *dstColorTable, *colorTable;
+  ColorTableType *srcColorTable, *dstColorTable;
   UInt32 srcAlpha, srcRed, srcGreen, srcBlue;
   UInt32 dstRed, dstGreen, dstBlue;
   UInt8 srcDepth, dstDepth, *bits;
@@ -2794,23 +2871,25 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
   BmpGetDimensions(dst, &dstWidth, &dstHeight, &dstRowBytes);
 
   if (src && dst && sx >= 0 && sx < srcWidth && sy >= 0 && sy < srcHeight && dx >= 0 && dx < dstWidth && dy >= 0 && dy < dstHeight) {
-    colorTable = pumpkin_defaultcolorTable();
-
+    srcDepth = BmpGetBitDepth(src);
     srcColorTable = BmpGetColortable(src);
     if (srcColorTable == NULL) {
-      srcColorTable = colorTable;
+      srcColorTable = WinGetColorTable(srcDepth);
+      isSrcDefault = true;
+    } else {
+      isSrcDefault = CtbCompare(srcColorTable, WinGetColorTable(srcDepth));
     }
-    isSrcDefault = srcColorTable == colorTable;
 
+    dstDepth = BmpGetBitDepth(dst);
     dstColorTable = BmpGetColortable(dst);
     if (dstColorTable == NULL) {
-      dstColorTable = colorTable;
+      dstColorTable = WinGetColorTable(dstDepth);
+      isDstDefault = true;
+    } else {
+      isDstDefault = CtbCompare(dstColorTable, WinGetColorTable(dstDepth));
     }
-    isDstDefault = dstColorTable == colorTable;
 
     srcTransp = BmpGetTransparentValue(src, &srcTransparentValue);
-    srcDepth = BmpGetBitDepth(src);
-    dstDepth = BmpGetBitDepth(dst);
     bits = BmpGetBits(src);
     le = BmpLittleEndian(src);
     leBits = BmpGetCommonFlag(src, BitmapFlagLittleEndian);
