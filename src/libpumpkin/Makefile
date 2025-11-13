@@ -18,7 +18,7 @@ endif
 endif
 endif
 
-CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -DARMEMU -ffreestanding \
+CUSTOMPFLAGS=-DCRDATE=$(CRDATE) -I./emulation -I./emulation/arm -I./emulation/darm -I./tos -Wno-multichar -I../libpit/custom_malloc/ -I../libemulation -DARMEMU -ffreestanding \
     $(HEAP_DEBUG) $(LOGTRAP) $(GIT_COMMIT_ID) $(GIT_NOT_CLEAN) $(GIT_TAG_NAME)
 
 GPSLIB_SOURCE=GPSLib68K.c
@@ -34,7 +34,7 @@ DARM_SOURCE=emulation/darm/armv7.c emulation/darm/armv7-tbl.c emulation/darm/dar
 EMU_SOURCE=emulation/emupalmos.c emulation/omtrap.c emulation/pinstrap.c emulation/hdtrap.c emulation/serialtrap.c emulation/fstrap.c emulation/intltrap.c \
         emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/tsmtrap.c emulation/lmtrap.c emulation/navtrap.c emulation/netlibtrap.c emulation/gpdlibtrap.c \
         emulation/systrap.c emulation/m68k/m68kcpu.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
-        emulation/emu_notif_serde.c emulation/emu_launch_serde.c $(ARM_SOURCE) $(DARM_SOURCE)
+        emulation/emu_notif_serde.c emulation/emu_launch_serde.c $(ARM_SOURCE) $(DARM_SOURCE) emulator.c
 
 TOS_SOURCE=tos/tos.c tos/gemdos_impl.c tos/bios_impl.c tos/xbios_impl.c tos/vdi.c tos/aes.c
 

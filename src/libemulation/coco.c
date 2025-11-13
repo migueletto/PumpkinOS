@@ -62,6 +62,7 @@ typedef struct {
   uint8_t pia2Addr, pia2Bddr;
   disk_t *d;
   int first;
+  int finish;
 
   vfs_session_t *session;
   int ptr;
@@ -432,7 +433,7 @@ static int coco_run(computer_t *c, uint32_t us) {
 
   m6809_execute(coco->m6809, (us * COCO_CLOCK) / 1000000);
 
-  return 0;
+  return coco->finish ? -1 : 0;
 }
 
 static int coco_close(computer_t *c) {
@@ -483,7 +484,8 @@ static void coco_callback(void *data, uint32_t count) {
       coco->key = 0;
       break;
     case -1:
-      return;
+      coco->finish = 1;
+      break;
   }
 }
 

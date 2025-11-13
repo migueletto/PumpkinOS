@@ -1,0 +1,9 @@
+HEX  "pEMU" ID 1 "coco" 0x00
+
+DATA "pROM" ID 0 "coco2.bmp"
+DATA "pROM" ID 1 "bas13.rom"
+DATA "pROM" ID 2 "extbas11.rom"
+
+HEX  "wind" ID 1 0x02 0x00 0x01 0x80
+
+VERSION "1.0"
