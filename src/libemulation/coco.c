@@ -63,6 +63,7 @@ typedef struct {
   disk_t *d;
   int first;
   int finish;
+  uint16_t exec;
 
   vfs_session_t *session;
   int ptr;
@@ -75,8 +76,14 @@ typedef struct {
   keymap_t keymap[256];
   uint8_t kbd_col;
   uint8_t key;
+  uint8_t joy_ctl;
+  uint8_t joy_axis;
+  uint8_t joy_coord[2];
   uint8_t joystick;
   uint8_t button;
+  uint8_t da_value;
+
+  uint64_t t;
 } coco_data_t;
 
 #define KEY_BACK     8
@@ -219,10 +226,14 @@ static void vdg_char(void *p, uint8_t b, uint8_t fg, uint8_t bg, uint8_t col, ui
 static void vdg_clear(void *p, uint8_t c, uint32_t x0, uint32_t x1, uint32_t y0, uint32_t y1) {
   coco_data_t *coco = (coco_data_t *)p;
   surface_t *surface = lock_surface(coco);
-  uint32_t x, y, color;
+  uint32_t dx, dy, x, y, color;
 
-  x0 += (surface->width - SCREEN_WIDTH) / 2;
-  y0 += (surface->height - SCREEN_HEIGHT) / 2;
+  dx = (surface->width - SCREEN_WIDTH*2) / 2;
+  dy = (surface->height - SCREEN_HEIGHT*2) / 2;
+  x0 = x0*2 + dx;
+  y0 = y0*2 + dy;
+  x1 = x1*2 + dx;
+  y1 = y1*2 + dy;
   color = coco->color[c];
 
   for (y = y0; y < y1; y++) {
@@ -237,8 +248,7 @@ static uint8_t pia1A_read(coco_data_t *coco) {
   uint8_t b = 0x7F;
 
   if (coco->button) {
-    b = (coco->joystick == 1) ? 0x7E : 0x7D;
-
+    b = (coco->joystick == 0) ? 0x7E : 0x7D;
   } else if (coco->key && coco->kbd_col != 0xFF) {
     if ((coco->kbd_col ^ 0xFF) & (coco->keymap[coco->key].column ^ 0xFF)) {
       b = coco->keymap[coco->key].line & 0x7F;
@@ -248,8 +258,9 @@ static uint8_t pia1A_read(coco_data_t *coco) {
     }
   }
 
-  //if (coco->joystick == joy_control && joy_coord[joy_axis] > da_value)
-    //b |= 0x80;
+  if (coco->joystick == coco->joy_ctl && coco->joy_coord[coco->joy_axis] > coco->da_value) {
+    b |= 0x80;
+  }
 
   return b;
 }
@@ -335,10 +346,18 @@ static void io_write(coco_data_t *coco, uint8_t addr, uint8_t b) {
   //debug(1, "XXX", "io_write %02X %02X", addr, b);
 
   switch (addr) {
-    case 0x00:
     case 0x01:
+      coco->joy_axis = (b & 0x08) ? 1 : 0;
+      coco->io[addr] = b;
+      break;
     case 0x03:
+      coco->joy_ctl = (b & 0x08) ? 1 : 0;
+      coco->io[addr] = b;
+      break;
     case 0x20:
+      coco->da_value = b >> 2;
+      break;
+    case 0x00:
     case 0x21: // bit 3: cas motor
     case 0x23:
       coco->io[addr] = b;
@@ -396,6 +415,10 @@ static int coco_rom(computer_t *c, int num, uint32_t size, char *name) {
   coco = (coco_data_t *)c->data;
 
   switch (num) {
+    case -1:
+      //r = load_rom(coco->session, name, size, &coco->ram[0x1C00]) != -1 ? 0 : -1;
+      //if (r == 0) coco->exec = 0x1F01;
+      break;
     case 0:
       if (size > BMP_SIZE) size = BMP_SIZE;
       if (load_rom(coco->session, name, size, coco->bmp) != -1) {
@@ -424,14 +447,16 @@ static int coco_disk(computer_t *c, int drive, int skip, int tracks, int heads, 
 
 static int coco_run(computer_t *c, uint32_t us) {
   coco_data_t *coco;
+  uint32_t n;
 
   coco = (coco_data_t *)c->data;
   if (coco->first) {
-    m6809_reset(coco->m6809);
+    m6809_reset(coco->m6809, coco->exec);
     coco->first = 0;
   }
 
-  m6809_execute(coco->m6809, (us * COCO_CLOCK) / 1000000);
+  n = (uint32_t)(((uint64_t)us * COCO_CLOCK) / 1000000);
+  m6809_execute(coco->m6809, n);
 
   return coco->finish ? -1 : 0;
 }
@@ -456,9 +481,17 @@ static int coco_close(computer_t *c) {
 static void coco_callback(void *data, uint32_t count) {
   coco_data_t *coco;
   uint16_t addr;
+  uint64_t t;
+  uint32_t dt, us;
   int ev, arg1, arg2;
 
   coco = (coco_data_t *)data;
+
+  t = sys_get_clock();
+  dt = coco->t > 0 ? (uint32_t)(t - coco->t) : 0;
+  us = (dt > 0 && dt < COCO_PERIOD) ? (COCO_PERIOD - dt) / 2 : 1000;
+  if (us > 2000) us = 2000;
+  coco->t = t;
 
   if (coco->vdg_mode & VDG_AG) {
     for (addr = 0; addr < 6144; addr++) {
@@ -471,7 +504,7 @@ static void coco_callback(void *data, uint32_t count) {
   }
 
   surface_t *surface = lock_surface(coco);
-  ev = surface_event(surface, 0, &arg1, &arg2);
+  ev = surface_event(surface, us, &arg1, &arg2);
   surface_update(surface, 0, surface->height);
   unlock_surface(coco);
 
@@ -482,6 +515,16 @@ static void coco_callback(void *data, uint32_t count) {
       break;
     case WINDOW_KEYUP:
       coco->key = 0;
+      break;
+    case WINDOW_MOTION:
+      coco->joy_coord[0] = (arg1 * 64) / surface->width;
+      coco->joy_coord[1] = (arg2 * 64) / surface->height;
+      break;
+    case WINDOW_BUTTONDOWN:
+      coco->button = 1;
+      break;
+    case WINDOW_BUTTONUP:
+      coco->button = 0;
       break;
     case -1:
       coco->finish = 1;
@@ -555,6 +598,10 @@ computer_t *coco_init(vfs_session_t *session) {
       coco->vdg.vdg_clear = vdg_clear;
       coco->vdg.vdg_char = vdg_char;
       coco->vdg.p = coco;
+      coco->joystick = 0;
+      coco->joy_coord[0] = 32;
+      coco->joy_coord[1] = 32;
+      coco->da_value = 63;
       coco->first = 1;
       coco->session = session;
       kbd_initmap(coco_keymap, coco->keymap);

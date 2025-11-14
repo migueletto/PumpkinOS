@@ -16,8 +16,11 @@ typedef struct {
   UInt16 numRoms;
   MemHandle hrom[MAX_ROM];
   UInt8 *rom[MAX_ROM];
-  uint32_t keyMask, modMask;
+  MemHandle hram;
+  UInt8 *ram;
+  uint32_t keyMask, modMask, buttonMask;
   uint64_t extKeyMask[2];
+  int32_t x, y;
 } emulator_data_t;
 
 typedef struct vfs_fpriv_t {
@@ -46,6 +49,15 @@ static vfs_fpriv_t *fake_open(char *path, int mode, void *_data) {
         f->i = id;
       }
     }
+  } else if (sys_strcmp(path, "/pRAM.1") == 0) {
+    if (data->ram) {
+      if ((f = sys_calloc(1, sizeof(vfs_fpriv_t))) != NULL) {
+        f->data = data;
+        f->size = MemHandleSize(data->hram);
+        f->pos = 0;
+        f->i = -1;
+      }
+    }
   }
 
   debug(DEBUG_INFO, "Emulator", "open name=\"%s\" f=%p", path, f);
@@ -61,7 +73,11 @@ static int fake_read(vfs_fpriv_t *f, uint8_t *buf, uint32_t len) {
     }
     if (len) {
       debug(DEBUG_INFO, "Emulator", "read f=%p i=%d pos=%u size=%u len=%u", f, f->i, f->pos, f->size, len);
-      sys_memcpy(buf, f->data->rom[f->i] + f->pos, len);
+      if (f->i >= 0) {
+        sys_memcpy(buf, f->data->rom[f->i] + f->pos, len);
+      } else {
+        sys_memcpy(buf, f->data->ram + f->pos, len);
+      }
       f->pos += len;
     }
     r = len;
@@ -140,9 +156,9 @@ static int process_ext_keys(uint64_t oldMask, uint64_t newMask, int offset, int 
 static int emulator_surface_event(void *_data, uint32_t us, int *arg1, int *arg2) {
   emulator_data_t *data = (emulator_data_t *)_data;
   EventType event;
-  uint32_t keyMask, modMask;
+  uint32_t keyMask, modMask, buttonMask;
   uint64_t extKeyMask[2];
-  int ev = 0;
+  int x, y, ev = 0;
 
   EvtGetEventUs(&event, us);
   SysHandleEvent(&event);
@@ -150,13 +166,31 @@ static int emulator_surface_event(void *_data, uint32_t us, int *arg1, int *arg2
   if (event.eType == appStopEvent) {
     ev = -1;
   } else {
-    pumpkin_status(NULL, NULL, &keyMask, &modMask, NULL, extKeyMask);
+    pumpkin_status(&x, &y, &keyMask, &modMask, &buttonMask, extKeyMask);
     ev = process_ext_keys(data->extKeyMask[0], extKeyMask[0], 0, arg1);
     data->extKeyMask[0] = extKeyMask[0];
     if (ev == 0) {
       ev = process_ext_keys(data->extKeyMask[1], extKeyMask[1], 64, arg1);
     }
     data->extKeyMask[1] = extKeyMask[1];
+
+    if (data->buttonMask != buttonMask) {
+      if (ev == 0) {
+        *arg1 = 1;
+        ev = (buttonMask & 1) ? WINDOW_BUTTONDOWN : WINDOW_BUTTONUP;
+      }
+      data->buttonMask = buttonMask;
+    }
+
+    if (ev == 0) {
+      if (data->x != x || data->y != y) {
+        *arg1 = x;
+        *arg2 = y;
+        ev = WINDOW_MOTION;
+        data->x = x;
+        data->y = y;
+      }
+    }
   }
 
   return ev;
@@ -213,8 +247,18 @@ UInt32 EmulatorMain(void) {
                     c->rom(c, i, size, name);
                   }
 
+                  data.hram = DmGet1Resource('pRAM', 1);
+                  if ((data.hram = DmGet1Resource('pRAM', 1)) != NULL) {
+                    data.ram = MemHandleLock(data.hram);
+                    size = MemHandleSize(data.hram);
+                    sys_snprintf(name, sizeof(name)-1, "/emulator/pRAM.1");
+                    c->rom(c, -1, size, name);
+                    MemHandleUnlock(data.hram);
+                    DmReleaseResource(data.hram);
+                  }
+
                   for (; !thread_must_end();) {
-                    if (c->run(c, 0) != 0) break;
+                    if (c->run(c, 10000) != 0) break;
                   }
 
                   for (i = 0; i < data.numRoms; i++) {

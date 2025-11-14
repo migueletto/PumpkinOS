@@ -179,7 +179,7 @@ static int libemulation_run(int pe) {
     if ((c = ptr_lock(ptr, TAG_COMPUTER)) != NULL) {
       debug(DEBUG_INFO, "EMU", "emulation started");
       for (; !thread_must_end();) {
-        if (c->run(c, 0) != 0) break;
+        if (c->run(c, 10000) != 0) break;
       }
       debug(DEBUG_INFO, "EMU", "emulation finished");
       ptr_unlock(ptr, TAG_COMPUTER);
