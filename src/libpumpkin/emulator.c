@@ -6,6 +6,7 @@
 #include "computer.h"
 #include "surface.h"
 #include "emulator.h"
+#include "bytes.h"
 #include "debug.h"
 
 #define MAX_ROM 4
@@ -153,6 +154,21 @@ static int process_ext_keys(uint64_t oldMask, uint64_t newMask, int offset, int 
   return ev;
 }
 
+static int process_mod_keys(uint32_t oldMask, uint32_t newMask, int *key) {
+  uint32_t diff;
+  int ev = 0;
+
+  diff = oldMask ^ newMask;
+  if (diff) {
+    if (diff & WINDOW_MOD_CTRL) {
+      *key = 1;
+      ev = (newMask & 1) ? WINDOW_BUTTONDOWN : WINDOW_BUTTONUP;
+    }
+  }
+
+  return ev;
+}
+
 static int emulator_surface_event(void *_data, uint32_t us, int *arg1, int *arg2) {
   emulator_data_t *data = (emulator_data_t *)_data;
   EventType event;
@@ -173,6 +189,11 @@ static int emulator_surface_event(void *_data, uint32_t us, int *arg1, int *arg2
       ev = process_ext_keys(data->extKeyMask[1], extKeyMask[1], 64, arg1);
     }
     data->extKeyMask[1] = extKeyMask[1];
+
+    if (ev == 0) {
+      ev = process_mod_keys(data->modMask, modMask, arg1);
+    }
+    data->modMask = modMask;
 
     if (data->buttonMask != buttonMask) {
       if (ev == 0) {
@@ -207,10 +228,12 @@ static void emulator_surface_update(void *_data, int y0, int y1) {
 
 UInt32 EmulatorMain(void) {
   emulator_data_t data;
-  MemHandle h;
+  MemHandle h, hram0;
   computer_init cinit;
   computer_t *c;
   UInt32 size, width, height;
+  UInt8 *ram0;
+  UInt16 load_addr, exec_addr;
   void *lib;
   char *s, name[64];
   int first_load;
@@ -245,25 +268,30 @@ UInt32 EmulatorMain(void) {
                     size = MemHandleSize(data.hrom[i]);
                     sys_snprintf(name, sizeof(name)-1, "/emulator/pROM.%u", i);
                     c->rom(c, i, size, name);
+                    MemHandleUnlock(data.hrom[i]);
+                    DmReleaseResource(data.hrom[i]);
                   }
 
-                  data.hram = DmGet1Resource('pRAM', 1);
-                  if ((data.hram = DmGet1Resource('pRAM', 1)) != NULL) {
-                    data.ram = MemHandleLock(data.hram);
-                    size = MemHandleSize(data.hram);
-                    sys_snprintf(name, sizeof(name)-1, "/emulator/pRAM.1");
-                    c->rom(c, -1, size, name);
-                    MemHandleUnlock(data.hram);
-                    DmReleaseResource(data.hram);
+                  if ((hram0 = DmGet1Resource('pRAM', 0)) != NULL) {
+                    if (MemHandleSize(hram0) == 4 && (ram0 = MemHandleLock(hram0)) != NULL) {
+                      data.hram = DmGet1Resource('pRAM', 1);
+                      if ((data.hram = DmGet1Resource('pRAM', 1)) != NULL) {
+                        data.ram = MemHandleLock(data.hram);
+                        size = MemHandleSize(data.hram);
+                        sys_snprintf(name, sizeof(name)-1, "/emulator/pRAM.1");
+                        get2b(&load_addr, ram0, 0);
+                        get2b(&exec_addr, ram0, 2);
+                        c->ram(c, load_addr, size, exec_addr, name);
+                        MemHandleUnlock(data.hram);
+                        DmReleaseResource(data.hram);
+                      }
+                      MemHandleUnlock(hram0);
+                    }
+                    DmReleaseResource(hram0);
                   }
 
                   for (; !thread_must_end();) {
                     if (c->run(c, 10000) != 0) break;
-                  }
-
-                  for (i = 0; i < data.numRoms; i++) {
-                    MemHandleUnlock(data.hrom[i]);
-                    DmReleaseResource(data.hrom[i]);
                   }
                   surface_destroy(data.surface);
                 }

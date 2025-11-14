@@ -5,7 +5,8 @@ DATA "pROM" ID 1 "bas13.rom"
 DATA "pROM" ID 2 "extbas11.rom"
 
 //DATA "pBIN" ID 1 "TROOPER.BIN"
-DATA "pRAM" ID 1 "trooper.bin"
+HEX  "pRAM" ID 0 0x1C 0x00 0x1F 0x01
+DATA "pRAM" ID 1 "trooper.dat"
 
 HEX  "wind" ID 1 0x02 0x00 0x01 0x80
 

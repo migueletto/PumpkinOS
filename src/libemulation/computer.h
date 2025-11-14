@@ -11,11 +11,11 @@ typedef struct computer_t {
   int (*set_window)(struct computer_t *c, window_provider_t *wp, int fullscreen);
   int (*set_surface)(struct computer_t *c, int ptr, surface_t *surface);
   int (*set_color)(struct computer_t *c, int index, uint8_t red, uint8_t green, uint8_t blue);
-  int (*set_display)(struct computer_t *c, int display);
   int (*set_filter)(struct computer_t *c, conn_filter_t *filter);
 
   int (*disk)(struct computer_t *c, int drive, int skip, int tracks, int heads, int sectors, int sectorlen, int sector0, char *name);
   int (*rom)(struct computer_t *c, int num, uint32_t size, char *name);
+  int (*ram)(struct computer_t *c, uint32_t load_addr, uint32_t size, uint32_t exec_addr, char *name);
   int (*option)(struct computer_t *c, char *name, char *value);
   int (*run)(struct computer_t *c, uint32_t us);
   int (*delay)(struct computer_t *c);

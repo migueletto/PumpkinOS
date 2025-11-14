@@ -16,9 +16,10 @@
 #include "debug.h"
 #include "xalloc.h"
 
-#define COCO_CLOCK    1000000
+#define COCO_CLOCK    894886
 #define COCO_FPS      60
-#define COCO_PERIOD   COCO_CLOCK/COCO_FPS
+#define COCO_PERIOD   (COCO_CLOCK/COCO_FPS)
+#define COCO_FRAME    (1000000/COCO_FPS)
 
 #define IO_SIZE       256
 #define ROM_SIZE      8192
@@ -64,6 +65,8 @@ typedef struct {
   int first;
   int finish;
   uint16_t exec;
+  uint64_t t0;
+  uint32_t frame;
 
   vfs_session_t *session;
   int ptr;
@@ -186,6 +189,8 @@ static uint8_t colors[] = {
   0xFF, 0x00, 0xFF,
   0xFF, 0x80, 0x00
 };
+
+#include "lowram.h"
 
 static surface_t *lock_surface(coco_data_t *coco) {
   if (coco->surface) return coco->surface;
@@ -408,6 +413,17 @@ static void coco_putb(computer_t *c, uint16_t addr, uint8_t b) {
   }
 }
 
+static int coco_ram(computer_t *c, uint32_t load_addr, uint32_t size, uint32_t exec_addr, char *name) {
+  coco_data_t *coco;
+  int r;
+
+  coco = (coco_data_t *)c->data;
+  r = load_rom(coco->session, name, size, &coco->ram[load_addr]) != -1 ? 0 : -1;
+  if (r == 0) coco->exec = exec_addr;
+
+  return r;
+}
+
 static int coco_rom(computer_t *c, int num, uint32_t size, char *name) {
   coco_data_t *coco;
   int r = -1;
@@ -415,10 +431,6 @@ static int coco_rom(computer_t *c, int num, uint32_t size, char *name) {
   coco = (coco_data_t *)c->data;
 
   switch (num) {
-    case -1:
-      //r = load_rom(coco->session, name, size, &coco->ram[0x1C00]) != -1 ? 0 : -1;
-      //if (r == 0) coco->exec = 0x1F01;
-      break;
     case 0:
       if (size > BMP_SIZE) size = BMP_SIZE;
       if (load_rom(coco->session, name, size, coco->bmp) != -1) {
@@ -451,8 +463,14 @@ static int coco_run(computer_t *c, uint32_t us) {
 
   coco = (coco_data_t *)c->data;
   if (coco->first) {
-    m6809_reset(coco->m6809, coco->exec);
+    m6809_reset(coco->m6809);
     coco->first = 0;
+
+    if (coco->exec) {
+      sys_memcpy(coco->ram, lowram, 1024);
+      m6809_setpc(coco->m6809, coco->exec);
+      coco->exec = 0;
+    }
   }
 
   n = (uint32_t)(((uint64_t)us * COCO_CLOCK) / 1000000);
@@ -482,16 +500,10 @@ static void coco_callback(void *data, uint32_t count) {
   coco_data_t *coco;
   uint16_t addr;
   uint64_t t;
-  uint32_t dt, us;
+  uint32_t dt, waitForEvent, waitedForEvent;
   int ev, arg1, arg2;
 
   coco = (coco_data_t *)data;
-
-  t = sys_get_clock();
-  dt = coco->t > 0 ? (uint32_t)(t - coco->t) : 0;
-  us = (dt > 0 && dt < COCO_PERIOD) ? (COCO_PERIOD - dt) / 2 : 1000;
-  if (us > 2000) us = 2000;
-  coco->t = t;
 
   if (coco->vdg_mode & VDG_AG) {
     for (addr = 0; addr < 6144; addr++) {
@@ -503,10 +515,31 @@ static void coco_callback(void *data, uint32_t count) {
     }
   }
 
+  coco->frame++;
+  t = sys_get_clock();
+  if (coco->t0 == 0) coco->t0 = t;
+  if ((t - coco->t0) >= 1000000) {
+    debug(DEBUG_TRACE, "Coco", "fps %u", coco->frame);
+    coco->t0 = t;
+    coco->frame = 0;
+  }
+
+  dt = coco->t > 0 ? (uint32_t)(t - coco->t) : 0;
+  waitForEvent = (dt > 0 && dt < COCO_FRAME) ? (COCO_FRAME - dt) : 0;
+  coco->t = t;
+
   surface_t *surface = lock_surface(coco);
-  ev = surface_event(surface, us, &arg1, &arg2);
+  ev = surface_event(surface, waitForEvent, &arg1, &arg2);
   surface_update(surface, 0, surface->height);
   unlock_surface(coco);
+
+  waitedForEvent = sys_get_clock() - t;
+  debug(DEBUG_TRACE, "Coco", "frame %u dt %u waitForEvent %u waitedForEvent %u sleep %u",
+     COCO_FRAME, dt, waitForEvent, waitedForEvent, (waitedForEvent < waitForEvent) ? waitForEvent - waitedForEvent : 0);
+
+  if (waitedForEvent < waitForEvent) {
+    sys_usleep(waitForEvent - waitedForEvent);
+  }
 
   switch (ev) {
     case WINDOW_KEYDOWN:
@@ -608,6 +641,7 @@ computer_t *coco_init(vfs_session_t *session) {
       c->set_surface = coco_set_surface;
       c->disk = coco_disk;
       c->rom = coco_rom;
+      c->ram = coco_ram;
       c->run = coco_run;
       c->close = coco_close;
       c->getb = coco_getb;

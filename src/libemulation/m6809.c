@@ -408,7 +408,7 @@ static void m6809_optable(uint8_t op, m6809_t *m6809) {
   }
 }
 
-void m6809_reset(m6809_t *m6809, uint16_t pc) {
+void m6809_reset(m6809_t *m6809) {
   m6809->int_state = 0;
   m6809->nmi_state = CLEAR_LINE;
   m6809->irq_state[0] = CLEAR_LINE;
@@ -424,7 +424,11 @@ void m6809_reset(m6809_t *m6809, uint16_t pc) {
   CC |= CC_II;	// IRQ disabled
   CC |= CC_IF;	// FIRQ disabled
 
-  PC = pc ? pc : RM16(0xfffe);
+  PC = RM16(0xfffe);
+}
+
+void m6809_setpc(m6809_t *m6809, uint16_t pc) {
+  PC = pc;
 }
 
 void m6809_set_irq_line(m6809_t *m6809, int32_t irqline, int32_t state) {

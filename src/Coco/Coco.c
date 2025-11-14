@@ -9,7 +9,7 @@ static Err read_bin(uint8_t *bin, uint8_t *memory) {
   UInt32 pos;
   int fd;
 
-  fd = sys_create("trooper.bin", SYS_WRITE | SYS_TRUNC, 0644);
+  fd = sys_create("trooper.dat", SYS_WRITE | SYS_TRUNC, 0644);
 
   pos = 0;
   for (;;) {
