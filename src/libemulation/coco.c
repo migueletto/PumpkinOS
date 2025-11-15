@@ -495,21 +495,32 @@ static int coco_close(computer_t *c) {
 
 static void coco_callback(void *data, uint32_t count) {
   coco_data_t *coco;
-  uint16_t addr;
+  uint16_t addr, start, size;
   uint64_t t;
   uint32_t dt, waitForEvent, waitedForEvent;
   int ev, arg1, arg2;
 
   coco = (coco_data_t *)data;
+  coco->io[0x03] |= 0x80;
+
+  start = (coco->sam_reg & 0x03F8) << 6;
 
   if (coco->vdg_mode & VDG_AG) {
-    for (addr = 0; addr < 6144; addr++) {
-      vdg_byte(&coco->vdg, coco->vdg_mode, addr, coco->ram[0x600 + addr]);
+    switch (coco->vdg_mode & 7) {
+      case 0: size = 1024; break;
+      case 1: size = 1024; break;
+      case 2: size = 2048; break;
+      case 3: size = 1536; break;
+      case 4: size = 3072; break;
+      case 5: size = 3072; break;
+      case 6: size = 6144; break;
+      case 7: size = 6144; break;
     }
   } else {
-    for (addr = 0; addr < 512; addr++) {
-      vdg_byte(&coco->vdg, coco->vdg_mode, addr, coco->ram[0x400 + addr]);
-    }
+    size  = 0x200;
+  }
+  for (addr = 0; addr < size; addr++) {
+    vdg_byte(&coco->vdg, coco->vdg_mode, addr, coco->ram[start + addr]);
   }
 
   coco->frame++;
