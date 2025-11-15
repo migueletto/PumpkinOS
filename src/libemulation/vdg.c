@@ -10,9 +10,8 @@
 // bit 5: A/G
 
 void vdg_byte(vdg_t *v, uint8_t mode, uint16_t a, uint8_t b) {
-  uint8_t c1, c2, bg;
-  uint32_t x, y;
-  int i, j, c;
+  uint8_t c, ca, ca1, ca2, bg;
+  int x, y, i, j;
 
   if (mode & VDG_AG) {
     // graphic mode
@@ -113,12 +112,35 @@ void vdg_byte(vdg_t *v, uint8_t mode, uint16_t a, uint8_t b) {
         if (a < 6144) {
           x = (a & 0x1F) << 3;
           y = ((a >> 5) & 0xFF);
+          if (y == 0 && x == 0) {
+           v->c1 = 0;
+           v->c2 = 0;
+           v->c3 = 0;
+          }
+          switch (v->artifacting) {
+            case 1 : ca1 = 3; ca2 = 4; break;
+            case 2 : ca1 = 4; ca2 = 3; break;
+            default: ca1 = 1; ca2 = 1; break;
+          }
           if (y < 192) {
-            for (i = 0, j = 7; i < 8; i++, j--) {
-              c = b & 0x01;
-              if (c && (mode & VDG_CSS)) c += 4;
-              v->vdg_clear(v->p, c, x + j, x + j + 1, y, y + 1);
-              b >>= 1;
+            for (i = 0; i < 8; i++) {
+              c = (b & 0x80) ? 1 : 0;
+              if (v->artifacting && (mode & VDG_CSS)) {
+                if (c) c += 4;
+                v->vdg_clear(v->p, c, x + i, x + i + 1, y, y + 1);
+                if (x + i - 3 >= 0 && c != 0 && v->c1 == 0 && v->c2 != 0 && v->c3 == 0) {
+                  ca = (i % 2) ? ca1 : ca2;
+                  v->vdg_clear(v->p, ca, x + i - 2, x + i - 1, y, y + 1);
+                  v->vdg_clear(v->p, ca, x + i - 1, x + i    , y, y + 1);
+                  v->vdg_clear(v->p, ca, x + i    , x + i + 1, y, y + 1);
+                }
+                v->c3 = v->c2;
+                v->c2 = v->c1;
+                v->c1 = c;
+              } else {
+                v->vdg_clear(v->p, c, x + i, x + i + 1, y, y + 1);
+              }
+              b <<= 1;
             }
           }
         }
@@ -130,35 +152,35 @@ void vdg_byte(vdg_t *v, uint8_t mode, uint16_t a, uint8_t b) {
       bg = (mode & VDG_CSS) ? 8 : 1;
       if (b < 32) {
         b += 32;
-        c1 = bg;
-        c2 = 0;
+        v->c1 = bg;
+        v->c2 = 0;
       } else if (b < 64) {
         b -= 32;
-        c1 = bg;
-        c2 = 0;
+        v->c1 = bg;
+        v->c2 = 0;
       } else if (b < 96) {
         b -= 32;
-        c1 = 0;
-        c2 = bg;
+        v->c1 = 0;
+        v->c2 = bg;
       } else if (b < 128) {
         b -= 96;
-        c1 = 0;
-        c2 = bg;
+        v->c1 = 0;
+        v->c2 = bg;
       } else {
         if (mode & 0x10) {
           // semi graphics 6
-          c1 = ((b >> 6) | ((mode >> 1) & 0x04)) + 1;
-          c2 = 0;
+          v->c1 = ((b >> 6) | ((mode >> 1) & 0x04)) + 1;
+          v->c2 = 0;
           b &= 0xBF;
           b += 32;
         } else {
           // semi graphics 4
-          c1 = ((b >> 4) & 7) + 1;
-          c2 = 0;
+          v->c1 = ((b >> 4) & 7) + 1;
+          v->c2 = 0;
           b = (b & 0x0F) + 96;
         }
       }
-      v->vdg_char(v->p, b, c1, c2, a & 0x1F, a >> 5);
+      v->vdg_char(v->p, b, v->c1, v->c2, a & 0x1F, a >> 5);
     }
   }
 }
