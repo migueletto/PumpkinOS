@@ -62,8 +62,8 @@ typedef struct {
   uint8_t pia2Aisddr, pia2Bisddr;
   uint8_t pia2Addr, pia2Bddr;
   disk_t *d;
-  int first;
-  int finish;
+  uint32_t first;
+  uint32_t finish;
   uint16_t exec;
   uint64_t t0;
   uint32_t frame;
@@ -189,8 +189,6 @@ static uint8_t colors[] = {
   0xFF, 0x00, 0xFF,
   0xFF, 0x80, 0x00
 };
-
-#include "lowram.h"
 
 static surface_t *lock_surface(coco_data_t *coco) {
   if (coco->surface) return coco->surface;
@@ -419,7 +417,7 @@ static int coco_ram(computer_t *c, uint32_t load_addr, uint32_t size, uint32_t e
 
   coco = (coco_data_t *)c->data;
   r = load_rom(coco->session, name, size, &coco->ram[load_addr]) != -1 ? 0 : -1;
-  if (r == 0) coco->exec = exec_addr;
+  if (r == 0 && coco->exec == 0) coco->exec = exec_addr;
 
   return r;
 }
@@ -467,7 +465,6 @@ static int coco_run(computer_t *c, uint32_t us) {
     coco->first = 0;
 
     if (coco->exec) {
-      sys_memcpy(coco->ram, lowram, 1024);
       m6809_setpc(coco->m6809, coco->exec);
       coco->exec = 0;
     }
@@ -631,6 +628,7 @@ computer_t *coco_init(vfs_session_t *session) {
       coco->vdg.vdg_clear = vdg_clear;
       coco->vdg.vdg_char = vdg_char;
       coco->vdg.p = coco;
+      coco->vdg.artifacting = 1;
       coco->joystick = 0;
       coco->joy_coord[0] = 32;
       coco->joy_coord[1] = 32;
