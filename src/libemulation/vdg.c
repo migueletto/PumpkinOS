@@ -118,8 +118,8 @@ void vdg_byte(vdg_t *v, uint8_t mode, uint16_t a, uint8_t b) {
            v->c3 = 0;
           }
           switch (v->artifacting) {
-            case 1 : ca1 = 3; ca2 = 4; break;
-            case 2 : ca1 = 4; ca2 = 3; break;
+            case 1 : ca1 = 3; ca2 = 8; break;
+            case 2 : ca1 = 8; ca2 = 3; break;
             default: ca1 = 1; ca2 = 1; break;
           }
           if (y < 192) {

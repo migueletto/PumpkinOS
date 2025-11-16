@@ -23,7 +23,7 @@
 
 #define IO_SIZE       256
 #define ROM_SIZE      8192
-#define RAM_SIZE      65536
+#define MEM_SIZE      32768
 
 #define SCREEN_WIDTH  256
 #define SCREEN_HEIGHT 192
@@ -53,9 +53,10 @@ typedef struct {
   m6809_t *m6809;
   uint8_t chr[CHR_SIZE];
   uint8_t bmp[BMP_SIZE];
-  uint8_t cbasic[ROM_SIZE];
-  uint8_t ebasic[ROM_SIZE];
-  uint8_t ram[RAM_SIZE];
+  uint8_t mem0[MEM_SIZE];
+  uint8_t ram[MEM_SIZE];
+  uint8_t rom[MEM_SIZE];
+  uint8_t *mem1;
   uint8_t io[IO_SIZE];
   uint8_t pia1Aisddr, pia1Bisddr;
   uint8_t pia1Addr, pia1Bddr;
@@ -182,8 +183,8 @@ static uint8_t colors[] = {
   0x00, 0x00, 0x00,
   0x00, 0xFF, 0x00,
   0xFF, 0xFF, 0x00,
-  0x00, 0x00, 0xFF,
-  0xFF, 0x00, 0x00,
+  0x20, 0x20, 0xFF,
+  0xFF, 0x20, 0x20,
   0xFF, 0xFF, 0xFF,
   0x00, 0xFF, 0xFF,
   0xFF, 0x00, 0xFF,
@@ -287,18 +288,27 @@ static uint8_t io_read(coco_data_t *coco, uint8_t addr) {
     case 0x00:
       b = coco->pia1Aisddr ? coco->pia1Addr : pia1A_read(coco);
       break;
+    case 0x01:
+      b = coco->io[addr];
+      coco->io[addr] &= 0x7F;
+      break;
     case 0x02:
       b = coco->pia1Bisddr ? coco->pia1Bddr : pia1B_read(coco);
+      break;
+    case 0x03:
+      b = coco->io[addr];
+      coco->io[addr] &= 0x7F;
       break;
     case 0x20:
       b = coco->pia2Aisddr ? coco->pia2Addr : pia2A_read(coco);
       break;
+    case 0x21:
+      b = coco->io[addr];
+      coco->io[addr] &= 0x7F;
+      break;
     case 0x22:
       b = coco->pia2Bisddr ? coco->pia2Bddr : pia2B_read(coco);
       break;
-    case 0x01:
-    case 0x03:
-    case 0x21:
     case 0x23:
       b = coco->io[addr];
       coco->io[addr] &= 0x7F;
@@ -313,19 +323,14 @@ static uint8_t io_read(coco_data_t *coco, uint8_t addr) {
 }
 
 static uint8_t coco_getb(computer_t *c, uint16_t addr) {
-  coco_data_t *coco;
-  uint8_t b = 0xFF;
+  coco_data_t *coco = (coco_data_t *)c->data;
 
-  coco = (coco_data_t *)c->data;
+  if (addr <  0x8000) return coco->mem0[addr];
+  if (addr <  0xFF00) return coco->mem1[addr & 0x7FFF];
+  if (addr <  0xFF40) return io_read(coco, addr & 0x23);
+  if (addr >= 0xFFF0) return coco->rom[0x3FF0 + (addr & 0x000F)];
 
-       if (addr <  0x8000) b = coco->ram[addr];
-  else if (addr <  0xA000) b = coco->ebasic[addr & 0x1FFF];
-  else if (addr <  0xC000) b = coco->cbasic[addr & 0x1FFF];
-  else if (addr <  0xFF00) b = 0xFF;
-  else if (addr <  0xFF40) b = io_read(coco, addr & 0x23);
-  else if (addr >= 0xFFF0) b = coco->cbasic[addr & 0x1FFF];
-
-  return b;
+  return 0xFF;
 }
 
 /*
@@ -393,15 +398,15 @@ static void sam_write(coco_data_t *coco, uint8_t reg) {
   } else {
     coco->sam_reg &= ~(1 << (reg >> 1));
   }
+
+  coco->mem1 = (coco->sam_reg & 0x8000) ? coco->ram : coco->rom;
 }
 
 static void coco_putb(computer_t *c, uint16_t addr, uint8_t b) {
-  coco_data_t *coco;
-
-  coco = (coco_data_t *)c->data;
+  coco_data_t *coco = (coco_data_t *)c->data;
 
   if (addr < 0x8000) {
-    coco->ram[addr] = b;
+    coco->mem0[addr] = b;
 
   } else if (addr >= 0xFF00 && addr < 0xFF40) {
     io_write(coco, addr & 0x23, b);
@@ -412,36 +417,39 @@ static void coco_putb(computer_t *c, uint16_t addr, uint8_t b) {
 }
 
 static int coco_ram(computer_t *c, uint32_t load_addr, uint32_t size, uint32_t exec_addr, char *name) {
-  coco_data_t *coco;
-  int r;
+  coco_data_t *coco = (coco_data_t *)c->data;
+  int r = -1;
 
-  coco = (coco_data_t *)c->data;
-  r = load_rom(coco->session, name, size, &coco->ram[load_addr]) != -1 ? 0 : -1;
+  if (load_addr < 0x8000) {
+    if (load_addr + size > 0x8000) {
+      size = 0x8000 - load_addr;
+    }
+    r = load_rom(coco->session, name, size, &coco->mem0[load_addr]) != -1 ? 0 : -1;
+  }
   if (r == 0 && coco->exec == 0) coco->exec = exec_addr;
 
   return r;
 }
 
 static int coco_rom(computer_t *c, int num, uint32_t size, char *name) {
-  coco_data_t *coco;
+  coco_data_t *coco = (coco_data_t *)c->data;
   int r = -1;
 
-  coco = (coco_data_t *)c->data;
 
   switch (num) {
-    case 0:
+    case 0: // Font
       if (size > BMP_SIZE) size = BMP_SIZE;
       if (load_rom(coco->session, name, size, coco->bmp) != -1) {
         r = bmp_decode(coco->bmp, coco->chr, BMP_NUM_COLS, BMP_NUM_ROWS, CHAR_WIDTH, CHAR_HEIGHT);
       }
       break;
-    case 1:
+    case 1: // Color Basic
       if (size > ROM_SIZE) size = ROM_SIZE;
-      r = load_rom(coco->session, name, size, coco->cbasic) != -1 ? 0 : -1;
+      r = load_rom(coco->session, name, size, coco->rom + 0x2000) != -1 ? 0 : -1;
       break;
-    case 2:
+    case 2: // Extended Color Basic
       if (size > ROM_SIZE) size = ROM_SIZE;
-      r = load_rom(coco->session, name, size, coco->ebasic) != -1 ? 0 : -1;
+      r = load_rom(coco->session, name, size, coco->rom) != -1 ? 0 : -1;
       break;
   }
 
@@ -449,17 +457,14 @@ static int coco_rom(computer_t *c, int num, uint32_t size, char *name) {
 }
 
 static int coco_disk(computer_t *c, int drive, int skip, int tracks, int heads, int sectors, int sectorlen, int sector0, char *name) {
-  coco_data_t *coco;
-
-  coco = (coco_data_t *)c->data;
+  coco_data_t *coco = (coco_data_t *)c->data;
   return disk_insert(coco->d, drive, skip, tracks, heads, sectors, sectorlen, sector0, name);
 }
 
 static int coco_run(computer_t *c, uint32_t us) {
-  coco_data_t *coco;
+  coco_data_t *coco = (coco_data_t *)c->data;
   uint32_t n;
 
-  coco = (coco_data_t *)c->data;
   if (coco->first) {
     m6809_reset(coco->m6809);
     coco->first = 0;
@@ -477,10 +482,9 @@ static int coco_run(computer_t *c, uint32_t us) {
 }
 
 static int coco_close(computer_t *c) {
-  coco_data_t *coco;
+  coco_data_t *coco = (coco_data_t *)c->data;
   int r = -1;
 
-  coco = (coco_data_t *)c->data;
 
   if (coco) {
     disk_close(coco->d);
@@ -494,13 +498,12 @@ static int coco_close(computer_t *c) {
 }
 
 static void coco_callback(void *data, uint32_t count) {
-  coco_data_t *coco;
-  uint16_t addr, start, size;
+  coco_data_t *coco = (coco_data_t *)data;
+  uint16_t addr, start, size, a;
   uint64_t t;
   uint32_t dt, waitForEvent, waitedForEvent;
   int ev, arg1, arg2;
 
-  coco = (coco_data_t *)data;
   coco->io[0x03] |= 0x80;
 
   start = (coco->sam_reg & 0x03F8) << 6;
@@ -520,7 +523,8 @@ static void coco_callback(void *data, uint32_t count) {
     size  = 0x200;
   }
   for (addr = 0; addr < size; addr++) {
-    vdg_byte(&coco->vdg, coco->vdg_mode, addr, coco->ram[start + addr]);
+    a = start + addr;
+    vdg_byte(&coco->vdg, coco->vdg_mode, addr, a < 0x8000 ? coco->mem0[a] : 0);
   }
 
   coco->frame++;
@@ -574,10 +578,9 @@ static void coco_callback(void *data, uint32_t count) {
 }
 
 static int coco_set_surface(struct computer_t *c, int ptr, surface_t *surface) {
-  coco_data_t *coco;
+  coco_data_t *coco = (coco_data_t *)c->data;
   int i, j;
 
-  coco = (coco_data_t *)c->data;
   coco->surface = surface;
   coco->ptr = ptr;
 
@@ -636,6 +639,7 @@ computer_t *coco_init(vfs_session_t *session) {
       coco->m6809 = m6809_open(COCO_PERIOD, coco_callback, coco, c);
 
       coco->sam_reg = (0x0400 >> 9) << 3;
+      coco->mem1 = coco->rom;
       coco->vdg.vdg_clear = vdg_clear;
       coco->vdg.vdg_char = vdg_char;
       coco->vdg.p = coco;
