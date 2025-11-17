@@ -42,7 +42,7 @@ messages:
 	@echo "$(COLOR_CYAN)Building PumpkinOS$(COLOR_END)"
 	@echo "$(COLOR_CYAN)Platform:$(COLOR_END) $(OSNAME) $(BITS) bits"
 	@echo "$(COLOR_CYAN)Modules:$(COLOR_END) $(MODULES)"
-#	@echo "$(COLOR_CYAN)Compiler flags:$(COLOR_END) $(CFLAGS)"
+	@echo "$(COLOR_CYAN)Compiler flags:$(COLOR_END) $(CFLAGS)"
 
 make_error:
 	@echo "$(COLOR_RED)ERROR: $(ERROR_MSG)$(COLOR_END)"
