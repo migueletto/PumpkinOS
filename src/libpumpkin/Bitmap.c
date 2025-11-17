@@ -145,6 +145,7 @@ static UInt8 emptySlot[BitmapV1HeaderSize] = {
 
 static Boolean isEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;
+/*
   UInt32 i;
 
   for (i = 0; i < BitmapV1HeaderSize; i++) {
@@ -152,6 +153,9 @@ static Boolean isEmptySlot(BitmapType *bitmapP) {
   }
 
   return true;
+*/
+  // optimized test
+  return bmp[8] == 0xff && bmp[4] == 0 && bmp[5] == 0;
 }
 
 static BitmapType *skipEmptySlot(BitmapType *bitmapP) {
@@ -194,14 +198,18 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
 #define put2_16(a,p,i) { if (le || leBits) put2l(a, p, i); else put2b(a, p, i); }
 
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
-  UInt8 v8, version;
+  UInt8 *b, v8, version;
   UInt16 v16;
   Boolean le;
 
   if (bmp) {
     bmp = skipEmptySlot(bmp);
-    version = BmpGetVersion(bmp);
-    le = BmpLittleEndian(bmp);
+    //version = BmpGetVersion(bmp);
+    //le = BmpLittleEndian(bmp);
+    // avoid calling skipEmptySlot again
+    b = (UInt8 *)bmp;
+    version = b[9] & 0x7F;
+    le = b[9] & 0x80;
 
     switch (version) {
       case 0:
