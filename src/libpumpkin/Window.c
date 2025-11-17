@@ -180,11 +180,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   CtbGetEntry(colorTable, module->backColor, &module->backColorRGB);
   CtbGetEntry(colorTable, module->textColor, &module->textColorRGB);
 
-  for (entry = 0; entry < UILastColorTableEntry; entry++) {
-    UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
-    UIColorSetTableEntry(entry, &module->uiColor[entry]);
-  }
-
   module->transferMode = winPaint;
 
   if (displayWindow) {
@@ -208,6 +203,11 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->windowBounds.extent.y = height;
     WinDirectAccessHack(module->displayWindow, 0, 0, width, height);
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
+  }
+
+  for (entry = 0; entry < UILastColorTableEntry; entry++) {
+    UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+    UIColorSetTableEntry(entry, &module->uiColor[entry]);
   }
 
   module->activeWindow = module->displayWindow;
@@ -2303,7 +2303,7 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
-  if (colorTable == NULL) colorTable = WinGetColorTable(0);
+  if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
   IndexedColorType prev = module->foreColor;
   numEntries = CtbGetNumEntries(colorTable);
@@ -2331,7 +2331,7 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
   UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
-  if (colorTable == NULL) colorTable = WinGetColorTable(0);
+  if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
   IndexedColorType prev = module->backColor;
   numEntries = CtbGetNumEntries(colorTable);
@@ -2353,7 +2353,7 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
   UInt16 numEntries;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
-  if (colorTable == NULL) colorTable = WinGetColorTable(0);
+  if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
   IndexedColorType prev = module->textColor;
   numEntries = CtbGetNumEntries(colorTable);
@@ -2514,7 +2514,7 @@ IndexedColorType WinRGBToIndex(const RGBColorType *rgbP) {
   ColorTableType *colorTable;
 
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
-  if (colorTable == NULL) colorTable = WinGetColorTable(0);
+  if (colorTable == NULL) colorTable = WinGetColorTable(-1);
   return BmpRGBToIndex(rgbP->r, rgbP->g, rgbP->b, colorTable);
 }
 
@@ -2524,7 +2524,7 @@ void WinIndexToRGB(IndexedColorType i, RGBColorType *rgbP) {
 
   if (rgbP) {
     colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
-    if (colorTable == NULL) colorTable = WinGetColorTable(0);
+    if (colorTable == NULL) colorTable = WinGetColorTable(-1);
     BmpIndexToRGB(i, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
     rgbP->index = i;
   }
@@ -3042,8 +3042,8 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
     debug(DEBUG_TRACE, "Window", "WinPalette drawWindow %s", WinGetDescr(wh, buf, sizeof(buf)));
     colorTable = BmpGetColortable(WinGetBitmap(wh));
     if (colorTable == NULL) {
-      colorTable = WinGetColorTable(0);
-      debug(DEBUG_INFO, "Window", "WinPalette drawWindow colorTable is NULL, using system colorTable");
+      debug(DEBUG_ERROR, "Window", "WinPalette drawWindow colorTable is NULL");
+      return winErrPalette;
     }
 
     if (colorTable) {
