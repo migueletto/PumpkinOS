@@ -1643,7 +1643,7 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
     CtbGetEntry(colorTable, i, &rgb);
 
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
-      debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
+      debug(DEBUG_TRACE, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
       return i;
     }
     // Manhattan distance, not accurate but not too slow
@@ -1660,7 +1660,7 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
     }
   }
 
-  debug(DEBUG_INFO, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
+  debug(DEBUG_TRACE, "Bitmap", "BmpRGBToIndex aprox %d,%d,%d %d", red, green, blue, imin);
   return imin;
 }
 
