@@ -340,6 +340,7 @@ WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean 
   WinHandle wh, drawWindow;
 
   // XXX The docs say "uses the bitmap and drawing state of the current draw window", but it is not happening here
+  // Windows created by this routine draw to the display
 
   drawWindow = WinGetDrawWindow();
   debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d) drawWindow (%d,%d,%d,%d)",
@@ -353,6 +354,9 @@ WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean 
     wh->frameType.word = frame;
     wh->windowFlags.modal = modal;
     wh->windowFlags.focusable = focusable;
+
+    // XXX this should not be necessary, but otherwise "Palm Sokoban" will not draw to the display
+    WinSetActiveWindow(wh);
   }
 
   return wh;
@@ -3097,6 +3101,16 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             //broadcastDisplayChange(module->depth, module->depth);
             pumpkin_dirty_region_mode(dirtyRegionReset);
             WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
+
+            // XXX weird, but if you call WinPalette() on displayWindow, it seems that the activeWindow is also affected.
+            // If we don't adjust the palette of the activeWindow, the eReader app will whow a pink background on startup.
+            if (module->drawWindow == module->displayWindow && module->activeWindow != module->displayWindow) {
+              WinHandle old = module->drawWindow;
+              module->drawWindow = module->activeWindow;
+              WinPalette(operation, startIndex, paletteEntries, tableP);
+              module->drawWindow = old;
+            }
+
             err = errNone;
           }
           break;

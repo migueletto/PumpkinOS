@@ -2929,6 +2929,7 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
     debug(DEBUG_TRACE, "Form", "list id %d numItems %d visibleItems %d usable %d", c->id, c->numItems, c->visibleItems, c->attr.usable);
 
     c->popupWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
+    c->popupWin->windowFlags.modal = 1;
     c->popupWin->windowBounds.topLeft.x = form->window.windowBounds.topLeft.x + c->bounds.topLeft.x; // absolute screen coordinate
     c->popupWin->windowBounds.topLeft.y = form->window.windowBounds.topLeft.y + c->bounds.topLeft.y; // absolute screen coordinate
 

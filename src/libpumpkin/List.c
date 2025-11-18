@@ -395,6 +395,7 @@ static void LstAdjust(ListType *listP) {
       WinDeleteWindow(listP->popupWin, false);
     }
     listP->popupWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
+    listP->popupWin->windowFlags.modal = 1;
     listP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + listP->bounds.topLeft.x;
     listP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + listP->bounds.topLeft.y;
     debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d py=%d", listP->id, listP->visibleItems, listP->popupWin->windowBounds.topLeft.y);
@@ -692,6 +693,7 @@ ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, 
 
         lstP->popupWin = WinCreateOffscreenWindow(width, height, nativeFormat, &err);
         if (err == errNone) {
+          lstP->popupWin->windowFlags.modal = 1;
           lstP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + lstP->bounds.topLeft.x; // absolute screen coordinate
           lstP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + lstP->bounds.topLeft.y; // absolute screen coordinate
 

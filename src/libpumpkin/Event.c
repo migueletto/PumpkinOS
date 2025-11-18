@@ -231,9 +231,12 @@ static void adjustCoords(Coord *x, Coord *y) {
    }
 
    if ((wh = WinGetActiveWindow()) != NULL) {
-     WinGetPosition(wh, &x0, &y0);
-     *x -= x0;
-     *y -= y0;
+     // only adjust coordinates if the window is modal
+     if (wh->windowFlags.modal) {
+       WinGetPosition(wh, &x0, &y0);
+       *x -= x0;
+       *y -= y0;
+     }
    }
 }
 
