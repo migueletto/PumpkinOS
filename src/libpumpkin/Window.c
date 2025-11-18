@@ -337,26 +337,19 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
 }
 
 WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
-  WinHandle wh, drawWindow;
+  WinHandle wh;
 
-  // XXX The docs say "uses the bitmap and drawing state of the current draw window", but it is not happening here
-  // Windows created by this routine draw to the display
+  debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d)",
+    frame, modal, focusable, bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
 
-  drawWindow = WinGetDrawWindow();
-  debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d) drawWindow (%d,%d,%d,%d)",
-    frame, modal, focusable,
-    bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y,
-    drawWindow->windowBounds.topLeft.x, drawWindow->windowBounds.topLeft.y, drawWindow->windowBounds.extent.x, drawWindow->windowBounds.extent.y);
-
-  if ((wh = WinCreateOffscreenWindow(bounds->extent.x, bounds->extent.y, nativeFormat, error)) != NULL) {
+  // uses the bitmap and drawing state of the current draw window
+  // windows created by this routine draw to the display
+  if ((wh = WinCreateBitmapWindow(WinGetBitmap(WinGetDisplayWindow()), error)) != NULL) {
     wh->windowBounds.topLeft.x = bounds->topLeft.x;
     wh->windowBounds.topLeft.y = bounds->topLeft.y;
     wh->frameType.word = frame;
     wh->windowFlags.modal = modal;
     wh->windowFlags.focusable = focusable;
-
-    // XXX this should not be necessary, but otherwise "Palm Sokoban" will not draw to the display
-    WinSetActiveWindow(wh);
   }
 
   return wh;
@@ -901,7 +894,7 @@ static void WinCopyBit(BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord 
 
 static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
   Coord cx, cy, x0, y0;
-  Boolean dbl;
+  Boolean dbl, display;
 
   if (wh) {
     cx = x;
@@ -909,10 +902,11 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
     pointTo(module, wh->density, &cx, &cy);
 
     if (CLIPW_OK(wh, cx, cy)) {
+      display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
       dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
-      WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || wh == module->displayWindow);
+      WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || display);
 
-      if (wh == module->activeWindow && wh != module->displayWindow) {
+      if (wh == module->activeWindow && !display) {
         cx = x;
         cy = y;
         pointTo(module, module->displayWindow->density, &cx, &cy);
@@ -1520,7 +1514,7 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
   UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
   UInt16 depth, srcRowBytes, dstRowBytes;
-  Boolean clipping;
+  Boolean clipping, display;
   Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
   UInt8 *srcBits, *dstBits;
 
@@ -1689,7 +1683,9 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     debug(DEBUG_ERROR, "Window", "WinCopyBitmap density or depth does not match");
   }
 
-  if (dirtyRect && (dst == module->activeWindow || dst == module->displayWindow)) {
+  display = dst == module->displayWindow || dst->bitmapP == module->displayWindow->bitmapP;
+
+  if (dirtyRect && (dst == module->activeWindow || display)) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
     WinDirtyRegion(dst, dirtyRect->topLeft.x, dirtyRect->topLeft.y, dirtyRect->topLeft.x+dirtyRect->extent.x-1, dirtyRect->topLeft.y+dirtyRect->extent.y-1);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
@@ -1727,7 +1723,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord i, j, iw, id, remwx, remwy, remdx, remdy;
   Coord x1, y1, x2, y2, wx, wy, dx, dy, dx0, wx0, x0, y0;
   BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd;
+  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display;
   char wbuf[64], bbuf[32];
 
   if (bitmapP && wh && rect) {
@@ -1870,7 +1866,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       dx = dx0;
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
-          WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || wh == module->displayWindow);
+          display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
+          WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || display);
           if (blitDisplay) {
             WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd, false);
           }
