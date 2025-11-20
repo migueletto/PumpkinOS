@@ -2799,10 +2799,10 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
   UInt32 dstRed, dstGreen, dstBlue;
   UInt8 srcDepth, dstDepth, *bits;
   UInt32 srcPixel, dstPixel, offset;
-  UInt32 srcTransparentValue, dstTransparentValue;
+  UInt32 srcTransparentValue;
   UInt16 srcRowBytes, dstRowBytes, aux;
   Coord srcWidth, srcHeight, dstWidth, dstHeight;
-  Boolean le, leBits, srcTransp, dstTransp, isSrcDefault, isDstDefault;
+  Boolean le, leBits, srcTransp, isSrcDefault, isDstDefault;
 
   BmpGetDimensions(src, &srcWidth, &srcHeight, &srcRowBytes);
   BmpGetDimensions(dst, &dstWidth, &dstHeight, &dstRowBytes);
@@ -2939,13 +2939,8 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     if (text) {
       dstPixel = srcPixel ? tc : bc;
       if (mode == winPaint) srcTransp = false;
-    } else {
-      dstTransp = BmpGetTransparentValue(dst, &dstTransparentValue);
-      if (srcTransp && dstTransp && srcPixel == srcTransparentValue) {
-        dstPixel = dstTransparentValue;
-        srcTransp = false;
-      }
     }
+
     bits = BmpGetBits(dst);
 
     switch (dstDepth) {
