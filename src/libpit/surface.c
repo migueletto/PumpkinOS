@@ -1107,13 +1107,8 @@ surface_t *surface_load_mem(uint8_t *buffer, int size, int encoding) {
 }
 
 static void surface_stbi_write_func(void *context, void *data, int size) {
-  char *filename = (char *)context;
-  int fd;
-
-  if (filename && data && (fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-    sys_write(fd, data, size);
-    sys_close(fd);
-  }
+  int fd = *(int *)context;
+  sys_write(fd, data, size);
 }
 
 int surface_save_mem(surface_t *surface, int quality, void *context, void (*callback)(void *context, void *data, int size)) {
@@ -1121,7 +1116,7 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
   uint32_t color;
   uint8_t *buf;
   int red, green, blue, alpha;
-  int ocomp, i, j, k, r = -1;
+  int ocomp, fd, i, j, k, r = -1;
 
   // 1: grey
   // 2: grey, alpha
@@ -1165,11 +1160,17 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
       filename = (char *)context;
       if ((ext = getext(filename)) != NULL) {
         if (!sys_strcasecmp(ext, "png")) {
+          fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
           r = !stbi_write_png_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+          sys_close(fd);
         } else if (!sys_strcasecmp(ext, "bmp")) {
-          r = !stbi_write_bmp_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf);
+          fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
+          r = !stbi_write_bmp_to_func(surface_stbi_write_func, &fd, surface->width, surface->height, ocomp, buf);
+          sys_close(fd);
         } else if (!sys_strcasecmp(ext, "jpg")) {
+          fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
           r = !stbi_write_jpg_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, quality);
+          sys_close(fd);
         } else {
           debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
         }
