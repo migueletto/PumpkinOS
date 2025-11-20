@@ -88,18 +88,22 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
     WinSetBackColor(fieldBack);
     WinSetTextColor(fieldText);
 
-    if (item->itemType != customTableItem && tableP->rowAttrs[row].invalid) {
-      WinEraseRectangle(&rect, 0);
+    // cell background
+    if (selected && currentRow == row) {
+      switch (item->itemType) {
+        case textTableItem:
+        case narrowTextTableItem:
+        case textWithNoteTableItem:
+          break;
+        default:
+          WinSetBackColor(objSelFill);
+          WinSetTextColor(objSelFore);
+          break;
+      }
     }
+    WinEraseRectangle(&rect, 0);
 
-    // XXX find out what is the exact condition for drawing cells in inverted color
-    if (0 && selected && currentRow == row) {
-      // invert colors for selected item
-      WinSetBackColor(objSelFill);
-      WinSetTextColor(objSelFore);
-      WinEraseRectangle(&rect, 3);
-    }
-
+    // cell foreround
     switch (item->itemType) {
       case checkboxTableItem:
         prev = WinSetDrawMode(winOverlay);
