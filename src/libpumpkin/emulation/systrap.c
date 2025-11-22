@@ -22,6 +22,9 @@
 #include "emu_launch_serde.h"
 #include "debug.h"
 
+#define sysTrapDmSyncDatabase 0xA476
+Err DmSyncDatabase(DmOpenRef dbRef);
+
 // not mapped:
 // FldNewField
 
@@ -1480,6 +1483,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       if (atP) m68k_write_memory_16(atP, at);
       if (oldHP) m68k_write_memory_32(oldHP, emupalmos_trap_out(old));
       debug(DEBUG_TRACE, "EmuPalmOS", "DmAttachRecord(0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", dbP, atP, newH, oldHP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
+    case sysTrapDmSyncDatabase: {
+      // Err DmSyncDatabase(DmOpenRef dbRef)
+      uint32_t dbP = ARG32;
+      DmOpenRef dbRef = (DmOpenRef)emupalmos_trap_in(dbP, trap, 0);
+      Err res = DmSyncDatabase(dbRef);
+      debug(DEBUG_TRACE, "EmuPalmOS", "DmSyncDatabase(0x%08X): %d", dbP, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
@@ -3292,7 +3304,7 @@ uint32_t palmos_systrap(uint16_t trap) {
         }
       } else {
         uint16_t selector;
-        sys_snprintf(buf, sizeof(buf)-1, "trap %s not mapped", logtrap_trapname(state->lt, trap, &selector, 0));
+        sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X %s not mapped", trap, logtrap_trapname(state->lt, trap, &selector, 0));
         emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       }
       break;
