@@ -100,7 +100,13 @@ void palmos_pinstrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
-    //case pinSysGetOrientation:
+    case pinSysGetOrientation: {
+      //  UInt16 SysGetOrientation(void)
+      UInt16 orientation = SysGetOrientation();
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysGetOrientation(): %d", orientation);
+      m68k_set_reg(M68K_REG_D0, orientation);
+    }
+    break;
     case pinSysSetOrientation: {
       // Err SysSetOrientation(UInt16 orientation)
       uint16_t orientation = ARG16;
