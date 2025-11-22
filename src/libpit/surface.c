@@ -1161,7 +1161,7 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
       if ((ext = getext(filename)) != NULL) {
         if (!sys_strcasecmp(ext, "png")) {
           fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
-          r = !stbi_write_png_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
+          r = !stbi_write_png_to_func(surface_stbi_write_func, &fd, surface->width, surface->height, ocomp, buf, surface->width * ocomp);
           sys_close(fd);
         } else if (!sys_strcasecmp(ext, "bmp")) {
           fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
@@ -1169,7 +1169,7 @@ int surface_save_mem(surface_t *surface, int quality, void *context, void (*call
           sys_close(fd);
         } else if (!sys_strcasecmp(ext, "jpg")) {
           fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
-          r = !stbi_write_jpg_to_func(surface_stbi_write_func, filename, surface->width, surface->height, ocomp, buf, quality);
+          r = !stbi_write_jpg_to_func(surface_stbi_write_func, &fd, surface->width, surface->height, ocomp, buf, quality);
           sys_close(fd);
         } else {
           debug(DEBUG_ERROR, "SURFACE", "invalid type \"%s\"", filename);
