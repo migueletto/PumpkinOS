@@ -20,25 +20,15 @@
 #define LEGACY_SCREEN_SIZE 160 * 160
 
 typedef struct {
-  RGBColorType foreColorRGB;
-  RGBColorType backColorRGB;
-  RGBColorType textColorRGB;
-  IndexedColorType foreColor;
-  IndexedColorType backColor;
-  IndexedColorType textColor;
   UInt16 foreColor565;
   UInt16 backColor565;
   UInt16 textColor565;
   Boolean swapColors;
-  WinDrawOperation transferMode;
-  PatternType pattern;
-  UInt8 patternData[8];
-  UnderlineModeType underlineMode;
-  UInt16 density, width, height, depth, depth0, coordSys;
-  Boolean nativeCoordSys;
+  UInt16 density, width, height, depth, depth0;
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
+  DrawStateType drawState;
   DrawStateType state[DrawStateStackSize];
   Boolean asciiText;
   UInt8 defaultColorTable1[2 +   2 * 4];
@@ -115,8 +105,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->depth0 = depth;
   module->legacyDepth = 1;
 
-  module->pattern = blackPattern;
-  module->coordSys = kCoordinatesStandard;
+  module->drawState.pattern = blackPattern;
+  module->drawState.coordinateSystem = kCoordinatesStandard;
 
   WinFillPalette(10001, module->defaultPalette1, 2);
   WinFillPalette(10002, module->defaultPalette2, 4);
@@ -147,27 +137,27 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
 
   switch (depth) {
     case 1:
-      module->foreColor = 1; // black
-      module->backColor = 0; // white
-      module->textColor = 1; // black
+      module->drawState.foreColor = 1; // black
+      module->drawState.backColor = 0; // white
+      module->drawState.textColor = 1; // black
       colorTable = module->colorTable1;
       break;
     case 2:
-      module->foreColor = 3; // black
-      module->backColor = 0; // white
-      module->textColor = 3; // black
+      module->drawState.foreColor = 3; // black
+      module->drawState.backColor = 0; // white
+      module->drawState.textColor = 3; // black
       colorTable = module->colorTable2;
       break;
     case 4:
-      module->foreColor = 15; // black
-      module->backColor = 0;  // white
-      module->textColor = 15; // black
+      module->drawState.foreColor = 15; // black
+      module->drawState.backColor = 0;  // white
+      module->drawState.textColor = 15; // black
       colorTable = module->colorTable4;
       break;
    default:
-      module->foreColor = 0xff; // black
-      module->backColor = 0x00; // white
-      module->textColor = 0xff; // black
+      module->drawState.foreColor = 0xff; // black
+      module->drawState.backColor = 0x00; // white
+      module->drawState.textColor = 0xff; // black
       colorTable = module->colorTable8;
       break;
   }
@@ -176,11 +166,11 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->backColor565 = 0xffff; // white
   module->textColor565 = 0x0000; // black
 
-  CtbGetEntry(colorTable, module->foreColor, &module->foreColorRGB);
-  CtbGetEntry(colorTable, module->backColor, &module->backColorRGB);
-  CtbGetEntry(colorTable, module->textColor, &module->textColorRGB);
+  CtbGetEntry(colorTable, module->drawState.foreColor, &module->drawState.foreColorRGB);
+  CtbGetEntry(colorTable, module->drawState.backColor, &module->drawState.backColorRGB);
+  CtbGetEntry(colorTable, module->drawState.textColor, &module->drawState.textColorRGB);
 
-  module->transferMode = winPaint;
+  module->drawState.transferMode = winPaint;
 
   if (displayWindow) {
     module->displayWindow = displayWindow;
@@ -201,6 +191,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     }
     module->displayWindow->windowBounds.extent.x = width;
     module->displayWindow->windowBounds.extent.y = height;
+    module->displayWindow->drawStateP = &module->drawState;
     WinDirectAccessHack(module->displayWindow, 0, 0, width, height);
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   }
@@ -259,7 +250,7 @@ RGBColorType *WinGetPalette(UInt16 n) {
 static void pointTo(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
   switch (density) {
     case kDensityLow:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesDouble:
           if (x) *x = *x / 2;
           if (y) *y = *y / 2;
@@ -267,7 +258,7 @@ static void pointTo(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
       }
       break;
     case kDensityDouble:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesStandard:
           if (x) *x = *x * 2;
           if (y) *y = *y * 2;
@@ -280,7 +271,7 @@ static void pointTo(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
 static void pointFrom(win_module_t *module, UInt16 density, Coord *x, Coord *y) {
   switch (density) {
     case kDensityLow:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesDouble:
           if (x) *x = *x * 2;
           if (y) *y = *y * 2;
@@ -288,7 +279,7 @@ static void pointFrom(win_module_t *module, UInt16 density, Coord *x, Coord *y) 
       }
       break;
     case kDensityDouble:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesStandard:
           if (x) *x = *x / 2;
           if (y) *y = *y / 2;
@@ -337,6 +328,7 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
 }
 
 WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh;
 
   debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d)",
@@ -350,12 +342,14 @@ WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean 
     wh->frameType.word = frame;
     wh->windowFlags.modal = modal;
     wh->windowFlags.focusable = focusable;
+    wh->drawStateP = &module->drawState;
   }
 
   return wh;
 }
 
 WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh = NULL;
   Coord width, height;
   char buf[64];
@@ -376,6 +370,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
         width >>= 1;
         height >>= 1;
       }
+      wh->drawStateP = &module->drawState;
       RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
       WinDirectAccessHack(wh, 0, 0, width, height);
       debug(DEBUG_TRACE, "Window", "WinCreateBitmapWindow %s", WinGetDescr(wh, buf, sizeof(buf)));
@@ -676,7 +671,7 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
     x2 = rP->extent.x > 0 ? x1 + rP->extent.x - 1 : x1;
     y2 = rP->extent.y > 0 ? y1 + rP->extent.y - 1 : y1;
 
-    if (module->density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+    if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 << 1;
       y1 = y1 << 1;
       x2 = x2 << 1;
@@ -708,14 +703,14 @@ void WinResetClip(void) {
   UInt16 coordSys;
 
   if (module->drawWindow) {
-    coordSys = module->coordSys;
-    module->coordSys = kCoordinatesStandard;
+    coordSys = module->drawState.coordinateSystem;
+    module->drawState.coordinateSystem = kCoordinatesStandard;
     rect.topLeft.x = 0;
     rect.topLeft.y = 0;
     rect.extent.x = module->drawWindow->windowBounds.extent.x;
     rect.extent.y = module->drawWindow->windowBounds.extent.y;
     WinSetClipingBounds(module->drawWindow, &rect);
-    module->coordSys = coordSys;
+    module->drawState.coordinateSystem = coordSys;
   }
 }
 
@@ -729,7 +724,7 @@ void WinGetClip(RectangleType *rP) {
     y1 = module->drawWindow->clippingBounds.top;
     y2 = module->drawWindow->clippingBounds.bottom;
 
-    if (module->density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+    if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 >> 1;
       y1 = y1 >> 1;
       x2 = x2 >> 1;
@@ -755,7 +750,7 @@ void WinClipRectangle(RectangleType *rP) {
       x2 = x1 + rP->extent.x - 1;
       y2 = y1 + rP->extent.y - 1;
 
-      if (module->density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+      if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
         x1 = x1 << 1;
         y1 = y1 << 1;
         x2 = (x2 << 1) + 1;
@@ -778,7 +773,7 @@ void WinClipRectangle(RectangleType *rP) {
           y2 = module->drawWindow->clippingBounds.bottom;
         }
 
-        if (module->density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+        if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
           x1 = x1 >> 1;
           y1 = y1 >> 1;
           x2 = x2 >> 1;
@@ -806,7 +801,7 @@ static IndexedColorType getBit(win_module_t *module, WinHandle wh, Coord x, Coor
   bitmapP = WinGetBitmap(wh);
   switch (BmpGetDensity(bitmapP)) {
     case kDensityLow:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesStandard:
           if (rgb) BmpGetPixelRGB(bitmapP, x, y, rgb);
           else p = BmpGetPixel(bitmapP, x, y);
@@ -818,7 +813,7 @@ static IndexedColorType getBit(win_module_t *module, WinHandle wh, Coord x, Coor
       }
       break;
     case kDensityDouble:
-      switch (module->coordSys) {
+      switch (module->drawState.coordinateSystem) {
         case kCoordinatesStandard:
           if (rgb) BmpGetPixelRGB(bitmapP, x*2, y*2, rgb);
           else p = BmpGetPixel(bitmapP, x*2, y*2);
@@ -903,7 +898,7 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
 
     if (CLIPW_OK(wh, cx, cy)) {
       display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
-      dbl = wh->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
+      dbl = wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
       WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || display);
 
       if (wh == module->activeWindow && !display) {
@@ -916,7 +911,7 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
           x0 <<= 1;
           y0 <<= 1;
         }
-        dbl = module->displayWindow->density == kDensityDouble && module->coordSys == kCoordinatesStandard;
+        dbl = module->displayWindow->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
         WinPutBit(displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl, false);
       }
     }
@@ -933,23 +928,23 @@ static UInt32 getColor(win_module_t *module, UInt16 depth, Boolean back) {
     case 2:
     case 4:
     case 8:
-      c = back ? module->backColor : module->foreColor;
+      c = back ? module->drawState.backColor : module->drawState.foreColor;
       break;
     case 16:
       c = back ? module->backColor565 : module->foreColor565;
       break;
     case 24:
       if (back) {
-        c = rgb24(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
+        c = rgb24(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
       } else {
-        c = rgb24(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
+        c = rgb24(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
       }
       break;
     case 32:
       if (back) {
-        c = rgb32(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
+        c = rgb32(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
       } else {
-        c = rgb32(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
+        c = rgb32(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
       }
       break;
   }
@@ -986,7 +981,7 @@ static UInt32 getPattern(win_module_t *module, WinHandle wh, Coord x, Coord y, P
         c2 = getColor(module, depth, module->swapColors);
         rx = x % 8;
         ry = y % 8;
-        b = module->patternData[ry] << rx;
+        b = module->drawState.patternData[ry] << rx;
         c = (b & 0x80) ? c1 : c2;
         break;
     }
@@ -1008,7 +1003,7 @@ static void draw_hline(win_module_t *module, Coord x1, Coord x2, Coord y, Patter
   for (x = x1; x <= x2; x++) {
     c = getPattern(module, module->drawWindow, x, y, pattern);
     d = getPattern(module, module->displayWindow, x, y, pattern);
-    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->drawState.transferMode);
   }
 }
 
@@ -1025,7 +1020,7 @@ static void draw_vline(win_module_t *module, Coord x, Coord y1, Coord y2, Patter
   for (y = y1; y <= y2; y++) {
     c = getPattern(module, module->drawWindow, x, y, pattern);
     d = getPattern(module, module->displayWindow, x, y, pattern);
-    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->drawState.transferMode);
   }
 }
 
@@ -1044,7 +1039,7 @@ static void draw_gline(win_module_t *module, int x1, int y1, int x2, int y2, Pat
   for (;;) {
     c = getPattern(module, module->drawWindow, x1, y1, pattern);
     d = getPattern(module, module->displayWindow, x1, y1, pattern);
-    WinPutBitDisplay(module, module->drawWindow, x1, y1, c, d, module->transferMode);
+    WinPutBitDisplay(module, module->drawWindow, x1, y1, c, d, module->drawState.transferMode);
     if (x1 == x2 && y1 == y2) break;
     e2 = err;
     if (e2 > -dx) { err -= dy; x1 += sx; }
@@ -1079,10 +1074,10 @@ void WinPaintPixel(Coord x, Coord y) {
   if (module->drawWindow) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
     bitmapP = WinGetBitmap(module->drawWindow);
-    c = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
+    c = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->drawState.foreColor;
     bitmapP = WinGetBitmap(module->displayWindow);
-    d = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->foreColor;
-    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->transferMode);
+    d = BmpGetBitDepth(bitmapP) == 16 ? module->foreColor565 : module->drawState.foreColor;
+    WinPutBitDisplay(module, module->drawWindow, x, y, c, d, module->drawState.transferMode);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
@@ -1148,11 +1143,11 @@ void WinPaintLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 
   pumpkin_dirty_region_mode(dirtyRegionBegin);
   if (y1 == y2) {
-    draw_hline(module, x1, x2, y2, module->pattern);
+    draw_hline(module, x1, x2, y2, module->drawState.pattern);
   } else if (x1 == x2) {
-    draw_vline(module, x1, y1, y2, module->pattern);
+    draw_vline(module, x1, y1, y2, module->drawState.pattern);
   } else {
-    draw_gline(module, x1, y1, x2, y2, module->pattern);
+    draw_gline(module, x1, y1, x2, y2, module->drawState.pattern);
   }
   pumpkin_dirty_region_mode(dirtyRegionEnd);
 }
@@ -1381,11 +1376,11 @@ void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 
   pumpkin_dirty_region_mode(dirtyRegionBegin);
   if (y1 == y2) {
-    draw_hline(module, x1, x2, y2, module->pattern);
+    draw_hline(module, x1, x2, y2, module->drawState.pattern);
   } else if (x1 == x2) {
-    draw_vline(module, x1, y1, y2, module->pattern);
+    draw_vline(module, x1, y1, y2, module->drawState.pattern);
   } else {
-    draw_gline(module, x1, y1, x2, y2, module->pattern);
+    draw_gline(module, x1, y1, x2, y2, module->drawState.pattern);
   }
   pumpkin_dirty_region_mode(dirtyRegionEnd);
 }
@@ -1413,15 +1408,15 @@ void WinFillRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 
     d = cornerDiam;
     for (y = y1; y < y1+cornerDiam; y++) {
-      draw_hline(module, x1+d, x2-d, y, module->pattern);
+      draw_hline(module, x1+d, x2-d, y, module->drawState.pattern);
       d--;
     }
     for (; y < y2-cornerDiam; y++) {
-      draw_hline(module, x1, x2, y, module->pattern);
+      draw_hline(module, x1, x2, y, module->drawState.pattern);
     }
     d = 0;
     for (; y <= y2; y++) {
-      draw_hline(module, x1+d, x2-d, y, module->pattern);
+      draw_hline(module, x1+d, x2-d, y, module->drawState.pattern);
       d++;
     }
 
@@ -1753,20 +1748,20 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     RctCopyRectangle(rect, &srcRect);
 
-    if (bitmapDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
-      module->coordSys = kCoordinatesDouble;
+    if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+      module->drawState.coordinateSystem = kCoordinatesDouble;
       WinScaleRectangle(&srcRect);
-      module->coordSys = kCoordinatesStandard;
-    } else if (bitmapDensity == kDensityLow && module->coordSys == kCoordinatesDouble) {
+      module->drawState.coordinateSystem = kCoordinatesStandard;
+    } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
       WinUnscaleRectangle(&srcRect);
     }
 
-    if (windowDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
-      module->coordSys = kCoordinatesDouble;
+    if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+      module->drawState.coordinateSystem = kCoordinatesDouble;
       wx = WinScaleCoord(x, false);
       wy = WinScaleCoord(y, false);
-      module->coordSys = kCoordinatesStandard;
-    } else if (windowDensity == kDensityLow && module->coordSys == kCoordinatesDouble) {
+      module->drawState.coordinateSystem = kCoordinatesStandard;
+    } else if (windowDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
       wx = WinUnscaleCoord(x, false);
       wy = WinUnscaleCoord(y, false);
     } else {
@@ -1774,12 +1769,12 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       wy = y;
     }
 
-    if (displayDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
-      module->coordSys = kCoordinatesDouble;
+    if (displayDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+      module->drawState.coordinateSystem = kCoordinatesDouble;
       dx = WinScaleCoord(x, false);
       dy = WinScaleCoord(y, false);
-      module->coordSys = kCoordinatesStandard;
-    } else if (displayDensity == kDensityLow && module->coordSys == kCoordinatesDouble) {
+      module->drawState.coordinateSystem = kCoordinatesStandard;
+    } else if (displayDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
       dx = WinUnscaleCoord(x, false);
       dy = WinUnscaleCoord(y, false);
     } else {
@@ -1849,14 +1844,14 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     remdx = remdy = 0;
 
     if (text) {
-      tcw = windowDepth  == 16 ? module->textColor565 : module->textColor;
-      tcd = displayDepth == 16 ? module->textColor565 : module->textColor;
+      tcw = windowDepth  == 16 ? module->textColor565 : module->drawState.textColor;
+      tcd = displayDepth == 16 ? module->textColor565 : module->drawState.textColor;
     } else {
-      tcw = windowDepth  == 16 ? module->foreColor565 : module->foreColor;
-      tcd = displayDepth == 16 ? module->foreColor565 : module->foreColor;
+      tcw = windowDepth  == 16 ? module->foreColor565 : module->drawState.foreColor;
+      tcd = displayDepth == 16 ? module->foreColor565 : module->drawState.foreColor;
     }
-    bcw = windowDepth  == 16 ? module->backColor565 : module->backColor;
-    bcd = displayDepth == 16 ? module->backColor565 : module->backColor;
+    bcw = windowDepth  == 16 ? module->backColor565 : module->drawState.backColor;
+    bcd = displayDepth == 16 ? module->backColor565 : module->drawState.backColor;
 
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
@@ -1912,7 +1907,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         surface_t *dst = BmpCreateSurfaceBitmap(windowBitmap);
         dstX = x;
         dstY = y;
-        if (windowDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+        if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
           dstX <<= 1;
           dstY <<= 1;
         }
@@ -1932,10 +1927,10 @@ void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y) {
   x0 = wh->windowBounds.topLeft.x;
   y0 = wh->windowBounds.topLeft.y;
 
-  if (module->coordSys == kCoordinatesStandard) {
+  if (module->drawState.coordinateSystem == kCoordinatesStandard) {
     *x += x0;
     *y += y0;
-  } else if (module->coordSys == kCoordinatesDouble) {
+  } else if (module->drawState.coordinateSystem == kCoordinatesDouble) {
     *x += x0 << 1;
     *y += y0 << 1;
   }
@@ -1994,16 +1989,16 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
     if ((best = BmpGetBestBitmapEx(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
       BmpGetDimensions(best, &w, &h, NULL);
       bitmapDensity = BmpGetDensity(best);
-      if (bitmapDensity == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+      if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
         w >>= 1;
         h >>= 1;
-      } else if (bitmapDensity == kDensityLow && module->coordSys == kCoordinatesDouble) {
+      } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
         w <<= 1;
         h <<= 1;
       }
       debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %s %p %d,%d at %d,%d", BmpGetDescr(best, bmpBuf, sizeof(bmpBuf)), best, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
-      WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->transferMode, false);
+      WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->drawState.transferMode, false);
     }
   }
 }
@@ -2054,7 +2049,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
       switch (density) {
         case kDensityLow:
-          if (module->coordSys == kCoordinatesDouble) {
+          if (module->drawState.coordinateSystem == kCoordinatesDouble) {
 //debug(1, "XXX", "WinDrawCharsC window density low font density low coord double x:%d->%d, y:%d->%d", x, x>>1, y, y>>1);
             x >>= 1;
             y >>= 1;
@@ -2069,7 +2064,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         if (!module->asciiText || ch >= 32) {
           dx = FntDrawChar(f, wch, ch, 0, 1, x, y);
           dy = FntCharHeight();
-          switch (module->underlineMode) {
+          switch (module->drawState.underlineMode) {
             case grayUnderline:
               WinDrawGrayLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
               break;
@@ -2085,7 +2080,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       }
     } else {
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
-      prev = module->coordSys;
+      prev = module->drawState.coordinateSystem;
       mult = 0;
 //debug(1, "XXX", "WinDrawCharsC font v2 density %d", density);
 
@@ -2094,7 +2089,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           if (FntGetDensityCount(f) >= 1 && FntGetDensity(f, 0) == kDensityLow) {
             index = 0; // low density font
             mult = 1;
-            if (module->coordSys == kCoordinatesDouble) {
+            if (module->drawState.coordinateSystem == kCoordinatesDouble) {
 //debug(1, "XXX", "WinDrawCharsC window density low font density low coord double x:%d->%d, y:%d->%d", x, x>>1, y, y>>1);
               x >>= 1;
               y >>= 1;
@@ -2115,7 +2110,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           }
           if (index >= 0) {
             mult = 2;
-            if (module->coordSys == kCoordinatesStandard) {
+            if (module->drawState.coordinateSystem == kCoordinatesStandard) {
 //debug(1, "XXX", "WinDrawCharsC window density double font density double coord standard x:%d->%d, y:%d->%d", x, x<<1, y, y<<1);
               x <<= 1;
               y <<= 1;
@@ -2138,7 +2133,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           if (!module->asciiText || ch >= 32) {
             dx = FntDrawChar(f, wch, ch, index, mult, x, y);
             dy = FntCharHeight();
-            switch (module->underlineMode) {
+            switch (module->drawState.underlineMode) {
               case grayUnderline:
                 WinDrawGrayLine(x, y + dy - 1, x + dx - 1, y + dy - 1);
                 break;
@@ -2207,8 +2202,8 @@ void WinDrawInvertedChars(const Char *chars, Int16 len, Coord x, Coord y) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   debug(DEBUG_TRACE, "Window", "WinDrawInvertedChars(\"%.*s\", %d, %d)", len, chars, x, y);
   WinDrawOperation prev = WinSetDrawMode(winPaint);
-  IndexedColorType oldt = module->textColor;
-  IndexedColorType oldb = module->backColor;
+  IndexedColorType oldt = module->drawState.textColor;
+  IndexedColorType oldb = module->drawState.backColor;
   WinSetTextColor(oldb);
   WinSetBackColor(oldt);
   WinDrawCharsC((uint8_t *)chars, len, x, y, 0);
@@ -2252,48 +2247,48 @@ void WinInvertChars(const Char *chars, Int16 len, Coord x, Coord y) {
 UnderlineModeType WinSetUnderlineMode(UnderlineModeType mode) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   debug(DEBUG_TRACE, "Window", "WinSetUnderlineMode %d", mode);
-  UnderlineModeType prev = module->underlineMode;
-  module->underlineMode = mode;
+  UnderlineModeType prev = module->drawState.underlineMode;
+  module->drawState.underlineMode = mode;
   return prev;
 }
 
 WinDrawOperation WinSetDrawMode(WinDrawOperation newMode) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   debug(DEBUG_TRACE, "Window", "WinSetDrawMode %d", newMode);
-  WinDrawOperation prev = module->transferMode;
-  module->transferMode = newMode;
+  WinDrawOperation prev = module->drawState.transferMode;
+  module->drawState.transferMode = newMode;
   return prev;
 }
 
 WinDrawOperation WinGetDrawMode(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->transferMode;
+  return module->drawState.transferMode;
 }
 
 IndexedColorType WinGetForeColor(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->foreColor;
+  return module->drawState.foreColor;
 }
 
 #define setColors(prefix, module, color) { \
   uint16_t c; \
-  module->prefix##Color565 = rgb565(module->prefix##ColorRGB.r, module->prefix##ColorRGB.g, module->prefix##ColorRGB.b); \
+  module->prefix##Color565 = rgb565(module->drawState.prefix##ColorRGB.r, module->drawState.prefix##ColorRGB.g, module->drawState.prefix##ColorRGB.b); \
   switch (module->depth) { \
     case 1: \
-      module->prefix##Color = (module->prefix##ColorRGB.r > 127 && module->prefix##ColorRGB.g > 127 && module->prefix##ColorRGB.b > 127) ? 0 : 1; \
+      module->drawState.prefix##Color = (module->drawState.prefix##ColorRGB.r > 127 && module->drawState.prefix##ColorRGB.g > 127 && module->drawState.prefix##ColorRGB.b > 127) ? 0 : 1; \
       break; \
     case 2: \
-      c = (module->prefix##ColorRGB.r + module->prefix##ColorRGB.g + module->prefix##ColorRGB.b) / 3; \
+      c = (module->drawState.prefix##ColorRGB.r + module->drawState.prefix##ColorRGB.g + module->drawState.prefix##ColorRGB.b) / 3; \
       c /= 85; \
-      module->prefix##Color = 3 - c; \
+      module->drawState.prefix##Color = 3 - c; \
       break; \
     case 4: \
-      c = (module->prefix##ColorRGB.r + module->prefix##ColorRGB.g + module->prefix##ColorRGB.b) / 3; \
+      c = (module->drawState.prefix##ColorRGB.r + module->drawState.prefix##ColorRGB.g + module->drawState.prefix##ColorRGB.b) / 3; \
       c /= 17; \
-      module->prefix##Color = 15 - c; \
+      module->drawState.prefix##Color = 15 - c; \
       break; \
     default: \
-      module->prefix##Color = color; \
+      module->drawState.prefix##Color = color; \
       break; \
   } \
 }
@@ -2306,13 +2301,13 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
-  IndexedColorType prev = module->foreColor;
+  IndexedColorType prev = module->drawState.foreColor;
   numEntries = CtbGetNumEntries(colorTable);
 
   if (foreColor >= 0 && foreColor < numEntries) {
-    CtbGetEntry(colorTable, foreColor, &module->foreColorRGB);
+    CtbGetEntry(colorTable, foreColor, &module->drawState.foreColorRGB);
     setColors(fore, module, foreColor);
-    module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
+    module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
 //debug(1, "XXX", "WinSetForeColor %d 0x%04X %d,%d,%d", module->foreColor, module->foreColor565, module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetForeColor invalid color %d for depth %d (max %d)", foreColor, module->depth, numEntries-1);
@@ -2323,7 +2318,7 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
 
 IndexedColorType WinGetBackColor(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->backColor;
+  return module->drawState.backColor;
 }
 
 IndexedColorType WinSetBackColor(IndexedColorType backColor) {
@@ -2334,13 +2329,13 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
-  IndexedColorType prev = module->backColor;
+  IndexedColorType prev = module->drawState.backColor;
   numEntries = CtbGetNumEntries(colorTable);
 
   if (backColor >= 0 && backColor < numEntries) {
-    CtbGetEntry(colorTable, backColor, &module->backColorRGB);
+    CtbGetEntry(colorTable, backColor, &module->drawState.backColorRGB);
     setColors(back, module, backColor);
-    module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
+    module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetBackColor invalid color %d for depth %d (max %d)", backColor, module->depth, numEntries-1);
   }
@@ -2356,11 +2351,11 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
   colorTable = module->drawWindow ? BmpGetColortable(WinGetBitmap(module->drawWindow)) : NULL;
   if (colorTable == NULL) colorTable = WinGetColorTable(-1);
 
-  IndexedColorType prev = module->textColor;
+  IndexedColorType prev = module->drawState.textColor;
   numEntries = CtbGetNumEntries(colorTable);
 
   if (textColor >= 0 && textColor < numEntries) {
-    CtbGetEntry(colorTable, textColor, &module->textColorRGB);
+    CtbGetEntry(colorTable, textColor, &module->drawState.textColorRGB);
     setColors(text, module, textColor);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetTextColor invalid color %d for depth %d (max %d)", textColor, module->depth, numEntries-1);
@@ -2373,19 +2368,19 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
-    prevRgbP->index = module->foreColorRGB.index;
-    prevRgbP->r = module->foreColorRGB.r;
-    prevRgbP->g = module->foreColorRGB.g;
-    prevRgbP->b = module->foreColorRGB.b;
+    prevRgbP->index = module->drawState.foreColorRGB.index;
+    prevRgbP->r = module->drawState.foreColorRGB.r;
+    prevRgbP->g = module->drawState.foreColorRGB.g;
+    prevRgbP->b = module->drawState.foreColorRGB.b;
   }
 
   if (newRgbP) {
-    module->foreColorRGB.index = newRgbP->index;
-    module->foreColorRGB.r = newRgbP->r;
-    module->foreColorRGB.g = newRgbP->g;
-    module->foreColorRGB.b = newRgbP->b;
+    module->drawState.foreColorRGB.index = newRgbP->index;
+    module->drawState.foreColorRGB.r = newRgbP->r;
+    module->drawState.foreColorRGB.g = newRgbP->g;
+    module->drawState.foreColorRGB.b = newRgbP->b;
 
-    setColors(fore, module, module->depth >= 8 ? WinRGBToIndex(&module->foreColorRGB) : 0);
+    setColors(fore, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.foreColorRGB) : 0);
   }
 }
 
@@ -2393,19 +2388,19 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
-    prevRgbP->index = module->backColorRGB.index;
-    prevRgbP->r = module->backColorRGB.r;
-    prevRgbP->g = module->backColorRGB.g;
-    prevRgbP->b = module->backColorRGB.b;
+    prevRgbP->index = module->drawState.backColorRGB.index;
+    prevRgbP->r = module->drawState.backColorRGB.r;
+    prevRgbP->g = module->drawState.backColorRGB.g;
+    prevRgbP->b = module->drawState.backColorRGB.b;
   }
 
   if (newRgbP) {
-    module->backColorRGB.index = newRgbP->index;
-    module->backColorRGB.r = newRgbP->r;
-    module->backColorRGB.g = newRgbP->g;
-    module->backColorRGB.b = newRgbP->b;
+    module->drawState.backColorRGB.index = newRgbP->index;
+    module->drawState.backColorRGB.r = newRgbP->r;
+    module->drawState.backColorRGB.g = newRgbP->g;
+    module->drawState.backColorRGB.b = newRgbP->b;
 
-    setColors(back, module, module->depth >= 8 ? WinRGBToIndex(&module->backColorRGB) : 0);
+    setColors(back, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.backColorRGB) : 0);
   }
 }
 
@@ -2413,19 +2408,19 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (prevRgbP) {
-    prevRgbP->index = module->textColorRGB.index;
-    prevRgbP->r = module->textColorRGB.r;
-    prevRgbP->g = module->textColorRGB.g;
-    prevRgbP->b = module->textColorRGB.b;
+    prevRgbP->index = module->drawState.textColorRGB.index;
+    prevRgbP->r = module->drawState.textColorRGB.r;
+    prevRgbP->g = module->drawState.textColorRGB.g;
+    prevRgbP->b = module->drawState.textColorRGB.b;
   }
 
   if (newRgbP) {
-    module->textColorRGB.index = newRgbP->index;
-    module->textColorRGB.r = newRgbP->r;
-    module->textColorRGB.g = newRgbP->g;
-    module->textColorRGB.b = newRgbP->b;
+    module->drawState.textColorRGB.index = newRgbP->index;
+    module->drawState.textColorRGB.r = newRgbP->r;
+    module->drawState.textColorRGB.g = newRgbP->g;
+    module->drawState.textColorRGB.b = newRgbP->b;
 
-    setColors(text, module, module->depth >= 8 ? WinRGBToIndex(&module->textColorRGB) : 0);
+    setColors(text, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.textColorRGB) : 0);
   }
 }
 
@@ -2437,7 +2432,7 @@ UInt32 WinGetForeColorU(void) {
     case  2:
     case  4:
     case  8:
-      return module->foreColor;
+      return module->drawState.foreColor;
     case 16:
       return module->foreColor565;
   }
@@ -2453,7 +2448,7 @@ UInt32 WinGetBackColorU(void) {
     case  2:
     case  4:
     case  8:
-      return module->backColor;
+      return module->drawState.backColor;
     case 16:
       return module->backColor565;
   }
@@ -2464,7 +2459,7 @@ UInt32 WinGetBackColorU(void) {
 void WinGetPattern(CustomPatternType *patternP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (patternP) {
-    MemMove(patternP, module->patternData, sizeof(CustomPatternType));
+    MemMove(patternP, module->drawState.patternData, sizeof(CustomPatternType));
   }
 }
 
@@ -2472,17 +2467,17 @@ void WinSetPattern(const CustomPatternType *patternP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (patternP) {
-    MemMove(module->patternData, patternP, sizeof(CustomPatternType));
-    module->pattern = customPattern;
+    MemMove(module->drawState.patternData, patternP, sizeof(CustomPatternType));
+    module->drawState.pattern = customPattern;
     debug(DEBUG_TRACE, "Window", "WinSetPattern [0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X]",
-      module->patternData[0], module->patternData[1], module->patternData[2], module->patternData[3],
-      module->patternData[4], module->patternData[5], module->patternData[6], module->patternData[7]);
+      module->drawState.patternData[0], module->drawState.patternData[1], module->drawState.patternData[2], module->drawState.patternData[3],
+      module->drawState.patternData[4], module->drawState.patternData[5], module->drawState.patternData[6], module->drawState.patternData[7]);
   }
 }
 
 PatternType WinGetPatternType(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->pattern;
+  return module->drawState.pattern;
 }
 
 void WinSetPatternType(PatternType newPattern) {
@@ -2493,15 +2488,15 @@ void WinSetPatternType(PatternType newPattern) {
     case whitePattern:
     case grayPattern:
     case customPattern:
-      module->pattern = newPattern;
+      module->drawState.pattern = newPattern;
       break;
     case lightGrayPattern:
       debug(DEBUG_ERROR, "Window", "WinSetPatternType lightGrayPattern not supported, using grayPattern");
-      module->pattern = grayPattern;
+      module->drawState.pattern = grayPattern;
       break;
     case darkGrayPattern:
       debug(DEBUG_ERROR, "Window", "WinSetPatternType darkGrayPattern not supported, using grayPattern");
-      module->pattern = grayPattern;
+      module->drawState.pattern = grayPattern;
       break;
   }
 }
@@ -2568,31 +2563,28 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
 
   if (module->density == kDensityDouble) {
     debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem %d", coordSys);
-    prev = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
+    prev = module->drawState.coordinateSystem;
 
     switch (coordSys) {
        case kCoordinatesNative:
-         switch (module->density) {
-           case kDensityLow:       module->coordSys = kCoordinatesStandard;  break;
-           case kDensityDouble:    module->coordSys = kCoordinatesDouble;    break;
-         }
-         module->nativeCoordSys = true;
+         // If coordSys is kCoordinatesNative, the Window Manager sets the scale field to 1.0,
+         // which to enables 1-to-1 mapping of coordinates to pixels.
+         debug(DEBUG_INFO, "Window", "WinSetCoordinateSystem native");
+         module->drawState.coordinateSystem = coordSys;
          break;
        case kCoordinatesStandard:
-         module->coordSys = coordSys;
-         module->nativeCoordSys = false;
+         module->drawState.coordinateSystem = coordSys;
          break;
        case kCoordinatesDouble:
          if (module->density == kDensityDouble) {
-           module->coordSys = coordSys;
-           module->nativeCoordSys = false;
+           module->drawState.coordinateSystem = coordSys;
          }
          break;
        default:
          debug(DEBUG_ERROR, "Window", "WinSetCoordinateSystem %d unsupported", coordSys);
          break;
     }
-//debug(1, "XXX", "WinSetCoordinateSystem new=%d (%d), prev=%d", module->coordSys, coordSys, prev);
+//debug(1, "XXX", "WinSetCoordinateSystem new=%d (%d), prev=%d", module->drawState.coordinateSystem, coordSys, prev);
   }
 
   return prev;
@@ -2600,18 +2592,21 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
 
 UInt16 WinGetCoordinateSystem(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
+  return module->drawState.coordinateSystem;
 }
 
 UInt16 WinGetRealCoordinateSystem(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->coordSys;
+  if (module->drawState.coordinateSystem == kCoordinatesNative) {
+    return module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard;
+  }
+  return module->drawState.coordinateSystem;
 }
 
 Coord WinScaleCoord(Coord coord, Boolean ceiling) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
-  if (module->coordSys == kCoordinatesDouble) {
+  if (module->drawState.coordinateSystem == kCoordinatesDouble || (module->drawState.coordinateSystem == kCoordinatesNative && module->density == kDensityDouble)) {
     coord *= 2;
     if (ceiling) coord++;
   }
@@ -2622,7 +2617,7 @@ Coord WinScaleCoord(Coord coord, Boolean ceiling) {
 Coord WinUnscaleCoord(Coord coord, Boolean ceiling) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
-  if (module->coordSys == kCoordinatesDouble) {
+  if (module->drawState.coordinateSystem == kCoordinatesDouble || (module->drawState.coordinateSystem == kCoordinatesNative && module->density == kDensityDouble)) {
     coord /= 2;
   }
 
@@ -2968,7 +2963,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         // When using this format, the width and height arguments must be specified using the active coordinate system.
         density = module->density;
         depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->depth0" here
-        if (density == kDensityDouble && module->coordSys == kCoordinatesStandard) {
+        if (density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
           width <<= 1;
           height <<= 1;
         }
@@ -2978,6 +2973,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
     wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
     if (wh->bitmapP) {
       debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %s format %d", WinGetDescr(wh, buf, sizeof(buf)), format);
+      wh->drawStateP = &module->drawState;
       wh->windowFlags.offscreen = true;
       wh->windowFlags.freeBitmap = true;
       wh->density = density;
@@ -3161,16 +3157,16 @@ void WinPushDrawState(void) {
 
   debug(DEBUG_TRACE, "Window", "WinPushDrawState");
   if (module->numPush < DrawStateStackSize) {
-    module->state[module->numPush].pattern = module->pattern;
-    module->state[module->numPush].underlineMode = module->underlineMode;
-    module->state[module->numPush].transferMode = module->transferMode;
-    module->state[module->numPush].foreColor = module->foreColor;
-    module->state[module->numPush].backColor = module->backColor;
-    module->state[module->numPush].textColor = module->textColor;
-    module->state[module->numPush].foreColorRGB = module->foreColorRGB;
-    module->state[module->numPush].backColorRGB = module->backColorRGB;
-    module->state[module->numPush].textColorRGB = module->textColorRGB;
-    module->state[module->numPush].coordinateSystem = module->nativeCoordSys ? kCoordinatesNative : module->coordSys;
+    module->state[module->numPush].pattern = module->drawState.pattern;
+    module->state[module->numPush].underlineMode = module->drawState.underlineMode;
+    module->state[module->numPush].transferMode = module->drawState.transferMode;
+    module->state[module->numPush].foreColor = module->drawState.foreColor;
+    module->state[module->numPush].backColor = module->drawState.backColor;
+    module->state[module->numPush].textColor = module->drawState.textColor;
+    module->state[module->numPush].foreColorRGB = module->drawState.foreColorRGB;
+    module->state[module->numPush].backColorRGB = module->drawState.backColorRGB;
+    module->state[module->numPush].textColorRGB = module->drawState.textColorRGB;
+    module->state[module->numPush].coordinateSystem = module->drawState.coordinateSystem;
     module->state[module->numPush].fontId = FntGetFont();
     WinGetPattern(&module->state[module->numPush].patternData);
     module->numPush++;
@@ -3187,25 +3183,19 @@ void WinPopDrawState(void) {
   if (module->numPush) {
     module->numPush--;
     WinSetPattern(&module->state[module->numPush].patternData);
-    module->pattern = module->state[module->numPush].pattern;
-    module->underlineMode = module->state[module->numPush].underlineMode;
-    module->transferMode = module->state[module->numPush].transferMode;
-    module->foreColor = module->state[module->numPush].foreColor;
-    module->backColor = module->state[module->numPush].backColor;
-    module->textColor = module->state[module->numPush].textColor;
-    module->foreColorRGB = module->state[module->numPush].foreColorRGB;
-    module->backColorRGB = module->state[module->numPush].backColorRGB;
-    module->textColorRGB = module->state[module->numPush].textColorRGB;
-    module->foreColor565 = rgb565(module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
-    module->backColor565 = rgb565(module->backColorRGB.r, module->backColorRGB.g, module->backColorRGB.b);
-    module->textColor565 = rgb565(module->textColorRGB.r, module->textColorRGB.g, module->textColorRGB.b);
-    if (module->state[module->numPush].coordinateSystem == kCoordinatesNative) {
-      module->coordSys = module->density == kDensityLow ? kCoordinatesStandard : kCoordinatesDouble;
-      module->nativeCoordSys = true;
-    } else {
-      module->coordSys = module->state[module->numPush].coordinateSystem;
-      module->nativeCoordSys = false;
-    }
+    module->drawState.pattern = module->state[module->numPush].pattern;
+    module->drawState.underlineMode = module->state[module->numPush].underlineMode;
+    module->drawState.transferMode = module->state[module->numPush].transferMode;
+    module->drawState.foreColor = module->state[module->numPush].foreColor;
+    module->drawState.backColor = module->state[module->numPush].backColor;
+    module->drawState.textColor = module->state[module->numPush].textColor;
+    module->drawState.foreColorRGB = module->state[module->numPush].foreColorRGB;
+    module->drawState.backColorRGB = module->state[module->numPush].backColorRGB;
+    module->drawState.textColorRGB = module->state[module->numPush].textColorRGB;
+    module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
+    module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
+    module->textColor565 = rgb565(module->drawState.textColorRGB.r, module->drawState.textColorRGB.g, module->drawState.textColorRGB.b);
+    module->drawState.coordinateSystem = module->state[module->numPush].coordinateSystem;
     FntSetFont(module->state[module->numPush].fontId);
 
   } else {
@@ -3246,23 +3236,23 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       if (depth != module->depth && depth <= module->depth0) {
         switch (depth) {
           case 1:
-            module->foreColor = 1; // black
-            module->backColor = 0; // white
-            module->textColor = 1; // black
+            module->drawState.foreColor = 1; // black
+            module->drawState.backColor = 0; // white
+            module->drawState.textColor = 1; // black
             colorTable = module->colorTable1;
             err = errNone;
             break;
           case 2:
-            module->foreColor = 3; // black
-            module->backColor = 0; // white
-            module->textColor = 3; // black
+            module->drawState.foreColor = 3; // black
+            module->drawState.backColor = 0; // white
+            module->drawState.textColor = 3; // black
             colorTable = module->colorTable2;
             err = errNone;
             break;
           case 4:
-            module->foreColor = 15; // black
-            module->backColor = 0;  // white
-            module->textColor = 15; // black
+            module->drawState.foreColor = 15; // black
+            module->drawState.backColor = 0;  // white
+            module->drawState.textColor = 15; // black
             colorTable = module->colorTable4;
             err = errNone;
             break;
@@ -3280,9 +3270,9 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
         }
 
         if (err == errNone) {
-          CtbGetEntry(colorTable, module->foreColor, &module->foreColorRGB);
-          CtbGetEntry(colorTable, module->backColor, &module->backColorRGB);
-          CtbGetEntry(colorTable, module->textColor, &module->textColorRGB);
+          CtbGetEntry(colorTable, module->drawState.foreColor, &module->drawState.foreColorRGB);
+          CtbGetEntry(colorTable, module->drawState.backColor, &module->drawState.backColorRGB);
+          CtbGetEntry(colorTable, module->drawState.textColor, &module->drawState.textColorRGB);
 
           if (depth == 1 || depth == 2 || depth == 4) {
             module->legacyDepth = depth;
@@ -3685,7 +3675,7 @@ static void WinLegacyDrawPixel(win_module_t *module, UInt8 depth, UInt16 c, UInt
     case 2:
     case 4:
     case 8:
-      module->foreColor = c;
+      module->drawState.foreColor = c;
       WinDrawPixel(x, y);
       break;
     case 16:
@@ -3706,7 +3696,7 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
 
   oldActive = module->activeWindow;
   oldDraw = module->drawWindow;
-  oldColor = module->foreColor;
+  oldColor = module->drawState.foreColor;
   oldColor565 = module->foreColor565;
   module->activeWindow = module->displayWindow;
   module->drawWindow = module->displayWindow;
@@ -3780,7 +3770,7 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
 
   module->activeWindow = oldActive;
   module->drawWindow = oldDraw;
-  module->foreColor = oldColor;
+  module->drawState.foreColor = oldColor;
   module->foreColor565 = oldColor565;
 }
 
