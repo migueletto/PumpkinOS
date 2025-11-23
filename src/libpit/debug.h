@@ -25,6 +25,15 @@ void debug_indent(int incr);
 
 void debug_rawtty(int raw);
 
+#ifdef MUTE_DEBUG
+
+#define debug_errno_full(file, func, line, sys, fmt, ...)
+#define debugva_full(file, func, line, level, sys, fmt, ap)
+#define debug_full(file, func, line, level, sys, fmt, ...)
+#define debug_bytes_full(file, func, line, level, sys, buf, len)
+#define debug_bytes_offset_full(file, func, line, level, sys, buf, len, offset)
+
+#else
 void
 debug_errno_full(const char *file, const char *func, int line, const char *sys, const char *fmt,
                  ...) __attribute__ ((format (printf, 5, 6)));
@@ -40,6 +49,7 @@ void debug_bytes_full(const char *file, const char *func, int line, int level, c
 
 void debug_bytes_offset_full(const char *file, const char *func, int line, int level, const char *sys,
                              unsigned char *buf, int len, unsigned int offset);
+#endif
 
 #define debug_errno(sys, fmt, args...)    debug_errno_full(__FILE__, __FUNCTION__, __LINE__, sys, fmt, ##args)
 #define debugva(level, sys, fmt, args...) debugva_full(__FILE__, __FUNCTION__, __LINE__, level, sys, fmt, ##args)

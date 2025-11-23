@@ -156,6 +156,7 @@ int str(char *buf, int d, char *s, int max) {
   return i;
 }
 
+#ifndef MUTE_DEBUG
 void debugva_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, sys_va_list ap) {
   char tmp[MAX_BUF], buf[MAX_BUF], *s;
   int i, j, k, us;
@@ -328,3 +329,4 @@ void debug_bytes_offset_full(const char *file, const char *func, int line, int l
 void debug_bytes_full(const char *file, const char *func, int line, int level, const char *sys, unsigned char *buf, int len) {
   debug_bytes_offset_full(file, func, line, level, sys, buf, len, 0);
 }
+#endif
