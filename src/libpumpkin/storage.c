@@ -63,6 +63,7 @@ typedef struct storage_handle_t {
       uint32_t type;
       uint16_t id;
       uint16_t attr;
+      uint8_t writable;
     } res;
   } d;
   uint8_t *buf;
@@ -447,7 +448,8 @@ static int StoPutFileLocks(storage_t *sto, storage_db_t *db, int read_locks, int
     }
     vfs_close(f);
   } else {
-    ErrFatalDisplayEx("create lock failed", 1);
+    //ErrFatalDisplayEx("create lock failed", 1);
+    debug(DEBUG_ERROR, "STOR", "create lock failed for \"%s\"", db->name);
   }
 
   return r;
@@ -1914,7 +1916,7 @@ UInt16 DmNumRecords(DmOpenRef dbP) {
     dbRef = (DmOpenType *)dbP;
     if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
       db = (storage_db_t *)(sto->base + dbRef->dbID);
-      if (db->ftype == STO_TYPE_REC) {
+      if (db->ftype == STO_TYPE_REC || db->ftype == STO_TYPE_RES) {
         numRecs = db->numRecs;
         err = errNone;
       } else {
@@ -2328,6 +2330,9 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
             storage_name(sto, db->name, STO_FILE_ELEMENT, h->d.res.id, h->d.res.type, 0, 0, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
               if (vfs_read(f, h->buf, h->size) > 0) {
+                if (db->mode & dmModeWrite) {
+                  h->d.res.writable = 1;
+                }
                 h->lockCount = 0;
                 err = errNone;
               } else {
@@ -2341,6 +2346,9 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
             h = NULL;
           }
         } else {
+          if (db->mode & dmModeWrite) {
+            h->d.res.writable = 1;
+          }
           h->useCount++;
           err = errNone;
         }
@@ -3252,7 +3260,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
               db->elements[*atP] = h;
             }
 
-            storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, 0x00, h->d.rec.uniqueID, buf);
+            storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & 0x0F, h->d.rec.uniqueID, buf);
             if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
               if (p) {
                 sys_memcpy(&h->buf[0], p, size);
@@ -4093,7 +4101,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
               for (j = 0; j < numRecs; j++) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
                 index = dmMaxRecordIndex;
-                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], true);
+                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], uniqueIDs[j] != 0);
               }
               if (StoWriteIndex(sto, db) == 0) {
                 err = errNone;
@@ -4435,6 +4443,9 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
             DmSearchResource(0, 0, h, &dbRef);
           }
           handle->lockCount++;
+          if (pumpkin_is_m68k() && handle->d.res.writable) {
+            decoded = false;
+          }
           p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
           err = errNone;
           break;
@@ -4779,9 +4790,16 @@ static Err MemResize(MemHandle h, UInt32 newSize) {
 
 Err MemPtrResize(MemPtr p, UInt32 newSize) {
   MemHandle h;
+  storage_handle_t *handle;
   Err err = memErrInvalidParam;
 
   if ((h = MemPtrRecoverHandle(p)) != NULL) {
+    if (h) {
+      handle = h;
+      if ((handle->htype & ~STO_INFLATED) == STO_TYPE_MEM && newSize > handle->size) {
+        return memErrNotEnoughSpace;
+      }
+    }
     err = MemResize(h, newSize);
   }
 
@@ -5397,4 +5415,8 @@ void FntSetAppearance(UInt8 family, UInt8 style, UInt16 size) {
     sto->fontStyle = style;
     sto->fontSize = size;
   }
+}
+
+Err DmSyncDatabase(DmOpenRef dbRef) {
+  return errNone;
 }
