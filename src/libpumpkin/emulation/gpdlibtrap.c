@@ -76,6 +76,19 @@ void palmos_gpdlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case GPDTrapReadInstantKCSformat: {
+      // Err GPDReadInstantKCSformat(UInt16 uRefNum, UInt32 *result, UInt32 keyMap)
+      uint16_t refNum = ARG16;
+      uint32_t resultP = ARG32;
+      uint32_t keyMap = ARG32;
+      emupalmos_trap_in(resultP, trap, 1);
+      UInt32 result;
+      err = GPDReadInstantKCSformat(refNum, &result, keyMap);
+      if (resultP) m68k_write_memory_32(resultP, result);
+      debug(DEBUG_TRACE, "EmuPalmOS", "GPDReadInstantKCSformat(refNum=%d, resultP=0x%08X, keyMap=0x%08X): %d", refNum, resultP, keyMap, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "GPDLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

@@ -70,3 +70,7 @@ Err GPDReadInstant(UInt16 uRefNum, UInt8 *resultP) {
 
   return err;
 }
+
+Err GPDReadInstantKCSformat(UInt16 uRefNum, UInt32 *result, UInt32 keyMap) {
+  return errNone;
+}
