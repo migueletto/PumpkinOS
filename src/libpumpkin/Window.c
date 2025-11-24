@@ -671,7 +671,7 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
     x2 = rP->extent.x > 0 ? x1 + rP->extent.x - 1 : x1;
     y2 = rP->extent.y > 0 ? y1 + rP->extent.y - 1 : y1;
 
-    if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+    if (wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 << 1;
       y1 = y1 << 1;
       x2 = x2 << 1;
@@ -1856,12 +1856,12 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
     t1 = sys_get_clock();
+    display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
     for (i = 0; i < srcRect.extent.y; i++) {
       wx = wx0;
       dx = dx0;
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
-          display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
           WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || display);
           if (blitDisplay) {
             WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd, false);
@@ -1890,10 +1890,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
     }
     t2 = sys_get_clock();
-    debug(DEBUG_TRACE, "Window", "WinBlitBitmap normal %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
+    debug(DEBUG_TRACE, "Window", "WinBlitBitmap normal %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) coord=%d dbl=%d cp=%d",
       (uint32_t)(t2 - t1),
       mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
-      wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), blitDisplay);
+      wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), module->drawState.coordinateSystem, dblw, blitDisplay);
 
     pumpkin_dirty_region_mode(dirtyRegionEnd);
     if (delete) BmpDelete(bitmapP);
