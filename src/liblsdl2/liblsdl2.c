@@ -1498,6 +1498,7 @@ static int audio_action(void *_arg) {
               if (audio->format != obtained.format ||
                   audio->channels != obtained.channels ||
                   audio->rate != obtained.freq) {
+                sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
                 if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained.format, obtained.channels, obtained.freq) == 1) {
                   cvt.len = len2;
                   newlen = len2 * cvt.len_mult;
@@ -1525,7 +1526,6 @@ static int audio_action(void *_arg) {
               if (len2 != len1) break;
             }
             ptr_unlock(ptr, TAG_AUDIO);
-            if (buf) sys_free(buf);
           }
           ptr_free(ptr, TAG_AUDIO);
           debug(DEBUG_INFO, "SDL", "handled ptr %d", ptr);
@@ -1534,6 +1534,8 @@ static int audio_action(void *_arg) {
       }
     }
   }
+
+  if (buf) sys_free(buf);
 
   if (dev > 0) {
     debug(DEBUG_INFO, "SDL", "close device %d", dev);
