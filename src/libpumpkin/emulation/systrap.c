@@ -1180,7 +1180,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SystemPreferencesType prefs;
       PrefGetPreferences(p ? &prefs : NULL);
       // XXX decode prefs into p
-      debug(DEBUG_ERROR, "EmuPalmOS", "PrefGetPreferences(0x%08X)", p);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetPreferences(0x%08X)", p);
       }
       break;
     case sysTrapPrefSetPreferences: {
@@ -1190,7 +1190,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SystemPreferencesType prefs;
       // XXX encode p into prefs
       PrefSetPreferences(p ? &prefs : NULL);
-      debug(DEBUG_ERROR, "EmuPalmOS", "PrefSetPreferences(0x%08X)", p);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetPreferences(0x%08X)", p);
       }
       break;
     case sysTrapPrefGetPreference: {
