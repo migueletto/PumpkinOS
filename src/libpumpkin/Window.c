@@ -384,11 +384,18 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
 }
 
 void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   char buf[64];
 
   if (winHandle) {
     debug(DEBUG_TRACE, "Window", "WinDeleteWindow %s", WinGetDescr(winHandle, buf, sizeof(buf)));
+    if (module->drawWindow == winHandle) {
+      module->drawWindow = module->displayWindow;
+    }
+    if (module->activeWindow == winHandle) {
+      module->activeWindow = module->displayWindow;
+    }
     bitmapP = WinGetBitmap(winHandle);
     if (bitmapP && winHandle->windowFlags.freeBitmap) {
       debug(DEBUG_TRACE, "Window", "WinDeleteWindow BmpDelete %p", bitmapP);
