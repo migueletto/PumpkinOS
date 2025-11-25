@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
+#include "vfsimport.h"
 #include "bytes.h"
 #include "pumpkin.h"
 #include "deploy.h"
@@ -764,15 +765,20 @@ Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *
   return_err(sysErrParamErr);
 }
 
+Err VFSExportDatabaseToFileEx(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP, UInt32 exportProc68K, UInt32 userData68K) {
+  // XXX not implemented
+  return errNone;
+}
+
 Err VFSExportDatabaseToFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP) {
-  return_err(vfsErrBadName);
+  return VFSExportDatabaseToFileEx(volRefNum, pathNameP, cardNo, dbID, exportProcP, userDataP, 0, 0);
 }
 
 Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID) {
   return VFSExportDatabaseToFileCustom(volRefNum, pathNameP, cardNo, dbID, NULL, NULL);
 }
 
-Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP) {
+Err VFSImportDatabaseFromFileEx(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP, UInt32 importProc68K, UInt32 userData68K) {
   UInt32 type, creator, fileSize, numBytesRead, hsize;
   char name[dmDBNameLength], stype[8], screator[8];
   FileRef fileRef;
@@ -786,7 +792,14 @@ Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UIn
 
     if (fileSize > hsize) {
       // importProcP is called only once before anything is read from the file
-      if (importProcP == NULL ||  importProcP(fileSize, 0, userDataP) == errNone) {
+      if (importProcP) {
+        err = importProcP(fileSize, 0, userDataP);
+      } else if (importProc68K) {
+        //err = importProcP(fileSize, 0, userDataP);
+        err = errNone;
+      }
+
+      if (err == errNone) {
         if ((p = sys_malloc(fileSize)) != NULL) {
           VFSFileRead(fileRef, fileSize, p, &numBytesRead);
           sys_memset(name, 0, dmDBNameLength);
@@ -822,6 +835,10 @@ Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UIn
   }
 
   return err;
+}
+
+Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP) {
+  return VFSImportDatabaseFromFileEx(volRefNum, pathNameP, cardNoP, dbIDP, importProcP, userDataP, 0, 0);
 }
 
 Err VFSImportDatabaseFromFile(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP) {

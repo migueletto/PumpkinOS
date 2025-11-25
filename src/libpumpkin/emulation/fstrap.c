@@ -6,6 +6,7 @@
 #include "armemu.h"
 #endif
 #include "pumpkin.h"
+#include "vfsimport.h"
 #include "logtrap.h"
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
@@ -458,6 +459,68 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       if (numRecordsP) m68k_write_memory_32(numRecordsP, numRecords);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "VFSFileDBInfo(fileRef=%d): %d", refP, res);
+    }
+    break;
+    case vfsTrapImportDatabaseFromFile: {
+      // Err VFSImportDatabaseFromFile(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP)
+      uint16_t volRefNum = ARG16;
+      uint32_t pathNameP = ARG32;
+      uint32_t cardNoP = ARG32;
+      uint32_t dbIDP = ARG32;
+      char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
+      UInt16 cardNo;
+      LocalID dbID;
+      Err res = VFSImportDatabaseFromFileEx(volRefNum, pathName, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL, NULL, NULL, 0, 0);
+      if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
+      if (dbIDP) m68k_write_memory_32(dbIDP, dbID);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSImportDatabaseFromFile(volRefNum=%d, pathName=\"%s\", dbID=0x%08X): %d", volRefNum, pathName, dbID, res);
+    }
+    break;
+    case vfsTrapImportDatabaseFromFileCustom: {
+      // Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP)
+      uint16_t volRefNum = ARG16;
+      uint32_t pathNameP = ARG32;
+      uint32_t cardNoP = ARG32;
+      uint32_t dbIDP = ARG32;
+      uint32_t importProcP = ARG32;
+      uint32_t userDataP = ARG32;
+      char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
+      UInt16 cardNo;
+      LocalID dbID;
+      Err res = VFSImportDatabaseFromFileEx(volRefNum, pathName, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL, NULL, NULL, importProcP, userDataP);
+      if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
+      if (dbIDP) m68k_write_memory_32(dbIDP, dbID);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSImportDatabaseFromFileCustom(volRefNum=%d, pathName=\"%s\", dbID=0x%08X, importProc=0x%08X, userData=0x%08X): %d",
+        volRefNum, pathName, dbID, importProcP, userDataP, res);
+    }
+    break;
+    case vfsTrapExportDatabaseToFile: {
+      // Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID)
+      uint16_t volRefNum = ARG16;
+      uint32_t pathNameP = ARG32;
+      uint16_t cardNo = ARG16;
+      uint32_t dbID = ARG32;
+      char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
+      Err res = VFSExportDatabaseToFileEx(volRefNum, pathName, cardNo, dbID, NULL, NULL, 0, 0);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSExportDatabaseToFile(volRefNum=%d, pathName=\"%s\", dbID=0x%08X): %d", volRefNum, pathName, dbID, res);
+    }
+    break;
+    case vfsTrapExportDatabaseToFileCustom: {
+      // Err VFSExportDatabaseToFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP)
+      uint16_t volRefNum = ARG16;
+      uint32_t pathNameP = ARG32;
+      uint16_t cardNo = ARG16;
+      uint32_t dbID = ARG32;
+      uint32_t exportProcP = ARG32;
+      uint32_t userDataP = ARG32;
+      char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
+      Err res = VFSExportDatabaseToFileEx(volRefNum, pathName, cardNo, dbID, NULL, NULL, exportProcP, userDataP);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "VFSExportDatabaseToFileCustom(volRefNum=%d, pathName=\"%s\", dbID=0x%08X, exportProc=0x%08X, userData=0x%08X): %d",
+        volRefNum, pathName, dbID, exportProcP, userDataP, res);
     }
     break;
     default:
