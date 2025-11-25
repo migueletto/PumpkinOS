@@ -4631,7 +4631,7 @@ Err MemHeapFreeBytes(UInt16 heapID, UInt32 *freeP, UInt32 *maxP) {
 
 UInt32 MemHeapSize(UInt16 heapID) {
   UInt32 size;
-  size = heapID == 0 ? 2*1024*1024 : pumpkin_heap_size();
+  size = heapID == 0 ? 8*1024*1024 : pumpkin_heap_size();
   return size;
 }
 
