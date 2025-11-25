@@ -268,7 +268,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
   MemSet(&event, sizeof(EventType), 0);
 
   if (module->needNullTickCount > 0 && TimGetTicks() > module->needNullTickCount) {
-    debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents needNullTickCount reached");
+    debug(DEBUG_TRACE, PALMOS_MODULE, "EvtPumpEvents needNullTickCount reached");
     module->needNullTickCount = 0;
     event.eType = nilEvent;
     EvtAddEventToQueue(&event);
@@ -774,11 +774,13 @@ Boolean EvtSetNullEventTick(UInt32 tick) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
   Boolean r = false;
 
+/*
   if (module->needNullTickCount == 0 || module->needNullTickCount > tick || module->needNullTickCount <= TimGetTicks()) {
-    debug(DEBUG_INFO, PALMOS_MODULE, "EvtSetNullEventTick %d", tick);
+    debug(DEBUG_TRACE, PALMOS_MODULE, "EvtSetNullEventTick %d", tick);
     module->needNullTickCount = tick;
     r = true;
   }
+*/
 
   return r;
 }
