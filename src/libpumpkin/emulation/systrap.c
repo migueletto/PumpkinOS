@@ -1503,11 +1503,17 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t formatStr = ARG32;
       char *s = emupalmos_trap_in(str, trap, 0);
       char *f = emupalmos_trap_in(formatStr, trap, 1);
+      int vararg = trap == sysTrapStrVPrintF;
       Int16 res = 0;
       if (s && f) {
         int i, j = 0, k = 1, t = 0, sz, arglen = 0;
-        uint32_t arg;
+        uint32_t arg, v_arg;
         char *p, *q, fmt[16];
+        if (vararg) {
+          v_arg = ARG32;
+        } else {
+          v_arg = 0;
+        }
         for (i = 0, p = s; f[i]; i++) {
           switch (t) {
             case 0:
@@ -1537,11 +1543,20 @@ uint32_t palmos_systrap(uint16_t trap) {
                 case 'i':
                 case 'u':
                 case 'x':
-                  switch (sz) {
-                    case 1:  arg = ARG8;  break;
-                    case 2:  arg = ARG16; break;
-                    case 4:  arg = ARG32; break;
-                    default: arg = ARG16; break;
+                  if (vararg) {
+                    switch (sz) {
+                      case 1:  arg = m68k_read_memory_16(v_arg) & 0xff; v_arg += 2; break;
+                      case 2:  arg = m68k_read_memory_16(v_arg); v_arg += 2; break;
+                      case 4:  arg = m68k_read_memory_32(v_arg); v_arg += 4; break;
+                      default: arg = m68k_read_memory_16(v_arg); v_arg += 2; break;
+                    }
+                  } else {
+                    switch (sz) {
+                      case 1:  arg = ARG8;  break;
+                      case 2:  arg = ARG16; break;
+                      case 4:  arg = ARG32; break;
+                      default: arg = ARG16; break;
+                    }
                   }
                   k++;
                   fmt[j++] = f[i];
@@ -1552,7 +1567,12 @@ uint32_t palmos_systrap(uint16_t trap) {
                   break;
                 case 'c':
                 case 'C':
-                  arg = ARG8;
+                  if (vararg) {
+                    arg = m68k_read_memory_16(v_arg) & 0xff;
+                    v_arg += 2;
+                  } else {
+                    arg = ARG8;
+                  }
                   k++;
                   fmt[j++] = f[i];
                   fmt[j] = 0;
@@ -1561,7 +1581,12 @@ uint32_t palmos_systrap(uint16_t trap) {
                   t = 0;
                   break;
                 case 's':
-                  arg = ARG32;
+                  if (vararg) {
+                    arg = m68k_read_memory_32(v_arg);
+                    v_arg += 4;
+                  } else {
+                    arg = ARG32;
+                  }
                   k++;
                   q = emupalmos_trap_in(arg, trap, k);
                   fmt[j++] = f[i];
@@ -1575,7 +1600,12 @@ uint32_t palmos_systrap(uint16_t trap) {
                   t = 0;
                   break;
                 case '*':
-                  arglen = ARG16;
+                  if (vararg) {
+                    arglen = m68k_read_memory_16(v_arg);
+                    v_arg += 2;
+                  } else {
+                    arglen = ARG16;
+                  }
                   k++;
                   break;
                 case '%':
