@@ -5,7 +5,9 @@
 #include "thread.h"
 #include "pwindow.h"
 #include "vfs.h"
+#include "bytes.h"
 #include "pumpkin.h"
+#include "deploy.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -771,8 +773,55 @@ Err VFSExportDatabaseToFile(UInt16 volRefNum, const Char *pathNameP, UInt16 card
 }
 
 Err VFSImportDatabaseFromFileCustom(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP, VFSImportProcPtr importProcP, void *userDataP) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSImportDatabaseFromFileCustom not implemented");
-  return_err(sysErrParamErr);
+  UInt32 type, creator, fileSize, numBytesRead, hsize;
+  char name[dmDBNameLength], stype[8], screator[8];
+  FileRef fileRef;
+  Err err;
+  void *p;
+
+  if ((err = VFSFileOpen(volRefNum, pathNameP, vfsModeRead, &fileRef)) == errNone) {
+    VFSFileSize(fileRef, &fileSize);
+    hsize = 78;
+    err = sysErrParamErr;
+
+    if (fileSize > hsize) {
+      // importProcP is called only once before anything is read from the file
+      if (importProcP == NULL ||  importProcP(fileSize, 0, userDataP) == errNone) {
+        if ((p = sys_malloc(fileSize)) != NULL) {
+          VFSFileRead(fileRef, fileSize, p, &numBytesRead);
+          sys_memset(name, 0, dmDBNameLength);
+          sys_memcpy(name, p, dmDBNameLength - 1);
+
+          if (name[0]) {
+            if ((*dbIDP = DmFindDatabase(0, name)) != 0) {
+              debug(DEBUG_INFO, PALMOS_MODULE, "deleting old version of \"%s\"", name);
+              DmDeleteDatabase(0, *dbIDP);
+            }
+            get4b(&type, p, dmDBNameLength + 28);
+            get4b(&creator, p, dmDBNameLength + 32);
+            pumpkin_id2s(type, stype);
+            pumpkin_id2s(creator, screator);
+            debug(DEBUG_INFO, PALMOS_MODULE, "installing new version of \"%s\" type '%s' creator '%s' from VFS file", name, stype, screator);
+
+            if ((err = DmCreateDatabaseFromImage(p)) == errNone) {
+              debug(DEBUG_INFO, PALMOS_MODULE, "installed \"%s\"", name);
+              if (type == sysFileTApplication) {
+                pumpkin_registry_create(creator);
+              }
+              *cardNoP = 0;
+            } else {
+              debug(DEBUG_ERROR, PALMOS_MODULE, "error installing \"%s\"", name);
+            }
+          }
+          sys_free(p);
+        }
+      }
+    }
+
+    VFSFileClose(fileRef);
+  }
+
+  return err;
 }
 
 Err VFSImportDatabaseFromFile(UInt16 volRefNum, const Char *pathNameP, UInt16 *cardNoP, LocalID *dbIDP) {
