@@ -2797,14 +2797,21 @@ static void hex_opcodes(logtrap_t *lt, char *buf, uint32_t pc, uint32_t length) 
 
 static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
   uint32_t instruction, sp, selector;
-  char *s, buf[1024];
+  char *s, *spc, *elp, buf[1024];
   uint16_t trap, rtrap;
+  int standalone;
 
-  instruction = lt->read16(pc, lt->data);
-  // check if it is a trap instruction
-  if (instruction != 0x4E4F) return;
+  if ((pc & 0xFF000000) == 0xFF000000) {
+    trap = pc & 0xFFFF;
+    standalone = 1;
+  } else {
+    instruction = lt->read16(pc, lt->data);
+    // check if it is a trap instruction
+    if (instruction != 0x4E4F) return;
+    trap = lt->read16(pc + 2, lt->data);
+    standalone = 0;
+  }
 
-  trap = lt->read16(pc + 2, lt->data);
   sp = lt->getreg(logtrap_SP, lt->data);
 
   switch (trap) {
@@ -2840,24 +2847,28 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
       if (trap >= 0xA000 && trap < 0xB000) {
         rtrap = trap - 0xA000;
         if (lt->log_f) {
+          spc = standalone ? "" : spaces(lt->stackp);
+          elp = standalone ? "" : " ...";
           if (lt->allTraps[rtrap].numsel == 0) {
             if (lt->allTraps[rtrap].rsize == 8) sp += 4;
             print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 0);
-            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s) ...", pc, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf);
+            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, lt->allTraps[rtrap].name, buf, elp);
           } else if (selector < lt->allTraps[rtrap].maxsel) {
             if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
             print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 0);
             s = lt->allTraps[rtrap].selectors[selector].name;
             if (s == NULL) s = "unknown";
-            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s) ...", pc, trap, selector, spaces(lt->stackp), s, buf);
+            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s)%s ", pc, trap, selector, spc, s, buf, elp);
           } else {
-            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown() ...", pc, trap, selector, spaces(lt->stackp));
+            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown()%s", pc, trap, selector, spc, elp);
           }
         }
       }
-      lt->stackt[lt->stackp] = trap;
-      lt->stacksel[lt->stackp] = selector;
-      lt->stack[lt->stackp++] = pc + 4;
+      if (!standalone) {
+        lt->stackt[lt->stackp] = trap;
+        lt->stacksel[lt->stackp] = selector;
+        lt->stack[lt->stackp++] = pc + 4;
+      }
       break;
   }
 }
