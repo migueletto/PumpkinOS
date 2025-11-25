@@ -34,6 +34,7 @@
   return err
 
 #define checkvol(module, volRefNum) \
+  if (volRefNum == 0) volRefNum = 1; \
   if (volRefNum < 1 || volRefNum > NUM_VOLUMES || module->volume[volRefNum - 1][0] == 0) { \
     return_err(vfsErrVolumeBadRef); \
   }
@@ -205,7 +206,12 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
   if (pathNameP && pathNameP[0] && fileRefP) {
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileOpen %d \"%s\" -> \"%s\"", volRefNum, pathNameP, module->path);
-    type = vfs_checktype(module->session[volRefNum-1], module->path);
+
+    if (openMode & vfsModeCreate) {
+      type = VFS_FILE;
+    } else {
+      type = vfs_checktype(module->session[volRefNum-1], module->path);
+    }
 
     if (type == -1) {
       err = vfsErrFileNotFound;
@@ -216,8 +222,9 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
       }
     } else if (type == VFS_FILE) {
       mode = 0;
-      if (openMode & vfsModeRead)  mode |= VFS_READ;
-      if (openMode & vfsModeWrite) mode |= VFS_WRITE;
+      if (openMode & vfsModeRead)   mode |= VFS_READ;
+      if (openMode & vfsModeWrite)  mode |= VFS_WRITE;
+      if (openMode & vfsModeCreate) mode |= VFS_TRUNC;
       if ((f = vfs_open(module->session[volRefNum-1], module->path, mode)) != NULL) {
         *fileRefP = f;
         err = errNone;
@@ -664,6 +671,7 @@ Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
         }
         break;
       case vfsIteratorStop:
+        *volRefNumP = num;
         err = sysErrParamErr;
         break;
       default:
