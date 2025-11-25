@@ -2803,6 +2803,7 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
 
   if ((pc & 0xFF000000) == 0xFF000000) {
     trap = pc & 0xFFFF;
+    pc = 0;
     standalone = 1;
   } else {
     instruction = lt->read16(pc, lt->data);
