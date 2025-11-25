@@ -4,7 +4,7 @@
 #include "RegistryMgr.h"
 #include "debug.h"
 
-#define MAX_FEATURES 32
+#define MAX_FEATURES 1024
 
 #define sysFtrNumUIHardwareFlags        27           // Additional User Input Hardware (PalmOS 5.x)
 #define sysFtrNumDmAutoBackup           31           // Is Data Manager Auto Backup supported?
