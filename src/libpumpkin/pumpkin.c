@@ -6105,6 +6105,23 @@ static const char *dmErrorMsg[] = {
   "dmErrDatabaseNotProtected"
 };
 
+static const char *sysErrorMsg[] = {
+  "sysErrTimeout",
+  "sysErrParamErr",
+  "sysErrNoFreeResource",
+  "sysErrNoFreeRAM",
+  "sysErrNotAllowed",
+  "sysErrSemInUse",
+  "sysErrInvalidID",
+  "sysErrOutOfOwnerIDs",
+  "sysErrNoFreeLibSlots",
+  "sysErrLibNotFound",
+  "sysErrDelayWakened",
+  "sysErrRomIncompatible",
+  "sysErrBufTooSmall",
+  "sysErrPrefNotFound"
+};
+
 static const char *vfsErrorMsg[] = {
   "vfsErrBufferOverflow",
   "vfsErrFileGeneric",
@@ -6133,6 +6150,8 @@ const char *pumpkin_error_msg(Err err) {
 
   if (err > dmErrorClass && err <= dmErrDatabaseNotProtected) {
     s = dmErrorMsg[err - dmErrorClass - 1];
+  } else if (err > sysErrorClass && err <= sysErrPrefNotFound) {
+    s = sysErrorMsg[err - sysErrorClass - 1];
   } else if (err > memErrorClass && err <= memErrROMOnlyCard) {
     s = memErrorMsg[err - memErrorClass - 1];
   } else if (err > vfsErrorClass && err <= vfsErrNameShortened) {
