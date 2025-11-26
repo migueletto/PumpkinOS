@@ -1199,15 +1199,16 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
       m68k_set_reg(M68K_REG_D2, selector);
     }
 
+    palmos_systrap(0xA000 | trapOrFunction);
+
 #if defined(LOGTRAP)
     emu_state_t *state = pumpkin_get_local_storage(emu_key);
     logtrap_def *def = logtrap_get_def();
     if (def && state->lt) {
-      def->hook(state->lt, 0xFF00A000 | trapOrFunction);
+      def->rethook(state->lt, 0xFF00A000 | trapOrFunction);
     }
 #endif
 
-    palmos_systrap(0xA000 | trapOrFunction);
     r = m68k_get_reg(NULL, wantA0 ? M68K_REG_A0 : M68K_REG_D0);
     m68k_set_reg(M68K_REG_SP, sp + argsSize);
 

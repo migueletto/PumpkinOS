@@ -2667,16 +2667,28 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
   uint32_t sp, name, value, value0, addr, selector;
   uint32_t rtype, rsize, rptr;
   uint16_t trap, rtrap, i;
-  char *s;
+  int standalone;
+  char *spc, *s;
 
-  if (lt->stackp && pc == lt->stack[lt->stackp-1]) {
+  standalone = (pc & 0xFF000000) == 0xFF000000;
+
+  if (standalone || (lt->stackp && pc == lt->stack[lt->stackp-1])) {
     sp = lt->getreg(logtrap_SP, lt->data);
     value = 0;
-    lt->stackp--;
-    trap = lt->stackt[lt->stackp];
+    if (standalone) {
+      trap = pc & 0xFFFF;
+      pc = 4;
+    } else {
+      lt->stackp--;
+      trap = lt->stackt[lt->stackp];
+    }
     if (trap >= 0xA000 && trap < 0xB000) {
       rtrap = trap - 0xA000;
-      selector = lt->stacksel[lt->stackp];
+      if (standalone) {
+        selector = lt->getreg(logtrap_D0 + 2, lt->data);
+      } else {
+        selector = lt->stacksel[lt->stackp];
+      }
       rbuf[0] = 0;
 
       if (lt->allTraps[rtrap].numsel == 0 || selector >= lt->allTraps[rtrap].maxsel) {
@@ -2718,23 +2730,24 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       }
 
       if (lt->log_f) {
+        spc = standalone ? "" : spaces(lt->stackp);
         if (lt->allTraps[rtrap].numsel == 0) {
           if (lt->allTraps[rtrap].rsize == 8) sp += 4;
           print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
-          logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc-4, trap, spaces(lt->stackp), lt->allTraps[rtrap].name, buf, rbuf);
+          logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc-4, trap, spc, lt->allTraps[rtrap].name, buf, rbuf);
         } else if (selector < lt->allTraps[rtrap].maxsel) {
           if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
           print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 1);
           s = lt->allTraps[rtrap].selectors[selector].name;
           if (s == NULL) s = "unknown";
-          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc-4, trap, selector, spaces(lt->stackp), s, buf, rbuf);
+          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc-4, trap, selector, spc, s, buf, rbuf);
         } else {
-          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown()", pc-4, trap, selector, spaces(lt->stackp));
+          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown()", pc-4, trap, selector, spc);
         }
       }
     }
 
-    switch (trap) {
+    if (!standalone) switch (trap) {
       case sysTrapDmDatabaseInfo:
         // Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP, ...
         if (lt->appname && lt->log_f == 0 && lt->log_dbID == 0 && value == 0) {
