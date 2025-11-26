@@ -2937,7 +2937,6 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     }
 
     if (text) {
-      dstPixel = srcPixel ? tc : bc;
       if (mode == winPaint) srcTransp = false;
     }
 
