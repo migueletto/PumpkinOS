@@ -91,17 +91,20 @@ static void TblDrawTableRow(TableType *tableP, UInt16 row) {
     // cell background
     if (selected && currentRow == row) {
       switch (item->itemType) {
+        case customTableItem:
+          break;
         case textTableItem:
         case narrowTextTableItem:
         case textWithNoteTableItem:
+          WinEraseRectangle(&rect, 0);
           break;
         default:
           WinSetBackColor(objSelFill);
           WinSetTextColor(objSelFore);
+          WinEraseRectangle(&rect, 0);
           break;
       }
     }
-    WinEraseRectangle(&rect, 0);
 
     // cell foreround
     switch (item->itemType) {
