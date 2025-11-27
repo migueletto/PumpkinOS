@@ -1543,6 +1543,7 @@ uint32_t palmos_systrap(uint16_t trap) {
                 case 'i':
                 case 'u':
                 case 'x':
+                case 'X':
                   if (vararg) {
                     switch (sz) {
                       case 1:  arg = m68k_read_memory_16(v_arg) & 0xff; v_arg += 2; break;
