@@ -3038,6 +3038,7 @@ static void pumpkin_set_key(int key) {
     case WINDOW_KEY_F2:    pumpkin_module.keyMask |= keyBitHard2;      break;
     case WINDOW_KEY_F3:    pumpkin_module.keyMask |= keyBitHard3;      break;
     case WINDOW_KEY_F4:    pumpkin_module.keyMask |= keyBitHard4;      break;
+    case WINDOW_KEY_END:   pumpkin_module.keyMask |= keyBitPower;      break;
     case WINDOW_KEY_SHIFT: pumpkin_module.modMask |= WINDOW_MOD_SHIFT; break;
     case WINDOW_KEY_CTRL:  pumpkin_module.modMask |= WINDOW_MOD_CTRL;  break;
     case WINDOW_KEY_RCTRL: pumpkin_module.modMask |= WINDOW_MOD_RCTRL; break;
@@ -3061,6 +3062,7 @@ static int pumpkin_reset_key(int key) {
     case WINDOW_KEY_F2:    pumpkin_module.keyMask &= ~keyBitHard2;    break;
     case WINDOW_KEY_F3:    pumpkin_module.keyMask &= ~keyBitHard3;    break;
     case WINDOW_KEY_F4:    pumpkin_module.keyMask &= ~keyBitHard4;    break;
+    case WINDOW_KEY_END:   pumpkin_module.keyMask &= ~keyBitPower;    break;
     case WINDOW_KEY_SHIFT: pumpkin_module.modMask &= ~WINDOW_MOD_SHIFT; key = 0; break;
     case WINDOW_KEY_CTRL:  pumpkin_module.modMask &= ~WINDOW_MOD_CTRL;  key = 0; break;
     case WINDOW_KEY_RCTRL: pumpkin_module.modMask &= ~WINDOW_MOD_RCTRL; key = 0; break;
