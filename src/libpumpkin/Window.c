@@ -3271,6 +3271,9 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
             // fall-through
           case 8:
           case 16:
+            module->drawState.foreColor = 0xff; // black
+            module->drawState.backColor = 0x00; // white
+            module->drawState.textColor = 0xff; // black
             colorTable = module->colorTable8;
             err = errNone;
             break;
