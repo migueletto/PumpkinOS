@@ -615,10 +615,10 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
             event.data.fldEnter.fieldID = fldP->id;
             event.data.fldEnter.pField = fldP;
             EvtAddEventToQueue(&event);
+            handled = true;
           } else {
             FldReleaseFocus(fldP);
           }
-          handled = true;
         }
         break;
 
