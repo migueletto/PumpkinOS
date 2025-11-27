@@ -2546,8 +2546,9 @@ void WinScreenInit(void) {
 }
 
 UInt8 *WinScreenLock(WinLockInitType initMode) {
-  // XXX does nothing yet
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
+  // parameter initMode is ignored
   switch (initMode) {
     case winLockCopy:
       break;
@@ -2557,11 +2558,13 @@ UInt8 *WinScreenLock(WinLockInitType initMode) {
       break;
   }
 
-  return NULL;
+  // XXX simply return the bitmap buffer of the display
+  // this may not be the right thing to do, but it should be OK
+  return BmpGetBits(module->displayWindow->bitmapP);
 }
 
 void WinScreenUnlock(void) {
-  // XXX does nothing yet
+  // XXX does nothing
 }
 
 UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
