@@ -596,24 +596,28 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
         break;
 
       case penDownEvent:
-        if (fldP->attr.usable && fldP->attr.editable && RctPtInRectangle(eventP->screenX, eventP->screenY, &fldP->rect)) {
-          debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent penDown inside field %d", fldP->id);
-          if (fldP->selFirstPos < fldP->selLastPos) {
-            FldSetSelection(fldP, 0, 0);
+        if (fldP->attr.usable && fldP->attr.editable) {
+          if (RctPtInRectangle(eventP->screenX, eventP->screenY, &fldP->rect)) {
+            debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent penDown inside field %d", fldP->id);
+            if (fldP->selFirstPos < fldP->selLastPos) {
+              FldSetSelection(fldP, 0, 0);
+            }
+
+            module->penDownX = eventP->screenX - fldP->rect.topLeft.x;
+            module->penDownY = eventP->screenY - fldP->rect.topLeft.y;
+            FldGrabFocusEx(fldP, true);
+            module->penDownOffset = fldP->pos;
+
+            MemSet(&event, sizeof(EventType), 0);
+            event.eType = fldEnterEvent;
+            event.screenX = eventP->screenX;
+            event.screenY = eventP->screenY;
+            event.data.fldEnter.fieldID = fldP->id;
+            event.data.fldEnter.pField = fldP;
+            EvtAddEventToQueue(&event);
+          } else {
+            FldReleaseFocus(fldP);
           }
-
-          module->penDownX = eventP->screenX - fldP->rect.topLeft.x;
-          module->penDownY = eventP->screenY - fldP->rect.topLeft.y;
-          FldGrabFocusEx(fldP, true);
-          module->penDownOffset = fldP->pos;
-
-          MemSet(&event, sizeof(EventType), 0);
-          event.eType = fldEnterEvent;
-          event.screenX = eventP->screenX;
-          event.screenY = eventP->screenY;
-          event.data.fldEnter.fieldID = fldP->id;
-          event.data.fldEnter.pField = fldP;
-          EvtAddEventToQueue(&event);
           handled = true;
         }
         break;
