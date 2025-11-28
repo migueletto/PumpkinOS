@@ -251,6 +251,10 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
           if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
           WinEraseRectangle(&aux, 0);
+          if (fldP->attr.editable && fldP->attr.underlined) {
+            WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
+                        fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
+          }
         }
         x = 1;
         col = 0;
@@ -923,6 +927,9 @@ void FldSetInsPtPosition(FieldType *fldP, UInt16 pos) {
   // Set the location of the insertion point for a given string position.
   // If the position is beyond the visible text, the field is scrolled until the position is visible.
 
+  if (pos >= fldP->textLen) {
+    pos = fldP->textLen > 0 ? fldP->textLen - 1 : 0;
+  }
   FldSetInsertionPoint(fldP, pos);
   FldSetScrollPosition(fldP, pos);
 }
