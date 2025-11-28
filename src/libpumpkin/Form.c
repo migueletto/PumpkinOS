@@ -1776,6 +1776,10 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char 
         len = StrLen(alert->button[i]);
         tw = FntCharsWidth(alert->button[i], len) + 10;
         if (tw < 36) tw = 36;
+        if (x + tw >= 150) {
+          // do not allow button to overflow form width
+          tw = 150 - x;
+        }
         CtlNewControl((void **)&formP, 1000+i, buttonCtl, alert->button[i], x, formH - th - 6, tw, th, stdFont, 0, true);
         x += tw + 6;
       }
