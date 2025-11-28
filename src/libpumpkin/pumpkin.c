@@ -2606,6 +2606,9 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, lau
       return r;
 */
     default:
+      if (cmd >= sysAppLaunchCmdCustomBase || task == NULL) {
+        break;
+      }
       debug(DEBUG_INFO, PUMPKINOS, "sending launch code %d to \"%s\" using pause/resume", cmd, name);
       handle = pumpkin_pause_task(name, &call_sub);
       if (call_sub) {

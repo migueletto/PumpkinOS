@@ -1950,6 +1950,12 @@ static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
       debug(DEBUG_INFO, "EmuPalmOS", "alloc %u bytes for param block at %p (0x%08X)", paramBlockSize, p, a);
       encode_notify(a, param);
       break;
+    default:
+      if (launchCode >= sysAppLaunchCmdCustomBase) {
+        p = pumpkin_heap_alloc(sizeof(launch_union_t), "paramBlock");
+        MemMove(p, param, sizeof(launch_union_t));
+      }
+      break;
   }
 
   return p;

@@ -315,6 +315,7 @@ END {
   for (i = 0; i < num_names; i++) {
     print "  " structs[i] " p" i ";" >> header;
   }
+  print "  uint8_t buf[64];" >> header;
   print "} " kind "_union_t;" >> header;
   print "" >> header;
 
@@ -358,7 +359,15 @@ END {
     print "      break;" >> emusrc;
   }
   print "    default:" >> emusrc;
-  print "      r = -1;" >> emusrc;
+
+  print "      if (paramType >= sysAppLaunchCmdCustomBase) {" >> emusrc;
+  print "        for (UInt32 i = 0; i < 64; i++) {" >> emusrc;
+  print "          param->buf[i] = m68k_read_memory_8(buf + i);" >> emusrc;
+  print "        }" >> emusrc;
+  print "      } else {" >> emusrc;
+  print "        r = -1;" >> emusrc;
+  print "      }" >> emusrc;
+
   print "      break;" >> emusrc;
   print "  }" >> emusrc;
   print "  return r;" >> emusrc;
