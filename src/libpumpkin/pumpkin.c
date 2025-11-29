@@ -748,7 +748,7 @@ static int drop_get_name(char *src, char *dst, int max) {
 
   if (src[i] != FILE_SEP) return -1;
 
-  sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, VFS_INSTALL+1, &src[i+1]);
+  sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, &VFS_INSTALL[1], &src[i+1]);
   return 0;
 }
 
