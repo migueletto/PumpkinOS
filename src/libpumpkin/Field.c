@@ -60,6 +60,7 @@ typedef struct {
   UInt16 penDownOffset;
   UInt16 penDownX, penDownY;
   FieldType auxField;
+  char buf[256];
 } fld_module_t;
 
 static void nop(Err err) {
@@ -165,11 +166,52 @@ static UInt16 FldNextWord(FieldType *fldP, UInt16 i, UInt16 *width, char *word, 
   return total;
 }
 
+static void FldEraseToEol(FieldType *fldP, UInt16 x, UInt16 y, UInt16 th) {
+  RectangleType aux;
+
+  debug(DEBUG_TRACE, PALMOS_MODULE, "erase eol x=%d y=%d", x, y);
+  RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
+  if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
+  WinEraseRectangle(&aux, 0);
+  if (fldP->attr.underlined) {
+    debug(DEBUG_TRACE, PALMOS_MODULE, "underline x=%d y=%d", x, y);
+    WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
+                fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
+  }
+}
+
+static Boolean FldCheckInsPt(FieldType *fldP, UInt16 x, UInt16 y, UInt16 w, UInt16 th, UInt16 row, UInt16 bottom) {
+  Boolean enable;
+
+  InsPtSetHeight(th - 2);
+  InsPtSetLocation(fldP->rect.topLeft.x + x - 1 + w, fldP->rect.topLeft.y + y);
+  enable = fldP->attr.editable && fldP->attr.hasFocus && row >= fldP->top && row < bottom;
+  debug(DEBUG_TRACE, PALMOS_MODULE, "insPtEnable %d (a)", enable);
+
+  return enable;
+}
+
+static void debug_field_row(char *word, UInt16 len, UInt16 row, Boolean visible) {
+  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
+  UInt16 max;
+
+  if (word) {
+    max = 256 - sys_strlen(module->buf) - 1;
+    if (len > max) len = max;
+    sys_strncat(module->buf, word, len);
+  } else {
+    if (module->buf[0]) {
+      debug(DEBUG_TRACE, PALMOS_MODULE, "field row %3d %c [%s]", row, visible ? '*' : ' ', module->buf);
+    }
+    sys_memset(module->buf, 0, 256);
+  }
+}
+
 static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16 offset, UInt16 *offsetRow, UInt16 *topOffset) {
   fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
   IndexedColorType fieldBack, fieldLine, fieldText, fieldBackHigh, oldb, oldf, oldt, oldBack, back;
   WinDrawOperation prev;
-  RectangleType clip, aux;
+  RectangleType clip;
   UInt16 th, tw, row, col, bottom, wtof, x, y, n, i;
   Int16 w;
   Boolean posFound, insPtEnable, valueSet;
@@ -220,20 +262,14 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 
       if (setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < x + tw) {
         wtof = FntWidthToOffset(&fldP->text[i], n, module->penDownX - x, NULL, &w);
-        InsPtSetHeight(th - 2);
-        InsPtSetLocation(fldP->rect.topLeft.x + x - 1 + w, fldP->rect.topLeft.y + y);
-        insPtEnable = fldP->attr.editable && fldP->attr.hasFocus && row >= fldP->top && row < bottom;
-        debug(DEBUG_TRACE, PALMOS_MODULE, "insPtEnable %d (a)", insPtEnable);
+        insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
         fldP->pos = i + wtof - 1;
         posFound = true;
       }
 
       if (!setPos && draw && fldP->pos >= i && fldP->pos < i + n) {
         w = FntCharsWidth(&fldP->text[i], fldP->pos - i);
-        InsPtSetHeight(th - 2);
-        InsPtSetLocation(fldP->rect.topLeft.x + x - 1 + w, fldP->rect.topLeft.y + y);
-        insPtEnable = fldP->attr.editable && fldP->attr.hasFocus && row >= fldP->top && row < bottom;
-        debug(DEBUG_TRACE, PALMOS_MODULE, "insPtEnable %d (b)", insPtEnable);
+        insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
         posFound = true;
       }
 
@@ -242,26 +278,18 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
       if (!StrCompare(word, "\n")) {
         debug(DEBUG_TRACE, PALMOS_MODULE, "linefeed");
         if (!posFound && setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < fldP->rect.topLeft.x + fldP->rect.extent.x) {
-          InsPtSetHeight(th - 2);
-          InsPtSetLocation(fldP->rect.topLeft.x + x - 1, fldP->rect.topLeft.y + y);
-          insPtEnable = fldP->attr.editable && fldP->attr.hasFocus && row >= fldP->top && row < bottom;
-          debug(DEBUG_TRACE, PALMOS_MODULE, "insPtEnable %d (c)", insPtEnable);
+          insPtEnable = FldCheckInsPt(fldP, x, y, 0, th, row, bottom);
           fldP->pos = i;
           posFound = true;
         }
 
         if (draw && row >= fldP->top && row < bottom) {
-          RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
-          if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
-          WinEraseRectangle(&aux, 0);
-          if (fldP->attr.underlined) {
-            WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
-                        fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
-          }
+          FldEraseToEol(fldP, x, y, th);
         }
         x = 1;
         col = 0;
         debug(DEBUG_TRACE, PALMOS_MODULE, "col = 0, row %d -> %d", row, row+1);
+        if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
         row++;
         if (row >= fldP->top && row < bottom) {
           fldP->numUsedLines++;
@@ -273,9 +301,13 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
       } else {
         if (x + tw > fldP->rect.extent.x) {
           debug(DEBUG_TRACE, PALMOS_MODULE, "overflow x: %d + %d >= %d", x, tw, fldP->rect.extent.x);
+          if (draw && row >= fldP->top && row < bottom) {
+            FldEraseToEol(fldP, x, y, th);
+          }
           x = 1;
           col = 0;
           debug(DEBUG_TRACE, PALMOS_MODULE, "col = 0, row %d -> %d", row, row+1);
+          if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
           row++;
           if (row >= fldP->top && row < bottom) {
             fldP->numUsedLines++;
@@ -285,6 +317,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
             }
           }
         }
+        if (draw) debug_field_row(word, StrLen(word), -1, 0);
         if (draw && row >= fldP->top && row < bottom) {
           if (fldP->attr.underlined) {
             WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
@@ -311,10 +344,12 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         }
         //debug(DEBUG_TRACE, PALMOS_MODULE, "col %d -> %d", col, col+1);
         //debug(DEBUG_TRACE, PALMOS_MODULE, "x %d -> %d", x, x+tw);
-        col++;
+        col += n;
         x += tw;
       }
     }
+    if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
+
     if (x > 1) fldP->numUsedLines++;
     fldP->totalLines = row + 1;
     debug(DEBUG_TRACE, PALMOS_MODULE, "end text used=%d total=%d", fldP->numUsedLines, fldP->totalLines);
@@ -334,26 +369,12 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 
     if (draw) {
       if (row >= fldP->top && row < bottom) {
-        RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
-        if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
-        WinEraseRectangle(&aux, 0);
-        if (fldP->attr.underlined) {
-          debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d x=%d y=%d", row, x, y);
-          WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
-                      fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
-        }
+        FldEraseToEol(fldP, x, y, th);
         y += th;
         debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
         row++;
         for (; row < bottom; row++) {
-          RctSetRectangle(&aux, fldP->rect.topLeft.x, fldP->rect.topLeft.y + y, fldP->rect.extent.x, th);
-          if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
-          WinEraseRectangle(&aux, 0);
-          if (fldP->attr.underlined) {
-            debug(DEBUG_TRACE, PALMOS_MODULE, "underline row=%d y=%d", row, y);
-            WinDrawLine(fldP->rect.topLeft.x, fldP->rect.topLeft.y + y + th - 1,
-                        fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
-          }
+          FldEraseToEol(fldP, x, y, th);
           y += th;
           debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
         }
@@ -565,6 +586,7 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
 
   IN;
   if (fldP && eventP) {
+    debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent %s", EvtGetEventName(eventP->eType));
     switch (eventP->eType) {
       case keyDownEvent:
         if (fldP->attr.usable && fldP->attr.editable && (fldP->attr.hasFocus || fldP->selFirstPos < fldP->selLastPos) &&
