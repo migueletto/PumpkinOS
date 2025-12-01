@@ -18,7 +18,7 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
   Boolean redraw;
 
   if (bar && value >= 0 && min >= 0 && max >= min && pageSize >= 0) {
-    debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
+    debug(DEBUG_INFO, "Scroll", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
 
     if (bar->value != value) {
       bar->value = value;
@@ -218,28 +218,22 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
           // top arrow
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d top arrow", bar->id);
           if (bar->value > bar->minValue) {
-            bar->savePos = bar->value;
             SclAddRepeatEvent(bar, bar->value-1);
-            SclSetScrollBar(bar, bar->value-1, bar->minValue, bar->maxValue, bar->pageSize);
           }
         } else if (y >= bar->bounds.extent.y - ah) {
           // bottom arrow
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d bottom arrow", bar->id);
           if (bar->value < bar->maxValue) {
-            bar->savePos = bar->value;
             SclAddRepeatEvent(bar, bar->value+1);
-            SclSetScrollBar(bar, bar->value+1, bar->minValue, bar->maxValue, bar->pageSize);
           }
         } else {
           // rod
-          value = ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
+          value = bar->minValue + ((y - ah) * (bar->maxValue - bar->minValue + 1)) / (bar->bounds.extent.y - 2*ah);
           if (value > bar->maxValue) value = bar->maxValue;
           if (value < bar->minValue) value = bar->minValue;
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d rod value %d (%d)", bar->id, value, bar->value);
           if (value != bar->value) {
             SclAddRepeatEvent(bar, value);
-            SclSetScrollBar(bar, value, bar->minValue, bar->maxValue, bar->pageSize);
-            bar->savePos = bar->value;
           }
         }
         handled = true;
@@ -248,13 +242,9 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
       case sclRepeatEvent:
         debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent scrollBar %d value %d (%d)", bar->id, eventP->data.sclRepeat.newValue, bar->value);
         if (eventP->data.sclRepeat.scrollBarID == bar->id) {
+          bar->value = eventP->data.sclRepeat.newValue;
           debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent draw %d", bar->value);
-          if (bar->savePos != bar->value) {
-            SclSetScrollBar(bar, bar->value + (bar->value > bar->savePos ? 5 : -5), bar->minValue, bar->maxValue, bar->pageSize);
-            bar->savePos = bar->value;
-          } else {
-            SclDrawScrollBar(bar);
-          }
+          SclDrawScrollBar(bar);
           handled = true;
         }
         break;
