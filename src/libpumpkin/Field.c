@@ -350,7 +350,9 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
     }
     if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
 
-    if (x > 1) fldP->numUsedLines++;
+    if (x > 1 && row >= fldP->top && row < bottom) {
+      fldP->numUsedLines++;
+    }
     fldP->totalLines = row + 1;
     debug(DEBUG_TRACE, PALMOS_MODULE, "end text used=%d total=%d", fldP->numUsedLines, fldP->totalLines);
 
@@ -1413,7 +1415,7 @@ UInt16 FldGetNumberOfBlankLines(const FieldType *fldP) {
     FntSetFont(old);
 
     if (fldP->numUsedLines) {
-      n -= fldP->numUsedLines;
+      n = n >= fldP->numUsedLines ? n - fldP->numUsedLines : 0;
     }
   }
   OUTV;
