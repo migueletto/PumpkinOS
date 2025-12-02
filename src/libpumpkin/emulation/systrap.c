@@ -3027,6 +3027,18 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "GsiSetLocation(%d, %d)", x, y);
     }
       break;
+    case sysTrapPrgStartDialogV31: {
+      // ProgressPtr PrgStartDialogV31(const Char *title, PrgCallbackFunc textCallback)
+      uint32_t titleP = ARG32;
+      uint32_t textCallbackP = ARG32;
+      char *title = emupalmos_trap_in(titleP, trap, 0);
+      void *textCallback = emupalmos_trap_in(textCallbackP, trap, 1);
+      ProgressPtr prg = PrgStartDialogV31(title, textCallback);
+      uint32_t prgP = emupalmos_trap_out(prg);
+      debug(DEBUG_TRACE, "EmuPalmOS", "PrgStartDialogV31(0x%08X [%s], 0x%08X): 0x%08X", titleP, title ? title : "", textCallbackP, prgP);
+      m68k_set_reg(M68K_REG_A0, prgP);
+    }
+      break;
     case sysTrapPrgStartDialog: {
       // ProgressPtr PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void *userDataP)
       uint32_t titleP = ARG32;
