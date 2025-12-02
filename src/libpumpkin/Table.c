@@ -379,6 +379,12 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
         if (RctPtInRectangle(eventP->screenX, eventP->screenY, &tableP->bounds)) {
           row = TblScreenToRow(tableP, eventP->screenY);
           column = TblScreenToColumn(tableP, eventP->screenX);
+
+          // save the current row,column for use later on penUpEvent
+          // I am not sure if this has side effects
+          tableP->currentRow = row;
+          tableP->currentColumn = column;
+
           debug(DEBUG_TRACE, "Table", "penDownEvent in table row=%d (usable=%d), col=%d (usable=%d)",
             row, column, tableP->rowAttrs[row].usable, tableP->columnAttrs[column].usable);
 
@@ -415,12 +421,13 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
 //debug(1, "XXX", "table %d penUp", tableP->id);
       MemSet(&event, sizeof(EventType), 0);
       if (RctPtInRectangle(eventP->screenX, eventP->screenY, &tableP->bounds) && tableP->attr.selected) {
+
         // when penUpEvent is received, use the pen coordinates of the previous penDownEvent,
         // that is, the use the currently selected row. This prevents an error in Date Book in which
         // the sequence penDown -> penMove -> penUp would select a different cell on penUp an raise an error.
         row = tableP->currentRow;
         column = tableP->currentColumn;
-//debug(1, "XXX", "ZZZ penUpEvent in table row=%d col=%d", row, column);
+
         if (tableP->rowAttrs[row].usable && tableP->columnAttrs[column].usable) {
           event.eType = tblSelectEvent;
           event.screenX = eventP->screenX;
