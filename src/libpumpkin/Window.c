@@ -2579,7 +2579,7 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
        case kCoordinatesNative:
          // If coordSys is kCoordinatesNative, the Window Manager sets the scale field to 1.0,
          // which to enables 1-to-1 mapping of coordinates to pixels.
-         debug(DEBUG_INFO, "Window", "WinSetCoordinateSystem native");
+         debug(DEBUG_TRACE, "Window", "WinSetCoordinateSystem native");
          module->drawState.coordinateSystem = coordSys;
          break;
        case kCoordinatesStandard:
