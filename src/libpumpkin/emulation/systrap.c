@@ -2632,6 +2632,13 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushNextPenStroke(): %d", err);
       m68k_set_reg(M68K_REG_D0, err);
       break;
+    case sysTrapEvtKeyQueueEmpty: {
+      // Boolean EvtKeyQueueEmpty(void)
+      Boolean res = EvtKeyQueueEmpty();
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtKeyQueueEmpty(): %d", res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case sysTrapClipboardAddItem: {
       // void ClipboardAddItem(const ClipboardFormatType format, const void *ptr, UInt16 length)
       uint8_t format = ARG8;
