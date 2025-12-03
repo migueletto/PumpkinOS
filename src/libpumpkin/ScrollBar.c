@@ -18,7 +18,7 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
   Boolean redraw;
 
   if (bar && value >= 0 && min >= 0 && max >= min && pageSize >= 0) {
-    debug(DEBUG_INFO, "Scroll", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
+    debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
 
     if (bar->value != value) {
       bar->value = value;
