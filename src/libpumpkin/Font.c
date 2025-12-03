@@ -393,7 +393,7 @@ Err FntDefineFont(FontID font, FontPtr fontP) {
 // Given a pixel position, gets the offset of the character displayed at that location.
 Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Boolean *leadingEdge, Int16 *truncWidth) {
   FontType *f;
-  Int16 tw, width, offset = 0;
+  Int16 n, tw, width, offset = 0;
   UInt32 wch;
   char ch;
 
@@ -402,15 +402,16 @@ Int16 FntWidthToOffset(Char const *pChars, UInt16 length, Int16 pixelWidth, Bool
     if (truncWidth) *truncWidth = FntCharsWidth(pChars, length);
 
     for (offset = 0, width = 0; offset < length;) {
-      offset += pumpkin_next_char((UInt8 *)pChars, offset, length, &wch);
+      n = pumpkin_next_char((UInt8 *)pChars, offset, length, &wch);
       ch = pumpkin_map_char(wch, &f);
       tw = FntFontCharWidth(f, ch);
 
       if ((width + tw) >= pixelWidth) {
-         if (leadingEdge) *leadingEdge = false;
-         if (truncWidth) *truncWidth = width;
-         break;
+        if (leadingEdge) *leadingEdge = false;
+        if (truncWidth) *truncWidth = width;
+        break;
       }
+      offset += n;
       width += tw;
     }
   }
