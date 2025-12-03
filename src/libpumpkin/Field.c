@@ -169,12 +169,12 @@ static UInt16 FldNextWord(FieldType *fldP, UInt16 i, UInt16 *width, char *word, 
 static void FldEraseToEol(FieldType *fldP, UInt16 x, UInt16 y, UInt16 th) {
   RectangleType aux;
 
-  debug(DEBUG_TRACE, PALMOS_MODULE, "erase eol x=%d y=%d", x, y);
   RctSetRectangle(&aux, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, fldP->rect.extent.x - x, th);
   if (fldP->attr.editable && fldP->attr.underlined) aux.extent.y--;
+  debug(DEBUG_TRACE, PALMOS_MODULE, "erase eol x=%d y=%d dx=%d dy=%d", x, y, aux.extent.x, aux.extent.y);
   WinEraseRectangle(&aux, 0);
   if (fldP->attr.underlined) {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "underline x=%d y=%d", x, y);
+    debug(DEBUG_TRACE, PALMOS_MODULE, "underline x=%d y=%d", x, y + th - 1);
     WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
                 fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + y + th - 1);
   }
@@ -260,20 +260,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         valueSet = true;
       }
 
-      if (setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < x + tw) {
-        wtof = FntWidthToOffset(&fldP->text[i], n, module->penDownX - x, NULL, &w);
-        insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
-        fldP->pos = i + wtof - 1;
-        posFound = true;
-      }
-
-      if (!setPos && draw && fldP->pos >= i && fldP->pos < i + n) {
-        w = FntCharsWidth(&fldP->text[i], fldP->pos - i);
-        insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
-        posFound = true;
-      }
-
-      debug(DEBUG_TRACE, PALMOS_MODULE, "word=\"%s\" col=%d row=%d", word, col, row);
+      debug(DEBUG_TRACE, PALMOS_MODULE, "word=\"%.*s\" col=%d row=%d", n, word, col, row);
 
       if (!StrCompare(word, "\n")) {
         debug(DEBUG_TRACE, PALMOS_MODULE, "linefeed");
@@ -293,7 +280,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         row++;
         if (row >= fldP->top && row < bottom) {
           fldP->numUsedLines++;
-          if (draw && row-1 >= fldP->top && row-1 < bottom) {
+          if (row-1 >= fldP->top && row-1 < bottom) {
             debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d (linefeed)", y, y + th);
             y += th;
           }
@@ -304,20 +291,47 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           if (draw && row >= fldP->top && row < bottom) {
             FldEraseToEol(fldP, x, y, th);
           }
-          x = 1;
-          col = 0;
-          debug(DEBUG_TRACE, PALMOS_MODULE, "col = 0, row %d -> %d", row, row+1);
-          if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
-          row++;
-          if (row >= fldP->top && row < bottom) {
-            fldP->numUsedLines++;
-            if (draw && row-1 >= fldP->top && row-1 < bottom) {
-              debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d (overflow)", y, y + th);
-              y += th;
+          if (x == 1) {
+            // single word does not fit int the entire width
+            n = FntWidthToOffset(word, n, fldP->rect.extent.x - 1, NULL, &w);
+            col = 0;
+            tw = w;
+            debug(DEBUG_TRACE, PALMOS_MODULE, "overflow x: truncate at %d, n %d", w, n);
+          } else {
+            // line will overflow if next word is appended to the end
+            x = 1;
+            col = 0;
+            debug(DEBUG_TRACE, PALMOS_MODULE, "col = 0, row %d -> %d", row, row+1);
+            if (draw) debug_field_row(NULL, 0, row, row >= fldP->top && row < bottom);
+            row++;
+            if (row >= fldP->top && row < bottom) {
+              fldP->numUsedLines++;
+              if (row-1 >= fldP->top && row-1 < bottom) {
+                debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d (overflow)", y, y + th);
+                y += th;
+              }
             }
+            n = FntWidthToOffset(word, n, fldP->rect.extent.x - 1, NULL, &w);
+            col = 0;
+            tw = w;
+            debug(DEBUG_TRACE, PALMOS_MODULE, "overflow x: truncate at %d, n %d", w, n);
           }
         }
-        if (draw) debug_field_row(word, StrLen(word), -1, 0);
+        if (draw) debug_field_row(word, n, -1, 0);
+
+        if (!posFound && setPos && module->penDownY >= y && module->penDownY < y + th && module->penDownX >= x && module->penDownX < x + tw) {
+          wtof = FntWidthToOffset(&fldP->text[i], n, module->penDownX - x, NULL, &w);
+          insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
+          fldP->pos = i + wtof - 1;
+          posFound = true;
+        }
+
+        if (!posFound && !setPos && draw && fldP->pos >= i && fldP->pos < i + n) {
+          w = FntCharsWidth(&fldP->text[i], fldP->pos - i);
+          insPtEnable = FldCheckInsPt(fldP, x, y, w, th, row, bottom);
+          posFound = true;
+        }
+
         if (draw && row >= fldP->top && row < bottom) {
           if (fldP->attr.underlined) {
             WinDrawLine(fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1,
@@ -325,21 +339,20 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
           }
           back = (fldP->selFirstPos <= i && i < fldP->selLastPos) ? fieldBackHigh : fieldBack;
           oldBack = WinSetBackColor(back);
-          //debug(DEBUG_TRACE, PALMOS_MODULE, "draw '%c' col=%d row=%d x=%d y=%d", c, col, row, x, y);
-          debug(DEBUG_TRACE, PALMOS_MODULE, "draw \"%s\" col=%d row=%d x=%d y=%d", word, col, row, x, y);
+          debug(DEBUG_TRACE, PALMOS_MODULE, "draw \"%.*s\" col=%d row=%d x=%d y=%d w=%d", n, word, col, row, x, y, tw);
           if (fldP->attr.underlined) {
             RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y, tw, th - 1);
             WinSetClip(&clip);
-            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, n, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
             WinSetBackColor(oldBack);
             RctSetRectangle(&clip, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y + th - 1, tw, 1);
             WinSetClip(&clip);
             prev = WinSetDrawMode(winOverlay);
-            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, n, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
             WinSetDrawMode(prev);
             WinResetClip();
           } else {
-            WinPaintChars(word, StrLen(word), fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
+            WinPaintChars(word, n, fldP->rect.topLeft.x + x, fldP->rect.topLeft.y + y);
           }
         }
         //debug(DEBUG_TRACE, PALMOS_MODULE, "col %d -> %d", col, col+1);
@@ -382,6 +395,12 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         }
       }
 
+      if (debug_getsyslevel(PALMOS_MODULE) == DEBUG_TRACE) {
+        // in debug mode, draw a pink line over the right edge of the field.
+        // this helps sorting out issues with truncating, clipping, etc.
+        WinSetForeColor(1);
+        WinDrawLine(fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y, fldP->rect.topLeft.x + fldP->rect.extent.x - 1, fldP->rect.topLeft.y + fldP->rect.extent.y - 1);
+      }
       WinSetBackColor(oldb);
       WinSetForeColor(oldf);
       WinSetTextColor(oldt);
