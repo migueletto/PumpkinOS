@@ -278,6 +278,13 @@ typedef struct {
   char *mount;
   Int32 widget_id;
   logtrap_def ltdef;
+  char *vertex_shader;
+  int vlen;
+  char *fragment_shader;
+  int flen;
+  float (*shader_getvar)(char *name, void *data);
+  void *shader_data;
+  int shader_inited;
 } pumpkin_module_t;
 
 typedef union {
@@ -2137,8 +2144,21 @@ void *pumpkin_get_subdata(void) {
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data) {
   int r = -1;
 
-  if (pumpkin_module.mode == 1 && pumpkin_module.wp->shader) {
-    r = pumpkin_module.wp->shader(pumpkin_module.w, 0, vertex_shader, vlen, fragment_shader, flen, getvar, data);
+  if (pumpkin_module.mode == 0 && pumpkin_module.wp->shader) {
+    if (pumpkin_get_boolean_option("opengl")) {
+      if (mutex_lock(mutex) == 0) {
+        if (pumpkin_module.vertex_shader) sys_free(pumpkin_module.vertex_shader);
+        if (pumpkin_module.fragment_shader) sys_free(pumpkin_module.fragment_shader);
+        pumpkin_module.vertex_shader = vertex_shader ? sys_strdup(vertex_shader) : NULL;
+        pumpkin_module.fragment_shader = fragment_shader ? sys_strdup(fragment_shader) : NULL;
+        pumpkin_module.vlen = vlen;
+        pumpkin_module.flen = flen;
+        pumpkin_module.shader_getvar = getvar;
+        pumpkin_module.shader_data = data;
+        r = 0;
+        mutex_unlock(mutex);
+      }
+    }
   }
 
   return r;
@@ -3155,6 +3175,14 @@ int pumpkin_sys_event(void) {
   void *bits;
   Int32 taskId;
   UInt32 widgetId;
+
+  if (pumpkin_module.vertex_shader != NULL && pumpkin_module.shader_inited == 0) {
+    pumpkin_module.shader_inited = pumpkin_module.wp->shader(pumpkin_module.w, 0, pumpkin_module.vertex_shader, pumpkin_module.vlen,
+      pumpkin_module.fragment_shader, pumpkin_module.flen, pumpkin_module.shader_getvar, pumpkin_module.shader_data) == 0 ? 1 : -1;
+  } else if (pumpkin_module.vertex_shader == NULL && pumpkin_module.shader_inited == 1) {
+    pumpkin_module.wp->shader(pumpkin_module.w, 0, NULL, 0, NULL, 0, NULL, NULL);
+    pumpkin_module.shader_inited = 0;
+  }
 
   for (;;) {
     if (thread_must_end()) {

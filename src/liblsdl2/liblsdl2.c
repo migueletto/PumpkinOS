@@ -1356,6 +1356,12 @@ static int libsdl_window_shader(window_t *_window, int i, char *vertex, int vlen
   PFNGLATTACHSHADERPROC glAttachShader;
   PFNGLDELETESHADERPROC glDeleteShader;
 
+  if (getvar == NULL) {
+    window->getvar = NULL;
+    window->data = NULL;
+    return 0;
+  }
+
   glCreateProgram = (PFNGLCREATEPROGRAMPROC)SDL_GL_GetProcAddress("glCreateProgram");
   glLinkProgram = (PFNGLLINKPROGRAMPROC)SDL_GL_GetProcAddress("glLinkProgram");
   glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)SDL_GL_GetProcAddress("glValidateProgram");
@@ -1630,7 +1636,11 @@ int liblsdl2_init(int pe, script_ref_t obj) {
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
   script_add_iconst(pe, obj, "up", WINDOW_BUTTONUP);
+#ifdef SDL_OPENGL
+  script_add_iconst(pe, obj, "hdepth", 32);
+#else
   script_add_iconst(pe, obj, "hdepth", 16);
+#endif
 
   script_add_function(pe, obj, "calib", libsdl_calib);
 
