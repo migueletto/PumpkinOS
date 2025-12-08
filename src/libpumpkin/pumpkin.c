@@ -2144,20 +2144,24 @@ void *pumpkin_get_subdata(void) {
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data) {
   int r = -1;
 
-  if (pumpkin_module.mode == 0 && pumpkin_module.wp->shader) {
-    if (pumpkin_get_boolean_option("opengl")) {
-      if (mutex_lock(mutex) == 0) {
-        if (pumpkin_module.vertex_shader) sys_free(pumpkin_module.vertex_shader);
-        if (pumpkin_module.fragment_shader) sys_free(pumpkin_module.fragment_shader);
-        pumpkin_module.vertex_shader = vertex_shader ? sys_strdup(vertex_shader) : NULL;
-        pumpkin_module.fragment_shader = fragment_shader ? sys_strdup(fragment_shader) : NULL;
-        pumpkin_module.vlen = vlen;
-        pumpkin_module.flen = flen;
-        pumpkin_module.shader_getvar = getvar;
-        pumpkin_module.shader_data = data;
-        r = 0;
-        mutex_unlock(mutex);
+  if (pumpkin_module.wp->shader) {
+    if (pumpkin_module.mode == 0) {
+      if (pumpkin_get_boolean_option("opengl")) {
+        if (mutex_lock(mutex) == 0) {
+          if (pumpkin_module.vertex_shader) sys_free(pumpkin_module.vertex_shader);
+          if (pumpkin_module.fragment_shader) sys_free(pumpkin_module.fragment_shader);
+          pumpkin_module.vertex_shader = vertex_shader ? sys_strdup(vertex_shader) : NULL;
+          pumpkin_module.fragment_shader = fragment_shader ? sys_strdup(fragment_shader) : NULL;
+          pumpkin_module.vlen = vlen;
+          pumpkin_module.flen = flen;
+          pumpkin_module.shader_getvar = getvar;
+          pumpkin_module.shader_data = data;
+          r = 0;
+          mutex_unlock(mutex);
+        }
       }
+    } else {
+      r = pumpkin_module.wp->shader(pumpkin_module.w, 0, vertex_shader, vlen, fragment_shader, flen, getvar, data);
     }
   }
 
