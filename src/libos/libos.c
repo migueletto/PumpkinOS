@@ -382,8 +382,12 @@ static int libos_start(int pe) {
     }
 
     if (data->mode != 0) {
-      data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
-      data->height = data->dia ? (data->width * 3 ) / 2 + BUTTONS_HEIGHT : data->width;
+      if (data->width == 0) {
+        data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
+      }
+      if (data->height == 0) {
+        data->height = data->dia ? (data->width * 3 ) / 2 + BUTTONS_HEIGHT : data->width;
+      }
     }
 
     if (data->hdepth < 16) {
