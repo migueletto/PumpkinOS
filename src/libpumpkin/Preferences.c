@@ -82,10 +82,10 @@ static void initPrefs(SystemPreferencesType *prefs) {
   prefs->daylightSavings = dsNone;                // XXX Type of daylight savings correction
   prefs->reserved2 = 0;
   prefs->ronamaticChar = 0;                       // XXX character to generate from ronamatic stroke. Typically it popups the onscreen keyboard.
-  prefs->hard1CharAppCreator = 0;                 // XXX creator of application to launch in response to the hard button #1. Used by SysHandleEvent.
-  prefs->hard2CharAppCreator = 0;                 // XXX creator of application to launch in response to the hard button #2. Used by SysHandleEvent.
-  prefs->hard3CharAppCreator = 0;                 // XXX creator of application to launch in response to the hard button #3. Used by SysHandleEvent.
-  prefs->hard4CharAppCreator = 0;                 // XXX creator of application to launch in response to the hard button #4. Used by SysHandleEvent.
+  prefs->hard1CharAppCreator = 'date';            // XXX creator of application to launch in response to the hard button #1. Used by SysHandleEvent.
+  prefs->hard2CharAppCreator = 'addr';            // XXX creator of application to launch in response to the hard button #2. Used by SysHandleEvent.
+  prefs->hard3CharAppCreator = 'todo';            // XXX creator of application to launch in response to the hard button #3. Used by SysHandleEvent.
+  prefs->hard4CharAppCreator = 'memo';            // XXX creator of application to launch in response to the hard button #4. Used by SysHandleEvent.
   prefs->calcCharAppCreator = 0;                  // XXX creator of application to launch in response to the Calculator icon. Used by SysHandleEvent.
   prefs->hardCradleCharAppCreator = 0;            // XXX creator of application to launch in response to the Cradle button. Used by SysHandleEvent.
   prefs->launcherCharAppCreator = 0;              // XXX creator of application to launch in response to the launcher button. Used by SysHandleEvent.
