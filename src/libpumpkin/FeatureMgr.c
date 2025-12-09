@@ -184,6 +184,12 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
             err = errNone;
           }
           break;
+        case sysFtrNumHwrMiscFlags:
+          if (osversion >= 31) {
+            *valueP = 0;
+            err = errNone;
+          }
+          break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSystem %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
