@@ -90,6 +90,11 @@ typedef struct {
   void *extra;
   int disasm;
   logtrap_t *lt;
+
+  uint8_t *armReturnAddr;
+  uint8_t *armCall68KAddr;
+  uint8_t *armEmulState;
+  uint8_t *armStack;
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);

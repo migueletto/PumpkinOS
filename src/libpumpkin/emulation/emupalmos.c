@@ -1558,7 +1558,7 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) 
 #ifdef ARMEMU
 uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint8_t *emulState, *stack, *call68KAddr, *returnAddr;
+  //uint8_t *emulState, *stack, *call68KAddr, *returnAddr;
   uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
 
@@ -1576,17 +1576,21 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   // each pointing to a syscall function table
   sysAddr = (uint8_t *)state->systable - ram;
 
-  returnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
-  retAddr = returnAddr - ram;
+  //returnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
+  //retAddr = returnAddr - ram;
+  retAddr = state->armReturnAddr - ram;
 
-  call68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
-  callAddr = call68KAddr - ram;
+  //call68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
+  //callAddr = call68KAddr - ram;
+  callAddr = state->armCall68KAddr - ram;
 
-  emulState = pumpkin_heap_alloc(0x100, "emulState");
-  emulStateAddr = emulState - ram;
+  //emulState = pumpkin_heap_alloc(0x100, "emulState");
+  //emulStateAddr = emulState - ram;
+  emulStateAddr = state->armEmulState - ram;
 
-  stack = pumpkin_heap_alloc(stackSize, "stack");
-  stackAddr = stack - ram;
+  //stack = pumpkin_heap_alloc(stackSize, "stack");
+  //stackAddr = stack - ram;
+  stackAddr = state->armStack - ram;
 
   if (data) {
     armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
@@ -1610,10 +1614,10 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
     if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
-  pumpkin_heap_free(emulState, "emulState");
-  pumpkin_heap_free(returnAddr, "returnAddr");
-  pumpkin_heap_free(call68KAddr, "call68kAddr");
-  pumpkin_heap_free(stack, "stack");
+  //pumpkin_heap_free(emulState, "emulState");
+  //pumpkin_heap_free(returnAddr, "returnAddr");
+  //pumpkin_heap_free(call68KAddr, "call68kAddr");
+  //pumpkin_heap_free(stack, "stack");
 
   debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
   return armGetReg(state->arm, 0);
@@ -1689,6 +1693,11 @@ static emu_state_t *emupalmos_new(void) {
     state->systable[2] = (uint8_t *)bootFunctions - ram;
     state->systable[3] = (uint8_t *)uiFunctions   - ram;
 
+    state->armReturnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
+    state->armCall68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
+    state->armEmulState = pumpkin_heap_alloc(0x100, "emulState");
+    state->armStack = pumpkin_heap_alloc(stackSize, "stack");
+
     // each syscall is identified by a special address of the form 0x04G0NNNN,
     // where G is the group (1, 2, or 3) and NNNN is the function "number" (multiple of 4).
     // if the PC reaches such address, emupalmos_arm_syscall will be called.
@@ -1712,6 +1721,11 @@ static void emupalmos_destroy(emu_state_t *state) {
     pumpkin_heap_free(ram + state->systable[2], "bootFunctions");
     pumpkin_heap_free(ram + state->systable[3], "uiFunctions");
     pumpkin_heap_free(state->systable, "sysTable");
+
+    pumpkin_heap_free(state->armReturnAddr, "returnAddr");
+    pumpkin_heap_free(state->armCall68KAddr, "call68kAddr");
+    pumpkin_heap_free(state->armEmulState, "emulState");
+    pumpkin_heap_free(state->armStack, "stack");
 #endif
     xfree(state);
   }
@@ -1777,75 +1791,232 @@ int emupalmos_init(logtrap_def *def) {
 
 #define strArg(a) (a ? ((char *)(ram + a)) : "")
 
-uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3) {
+uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4, uint32_t r5, uint32_t r6, uint32_t r7) {
   uint8_t *ram = pumpkin_heap_base();
   uint8_t *p;
   char st[8], st2[8];
-  UInt32 value;
+  UInt32 value, r;
+  Err err;
   MemHandle h;
 
   switch (group) {
     case 1: // DAL
+      debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in DAL", function);
       r0 = 0;
       break;
     case 2: // BOOT
       switch (function) {
+        case 0x50: {
+          // BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *colorTableP, UInt16 *error)
+          ColorTableType *colorTableP = r3 ? (ColorTableType *)(ram + r3) : NULL;
+          UInt16 *error = r4 ? (UInt16 *)(ram + r4) : NULL;
+          BitmapType *bmp = BmpCreate(r0, r1, r2, colorTableP, error);
+          r = bmp ? (uint8_t *)bmp - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall BmpCreate(%d, %d, %d, 0x%08X, 0x%08X): 0x%08X", r0, r1, r2, r3, r4, r);
+          r0 = r;
+          }
+          break;
+        case 0x5C:
+          // Err BmpCompress(BitmapType *bitmapP, BitmapCompressionType compType)
+          BitmapType *bmp = r0 ? (BitmapType *)(ram + r0) : NULL;
+          err = BmpCompress(bmp, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall BmpCompress(0x%08X, %d): %d", r0, r1, err);
+          r0 = err;
+          break;
+        case 0x54: {
+          // Err BmpDelete(BitmapType *bitmapP)
+          BitmapType *bmp = r0 ? (BitmapType *)(ram + r0) : NULL;
+          err = BmpDelete(bmp);
+          debug(DEBUG_TRACE, "ARM", "arm syscall BmpDelete(0x%08X): %d", r0, err);
+          r0 = err;
+          }
+          break;
+        case 0x1E8: {
+          // DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode)
+          DmOpenRef dbP = DmOpenDatabase(r0, r1, r2);
+          r = dbP ? (uint8_t *)dbP - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmOpenDatabase(%u, 0x%08X, 0x%04X): 0x%08X", r0, r1, r2, r);
+          r0 = r;
+          }
+          break;
+        case 0x1F0: {
+          // Err DmOpenDatabaseInfo(DmOpenRef dbP, LocalID *dbIDP, UInt16 *openCountP, UInt16 *modeP, UInt16 *cardNoP, Boolean *resDBP)
+          // XXX 0x1F4 is DmOpenDatabaseInfoV40
+          DmOpenRef dbP = r0 ? (DmOpenRef *)(ram + r0) : NULL;
+          LocalID *dbIDP = r1 ? (LocalID *)(ram + r1) : NULL;
+          UInt16 *openCountP = r2 ? (UInt16 *)(ram + r2) : NULL;
+          UInt16 *modeP = r3 ? (UInt16 *)(ram + r3) : NULL;
+          UInt16 *cardNoP = r4 ? (UInt16 *)(ram + r4) : NULL;
+          Boolean *resDBP = r5 ? (Boolean *)(ram + r5) : NULL;
+          err = DmOpenDatabaseInfo(dbP, dbIDP, openCountP, modeP, cardNoP, resDBP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmOpenDatabaseInfo(0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, r4, r5, err);
+          r0 = err;
+          }
+          break;
         case 0x210:
-          debug(DEBUG_TRACE, "ARM", "DmQueryRecord(0x%08X, %u)", r0, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmQueryRecord(0x%08X, %u)", r0, r1);
           h = DmQueryRecord((DmOpenRef)(ram + r0), r1);
           r0 = h ? (uint8_t *)h - ram : 0;
           break;
         case 0x318:
           // Err ExgGetDefaultApplication(UInt32 *creatorIDP, UInt16 id, const Char *dataTypeP)
-          debug(DEBUG_TRACE, "ARM", "ExgGetDefaultApplication(0x%08X, 0x%04X, \"%s\") not implemented", r0, r1, strArg(r2));
+          debug(DEBUG_TRACE, "ARM", "arm syscall ExgGetDefaultApplication(0x%08X, 0x%04X, \"%s\") not implemented", r0, r1, strArg(r2));
           r0 = 0xffff;
           break;
         case 0x348:
           // Err ExgRegisterDatatype(UInt32 creatorID, UInt16 id, const Char *dataTypesP, const Char *descriptionsP, UInt16 flags)
           pumpkin_id2s(r0, st);
-          debug(DEBUG_TRACE, "ARM", "ExgRegisterDatatype('%s', 0x%04X, %p, %p, ___) not implemented", st, r1, strArg(r2), strArg(r3));
+          debug(DEBUG_TRACE, "ARM", "arm syscall ExgRegisterDatatype('%s', 0x%04X, %p, %p, ___) not implemented", st, r1, strArg(r2), strArg(r3));
           r0 = 0xffff;
           break;
         case 0x354:
           // Err ExgSetDefaultApplication(UInt32 creatorID, UInt16 id, const Char *dataTypeP)
           pumpkin_id2s(r0, st);
-          debug(DEBUG_TRACE, "ARM", "ExgSetDefaultApplication('%s', 0x%04X, \"%s\") not implemented", st, r1, strArg(r2));
+          debug(DEBUG_TRACE, "ARM", "arm syscall ExgSetDefaultApplication('%s', 0x%04X, \"%s\") not implemented", st, r1, strArg(r2));
           r0 = 0xffff;
+          break;
+        case 0x3E0:
+          // Int16 FntBaseLine(void)
+          r0 = FntBaseLine();
+          debug(DEBUG_TRACE, "ARM", "arm syscall FntBaseLine(): %d", r0);
+          break;
+        case 0x3E4:
+          // Int16 FntCharHeight(void)
+          r0 = FntCharHeight();
+          debug(DEBUG_TRACE, "ARM", "arm syscall FntCharHeight(): %d", r0);
+          break;
+        case 0x3F0:
+          // Int16 FntCharWidth(Char ch)
+          r = FntCharWidth(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FntCharWidth(%d): %d", r0, r);
+          r0 = r;
+          break;
+        case 0x410:
+          // FontID FntSetFont(FontID font)
+          r = FntSetFont(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FntSetFont(%d): %d", r0, r);
+          r0 = r;
           break;
         case 0x424:
           pumpkin_id2s(r0, st);
-          debug(DEBUG_TRACE, "ARM", "FtrGet('%s', %u, 0x%08X)", st, r1, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FtrGet('%s', %u, 0x%08X)", st, r1, r2);
           r0 = FtrGet(r0, r1, &value);
           if (r0 == 0 && r2) {
             put4l(value, ram, r2);
           }
           break;
         case 0x4DC:
-          debug(DEBUG_TRACE, "ARM", "MemHandleFree(0x%08X)", r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleFree(0x%08X)", r0);
           r0 = MemHandleFree((MemHandle)(ram + r0));
           break;
         case 0x4E4:
-          debug(DEBUG_TRACE, "ARM", "MemHandleLock(0x%08X)", r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleLock(0x%08X)", r0);
           p = MemHandleLock((MemHandle)(ram + r0));
           r0 = p ? (uint8_t *)p - ram : 0;
           break;
         case 0x508:
-          debug(DEBUG_TRACE, "ARM", "MemHandleUnlock(0x%08X)", r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleUnlock(0x%08X)", r0);
           r0 = MemHandleUnlock((MemHandle)(ram + r0));
+          break;
+        case 0x558: {
+          // Err MemMove(void *dstP, const void *sP, Int32 numBytes)
+          void *dstP = r0 ? ram + r0 : NULL;
+          void *sP = r1 ? ram + r1 : NULL;
+          err = MemMove(dstP, sP, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemMove(0x%08X, 0x%08X, %d): %d", r0, r1, r2, err);
+          r0 = err;
+          }
+          break;
+        case 0x584: {
+          // MemPtr MemPtrNew(UInt32 size)
+          void *p = MemPtrNew(r0);
+          r = p ? (uint8_t *)p - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemPtrNew(%u): 0x%08X", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0x5B0: {
+          // Err MemSet(void *dstP, Int32 numBytes, UInt8 value)
+          void *dstP = r0 ? ram + r0 : NULL;
+          err = MemSet(dstP, r1, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemSet(0x%08X, %d, %u): %d", r0, r1, r2, err);
+          r0 = err;
+          }
+          break;
+        case 0x788: {
+          // Char *StrCopy(Char *dst, const Char *src)
+          void *dst = r0 ? ram + r0 : NULL;
+          void *src = r1 ? ram + r1 : NULL;
+          char *s = StrCopy(dst, src);
+          r = s ? (uint8_t *)s - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrCopy(0x%08X, 0x%08X): 0x%08X", r0, r1, r);
+          r0 = r;
+          }
+          break;
+        case 0x798: {
+          // UInt16 StrLen(const Char *src)
+          void *src = r0 ? ram + r0 : NULL;
+          r = StrLen(src);
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrLen(0x%08X): %u", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0x800: {
+          // Err SysCurAppDatabase(UInt16 *cardNoP, LocalID *dbIDP)
+          UInt16 *cardNoP = r0 ? (UInt16 *)(ram + r0) : NULL;
+          LocalID *dbIDP = r1 ? (LocalID *)(ram + r1) : NULL;
+          err = SysCurAppDatabase(cardNoP, dbIDP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysCurAppDatabase(0x%08X, 0x%08X): %u", r0, r1, err);
+          r0 = err;
+          }
           break;
         case 0x880:
           pumpkin_id2s(r0, st);
           pumpkin_id2s(r1, st2);
-          debug(DEBUG_TRACE, "ARM", "SysLoadModule('%s', '%s', %d) not implemented", st, st2, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysLoadModule('%s', '%s', %d) not implemented", st, st2, r2);
           r0 = 0;
           break;
+        case 0x8B8:
+          // Int16 SysRandom(Int32 newSeed)
+          r = SysRandom(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysRandom(%d): %d", r0, r);
+          r0 = r;
+          break;
+        case 0x928:
+          r0 = TimGetTicks();
+          debug(DEBUG_TRACE, "ARM", "arm syscall TimGetTicks(): %u", r0);
+          break;
         case 0xB18:
-          debug(DEBUG_TRACE, "ARM", "WinDrawChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
           WinDrawChars((char *)(ram + r0), r1, r2, r3);
+          break;
+        case 0xBF0:
+          // void WinPopDrawState(void)
+          WinPopDrawState();
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinPopDrawState()");
+          break;
+        case 0xBF4:
+          // void WinPushDrawState(void)
+          WinPushDrawState();
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinPushDrawState()");
+          break;
+        case 0xC68: {
+          // BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const void *bitsP, const ColorTableType *colorTableP)
+          BitmapType *bmp = r0 ? (BitmapType *)(ram + r0) : NULL;
+          void *bitsP = r2 ? ram + r2 : NULL;
+          ColorTableType *colorTableP = r3 ? (ColorTableType *)(ram + r3) : NULL;
+          BitmapTypeV3 *bmp1 = BmpCreateBitmapV3(bmp, r1, bitsP, colorTableP);
+          r = bmp1 ? (uint8_t *)bmp1 - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall BmpCreateBitmapV3(0x%08X, %u, 0x%08X, 0x%08X): 0x%08X", r0, r1, r2, r3, r);
+          }
+          break;
+        default:
+          debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in BOOT", function);
           break;
       }
       break;
     case 3: // UI
+      debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in UI", function);
       r0 = 0;
       break;
     default:
