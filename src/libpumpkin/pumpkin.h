@@ -594,6 +594,9 @@ Boolean SysCreateDataBaseList68K(UInt32 type, UInt32 creator, UInt16 *dbCount, M
 void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF, Int32 other);
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
 Int32 SysRandom32(Int32 newSeed);
+Err SysTaskDelayMs(Int32 delay);
+
+Err ExgDBReadARM(uint32_t readProc, uint32_t deleteProc, uint32_t userData, LocalID *dbID, Boolean *needReset, Boolean keepDates);
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data);
 Boolean CallFormHandler(UInt32 addr, EventType *event);

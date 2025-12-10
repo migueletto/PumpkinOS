@@ -1556,7 +1556,7 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) 
 }
 
 #ifdef ARMEMU
-uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
+uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData, int pce) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   //uint8_t *emulState, *stack, *call68KAddr, *returnAddr;
   uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
@@ -1576,20 +1576,9 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   // each pointing to a syscall function table
   sysAddr = (uint8_t *)state->systable - ram;
 
-  //returnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
-  //retAddr = returnAddr - ram;
   retAddr = state->armReturnAddr - ram;
-
-  //call68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
-  //callAddr = call68KAddr - ram;
   callAddr = state->armCall68KAddr - ram;
-
-  //emulState = pumpkin_heap_alloc(0x100, "emulState");
-  //emulStateAddr = emulState - ram;
   emulStateAddr = state->armEmulState - ram;
-
-  //stack = pumpkin_heap_alloc(stackSize, "stack");
-  //stackAddr = stack - ram;
   stackAddr = state->armStack - ram;
 
   if (data) {
@@ -1602,24 +1591,23 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData) {
   armSetReg(state->arm, 15, code);    // PC
   armSetReg(state->arm, 14, retAddr); // LR
   armSetReg(state->arm, 13, stackAddr + stackSize); // SP
-  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X begin", code, userData, stackAddr + stackSize);
+  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X return 0x%08X begin", code, userData, stackAddr + stackSize, retAddr);
 
-  // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
-  // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
-  armSetReg(state->arm, 0, emulStateAddr);
-  armSetReg(state->arm, 1, userData);
-  armSetReg(state->arm, 2, callAddr);
+  if (pce) {
+    // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
+    // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
+    armSetReg(state->arm, 0, emulStateAddr);
+    armSetReg(state->arm, 1, userData);
+    armSetReg(state->arm, 2, callAddr);
+  } else {
+    armSetReg(state->arm, 0, 0); // launch code (?)
+  }
 
   for (; !emupalmos_finished();) {
     if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
-  //pumpkin_heap_free(emulState, "emulState");
-  //pumpkin_heap_free(returnAddr, "returnAddr");
-  //pumpkin_heap_free(call68KAddr, "call68kAddr");
-  //pumpkin_heap_free(stack, "stack");
-
-  debug(DEBUG_TRACE, "EmuPalmOS", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
+  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
   return armGetReg(state->arm, 0);
 }
 #endif
@@ -1982,7 +1970,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     creator = pumpkin_get_app_creator();
     emupalmos_finish(0);
 
-    arm_native_call(amdc0 - ram, amdd0 - ram, 0);
+    arm_native_call(amdc0 - ram, amdd0 - ram, 0, 0);
 
     MemHandleUnlock(hSysAppInfo);
     MemHandleFree(hSysAppInfo);

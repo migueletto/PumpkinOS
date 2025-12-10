@@ -352,6 +352,11 @@ UInt32 SysTaskID(void) {
 }
 
 Err SysTaskDelay(Int32 delay) {
+  // ticks -> ms
+  return SysTaskDelayMs(delay * 10);
+}
+
+Err SysTaskDelayMs(Int32 delay) {
   UInt32 d, usec;
   int64_t t0, t;
 
@@ -360,7 +365,7 @@ Err SysTaskDelay(Int32 delay) {
       EvtPumpEvents(0);
     }
 
-    usec = delay * 10000;
+    usec = delay * 1000;
 
     if (thread_needs_run()) {
       t0 = sys_get_clock();

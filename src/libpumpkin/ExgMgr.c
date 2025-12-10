@@ -81,6 +81,7 @@ Err ExgNotifyGoto(ExgSocketType *socketP, UInt16 flags) {
   return sysErrParamErr;
 }
 
+// Converts a Palm OS database from its internal format and writes it to storage RAM
 Err ExgDBRead(ExgDBReadProcPtr readProcP, ExgDBDeleteProcPtr deleteProcP, void *userDataP, LocalID *dbIDP, UInt16 cardNo, Boolean *needResetP, Boolean keepDates) {
   debug(DEBUG_ERROR, PUMPKINOS, "ExgDBRead not implemented");
   return sysErrParamErr;

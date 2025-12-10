@@ -26,6 +26,20 @@
 #define ARG16 0
 #define ARG32 0
 
+typedef struct {
+	UInt32 dbType;
+	UInt32 dbCreator;
+	UInt32 revision;
+	UInt32 entries;
+	UInt32 rsrcTypeData0;
+	UInt32 rsrcTypeCode0;
+	UInt32 rsrcTypeCode1;
+	UInt16 rsrcIDData0;
+	UInt16 rsrcIDCode0;
+	UInt16 rsrcIDCode1;
+	UInt16 reserved;
+} SysModuleDescriptorType;
+
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp) {
   uint8_t *ram = pumpkin_heap_base();
   uint8_t *p;
@@ -101,7 +115,17 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           DmOpenRef dbP = r0 ? (DmOpenRef)(ram + r0) : NULL;
           MemHandle resH = r3 ? (MemHandle)(ram + r3) : NULL;
           r = DmFindResource(dbP, r1, r2, resH);
-          debug(DEBUG_TRACE, "ARM", "arm syscall DmFindResource(0x%08X, 0x%08X, %u, 0x%08X): %u", r0, r1, r2, r3, r);
+          pumpkin_id2s(r1, st);
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmFindResource(0x%08X, '%s', %u, 0x%08X): %u", r0, st, r2, r3, r);
+          r0 = r;
+          }
+          break;
+        case 0x180: {
+          // MemHandle DmGet1Resource(DmResType type, DmResID resID)
+          MemHandle h = DmGet1Resource(r0, r1);
+          r = h ? (uint8_t *)h - ram : 0;
+          pumpkin_id2s(r0, st);
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmGet1Resource('%s', %u): 0x%08X", st, r1, r);
           r0 = r;
           }
           break;
@@ -109,7 +133,8 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           // MemHandle DmGetResource(DmResType type, DmResID resID)
           MemHandle h = DmGetResource(r0, r1);
           r = h ? (uint8_t *)h - ram : 0;
-          debug(DEBUG_TRACE, "ARM", "arm syscall DmGetResource(0x%08X, %u): 0x%08X", r0, r1, r);
+          pumpkin_id2s(r0, st);
+          debug(DEBUG_TRACE, "ARM", "arm syscall DmGetResource('%s', %u): 0x%08X", st, r1, r);
           r0 = r;
           }
           break;
@@ -155,6 +180,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           MemHandle h = r0 ? (MemHandle)(ram + r0) : NULL;
           err = DmReleaseResource(h);
           debug(DEBUG_TRACE, "ARM", "arm syscall DmReleaseResource(0x%08X): %d", r0, err);
+          r0 = err;
+          }
+          break;
+        case 0x2FC: {
+          // Err ExgDBRead(ExgDBReadProcPtr readProcP, ExgDBDeleteProcPtr deleteProcP, void *userDataP, LocalID *dbIDP, Boolean *needResetP, Boolean keepDates)
+          LocalID *dbID = r3 ? (LocalID *)(ram + r3) : NULL;
+          Boolean needReset;
+          err = ExgDBReadARM(r0, r1, r2, dbID, &needReset, true);
+          debug(DEBUG_TRACE, "ARM", "arm syscall ExgDBRead(0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, err);
           r0 = err;
           }
           break;
@@ -204,6 +238,20 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           if (r0 == 0 && r2) {
             put4l(value, ram, r2);
           }
+          break;
+        case 0x43C:
+          // Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue)
+          pumpkin_id2s(r0, st);
+          err = FtrSet(r0, r1, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FtrSet('%s', %u, 0x%08X): %d", st, r1, r2, err);
+          r0 = err;
+          break;
+        case 0x440:
+          // Err FtrUnregister(UInt32 creator, UInt16 featureNum)
+          pumpkin_id2s(r0, st);
+          err = FtrUnregister(r0, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FtrUnregister('%s', %u): %d", st, r1, err);
+          r0 = err;
           break;
         case 0x4B8: {
           // Err MemChunkFree(MemPtr chunkDataP)
@@ -488,6 +536,30 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0x87C: {
+          // https://wiki.palmoid.com/doku.php?id=syslinkerstub
+          // void SysLinkerStub(const SysModuleDescriptorType *moduleP, UInt32 clientID, void **dispatchTablePP)
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysLinkerStub(0x%08X, 0x%08X, 0x%08X)", r0, r1, r2);
+          if (r0) {
+            SysModuleDescriptorType *mod = (SysModuleDescriptorType *)(ram + r0);
+            pumpkin_id2s(mod->dbType, st);
+            debug(DEBUG_TRACE, "ARM", "module dbType '%s'", st);
+            pumpkin_id2s(mod->dbCreator, st);
+            debug(DEBUG_TRACE, "ARM", "module dbCreator '%s'", st);
+            debug(DEBUG_TRACE, "ARM", "module revision %u", mod->revision);
+            debug(DEBUG_TRACE, "ARM", "module entries %u", mod->entries);
+            pumpkin_id2s(mod->rsrcTypeData0, st);
+            debug(DEBUG_TRACE, "ARM", "module rsrcTypeData0 '%s'", st);
+            pumpkin_id2s(mod->rsrcTypeCode0, st);
+            debug(DEBUG_TRACE, "ARM", "module rsrcTypeCode0 '%s'", st);
+            pumpkin_id2s(mod->rsrcTypeCode1, st);
+            debug(DEBUG_TRACE, "ARM", "module rsrcTypeCode1 '%s'", st);
+            debug(DEBUG_TRACE, "ARM", "module rsrcIDData0 %u", mod->rsrcIDData0);
+            debug(DEBUG_TRACE, "ARM", "module rsrcIDCode0 %u", mod->rsrcIDCode0);
+            debug(DEBUG_TRACE, "ARM", "module rsrcIDCode1 %u", mod->rsrcIDCode1);
+          }
+          }
+          break;
         case 0x880:
           pumpkin_id2s(r0, st);
           pumpkin_id2s(r1, st2);
@@ -498,6 +570,13 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           // Int16 SysRandom(Int32 newSeed)
           r = SysRandom(r0);
           debug(DEBUG_TRACE, "ARM", "arm syscall SysRandom(%d): %d", r0, r);
+          r0 = r;
+          break;
+        case 0x8E8:
+          // Err SysTaskDelay(Int32 delay)
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysTaskDelay(%d) ...", r0);
+          r = SysTaskDelayMs(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysTaskDelay(%d): %d", r0, r);
           r0 = r;
           break;
         case 0x924:
@@ -528,12 +607,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           break;
         case 0xB14:
           // void WinDrawChar(WChar theChar, Coord x, Coord y)
-          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawChar(%d, %d, %d)", r0, r1, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawChar('%c', %d, %d)", r0 & 0xff, r1, r2);
           WinDrawChar(r0, r1, r2);
           break;
-        case 0xB18:
-          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
-          WinDrawChars((char *)(ram + r0), r1, r2, r3);
+        case 0xB18: {
+          // void WinDrawChars(const Char *chars, Int16 len, Coord x, Coord y)
+          char *s = (char *)(ram + r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawChars(\"%.*s\", %d, %d, %d)", r1, s, r1, r2, r3);
+          WinDrawChars(s, r1, r2, r3);
+          }
           break;
         case 0xB58:
           // void WinEraseWindow(void)
