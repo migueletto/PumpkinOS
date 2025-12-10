@@ -1849,8 +1849,7 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
     uint32_t group, function;
     group = (fetchPc & 0x00F00000) >> 20;
     function = fetchPc & 0xFFFF;
-    debug(DEBUG_TRACE, "ARM", "native syscall group %d function 0x%04X", group, function);
-    cpu->regs[0] = emupalmos_arm_syscall(group, function, cpu->regs[0], cpu->regs[1], cpu->regs[2], cpu->regs[3], cpu->regs[4], cpu->regs[5], cpu->regs[6], cpu->regs[7]);
+    cpu->regs[0] = emupalmos_arm_syscall(group, function, cpu->regs[0], cpu->regs[1], cpu->regs[2], cpu->regs[3], cpu->regs[13]);
 		cpu->regs[REG_NO_PC] = cpu->regs[REG_NO_LR]; // return from subroutine
     return;
   }
