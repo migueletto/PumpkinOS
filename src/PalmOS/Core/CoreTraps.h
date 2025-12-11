@@ -1509,7 +1509,10 @@
 // THE END OF THE TRAP TABLE BUT RIGHT BEFORE THIS TRAP, AND THEN
 // RENUMBER THIS ONE TO ONE MORE THAN THE ONE RIGHT BEFORE IT!!!!!!!!!
 
-#define sysTrapLastTrapNumber							0xA475
+#define sysTrapDmSync                           0xA475
+#define sysTrapDmSyncDatabase                   0xA476
+
+#define sysTrapLastTrapNumber							0xA477
 
 
 
