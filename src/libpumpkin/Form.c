@@ -1823,6 +1823,7 @@ UInt16 FrmAlert(UInt16 alertId) {
 UInt16 FrmCustomAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char *s3) {
   AlertTemplateType *alert;
   MemHandle h, t;
+  WinHandle wh;
   char *s;
   UInt16 r = 0;
 
@@ -1830,7 +1831,9 @@ UInt16 FrmCustomAlert(UInt16 alertId, const Char *s1, const Char *s2, const Char
     if ((alert = MemHandleLock(h)) != NULL) {
       if (alert->message != NULL) {
         if ((s = TxtParamString(alert->message, NULL, s1, s2, s3)) != NULL) {
+          wh = WinGetDrawWindow();
           r = FrmShowAlert(alertId, alert, s, NULL, 0, NULL);
+          WinSetDrawWindow(wh);
           t = MemPtrRecoverHandle(s);
           MemHandleUnlock(t);
           MemHandleFree(t);
