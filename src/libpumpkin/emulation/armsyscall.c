@@ -534,6 +534,22 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
+        case 0x824: {
+          // #define SysEventGet(eventP, timeOut) EvtGetEvent((EventType *)eventP, timeOut)
+          EventType event;
+          EvtGetEvent(&event, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetEvent(0x%08X [%d], %d)", r0, event.eType, r1);
+          if (r0) {
+            uint8_t *p8 = (uint8_t *)(ram + r0);
+            uint16_t *p16 = (uint16_t *)(ram + r0);
+            uint32_t *p32 = (uint32_t *)(ram + r0);
+            p32[0] = event.eType;
+            p8[4]  = event.penDown;
+            p16[6] = event.screenX;
+            p16[7] = event.screenY;
+          }
+          }
+          break;
         case 0x834: {
           // SysAppInfoPtr SysGetAppInfo(SysAppInfoPtr *uiAppPP, SysAppInfoPtr *actionCodeAppPP)
           // XXX uiAppPP and actionCodeAppPP ignored
@@ -541,6 +557,19 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r = state->sysAppInfoStart;
           debug(DEBUG_TRACE, "ARM", "arm syscall SysGetAppInfo(0x%08X, 0x%08X): 0x%08X", r0, r1, r);
           r0 = r;
+          }
+          break;
+        case 0x84C: {
+          // Boolean SysHandleEvent(EventPtr eventP)
+          if (r0) {
+            EventType event;
+            MemSet(&event, sizeof(EventType), 0);
+            uint32_t *p32 = (uint32_t *)(ram + r0);
+            event.eType = p32[0];
+            r = SysHandleEvent(&event);
+            debug(DEBUG_TRACE, "ARM", "arm syscall SysHandleEvent(0x%08X [%d]): %d", r0, event.eType, r);
+            r0 = r;
+          }
           }
           break;
         case 0x87C: {
@@ -567,11 +596,20 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           }
           }
           break;
-        case 0x880:
+        case 0x880: {
+          // Err SysLoadModule(UInt32 type, UInt32 creator, UInt32 ???)
           pumpkin_id2s(r0, st);
           pumpkin_id2s(r1, st2);
-          debug(DEBUG_TRACE, "ARM", "arm syscall SysLoadModule('%s', '%s', %d) not implemented", st, st2, r2);
-          r0 = 0;
+          UInt16 cardNo;
+          LocalID dbID;
+          DmSearchStateType search;
+          if ((err = DmGetNextDatabaseByTypeCreator(true, &search, r0, r1, true, &cardNo, &dbID)) == errNone) {
+          } else {
+            debug(DEBUG_ERROR, "ARM", "module type '%s' creator '%s' not found", st, st2);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysLoadModule('%s', '%s', %d): %d ", st, st2, r2, err);
+          r0 = err;
+          }
           break;
         case 0x8B8:
           // Int16 SysRandom(Int32 newSeed)
