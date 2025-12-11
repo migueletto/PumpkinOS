@@ -797,10 +797,12 @@ Err VFSImportDatabaseFromFileEx(UInt16 volRefNum, const Char *pathNameP, UInt16 
       } else if (importProc68K) {
         //err = importProcP(fileSize, 0, userDataP);
         err = errNone;
+      } else {
+        err = errNone;
       }
 
       if (err == errNone) {
-        if ((p = sys_malloc(fileSize)) != NULL) {
+        if ((p = MemPtrNew(fileSize)) != NULL) {
           VFSFileRead(fileRef, fileSize, p, &numBytesRead);
           sys_memset(name, 0, dmDBNameLength);
           sys_memcpy(name, p, dmDBNameLength - 1);
@@ -826,7 +828,7 @@ Err VFSImportDatabaseFromFileEx(UInt16 volRefNum, const Char *pathNameP, UInt16 
               debug(DEBUG_ERROR, PALMOS_MODULE, "error installing \"%s\"", name);
             }
           }
-          sys_free(p);
+          MemPtrFree(p);
         }
       }
     }
