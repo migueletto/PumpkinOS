@@ -1763,3 +1763,5 @@ SYS_TRAP sysTrapPalmPrivate3 0 void PalmPrivate3 0
 SYS_TRAP sysTrapPalmPrivate4 0 void PalmPrivate4 0
 SYS_TRAP sysTrapScrDefaultPaletteState 0 void ScrDefaultPaletteState 0
 SYS_TRAP sysTrapScrUpdateScreenBitmap 0 void sysTrapScrUpdateScreenBitmap 0
+SYS_TRAP sysTrapDmSync 0 void DmSync 0
+SYS_TRAP sysTrapDmSyncDatabase 0 Err DmSyncDatabase 1 DmOpenRef dbP

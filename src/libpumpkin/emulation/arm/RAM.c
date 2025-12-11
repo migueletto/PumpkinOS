@@ -19,7 +19,7 @@ static int ramAccessF(void* userData, uint32_t pa, uint8_t size, int write, void
 	
 	pa -= ram->adr;
 	if (pa > ram->sz - size) {
-		debug(DEBUG_ERROR, "EmuPalmOS", "invalid address 0x%08X (arm)", pa);
+		debug(DEBUG_ERROR, "ARM", "invalid address 0x%08X (arm)", pa);
 		return 0;
 	}
 	

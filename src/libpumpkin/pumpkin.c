@@ -4875,18 +4875,6 @@ UInt16 *SysLibGetDispatch68K(UInt16 refNum) {
   return dispatch;
 }
 
-// Err readProc(void *dataP, UInt32 *sizeP, void *userDataP)
-// Boolean deleteProc(const char *nameP, UInt16 version, LocalID dbID, void *userDataP)
-Err ExgDBReadARM(uint32_t readProc, uint32_t deleteProc, uint32_t userData, LocalID *dbID, Boolean *needReset, Boolean keepDates) {
-  Err err = sysErrParamErr;
-
-  if (readProc && deleteProc && dbID) {
-    // uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData, int pce)
-  }
-
-  return err;
-}
-
 void pumpkin_trace(uint16_t trap) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
 

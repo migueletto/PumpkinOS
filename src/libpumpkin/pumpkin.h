@@ -434,6 +434,8 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
 UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex);
 MemHandle MemLocalIDToHandle(LocalID local);
+void DmSync(void);
+Err DmSyncDatabase(DmOpenRef dbRef);
 
 Char *StrDup(const Char *src);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
@@ -595,8 +597,6 @@ void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF,
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
 Int32 SysRandom32(Int32 newSeed);
 Err SysTaskDelayMs(Int32 delay);
-
-Err ExgDBReadARM(uint32_t readProc, uint32_t deleteProc, uint32_t userData, LocalID *dbID, Boolean *needReset, Boolean keepDates);
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data);
 Boolean CallFormHandler(UInt32 addr, EventType *event);

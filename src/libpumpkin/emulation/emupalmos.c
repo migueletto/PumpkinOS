@@ -1556,9 +1556,8 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) 
 }
 
 #ifdef ARMEMU
-uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData, int pce) {
+uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  //uint8_t *emulState, *stack, *call68KAddr, *returnAddr;
   uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
 
@@ -1581,33 +1580,53 @@ uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData, int pc
   emulStateAddr = state->armEmulState - ram;
   stackAddr = state->armStack - ram;
 
-  if (data) {
-    armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
-    put4l(sysAddr, ram, sysAddr + 16);
-    put4l(sysAddr + 16, ram, sysAddr + 2052);
-  } else {
-    armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
-  }
+  armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
   armSetReg(state->arm, 15, code);    // PC
   armSetReg(state->arm, 14, retAddr); // LR
   armSetReg(state->arm, 13, stackAddr + stackSize); // SP
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X return 0x%08X begin", code, userData, stackAddr + stackSize, retAddr);
 
-  if (pce) {
-    // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
-    // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
-    armSetReg(state->arm, 0, emulStateAddr);
-    armSetReg(state->arm, 1, userData);
-    armSetReg(state->arm, 2, callAddr);
-  } else {
-    armSetReg(state->arm, 0, 0); // launch code (?)
-  }
+  // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
+  // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
+  armSetReg(state->arm, 0, emulStateAddr);
+  armSetReg(state->arm, 1, userData);
+  armSetReg(state->arm, 2, callAddr);
 
   for (; !emupalmos_finished();) {
     if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
+  return armGetReg(state->arm, 0);
+}
+
+uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  uint32_t callAddr, retAddr, sysAddr;
+  uint8_t *ram = pumpkin_heap_base();
+
+  sysAddr = (uint8_t *)state->systable - ram;
+  retAddr = state->armReturnAddr - ram;
+  callAddr = state->armCall68KAddr - ram;
+
+  armSetReg(state->arm,  9, sysAddr + 16);
+  put4l(sysAddr, ram, sysAddr + 16);
+  put4l(sysAddr + 16, ram, sysAddr + 2052);
+
+  armSetReg(state->arm, 15, code);    // PC
+  armSetReg(state->arm, 14, retAddr); // LR
+  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) 0x%08X return 0x%08X begin", code, armGetReg(state->arm, 13), retAddr);
+
+  armSetReg(state->arm, 0, p0);
+  armSetReg(state->arm, 1, p1);
+  armSetReg(state->arm, 2, p2);
+  armSetReg(state->arm, 3, p3);
+
+  for (; !emupalmos_finished();) {
+    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+  }
+
+  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) end", code);
   return armGetReg(state->arm, 0);
 }
 #endif
@@ -1970,7 +1989,10 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     creator = pumpkin_get_app_creator();
     emupalmos_finish(0);
 
-    arm_native_call(amdc0 - ram, amdd0 - ram, 0, 0);
+    uint32_t stackAddr = state->armStack - ram;
+    armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+
+    arm_native_call_sub(amdc0 - ram, amdd0 - ram, 0, 0, 0, 0);
 
     MemHandleUnlock(hSysAppInfo);
     MemHandleFree(hSysAppInfo);
@@ -2306,6 +2328,66 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   }
 
   return r;
+}
+
+#define DBREAD_SIZE 65488
+
+// Boolean deleteProc(const char *nameP, UInt16 version, LocalID dbID, void *userDataP)
+Err ExgDBReadARM(uint32_t readProc, uint32_t deleteProc, uint32_t userData, LocalID *dbID, Boolean *needReset, Boolean keepDates) {
+  uint8_t *ram = pumpkin_heap_base();
+  uint32_t bufferSize, data, size, *sizeP;
+  uint8_t *buf, *dataP;
+  char pathName[32];
+  FileRef fileRef;
+  UInt16 cardNo;
+  UInt32 totalSize, numBytesWritten;
+  Err err = sysErrParamErr;
+
+  debug(DEBUG_TRACE, "ARM", "ExgDBReadARM(readProc=0x%08X, deleteProc=0x%08X, userData=0x%08X, keepDates=%d)", readProc, deleteProc, userData, keepDates);
+  if (userData) {
+    debug_bytes(DEBUG_TRACE, "ARM", ram + userData, 32);
+  }
+
+  // XXX keepDates ignored
+  *needReset = false; // XXX always set to false
+
+  if (readProc && dbID) {
+    bufferSize = sizeof(uint32_t) + DBREAD_SIZE;
+    if ((buf = pumpkin_heap_alloc(bufferSize, "ExgDBReadARM")) != NULL) {
+      StrNPrintF(pathName, sizeof(pathName)-1, "/tmpdb.prc");
+      if ((err = VFSFileOpen(1, pathName, vfsModeCreate | vfsModeWrite, &fileRef)) == errNone) {
+        size = buf - (uint8_t *)pumpkin_heap_base();
+        sizeP = (uint32_t *)buf;
+        *sizeP = DBREAD_SIZE;
+        data = size + sizeof(uint32_t);
+        dataP = buf + sizeof(uint32_t);
+        totalSize = 0;
+        for (;;) {
+          // Err readProc(void *dataP, UInt32 *sizeP, void *userDataP)
+          err = arm_native_call_sub(readProc, 0, data, size, userData, 0);
+          debug(DEBUG_TRACE, "ARM", "ExgDBReadARM readProc err=%d size=%u", err, *sizeP);
+          if (err != errNone) break;
+          if (*sizeP > 0) {
+            if ((err = VFSFileWrite(fileRef, *sizeP, dataP, &numBytesWritten)) != errNone) break;
+            totalSize += *sizeP;
+          }
+          if (*sizeP < DBREAD_SIZE) break;
+        }
+        VFSFileClose(fileRef);
+        if (err == errNone) {
+          if (totalSize > 0) {
+            err = VFSImportDatabaseFromFile(1, pathName, &cardNo, dbID);
+          } else {
+            err = errNone;
+          }
+        }
+        VFSFileDelete(1, pathName);
+      }
+      pumpkin_heap_free(buf, "ExgDBReadARM");
+    }
+  }
+
+  return err;
 }
 
 uint8_t *emupalmos_ram(void) {

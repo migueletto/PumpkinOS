@@ -5418,6 +5418,9 @@ void FntSetAppearance(UInt8 family, UInt8 style, UInt16 size) {
   }
 }
 
+void DmSync(void) {
+}
+
 Err DmSyncDatabase(DmOpenRef dbRef) {
   return errNone;
 }

@@ -1506,6 +1506,9 @@
 #define sysTrapSysReservedTrap3          0xA473
 #define sysTrapSysReservedTrap4          0xA474
 
+#define sysTrapDmSync                           0xA475
+#define sysTrapDmSyncDatabase                   0xA476
+
 #define sysLibTrapName          0xA800
 #define sysLibTrapOpen          0xA801
 #define sysLibTrapClose         0xA802

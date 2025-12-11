@@ -99,7 +99,8 @@ typedef struct {
 
 emu_state_t *m68k_get_emu_state(void);
 
-uint32_t arm_native_call(uint32_t code, uint32_t data, uint32_t userData, int pce);
+uint32_t arm_native_call_pce(uint32_t code, uint32_t userData);
+uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3);
 
 uint8_t cpu_read_byte(uint32_t address);
 uint16_t cpu_read_word(uint32_t address);
@@ -161,6 +162,8 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg);
 uint32_t emupalmos_trap_out(void *address);
+
+Err ExgDBReadARM(uint32_t readProc, uint32_t deleteProc, uint32_t userData, LocalID *dbID, Boolean *needReset, Boolean keepDates);
 
 emu_state_t *emupalmos_install(void);
 void emupalmos_deinstall(emu_state_t *oldState);

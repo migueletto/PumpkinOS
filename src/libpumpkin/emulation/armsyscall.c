@@ -27,22 +27,21 @@
 #define ARG32 0
 
 typedef struct {
-	UInt32 dbType;
-	UInt32 dbCreator;
-	UInt32 revision;
-	UInt32 entries;
-	UInt32 rsrcTypeData0;
-	UInt32 rsrcTypeCode0;
-	UInt32 rsrcTypeCode1;
-	UInt16 rsrcIDData0;
-	UInt16 rsrcIDCode0;
-	UInt16 rsrcIDCode1;
-	UInt16 reserved;
+  UInt32 dbType;
+  UInt32 dbCreator;
+  UInt32 revision;
+  UInt32 entries;
+  UInt32 rsrcTypeData0;
+  UInt32 rsrcTypeCode0;
+  UInt32 rsrcTypeCode1;
+  UInt16 rsrcIDData0;
+  UInt16 rsrcIDCode0;
+  UInt16 rsrcIDCode1;
+  UInt16 reserved;
 } SysModuleDescriptorType;
 
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp) {
   uint8_t *ram = pumpkin_heap_base();
-  uint8_t *p;
   char st[8], st2[8];
   UInt32 value, r;
   Err err;
@@ -186,9 +185,11 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x2FC: {
           // Err ExgDBRead(ExgDBReadProcPtr readProcP, ExgDBDeleteProcPtr deleteProcP, void *userDataP, LocalID *dbIDP, Boolean *needResetP, Boolean keepDates)
           LocalID *dbID = r3 ? (LocalID *)(ram + r3) : NULL;
-          Boolean needReset;
-          err = ExgDBReadARM(r0, r1, r2, dbID, &needReset, true);
-          debug(DEBUG_TRACE, "ARM", "arm syscall ExgDBRead(0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, err);
+          uint32_t addr = *(uint32_t *)(ram + sp);
+          Boolean *needReset = (Boolean *)(ram + addr);
+          Boolean keepDates = *(uint32_t *)(ram + sp + 4);
+          err = ExgDBReadARM(r0, r1, r2, dbID, needReset, keepDates);
+          debug(DEBUG_TRACE, "ARM", "arm syscall ExgDBRead(0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X, %d): %d", r0, r1, r2, r3, addr, keepDates, err);
           r0 = err;
           }
           break;
@@ -269,14 +270,20 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           break;
           }
-        case 0x4DC:
-          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleFree(0x%08X)", r0);
-          r0 = MemHandleFree((MemHandle)(ram + r0));
+        case 0x4DC: {
+          MemHandle h = r0 ? (MemHandle)(ram + r0) : NULL;
+          r = MemHandleFree(h);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleFree(0x%08X): %d", r0, r);
+          r0 = r;
+          }
           break;
-        case 0x4E4:
-          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleLock(0x%08X)", r0);
-          p = MemHandleLock((MemHandle)(ram + r0));
-          r0 = p ? (uint8_t *)p - ram : 0;
+        case 0x4E4: {
+          MemHandle h = r0 ? (MemHandle)(ram + r0) : NULL;
+          uint8_t *p = MemHandleLock(h);
+          r = p ? p - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemHandleLock(0x%08X): 0x%08X", r0, r);
+          r0 = r;
+          }
           break;
         case 0x500: {
           // UInt32 MemHandleSize(MemHandle h)

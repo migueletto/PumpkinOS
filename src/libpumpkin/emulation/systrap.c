@@ -22,9 +22,6 @@
 #include "emu_launch_serde.h"
 #include "debug.h"
 
-#define sysTrapDmSyncDatabase 0xA476
-Err DmSyncDatabase(DmOpenRef dbRef);
-
 // not mapped:
 // FldNewField
 
@@ -222,7 +219,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t userDataP = ARG32;
       emupalmos_trap_in(nativeFuncP, trap, 0);
       emupalmos_trap_in(userDataP, trap, 1);
-      UInt32 res = arm_native_call(nativeFuncP, 0, userDataP, 1);
+      UInt32 res = arm_native_call_pce(nativeFuncP, userDataP);
       debug(DEBUG_TRACE, "EmuPalmOS", "PceNativeCall(0x%08X, 0x%08X): %d", nativeFuncP, userDataP, res);
       m68k_set_reg(M68K_REG_A0, res);
       m68k_set_reg(M68K_REG_D0, res);
@@ -408,6 +405,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "SysStringByIndex(%d, %d, 0x%08X, %d): 0x%08X", resID, index, strP, maxLen, p);
       m68k_set_reg(M68K_REG_A0, p);
       }
+      break;
+    case sysTrapSysReset:
+      // void SysReset(void)
+      SysReset();
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysReset()");
       break;
     case sysTrapResLoadConstant: {
       // UInt32 ResLoadConstant(UInt16 rscID)
@@ -1485,6 +1487,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "DmAttachRecord(0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", dbP, atP, newH, oldHP, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
+      break;
+    case sysTrapDmSync:
+      // void DmSync(void)
+      DmSync();
+      debug(DEBUG_TRACE, "EmuPalmOS", "DmSync()");
       break;
     case sysTrapDmSyncDatabase: {
       // Err DmSyncDatabase(DmOpenRef dbRef)

@@ -61,7 +61,7 @@ int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, ui
   for (i = 0; i < n && !emupalmos_finished(); i++) {
     pc = armGetReg(arm, 15);
     if (pc == returnAddr) {
-      debug(DEBUG_TRACE, "EmuPalmOS", "armRun return address");
+      debug(DEBUG_TRACE, "ARM", "armRun return address");
       return -1;
     }
 

@@ -192,7 +192,7 @@ static struct ArmBankedRegs* cpuPrvModeToBankedRegsPtr(struct ArmCpu *cpu, uint8
 			return &cpu->bank_und;
 		
 		default:
-			debug(DEBUG_ERROR, "EmuPalmOS", "cpuPrvModeToBankedRegsPtr invalid mode %d", mode);
+			debug(DEBUG_ERROR, "ARM", "cpuPrvModeToBankedRegsPtr invalid mode %d", mode);
 			return NULL;
 	}
 }
@@ -316,7 +316,7 @@ static void cpuPrvException(struct ArmCpu *cpu, uint32_t vector_pc, uint32_t lr,
 //input addr is VA not MVA
 static void cpuPrvHandleMemErr(struct ArmCpu *cpu, uint32_t addr, uint8_t sz, int write, int instrFetch, uint8_t fsr)
 {
-	debug(DEBUG_ERROR, "EmuPalmOS", "access error to 0x%08x with fsr %u from 0x%08x", addr, fsr, cpu->regs[REG_NO_PC]);
+	debug(DEBUG_ERROR, "ARM", "access error to 0x%08x with fsr %u from 0x%08x", addr, fsr, cpu->regs[REG_NO_PC]);
 	
 	//FCSE
 	if (addr < 0x02000000UL)		//report addr is MVA
@@ -327,13 +327,13 @@ static void cpuPrvHandleMemErr(struct ArmCpu *cpu, uint32_t addr, uint8_t sz, in
 	if (instrFetch) {
 		
 		//handle prefetch abort (LR is addr of aborted instr + 4)
-		debug(DEBUG_ERROR, "EmuPalmOS", "handle prefetch abort");
+		debug(DEBUG_ERROR, "ARM", "handle prefetch abort");
 		cpuPrvException(cpu, cpu->vectorBase + ARM_VECTOR_OFFT_P_ABT, cpu->curInstrPC + 4, ARM_SR_MODE_ABT | ARM_SR_I);
 	}
 	else {
 		
 		//handle data abort (LR is addr of aborted instr + 8)
-		debug(DEBUG_ERROR, "EmuPalmOS", "handle data abort");
+		debug(DEBUG_ERROR, "ARM", "handle data abort");
 		cpuPrvException(cpu, cpu->vectorBase + ARM_VECTOR_OFFT_D_ABT, cpu->curInstrPC + 8, ARM_SR_MODE_ABT | ARM_SR_I);
 	}
 
@@ -782,14 +782,14 @@ static int cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t 
 	if (size & (size - 1)) {	//size is not a power of two
 		if (fsrP)
 			*fsrP = 1;	//alignment fault;
-		debug(DEBUG_ERROR, "EmuPalmOS", "size is not a power of two (size %d)", size);
+		debug(DEBUG_ERROR, "ARM", "size is not a power of two (size %d)", size);
 		return 0;
 	}
 	
 	if (vaddr & (size - 1)) {	//bad alignment
 		if (fsrP)
 			*fsrP = 1;	//alignment fault;
-		debug(DEBUG_ERROR, "EmuPalmOS", "bad alignment (vaddr 0x%08X, size %d)", vaddr, size);
+		debug(DEBUG_ERROR, "ARM", "bad alignment (vaddr 0x%08X, size %d)", vaddr, size);
 		return 0;
 	}
 	
@@ -798,7 +798,7 @@ static int cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t 
 		vaddr |= cpu->pid;
 	
 	if (!mmuTranslate(cpu->mmu, vaddr, priviledged, write, &pa, fsrP, NULL)) {
-		debug(DEBUG_ERROR, "EmuPalmOS", "mmuTranslate failed (vaddr 0x%08X)", vaddr);
+		debug(DEBUG_ERROR, "ARM", "mmuTranslate failed (vaddr 0x%08X)", vaddr);
 		return 0;
 	}
 	
@@ -807,7 +807,7 @@ static int cpuPrvMemOpEx(struct ArmCpu *cpu, void* buf, uint32_t vaddr, uint8_t 
 		if (fsrP)
 			*fsrP = 10;	//external abort on non-linefetch
 		
-		debug(DEBUG_ERROR, "EmuPalmOS", "memAccess failed (vaddr 0x%08X)", vaddr);
+		debug(DEBUG_ERROR, "ARM", "memAccess failed (vaddr 0x%08X)", vaddr);
 		return 0;
 	}
 	
@@ -1845,12 +1845,14 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 	
   if (fetchPc >= 0x04000000) {
     // native ARM syscall emulation: the address identifies which syscall is being called,
-    // no matter which instruction is contained in that address.
+    // beforeno matter which instruction is contained in that address.
     uint32_t group, function;
     group = (fetchPc & 0x00F00000) >> 20;
     function = fetchPc & 0xFFFF;
+    uint32_t lr = cpu->regs[REG_NO_LR];
     cpu->regs[0] = emupalmos_arm_syscall(group, function, cpu->regs[0], cpu->regs[1], cpu->regs[2], cpu->regs[3], cpu->regs[13]);
-		cpu->regs[REG_NO_PC] = cpu->regs[REG_NO_LR]; // return from subroutine
+    cpu->regs[REG_NO_LR] = lr;
+    cpu->regs[REG_NO_PC] = cpu->regs[REG_NO_LR]; // return from subroutine
     return;
   }
 
