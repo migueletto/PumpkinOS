@@ -1905,6 +1905,10 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 	}
 	cpu->regs[REG_NO_PC] += 2;
 
+  if (cpu->disasm) {
+    debug(DEBUG_TRACE, "ARM", "trace 0x%08X %u 0x%04X", pc, 2, instrT);
+  }
+
 	switch (instrT >> 12) {
 		
 		case 0:		// LSL(1) LSR(1) ASR(1) ADD(1) SUB(1) ADD(3) SUB(3)

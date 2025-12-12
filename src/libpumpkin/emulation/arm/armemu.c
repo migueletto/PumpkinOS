@@ -14,7 +14,7 @@
 #include "CPU.h"
 #include "soc_IC.h"
 
-#define CPUID_PXA255 0x69052D06ul
+#define CPUID 0x69052d00ul // PXA255
 
 #define ROM_BASE 0x40000000ul
 
@@ -30,7 +30,7 @@ arm_emu_t *armInit(uint8_t *buf, uint32_t size) {
 
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     arm->mem = memInit();
-    arm->cpu = cpuInit(ROM_BASE, arm->mem, 1, 0, CPUID_PXA255, 0x0B16A16AUL);
+    arm->cpu = cpuInit(ROM_BASE, arm->mem, 1, 0, CPUID, 0x0B16A16AUL);
     arm->ram = ramInit(arm->mem, 0, size, (uint32_t *)buf);
     arm->ic = socIcInit(arm->cpu, arm->mem, 0);
   }
@@ -66,11 +66,12 @@ int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, ui
   for (i = 0; i < n && !emupalmos_finished(); i++) {
     pc = armGetReg(arm, 15);
     if (pc == returnAddr) {
-      debug(DEBUG_TRACE, "ARM", "armRun return address");
+      debug(DEBUG_TRACE, "ARM", "armRun return address 0x%08X", returnAddr);
       return -1;
     }
 
     if (pc == call68KAddr) {
+      debug(DEBUG_TRACE, "ARM", "call68KAddr");
       a0 = armGetReg(arm, 0);
       a1 = armGetReg(arm, 1);
       a2 = armGetReg(arm, 2);
@@ -95,6 +96,7 @@ int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, ui
 #ifdef ARM_UNICORN
 
 #include <unicorn/unicorn.h>
+#include "disasm.h"
 
 struct arm_emu_t {
   uc_engine *uc;
@@ -104,6 +106,7 @@ struct arm_emu_t {
   uint8_t *buf;
   uint32_t size;
   int first;
+  int disasm;
 };
 
 arm_emu_t *armInit(uint8_t *buf, uint32_t size) {
@@ -111,13 +114,15 @@ arm_emu_t *armInit(uint8_t *buf, uint32_t size) {
   uc_err err;
 
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
-    if (uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc) == 0) {
+    if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
+      uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
       err = uc_mem_map(arm->uc, 0, size, UC_PROT_ALL);
       debug(DEBUG_TRACE, "ARM", "uc_mem_map %d", err);
       arm->buf = buf;
       arm->size = size;
       arm->first = 1;
     } else {
+      debug(DEBUG_ERROR, "ARM", "uc_open %d", err);
       sys_free(arm);
       arm = NULL;
     }
@@ -163,15 +168,13 @@ void armSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
 }
 
 void armDisasm(arm_emu_t *arm, int disasm) {
-  //cpuDisasm(arm->cpu, disasm);
+  arm->disasm = disasm;
 }
 
 static void armHook(uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   uint32_t addr = (uint32_t)address;
   uint32_t a0, a1, a2, a3, r;
-
-  debug(DEBUG_TRACE, "ARM", "trace 0x%08X 0x%08X", addr, arm->call68KAddr);
 
   if (addr == arm->call68KAddr) {
     debug(DEBUG_TRACE, "ARM", "call68KAddr");
@@ -185,6 +188,25 @@ static void armHook(uc_engine *uc, uint64_t address, uint32_t size, void *user_d
     // PC <-- LR
     a0 = armGetReg(arm, 14);
     armSetReg(arm, 15, a0);
+    return;
+  }
+
+  if (arm->disasm) {
+    if (size == 4) {
+      uint32_t r0 = armGetReg(arm, 0);
+      uint32_t r1 = armGetReg(arm, 1);
+      uint32_t r2 = armGetReg(arm, 2);
+      uint32_t r3 = armGetReg(arm, 3);
+      uint32_t r12 = armGetReg(arm, 12);
+      uint32_t r14 = armGetReg(arm, 14);
+      uint32_t instr = *(uint32_t *)(arm->buf + addr);
+      char buf[256];
+      sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X r12=%08X LR=%08X)", r0, r1, r2, r3, r12, r14);
+      disasm(addr, instr, buf);
+    } else {
+      uint16_t instr = *(uint16_t *)(arm->buf + addr);
+      debug(DEBUG_TRACE, "ARM", "trace 0x%08X %u 0x%04X", addr, size, instr);
+    }
   }
 }
 
@@ -194,9 +216,7 @@ int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, ui
 
   if (arm->first) {
     err = uc_mem_write(arm->uc, 0, arm->buf, arm->size);
-    debug(DEBUG_TRACE, "ARM", "uc_mem_write %d", err);
     err = uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE, armHook, arm, 0, arm->size - 1);
-    debug(DEBUG_TRACE, "ARM", "uc_hook_add %d", err);
     buf32 = (uint32_t *)arm->buf;
     buf32[returnAddr >> 2] = 0xe1a00000; // nop at return address
     arm->call68KAddr = call68KAddr;
