@@ -1,13 +1,18 @@
 #include "sys.h"
 #include "armemu.h"
+#include "logtrap.h"
+#include "emupalmosinc.h"
+#include "debug.h"
+
+#define ARM_UARM
+//#define ARM_UNICORN
+
+#ifdef ARM_UARM
+
 #include "armem.h"
 #include "RAM.h"
 #include "CPU.h"
 #include "soc_IC.h"
-#include "logtrap.h"
-#include "emupalmosinc.h"
-#include "debug.h"
-#include "xalloc.h"
 
 #define CPUID_PXA255 0x69052D06ul
 
@@ -84,3 +89,129 @@ int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, ui
 
   return 0;
 }
+
+#endif
+
+#ifdef ARM_UNICORN
+
+#include <unicorn/unicorn.h>
+
+struct arm_emu_t {
+  uc_engine *uc;
+  uc_hook trace;
+  uint32_t call68KAddr;
+  call68KFunc_f f;
+  uint8_t *buf;
+  uint32_t size;
+  int first;
+};
+
+arm_emu_t *armInit(uint8_t *buf, uint32_t size) {
+  arm_emu_t *arm;
+  uc_err err;
+
+  if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
+    if (uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc) == 0) {
+      err = uc_mem_map(arm->uc, 0, size, UC_PROT_ALL);
+      debug(DEBUG_TRACE, "ARM", "uc_mem_map %d", err);
+      arm->buf = buf;
+      arm->size = size;
+      arm->first = 1;
+    } else {
+      sys_free(arm);
+      arm = NULL;
+    }
+  }
+
+  return arm;
+}
+
+void armFinish(arm_emu_t *arm) {
+  if (arm) {
+    uc_close(arm->uc);
+    sys_free(arm);
+  }
+}
+
+uint32_t armGetReg(arm_emu_t *arm, uint32_t reg) {
+  int r;
+
+  if (reg < 13) {
+    reg = UC_ARM_REG_R0 + reg;
+  } else switch (reg) {
+    case 13: reg = UC_ARM_REG_R13; break;
+    case 14: reg = UC_ARM_REG_R14; break;
+    case 15: reg = UC_ARM_REG_R15; break;
+  }
+  uc_reg_read(arm->uc, reg, &r);
+
+  return r;
+}
+
+void armSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
+  int r = value;
+
+  if (reg < 13) {
+    reg = UC_ARM_REG_R0 + reg;
+  } else switch (reg) {
+    case 13: reg = UC_ARM_REG_R13; break;
+    case 14: reg = UC_ARM_REG_R14; break;
+    case 15: reg = UC_ARM_REG_R15; break;
+  }
+
+  uc_reg_write(arm->uc, reg, &r);
+}
+
+void armDisasm(arm_emu_t *arm, int disasm) {
+  //cpuDisasm(arm->cpu, disasm);
+}
+
+static void armHook(uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
+  arm_emu_t *arm = (arm_emu_t *)user_data;
+  uint32_t addr = (uint32_t)address;
+  uint32_t a0, a1, a2, a3, r;
+
+  debug(DEBUG_TRACE, "ARM", "trace 0x%08X 0x%08X", addr, arm->call68KAddr);
+
+  if (addr == arm->call68KAddr) {
+    debug(DEBUG_TRACE, "ARM", "call68KAddr");
+    a0 = armGetReg(arm, 0);
+    a1 = armGetReg(arm, 1);
+    a2 = armGetReg(arm, 2);
+    a3 = armGetReg(arm, 3);
+    r = arm->f(a0, a1, a2, a3);
+    armSetReg(arm, 0, r);
+
+    // PC <-- LR
+    a0 = armGetReg(arm, 14);
+    armSetReg(arm, 15, a0);
+  }
+}
+
+int armRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr) {
+  uint32_t pc, *buf32;
+  uc_err err;
+
+  if (arm->first) {
+    err = uc_mem_write(arm->uc, 0, arm->buf, arm->size);
+    debug(DEBUG_TRACE, "ARM", "uc_mem_write %d", err);
+    err = uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE, armHook, arm, 0, arm->size - 1);
+    debug(DEBUG_TRACE, "ARM", "uc_hook_add %d", err);
+    buf32 = (uint32_t *)arm->buf;
+    buf32[returnAddr >> 2] = 0xe1a00000; // nop at return address
+    arm->call68KAddr = call68KAddr;
+    arm->f = f;
+    arm->first = 0;
+  }
+
+  pc = armGetReg(arm, 15);
+  debug(DEBUG_TRACE, "ARM", "uc_emu_start begin 0x%08X", pc);
+  err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
+  if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start err=%d", err);
+  pc = armGetReg(arm, 15);
+  debug(DEBUG_TRACE, "ARM", "uc_emu_start end 0x%08X", pc);
+
+  return pc == returnAddr ? -1 : 0;
+}
+
+#endif
