@@ -1,5 +1,5 @@
 ifeq ($(PUMPKIN_APP),)
-LIBS=-L$(BIN) -lpumpkin -lpit
+LIBS=-L$(BIN) -lpumpkin -lpit $(EXTRALIBS)
 else
 CUSTOMPFLAGS=-DPUMPKIN_APP -fvisibility=hidden
 STUBS_OPT=$(STUBS).o

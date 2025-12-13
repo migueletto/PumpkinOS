@@ -4,6 +4,7 @@
 #include "sys.h"
 #ifdef ARMEMU
 #include "armemu.h"
+#include "armp.h"
 #endif
 #include "pumpkin.h"
 #include "logtrap.h"

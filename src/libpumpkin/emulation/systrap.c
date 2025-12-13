@@ -12,6 +12,7 @@
 #include "bytes.h"
 #ifdef ARMEMU
 #include "armemu.h"
+#include "armp.h"
 #endif
 #include "logtrap.h"
 #include "emupalmosinc.h"

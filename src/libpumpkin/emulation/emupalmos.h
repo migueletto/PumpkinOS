@@ -91,6 +91,8 @@ typedef struct {
   int disasm;
   logtrap_t *lt;
 
+  arm_plugin_t uarm;
+  arm_plugin_t *armp;
   uint8_t *armReturnAddr;
   uint8_t *armCall68KAddr;
   uint8_t *armEmulState;

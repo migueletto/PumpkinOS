@@ -62,6 +62,7 @@ BEGIN {
   print "" >> emusrc;
   print "#ifdef ARMEMU" >> emusrc
   print "#include \"armemu.h\"" >> emusrc
+  print "#include \"armp.h\"" >> emusrc
   print "#endif" >> emusrc
   print "#include \"logtrap.h\"" >> emusrc;
   print "#include \"m68k/m68k.h\"" >> emusrc;

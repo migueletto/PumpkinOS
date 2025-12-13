@@ -3,6 +3,7 @@
 
 #ifdef ARMEMU
 #include "armemu.h"
+#include "armp.h"
 #endif
 #include "logtrap.h"
 #include "m68k/m68k.h"

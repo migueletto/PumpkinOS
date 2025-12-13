@@ -13,6 +13,7 @@
 #include "bytes.h"
 #ifdef ARMEMU
 #include "armemu.h"
+#include "armp.h"
 #endif
 #include "pumpkin.h"
 #include "debug.h"
@@ -141,12 +142,6 @@ void emupalmos_panic(char *msg, int code) {
 
   creator = pumpkin_get_app_creator();
   pumpkin_crash_log(creator, code, msg);
-}
-
-void emupalmos_disasm(int disasm) {
-  emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  state->disasm = disasm;
-  armDisasm(state->arm, disasm);
 }
 
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg) {
@@ -1580,24 +1575,24 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emulStateAddr = state->armEmulState - ram;
   stackAddr = state->armStack - ram;
 
-  armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
-  armSetReg(state->arm, 15, code);    // PC
-  armSetReg(state->arm, 14, retAddr); // LR
-  armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+  state->armp->armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
+  state->armp->armSetReg(state->arm, 15, code);    // PC
+  state->armp->armSetReg(state->arm, 14, retAddr); // LR
+  state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X return 0x%08X begin", code, userData, stackAddr + stackSize, retAddr);
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
-  armSetReg(state->arm, 0, emulStateAddr);
-  armSetReg(state->arm, 1, userData);
-  armSetReg(state->arm, 2, callAddr);
+  state->armp->armSetReg(state->arm, 0, emulStateAddr);
+  state->armp->armSetReg(state->arm, 1, userData);
+  state->armp->armSetReg(state->arm, 2, callAddr);
 
   for (; !emupalmos_finished();) {
-    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+    if (state->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
-  return armGetReg(state->arm, 0);
+  return state->armp->armGetReg(state->arm, 0);
 }
 
 uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3) {
@@ -1609,25 +1604,25 @@ uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t
   retAddr = state->armReturnAddr - ram;
   callAddr = state->armCall68KAddr - ram;
 
-  armSetReg(state->arm,  9, sysAddr + 16);
+  state->armp->armSetReg(state->arm,  9, sysAddr + 16);
   put4l(sysAddr, ram, sysAddr + 16);
   put4l(sysAddr + 16, ram, sysAddr + 2052);
 
-  armSetReg(state->arm, 15, code);    // PC
-  armSetReg(state->arm, 14, retAddr); // LR
-  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) 0x%08X return 0x%08X begin", code, armGetReg(state->arm, 13), retAddr);
+  state->armp->armSetReg(state->arm, 15, code);    // PC
+  state->armp->armSetReg(state->arm, 14, retAddr); // LR
+  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) 0x%08X return 0x%08X begin", code, state->armp->armGetReg(state->arm, 13), retAddr);
 
-  armSetReg(state->arm, 0, p0);
-  armSetReg(state->arm, 1, p1);
-  armSetReg(state->arm, 2, p2);
-  armSetReg(state->arm, 3, p3);
+  state->armp->armSetReg(state->arm, 0, p0);
+  state->armp->armSetReg(state->arm, 1, p1);
+  state->armp->armSetReg(state->arm, 2, p2);
+  state->armp->armSetReg(state->arm, 3, p3);
 
   for (; !emupalmos_finished();) {
-    if (armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+    if (state->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) end", code);
-  return armGetReg(state->arm, 0);
+  return state->armp->armGetReg(state->arm, 0);
 }
 #endif
 
@@ -1679,6 +1674,19 @@ static int cpu_instr_callback2(unsigned int pc) {
   return 0;
 }
 
+static void enumArmPlugincallback(pumpkin_plugin_t *plugin, void *data) {
+  emu_state_t *state = (emu_state_t *)data;
+  char buf[8];
+
+  if (state->armp == NULL) {
+    pumpkin_id2s(plugin->id, buf);
+    debug(DEBUG_INFO, "ARM", "using external ARM emulator '%s'", buf);
+    state->armp = plugin->pluginMain(NULL);
+  } else {
+    debug(DEBUG_INFO, "ARM", "ignoring external ARM emulator '%s'", buf);
+  }
+}
+
 static emu_state_t *emupalmos_new(void) {
   emu_state_t *state;
 
@@ -1689,7 +1697,20 @@ static emu_state_t *emupalmos_new(void) {
     uint32_t *dalFunctions, *bootFunctions, *uiFunctions;
     uint32_t i;
 
-    state->arm = armInit(ram, size);
+    pumpkin_enum_plugins(armPluginType, enumArmPlugincallback, state);
+
+    if (state->armp == NULL) {
+      debug(DEBUG_INFO, "ARM", "using builtin ARM emulator");
+      state->uarm.armInit = uarmInit;
+      state->uarm.armFinish = uarmFinish;
+      state->uarm.armGetReg = uarmGetReg;
+      state->uarm.armSetReg = uarmSetReg;
+      state->uarm.armRun = uarmRun;
+      state->uarm.armDisasm = uarmDisasm;
+      state->armp = &state->uarm;
+    }
+
+    state->arm = state->armp->armInit(ram, size);
 
     // fill the ARM syscall tables for DAL, BOOT and UI functions
     state->systable = pumpkin_heap_alloc(4096, "sysTable");
@@ -1723,7 +1744,7 @@ static void emupalmos_destroy(emu_state_t *state) {
   if (state) {
 #ifdef ARMEMU
     uint8_t *ram = pumpkin_heap_base();
-    armFinish(state->arm);
+    state->armp->armFinish(state->arm);
     pumpkin_heap_free(ram + state->systable[1], "dalFunctions");
     pumpkin_heap_free(ram + state->systable[2], "bootFunctions");
     pumpkin_heap_free(ram + state->systable[3], "uiFunctions");
@@ -1969,7 +1990,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     state = emupalmos_new();
     oldState = pumpkin_get_local_storage(emu_key);
     pumpkin_set_local_storage(emu_key, state);
-    emupalmos_disasm(debug_getsyslevel("DISASM") == DEBUG_TRACE);
+    state->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
 
     paramBlock = getParamBlock(launchCode, param, ram);
     paramBlockStart = paramBlock ? paramBlock - ram : 0;
@@ -1990,7 +2011,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     emupalmos_finish(0);
 
     uint32_t stackAddr = state->armStack - ram;
-    armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+    state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
 
     arm_native_call_sub(amdc0 - ram, amdd0 - ram, 0, 0, 0, 0);
 
@@ -2026,7 +2047,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       state = emupalmos_new();
       oldState = pumpkin_get_local_storage(emu_key);
       pumpkin_set_local_storage(emu_key, state);
-      emupalmos_disasm(debug_getsyslevel("DISASM") == DEBUG_TRACE);
+      state->disasm = debug_getsyslevel("DISASM") == DEBUG_TRACE;
+      state->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
 
       codeStart = code1 - ram;
       codeSize = MemHandleSize(hCode1);
