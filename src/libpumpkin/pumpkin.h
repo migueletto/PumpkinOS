@@ -597,6 +597,7 @@ void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF,
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
 Int32 SysRandom32(Int32 newSeed);
 Err SysTaskDelayMs(Int32 delay);
+UInt32 TimGetTicksMs(void);
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data);
 Boolean CallFormHandler(UInt32 addr, EventType *event);

@@ -4,6 +4,7 @@
 
 #ifdef ARMEMU
 #include "armemu.h"
+#include "armp.h"
 #endif
 #include "logtrap.h"
 #include "m68k/m68k.h"
@@ -619,7 +620,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           break;
         case 0x8E8:
           // Err SysTaskDelay(Int32 delay)
-          debug(DEBUG_TRACE, "ARM", "arm syscall SysTaskDelay(%d) ...", r0);
+          // in ARM syscall, SysTaskDelay() accepts delay in milliseconds, not ticks
           r = SysTaskDelayMs(r0);
           debug(DEBUG_TRACE, "ARM", "arm syscall SysTaskDelay(%d): %d", r0, r);
           r0 = r;
@@ -630,7 +631,9 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall TimGetSecods(): %u", r0);
           break;
         case 0x928:
-          r0 = TimGetTicks();
+          // UInt32 TimGetTicks(void)
+          // in ARM syscall, TimGetTicks() returns milliseconds, not ticks
+          r0 = TimGetTicksMs();
           debug(DEBUG_TRACE, "ARM", "arm syscall TimGetTicks(): %u", r0);
           break;
         case 0xAF8: {

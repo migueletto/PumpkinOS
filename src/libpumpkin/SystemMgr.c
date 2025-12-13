@@ -582,6 +582,11 @@ UInt32 TimGetTicks(void) {
   return ((uint64_t)sys_get_clock() - module->t0) / 10000; // XXX 100 ticks per second
 }
 
+UInt32 TimGetTicksMs(void) {
+  sys_module_t *module = (sys_module_t *)pumpkin_get_local_storage(sys_key);
+  return ((uint64_t)sys_get_clock() - module->t0) / 1000;
+} 
+
 Err SysMailboxWait(UInt32 mbID, void *msgP, UInt32 priority, Int32 timeout) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "SysMailboxWait not implemented");
   return 0;
