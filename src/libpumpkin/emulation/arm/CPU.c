@@ -1870,11 +1870,10 @@ static void cpuPrvCycleArm(struct ArmCpu *cpu)
 	    uint32_t r1 = cpu->regs[1];
 	    uint32_t r2 = cpu->regs[2];
 	    uint32_t r3 = cpu->regs[3];
-	    uint32_t r12 = cpu->regs[12];
 	    uint32_t r14 = cpu->regs[14];
       char buf[256];
-      sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X r12=%08X LR=%08X)", r0, r1, r2, r3, r12, r14);
-      disasm(pc, instr, buf);
+      sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X LR=%08X)", r0, r1, r2, r3, r14);
+      disasm(pc, instr, buf, 0);
     }
 		cpu->regs[REG_NO_PC] += 4;
 		cpuPrvExecInstr(cpu, instr, 0, privileged, 0);
@@ -1906,7 +1905,14 @@ static void cpuPrvCycleThumb(struct ArmCpu *cpu) {
 	cpu->regs[REG_NO_PC] += 2;
 
   if (cpu->disasm) {
-    debug(DEBUG_TRACE, "ARM", "trace 0x%08X %u 0x%04X", pc, 2, instrT);
+            uint32_t r0 = cpu->regs[0];
+            uint32_t r1 = cpu->regs[1];
+            uint32_t r2 = cpu->regs[2];
+            uint32_t r3 = cpu->regs[3];
+            uint32_t r14 = cpu->regs[14];
+      char buf[256];
+      sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X LR=%08X)", r0, r1, r2, r3, r14);
+      disasm(pc, instrT, buf, 1);
   }
 
 	switch (instrT >> 12) {
