@@ -662,6 +662,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
             if ((selection = LstPopupList(list)) != -1) {
               debug(DEBUG_TRACE, "Control", "CtlHandleEvent popup set control %d label", controlP->id);
               CtlSetLabel(controlP, LstGetSelectionText(list, selection));
+              handled = true;
             } else {
               debug(DEBUG_TRACE, "Control", "CtlHandleEvent popup nothing selected");
             }
@@ -677,6 +678,8 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
           CtlSetSliderValues(controlP, NULL, NULL, NULL, &pEvent->data.ctlSelect.value);
           CtlDrawControl(controlP);
         }
+      } else {
+        handled = true;
       }
       break;
 

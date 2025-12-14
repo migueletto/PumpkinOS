@@ -322,6 +322,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
       debug(DEBUG_TRACE, "List", "LstHandleEvent popSelect");
       if (eventP->data.popSelect.listID == listP->id) {
         debug(DEBUG_TRACE, "List", "LstHandleEvent popSelect list id %d", listP->id);
+        handled = true;
       }
       break;
     case lstExitEvent:

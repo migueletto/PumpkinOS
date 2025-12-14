@@ -1001,7 +1001,7 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
       // Checks if the control is a Popup Trigger Control. If it is, the list associated with the popup trigger is
       // displayed until the user makes a selection or touches the pen outside the bounds of the list. If a selection is
       // made, a popSelectEvent is added to the event queue.
-      CtlHandleEvent(eventP->data.ctlSelect.pControl, eventP);
+      handled = CtlHandleEvent(eventP->data.ctlSelect.pControl, eventP);
       break;
     case ctlExitEvent:
       handled = CtlHandleEvent(eventP->data.ctlExit.pControl, eventP);
