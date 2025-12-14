@@ -2352,6 +2352,13 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   return r;
 }
 
+void emupalmos_disasm(int m68k, int arm) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  logtrap_disasm(state->lt, m68k);
+  state->disasm = m68k;
+  state->armp->armDisasm(state->arm, arm);
+}
+
 #define DBREAD_SIZE 65488
 
 // Boolean deleteProc(const char *nameP, UInt16 version, LocalID dbID, void *userDataP)

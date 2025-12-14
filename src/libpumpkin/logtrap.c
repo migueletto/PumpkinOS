@@ -2336,6 +2336,12 @@ logtrap_t *logtrap_init(logtrap_def *def) {
   return lt;
 }
 
+void logtrap_disasm(logtrap_t *lt, int disasm) {
+  if (lt) {
+    lt->disasm = disasm;
+  }
+}
+
 void logtrap_start(logtrap_t *lt, int disasm, char *appname) {
   if (lt) {
     lt->disasm = disasm;

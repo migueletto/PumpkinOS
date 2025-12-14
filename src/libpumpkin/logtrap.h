@@ -57,6 +57,7 @@ int logtrap_global_init(logtrap_def *def);
 void logtrap_global_finish(logtrap_def *def);
 logtrap_t *logtrap_init(logtrap_def *def);
 void logtrap_start(logtrap_t *lt, int disasm, char *appname);
+void logtrap_disasm(logtrap_t *lt, int disasm);
 int logtrap_started(logtrap_t *lt);
 void logtrap_finish(logtrap_t *lt);
 char *logtrap_trapname(logtrap_t *lt, uint16_t trap, uint16_t *selector, int follow);
