@@ -139,21 +139,8 @@ static const UInt8 gray2values[4] = {0xff, 0xaa, 0x55, 0x00};
 static const UInt8 gray4[16]       = {0x00, 0xe0, 0xdf, 0x19, 0xde, 0xdd, 0x32, 0xdc, 0xdb, 0xa5, 0xda, 0xd9, 0xbe, 0xd8, 0xd7, 0xe6};
 static const UInt8 gray4values[16] = {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
 
-static UInt8 emptySlot[BitmapV1HeaderSize] = {
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
 static Boolean isEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;
-/*
-  UInt32 i;
-
-  for (i = 0; i < BitmapV1HeaderSize; i++) {
-    if (bmp[i] != emptySlot[i]) return false;
-  }
-
-  return true;
-*/
   // optimized test
   return bmp[8] == 0xff && bmp[4] == 0 && bmp[5] == 0;
 }
@@ -443,7 +430,6 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
     bmp = skipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
-    BmpGetCommonFlag(bmp, BitmapFlagLittleEndian);
 
     if (version == 3) {
         switch (selector) {
