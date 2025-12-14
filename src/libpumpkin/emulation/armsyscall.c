@@ -75,9 +75,14 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x5C:
           // Err BmpCompress(BitmapType *bitmapP, BitmapCompressionType compType)
           BitmapType *bmp = r0 ? (BitmapType *)(ram + r0) : NULL;
+          r1 &= 0xff;
           err = BmpCompress(bmp, r1);
-          debug(DEBUG_TRACE, "ARM", "arm syscall BmpCompress(0x%08X, %d): %d", r0, r1, err);
-          r0 = err;
+          debug(DEBUG_TRACE, "ARM", "arm syscall BmpCompress(0x%08X, 0x%02X): %d", r0, r1, err);
+          //r0 = err;
+          // XXX apparently, in ARM syscall, BmpCompress returns not the error value, but the bitmap bits.
+          // Bike or Die 2 uses the value returned by BmpCompress as the 3rd argument to BmpCreateBitmapV3, that is, the address of the bits.
+          // This is super weird, but I will just do that here.
+          r0 = (uint8_t *)BmpGetBits(bmp) - ram;
           break;
         case 0x54: {
           // Err BmpDelete(BitmapType *bitmapP)
