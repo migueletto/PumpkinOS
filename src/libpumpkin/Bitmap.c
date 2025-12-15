@@ -3096,7 +3096,7 @@ static int decompress_bitmap_rle(uint8_t *p, uint8_t *dp, uint32_t dsize) {
 static int decompress_bitmap_packbits8(uint8_t *p, uint8_t *dp, uint32_t dsize) {
   uint8_t len, b;
   int8_t count;
-  int i, j, k;
+  int i, j, k, r = -1;
 
   debug(DEBUG_TRACE, "Bitmap", "PackBits8 bitmap decompressing");
 
@@ -3130,18 +3130,19 @@ static int decompress_bitmap_packbits8(uint8_t *p, uint8_t *dp, uint32_t dsize) 
 
     if (j == dsize) {
       debug(DEBUG_TRACE, "Bitmap", "PackBits8 bitmap decompressed %d bytes into %d bytes", i, dsize);
+      r = 0;
       break;
     }
   }
 
-  return i;
+  return r;
 }
 
 static int decompress_bitmap_packbits16(uint8_t *p, uint16_t *dp, uint32_t dsize) {
   uint8_t len;
   uint16_t w;
   int8_t count;
-  int i, j, k;
+  int i, j, k, r = -1;
 
   debug(DEBUG_TRACE, "Bitmap", "PackBits16 bitmap decompressing");
 
@@ -3175,11 +3176,12 @@ static int decompress_bitmap_packbits16(uint8_t *p, uint16_t *dp, uint32_t dsize
 
     if (j == dsize) {
       debug(DEBUG_TRACE, "Bitmap", "PackBits16 bitmap decompressed %d bytes into %d bytes", i, dsize*2);
+      r = 0;
       break;
     }
   }
 
-  return i;
+  return r;
 }
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
