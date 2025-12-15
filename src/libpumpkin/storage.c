@@ -4291,14 +4291,6 @@ static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
           }
         }
         break;
-      case iconType:
-      case bitmapRsc:
-      case 'abmp':
-      case 'tRAW':  // XXXX sigh.. FreeJongg stores bitmaps as tRAW
-        debug(DEBUG_TRACE, "STOR", "decoding %d bytes from bitmap resource %s %d", res->size, st, res->d.res.id);
-        BmpDecompressBitmapChain(res, res->d.res.type, res->d.res.id);
-        debug(DEBUG_TRACE, "STOR", "decoded size %d", res->size);
-        break;
       case omOverlayRscType:
         get2b(&version, res->buf, 0);
         if (version == 4) {
