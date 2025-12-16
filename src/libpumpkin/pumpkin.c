@@ -104,6 +104,7 @@ typedef struct {
   texture_t *texture;
   uint32_t taskId;
   int index, width, height, x, y;
+  int littleEndian;
   UInt32 creator;
 } launch_data_t;
 
@@ -1042,7 +1043,7 @@ void pumpkin_set_mode(int mode, int dia, int depth) {
     language = PrefGetPreference(prefLanguage);
     pumpkin_module.lang = LanguageInit(language);
     UicInitModule();
-    WinInitModule(pumpkin_module.density, pumpkin_module.width, pumpkin_module.height, pumpkin_module.depth, NULL);
+    WinInitModule(pumpkin_module.density, pumpkin_module.width, pumpkin_module.height, pumpkin_module.depth, false, NULL);
     FntInitModule(pumpkin_module.density);
     FrmInitModule();
     KeyboardInitModule();
@@ -1799,7 +1800,7 @@ static void pumpkin_init_icon(void) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
@@ -1950,7 +1951,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.tasks[i].depth = task->depth;
 
   UicInitModule();
-  WinInitModule(task->density, width, height, task->depth, NULL);
+  WinInitModule(task->density, width, height, task->depth, littleEndian, NULL);
   FntInitModule(task->density);
   FrmInitModule();
   InsPtInitModule();
@@ -2178,7 +2179,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2227,7 +2228,7 @@ static int pumpkin_launch_action(void *arg) {
   }
   thread_set_name(name);
 
-  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height, data->x, data->y) == 0) {
+  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height, data->littleEndian, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -2417,14 +2418,14 @@ int pumpkin_launch(launch_request_t *request) {
         if ((regPos = pumpkin_reg_get(creator, regPositionID, &regSize)) != NULL) {
           data->x = regPos->x;
           data->y = regPos->y;
-          debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry", data->x, data->y);
+          debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry for %s", data->x, data->y, request->name);
           MemPtrFree(regPos);
         }
 
         if ((regDim = pumpkin_reg_get(creator, regDimensionID, &regSize)) != NULL) {
           data->width = regDim->width;
           data->height = regDim->height;
-          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry", data->width, data->height);
+          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry for %s", data->width, data->height, request->name);
           MemPtrFree(regDim);
         }
       }
@@ -2435,7 +2436,8 @@ int pumpkin_launch(launch_request_t *request) {
       }
 
       if ((regEnd = pumpkin_reg_get(creator, regEndianID, &regSize)) != NULL) {
-        debug(DEBUG_INFO, PUMPKINOS, "using display endianness %d from registry", regEnd->littleEndian);
+        debug(DEBUG_INFO, PUMPKINOS, "using display %s endian from registry for %s", regEnd->littleEndian ? "little" : "big", request->name);
+        data->littleEndian = regEnd->littleEndian;
         MemPtrFree(regEnd);
       }
 

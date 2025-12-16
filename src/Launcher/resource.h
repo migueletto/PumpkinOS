@@ -56,6 +56,7 @@
 #define depth4Ctl   1037
 #define depth8Ctl   1038
 #define depth16Ctl  1039
+#define depth16leCtl 1040
 
 #define moveBmp     52001
 #define drawBmp     52002

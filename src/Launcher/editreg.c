@@ -65,10 +65,11 @@ static Boolean eventHandler(EventType *event) {
 Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
+  RegDisplayEndianType regEnd, *regEndP;
   ListType *lst;
   ControlType *ctl;
   UInt32 regSize;
-  UInt16 osversion, density, depth, index, id, num, i;
+  UInt16 osversion, density, depth, littleEndian, index, id, num, i;
   char buf[16], *text;
   Boolean r = false;
 
@@ -80,6 +81,9 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   regDispP = pumpkin_reg_get(creator, regDisplayID, &regSize);
   density = regDispP ? regDispP->density : pumpkin_get_density();
   depth = regDispP ? regDispP->depth : pumpkin_get_depth();
+
+  regEndP = pumpkin_reg_get(creator, regEndianID, &regSize);
+  littleEndian = regEndP ? regEndP->littleEndian : 0;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -110,6 +114,9 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     case 16: id = depth16Ctl; break;
     default: id = depth16Ctl; break;
   }
+  if (id == depth16Ctl && littleEndian) {
+    id = depth16leCtl;
+  }
   index = FrmGetObjectIndex(frm, id);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, 1);
@@ -137,16 +144,19 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
       ctl = FrmGetObjectPtr(frm, index);
       if (CtlGetValue(ctl)) break;
     }
+    regEnd.littleEndian = 0;
     switch (i) {
-      case depth1Ctl:  regDisp.depth =  1; break;
-      case depth2Ctl:  regDisp.depth =  2; break;
-      case depth4Ctl:  regDisp.depth =  4; break;
-      case depth8Ctl:  regDisp.depth =  8; break;
-      case depth16Ctl: regDisp.depth = 16; break;
-      default:         regDisp.depth = 16; break;
+      case depth1Ctl:    regDisp.depth =  1; break;
+      case depth2Ctl:    regDisp.depth =  2; break;
+      case depth4Ctl:    regDisp.depth =  4; break;
+      case depth8Ctl:    regDisp.depth =  8; break;
+      case depth16Ctl:   regDisp.depth = 16; break;
+      case depth16leCtl: regDisp.depth = 16; regEnd.littleEndian = 1; break;
+      default:           regDisp.depth = 16; break;
     }
 
     pumpkin_reg_set(creator, regDisplayID, &regDisp, sizeof(RegDisplayType));
+    pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
     r = true;
   }
 

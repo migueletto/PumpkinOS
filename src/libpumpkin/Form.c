@@ -150,10 +150,12 @@ void FrmGotoForm(UInt16 formId) {
 static Err FrmInitFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   ColorTableType *colorTable;
+  WinHandle wh;
   RectangleType rect;
   FormList *p;
   Coord width, height, xmargin, ymargin, w, h;
   UInt32 density, depth;
+  Boolean littleEndian;
   Err err = errNone;
 
   if (formP->window.windowFlags.modal) {
@@ -176,11 +178,15 @@ static Err FrmInitFormInternal(FormType *formP) {
   formP->bitsBehindForm = WinCreateOffscreenWindow(width + 2*xmargin, height + 2*ymargin, nativeFormat, &err);
   WinAdjustCoords(&w, &h);
 
+  wh = WinGetDisplayWindow();
+  littleEndian = BmpGetLittleEndianBits(WinGetBitmap(wh));
+
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
   colorTable = WinGetColorTable(depth);
   formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
   formP->window.density = density;
+  BmpSetLittleEndianBits(formP->window.bitmapP, littleEndian);
 
   RctSetRectangle(&rect, 0, 0, width, height);
   WinSetClipingBounds(&formP->window, &rect);

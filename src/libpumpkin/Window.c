@@ -45,6 +45,7 @@ typedef struct {
   RGBColorType defaultPalette8[256];
   RGBColorType uiColor[UILastColorTableEntry];
   UInt8 legacyDepth;
+  Boolean littleEndian;
   int numPush;
 } win_module_t;
 
@@ -85,7 +86,7 @@ static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
   }
 }
 
-int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow) {
+int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
   win_module_t *module;
   ColorTableType *colorTable;
   UInt16 i, entry;
@@ -104,6 +105,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
   module->depth = depth;
   module->depth0 = depth;
   module->legacyDepth = 1;
+  module->littleEndian = littleEndian;
 
   module->drawState.pattern = blackPattern;
   module->drawState.coordinateSystem = kCoordinatesStandard;
@@ -180,6 +182,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Win
     module->displayWindow->windowFlags.freeBitmap = true;
     module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, colorTable, &err);
     module->displayWindow->density = module->density;
+    BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
 
     module->displayWindow->clippingBounds.left = 0;
     module->displayWindow->clippingBounds.right = width-1;
@@ -216,7 +219,7 @@ void *WinReinitModule(void *module) {
     pumpkin_set_local_storage(win_key, module);
   } else {
     old = (win_module_t *)pumpkin_get_local_storage(win_key);
-    WinInitModule(old->density, old->width, old->height, old->depth0, NULL);
+    WinInitModule(old->density, old->width, old->height, old->depth0, old->littleEndian, NULL);
   }
 
   return old;
@@ -567,6 +570,7 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   bitmapP = WinGetBitmap(module->displayWindow);
   newBitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, BmpGetColortable(bitmapP), &err);
   if (bitmapP) {
+    BmpSetLittleEndianBits(newBitmapP, module->littleEndian);
     debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
     BmpDelete(bitmapP);
   }
@@ -627,6 +631,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     old = winHandle->bitmapP;
     bmp = BmpCreate3(width, height, 0, density, depth, false, 0, BmpGetColortable(old), &err);
     if (bmp) {
+      BmpSetLittleEndianBits(bmp, module->littleEndian);
       winHandle->bitmapP = bmp;
       debug(DEBUG_TRACE, "Window", "WinSetBounds BmpDelete %p", old);
       BmpDelete(old);
@@ -2985,6 +2990,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
     wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
     if (wh->bitmapP) {
       debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %s format %d", WinGetDescr(wh, buf, sizeof(buf)), format);
+      BmpSetLittleEndianBits(wh->bitmapP, module->littleEndian);
       wh->drawStateP = &module->drawState;
       wh->windowFlags.offscreen = true;
       wh->windowFlags.freeBitmap = true;
@@ -3295,6 +3301,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
 
           BmpDelete(module->displayWindow->bitmapP);
           module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, colorTable, &err);
+          BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
           module->depth = depth;
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);

@@ -634,7 +634,7 @@ WChar TxtLowerChar(WChar inChar);
 
 Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP);
 
-int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, WinHandle displayWindow);
+int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow);
 void *WinReinitModule(void *module);
 int WinFinishModule(Boolean deleteDisplay);
 int FntInitModule(UInt16 density);
