@@ -2328,6 +2328,7 @@ int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
   RegPositionType *regPos;
   RegDimensionType *regDim;
+  RegDisplayEndianType *regEnd;
   UInt32 type, creator, regSize;
   launch_data_t *data;
   client_request_t creq;
@@ -2431,6 +2432,11 @@ int pumpkin_launch(launch_request_t *request) {
       if (data->width == 0 || data->height == 0) {
         data->width = pumpkin_module.width;
         data->height = pumpkin_module.height;
+      }
+
+      if ((regEnd = pumpkin_reg_get(creator, regEndianID, &regSize)) != NULL) {
+        debug(DEBUG_INFO, PUMPKINOS, "using display endianness %d from registry", regEnd->littleEndian);
+        MemPtrFree(regEnd);
       }
 
       data->index = index;

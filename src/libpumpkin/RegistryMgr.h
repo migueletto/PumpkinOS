@@ -7,6 +7,7 @@ typedef struct RegMgrType RegMgrType;
 #define regDisplayID    5
 #define regFeatureID    6
 #define regNotifID      7
+#define regEndianID     8
 
 #define regFlagReset    1
 
@@ -44,6 +45,10 @@ typedef struct {
   UInt32 notifyType;
   UInt32 priority;
 } RegNotificationType;
+
+typedef struct {
+  UInt16 littleEndian;
+} RegDisplayEndianType;
 
 RegMgrType *RegInit(void);
 void RegFinish(RegMgrType *rm);

@@ -31,6 +31,7 @@ void pumpkin_registry_create(UInt32 creator) {
   RegOsType regOS;
   RegDimensionType regDim;
   RegPositionType regPos;
+  RegDisplayEndianType regEnd;
   DmOpenRef dbRef;
   MemHandle h;
   UInt32 regSize;
@@ -79,6 +80,9 @@ void pumpkin_registry_create(UInt32 creator) {
   regPos.x = (swidth - regDim.width) / 2;
   regPos.y = (sheight - regDim.height) / 2;
   pumpkin_reg_set(creator, regPositionID, &regPos, sizeof(RegPositionType));
+
+  regEnd.littleEndian = 0;
+  pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
 }
 
 static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {

@@ -2971,6 +2971,8 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
       default:
         // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
         // When using this format, the width and height arguments must be specified using the active coordinate system.
+        // PalmOS 5.4 on ARM: with nativeFormat, the window bitmap is LITTLE endian
+        // PumpkinOS on x86 : with nativeFormat, the window bitmap is BIG endian
         density = module->density;
         depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->depth0" here
         if (density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
