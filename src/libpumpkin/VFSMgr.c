@@ -187,7 +187,9 @@ Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP) {
 
   if (pathNameP && pathNameP[0]) {
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
-    if ((f = vfs_open(module->session[volRefNum-1], module->path, VFS_WRITE | VFS_TRUNC)) != NULL) {
+    if (vfs_checktype(module->session[volRefNum-1], module->path) == VFS_FILE) {
+      err = vfsErrFileAlreadyExists;
+    } else if ((f = vfs_open(module->session[volRefNum-1], module->path, VFS_WRITE | VFS_TRUNC)) != NULL) {
       vfs_close(f);
       err = errNone;
     }
@@ -536,7 +538,9 @@ Err VFSDirCreate(UInt16 volRefNum, const Char *dirNameP) {
   if (dirNameP && dirNameP[0]) {
     buildpath(module, volRefNum, module->path, (char *)dirNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSDirCreate \"%s\" -> \"%s\"", dirNameP, module->path);
-    if (vfs_mkdir(module->session[volRefNum-1], module->path) == 0) {
+    if (vfs_checktype(module->session[volRefNum-1], module->path) == VFS_DIR) {
+      err = vfsErrFileAlreadyExists;
+    } else if (vfs_mkdir(module->session[volRefNum-1], module->path) == 0) {
       err = errNone;
     }
   }
