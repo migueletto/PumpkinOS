@@ -149,8 +149,12 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           }
           break;
         case sysFtrNumInputAreaFlags:
-          if (osversion >= 50 && pumpkin_dia_enabled()) {
-            *valueP = grfFtrInputAreaFlagDynamic /*| grfFtrInputAreaFlagCollapsible*/;
+          if (osversion >= 50) {
+            if (pumpkin_dia_enabled()) {
+              *valueP = grfFtrInputAreaFlagDynamic /*| grfFtrInputAreaFlagCollapsible*/;
+            } else {
+              *valueP = 0;
+            }
             err = errNone;
           }
           break;
@@ -236,6 +240,20 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCVFSMgr %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
+      }
+      break;
+    case sysFileCSoundMgr:
+      if (osversion >= 50) {
+        switch (featureNum) {
+          case sndFtrIDVersion:
+            *valueP = sndMgrVersionNum;
+            err = errNone;
+            break;
+          default:
+            debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSoundMgr %d not defined", featureNum);
+            err = ftrErrNoSuchFeature;
+            break;
+         }
       }
       break;
     case pinCreator:
