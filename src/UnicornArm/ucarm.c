@@ -130,14 +130,11 @@ static bool ucarmHookFetchUnmapped(uc_engine *uc, uc_mem_type type, uint64_t add
 }
 
 static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
-  uint32_t version;
   arm_emu_t *arm;
   uc_err err;
 
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
-      version = uc_version(NULL, NULL);
-      debug(DEBUG_INFO, "ARM", "unicorn version 0x%08X", version);
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
       uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE, ucarmHookCode, arm, 0, arm->size - 1);
       uc_hook_add(arm->uc, &arm->trace, UC_HOOK_MEM_UNMAPPED, ucarmHookFetchUnmapped, arm, 1, 0);
@@ -177,7 +174,6 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   uint32_t pc;
   uc_err err;
 
-  //arm->buf32[returnAddr >> 2] = 0xe1a00000; // nop at return address
   arm->call68KAddr = call68KAddr;
   arm->f = f;
 
@@ -200,6 +196,18 @@ static void *PluginMain(void *p) {
 }
 
 pluginMainF PluginInit(UInt32 *type, UInt32 *id) {
+  uc_engine *uc;
+  uc_err err;
+  uint32_t version;
+
+  if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc)) == 0) {
+    version = uc_version(NULL, NULL);
+    debug(DEBUG_INFO, "ARM", "unicorn version 0x%08X", version);
+    uc_close(uc);
+  } else {
+    debug(DEBUG_ERROR, "ARM", "uc_open error: %s", uc_strerror(err));
+  }
+
   *type = armPluginType;
   *id = unicornArmPluginId;
 
