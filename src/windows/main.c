@@ -797,6 +797,7 @@ static int audio_action(void *_arg) {
   uint32_t ptr;
   void *buf;
   int len1, len2, last, r;
+  uint64_t t0, t;
   WAVEFORMATEX fmt;
   HWAVEOUT hwo = NULL;
   WAVEHDR hdr;
@@ -804,6 +805,7 @@ static int audio_action(void *_arg) {
 
   debug(DEBUG_INFO, "Windows", "audio thread starting");
   buf = NULL;
+  sys_memset(&hdr, 0, sizeof(hdr));
 
   for (; !thread_must_end();) {
     if ((r = thread_server_read_timeout(2000, &msg, &msglen)) == -1) {
@@ -857,11 +859,22 @@ static int audio_action(void *_arg) {
               if ((res = waveOutPrepareHeader(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
                 debug(DEBUG_TRACE, "Windows", "waveOutWrite sending %d bytes", len2);
                 if ((res = waveOutWrite(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+                  t0 = sys_get_clock();
+                  for (;;) {
+                    if (hdr.dwFlags & WHDR_DONE) {
+                      waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
+                      break;
+                    } else {
+                      sys_usleep(100);
+                    }
+                  }
+                  t = sys_get_clock();
+                  debug(DEBUG_TRACE, "Windows", "waveOutWrite took %u us", (uint32_t)(t - t0));
                   r = 0;
                 } else {
                   debug(DEBUG_ERROR, "Windows", "waveOutWrite failed (%d)", res);
+                  waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
                 }
-                //waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
               } else {
                 debug(DEBUG_ERROR, "Windows", "waveOutPrepareHeader failed (%d)", res);
               }
@@ -966,6 +979,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wp.drop_file = window_drop_file;
   wp.data = hInstance;
 
+  sys_memset(&ap, 0, sizeof(audio_provider_t));
   ap.init = audio_init;
   ap.finish = audio_finish;
   ap.create = audio_create;
