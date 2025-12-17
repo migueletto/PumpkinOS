@@ -2794,6 +2794,16 @@ uint32_t palmos_systrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case sysTrapSndPlaySmfResource: {
+      //Err SndPlaySmfResource(UInt32 resType, Int16 resID, SystemPreferencesChoice volumeSelector)
+      uint32_t resType = ARG32;
+      int16_t resID = ARG32;
+      uint8_t volumeSelector = ARG8;
+      Err res = SndPlaySmfResource(resType, resID, volumeSelector);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndPlaySmfResource(0x%08X, %d, %d): %d", resType, resID, volumeSelector, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case sysTrapSndCreateMidiList: {
       // Boolean SndCreateMidiList(UInt32 creator, Boolean multipleDBs, UInt16 *wCountP, MemHandle *entHP)
       uint32_t creator = ARG32;
