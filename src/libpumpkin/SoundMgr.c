@@ -532,13 +532,13 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
           nbytes = len;
           //err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
-          MemSet(snd->buffer, len, 0);
           err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
             len = nbytes;
           }
+          MemSet(snd->buffer, len, 0);
           MemMove(buffer, snd->buffer, len);
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc got len=%d nsamples=%d", len, nsamples);
@@ -551,13 +551,13 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc len=%d", len);
           nbytes = len;
           //err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
-          MemSet(snd->buffer, len, 0);
           err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio ARM returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
             len = nbytes;
           }
+          MemSet(snd->buffer, len, 0);
           MemMove(buffer, snd->buffer, len);
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc got len=%d nsamples=%d", len, nsamples);
