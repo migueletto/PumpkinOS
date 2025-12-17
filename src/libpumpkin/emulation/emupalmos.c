@@ -1299,6 +1299,24 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
   return r;
 }
 
+Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
+  // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
+  emu_state_t *oldState, *state;
+  uint32_t stackAddr;
+  uint8_t *ram = pumpkin_heap_base();
+  Err err = 0;
+
+  oldState = emupalmos_install();
+  state = pumpkin_get_local_storage(emu_key);
+  stackAddr = state->armStack - ram;
+  state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+  err = arm_native_call_sub(addr, 0, data, channel, buffer, nsamples);
+  emupalmos_deinstall(oldState);
+  debug(DEBUG_TRACE, "ARM", "CallSndFunc(0x%08X 0x%08X %u 0x%08X %u): %d", addr, data, channel, buffer, nsamples, err);
+
+  return err;
+}
+
 Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes) {
   // Err SndStreamVariableBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 *bufferSizeP)
   emu_state_t *oldState;
@@ -1328,6 +1346,10 @@ Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32
   emupalmos_deinstall(oldState);
 
   return r;
+}
+
+Err CallSndVFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes) {
+  return 0;
 }
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data) {

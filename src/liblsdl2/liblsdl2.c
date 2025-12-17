@@ -1447,6 +1447,99 @@ static int set_video_driver(char *video_driver) {
   return 1;
 }
 
+static int audio_action2(void *_arg) {
+  sdl_audio_arg_t *arg = (sdl_audio_arg_t *)_arg;
+  SDL_AudioDeviceID dev = 0;
+  SDL_AudioSpec desired, obtained;
+  SDL_AudioCVT cvt;
+  sdl_audio_t *audio;
+  unsigned char *msg;
+  unsigned int msglen;
+  uint32_t ptr, newlen;
+  int r;
+
+  debug(DEBUG_INFO, "SDL", "audio thread starting");
+
+  for (; !thread_must_end();) {
+    if ((r = thread_server_read_timeout(2000, &msg, &msglen)) == -1) {
+      break;
+    }
+
+    if (r == 1) {
+      if (dev == 0) {
+        switch (arg->pcm) {
+          case PCM_U8:  desired.format = AUDIO_U8;  break;
+          case PCM_S16: desired.format = AUDIO_S16; break;
+          case PCM_S32: desired.format = AUDIO_S32; break;
+        }
+        desired.freq = arg->rate; // DSP frequency -- samples per second
+        desired.channels = arg->channels; // Number of channels: 1 mono, 2 stereo
+        desired.silence = 0;      // Audio buffer silence value (calculated)
+        desired.samples = 1024;   // Audio buffer size in sample FRAMES (total samples divided by channel count)
+        desired.padding = 0;      // Necessary for some compile environments
+        desired.callback = NULL;  // Callback that feeds the audio device (NULL to use SDL_QueueAudio())
+        desired.userdata = NULL;  //  Userdata passed to callback (ignored for NULL callbacks)
+
+        if ((dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0)) == -1) {
+          debug(DEBUG_ERROR, "SDL", "SDL_OpenAudioDevice failed: %s", SDL_GetError());
+          break;
+        }
+        SDL_PauseAudioDevice(dev, 0);
+        debug(DEBUG_INFO, "SDL", "open device %d", dev);
+      }
+
+      if (msg) {
+        if (msglen == 4) {
+          ptr = *((uint32_t *)msg);
+          if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
+            if (audio->buffer && audio->bsize) {
+              debug(DEBUG_TRACE, "SDL", "received %u bytes on ptr %d", audio->bsize, ptr);
+              if (audio->format != obtained.format ||
+                  audio->channels != obtained.channels ||
+                  audio->rate != obtained.freq) {
+                sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
+                if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained.format, obtained.channels, obtained.freq) == 1) {
+                  cvt.len = audio->bsize;
+                  newlen = audio->bsize * cvt.len_mult;
+                  cvt.buf = sys_calloc(1, newlen);
+                  sys_memcpy(cvt.buf, audio->buffer, audio->bsize);
+                  debug(DEBUG_TRACE, "SDL", "converting audio src=%u bytes, dst=%u bytes", audio->bsize, newlen);
+                  if (SDL_ConvertAudio(&cvt) != 0) {
+                    debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
+                  }
+                  if (SDL_QueueAudio(dev, cvt.buf, cvt.len_cvt) != 0) {
+                    debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
+                  }
+                  sys_free(cvt.buf);
+                }
+              } else {
+                debug(DEBUG_TRACE, "SDL", "convertion is not necessary");
+                if (SDL_QueueAudio(dev, audio->buffer, audio->bsize) != 0) {
+                  debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
+                }
+              }
+              sys_free(audio->buffer);
+            }
+            ptr_unlock(ptr, TAG_AUDIO);
+          }
+          ptr_free(ptr, TAG_AUDIO);
+          debug(DEBUG_INFO, "SDL", "handled ptr %d", ptr);
+        }
+        sys_free(msg);
+      }
+    }
+  }
+
+  if (dev > 0) {
+    debug(DEBUG_INFO, "SDL", "close device %d", dev);
+    SDL_CloseAudioDevice(dev);
+  }
+
+  debug(DEBUG_INFO, "SDL", "audio thread exiting");
+
+  return 0;
+}
+
 static int audio_action(void *_arg) {
   sdl_audio_arg_t *arg = (sdl_audio_arg_t *)_arg;
   SDL_AudioDeviceID dev = 0;
@@ -1499,7 +1592,7 @@ static int audio_action(void *_arg) {
             for (; !thread_must_end();) {
               len1 = audio->bsize * audio->channels;
               len2 = audio->getaudio(audio->buffer, len1, audio->data);
-              debug(DEBUG_INFO, "SDL", "get audio len=%d bytes", len2);
+              debug(DEBUG_TRACE, "SDL", "get audio len=%d bytes", len2);
               if (len2 <= 0) break;
               if (audio->format != obtained.format ||
                   audio->channels != obtained.channels ||

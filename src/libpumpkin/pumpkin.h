@@ -611,6 +611,23 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notifyParamsP, UInt32 detail
 Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other);
 Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples);
 Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes);
+Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples);
+Err CallSndVFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes);
+
+Err SndStreamCreateEx(
+  SndStreamRef *channel,
+  SndStreamMode mode,
+  SndFormatType format,
+  UInt32 samplerate,
+  SndSampleType type,
+  SndStreamWidth width,
+  SndStreamBufferCallback func,
+  SndStreamVariableBufferCallback vfunc,
+  void *userdata,
+  UInt32 buffsize,
+  Boolean armNative,
+  Boolean m68k,
+  Boolean arm);
 
 typedef Int32 _comparFP (void *, void *, void *otherP);
 typedef _comparFP * CmpFuncPPtr;

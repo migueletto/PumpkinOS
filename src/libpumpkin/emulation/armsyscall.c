@@ -378,6 +378,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0x790: {
+          // Char *StrIToA(Char *s, Int32 i)
+          void *s = r0 ? ram + r0 : NULL;
+          char *p = StrIToA(s, r1);
+          r = p ? (uint8_t *)p - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrIToA(0x%08X, %d): 0x%08X", r0, r1, r);
+          r0 = r;
+          }
+          break;
         case 0x798: {
           // UInt16 StrLen(const Char *src)
           void *src = r0 ? ram + r0 : NULL;
@@ -727,6 +736,55 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r = bmp1 ? (uint8_t *)bmp1 - ram : 0;
           debug(DEBUG_TRACE, "ARM", "arm syscall BmpCreateBitmapV3(0x%08X, %u, 0x%08X, 0x%08X): 0x%08X", r0, r1, r2, r3, r);
           r0 = r;
+          }
+          break;
+        case 0xD0C: {
+          // Err SndStreamCreate(SndStreamRef *channel, SndStreamMode mode, UInt32 samplerate, SndSampleType type,
+          //        SndStreamWidth width, SndStreamBufferCallback func, void *userdata, UInt32 buffsize, Boolean armNative)
+          uint32_t addrChannel = r0;
+          SndStreamRef *channel = r0 ? (SndStreamRef *)(ram + r0) : NULL;
+          SndStreamMode mode = r1;
+          UInt32 samplerate = r2;
+          SndSampleType type = r3;
+          SndStreamWidth width = *(uint32_t *)(ram + sp);
+          uint32_t addrFunc = *(uint32_t *)(ram + sp + 4);
+          SndStreamBufferCallback func = (SndStreamBufferCallback)(ram + addrFunc);
+          uint32_t addrData = *(uint32_t *)(ram + sp + 8);
+          void *userdata = (void *)(ram + addrData);
+          UInt32 buffsize = *(uint32_t *)(ram + sp + 12);
+          Boolean armNative = *(uint16_t *)(ram + sp + 16);
+          err = SndStreamCreateEx(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative, false, true);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndStreamCreate(0x%08X, %u, %u, %u, %u, 0x%08X, 0x%08X, %u, %u): %d",
+            addrChannel, mode, samplerate, type, width, addrFunc, addrData, buffsize, armNative, err);
+          r0 = err;
+          }
+          break;
+        case 0xD10: {
+          // Err SndStreamDelete(SndStreamRef channel)
+          err = SndStreamDelete(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndStreamDelete(%u): %d", r0, err);
+          r0 = err;
+          }
+          break;
+        case 0xD14: {
+          // Err SndStreamStart(SndStreamRef channel)
+          err = SndStreamStart(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndStreamStart(%u): %d", r0, err);
+          r0 = err;
+          }
+          break;
+        case 0xD1C: {
+          // Err SndStreamStop(SndStreamRef channel)
+          err = SndStreamStop(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndStreamStop(%u): %d", r0, err);
+          r0 = err;
+          }
+          break;
+        case 0xD20: {
+          // Err SndStreamSetVolume(SndStreamRef channel, Int32 volume)
+          err = SndStreamSetVolume(r0, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndStreamSetVolume(%u, %d): %d", r0, r1, err);
+          r0 = err;
           }
           break;
         default:

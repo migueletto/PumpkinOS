@@ -2910,6 +2910,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       SndStreamBufferCallback func = (SndStreamBufferCallback)emupalmos_trap_in(funcP, trap, 5);
       void *userdata = emupalmos_trap_in(userdataP, trap, 6);
       err = SndStreamCreate(channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
+      if (channelP) m68k_write_memory_32(channelP, *channel);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreate(0x%08X, %d, %d, %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
         channelP, mode, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
       m68k_set_reg(M68K_REG_D0, err);

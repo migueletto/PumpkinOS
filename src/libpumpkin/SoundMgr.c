@@ -38,6 +38,9 @@ typedef struct {
   UInt32 func68k;
   UInt32 vfunc68k;
   UInt32 userdata68k;
+  UInt32 funcArm;
+  UInt32 vfuncArm;
+  UInt32 userdataArm;
   uint8_t *buffer;
   UInt32 samplesize;
   Int32 volume;
@@ -64,20 +67,6 @@ typedef struct {
   Boolean async;
   Boolean finished;
 } snd_param_t;
-
-static Err SndStreamCreateInternal(
-  SndStreamRef *channel,
-  SndStreamMode mode,
-  SndFormatType format,
-  UInt32 samplerate,
-  SndSampleType type,
-  SndStreamWidth width,
-  SndStreamBufferCallback func,
-  SndStreamVariableBufferCallback vfunc,
-  void *userdata,
-  UInt32 buffsize,
-  Boolean armNative,
-  Boolean m68k);
 
 int SndInitModule(audio_provider_t *ap) {
   snd_module_t *module;
@@ -466,7 +455,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
   Err err;
   Boolean inited = false;
   Boolean freeArg = false;
-  uint8_t *ram;
+  Boolean freeBuffer = false;
+  //uint8_t *ram;
   int pcm, channels;
   float sample, gain, leftGain, rightGain;
   char tname[16];
@@ -501,12 +491,24 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio native func len=%d nsamples=%d", len, nsamples);
           err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
         } else if (snd->func68k) {
-          ram = pumpkin_heap_base();
+          //ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
             snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
-          err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          //err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          err = 0;
+          MemMove(buffer, snd->buffer, len);
+        } else if (snd->funcArm) {
+          //ram = pumpkin_heap_base();
+          if (snd->buffer == NULL) {
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
+          }
+          debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
+          //err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
+          err = 0;
           MemMove(buffer, snd->buffer, len);
         } else if (snd->vfunc) {
           debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc len=%d", len);
@@ -520,13 +522,15 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc got len=%d nsamples=%d", len, nsamples);
         } else if (snd->vfunc68k) {
-          ram = pumpkin_heap_base();
+          //ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
             snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
           nbytes = len;
-          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          //err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
@@ -535,6 +539,24 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           MemMove(buffer, snd->buffer, len);
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc got len=%d nsamples=%d", len, nsamples);
+        } else if (snd->vfuncArm) {
+          //ram = pumpkin_heap_base();
+          if (snd->buffer == NULL) {
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
+          }
+          debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc len=%d", len);
+          nbytes = len;
+          //err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
+          err = 0;
+          if (nbytes > len) {
+            debug(DEBUG_ERROR, "Sound", "GetAudio ARM returned more bytes (%d) than the buffer size (%d)", nbytes, len);
+          } else {
+            len = nbytes;
+          }
+          MemMove(buffer, snd->buffer, len);
+          nsamples = nbytes / snd->samplesize;
+          debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc got len=%d nsamples=%d", len, nsamples);
         } else {
           err = sndErrBadParam;
         }
@@ -559,12 +581,12 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       if (nsamples > 0) {
         if ((volume != sndUnityGain || (pan != sndPanCenter && channels == 2))) {
           if (volume == 0) {
-            debug(DEBUG_INFO, "Sound", "%d samples (zero volume)", nsamples);
+            debug(DEBUG_TRACE, "Sound", "%d samples (zero volume)", nsamples);
             sys_memset(buffer, 0, len);
           } else {
             if (channels == 1) {
               gain = (float)volume / (float)sndUnityGain;
-              debug(DEBUG_INFO, "Sound", "%d samples (mono gain %.3f)", nsamples, gain);
+              debug(DEBUG_TRACE, "Sound", "%d samples (mono gain %.3f)", nsamples, gain);
               for (i = 0, j = 0; i < nsamples; i++) {
                 sample = getSample(pcm, buffer, i);
                 putSample(pcm, buffer, i, sample * gain);
@@ -579,7 +601,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
                 pan = -pan;
                 rightGain *= (float)(1024 - pan) / 1024.0f;
               }
-              debug(DEBUG_INFO, "Sound", "%d samples (left gain %.3f, right gain %.3f)", nsamples, leftGain, rightGain);
+              debug(DEBUG_TRACE, "Sound", "%d samples (left gain %.3f, right gain %.3f)", nsamples, leftGain, rightGain);
               for (i = 0, j = 0; i < nsamples; i++, j += 2) {
                 sample = getSample(pcm, buffer, j);
                 putSample(pcm, buffer, j, sample * leftGain);
@@ -589,10 +611,17 @@ static int SndGetAudio(void *buffer, int len, void *data) {
             }
           }
         } else {
-          debug(DEBUG_INFO, "Sound", "%d samples", nsamples);
+          debug(DEBUG_TRACE, "Sound", "%d samples", nsamples);
         }
       }
 
+      if (freeBuffer) {
+        if ((snd = ptr_lock(arg->ptr, TAG_SOUND)) != NULL) {
+          pumpkin_heap_free(snd->buffer, "snd_buffer");
+          snd->buffer = NULL;
+          ptr_unlock(arg->ptr, TAG_SOUND);
+        }
+      }
       if (freeArg) {
         if (inited) {
           debug(DEBUG_INFO, "Sound", "pumpkin_audio_task_finish");
@@ -837,7 +866,7 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
         param->async = flags == sndFlagAsync;
         debug(DEBUG_TRACE, "Sound", "SndPlayBuffer %d samples of size %d", param->size, param->sampleSize);
 
-        if (SndStreamCreateInternal(&param->channel, sndOutput, sndFormatPCM, rate, type, width, NULL, SndVariableBufferCallback, param, 0, false, false) == errNone) {
+        if (SndStreamCreateEx(&param->channel, sndOutput, sndFormatPCM, rate, type, width, NULL, SndVariableBufferCallback, param, 0, false, false, false) == errNone) {
           SndStreamSetVolume(param->channel, volume);
           if (SndStreamStart(param->channel) == errNone) {
             if (flags == sndFlagAsync) {
@@ -1092,15 +1121,14 @@ static void SndStreamRefDestructor(void *p) {
   if (snd) {
     debug(DEBUG_TRACE, "Sound", "SndStreamRefDestructor(%p)", snd);
     if (snd->audio && snd->ap && snd->ap->destroy) {
-      //if (snd->buffer) MemPtrFree(snd->buffer);
-      if (snd->buffer) pumpkin_heap_free(snd->buffer, "snd_buffer");
       snd->ap->destroy(snd->audio);
+      if (snd->buffer) pumpkin_heap_free(snd->buffer, "snd_buffer");
     }
     sys_free(snd);
   }
 }
 
-static Err SndStreamCreateInternal(
+Err SndStreamCreateEx(
   SndStreamRef *channel,        /* channel-ID is stored here */
   SndStreamMode mode,           /* input/output, enum */
   SndFormatType format,         /* enum, e.g., sndFormatMP3 */
@@ -1112,7 +1140,8 @@ static Err SndStreamCreateInternal(
   void *userdata,               /* gets passed in to the above function */
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative,            /* true if callback is arm native */
-  Boolean m68k) {
+  Boolean m68k,
+  Boolean arm) {
 
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   SndStreamType *snd;
@@ -1152,6 +1181,20 @@ static Err SndStreamCreateInternal(
           snd->func68k = func ? (uint8_t *)func - ram : 0;
           snd->vfunc68k = vfunc ? (uint8_t *)vfunc - ram : 0;
           snd->userdata68k = userdata ? (uint8_t *)userdata - ram : 0;
+          snd->funcArm = 0;
+          snd->vfuncArm = 0;
+          snd->userdataArm = 0;
+        } else if (arm) {
+          snd->func = NULL;
+          snd->vfunc = NULL;
+          snd->userdata = NULL;
+          ram = pumpkin_heap_base();
+          snd->funcArm = func ? (uint8_t *)func - ram : 0;
+          snd->vfuncArm = vfunc ? (uint8_t *)vfunc - ram : 0;
+          snd->userdataArm = userdata ? (uint8_t *)userdata - ram : 0;
+          snd->func68k = 0;
+          snd->vfunc68k = 0;
+          snd->userdata68k = 0;
         } else {
           snd->func = func;
           snd->vfunc = vfunc;
@@ -1159,6 +1202,9 @@ static Err SndStreamCreateInternal(
           snd->func68k = 0;
           snd->vfunc68k = 0;
           snd->userdata68k = 0;
+          snd->funcArm = 0;
+          snd->vfuncArm = 0;
+          snd->userdataArm = 0;
         }
         snd->pcm = pcm;
         snd->rate = samplerate;
@@ -1208,7 +1254,7 @@ Err SndStreamCreate(
   UInt32 buffsize,              /* preferred buffersize in frames, not guaranteed, use 0 for default */
   Boolean armNative)            /* true if callback is arm native */ {
 
-  return SndStreamCreateInternal(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative, pumpkin_is_m68k());
+  return SndStreamCreateEx(channel, mode, sndFormatPCM, samplerate, type, width, func, NULL, userdata, buffsize, armNative, pumpkin_is_m68k(), false);
 }
 
 Err SndStreamCreateExtended(
@@ -1223,5 +1269,5 @@ Err SndStreamCreateExtended(
   UInt32 buffsize,              /* preferred buffersize, use 0 for default */
   Boolean armNative) {
 
-  return SndStreamCreateInternal(channel, mode, format, samplerate, type, width, NULL, func, userdata, buffsize, armNative, pumpkin_is_m68k());
+  return SndStreamCreateEx(channel, mode, format, samplerate, type, width, NULL, func, userdata, buffsize, armNative, pumpkin_is_m68k(), false);
 }
