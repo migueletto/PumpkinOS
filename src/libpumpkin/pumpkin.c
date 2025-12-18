@@ -648,9 +648,12 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.battery = 100;
   pumpkin_module.osversion = 54;
 
-  pumpkin_module.pcm = PCM_S16;
+  //pumpkin_module.pcm = PCM_S16;
+  //pumpkin_module.channels = 1;
+  //pumpkin_module.rate = 44100;
+  pumpkin_module.pcm = PCM_U8;
   pumpkin_module.channels = 1;
-  pumpkin_module.rate = 44100;
+  pumpkin_module.rate = 22050;
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
@@ -3739,6 +3742,13 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
             reply = pumpkin_launch_sub(&creq->data.launch, 0);
             debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event sending reply %u to %d", reply, client);
             thread_client_write(client, (uint8_t *)&reply, sizeof(uint32_t));
+          }
+          break;
+        case MSG_AUDIO:
+          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event received audio request from %d", client);
+          if (SndGetAudioReply(buf, len) == 0) {
+            debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event sending audio reply to %d", client);
+            thread_client_write(client, buf, len);
           }
           break;
         case MSG_PAUSE:

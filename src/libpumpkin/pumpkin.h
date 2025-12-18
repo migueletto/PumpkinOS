@@ -65,6 +65,8 @@ extern "C" {
 #define MSG_WIDGET  12
 #define MSG_NOTIFY  13
 #define MSG_LAUNCHC 14
+#define MSG_AUDIO   15
+#define MSG_RAUDIO  16
 #define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
@@ -628,6 +630,8 @@ Err SndStreamCreateEx(
   Boolean armNative,
   Boolean m68k,
   Boolean arm);
+
+int SndGetAudioReply(void *data, int len);
 
 typedef Int32 _comparFP (void *, void *, void *otherP);
 typedef _comparFP * CmpFuncPPtr;

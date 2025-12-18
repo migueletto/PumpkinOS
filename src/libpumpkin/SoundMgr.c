@@ -56,6 +56,7 @@ typedef struct {
 
 typedef struct {
   int ptr;
+  int client;
 } SndStreamArg;
 
 typedef struct {
@@ -457,7 +458,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
   Boolean inited = false;
   Boolean freeArg = false;
   Boolean freeBuffer = false;
-  //uint8_t *ram;
+  uint8_t *ram;
   int pcm, channels;
   float sample, gain, leftGain, rightGain;
   char tname[16];
@@ -491,28 +492,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         if (snd->func) {
           debug(DEBUG_TRACE, "Sound", "GetAudio native func len=%d nsamples=%d", len, nsamples);
           err = snd->func(snd->userdata, arg->ptr, buffer, nsamples);
-        } else if (snd->func68k) {
-          //ram = pumpkin_heap_base();
-          if (snd->buffer == NULL) {
-            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
-            freeBuffer = true;
-          }
-          debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
-          //err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
-          MemSet(snd->buffer, len, 0);
-          err = 0;
-          MemMove(buffer, snd->buffer, len);
-        } else if (snd->funcArm) {
-          //ram = pumpkin_heap_base();
-          if (snd->buffer == NULL) {
-            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
-            freeBuffer = true;
-          }
-          debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
-          //err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
-          MemSet(snd->buffer, len, 0);
-          err = 0;
-          MemMove(buffer, snd->buffer, len);
         } else if (snd->vfunc) {
           debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc len=%d", len);
           nbytes = len;
@@ -524,15 +503,37 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           }
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio native vfunc got len=%d nsamples=%d", len, nsamples);
+        } else if (snd->func68k) {
+          ram = pumpkin_heap_base();
+          if (snd->buffer == NULL) {
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
+          }
+          debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
+          err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          MemSet(snd->buffer, len, 0);
+          err = 0;
+          MemMove(buffer, snd->buffer, len);
+        } else if (snd->funcArm) {
+          ram = pumpkin_heap_base();
+          if (snd->buffer == NULL) {
+            snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
+            freeBuffer = true;
+          }
+          debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
+          err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
+          MemSet(snd->buffer, len, 0);
+          err = 0;
+          MemMove(buffer, snd->buffer, len);
         } else if (snd->vfunc68k) {
-          //ram = pumpkin_heap_base();
+          ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
             snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
             freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
           nbytes = len;
-          //err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
           err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
@@ -544,14 +545,14 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc got len=%d nsamples=%d", len, nsamples);
         } else if (snd->vfuncArm) {
-          //ram = pumpkin_heap_base();
+          ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
             snd->buffer = pumpkin_heap_alloc(len, "snd_buffer");
             freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc len=%d", len);
           nbytes = len;
-          //err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
+          err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
           err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio ARM returned more bytes (%d) than the buffer size (%d)", nbytes, len);
@@ -563,21 +564,25 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc got len=%d nsamples=%d", len, nsamples);
         } else {
+          debug(DEBUG_ERROR, "Sound", "GetAudio func and vfunc are not set");
           err = sndErrBadParam;
         }
         if (err == errNone) {
+          debug(DEBUG_TRACE, "Sound", "GetAudio no error");
           channels = snd->channels;
           pcm = snd->pcm;
           pan = snd->pan;
           volume = snd->volume;
           r = len;
         } else {
+          debug(DEBUG_TRACE, "Sound", "GetAudio error %d freeArg", err);
           nsamples = 0;
           snd->started = false;
           snd->userdata = NULL;
           freeArg = true;
         }
       } else {
+        debug(DEBUG_TRACE, "Sound", "GetAudio started %d stopped %d", snd->started, snd->stopped);
         r = 0;
       }
 
@@ -618,9 +623,12 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         } else {
           debug(DEBUG_TRACE, "Sound", "%d samples", nsamples);
         }
+      } else {
+        debug(DEBUG_TRACE, "Sound", "no samples");
       }
 
       if (freeBuffer) {
+        debug(DEBUG_INFO, "Sound", "freeBuffer");
         if ((snd = ptr_lock(arg->ptr, TAG_SOUND)) != NULL) {
           pumpkin_heap_free(snd->buffer, "snd_buffer");
           snd->buffer = NULL;
@@ -628,6 +636,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         }
       }
       if (freeArg) {
+        debug(DEBUG_INFO, "Sound", "freeArg");
         if (inited) {
           debug(DEBUG_INFO, "Sound", "pumpkin_audio_task_finish");
           pumpkin_audio_task_finish();
@@ -636,6 +645,88 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         sys_free(arg);
       }
     }
+  }
+
+  return r;
+}
+
+typedef struct {
+  uint32_t id;
+  void *buffer;
+  int len;
+  void *data;
+} msg_audio_t;
+
+int SndGetAudioReply(void *data, int len) {
+  msg_audio_t *msg;
+  int r = -1;
+
+  if (len == sizeof(msg_audio_t)) {
+    msg = (msg_audio_t *)data;
+
+    if (msg->id == MSG_AUDIO) {
+      debug(DEBUG_TRACE, "Sound", "received MSG_AUDIO");
+      msg->id = MSG_RAUDIO;
+      msg->len = SndGetAudio(msg->buffer, msg->len, msg->data);
+      r = 0;
+    } else {
+      debug(DEBUG_ERROR, "Sound", "received msg is not MSG_AUDIO (%u)", msg->id);
+      msg->id = MSG_RAUDIO;
+      msg->len = 0;
+    }
+  } else {
+    debug(DEBUG_ERROR, "Sound", "received msg has invalid len=%u bytes", len);
+  }
+
+  return r;
+}
+
+static int SndGetAudioCall(void *buffer, int len, void *data) {
+  SndStreamArg *arg = (SndStreamArg *)data;
+  msg_audio_t msg, *reply;
+  unsigned char *rmsg;
+  unsigned int rlen;
+  int client, r = -1;
+
+  debug(DEBUG_TRACE, "Sound", "get audio arg=%p ptr=%d client=%d", arg, arg->ptr, arg->client);
+  msg.id = MSG_AUDIO;
+  msg.buffer = buffer;
+  msg.len = len;
+  msg.data = data;
+
+  if (thread_client_write(arg->client, (uint8_t *)&msg, sizeof(msg)) == sizeof(msg)) {
+    for (;;) {
+      debug(DEBUG_TRACE, "Sound", "waiting reply from client %d ...", arg->client);
+      if ((r = thread_server_read_timeout_from(10000, &rmsg, &rlen, &client)) == 0) {
+        debug(DEBUG_TRACE, "Sound", "no reply from client %d", arg->client);
+        continue;
+      }
+      if (r == -1) {
+        debug(DEBUG_ERROR, "Sound", "error receiving MSG_RAUDIO from client %d", arg->client);
+        break;
+      }
+
+      debug(DEBUG_TRACE, "Sound", "received reply len=%u bytes from client %d", rlen, client);
+      if (client != arg->client) {
+        debug(DEBUG_ERROR, "Sound", "ignoring reply from client %d != %d", client, arg->client);
+        continue;
+      }
+
+      if (rlen == sizeof(msg_audio_t)) {
+        reply = (msg_audio_t *)rmsg;
+        if (reply->id == MSG_RAUDIO) {
+          debug(DEBUG_TRACE, "Sound", "received msg MSG_RAUDIO len=%d", reply->len);
+          r = reply->len;
+        } else {
+          debug(DEBUG_ERROR, "Sound", "received msg is not MSG_RAUDIO (%u)", reply->id);
+        }
+      } else {
+        debug(DEBUG_ERROR, "Sound", "received msg has invalid len=%u bytes", rlen);
+      }
+      break;
+    }
+  } else {
+    debug(DEBUG_ERROR, "Sound", "error sending MSG_AUDIO to client %d", arg->client);
   }
 
   return r;
@@ -657,11 +748,13 @@ Err SndStreamStart(SndStreamRef channel) {
     } else if ((handle = pumpkin_audio_get(NULL, NULL, NULL)) > 0) {
       if ((arg = sys_calloc(1, sizeof(SndStreamArg))) != NULL) {
         arg->ptr = channel;
+        arg->client = thread_get_handle();
         snd->first = true;
         snd->started = true;
         snd->stopped = false;
         debug(DEBUG_TRACE, "Sound", "starting audio arg=%p ptr=%d", arg, arg->ptr);
-        if (module->ap->start(handle, snd->audio, SndGetAudio, arg) == 0) {
+
+        if (module->ap->start(handle, snd->audio, (snd->func || snd->vfunc) ? SndGetAudio : SndGetAudioCall, arg) == 0) {
           debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d) ok", channel);
           err = errNone;
         } else {
@@ -799,11 +892,6 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
       debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback sync finish (error)");
       param->finished = true;
     }
-  } else if (param->async && finish) {
-    debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback async finish (end)");
-    SndStreamDelete(param->channel);
-    sys_free(param->buffer);
-    sys_free(param);
   }
 
   return err;
