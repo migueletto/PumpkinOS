@@ -66,6 +66,7 @@ typedef struct {
 
 typedef struct {
   char *tag;
+  int client;
   int (*getaudio)(void *buffer, int len, void *data);
   void *data;
   int format, rate, channels;
@@ -1185,6 +1186,7 @@ static int libsdl_audio_start(int handle, audio_t _audio, int (*getaudio)(void *
   int r = -1;
 
   if (handle && (audio = ptr_lock(_audio, TAG_AUDIO)) != NULL) {
+    audio->client = thread_get_handle();
     audio->getaudio = getaudio;
     audio->data = data;
     ptr_unlock(_audio, TAG_AUDIO);
@@ -1447,97 +1449,43 @@ static int set_video_driver(char *video_driver) {
   return 1;
 }
 
-static int audio_action2(void *_arg) {
-  sdl_audio_arg_t *arg = (sdl_audio_arg_t *)_arg;
-  SDL_AudioDeviceID dev = 0;
-  SDL_AudioSpec desired, obtained;
+static void *queue_audio(sdl_audio_t *audio, SDL_AudioDeviceID dev, void *audio_buffer, uint32_t audio_len, SDL_AudioSpec *obtained, void *buf, uint32_t *buflen) {
   SDL_AudioCVT cvt;
-  sdl_audio_t *audio;
-  unsigned char *msg;
-  unsigned int msglen;
-  uint32_t ptr, newlen;
-  int r;
+  uint32_t newlen;
 
-  debug(DEBUG_INFO, "SDL", "audio thread starting");
+  if (audio->format != obtained->format ||
+      audio->channels != obtained->channels ||
+      audio->rate != obtained->freq) {
 
-  for (; !thread_must_end();) {
-    if ((r = thread_server_read_timeout(2000, &msg, &msglen)) == -1) {
-      break;
+    sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
+
+    if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained->format, obtained->channels, obtained->freq) == 1) {
+      cvt.len = audio_len;
+      newlen = audio_len * cvt.len_mult;
+      if (newlen > *buflen) {
+        if (buf) sys_free(buf);
+        debug(DEBUG_INFO, "SDL", "increasing buffer to %d bytes", newlen);
+        *buflen = newlen;
+        buf = sys_calloc(1, *buflen);
+      }
+      cvt.buf = buf;
+      sys_memcpy(cvt.buf, audio_buffer, audio_len);
+      debug(DEBUG_INFO, "SDL", "converting audio src=%d bytes, dst=%d bytes", audio_len, newlen);
+      if (SDL_ConvertAudio(&cvt) != 0) {
+        debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
+      }
+      if (SDL_QueueAudio(dev, cvt.buf, cvt.len_cvt) != 0) {
+        debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
+      }
     }
 
-    if (r == 1) {
-      if (dev == 0) {
-        switch (arg->pcm) {
-          case PCM_U8:  desired.format = AUDIO_U8;  break;
-          case PCM_S16: desired.format = AUDIO_S16; break;
-          case PCM_S32: desired.format = AUDIO_S32; break;
-        }
-        desired.freq = arg->rate; // DSP frequency -- samples per second
-        desired.channels = arg->channels; // Number of channels: 1 mono, 2 stereo
-        desired.silence = 0;      // Audio buffer silence value (calculated)
-        desired.samples = 1024;   // Audio buffer size in sample FRAMES (total samples divided by channel count)
-        desired.padding = 0;      // Necessary for some compile environments
-        desired.callback = NULL;  // Callback that feeds the audio device (NULL to use SDL_QueueAudio())
-        desired.userdata = NULL;  //  Userdata passed to callback (ignored for NULL callbacks)
-
-        if ((dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0)) == -1) {
-          debug(DEBUG_ERROR, "SDL", "SDL_OpenAudioDevice failed: %s", SDL_GetError());
-          break;
-        }
-        SDL_PauseAudioDevice(dev, 0);
-        debug(DEBUG_INFO, "SDL", "open device %d", dev);
-      }
-
-      if (msg) {
-        if (msglen == 4) {
-          ptr = *((uint32_t *)msg);
-          if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
-            if (audio->buffer && audio->bsize) {
-              debug(DEBUG_TRACE, "SDL", "received %u bytes on ptr %d", audio->bsize, ptr);
-              if (audio->format != obtained.format ||
-                  audio->channels != obtained.channels ||
-                  audio->rate != obtained.freq) {
-                sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
-                if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained.format, obtained.channels, obtained.freq) == 1) {
-                  cvt.len = audio->bsize;
-                  newlen = audio->bsize * cvt.len_mult;
-                  cvt.buf = sys_calloc(1, newlen);
-                  sys_memcpy(cvt.buf, audio->buffer, audio->bsize);
-                  debug(DEBUG_TRACE, "SDL", "converting audio src=%u bytes, dst=%u bytes", audio->bsize, newlen);
-                  if (SDL_ConvertAudio(&cvt) != 0) {
-                    debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
-                  }
-                  if (SDL_QueueAudio(dev, cvt.buf, cvt.len_cvt) != 0) {
-                    debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
-                  }
-                  sys_free(cvt.buf);
-                }
-              } else {
-                debug(DEBUG_TRACE, "SDL", "convertion is not necessary");
-                if (SDL_QueueAudio(dev, audio->buffer, audio->bsize) != 0) {
-                  debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
-                }
-              }
-              sys_free(audio->buffer);
-            }
-            ptr_unlock(ptr, TAG_AUDIO);
-          }
-          ptr_free(ptr, TAG_AUDIO);
-          debug(DEBUG_INFO, "SDL", "handled ptr %d", ptr);
-        }
-        sys_free(msg);
-      }
+  } else {
+    if (SDL_QueueAudio(dev, audio_buffer, audio_len) != 0) {
+      debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
     }
   }
 
-  if (dev > 0) {
-    debug(DEBUG_INFO, "SDL", "close device %d", dev);
-    SDL_CloseAudioDevice(dev);
-  }
-
-  debug(DEBUG_INFO, "SDL", "audio thread exiting");
-
-  return 0;
+  return buf;
 }
 
 static int audio_action(void *_arg) {
@@ -1546,11 +1494,11 @@ static int audio_action(void *_arg) {
   SDL_AudioSpec desired, obtained;
   SDL_AudioCVT cvt;
   sdl_audio_t *audio;
-  unsigned char *msg;
+  unsigned char *msg, *amsg;
   unsigned int msglen;
   uint32_t ptr, buflen, newlen;
   void *buf;
-  int len1, len2, r;
+  int len1, len2, finish, r;
 
   debug(DEBUG_INFO, "SDL", "audio thread starting");
   buflen = 0;
@@ -1589,40 +1537,60 @@ static int audio_action(void *_arg) {
           ptr = *((uint32_t *)msg);
           debug(DEBUG_INFO, "SDL", "received ptr %d", ptr);
           if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
-            for (; !thread_must_end();) {
-              len1 = audio->bsize * audio->channels;
-              len2 = audio->getaudio(audio->buffer, len1, audio->data);
-              debug(DEBUG_TRACE, "SDL", "get audio len=%d bytes", len2);
-              if (len2 <= 0) break;
-              if (audio->format != obtained.format ||
-                  audio->channels != obtained.channels ||
-                  audio->rate != obtained.freq) {
-                sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
-                if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained.format, obtained.channels, obtained.freq) == 1) {
-                  cvt.len = len2;
-                  newlen = len2 * cvt.len_mult;
-                  if (newlen > buflen) {
-                    if (buf) sys_free(buf);
-                    debug(DEBUG_INFO, "SDL", "increasing buffer to %d bytes", newlen);
-                    buflen = newlen;
-                    buf = sys_calloc(1, buflen);
+            if (audio->getaudio == NULL) {
+              for (finish = 0; !finish && !thread_must_end();) {
+                if (thread_client_write(audio->client, (uint8_t *)audio->data, sizeof(uint32_t)) != sizeof(uint32_t)) break;
+                if ((r = thread_server_read_timeout(2000, &amsg, &msglen)) == -1) break;
+                if (r == 1) {
+                  if (msglen > 4) {
+                    msglen -= 4;
+                    debug(DEBUG_TRACE, "SDL", "received audio len=%u bytes", msglen);
+                    buf = queue_audio(audio, dev, amsg + 4, msglen, &obtained, buf, &buflen);
+                  } else {
+                    finish = 1;
                   }
-                  cvt.buf = buf;
-                  sys_memcpy(cvt.buf, audio->buffer, len2);
-                  debug(DEBUG_INFO, "SDL", "converting audio src=%d bytes, dst=%d bytes", len2, newlen);
-                  if (SDL_ConvertAudio(&cvt) != 0) {
-                    debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
+                  sys_free(amsg);
+                }
+              }
+            } else {
+              for (; !thread_must_end();) {
+                len1 = audio->bsize * audio->channels;
+                len2 = audio->getaudio(audio->buffer, len1, audio->data);
+                debug(DEBUG_TRACE, "SDL", "got audio len=%u bytes", len2);
+                if (len2 <= 0) break;
+                buf = queue_audio(audio, dev, audio->buffer, len2, &obtained, buf, &buflen);
+/*
+                if (audio->format != obtained.format ||
+                    audio->channels != obtained.channels ||
+                    audio->rate != obtained.freq) {
+                  sys_memset(&cvt, 0, sizeof(SDL_AudioCVT));
+                  if (SDL_BuildAudioCVT(&cvt, audio->format, audio->channels, audio->rate, obtained.format, obtained.channels, obtained.freq) == 1) {
+                    cvt.len = len2;
+                    newlen = len2 * cvt.len_mult;
+                    if (newlen > buflen) {
+                      if (buf) sys_free(buf);
+                      debug(DEBUG_INFO, "SDL", "increasing buffer to %d bytes", newlen);
+                      buflen = newlen;
+                      buf = sys_calloc(1, buflen);
+                    }
+                    cvt.buf = buf;
+                    sys_memcpy(cvt.buf, audio->buffer, len2);
+                    debug(DEBUG_INFO, "SDL", "converting audio src=%d bytes, dst=%d bytes", len2, newlen);
+                    if (SDL_ConvertAudio(&cvt) != 0) {
+                      debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
+                    }
+                    if (SDL_QueueAudio(dev, cvt.buf, cvt.len_cvt) != 0) {
+                      debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
+                    }
                   }
-                  if (SDL_QueueAudio(dev, cvt.buf, cvt.len_cvt) != 0) {
+                } else {
+                  if (SDL_QueueAudio(dev, audio->buffer, len2) != 0) {
                     debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
                   }
                 }
-              } else {
-                if (SDL_QueueAudio(dev, audio->buffer, len2) != 0) {
-                  debug(DEBUG_ERROR, "SDL", "SDL_QueueAudio failed: %s", SDL_GetError());
-                }
+*/
+                if (len2 != len1) break;
               }
-              if (len2 != len1) break;
             }
             ptr_unlock(ptr, TAG_AUDIO);
           }

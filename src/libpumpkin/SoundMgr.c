@@ -3,6 +3,7 @@
   
 #include "sys.h"
 #include "thread.h"
+#include "mutex.h"
 #include "script.h"
 #include "pwindow.h"
 #include "media.h"
@@ -767,14 +768,18 @@ Err SndStreamGetVolume(SndStreamRef channel, Int32 *volume) {
 static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 *bufferSizeP) {
   snd_param_t *param = (snd_param_t *)userdata;
   UInt32 n;
+  Boolean finish = false;
   Err err = sndErrBadParam;
 
-  if (param && buffer && bufferSizeP) {
+  if (param && buffer && bufferSizeP && !finish) {
     sys_memset(buffer, 0, *bufferSizeP);
     n = *bufferSizeP / param->sampleSize;
     if (n > (param->size - param->pos)) n = param->size - param->pos;
     debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback bufferSize=%d size=%d pos=%d n=%d", *bufferSizeP, param->size, param->pos, n);
     if (n > 0) {
+      if (n < *bufferSizeP) {
+        finish = true;
+      }
       sys_memcpy(buffer, &param->buffer[param->pos], n * param->sampleSize);
       param->pos += n;
       *bufferSizeP = n * param->sampleSize;
@@ -786,14 +791,19 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
 
   if (err != errNone) {
     if (param->async) {
-      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback async finish");
+      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback async finish (error)");
       SndStreamDelete(param->channel);
       sys_free(param->buffer);
       sys_free(param);
     } else {
-      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback sync finish");
+      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback sync finish (error)");
       param->finished = true;
     }
+  } else if (param->async && finish) {
+    debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback async finish (end)");
+    SndStreamDelete(param->channel);
+    sys_free(param->buffer);
+    sys_free(param);
   }
 
   return err;
@@ -917,7 +927,7 @@ static Err playFrequency(Int32 frequency, UInt16 duration, UInt16 volume) {
   Err err = sndErrBadParam;
 
   size = (duration * DOCMD_SAMPLE_RATE) / 1000;
-  debug(DEBUG_TRACE, "Sound", "sndCmdFreqDurationAmp frequency=%dHz duration=%dms volume=%d size=%d", frequency, duration, volume, size);
+  debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz duration=%dms volume=%d size=%d", frequency, duration, volume, size);
   if ((buffer = sys_calloc(1, size)) != NULL) {
     pi2 = 2.0 * sys_pi();
     for (i = 0; i < size; i++) {
@@ -990,6 +1000,7 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
       case sndCmdQuiet:
         // Stop the playback of the currently generated tone.
         // All parameter values are ignored.
+        err = errNone;
         break;
     }
   }

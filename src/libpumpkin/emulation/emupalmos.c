@@ -1077,6 +1077,15 @@ void decode_smfoptions(uint32_t selP, SndSmfOptionsType *options) {
   }
 }
 
+void decode_sndcmd(uint32_t cmdP, SndCommandType *cmd) {
+  if (cmdP && cmd) {
+    cmd->cmd = m68k_read_memory_8(cmdP);
+    cmd->param1 = m68k_read_memory_32(cmdP + 2);
+    cmd->param2 = m68k_read_memory_16(cmdP + 6);
+    cmd->param3 = m68k_read_memory_16(cmdP + 8);
+  }
+}
+
 /*
 typedef struct VolumeInfoTag {
         UInt32  attributes;                     // read-only etc.

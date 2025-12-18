@@ -2859,7 +2859,9 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t cmdP = ARG32;
       uint8_t noWait = ARG8;
       emupalmos_trap_in(channelP, trap, 0);
-      err = errNone;
+      SndCommandType cmd;
+      decode_sndcmd(cmdP, &cmd);
+      err = SndDoCmd(NULL, cmdP ? &cmd : NULL, noWait);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndDoCmd(0x%08X, 0x%08X, %d): %d", channelP, cmdP, noWait, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
