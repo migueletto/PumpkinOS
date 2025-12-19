@@ -449,6 +449,35 @@ void putSample(int pcm, uint8_t *buffer, UInt32 i, Int32 sample) {
   }
 }
 
+/*
+static void save_buffer(uint8_t *buffer, uint32_t size) {
+  UInt32 n;
+  Err err;
+  char name[32];
+  static int count = 0;
+  static FileRef fileRef = NULL;
+
+
+  if (count == 0) {
+    sys_sprintf(name, "audio.raw");
+    VFSFileDelete(1, name);
+    VFSFileCreate(1, name);
+    err = VFSFileOpen(1, name, vfsModeWrite, &fileRef);
+    debug(1, "XXX", "open %d", err);
+  }
+
+  if (count < 16) {
+    err = VFSFileWrite(fileRef, size, buffer, &n);
+    debug(1, "XXX", "write %u %u %d", size, n, err);
+    count++;
+  } else if (count == 16) {
+    VFSFileClose(fileRef);
+    debug(1, "XXX", "close");
+    count++;
+  }
+}
+*/
+
 static int SndGetAudio(void *buffer, int len, void *data) {
   SndStreamArg *arg = (SndStreamArg *)data;
   SndStreamType *snd;
@@ -511,8 +540,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
           err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
-          MemSet(snd->buffer, len, 0);
-          err = 0;
           MemMove(buffer, snd->buffer, len);
         } else if (snd->funcArm) {
           ram = pumpkin_heap_base();
@@ -522,9 +549,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
           err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
-          MemSet(snd->buffer, len, 0);
-          err = 0;
           MemMove(buffer, snd->buffer, len);
+          //save_buffer(buffer, len);
         } else if (snd->vfunc68k) {
           ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
@@ -534,13 +560,11 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
           nbytes = len;
           err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
-          err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
             len = nbytes;
           }
-          MemSet(snd->buffer, len, 0);
           MemMove(buffer, snd->buffer, len);
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc got len=%d nsamples=%d", len, nsamples);
@@ -553,13 +577,11 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc len=%d", len);
           nbytes = len;
           err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
-          err = 0;
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio ARM returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
             len = nbytes;
           }
-          MemSet(snd->buffer, len, 0);
           MemMove(buffer, snd->buffer, len);
           nsamples = nbytes / snd->samplesize;
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc got len=%d nsamples=%d", len, nsamples);
@@ -686,7 +708,7 @@ static int SndGetAudioCall(void *buffer, int len, void *data) {
   msg_audio_t msg, *reply;
   unsigned char *rmsg;
   unsigned int rlen;
-  int client, r = -1;
+  int client, i, r = -1;
 
   debug(DEBUG_TRACE, "Sound", "get audio arg=%p ptr=%d client=%d", arg, arg->ptr, arg->client);
   msg.id = MSG_AUDIO;
@@ -695,7 +717,7 @@ static int SndGetAudioCall(void *buffer, int len, void *data) {
   msg.data = data;
 
   if (thread_client_write(arg->client, (uint8_t *)&msg, sizeof(msg)) == sizeof(msg)) {
-    for (;;) {
+    for (i = 0; i < 100 && !thread_must_end(); i++) {
       debug(DEBUG_TRACE, "Sound", "waiting reply from client %d ...", arg->client);
       if ((r = thread_server_read_timeout_from(10000, &rmsg, &rlen, &client)) == 0) {
         debug(DEBUG_TRACE, "Sound", "no reply from client %d", arg->client);
@@ -897,22 +919,6 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
   return err;
 }
 
-/*
-static void save_buffer(uint8_t *buffer, uint32_t size) {
-  FileRef fileRef;
-  UInt32 n;
-  char name[32];
-  static int i = 0;
-if (i == 0) {
-  sys_sprintf(name, "snd%02d.raw", i++);
-  VFSFileCreate(1, name);
-  VFSFileOpen(1, name, vfsModeWrite, &fileRef);
-  VFSFileWrite(fileRef, size, buffer, &n);
-  VFSFileClose(fileRef);
-}
-}
-*/
-
 static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType type, SndStreamWidth width, Int32 volume, UInt32 flags) {
   MemHandle h;
   UInt8 *snd;
@@ -943,7 +949,6 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
           debug(DEBUG_ERROR, "Sound", "SndPlayBuffer sndP is not a handle");
         }
       }
-//save_buffer(snd, param->size);
     } else {
       // sndP is a memory buffer (not a locked handle)
       param->size = size;
