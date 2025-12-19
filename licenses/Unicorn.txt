@@ -1,0 +1,3 @@
+Unicorn Engine
+By Nguyen Anh Quynh <aquynh@gmail.com>, 2015-2017
+Released under LGPL2
