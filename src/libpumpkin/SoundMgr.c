@@ -650,7 +650,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       }
 
       if (freeBuffer) {
-        debug(DEBUG_INFO, "Sound", "freeBuffer");
+        debug(DEBUG_TRACE, "Sound", "freeBuffer");
         if ((snd = ptr_lock(arg->ptr, TAG_SOUND)) != NULL) {
           pumpkin_heap_free(snd->buffer, "snd_buffer");
           snd->buffer = NULL;

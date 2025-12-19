@@ -1711,7 +1711,7 @@ static void enumArmPlugincallback(pumpkin_plugin_t *plugin, void *data) {
 
   if (state->armp == NULL) {
     pumpkin_id2s(plugin->id, buf);
-    debug(DEBUG_INFO, "ARM", "using external ARM emulator '%s'", buf);
+    debug(DEBUG_TRACE, "ARM", "using external ARM emulator '%s'", buf);
     state->armp = plugin->pluginMain(NULL);
   } else {
     debug(DEBUG_INFO, "ARM", "ignoring external ARM emulator '%s'", buf);
