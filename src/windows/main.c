@@ -608,7 +608,7 @@ static audio_t audio_create(int pcm, int channels, int rate, void *data) {
   win_audio_t *audio;
   int ptr = -1;
 
-  debug(DEBUG_INFO, "Windows", "audio_create(%d,%d,%d)", pcm, channels, rate);
+  debug(DEBUG_TRACE, "Windows", "audio_create(%d,%d,%d)", pcm, channels, rate);
 
   if ((pcm == PCM_U8 || pcm == PCM_S16 || pcm == PCM_S32) && (channels == 1 || channels == 2) && rate > 0) {
     if ((audio = sys_calloc(1, sizeof(win_audio_t))) != NULL) {
@@ -634,13 +634,13 @@ static audio_t audio_create(int pcm, int channels, int rate, void *data) {
       audio->channels = channels;
       audio->rate = rate;
       audio->bsize *= channels;
-      debug(DEBUG_INFO, "Windows", "sample size %d", audio->bsize);
+      debug(DEBUG_TRACE, "Windows", "sample size %d", audio->bsize);
       audio->bsize *= rate;
       if (audio->bsize > 4096) {
         audio->bsize = 4096;
       }
       audio->buffer = sys_calloc(1, audio->bsize);
-      debug(DEBUG_INFO, "Windows", "buffer size %d", audio->bsize);
+      debug(DEBUG_TRACE, "Windows", "buffer size %d", audio->bsize);
 
       audio->fmt.nBlockAlign = (audio->fmt.nChannels * audio->fmt.wBitsPerSample) / 8;
       audio->fmt.nAvgBytesPerSec = audio->fmt.nSamplesPerSec * audio->fmt.nBlockAlign;
@@ -794,9 +794,8 @@ static int audio_action(void *_arg) {
   win_audio_t *audio;
   unsigned char *msg;
   unsigned int msglen;
-  uint32_t ptr;
-  void *buf;
-  int len1, len2, last, r;
+  uint32_t ptr, wait;
+  int len1, len2, r;
   uint64_t t0, t;
   WAVEFORMATEX fmt;
   HWAVEOUT hwo = NULL;
@@ -804,11 +803,13 @@ static int audio_action(void *_arg) {
   MMRESULT res;
 
   debug(DEBUG_INFO, "Windows", "audio thread starting");
-  buf = NULL;
   sys_memset(&hdr, 0, sizeof(hdr));
+  wait = 2000;
 
   for (; !thread_must_end();) {
-    if ((r = thread_server_read_timeout(2000, &msg, &msglen)) == -1) {
+    debug(DEBUG_TRACE, "Windows", "receiving msg wait=%u ...", wait);
+    if ((r = thread_server_read_timeout(wait, &msg, &msglen)) == -1) {
+      debug(DEBUG_ERROR, "Windows", "error receiving msg");
       break;
     }
 
@@ -818,6 +819,7 @@ static int audio_action(void *_arg) {
         fmt.wFormatTag = WAVE_FORMAT_PCM;
         fmt.nChannels = arg->channels;
         fmt.nSamplesPerSec = arg->rate;
+
         switch (arg->pcm) {
           case PCM_U8:  fmt.wBitsPerSample =  8; break;
           case PCM_S16: fmt.wBitsPerSample = 16; break;
@@ -835,59 +837,73 @@ static int audio_action(void *_arg) {
       }
 
       if (msg) {
+        wait = 2000;
+        debug(DEBUG_TRACE, "Windows", "set wait=%u", wait);
         if (msglen == 4) {
+          if (ptr) {
+            // a new message was reveiced while the previous one was still playing
+            debug(DEBUG_TRACE, "Windows", "closing ptr %d", ptr);
+            ptr_free(ptr, TAG_AUDIO);
+          }
           ptr = *((uint32_t *)msg);
           debug(DEBUG_TRACE, "Windows", "received ptr %d", ptr);
-          if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
-            for (; !thread_must_end();) {
-              len1 = audio->bsize * audio->channels;
-              len2 = audio->getaudio(audio->buffer, len1, audio->data);
-              debug(DEBUG_TRACE, "Windows", "get audio len=%d bytes", len2);
-              if (len2 <= 0) break;
-              last = len2 != len1;
-
-              if (audio->pcm != arg->pcm || audio->channels != arg->channels || audio->rate != arg->rate) {
-                len2 = audio_convert(audio, arg->pcm, arg->channels, arg->rate);
-              }
-
-              hdr.lpData = (LPSTR)audio->buffer;
-              hdr.dwBufferLength = len2;
-              hdr.dwUser = (DWORD_PTR)NULL;
-              hdr.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
-              hdr.dwLoops = 0;
-
-              if ((res = waveOutPrepareHeader(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
-                debug(DEBUG_TRACE, "Windows", "waveOutWrite sending %d bytes", len2);
-                if ((res = waveOutWrite(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
-                  t0 = sys_get_clock();
-                  for (;;) {
-                    if (hdr.dwFlags & WHDR_DONE) {
-                      waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
-                      break;
-                    } else {
-                      sys_usleep(100);
-                    }
-                  }
-                  t = sys_get_clock();
-                  debug(DEBUG_TRACE, "Windows", "waveOutWrite took %u us", (uint32_t)(t - t0));
-                  r = 0;
-                } else {
-                  debug(DEBUG_ERROR, "Windows", "waveOutWrite failed (%d)", res);
-                  waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
-                }
-              } else {
-                debug(DEBUG_ERROR, "Windows", "waveOutPrepareHeader failed (%d)", res);
-              }
-
-              if (last) break;
-            }
-            ptr_unlock(ptr, TAG_AUDIO);
-            if (buf) sys_free(buf);
-          }
-          ptr_free(ptr, TAG_AUDIO);
-          debug(DEBUG_TRACE, "Windows", "handled ptr %d", ptr);
+          wait = 0;
+          debug(DEBUG_TRACE, "Windows", "set wait=%u", wait);
+        } else {
+          debug(DEBUG_ERROR, "Windows", "received invalid length %u", msglen);
         }
         sys_free(msg);
+      } else {
+        debug(DEBUG_ERROR, "Windows", "received null msg");
+      }
+    } else {
+      debug(DEBUG_TRACE, "Windows", "no msg");
+      if (ptr) {
+        if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
+          len1 = audio->bsize * audio->channels;
+          len2 = audio->getaudio(audio->buffer, len1, audio->data);
+          if (len2 > 0) {
+            debug(DEBUG_TRACE, "Windows", "got audio len=%d bytes", len2);
+
+            if (audio->pcm != arg->pcm || audio->channels != arg->channels || audio->rate != arg->rate) {
+              len2 = audio_convert(audio, arg->pcm, arg->channels, arg->rate);
+            }
+            hdr.lpData = (LPSTR)audio->buffer;
+            hdr.dwBufferLength = len2;
+            hdr.dwUser = (DWORD_PTR)NULL;
+            hdr.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
+            hdr.dwLoops = 0;
+
+            if ((res = waveOutPrepareHeader(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+              debug(DEBUG_TRACE, "Windows", "waveOutWrite sending %d bytes", len2);
+              if ((res = waveOutWrite(hwo, &hdr, sizeof(WAVEHDR))) == MMSYSERR_NOERROR) {
+                t0 = sys_get_clock();
+                for (;;) {
+                  if (hdr.dwFlags & WHDR_DONE) {
+                    waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
+                    break;
+                  } else {
+                    sys_usleep(100);
+                  }
+                }
+                t = sys_get_clock();
+                debug(DEBUG_TRACE, "Windows", "waveOutWrite took %u us", (uint32_t)(t - t0));
+                r = 0;
+              } else {
+                debug(DEBUG_ERROR, "Windows", "waveOutWrite failed (%d)", res);
+                waveOutUnprepareHeader(hwo, &hdr, sizeof(WAVEHDR));
+              }
+            } else {
+              debug(DEBUG_ERROR, "Windows", "waveOutPrepareHeader failed (%d)", res);
+            }
+          }
+          ptr_unlock(ptr, TAG_AUDIO);
+
+          if (len2 <= 0 || len2 != len1) {
+            debug(DEBUG_TRACE, "Windows", "ptr %d ended", ptr);
+            ptr = 0;
+          }
+        }
       }
     }
   }
