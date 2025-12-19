@@ -1536,7 +1536,7 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
         if (abuf->out == MAX_BUFFER) abuf->out = 0;
         abuf->len--;
       } else {
-        debug(DEBUG_ERROR, "SDL", "buffer underflow");
+        debug(DEBUG_ERROR, "SDL", "buffer underflow i=%d len=%d", i, len);
         break;
       }
     }
@@ -1558,7 +1558,7 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
           len >>= 1;
           stream16 = (int16_t *)stream;
           for (;;) {
-            stream16[i] = 0;
+            stream16[i++] = 0;
             if (i == len) break;
             if (abuf->channels == 2) {
               stream16[i++] = 0;
@@ -1571,7 +1571,7 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
           len >>= 2;
           stream32 = (int32_t *)stream;
           for (;;) {
-            stream32[i] = 0;
+            stream32[i++] = 0;
             if (i == len) break;
             if (abuf->channels == 2) {
               stream32[i++] = 0;
