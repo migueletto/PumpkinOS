@@ -1,11 +1,11 @@
 include ../common.mak
 include ../commonp.mak
 
-RESAMPLE=$(SRC)/libresample
+RESAMPLE=libresample
 OBJS=main.o drop.o midi.o $(RESAMPLE)/resample.o $(RESAMPLE)/resamplesubs.o $(RESAMPLE)/filterkit.o
 RES=icon.res version.res
 PROGRAM=$(ROOT)/pumpkin.exe
-CUSTOMPFLAGS=-I$(SRC)/libresample
+CUSTOMPFLAGS=-I$(RESAMPLE)
 
 $(PROGRAM): $(OBJS) $(RES)
 	@echo Linking pumpkin.exe
