@@ -1246,7 +1246,10 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
 
     m68k_state = m68k_get_state();
     for (; !emupalmos_finished() && !thread_must_end();) {
-      if (m68k_execute(m68k_state, 100000) == -1) break;
+      if (pumpkin_audio_check(-1)) {
+        EvtPumpEvents(0);
+      }
+      if (m68k_execute(m68k_state, 10000) == -1) break;
     }
     r = m68k_get_reg(NULL, wantA0 ? M68K_REG_A0 : M68K_REG_D0);
     debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func function 0x%08X returned %d (0x%08X)", trapOrFunction, r, r);
@@ -1298,8 +1301,8 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
     m68k_write_memory_32(a + 4, channel);
     m68k_write_memory_32(a + 8, buffer);
     m68k_write_memory_32(a + 12, nsamples);
-    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndFunc 0x%08X 0x%08X %u 0x%08X %u ...", addr, data, channel, buffer, nsamples);
     r = call68K_func(0, addr, a, argsSize) & 0xFFFF;
+    debug(DEBUG_TRACE, "EmuPalmOS", "CallSndFunc(0x%08X 0x%08X %u 0x%08X %u): %d", addr, data, channel, buffer, nsamples, r);
     pumpkin_heap_free(p, "CallSndFunc");
   }
 
@@ -1308,6 +1311,8 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
   return r;
 }
 
+static emu_state_t *emupalmos_new(void);
+
 Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
   // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
   emu_state_t *oldState, *state;
@@ -1315,13 +1320,21 @@ Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt
   uint8_t *ram = pumpkin_heap_base();
   Err err = 0;
 
-  oldState = emupalmos_install();
+  oldState = pumpkin_get_local_storage(emu_key);
+  state = pumpkin_get_local_storage(emu2_key);
+  if (state == NULL) {
+    state = emupalmos_new();
+    pumpkin_set_local_storage(emu2_key, state);
+  }
+  pumpkin_set_local_storage(emu_key, state);
+
   state = pumpkin_get_local_storage(emu_key);
   stackAddr = state->armStack - ram;
   state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
   err = arm_native_call_sub(addr, 0, data, channel, buffer, nsamples);
-  emupalmos_deinstall(oldState);
-  debug(DEBUG_TRACE, "ARM", "CallSndFunc(0x%08X 0x%08X %u 0x%08X %u): %d", addr, data, channel, buffer, nsamples, err);
+  debug(DEBUG_TRACE, "ARM", "CallSndFuncArm(0x%08X 0x%08X %u 0x%08X %u): %d", addr, data, channel, buffer, nsamples, err);
+
+  pumpkin_set_local_storage(emu_key, oldState);
 
   return err;
 }
@@ -2337,7 +2350,10 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         logtrap_install(state, creator);
         emupalmos_finish(0);
         for (; !emupalmos_finished() && !thread_must_end();) {
-          m68k_execute(&state->m68k_state, 100000);
+          if (pumpkin_audio_check(-1)) {
+            EvtPumpEvents(0);
+          }
+          m68k_execute(&state->m68k_state, 10000);
         }
         logtrap_deinstall(state);
       }
@@ -2356,6 +2372,13 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       pumpkin_set_local_storage(emu_key, oldState);
       palmos_systrap_finish(state);
       emupalmos_destroy(state);
+
+      state = pumpkin_get_local_storage(emu2_key);
+      if (state) {
+        palmos_systrap_finish(state);
+        emupalmos_destroy(state);
+        pumpkin_set_local_storage(emu_key, NULL);
+      }
 
       if (hData) MemHandleUnlock(hData);
       if (hData) MemHandleFree(hData);

@@ -217,6 +217,7 @@ typedef enum {
   emu_key,
   charattr_key,
   data_key,
+  emu2_key,
   last_key
 } local_storage_key_t;
 
@@ -744,6 +745,7 @@ int pumpkin_audio_get(int *pcm, int *channels, int *rate);
 int pumpkin_audio_set(int pcm, int channels, int rate);
 void pumpkin_audio_task_init(void);
 void pumpkin_audio_task_finish(void);
+int pumpkin_audio_check(int op);
 
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data);
 

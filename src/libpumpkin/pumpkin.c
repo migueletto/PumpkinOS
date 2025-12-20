@@ -152,6 +152,7 @@ typedef struct {
   heap_t *heap;
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
+  int checkAudio;
   void *data;
   void *subdata;
   int (*getchar)(void *iodata);
@@ -651,6 +652,9 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.pcm = PCM_S16;
   pumpkin_module.channels = 1;
   pumpkin_module.rate = 44100;
+  //pumpkin_module.pcm = PCM_U8;
+  //pumpkin_module.channels = 1;
+  //pumpkin_module.rate = 22050;
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
@@ -3742,9 +3746,9 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
           }
           break;
         case MSG_AUDIO:
-          debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event received audio request from %d", client);
+          debug(DEBUG_TRACE, PUMPKINOS, "pumpkin_event received audio request from %d", client);
           if (SndGetAudioReply(buf, len) == 0) {
-            debug(DEBUG_INFO, PUMPKINOS, "pumpkin_event sending audio reply to %d", client);
+            debug(DEBUG_TRACE, PUMPKINOS, "pumpkin_event sending audio reply to %d", client);
             thread_client_write(client, buf, len);
           }
           break;
@@ -6064,6 +6068,25 @@ void pumpkin_audio_task_finish(void) {
     heap_finish(task->heap);
     sys_free(task);
   }
+}
+
+int pumpkin_audio_check(int op) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int r = 0;
+
+  if (task) {
+    switch (op) {
+      case 0:
+      case 1:
+        r = task->checkAudio = op;
+        break;
+      case -1:
+        r = task->checkAudio;
+        break;
+    }
+  }
+
+  return r;
 }
 
 int32_t pumpkin_event_timeout(int32_t t) {

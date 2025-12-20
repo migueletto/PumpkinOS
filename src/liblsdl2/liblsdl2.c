@@ -75,6 +75,7 @@ typedef struct {
   int format, rate, channels;
   uint8_t *buffer;
   uint32_t bsize;
+  uint64_t t;
 } sdl_audio_t;
 
 typedef struct {
@@ -1169,6 +1170,7 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
           audio->bsize = 4;
           break;
       }
+      audio->t = sys_get_clock();
       audio->rate = rate;
       audio->channels = channels;
       debug(DEBUG_INFO, "SDL", "sample size %d", audio->bsize);
@@ -1466,14 +1468,13 @@ static void put_audio(sdl_audio_buffer_t *abuf, uint8_t *buffer, uint32_t len) {
   debug(DEBUG_TRACE, "SDL", "put audio %d bytes", len);
 
   for (i = 0; i < len; i++) {
-    if (abuf->len < MAX_BUFFER) {
-      abuf->buffer[abuf->in++] = buffer[i];
-      if (abuf->in == MAX_BUFFER) abuf->in = 0;
-      abuf->len++;
-    } else {
+    if (abuf->len == MAX_BUFFER) {
       debug(DEBUG_ERROR, "SDL", "buffer overflow");
       break;
     }
+    abuf->buffer[abuf->in++] = buffer[i];
+    if (abuf->in == MAX_BUFFER) abuf->in = 0;
+    abuf->len++;
   }
 }
 
@@ -1516,8 +1517,6 @@ static void *convert_audio(sdl_audio_buffer_t *abuf, sdl_audio_t *audio, void *a
 static void audio_callback(void *userdata, uint8_t *stream, int len) {
   int aptr = *(int *)userdata;
   sdl_audio_buffer_t *abuf;
-  int16_t *stream16;
-  int32_t *stream32;
   char tname[16];
   uint8_t b;
   int i;
@@ -1529,6 +1528,17 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
 
   if ((abuf = ptr_lock(aptr, TAG_ABUF)) != NULL) {
     debug(DEBUG_TRACE, "SDL", "need audio len=%d bytes, buffer=%d bytes", len, abuf->len);
+
+    switch (abuf->pcm) {
+      case PCM_U8:
+        sys_memset(stream, 128, len);
+        break;
+      case PCM_S16:
+      case PCM_S32:
+        sys_memset(stream, 0, len);
+        break;
+    }
+
     for (i = 0; i < len; i++) {
       if (abuf->len > 0) {
         b = abuf->buffer[abuf->out++];
@@ -1538,47 +1548,6 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
       } else {
         debug(DEBUG_ERROR, "SDL", "buffer underflow i=%d len=%d", i, len);
         break;
-      }
-    }
-    if (i < len) {
-      // underflow, fill the remaining with silence
-      switch (abuf->pcm) {
-        case PCM_U8:
-          for (;;) {
-            stream[i++] = 128;
-            if (i == len) break;
-            if (abuf->channels == 2) {
-              stream[i++] = 128;
-              if (i == len) break;
-            }
-          }
-          break;
-        case PCM_S16:
-          i >>= 1;
-          len >>= 1;
-          stream16 = (int16_t *)stream;
-          for (;;) {
-            stream16[i++] = 0;
-            if (i == len) break;
-            if (abuf->channels == 2) {
-              stream16[i++] = 0;
-              if (i == len) break;
-            }
-          }
-          break;
-        case PCM_S32:
-          i >>= 2;
-          len >>= 2;
-          stream32 = (int32_t *)stream;
-          for (;;) {
-            stream32[i++] = 0;
-            if (i == len) break;
-            if (abuf->channels == 2) {
-              stream32[i++] = 0;
-              if (i == len) break;
-            }
-          }
-          break;
       }
     }
     ptr_unlock(aptr, TAG_ABUF);
@@ -1598,13 +1567,15 @@ static int audio_action(void *_arg) {
   int aptr;
   unsigned char *msg;
   unsigned int msglen;
-  uint32_t ptr, sampleSize, wait;
+  uint32_t ptr, dt, sampleSize, wait;
+  uint64_t previous;
   int len1, len2, r;
 
   debug(DEBUG_INFO, "SDL", "audio thread starting");
   ptr = 0;
   buf = NULL;
   buflen = 0;
+  previous = 0;
 
   abuf = sys_calloc(1, sizeof(sdl_audio_buffer_t));
   abuf->tag = TAG_ABUF;
@@ -1648,16 +1619,24 @@ static int audio_action(void *_arg) {
         wait = 2000;
         debug(DEBUG_TRACE, "SDL", "set wait=%u", wait);
         if (msglen == 4) {
-          if (ptr) {
-            // a new message was reveiced while the previous one was still playing
-            debug(DEBUG_TRACE, "SDL", "closing ptr %d", ptr);
-            ptr_free(ptr, TAG_AUDIO);
-          }
           ptr = *((uint32_t *)msg);
           debug(DEBUG_TRACE, "SDL", "received ptr %d", ptr);
+          if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
+            dt = (uint32_t)(audio->t - previous);
+            previous = audio->t;
+            ptr_unlock(ptr, TAG_AUDIO);
+            debug(DEBUG_TRACE, "SDL", "dt %u", dt);
+          } else {
+            debug(DEBUG_TRACE, "SDL", "ptr %d deleted", ptr);
+            ptr = 0;
+          }
+          
           // empty the buffer
           if ((abuf = ptr_lock(aptr, TAG_ABUF)) != NULL) {
-            abuf->in = abuf->out = abuf->len = 0;
+            if (abuf->len > 0) {
+              debug(DEBUG_TRACE, "SDL", "emptying %u bytes", abuf->len);
+              abuf->in = abuf->out = abuf->len = 0;
+            }
             ptr_unlock(aptr, TAG_ABUF);
           }
           wait = 0;
@@ -1680,7 +1659,7 @@ static int audio_action(void *_arg) {
               debug(DEBUG_TRACE, "SDL", "got audio len=%d bytes, buffer=%d bytes", len2, abuf->len);
               buf = convert_audio(abuf, audio, audio->buffer, len2, &obtained, buf, &buflen);
               wait = (uint32_t)((double)(len2 * 1000000.0) / (double)(audio->channels * audio->rate * sampleSize));
-              wait = (7 * wait) / 8;
+              wait = (2 * wait) / 3;
               debug(DEBUG_TRACE, "SDL", "set wait=%u", wait);
               ptr_unlock(aptr, TAG_ABUF);
             }
@@ -1690,6 +1669,9 @@ static int audio_action(void *_arg) {
             debug(DEBUG_TRACE, "SDL", "ptr %d ended", ptr);
             ptr = 0;
           }
+        } else {
+          debug(DEBUG_TRACE, "SDL", "ptr %d deleted", ptr);
+          ptr = 0;
         }
       }
     }

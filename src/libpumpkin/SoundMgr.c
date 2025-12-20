@@ -29,6 +29,8 @@ typedef struct {
   UInt16 sysAmp;
   UInt16 defAmp;
   UInt16 midiNoteFreqency[128];
+  Int32 lastFrequency;
+  SndStreamRef lastChannel;
 } snd_module_t;
 
 typedef struct {
@@ -70,6 +72,13 @@ typedef struct {
   Boolean finished;
 } snd_param_t;
 
+typedef struct {
+  uint32_t id;
+  void *buffer;
+  int len;
+  void *data;
+} msg_audio_t; 
+
 int SndInitModule(audio_provider_t *ap) {
   snd_module_t *module;
   int i;
@@ -92,6 +101,9 @@ int SndFinishModule(void) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
   if (module) {
+    if (module->lastChannel) {
+      SndStreamDelete(module->lastChannel);
+    }
     sys_free(module);
   }
 
@@ -404,6 +416,8 @@ Err SndInterruptSmfIrregardless(void) {
 Err SndStreamDelete(SndStreamRef channel) {
   Err err = sndErrBadParam;
 
+  pumpkin_audio_check(0);
+
   debug(DEBUG_TRACE, "Sound", "SndStreamDelete(%d)", channel);
   if (channel > 0) {
     ptr_free(channel, TAG_SOUND);
@@ -449,34 +463,21 @@ void putSample(int pcm, uint8_t *buffer, UInt32 i, Int32 sample) {
   }
 }
 
-/*
-static void save_buffer(uint8_t *buffer, uint32_t size) {
-  UInt32 n;
-  Err err;
-  char name[32];
-  static int count = 0;
-  static FileRef fileRef = NULL;
+#define SAVE_PREFIX(name) \
+static int count = 0; \
+static int fd = 0; \
+if (count == 0) \
+fd = sys_create(name, SYS_TRUNC|SYS_WRITE, 0644)
 
-
-  if (count == 0) {
-    sys_sprintf(name, "audio.raw");
-    VFSFileDelete(1, name);
-    VFSFileCreate(1, name);
-    err = VFSFileOpen(1, name, vfsModeWrite, &fileRef);
-    debug(1, "XXX", "open %d", err);
-  }
-
-  if (count < 16) {
-    err = VFSFileWrite(fileRef, size, buffer, &n);
-    debug(1, "XXX", "write %u %u %d", size, n, err);
-    count++;
-  } else if (count == 16) {
-    VFSFileClose(fileRef);
-    debug(1, "XXX", "close");
-    count++;
-  }
+#define SAVE_SUFFIX(buffer, len) \
+debug(1, "XXX", "audio buffer %p", buffer); \
+count++; \
+if (count < 64) { \
+sys_write(fd, buffer, len); \
+} \
+if (count == 64) { \
+sys_close(fd); \
 }
-*/
 
 static int SndGetAudio(void *buffer, int len, void *data) {
   SndStreamArg *arg = (SndStreamArg *)data;
@@ -550,7 +551,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
           err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
           MemMove(buffer, snd->buffer, len);
-          //save_buffer(buffer, len);
         } else if (snd->vfunc68k) {
           ram = pumpkin_heap_base();
           if (snd->buffer == NULL) {
@@ -614,7 +614,15 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         if ((volume != sndUnityGain || (pan != sndPanCenter && channels == 2))) {
           if (volume == 0) {
             debug(DEBUG_TRACE, "Sound", "%d samples (zero volume)", nsamples);
-            sys_memset(buffer, 0, len);
+            switch (pcm) {
+              case PCM_U8:
+                sys_memset(buffer, 128, len);
+                break;
+              case PCM_S16:
+              case PCM_S32:
+                sys_memset(buffer, 0, len);
+                break;
+            }
           } else {
             if (channels == 1) {
               gain = (float)volume / (float)sndUnityGain;
@@ -671,13 +679,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
 
   return r;
 }
-
-typedef struct {
-  uint32_t id;
-  void *buffer;
-  int len;
-  void *data;
-} msg_audio_t;
 
 int SndGetAudioReply(void *data, int len) {
   msg_audio_t *msg;
@@ -778,6 +779,7 @@ Err SndStreamStart(SndStreamRef channel) {
 
         if (module->ap->start(handle, snd->audio, (snd->func || snd->vfunc) ? SndGetAudio : SndGetAudioCall, arg) == 0) {
           debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d) ok", channel);
+          pumpkin_audio_check(1);
           err = errNone;
         } else {
           debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d) failed", channel);
@@ -814,6 +816,8 @@ Err SndStreamPause(SndStreamRef channel, Boolean pause) {
 Err SndStreamStop(SndStreamRef channel) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
+
+  pumpkin_audio_check(0);
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStop(%d)", channel);
   if (channel > 0 && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
@@ -886,11 +890,11 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
   Boolean finish = false;
   Err err = sndErrBadParam;
 
-  if (param && buffer && bufferSizeP && !finish) {
+  if (param && buffer && bufferSizeP) {
     sys_memset(buffer, 0, *bufferSizeP);
     n = *bufferSizeP / param->sampleSize;
     if (n > (param->size - param->pos)) n = param->size - param->pos;
-    debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback bufferSize=%d size=%d pos=%d n=%d", *bufferSizeP, param->size, param->pos, n);
+    debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback channel=%d bufferSize=%d size=%d pos=%d n=%d", param->channel, *bufferSizeP, param->size, param->pos, n);
     if (n > 0) {
       if (n < *bufferSizeP) {
         finish = true;
@@ -906,20 +910,25 @@ static Err SndVariableBufferCallback(void *userdata, SndStreamRef channel, void 
 
   if (err != errNone) {
     if (param->async) {
-      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback async finish (error)");
+      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback %d async finish (error)", param->channel);
       SndStreamDelete(param->channel);
       sys_free(param->buffer);
       sys_free(param);
     } else {
-      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback sync finish (error)");
+      debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback %d sync finish (error)", param->channel);
       param->finished = true;
     }
+  } else if (param->async && finish) {
+    debug(DEBUG_TRACE, "Sound", "SndVariableBufferCallback %d async finish (end)", param->channel);
+    SndStreamDelete(param->channel);
+    sys_free(param->buffer);
+    sys_free(param);
   }
 
   return err;
 }
 
-static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType type, SndStreamWidth width, Int32 volume, UInt32 flags) {
+static Err SndPlayBuffer(SndStreamRef *channel, SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType type, SndStreamWidth width, Int32 volume, UInt32 flags) {
   MemHandle h;
   UInt8 *snd;
   UInt32 headerSize;
@@ -974,6 +983,7 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
         debug(DEBUG_TRACE, "Sound", "SndPlayBuffer %d samples of size %d", param->size, param->sampleSize);
 
         if (SndStreamCreateEx(&param->channel, sndOutput, sndFormatPCM, rate, type, width, NULL, SndVariableBufferCallback, param, 0, false, false, false) == errNone) {
+          if (channel) *channel = param->channel;
           SndStreamSetVolume(param->channel, volume);
           if (SndStreamStart(param->channel) == errNone) {
             if (flags == sndFlagAsync) {
@@ -1010,13 +1020,15 @@ static Err SndPlayBuffer(SndPtr sndP, UInt32 size, UInt32 rate, SndSampleType ty
 }
 
 Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
-  return SndPlayBuffer(sndP, 0, 0, 0, 0, volume, flags);
+  return SndPlayBuffer(NULL, sndP, 0, 0, 0, 0, volume, flags);
 }
 
 static Err playFrequency(Int32 frequency, UInt16 duration, UInt16 volume) {
+  snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   UInt32 size, i;
   UInt8 *buffer;
   double angle, pi2;
+  SndStreamRef channel;
   Err err = sndErrBadParam;
 
   size = (duration * DOCMD_SAMPLE_RATE) / 1000;
@@ -1027,7 +1039,15 @@ static Err playFrequency(Int32 frequency, UInt16 duration, UInt16 volume) {
       angle = (i * pi2 * frequency) / DOCMD_SAMPLE_RATE;
       buffer[i] = (sys_sin(angle) + 1.0) * 127;
     }
-    SndPlayBuffer(buffer, size, DOCMD_SAMPLE_RATE, sndInt8, sndMono, volume, sndFlagAsync);
+    if (module->lastChannel) {
+      debug(DEBUG_TRACE, "Sound", "playFrequency delete previous channel %d", module->lastChannel);
+      SndStreamDelete(module->lastChannel);
+      module->lastChannel = 0;
+    }
+    if (SndPlayBuffer(&channel, buffer, size, DOCMD_SAMPLE_RATE, sndInt8, sndMono, volume, sndFlagAsync) == errNone) {
+      module->lastChannel = channel;
+      debug(DEBUG_TRACE, "Sound", "playFrequency new channel %d", module->lastChannel);
+    }
     sys_free(buffer);
     err = errNone;
   }
@@ -1062,6 +1082,7 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
         // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
         if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+          module->lastFrequency = cmdP->param1;
           err = playFrequency(cmdP->param1, cmdP->param2, cmdP->param3);
         }
         break;
@@ -1074,6 +1095,7 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
         // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
         if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+          module->lastFrequency = cmdP->param1;
           err = playFrequency(cmdP->param1, cmdP->param2, cmdP->param3);
         }
         break;
@@ -1087,12 +1109,17 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
 
         if (cmdP->param1 >= 0 && cmdP->param1 < 128 && cmdP->param2 > 0 && cmdP->param3 > 0) {
           // XXX convert from MIDI velocity (?) to volume
-          err = playFrequency(module->midiNoteFreqency[cmdP->param1], cmdP->param2, cmdP->param3);
+          module->lastFrequency = module->midiNoteFreqency[cmdP->param1];
+          err = playFrequency(module->lastFrequency, cmdP->param2, cmdP->param3);
         }
         break;
       case sndCmdQuiet:
         // Stop the playback of the currently generated tone.
         // All parameter values are ignored.
+        if (module->lastFrequency) {
+          playFrequency(module->lastFrequency, 1, 0);
+          module->lastFrequency = 0;
+        }
         err = errNone;
         break;
     }

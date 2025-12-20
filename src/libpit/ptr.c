@@ -95,6 +95,7 @@ static int ptr_new_aux(void *p, void (*destructor)(void *p), int c) {
         table[index].mutex = mutex_create(buf);
 
         if (table[index].mutex == NULL) {
+          debug(DEBUG_ERROR, "PTR", "mutex is null");
           id = -1;
         } else {
           table[index].id = id;
