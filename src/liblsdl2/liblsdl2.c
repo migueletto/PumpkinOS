@@ -1152,7 +1152,7 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
   sdl_audio_t *audio;
   int ptr = -1;
 
-  debug(DEBUG_INFO, "SDL", "audio_create(%d,%d,%d)", pcm, channels, rate);
+  debug(DEBUG_TRACE, "SDL", "audio_create(%d,%d,%d)", pcm, channels, rate);
 
   if ((pcm == PCM_U8 || pcm == PCM_S16 || pcm == PCM_S32) && (channels == 1 || channels == 2) && rate > 0) {
     if ((audio = sys_calloc(1, sizeof(sdl_audio_t))) != NULL) {
@@ -1173,13 +1173,13 @@ static audio_t libsdl_audio_create(int pcm, int channels, int rate, void *data) 
       audio->t = sys_get_clock();
       audio->rate = rate;
       audio->channels = channels;
-      debug(DEBUG_INFO, "SDL", "sample size %d", audio->bsize);
+      debug(DEBUG_TRACE, "SDL", "sample size %d", audio->bsize);
       audio->bsize *= rate;
       if (audio->bsize > 4096) {
         audio->bsize = 4096;
       }
       audio->buffer = sys_calloc(1, audio->bsize * audio->channels);
-      debug(DEBUG_INFO, "SDL", "buffer size %d", audio->bsize);
+      debug(DEBUG_TRACE, "SDL", "buffer size %d", audio->bsize);
 
       audio->tag = TAG_AUDIO;
       if ((ptr = ptr_new(audio, audio_destructor)) == -1) {
@@ -1244,22 +1244,22 @@ static int libsdl_mixer_play(uint8_t *buf, uint32_t len, int volume) {
   SDL_RWops *rwops;
   Mix_Music *music;
 
-  debug(DEBUG_INFO, "SDL", "mixer play begin");
+  debug(DEBUG_TRACE, "SDL", "mixer play begin");
   if ((rwops = SDL_RWFromMem(buf, len)) != NULL) {
-    debug(DEBUG_INFO, "SDL", "mixer play rwops done");
+    debug(DEBUG_TRACE, "SDL", "mixer play rwops done");
     if ((music = Mix_LoadMUSType_RW(rwops, MUS_MID, 0)) != NULL) {
-      debug(DEBUG_INFO, "SDL", "mixer play load music done");
+      debug(DEBUG_TRACE, "SDL", "mixer play load music done");
       if (volume >= 0) {
         Mix_VolumeMusic(volume); // 0-128
       }
       Mix_PlayMusic(music, 0);
-      debug(DEBUG_INFO, "SDL", "mixer play play music done");
+      debug(DEBUG_TRACE, "SDL", "mixer play play music done");
       for (; Mix_PlayingMusic() && !thread_must_end();) {
         sys_usleep(1000);
       }
-      debug(DEBUG_INFO, "SDL", "mixer play loop done");
+      debug(DEBUG_TRACE, "SDL", "mixer play loop done");
       Mix_FreeMusic(music);
-      debug(DEBUG_INFO, "SDL", "mixer free music done");
+      debug(DEBUG_TRACE, "SDL", "mixer free music done");
     }
     SDL_RWclose(rwops);
   }
@@ -1270,7 +1270,7 @@ static int libsdl_mixer_play(uint8_t *buf, uint32_t len, int volume) {
 
 static int libsdl_mixer_stop(void) {
 #ifdef SDL_MIXER
-  debug(DEBUG_INFO, "SDL", "mixer stop");
+  debug(DEBUG_TRACE, "SDL", "mixer stop");
   Mix_HaltMusic();
 #endif
   return 0;

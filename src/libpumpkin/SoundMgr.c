@@ -1350,8 +1350,8 @@ Err SndStreamCreateEx(
           samplesize *= 2;
         }
         snd->samplesize = samplesize;
-        debug(DEBUG_INFO, "Sound", "SndStreamCreate sample rate %d", snd->rate);
-        debug(DEBUG_INFO, "Sound", "SndStreamCreate sample size %d", snd->samplesize);
+        debug(DEBUG_TRACE, "Sound", "SndStreamCreate sample rate %d", snd->rate);
+        debug(DEBUG_TRACE, "Sound", "SndStreamCreate sample size %d", snd->samplesize);
 
         snd->volume = sndUnityGain;
         snd->pan = sndPanCenter;
