@@ -3054,6 +3054,7 @@ void pumpkin_set_finish(int finish) {
     pumpkin_module.finish = finish;
     mutex_unlock(mutex);
   }
+  sys_set_finish(0);
 }
 
 int pumpkin_must_finish(void) {
