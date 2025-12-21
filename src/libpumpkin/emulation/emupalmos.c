@@ -1282,14 +1282,24 @@ Int16 CallCompareFunction(UInt32 comparF, void *e1, void *e2, Int32 other) {
   return r;
 }
 
+static void logtrap_install(emu_state_t *state, UInt32 creator);
+static emu_state_t *emupalmos_new(void);
+
 Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
   // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
-  emu_state_t *oldState;
+  emu_state_t *oldState, *state;
   uint32_t a, argsSize;
   uint8_t *p;
   Err r = 0;
 
-  oldState = emupalmos_install();
+  oldState = pumpkin_get_local_storage(emu_key);
+  state = pumpkin_get_local_storage(emu2_key);
+  if (state == NULL) {
+    state = emupalmos_new();
+    logtrap_install(state, pumpkin_get_app_creator());
+    pumpkin_set_local_storage(emu2_key, state);
+  }   
+  pumpkin_set_local_storage(emu_key, state);
 
   argsSize = sizeof(uint32_t) * 4;
 
@@ -1306,12 +1316,10 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
     pumpkin_heap_free(p, "CallSndFunc");
   }
 
-  emupalmos_deinstall(oldState);
+  pumpkin_set_local_storage(emu_key, oldState);
 
   return r;
 }
-
-static emu_state_t *emupalmos_new(void);
 
 Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples) {
   // Err SndStreamBufferCallback(void *userdata, SndStreamRef channel, void *buffer, UInt32 numberofframes)
