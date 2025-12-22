@@ -427,19 +427,15 @@ Err SndStreamDelete(SndStreamRef channel) {
   return err;
 }
 
-static Int32 getSample(int pcm, uint8_t *buffer, UInt32 i) {
-  UInt8 u8;
-  Int16 s16;
-  Int32 sample = 0;
+static float getSample(int pcm, uint8_t *buffer, UInt32 i) {
+  float sample = 0.0f;
 
   switch (pcm) {
     case PCM_U8:
-      u8 = buffer[i];
-      sample = (u8 >= 128) ? (u8 & 0x7F) << 24 : (u8 << 24) | 0x80000000;
+      sample = buffer[i];
       break;
     case PCM_S16:
-      s16 = ((int16_t *)buffer)[i];
-      sample = s16 << 16;
+      sample = ((int16_t *)buffer)[i];
       break;
     case PCM_S32:
       sample = ((int32_t *)buffer)[i];
@@ -449,16 +445,29 @@ static Int32 getSample(int pcm, uint8_t *buffer, UInt32 i) {
   return sample;
 }
 
-void putSample(int pcm, uint8_t *buffer, UInt32 i, Int32 sample) {
+void putSample(int pcm, uint8_t *buffer, UInt32 i, float sample) {
+  Int32 s = (Int32)sample;
+
   switch (pcm) {
     case PCM_U8:
-      buffer[i] = sample >= 0 ? (sample >> 24) | 0x80 : (sample >> 24) & 0x7F;
+      if (s < 0) s = 0;
+      else if (s > 255) s = 255; 
+      buffer[i] = (UInt8)s;
       break;
     case PCM_S16:
-      ((int16_t *)buffer)[i] = sample >> 16;
+      if (s < -32768) {
+debug(1, "XXX", "clip %d", s);
+        s = -32768;
+      } else if (s > 32767) {
+debug(1, "XXX", "clip %d", s);
+        s = 32767; 
+      }
+      ((int16_t *)buffer)[i] = s;
       break;
     case PCM_S32:
-      ((int32_t *)buffer)[i] = sample;
+      if (s < -2147483648) s = -2147483648;
+      else if (s > 2147483647) s = 2147483647; 
+      ((int32_t *)buffer)[i] = s;
       break;
   }
 }
@@ -645,7 +654,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
               for (i = 0, j = 0; i < nsamples; i++, j += 2) {
                 sample = getSample(pcm, buffer, j);
                 putSample(pcm, buffer, j, sample * leftGain);
-                sample = getSample(pcm, buffer, j);
+                sample = getSample(pcm, buffer, j+1);
                 putSample(pcm, buffer, j+1, sample * rightGain);
               }
             }
