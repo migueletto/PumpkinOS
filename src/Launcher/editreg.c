@@ -66,10 +66,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
   RegDisplayEndianType regEnd, *regEndP;
+  RegSoundType regSnd, *regSndP;
   ListType *lst;
   ControlType *ctl;
   UInt32 regSize;
-  UInt16 osversion, density, depth, littleEndian, index, id, num, i;
+  UInt16 osversion, density, depth, littleEndian, enableSound, index, id, num, i;
   char buf[16], *text;
   Boolean r = false;
 
@@ -84,6 +85,9 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   regEndP = pumpkin_reg_get(creator, regEndianID, &regSize);
   littleEndian = regEndP ? regEndP->littleEndian : 0;
+
+  regSndP = pumpkin_reg_get(creator, regSoundID, &regSize);
+  enableSound = regSndP ? regSndP->enableSound : 0;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -121,6 +125,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, 1);
 
+  // set sound
+  index = FrmGetObjectIndex(frm, enableSoundCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, enableSound);
+
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == okBtn) {
     // update OS version
@@ -157,6 +166,13 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
     pumpkin_reg_set(creator, regDisplayID, &regDisp, sizeof(RegDisplayType));
     pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
+
+    // update sound
+    index = FrmGetObjectIndex(frm, enableSoundCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    regSnd.enableSound = CtlGetValue(ctl) ? 1 : 0; 
+    pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
+
     r = true;
   }
 

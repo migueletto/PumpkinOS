@@ -37,13 +37,15 @@ typedef struct {
 static const char *choices[] = {
   "Date & Time",
   "Formats",
-  "Desktop"
+  "Desktop",
+  "Sound"
 };
 
 static const char *diaChoices[] = {
   "Date & Time",
   "Formats",
-  "Calibration"
+  "Calibration",
+  "Sound"
 };
 
 static void formSetup(FormType *frm) {
@@ -53,7 +55,7 @@ static void formSetup(FormType *frm) {
 
   index = FrmGetObjectIndex(frm, panelList);
   lst = (ListType *)FrmGetObjectPtr(frm, index);
-  LstSetListChoices(lst, pumpkin_dia_enabled() ? (char **)diaChoices : (char **)choices, 3);
+  LstSetListChoices(lst, pumpkin_dia_enabled() ? (char **)diaChoices : (char **)choices, 4);
 
   index = FrmGetObjectIndex(frm, panelTrigger);
   ctl = (ControlType *)FrmGetObjectPtr(frm, index);
@@ -70,6 +72,10 @@ static void formSetup(FormType *frm) {
     case desktopForm:
       LstSetSelection(lst, 2);
       CtlSetLabel(ctl, choices[2]);
+      break;
+    case soundForm:
+      LstSetSelection(lst, 3);
+      CtlSetLabel(ctl, choices[3]);
       break;
   }
 }
@@ -88,6 +94,9 @@ static void formSelect(UInt16 index) {
       } else {
         FrmGotoForm(desktopForm);
       }
+      break;
+    case 3:
+      FrmGotoForm(soundForm);
       break;
   }
 }
@@ -850,15 +859,6 @@ static Boolean DesktopFormHandleEvent(EventType *event) {
       FrmSetColorTrigger(frm, backgroundCtl, &data->prefs.color[pColorBackground], false);
 
       FrmDrawForm(frm);
-
-/*
-for (int i = 3001; i <= 3005; i++) {
-RectangleType rect;
-index = FrmGetObjectIndex(frm, i);
-FrmGetObjectBounds(frm, index, &rect);
-debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.extent.x - 4);
-}
-*/
       handled = true;
       break;
 
@@ -916,6 +916,111 @@ debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.exten
   return handled;
 }
 
+static UInt16 volumeToItem(UInt16 volume) {
+  if (volume < 256) return 0;
+  if (volume < 512) return 1;
+  if (volume < 1024) return 2;
+  return 3;
+}
+
+static UInt16 itemToVolume(UInt16 item) {
+  UInt16 volume;
+
+  switch (item) {
+    case  0: volume = 0;    break;
+    case  1: volume = 256;  break;
+    case  2: volume = 512;  break;
+    case  3: volume = 1024; break;
+    default: volume = 0;    break;
+  }
+
+  return volume;
+}
+
+static void setListVolume(UInt16 volume, UInt16 id, ListType *lst, FormType *frm) {
+  ControlType *ctl;
+  UInt16 index, num;
+  char *text;
+
+  num = volumeToItem(volume);
+  text = LstGetSelectionText(lst, num);
+  index = FrmGetObjectIndex(frm, id);
+  ctl = (ControlType *)FrmGetObjectPtr(frm, index);
+  CtlSetLabel(ctl, text);
+}
+
+static Boolean SoundFormHandleEvent(EventType *event) {
+  prefs_data_t *data = pumpkin_get_data();
+  FormType *frm;
+  ControlType *ctl;
+  ListType *lst;
+  UInt16 index;
+  Boolean handled = false;
+
+  switch (event->eType) {
+    case frmOpenEvent:
+      frm = FrmGetActiveForm();
+      formSetup(frm);
+
+      index = FrmGetObjectIndex(frm, enableSoundCtl);
+      ctl = (ControlType *)FrmGetObjectPtr(frm, index);
+      CtlSetValue(ctl, data->prefs.value[pEnableSound] != 0);
+
+      index = FrmGetObjectIndex(frm, systemSoundList);
+      lst = (ListType *)FrmGetObjectPtr(frm, index);
+      setListVolume(PrefGetPreference(prefSysSoundVolume), systemSoundTrigger, lst, frm);
+      setListVolume(PrefGetPreference(prefAlarmSoundVolume), alarmSoundTrigger, lst, frm);
+      setListVolume(PrefGetPreference(prefGameSoundVolume), gameSoundTrigger, lst, frm);
+
+      FrmDrawForm(frm);
+/*
+for (int i = 3001; i <= 3004; i++) {
+RectangleType rect;
+index = FrmGetObjectIndex(frm, i);
+FrmGetObjectBounds(frm, index, &rect);
+debug(1, "XXX", "label %d: dx = %d -> x = %d", i, rect.extent.x, 91 - rect.extent.x - 4);
+}
+*/
+      break;
+
+    case ctlSelectEvent:
+      switch (event->data.ctlSelect.controlID) {
+        case enableSoundCtl:
+          data->prefs.value[pEnableSound] = event->data.ctlSelect.on ? 1 : 0;
+          data->changed = true;
+          handled = true;
+          break;
+      }
+      break;
+
+    case popSelectEvent:
+      switch (event->data.popSelect.listID) {
+        case panelList:
+          formSelect(event->data.popSelect.selection);
+          handled = true;
+          break;
+        case systemSoundList:
+          PrefSetPreference(prefSysSoundVolume, itemToVolume(event->data.popSelect.selection));
+          handled = true;
+          break;
+        case alarmSoundList:
+          PrefSetPreference(prefAlarmSoundVolume, itemToVolume(event->data.popSelect.selection));
+          handled = true;
+          break;
+        case gameSoundList:
+          PrefSetPreference(prefGameSoundVolume, itemToVolume(event->data.popSelect.selection));
+          handled = true;
+          break;
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return handled;
+}
+
 static Boolean ApplicationHandleEvent(EventType *event) {
   FormPtr frm;
   UInt16 formID;
@@ -937,6 +1042,9 @@ static Boolean ApplicationHandleEvent(EventType *event) {
           break;
         case desktopForm:
           FrmSetEventHandler(frm, DesktopFormHandleEvent);
+          break;
+        case soundForm:
+          FrmSetEventHandler(frm, SoundFormHandleEvent);
           break;
       }
       handled = true;
@@ -999,6 +1107,7 @@ static void FinishData(void) {
   if (data->changed) {
     pumpkin_set_preference(BOOT_CREATOR, PUMPKINOS_PREFS_ID, &data->prefs, sizeof(PumpkinPreferencesType), true);
     pumpkin_refresh_desktop();
+    pumpkin_sound_enable(data->prefs.value[pEnableSound]);
   }
 
   pumpkin_set_data(NULL);

@@ -182,6 +182,37 @@ BEGIN
   BUTTON "Done" okBtn CENTER BOTTOM@96 AUTO AUTO
 END 
 
+FORM ID soundForm AT (0 0 160 160)
+  NOFRAME
+  USABLE
+  MENUID MainMenu
+BEGIN
+  TITLE "Preferences"
+
+  POPUPTRIGGER "Sound" ID panelTrigger AT (143 0 17 13) USABLE RIGHTANCHOR FONT 0
+  LIST ID panelList AT (102 0 58 2) NONUSABLE FONT 0
+  POPUPLIST ID panelTrigger panelList
+
+  LABEL "Enable sound:" ID 3001 AT (21 20) USABLE FONT 1
+  CHECKBOX "" ID enableSoundCtl AT (91 19 19 14) USABLE LEFTANCHOR FONT 0 CHECKED
+
+  LABEL "System Sound:" ID 3002 AT (14 36) USABLE FONT 1
+  POPUPTRIGGER "" ID systemSoundTrigger AT (88 35 17 13) USABLE LEFTANCHOR FONT 0
+  LIST "Off" "Low" "Medium" "High" ID systemSoundList AT (91 35 42 46) NONUSABLE VISIBLEITEMS 4 FONT 0
+  POPUPLIST ID systemSoundTrigger systemSoundList
+
+  LABEL "Alarm Sound:" ID 3003 AT (22 52) USABLE FONT 1
+  POPUPTRIGGER "" ID alarmSoundTrigger AT (88 51 17 13) USABLE LEFTANCHOR FONT 0
+  LIST "Off" "Low" "Medium" "High" ID alarmSoundList AT (91 61 42 46) NONUSABLE VISIBLEITEMS 4 FONT 0
+  POPUPLIST ID alarmSoundTrigger alarmSoundList
+
+  LABEL "Game Sound:" ID 3004 AT (23 68) USABLE FONT 1
+  POPUPTRIGGER "" ID gameSoundTrigger AT (88 67 17 13) USABLE LEFTANCHOR FONT 0
+  LIST "Off" "Low" "Medium" "High" ID gameSoundList AT (91 67 42 46) NONUSABLE VISIBLEITEMS 4 FONT 0
+  POPUPLIST ID gameSoundTrigger gameSoundList
+END
+
+
 STRING ID 1000 "Set Date"
 STRING ID 1010 "Set Time Zone"
 STRING ID 1020 "On"

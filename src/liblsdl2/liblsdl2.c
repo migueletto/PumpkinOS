@@ -1499,7 +1499,8 @@ static void *convert_audio(sdl_audio_buffer_t *abuf, sdl_audio_t *audio, void *a
       }
       cvt.buf = buf;
       sys_memcpy(cvt.buf, audio_buffer, audio_len);
-      debug(DEBUG_TRACE, "SDL", "converting audio src=%d bytes, dst=%d bytes", audio_len, newlen);
+      debug(DEBUG_TRACE, "SDL", "converting audio src=%d bytes (%d,%d,%d), dst=%d bytes (%d,%d,%d)",
+        audio_len, audio->format, audio->channels, audio->rate, newlen, obtained->format, obtained->channels, obtained->freq);
       if (SDL_ConvertAudio(&cvt) != 0) {
         debug(DEBUG_ERROR, "SDL", "SDL_ConvertAudio failed: %s", SDL_GetError());
       } else {
@@ -1512,6 +1513,21 @@ static void *convert_audio(sdl_audio_buffer_t *abuf, sdl_audio_t *audio, void *a
   }
 
   return buf;
+}
+
+#define SAVE_PREFIX(name) \
+static int count = 0; \
+static int fd = 0; \
+if (count == 0) \
+fd = sys_create(name, SYS_TRUNC|SYS_WRITE, 0644)
+
+#define SAVE_SUFFIX(buffer, len) \
+count++; \
+if (count < 64) { \
+sys_write(fd, buffer, len); \
+} \
+if (count == 64) { \
+sys_close(fd); \
 }
 
 static void audio_callback(void *userdata, uint8_t *stream, int len) {
@@ -1529,15 +1545,9 @@ static void audio_callback(void *userdata, uint8_t *stream, int len) {
   if ((abuf = ptr_lock(aptr, TAG_ABUF)) != NULL) {
     debug(DEBUG_TRACE, "SDL", "need audio len=%d bytes, buffer=%d bytes", len, abuf->len);
 
-    switch (abuf->pcm) {
-      case PCM_U8:
-        sys_memset(stream, 128, len);
-        break;
-      case PCM_S16:
-      case PCM_S32:
-        sys_memset(stream, 0, len);
-        break;
-    }
+    // XXX zeroing out the buffer does not necessarily produce silence,
+    // since the audio format may be unsigned.
+    sys_memset(stream, 0, len);
 
     for (i = 0; i < len; i++) {
       if (abuf->len > 0) {
@@ -1676,6 +1686,12 @@ static int audio_action(void *_arg) {
       }
     }
   }
+
+  if ((abuf = ptr_lock(aptr, TAG_ABUF)) != NULL) {
+    abuf->in = abuf->out = abuf->len = 0;
+    ptr_unlock(aptr, TAG_ABUF);
+  }
+  ptr_free(aptr, TAG_ABUF);
 
   if (dev > 0) {
     debug(DEBUG_INFO, "SDL", "close device %d", dev);

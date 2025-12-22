@@ -31,6 +31,8 @@ typedef struct {
   UInt16 midiNoteFreqency[128];
   Int32 lastFrequency;
   SndStreamRef lastChannel;
+  UInt16 lastVolume;
+  double angle;
 } snd_module_t;
 
 typedef struct {
@@ -108,6 +110,18 @@ int SndFinishModule(void) {
   }
 
   return 0;
+}
+
+static void SndSilence(UInt16 pcm, void *buffer, uint32_t len) {
+  switch (pcm) {
+    case PCM_U8:
+      sys_memset(buffer, 128, len);
+      break;
+    case PCM_S16:
+    case PCM_S32:
+      sys_memset(buffer, 0, len);
+      break;
+  }
 }
 
 Err SndInit(void) {
@@ -455,13 +469,8 @@ void putSample(int pcm, uint8_t *buffer, UInt32 i, float sample) {
       buffer[i] = (UInt8)s;
       break;
     case PCM_S16:
-      if (s < -32768) {
-debug(1, "XXX", "clip %d", s);
-        s = -32768;
-      } else if (s > 32767) {
-debug(1, "XXX", "clip %d", s);
-        s = 32767; 
-      }
+      if (s < -32768) s = -32768;
+      else if (s > 32767) s = 32767; 
       ((int16_t *)buffer)[i] = s;
       break;
     case PCM_S32:
@@ -479,7 +488,6 @@ if (count == 0) \
 fd = sys_create(name, SYS_TRUNC|SYS_WRITE, 0644)
 
 #define SAVE_SUFFIX(buffer, len) \
-debug(1, "XXX", "audio buffer %p", buffer); \
 count++; \
 if (count < 64) { \
 sys_write(fd, buffer, len); \
@@ -521,11 +529,13 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         inited = true;
       }
 
+      SndSilence(snd->pcm, buffer, len);
       nsamples = 0;
       volume = sndUnityGain;
       pan = sndPanCenter;
       pcm = channels = 0;
 
+      if (pumpkin_sound_enabled()) {
       if (snd->started && !snd->stopped) {
         nsamples = len / snd->samplesize;
         if (snd->func) {
@@ -616,27 +626,17 @@ static int SndGetAudio(void *buffer, int len, void *data) {
         debug(DEBUG_TRACE, "Sound", "GetAudio started %d stopped %d", snd->started, snd->stopped);
         r = 0;
       }
+      }
 
       ptr_unlock(arg->ptr, TAG_SOUND);
 
       if (nsamples > 0) {
         if ((volume != sndUnityGain || (pan != sndPanCenter && channels == 2))) {
-          if (volume == 0) {
-            debug(DEBUG_TRACE, "Sound", "%d samples (zero volume)", nsamples);
-            switch (pcm) {
-              case PCM_U8:
-                sys_memset(buffer, 128, len);
-                break;
-              case PCM_S16:
-              case PCM_S32:
-                sys_memset(buffer, 0, len);
-                break;
-            }
-          } else {
+          if (volume >= 0) {
             if (channels == 1) {
               gain = (float)volume / (float)sndUnityGain;
-              debug(DEBUG_TRACE, "Sound", "%d samples (mono gain %.3f)", nsamples, gain);
-              for (i = 0, j = 0; i < nsamples; i++) {
+              debug(DEBUG_TRACE, "Sound", "%d samples (volume %d, mono gain %.3f)", nsamples, volume, gain);
+              for (i = 0; i < nsamples; i++) {
                 sample = getSample(pcm, buffer, i);
                 putSample(pcm, buffer, i, sample * gain);
               }
@@ -650,7 +650,7 @@ static int SndGetAudio(void *buffer, int len, void *data) {
                 pan = -pan;
                 rightGain *= (float)(1024 - pan) / 1024.0f;
               }
-              debug(DEBUG_TRACE, "Sound", "%d samples (left gain %.3f, right gain %.3f)", nsamples, leftGain, rightGain);
+              debug(DEBUG_TRACE, "Sound", "%d samples (volume %d, pan %d, left gain %.3f, right gain %.3f)", nsamples, volume, pan, leftGain, rightGain);
               for (i = 0, j = 0; i < nsamples; i++, j += 2) {
                 sample = getSample(pcm, buffer, j);
                 putSample(pcm, buffer, j, sample * leftGain);
@@ -870,7 +870,10 @@ Err SndStreamSetVolume(SndStreamRef channel, Int32 volume) {
     }
 
     if (volume < 0) volume = sndUnityGain;
-    else if (volume > 32768) volume = 32768;
+    // XXX the upper limit should be 32768, but this would imply a gain of 32,
+    // which would cause a lot of clipping if the original sound were already high.
+    // For now, the unity gain of 1024 is the maximum volume.
+    else if (volume > 1024) volume = 1024;
 
     snd->volume = volume;
     ptr_unlock(channel, TAG_SOUND);
@@ -944,7 +947,7 @@ static Err SndPlayBuffer(SndStreamRef *channel, SndPtr sndP, UInt32 size, UInt32
   snd_param_t *param;
   Err err = sndErrBadParam;
 
-  debug(DEBUG_TRACE, "Sound", "SndPlayBuffer(%p, %u, %d, 0x%08X)", sndP, size, volume, flags);
+  debug(DEBUG_TRACE, "Sound", "SndPlayBuffer(%p, size=%u, rate=%u, type=%u, width=%u, vol=%d, 0x%08X)", sndP, size, rate, type, width, volume, flags);
 
   if (sndP) {
     param = sys_calloc(1, sizeof(snd_param_t));
@@ -1032,28 +1035,29 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   return SndPlayBuffer(NULL, sndP, 0, 0, 0, 0, volume, flags);
 }
 
-static Err playFrequency(Int32 frequency, UInt16 duration, UInt16 volume) {
+static Err playFrequency(Int32 frequency, UInt32 size, UInt16 volume) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
-  UInt32 size, i;
+  UInt32 i;
   UInt8 *buffer;
   double angle, pi2;
   SndStreamRef channel;
   Err err = sndErrBadParam;
 
-  size = (duration * DOCMD_SAMPLE_RATE) / 1000;
-  debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz duration=%dms volume=%d size=%d", frequency, duration, volume, size);
+  debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz size=%u volume=%d size=%d", frequency, size, volume, size);
   if ((buffer = sys_calloc(1, size)) != NULL) {
     pi2 = 2.0 * sys_pi();
+    angle = 0;
     for (i = 0; i < size; i++) {
       angle = (i * pi2 * frequency) / DOCMD_SAMPLE_RATE;
-      buffer[i] = (sys_sin(angle) + 1.0) * 127;
+      buffer[i] = (sys_sin(module->angle + angle) + 1.0) * 127;
     }
+    module->angle = angle;
     if (module->lastChannel) {
       debug(DEBUG_TRACE, "Sound", "playFrequency delete previous channel %d", module->lastChannel);
       SndStreamDelete(module->lastChannel);
       module->lastChannel = 0;
     }
-    if (SndPlayBuffer(&channel, buffer, size, DOCMD_SAMPLE_RATE, sndInt8, sndMono, volume, sndFlagAsync) == errNone) {
+    if (SndPlayBuffer(&channel, buffer, size, DOCMD_SAMPLE_RATE, sndUInt8, sndMono, volume, sndFlagAsync) == errNone) {
       module->lastChannel = channel;
       debug(DEBUG_TRACE, "Sound", "playFrequency new channel %d", module->lastChannel);
     }
@@ -1076,12 +1080,12 @@ static Err playFrequency(Int32 frequency, UInt16 duration, UInt16 volume) {
 
 Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
+  UInt32 size;
+  UInt16 volume;
   
   Err err = sndErrBadParam;
 
   if (channelP == NULL && cmdP != NULL) {
-    debug(DEBUG_TRACE, "Sound", "SndDoCmd %d noWait %d", cmdP->cmd, noWait);
-
     switch (cmdP->cmd) {
       case sndCmdFreqDurationAmp:
         // Play a tone. SndDoCmd blocks until the tone has finished.
@@ -1090,9 +1094,14 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
         // param3 is its amplitude in the range [0, sndMaxAmp].
         // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
+        debug(DEBUG_TRACE, "Sound", "sndCmdFreqDurationAmp frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
         if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+          volume = cmdP->param3;
+          if (volume > sndMaxAmp) volume = sndMaxAmp;
+          volume <<= 4; // 0..64 -> 0..1024
           module->lastFrequency = cmdP->param1;
-          err = playFrequency(cmdP->param1, cmdP->param2, cmdP->param3);
+          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+          err = playFrequency(cmdP->param1, size, volume);
         }
         break;
       case sndCmdFrqOn:
@@ -1103,9 +1112,15 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
         // param3 is its amplitude in the range [0, sndMaxAmp].
         // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
+        debug(DEBUG_TRACE, "Sound", "sndCmdFrqOn frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
         if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+          volume = cmdP->param3;
+          if (volume > sndMaxAmp) volume = sndMaxAmp;
+          volume <<= 4; // 0..64 -> 0..1024
+          module->lastVolume = volume;
           module->lastFrequency = cmdP->param1;
-          err = playFrequency(cmdP->param1, cmdP->param2, cmdP->param3);
+          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+          err = playFrequency(cmdP->param1, size, volume);
         }
         break;
       case sndCmdNoteOn:
@@ -1116,22 +1131,36 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
         // param2 is the tone’s duration in milliseconds
         // param3 is its amplitude given as MIDI velocity [0, 127].
 
+        debug(DEBUG_TRACE, "Sound", "sndCmdNoteOn key=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
         if (cmdP->param1 >= 0 && cmdP->param1 < 128 && cmdP->param2 > 0 && cmdP->param3 > 0) {
           // XXX convert from MIDI velocity (?) to volume
+          volume = cmdP->param3;
+          if (volume > 127) volume = 127;
+          volume <<= 3; // 0..127 -> 0..1016
+          if (volume >= 1016) volume = 1024;
           module->lastFrequency = module->midiNoteFreqency[cmdP->param1];
-          err = playFrequency(module->lastFrequency, cmdP->param2, cmdP->param3);
+          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+          err = playFrequency(module->lastFrequency, size, volume);
         }
         break;
       case sndCmdQuiet:
         // Stop the playback of the currently generated tone.
         // All parameter values are ignored.
+        debug(DEBUG_TRACE, "Sound", "sndCmdQuiet");
         if (module->lastFrequency) {
-          playFrequency(module->lastFrequency, 1, 0);
+          // play a single sample with the last frequency and the last volume.
+          // this 1 sample sound will interrupt the current sound.
+          playFrequency(module->lastFrequency, 1, module->lastVolume);
           module->lastFrequency = 0;
         }
         err = errNone;
         break;
+      default:
+        debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid cmd %d", cmdP->cmd);
+        break;
     }
+  } else {
+    debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid parameters");
   }
 
   return err;

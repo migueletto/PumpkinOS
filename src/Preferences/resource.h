@@ -3,6 +3,7 @@
 #define formatsForm        1200
 #define desktopForm        1300
 #define imageForm          1400
+#define soundForm          1500
 
 #define panelTrigger       1001
 #define panelList          1002
@@ -42,6 +43,14 @@
 #define positionTrigger    1405
 #define positionList       1406
 #define positionGad        1407
+
+#define systemSoundTrigger 1501
+#define alarmSoundTrigger  1502
+#define gameSoundTrigger   1503
+#define systemSoundList    1504
+#define alarmSoundList     1505
+#define gameSoundList      1506
+#define enableSoundCtl     1507
 
 #define MainMenu           1000
 

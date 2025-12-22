@@ -124,6 +124,7 @@ extern "C" {
 #define pLockModifiers         1
 #define pBorderWidth           2
 #define pBackgroundImage       3
+#define pEnableSound           4
 
 #define pMonoBackground        0
 #define pMonoSelectedBorder    1
@@ -746,6 +747,8 @@ int pumpkin_audio_set(int pcm, int channels, int rate);
 void pumpkin_audio_task_init(void);
 void pumpkin_audio_task_finish(void);
 int pumpkin_audio_check(int op);
+void pumpkin_sound_enable(int enable);
+int pumpkin_sound_enabled(void);
 
 int pumpkin_shader(char *vertex_shader, int vlen, char *fragment_shader, int flen, float (*getvar)(char *name, void *data), void *data);
 

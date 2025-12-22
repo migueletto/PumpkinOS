@@ -32,6 +32,7 @@ void pumpkin_registry_create(UInt32 creator) {
   RegDimensionType regDim;
   RegPositionType regPos;
   RegDisplayEndianType regEnd;
+  RegSoundType regSnd;
   DmOpenRef dbRef;
   MemHandle h;
   UInt32 regSize;
@@ -83,6 +84,9 @@ void pumpkin_registry_create(UInt32 creator) {
 
   regEnd.littleEndian = 0;
   pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
+
+  regSnd.enableSound = 0;
+  pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
 }
 
 static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {

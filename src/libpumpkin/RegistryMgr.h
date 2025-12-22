@@ -8,6 +8,7 @@ typedef struct RegMgrType RegMgrType;
 #define regFeatureID    6
 #define regNotifID      7
 #define regEndianID     8
+#define regSoundID      9
 
 #define regFlagReset    1
 
@@ -49,6 +50,10 @@ typedef struct {
 typedef struct {
   UInt16 littleEndian;
 } RegDisplayEndianType;
+
+typedef struct {
+  UInt16 enableSound;
+} RegSoundType;
 
 RegMgrType *RegInit(void);
 void RegFinish(RegMgrType *rm);

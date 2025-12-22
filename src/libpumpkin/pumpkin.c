@@ -105,6 +105,7 @@ typedef struct {
   uint32_t taskId;
   int index, width, height, x, y;
   int littleEndian;
+  int enableSound;
   UInt32 creator;
 } launch_data_t;
 
@@ -152,6 +153,7 @@ typedef struct {
   heap_t *heap;
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
+  int enableSound;
   int checkAudio;
   void *data;
   void *subdata;
@@ -287,6 +289,7 @@ typedef struct {
   float (*shader_getvar)(char *name, void *data);
   void *shader_data;
   int shader_inited;
+  int enableSound;
 } pumpkin_module_t;
 
 typedef union {
@@ -652,9 +655,6 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.pcm = PCM_S16;
   pumpkin_module.channels = 1;
   pumpkin_module.rate = 44100;
-  //pumpkin_module.pcm = PCM_U8;
-  //pumpkin_module.channels = 1;
-  //pumpkin_module.rate = 22050;
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
@@ -711,6 +711,7 @@ void pumpkin_init_misc(void) {
     prefs.value[pLockModifiers] = WINDOW_MOD_SHIFT;
     prefs.value[pBorderWidth] = BORDER_SIZE;
     prefs.value[pBackgroundImage] = 0;
+    prefs.value[pEnableSound] = 0;
     prefs.color[pMonoBackground] = monoBackground;
     prefs.color[pMonoSelectedBorder] = monoSelectedBorder;
     prefs.color[pMonoUnselectedBorder] = monoUnselectedBorder;
@@ -724,6 +725,7 @@ void pumpkin_init_misc(void) {
 
   pumpkin_module.lockKey = prefs.value[pLockKey];
   pumpkin_module.lockModifiers = prefs.value[pLockModifiers];
+  pumpkin_module.enableSound = prefs.value[pEnableSound];
 }
 
 void pumpkin_set_spawner(int handle) {
@@ -1804,7 +1806,7 @@ static void pumpkin_init_icon(void) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int enableSound, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
@@ -1895,6 +1897,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   task->height = height;
   task->new_width = width;
   task->new_height = height;
+  task->enableSound = enableSound;
   sys_strncpy(task->name, name, dmDBNameLength-1);
 
   thread_set(task_key, task);
@@ -2183,7 +2186,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2232,7 +2235,8 @@ static int pumpkin_launch_action(void *arg) {
   }
   thread_set_name(name);
 
-  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height, data->littleEndian, data->x, data->y) == 0) {
+  if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height,
+        data->littleEndian, data->enableSound, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -2334,6 +2338,7 @@ int pumpkin_launch(launch_request_t *request) {
   RegPositionType *regPos;
   RegDimensionType *regDim;
   RegDisplayEndianType *regEnd;
+  RegSoundType *regSnd;
   UInt32 type, creator, regSize;
   launch_data_t *data;
   client_request_t creq;
@@ -2443,6 +2448,12 @@ int pumpkin_launch(launch_request_t *request) {
         debug(DEBUG_INFO, PUMPKINOS, "using display %s endian from registry for %s", regEnd->littleEndian ? "little" : "big", request->name);
         data->littleEndian = regEnd->littleEndian;
         MemPtrFree(regEnd);
+      }
+
+      if ((regSnd = pumpkin_reg_get(creator, regSoundID, &regSize)) != NULL) {
+        debug(DEBUG_INFO, PUMPKINOS, "using sound %d from registry for %s", regSnd->enableSound, request->name);
+        data->enableSound = regSnd->enableSound;
+        MemPtrFree(regSnd);
       }
 
       data->index = index;
@@ -6124,6 +6135,28 @@ r = 0;
   }
 
   return t;
+}
+
+void pumpkin_sound_enable(int enable) {
+  if (mutex_lock(mutex) == 0) {
+    pumpkin_module.enableSound = enable;
+    mutex_unlock(mutex);
+  }
+}
+
+int pumpkin_sound_enabled(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int enabled = 0;
+
+  if (mutex_lock(mutex) == 0) {
+    enabled = pumpkin_module.enableSound;
+    if (enabled) {
+      enabled = task->enableSound;
+    }
+    mutex_unlock(mutex);
+  }
+
+  return enabled;
 }
 
 void pumpkin_set_lasterr(Err err) {
