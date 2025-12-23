@@ -77,6 +77,28 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case NavSelectorFrmGetNavState: {
+      // Err FrmGetNavState(const FormType* formP, FrmNavStateFlagsType *stateFlagsP)
+      uint32_t formP = ARG32;
+      uint32_t stateFlagsP = ARG32;
+      emupalmos_trap_sel_in(formP, sysTrapNavSelector, sel, 0);
+      emupalmos_trap_sel_in(stateFlagsP, sysTrapNavSelector, sel, 1);
+      if (stateFlagsP) m68k_write_memory_32(stateFlagsP, 0);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmGetNavState(0x%08X, 0x%08X)", formP, stateFlagsP);
+      err = errNone;
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case NavSelectorFrmSetNavState: {
+      // Err FrmSetNavState(FormType* formP, FrmNavStateFlagsType stateFlags)
+      uint32_t formP = ARG32;
+      uint32_t stateFlags = ARG32;
+      emupalmos_trap_sel_in(formP, sysTrapNavSelector, sel, 0);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmSetNavState(0x%08X, 0x%08X)", formP, stateFlags);
+      err = errNone;
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "NavSelector selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

@@ -412,6 +412,18 @@ uint32_t palmos_systrap(uint16_t trap) {
       SysReset();
       debug(DEBUG_TRACE, "EmuPalmOS", "SysReset()");
       break;
+    case sysTrapSysErrString: {
+      // Char *SysErrString(Err err, Char *strP, UInt16 maxLen)
+      int16_t err = ARG16;
+      uint32_t strP = ARG32;
+      uint16_t maxLen = ARG16;
+      char *str = emupalmos_trap_in(strP, trap, 1);
+      char *res = SysErrString(err, str, maxLen);
+      uint32_t p = emupalmos_trap_out(res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysErrString(%d, 0x%08X, %u): 0x%08X", err, strP, maxLen, p);
+      m68k_set_reg(M68K_REG_A0, p);
+      }
+      break;
     case sysTrapResLoadConstant: {
       // UInt32 ResLoadConstant(UInt16 rscID)
       uint16_t rscID = ARG16;
@@ -1451,6 +1463,20 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(comparP, trap, 1);
       Err res = DmQuickSort68K(dbRef, comparP, other);
       debug(DEBUG_TRACE, "EmuPalmOS", "DmQuickSort(0x%08X, 0x%08X, %d): %d", dbP, comparP, other, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
+    case sysTrapDmFindSortPositionV10: {
+      // UInt16 DmFindSortPositionV10(DmOpenRef dbP, void *newRecord, DmComparF *compar, Int16 other)
+      uint32_t dbP = ARG32;
+      uint32_t newRecordP = ARG32;
+      uint32_t comparP = ARG32;
+      int16_t other = ARG16;
+      DmOpenRef dbRef = (DmOpenRef)emupalmos_trap_in(dbP, trap, 0);
+      emupalmos_trap_in(newRecordP, trap, 1);
+      emupalmos_trap_in(comparP, trap, 2);
+      UInt16 res = DmFindSortPosition68K(dbRef, newRecordP, 0, comparP, other);
+      debug(DEBUG_TRACE, "EmuPalmOS", "DmFindSortPositionV10(0x%08X, 0x%08X, 0x%08X, %d): %d", dbP, newRecordP, comparP, other, res);
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
