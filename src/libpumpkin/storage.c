@@ -1757,12 +1757,14 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           db->mode = 0;
           StoWriteHeader(sto, db);
 
+/*
           if (db->elements) {
             sys_free(db->elements);
             db->elements = NULL;
             db->totalElements = 0;
             db->numRecs = 0;
           }
+*/
         }
 
         if (dbRef->prev) {
