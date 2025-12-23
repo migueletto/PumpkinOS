@@ -32,7 +32,6 @@ typedef struct {
   Int32 lastFrequency;
   SndStreamRef lastChannel;
   UInt16 lastVolume;
-  double angle;
 } snd_module_t;
 
 typedef struct {
@@ -535,7 +534,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       pan = sndPanCenter;
       pcm = channels = 0;
 
-      if (pumpkin_sound_enabled()) {
       if (snd->started && !snd->stopped) {
         nsamples = len / snd->samplesize;
         if (snd->func) {
@@ -625,7 +623,6 @@ static int SndGetAudio(void *buffer, int len, void *data) {
       } else {
         debug(DEBUG_TRACE, "Sound", "GetAudio started %d stopped %d", snd->started, snd->stopped);
         r = 0;
-      }
       }
 
       ptr_unlock(arg->ptr, TAG_SOUND);
@@ -773,7 +770,7 @@ Err SndStreamStart(SndStreamRef channel) {
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d)", channel);
 
-  if (channel > 0 && module->ap && module->ap->start && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
+  if (channel > 0 && module->ap && module->ap->start && pumpkin_sound_enabled() && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
     if (snd->started) {
       snd->stopped = false;
       err = errNone;
@@ -1046,12 +1043,10 @@ static Err playFrequency(Int32 frequency, UInt32 size, UInt16 volume) {
   debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz size=%u volume=%d size=%d", frequency, size, volume, size);
   if ((buffer = sys_calloc(1, size)) != NULL) {
     pi2 = 2.0 * sys_pi();
-    angle = 0;
     for (i = 0; i < size; i++) {
       angle = (i * pi2 * frequency) / DOCMD_SAMPLE_RATE;
-      buffer[i] = (sys_sin(module->angle + angle) + 1.0) * 127;
+      buffer[i] = (sys_sin(angle) + 1.0) * 127;
     }
-    module->angle = angle;
     if (module->lastChannel) {
       debug(DEBUG_TRACE, "Sound", "playFrequency delete previous channel %d", module->lastChannel);
       SndStreamDelete(module->lastChannel);
