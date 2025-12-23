@@ -261,7 +261,7 @@ Char *SysErrString(Err err, Char *strP, UInt16 maxLen) {
 
   if (strP && maxLen > 8) {
     strP[0] = 0;
-    resID = err >> 8;
+    resID = 10000 + (err >> 8);
     index = err & 0xFF;
     if (SysStringByIndex(resID, index, strP, maxLen-8)) {
       StrPrintF(&strP[StrLen(strP)], " (%04X)", err);
