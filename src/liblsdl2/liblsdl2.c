@@ -1515,21 +1515,6 @@ static void *convert_audio(sdl_audio_buffer_t *abuf, sdl_audio_t *audio, void *a
   return buf;
 }
 
-#define SAVE_PREFIX(name) \
-static int count = 0; \
-static int fd = 0; \
-if (count == 0) \
-fd = sys_create(name, SYS_TRUNC|SYS_WRITE, 0644)
-
-#define SAVE_SUFFIX(buffer, len) \
-count++; \
-if (count < 64) { \
-sys_write(fd, buffer, len); \
-} \
-if (count == 64) { \
-sys_close(fd); \
-}
-
 static void audio_callback(void *userdata, uint8_t *stream, int len) {
   int aptr = *(int *)userdata;
   sdl_audio_buffer_t *abuf;
@@ -1660,6 +1645,7 @@ static int audio_action(void *_arg) {
       }
     } else {
       debug(DEBUG_TRACE, "SDL", "no msg");
+      wait = 2000;
       if (ptr) {
         if ((audio = ptr_lock(ptr, TAG_AUDIO)) != NULL) {
           len1 = audio->bsize * audio->channels;
