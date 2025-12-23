@@ -21,7 +21,7 @@
 
 #define sndUnityGain 1024
 
-#define DOCMD_SAMPLE_RATE 22050
+#define DOCMD_SAMPLE_RATE 44100
 
 typedef struct {
   audio_provider_t *ap;
@@ -1032,27 +1032,29 @@ Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
   return SndPlayBuffer(NULL, sndP, 0, 0, 0, 0, volume, flags);
 }
 
-static Err playFrequency(Int32 frequency, UInt32 size, UInt16 volume) {
+static Err playFrequency(Int32 frequency, UInt32 numSamples, UInt16 volume) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
-  UInt32 i;
-  UInt8 *buffer;
+  UInt32 size, i;
+  UInt16 *buffer;
   double angle, pi2;
   SndStreamRef channel;
   Err err = sndErrBadParam;
 
-  debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz size=%u volume=%d size=%d", frequency, size, volume, size);
+  debug(DEBUG_TRACE, "Sound", "playFrequency frequency=%dHz samples=%u volume=%d", frequency, numSamples, volume);
+  size = numSamples * 2;
+
   if ((buffer = sys_calloc(1, size)) != NULL) {
     pi2 = 2.0 * sys_pi();
-    for (i = 0; i < size; i++) {
+    for (i = 0; i < numSamples; i++) {
       angle = (i * pi2 * frequency) / DOCMD_SAMPLE_RATE;
-      buffer[i] = (sys_sin(angle) + 1.0) * 127;
+      buffer[i] = sys_sin(angle) * 32767.0;
     }
     if (module->lastChannel) {
       debug(DEBUG_TRACE, "Sound", "playFrequency delete previous channel %d", module->lastChannel);
       SndStreamDelete(module->lastChannel);
       module->lastChannel = 0;
     }
-    if (SndPlayBuffer(&channel, buffer, size, DOCMD_SAMPLE_RATE, sndUInt8, sndMono, volume, sndFlagAsync) == errNone) {
+    if (SndPlayBuffer(&channel, buffer, size, DOCMD_SAMPLE_RATE, sndInt16, sndMono, volume, sndFlagAsync) == errNone) {
       module->lastChannel = channel;
       debug(DEBUG_TRACE, "Sound", "playFrequency new channel %d", module->lastChannel);
     }
