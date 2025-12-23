@@ -147,10 +147,12 @@ int heap_debug_access(void *p, uint32_t offset, uint32_t size, int read) {
       if (!(heap->bitfield[index] & mask)) {
         debug(DEBUG_ERROR, "Heap", "%s access to unmapped address %p (0x%08X)", read ? "read" : "write", heap->small_start + offset, offset);
         valid = 0;
+        break;
       }
     } else {
       debug(DEBUG_ERROR, "Heap", "%s access to large address %p (0x%08X)", read ? "read" : "write", heap->small_start + offset, offset);
       valid = 0;
+      break;
     }
   }
 
