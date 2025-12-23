@@ -549,13 +549,12 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
     isDirectColor = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagDirectColor);
     indirectColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirectColorTable);
-    hasTransparency = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasTransparency);
+    hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
 
     newSize = BitmapV3HeaderSize;
     numEntries = 0;
     colorTableSize = 0;
     bitmapColorTable = NULL;
-    transparentValue = 0;
     ram = pumpkin_heap_base();
 
     if (hasColorTable) {
@@ -569,10 +568,6 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           numEntries = BmpV2GetField(newBmp, BitmapV2FieldColorTable);
           colorTableSize = sizeof(UInt16) + numEntries * 4;
           bitmapColorTable = (UInt8 *)bitmapP + BitmapV2FieldColorTable;
-          if (isDirectColor) {
-            // BitmapDirectInfoType.transparentColor
-            get4(&transparentValue, (UInt8 *)bitmapP, BitmapV2FieldColorTable + colorTableSize + 4);
-          }
           break;
         case 3:
           if (indirectColorTable) {
@@ -636,7 +631,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           break;
         case 2:
           debug(DEBUG_TRACE, "Bitmap", "BmpCreateBitmapV3 create from V2 %p", bitmapP);
-          BmpV3SetField(newBmp, BitmapV3FieldPixelFormat, pixelFormatIndexed);
+          BmpV3SetField(newBmp, BitmapV3FieldPixelFormat, depth == 16 ? pixelFormat565 : pixelFormatIndexed);
           BmpSetCommonField(newBmp, BitmapFieldPixelSize, BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldPixelSize));
           if (hasTransparency) {
             if (isDirectColor) {
