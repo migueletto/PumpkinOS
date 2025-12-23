@@ -527,7 +527,8 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
       case frmListObj:
         if (setUsable) obj.list->attr.usable = 1;
-        if (!obj.list->bitsBehind && obj.list->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
+        // XXX why pop up lists should not be drawn here ? commenting this test for now
+        if (/*!obj.list->bitsBehind &&*/ obj.list->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           LstDrawList(obj.list);
         }
         break;
@@ -1462,6 +1463,10 @@ void FrmHideObject(FormType *formP, UInt16 objIndex) {
 void FrmShowObject(FormType *formP, UInt16 objIndex) {
   if (formP && objIndex < formP->numObjects) {
     debug(DEBUG_TRACE, "Form", "FrmShowObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
+    if (formP->objects[objIndex].objectType == frmListObj && formP->objects[objIndex].object.list->bitsBehind) {
+      // XXX apparently it is possible to pop up a list with FrmShowObject
+      formP->objects[objIndex].object.list->attr.poppedUp = true;
+    }
     FrmDrawObject(formP, objIndex, true);
   }
 }
