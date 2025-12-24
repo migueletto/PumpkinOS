@@ -177,6 +177,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
   Boolean insideUpArrow, insideDownArrow;
   Boolean handled = false;
 
+  if (!listP->attr.usable) return handled;
   rect.extent.x = listP->bounds.extent.x;
   rect.extent.y = listP->bounds.extent.y;
 
