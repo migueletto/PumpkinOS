@@ -683,7 +683,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
 BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *colorTableP, UInt16 *error) {
   BitmapType *bitmapP;
   UInt16 numEntries, rowBytes, v16, i;
-  UInt32 newSize, index, v32;
+  UInt32 newSize, index, v32, bitsOffset;
 
   if (error) *error = sysErrParamErr;
 
@@ -721,10 +721,16 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
     newSize += sizeof(UInt16) + numEntries * 4;
   }
 
+  bitsOffset = newSize;
   newSize += rowBytes * height;
   if ((bitmapP = MemPtrNew(newSize)) == NULL) {
     if (error) *error = sysErrNoFreeResource;
     return NULL;
+  }
+  if (depth == 16) {
+    // XXX if depth is 16, fill the bitmap with white.
+    // it seems that PalmFiction assumes the background is always white.
+    MemSet((UInt8 *)bitmapP + bitsOffset, rowBytes * height, 0xff);
   }
 
   BmpSetCommonField(bitmapP, BitmapFieldWidth, width);
