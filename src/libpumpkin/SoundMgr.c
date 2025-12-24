@@ -296,55 +296,57 @@ Err SndPlaySmf(void *chanP, SndSmfCmdEnum cmd, UInt8 *smfP, SndSmfOptionsType *s
   UInt16 volume, mthd[3];
   Err err = sndErrBadParam;
 
-  if (smfP != NULL) {
-    debug(DEBUG_INFO, "Sound", "SndPlaySmf cmd %d, noWait %d", cmd, bNoWait);
-    if (selP) {
-      debug(DEBUG_INFO, "Sound", "SndPlaySmf start %d, end %d, amp %d, int %d", selP->dwStartMilliSec, selP->dwEndMilliSec, selP->amplitude, selP->interruptible);
-      if (selP->dwStartMilliSec != 0) {
-        debug(DEBUG_ERROR, "Sound", "SndPlaySmf start %d not supported", selP->dwStartMilliSec);
-      }
-      if (selP->dwEndMilliSec != sndSmfPlayAllMilliSec) {
-        debug(DEBUG_ERROR, "Sound", "SndPlaySmf end %d not supported", selP->dwEndMilliSec);
-      }
-      volume = selP->amplitude;
-    } else {
-      volume = sndMaxAmp;
-    }
-
-    i = get4b(&id, smfP, 0);
-    i += get4b(&len, smfP, i);
-    if (id == 'MThd' && len == 6) {
-      i += get2b(&mthd[0], smfP, i);
-      i += get2b(&mthd[1], smfP, i);
-      i += get2b(&mthd[2], smfP, i);
-      debug(DEBUG_INFO, "Sound", "SndPlaySmf format %d, ntrks %d, division 0x%04X", mthd[0], mthd[1], mthd[2]);
-
-      for (j = 0; j < mthd[1]; j++) {
-        i += get4b(&id, smfP, i);
-        i += get4b(&len, smfP, i);
-        if (id == 'MTrk') {
-          debug(DEBUG_INFO, "Sound", "SndPlaySmf track %d length %d", j, len);
-        } else {
-          debug(DEBUG_INFO, "Sound", "SndPlaySmf unknown id 0x%08X", id);
+  if (pumpkin_sound_enabled()) {
+    if (smfP != NULL) {
+      debug(DEBUG_INFO, "Sound", "SndPlaySmf cmd %d, noWait %d", cmd, bNoWait);
+      if (selP) {
+        debug(DEBUG_INFO, "Sound", "SndPlaySmf start %d, end %d, amp %d, int %d", selP->dwStartMilliSec, selP->dwEndMilliSec, selP->amplitude, selP->interruptible);
+        if (selP->dwStartMilliSec != 0) {
+          debug(DEBUG_ERROR, "Sound", "SndPlaySmf start %d not supported", selP->dwStartMilliSec);
         }
-        i += len;
-      }
-
-      if (module->ap && module->ap->mixer_play) {
-        debug(DEBUG_INFO, "Sound", "SndPlaySmf playing %d bytes", i);
-        if (volume >= sndMaxAmp) {
-          volume = 128;
-        } else if (volume > 0) {
-          volume <<= 1; // PalmOS: 0-64, SDL: 0-128
+        if (selP->dwEndMilliSec != sndSmfPlayAllMilliSec) {
+          debug(DEBUG_ERROR, "Sound", "SndPlaySmf end %d not supported", selP->dwEndMilliSec);
         }
-        module->ap->mixer_play(smfP, i, volume);
+        volume = selP->amplitude;
+      } else {
+        volume = sndMaxAmp;
       }
 
-    } else {
-      debug(DEBUG_ERROR, "Sound", "SndPlaySmf wrong header id 0x%08X or length %d", id, len);
-    }
+      i = get4b(&id, smfP, 0);
+      i += get4b(&len, smfP, i);
+      if (id == 'MThd' && len == 6) {
+        i += get2b(&mthd[0], smfP, i);
+        i += get2b(&mthd[1], smfP, i);
+        i += get2b(&mthd[2], smfP, i);
+        debug(DEBUG_INFO, "Sound", "SndPlaySmf format %d, ntrks %d, division 0x%04X", mthd[0], mthd[1], mthd[2]);
 
-    err = errNone;
+        for (j = 0; j < mthd[1]; j++) {
+          i += get4b(&id, smfP, i);
+          i += get4b(&len, smfP, i);
+          if (id == 'MTrk') {
+            debug(DEBUG_INFO, "Sound", "SndPlaySmf track %d length %d", j, len);
+          } else {
+            debug(DEBUG_INFO, "Sound", "SndPlaySmf unknown id 0x%08X", id);
+          }
+          i += len;
+        }
+
+        if (module->ap && module->ap->mixer_play) {
+          debug(DEBUG_INFO, "Sound", "SndPlaySmf playing %d bytes", i);
+          if (volume >= sndMaxAmp) {
+            volume = 128;
+          } else if (volume > 0) {
+            volume <<= 1; // PalmOS: 0-64, SDL: 0-128
+          }
+          module->ap->mixer_play(smfP, i, volume);
+        }
+
+      } else {
+        debug(DEBUG_ERROR, "Sound", "SndPlaySmf wrong header id 0x%08X or length %d", id, len);
+      }
+
+      err = errNone;
+    }
   }
 
   return err;
@@ -419,7 +421,7 @@ Err SndPlaySmfResourceIrregardless(UInt32 resType, Int16 resID, SystemPreference
 Err SndInterruptSmfIrregardless(void) {
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
 
-  if (module->ap && module->ap->mixer_stop) {
+  if (module->ap && module->ap->mixer_stop && pumpkin_sound_enabled()) {
     module->ap->mixer_stop();
   }
 
@@ -1029,7 +1031,13 @@ static Err SndPlayBuffer(SndStreamRef *channel, SndPtr sndP, UInt32 size, UInt32
 }
 
 Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags) {
-  return SndPlayBuffer(NULL, sndP, 0, 0, 0, 0, volume, flags);
+  Err err = sndErrBadParam;
+
+  if (pumpkin_sound_enabled()) {
+   err = SndPlayBuffer(NULL, sndP, 0, 0, 0, 0, volume, flags);
+  }
+
+  return err;
 }
 
 static Err playFrequency(Int32 frequency, UInt32 numSamples, UInt16 volume) {
@@ -1079,10 +1087,9 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
   snd_module_t *module = (snd_module_t *)pumpkin_get_local_storage(snd_key);
   UInt32 size;
   UInt16 volume;
-  
   Err err = sndErrBadParam;
 
-  if (channelP == NULL && cmdP != NULL) {
+  if (channelP == NULL && cmdP != NULL && pumpkin_sound_enabled()) {
     switch (cmdP->cmd) {
       case sndCmdFreqDurationAmp:
         // Play a tone. SndDoCmd blocks until the tone has finished.
@@ -1202,7 +1209,7 @@ Err SndPlayFile(FileRef f, Int32 volume, UInt32 flags) {
 
   debug(DEBUG_TRACE, "Sound", "SndPlayFile(%p, %d, 0x%08X)", f, volume, flags);
 
-  if (f && VFSFileSize(f, &size) == errNone && size >= WAV_HEADER_SIZE) {
+  if (f && VFSFileSize(f, &size) == errNone && size >= WAV_HEADER_SIZE && pumpkin_sound_enabled()) {
     if (WavFileHeader(f, &rate, &type, &width)) {
       param = sys_calloc(1, sizeof(snd_param_t));
       param->finished = false;
