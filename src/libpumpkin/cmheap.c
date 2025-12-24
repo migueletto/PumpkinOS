@@ -112,6 +112,7 @@ static void heap_debug_set(heap_t *heap, uint8_t *address, uint32_t size) {
     mask = 1 << (offset & 31);
     if (heap->bitfield[index] & mask) {
       debug(DEBUG_ERROR, "Heap", "set already mapped address %p", heap->small_start + offset);
+      break;
     }
     heap->bitfield[index] |= mask;
   }
@@ -128,6 +129,7 @@ static void heap_debug_reset(heap_t *heap, uint8_t *address, uint32_t size) {
     mask = 1 << (offset & 31);
     if (!(heap->bitfield[index] & mask)) {
       debug(DEBUG_ERROR, "Heap", "reset unmapped address %p mask 0x%02X", heap->small_start + offset, mask);
+      break;
     }
     heap->bitfield[index] &= mask ^ 0xffffffff;
   }
