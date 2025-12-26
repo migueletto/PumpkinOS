@@ -171,6 +171,7 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
 
 static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inverted) {
   WinHandle oldw, oldd;
+  RectangleType rect;
   char cmd[8];
   int mFrame, mTitle, mFill, mFore, old, oldb, oldt, px, y;
 
@@ -198,12 +199,15 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
     oldt = WinSetTextColor(mFore);
   }
 
+  RctSetRectangle(&rect, 1, 1, pd->menuWin->windowBounds.extent.x - 2, pd->menuWin->windowBounds.extent.y - 2);
+  WinSetClip(&rect);
   WinEraseRectangle(&item->localBounds, 0);
   WinDrawChars(item->itemStr, sys_strlen(item->itemStr), 2, y);
   if (item->command) {
     cmd[1] = item->command;
     WinDrawChars(cmd, 2, item->localBounds.extent.x - px, y);
   }
+  WinResetClip();
 
   FntSetFont(old);
   WinSetBackColor(oldb);
@@ -602,6 +606,9 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
       i += get4b(&dummy32, p, i);
       i += get2b(&numItems, p, i);
       i += get4b(&dummy32, p, i);
+      if (pullDownY + pullDownH >= 158) {
+        pullDownH = 158 - pullDownY - 1;
+      }
       debug(DEBUG_TRACE, "Form", "pulldown %d bounds (%d,%d,%d,%d), title (%d,%d,%d,%d), items %d",
         j, pullDownX, pullDownY, pullDownW, pullDownH,  titleX, titleY, titleW, titleH, numItems);
 
