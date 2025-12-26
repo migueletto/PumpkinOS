@@ -177,7 +177,6 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
   Boolean insideUpArrow, insideDownArrow;
   Boolean handled = false;
 
-  if (!listP->attr.usable) return handled;
   rect.extent.x = listP->bounds.extent.x;
   rect.extent.y = listP->bounds.extent.y;
 
@@ -223,7 +222,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
 
         } else {
           if (listP->bitsBehind) {
-            debug(DEBUG_TRACE, "List", "LstHandleEvent penDown outside list %d", listP->id);
+            debug(DEBUG_TRACE, "List", "LstHandleEvent penDown outside list %d (%d,%d) (%d,%d,%d,%d)", listP->id, eventP->screenX, eventP->screenY, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
             MemSet(&event, sizeof(EventType), 0);
             event.eType = lstExitEvent;
             event.data.lstExit.listID = listP->id;
