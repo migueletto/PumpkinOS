@@ -918,11 +918,13 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
 
   IN;
   if (fldP) {
+    debug(DEBUG_TRACE, "Field", "FldSetSelection start=%d end=%d", startPosition, endPosition);
     if (startPosition < fldP->textLen && endPosition <= fldP->textLen && startPosition <= endPosition) {
       fldP->selFirstPos = startPosition;
       fldP->selLastPos = endPosition;
       FldRecalculateField(fldP, true);
       module->activeField = fldP;
+      debug(DEBUG_TRACE, "Field", "FldSetSelection ok");
     }
   }
   OUTV;
@@ -1255,16 +1257,17 @@ Boolean FldInsert(FieldType *fldP, const Char *insertChars, UInt16 insertLen) {
         MemMove(&fldP->text[fldP->pos], insertChars, insertLen);
         // shift the remainder of current text to the left
         MemMove(&fldP->text[fldP->pos + insertLen], &fldP->text[fldP->selLastPos], fldP->textLen - fldP->selLastPos);
+        fldP->textLen += insertLen - deleteLen;
       } else {
         // inserted text is bigger than current selection
         // open space for new text
         MemMove(&fldP->text[fldP->pos + insertLen], &fldP->text[fldP->pos + deleteLen], fldP->textLen - (fldP->pos + deleteLen));
         // insert the new text
         MemMove(&fldP->text[fldP->pos], insertChars, insertLen);
+        fldP->textLen += insertLen - deleteLen;
       }
       fldP->selFirstPos = fldP->selLastPos = 0;
       fldP->pos += insertLen;
-      fldP->textLen += insertLen;
 
     } else {
       // there is no current text selection
