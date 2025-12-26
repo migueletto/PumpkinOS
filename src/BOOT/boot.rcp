@@ -693,6 +693,14 @@ BEGIN
   BUTTONS "OK" "Cancel"
 END
 
+ALERT ID 15001
+WARNING
+BEGIN
+  TITLE "Warning"
+  MESSAGE "External ARM emulator not found. Apps using ARM code may not run at optimal speed."
+  BUTTONS "OK"
+END
+
 BITMAPFAMILYEX ID 10000
 BEGIN
   BITMAP "logo_72.bmp"  BPP  1 TRANSPARENT 255 255 255 DENSITY 72

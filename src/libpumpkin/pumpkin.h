@@ -101,6 +101,9 @@ extern "C" {
 #define sysRsrcTypeDlib   'dlib'
 #define sysRsrcTypeWinD   'wind'
 
+#define armPluginType     'armp'
+#define ArmEmulatorAlert  15001
+
 #define sysAnyPluginId  0xFFFFFFFF
 
 #define vchrPumpkinMin     0x4000

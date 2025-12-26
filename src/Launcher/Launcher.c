@@ -118,6 +118,7 @@ typedef struct {
   launcher_notify_t notifications[MAX_NOTIFICATIONS];
   UInt16 numNotifications;
   Boolean useTaskbar, appCrashed, appQuit;
+  Boolean armPluginWarning;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -2603,6 +2604,14 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       FrmDrawForm(frm);
 
       UpdateStatus(frm, data, true);
+
+      if (!data->armPluginWarning) {
+        if (pumpkin_get_plugin(armPluginType, sysAnyPluginId) == NULL) {
+          FrmAlert(ArmEmulatorAlert);
+        }
+        data->armPluginWarning = true;
+      }
+
       handled = true;
       break;
 

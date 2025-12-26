@@ -1,5 +1,3 @@
-#define armPluginType 'armp'
-
 typedef struct {
   arm_emu_t *(*armInit)(uint8_t *buf, uint32_t size);
   void (*armFinish)(arm_emu_t *arm);
