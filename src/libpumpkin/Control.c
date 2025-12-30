@@ -286,6 +286,7 @@ Boolean CtlEnabled(const ControlType *controlP) {
 void CtlSetEnabled(ControlType *controlP, Boolean usable) {
   if (controlP) {
     controlP->attr.enabled = usable;
+    CtlDirectAccessHack(controlP);
   }
 }
 
@@ -303,6 +304,7 @@ void CtlSetUsable(ControlType *controlP, Boolean usable) {
     }
 
     controlP->attr.usable = usable;
+    CtlDirectAccessHack(controlP);
   }
 }
 
@@ -352,6 +354,7 @@ void CtlSetValue(ControlType *controlP, Int16 newValue) {
         debug(DEBUG_TRACE, "Control", "CtlSetValue type %d control %d value %d visible %d", controlP->style, controlP->id, newValue, controlP->attr.visible);
         break;
     }
+    CtlDirectAccessHack(controlP);
   }
 }
 
@@ -366,6 +369,7 @@ void CtlSetSliderValues(ControlType *ctlP, const UInt16 *minValueP, const UInt16
     if (valueP) sc->value = *valueP;
     debug(DEBUG_TRACE, "Control", "CtlSetSliderValues control %d min %d max %d page %d value %d",
       ctlP->id, sc->minValue, sc->maxValue, sc->pageSize, sc->value);
+    CtlDirectAccessHack(ctlP);
   }
 }
 
@@ -460,6 +464,8 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
         controlP->bounds.topLeft.x = right - controlP->bounds.extent.x - 1;
       }
     }
+
+    CtlDirectAccessHack(controlP);
 
     if (visible) {
       CtlDrawControl(controlP);
@@ -745,6 +751,7 @@ void CtlSetGraphics(ControlType *ctlP, DmResID newBitmapID, DmResID newSelectedB
     if (ctlP->attr.visible) {
       CtlDrawControl(ctlP);
     }
+    CtlDirectAccessHack(ctlP);
   }
 }
 

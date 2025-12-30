@@ -235,6 +235,7 @@ FormTitleType;
 typedef struct FormPopupTag
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
 {
+        UInt8 pad[4];
 	UInt16						controlID;
 	UInt16						listID;
 }

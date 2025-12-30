@@ -561,6 +561,7 @@ void LstFreeListChoices(ListType *listP);
 void CtlGetGraphics(ControlType *ctlP, DmResID *newBitmapID, DmResID *newSelectedBitmapID);
 void CtlUpdateGroup(ControlType *controlP, Boolean value);
 void CtlUpdateCheckboxGroup(ControlType *controlP, Boolean value);
+void CtlDirectAccessHack(ControlType *controlP);
 FieldType *FldGetActiveField(void);
 void FldSetActiveField(FieldType *fldP);
 void FldBlinkCursor(void);

@@ -52,10 +52,7 @@ typedef enum buttonFrames ButtonFrameType;
 typedef struct ControlType
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_CONTROLS	// These fields will not be available in the next OS release!
 {
-  UInt16 mId, x, y, w, h;
-  UInt32 mText;
-  UInt16 mAttr;
-  UInt16 pad1, pad2;
+  UInt8 pad[26];
 
   Boolean selected;
   UInt16 objIndex;
