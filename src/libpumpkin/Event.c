@@ -231,12 +231,11 @@ static void adjustCoords(Coord *x, Coord *y) {
    }
 
    if ((wh = WinGetActiveWindow()) != NULL) {
-     // only adjust coordinates if the window is modal
-     if (wh->windowFlags.modal) {
-       WinGetPosition(wh, &x0, &y0);
-       *x -= x0;
-       *y -= y0;
-     }
+     // XXX originally, this adjustment was made only for modal windows (flag wh->windowFlags.modal set),
+     // but it was causing problems (notably in PalmFiction).
+     WinGetPosition(wh, &x0, &y0);
+     *x -= x0;
+     *y -= y0;
    }
 }
 
