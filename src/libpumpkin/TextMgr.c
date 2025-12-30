@@ -30,6 +30,8 @@ UInt8 TxtByteAttr(UInt8 inByte) {
 #define charAttrDelim       (charAttr_SP|charAttr_PU)
 */
 
+// XXX on PalmOS 5, it seems charAttrSpace is 4, not 64+4+256
+
 UInt16 TxtCharAttr(WChar inChar) {
   UInt16 attr = 0;
 
