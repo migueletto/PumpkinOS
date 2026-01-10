@@ -198,6 +198,7 @@ typedef struct DrawStateType
 	FixedType			stdToActiveScale;		// standard to active scaling factor
 	FixedType			activeToStdScale;		// active to standard scaling factor, inverse of stdToActive
 #endif
+        UInt32 scalingMode;
 }
 #endif
 DrawStateType;

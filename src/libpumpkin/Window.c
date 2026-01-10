@@ -1730,7 +1730,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord i, j, iw, id, remwx, remwy, remdx, remdy;
   Coord x1, y1, x2, y2, wx, wy, dx, dy, dx0, wx0, x0, y0;
   BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display;
+  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display, scaleBitmapOff;
   char wbuf[64], bbuf[32];
 
   if (bitmapP && wh && rect) {
@@ -1744,6 +1744,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     displayDensity = BmpGetDensity(displayBitmap);
     displayEndianness = BmpGetLittleEndianBits(displayBitmap);
     blitDisplay = wh == module->activeWindow && wh != module->displayWindow;
+
+    scaleBitmapOff = (module->drawState.scalingMode & kBitmapScalingOff) != 0;
 
     compression = BmpGetCompressionType(bitmapP);
     delete = false;
@@ -1759,50 +1761,57 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     bitmapTransp = BmpGetTransparentValue(bitmapP, &transparentValue);
 
     RctCopyRectangle(rect, &srcRect);
+    x0 = wh->windowBounds.topLeft.x;
+    y0 = wh->windowBounds.topLeft.y;
 
-    if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-      module->drawState.coordinateSystem = kCoordinatesDouble;
-      WinScaleRectangle(&srcRect);
-      module->drawState.coordinateSystem = kCoordinatesStandard;
-    } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
-      WinUnscaleRectangle(&srcRect);
-    }
-
-    if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-      module->drawState.coordinateSystem = kCoordinatesDouble;
-      wx = WinScaleCoord(x, false);
-      wy = WinScaleCoord(y, false);
-      module->drawState.coordinateSystem = kCoordinatesStandard;
-    } else if (windowDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
-      wx = WinUnscaleCoord(x, false);
-      wy = WinUnscaleCoord(y, false);
-    } else {
+    if (scaleBitmapOff) {
       wx = x;
       wy = y;
-    }
-
-    if (displayDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-      module->drawState.coordinateSystem = kCoordinatesDouble;
-      dx = WinScaleCoord(x, false);
-      dy = WinScaleCoord(y, false);
-      module->drawState.coordinateSystem = kCoordinatesStandard;
-    } else if (displayDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
-      dx = WinUnscaleCoord(x, false);
-      dy = WinUnscaleCoord(y, false);
-    } else {
       dx = x;
       dy = y;
+    } else {
+      if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+        module->drawState.coordinateSystem = kCoordinatesDouble;
+        WinScaleRectangle(&srcRect);
+        module->drawState.coordinateSystem = kCoordinatesStandard;
+      } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+        WinUnscaleRectangle(&srcRect);
+      }
+
+      if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+        module->drawState.coordinateSystem = kCoordinatesDouble;
+        wx = WinScaleCoord(x, false);
+        wy = WinScaleCoord(y, false);
+        module->drawState.coordinateSystem = kCoordinatesStandard;
+      } else if (windowDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+        wx = WinUnscaleCoord(x, false);
+        wy = WinUnscaleCoord(y, false);
+      } else {
+        wx = x;
+        wy = y;
+      }
+
+      if (displayDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+        module->drawState.coordinateSystem = kCoordinatesDouble;
+        dx = WinScaleCoord(x, false);
+        dy = WinScaleCoord(y, false);
+        module->drawState.coordinateSystem = kCoordinatesStandard;
+      } else if (displayDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+        dx = WinUnscaleCoord(x, false);
+        dy = WinUnscaleCoord(y, false);
+      } else {
+        dx = x;
+        dy = y;
+      }
+
+      if (displayDensity == kDensityDouble) {
+        x0 <<= 1;
+        y0 <<= 1;
+      }
     }
 
     wx0 = wx;
     dx0 = dx;
-
-    x0 = wh->windowBounds.topLeft.x;
-    y0 = wh->windowBounds.topLeft.y;
-    if (displayDensity == kDensityDouble) {
-      x0 <<= 1;
-      y0 <<= 1;
-    }
 
     if (bitmapEndianness == windowEndianness && bitmapDensity == windowDensity && bitmapDepth == windowDepth &&
         bitmapEndianness == displayEndianness && bitmapDensity == displayDensity && bitmapDepth == displayDepth &&
@@ -1829,10 +1838,13 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     y1 = wh->clippingBounds.top;
     y2 = wh->clippingBounds.bottom;
 
-    dblw = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
-    hlfw = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
-    //dbld = bitmapDensity == kDensityLow && displayDensity == kDensityDouble;
-    //hlfd = bitmapDensity == kDensityDouble && displayDensity == kDensityLow;
+    if (scaleBitmapOff) {
+      dblw = false;
+      hlfw = false;
+    } else {
+      dblw = bitmapDensity == kDensityLow && windowDensity == kDensityDouble;
+      hlfw = bitmapDensity == kDensityDouble && windowDensity == kDensityLow;
+    }
     dbld = dblw;
     hlfd = hlfw;
 
@@ -1998,13 +2010,14 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
     debug(DEBUG_TRACE, "Window", "WinPaintBitmap %s %p %d,%d at %d,%d", BmpGetDescr(bitmapP, bmpBuf, sizeof(bmpBuf)), bitmapP, w, h, x, y);
     windowBitmap = WinGetBitmap(module->drawWindow);
 
-    if ((best = BmpGetBestBitmapEx(bitmapP, BmpGetDensity(windowBitmap), BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
+    bitmapDensity = (module->drawState.scalingMode & kBitmapScalingOff) ? kDensityLow : BmpGetDensity(windowBitmap);
+    if ((best = BmpGetBestBitmapEx(bitmapP, bitmapDensity, BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
       BmpGetDimensions(best, &w, &h, NULL);
       bitmapDensity = BmpGetDensity(best);
       if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
         w >>= 1;
         h >>= 1;
-      } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+      } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble && !(module->drawState.scalingMode & kBitmapScalingOff)) {
         w <<= 1;
         h <<= 1;
       }
@@ -2814,13 +2827,16 @@ void WinPaintRoundedRectangleFrame(const RectangleType *rP, Coord width, Coord c
 }
 
 UInt32 WinSetScalingMode(UInt32 mode) {
-  debug(DEBUG_ERROR, "Window", "WinSetScalingMode not implemented");
-  return 0;
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  UInt32 old = module->drawState.scalingMode;
+  mode &= kBitmapScalingOff | kTextScalingOff | kTextPaddingOff;
+  module->drawState.scalingMode = mode;
+  return old;
 }
 
 UInt32 WinGetScalingMode(void) {
-  debug(DEBUG_ERROR, "Window", "WinGetScalingMode not implemented");
-  return 0;
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  return module->drawState.scalingMode;
 }
 
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect) {

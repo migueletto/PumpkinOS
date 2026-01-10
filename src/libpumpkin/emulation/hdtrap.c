@@ -245,8 +245,20 @@ void palmos_highdensitytrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     }
     break;
 
-    //case HDSelectorWinSetScalingMode:
-    //case HDSelectorWinGetScalingMode:
+    case HDSelectorWinSetScalingMode: {
+      // UInt32 WinSetScalingMode(UInt32 mode)
+      UInt32 mode = ARG32;
+      UInt32 res = WinSetScalingMode(mode);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+    break;
+
+    case HDSelectorWinGetScalingMode: {
+      // UInt32 WinGetScalingMode(void)
+      UInt32 res = WinGetScalingMode();
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+    break;
 
     default:
       sys_snprintf(buf, sizeof(buf)-1, "HighDensityDispatch selector %d not mapped", sel);
