@@ -13,8 +13,10 @@
 #include "debug.h"
 
 #define MAX_TITLE 256
-#define CELL_MIN 6
+#define CELL_MIN 4
 #define LIGHT_GRAY 0xE0
+
+#define MAX_BMPS 16
 
 typedef enum {
   dragMode,
@@ -25,7 +27,8 @@ typedef enum {
 typedef struct {
   char *prefix, title[MAX_TITLE];
   FormType *frm;
-  BitmapType **bmps;
+  BitmapType *bmps[MAX_BMPS];
+  Boolean delete[MAX_BMPS];
   MemHandle handle;
   int numBmps, index;
   int x, y, w, h, dw, dh;
@@ -905,7 +908,8 @@ static Boolean eventHandler(EventType *event) {
 Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
   bmp_edit_t data;
   BitmapType *bmp, *aux;
-  UInt16 index;
+  BitmapCompressionType compression;
+  UInt16 index, density;
   Boolean r = false;
 
   if ((bmp = (BitmapType *)MemHandleLock(h)) != NULL) {
@@ -916,13 +920,24 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     data.rgb.r = data.rgb.g = data.rgb.b = 0xff;
     data.prefix = title;
 
-    for (aux = bmp; aux; aux = BmpGetNextBitmapAnyDensity(aux)) {
-      data.numBmps++;
-    }
+    for (aux = bmp; aux && data.numBmps < MAX_BMPS; aux = BmpGetNextBitmapAnyDensity(aux)) {
+      while (BmpIsEmptySlot(aux)) {
+        aux = BmpSkipEmptySlot(aux);
+      }
+      if (aux == NULL) break;
+      density = BmpGetDensity(aux);
+      if (density != kDensityLow && density != kDensityDouble) continue;
 
-    data.bmps = sys_calloc(data.numBmps, sizeof(BitmapType *));
-    for (aux = bmp, index = 0; aux; aux = BmpGetNextBitmapAnyDensity(aux), index++) {
-      data.bmps[index] = aux;
+      compression = BmpGetCompressionType(aux);
+      if (compression == BitmapCompressionTypeNone) {
+        data.bmps[data.numBmps] = aux;
+        data.delete[data.numBmps] = false;
+        data.numBmps++;
+      } else {
+        data.bmps[data.numBmps] = BmpDecompressBitmap(aux);
+        data.delete[data.numBmps] = true;
+        data.numBmps++;
+      }
     }
 
     index = FrmGetObjectIndex(frm, bitmapGad);
@@ -939,7 +954,12 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     FrmSetEventHandler(frm, eventHandler);
     FrmDoDialog(frm);
 
-    sys_free(data.bmps);
+    for (index = 0; index < data.numBmps; index++) {
+      if (data.delete[index]) {
+        BmpDelete(data.bmps[index]);
+      }
+    }
+
     MemHandleUnlock(h);
     r = data.dirty;
   }

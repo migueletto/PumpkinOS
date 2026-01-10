@@ -499,6 +499,8 @@ Boolean EvtKeyEventAvail(void);
 void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const function, UInt16 lineNo, const Char * const msg, int finish);
 void SysFatalAlertFinish(void);
 
+Boolean BmpIsEmptySlot(BitmapType *bitmapP);
+BitmapType *BmpSkipEmptySlot(BitmapType *bitmapP);
 Boolean BmpLittleEndian(const BitmapType *bitmapP);
 Boolean BmpGetLittleEndianBits(const BitmapType *bitmapP);
 void BmpSetLittleEndianBits(const BitmapType *bitmapP, Boolean le);

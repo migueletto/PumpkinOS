@@ -139,14 +139,14 @@ static const UInt8 gray2values[4] = {0xff, 0xaa, 0x55, 0x00};
 static const UInt8 gray4[16]       = {0x00, 0xe0, 0xdf, 0x19, 0xde, 0xdd, 0x32, 0xdc, 0xdb, 0xa5, 0xda, 0xd9, 0xbe, 0xd8, 0xd7, 0xe6};
 static const UInt8 gray4values[16] = {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
 
-static Boolean isEmptySlot(BitmapType *bitmapP) {
+Boolean BmpIsEmptySlot(BitmapType *bitmapP) {
   UInt8 *bmp = (UInt8 *)bitmapP;
   // optimized test
   return bmp[8] == 0xff && bmp[4] == 0 && bmp[5] == 0;
 }
 
-static BitmapType *skipEmptySlot(BitmapType *bitmapP) {
-  return isEmptySlot(bitmapP) ? (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize) : bitmapP;
+BitmapType *BmpSkipEmptySlot(BitmapType *bitmapP) {
+  return BmpIsEmptySlot(bitmapP) ? (BitmapType *)((UInt8 *)bitmapP + BitmapV1HeaderSize) : bitmapP;
 }
 
 UInt8 BmpGetVersion(const BitmapType *bitmapP) {
@@ -154,7 +154,7 @@ UInt8 BmpGetVersion(const BitmapType *bitmapP) {
   BitmapType *bmp;
 
   if (bitmapP) {
-    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    bmp = BmpSkipEmptySlot((BitmapType *)bitmapP);
     get1(&version, (UInt8 *)bmp, BitmapFieldVersion);
     version &= 0x7F;
   }
@@ -168,7 +168,7 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
   Boolean le = false;
 
   if (bitmapP) {
-    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    bmp = BmpSkipEmptySlot((BitmapType *)bitmapP);
     get1(&version, (UInt8 *)bmp, BitmapFieldVersion);
     le = (version & 0x80) == 0x80;
   }
@@ -190,10 +190,10 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
   Boolean le;
 
   if (bmp) {
-    bmp = skipEmptySlot(bmp);
+    bmp = BmpSkipEmptySlot(bmp);
     //version = BmpGetVersion(bmp);
     //le = BmpLittleEndian(bmp);
-    // avoid calling skipEmptySlot again
+    // avoid calling BmpSkipEmptySlot again
     b = (UInt8 *)bmp;
     version = b[9] & 0x7F;
     le = b[9] & 0x80;
@@ -291,7 +291,7 @@ UInt32 BmpV0GetSetField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSele
   UInt8 version;
 
   if (bmp) {
-    bmp = skipEmptySlot(bmp);
+    bmp = BmpSkipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
 
     if (version == 0) {
@@ -327,7 +327,7 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
-    bmp = skipEmptySlot(bmp);
+    bmp = BmpSkipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -372,7 +372,7 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
-    bmp = skipEmptySlot(bmp);
+    bmp = BmpSkipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -427,7 +427,7 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
   Boolean le;
 
   if (bmp) {
-    bmp = skipEmptySlot(bmp);
+    bmp = BmpSkipEmptySlot(bmp);
     version = BmpGetVersion(bmp);
     le = BmpLittleEndian(bmp);
 
@@ -543,7 +543,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
   Boolean le, hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
 
   if (bitmapP && bitsP) {
-    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
+    bitmapP = BmpSkipEmptySlot((BitmapType *)bitmapP);
     version = BmpGetVersion(bitmapP);
     le = BmpLittleEndian(bitmapP);
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
@@ -969,7 +969,7 @@ surface_t *BmpCreateSurfaceBitmap(BitmapType *bitmapP) {
   Int16 encoding;
   UInt8 depth;
 
-  bitmapP = skipEmptySlot(bitmapP);
+  bitmapP = BmpSkipEmptySlot(bitmapP);
   depth = BmpGetBitDepth(bitmapP);
 
   switch (depth) {
@@ -1079,7 +1079,7 @@ void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, 
   BitmapType *bmp;
 
   if (bitmapP) {
-    bmp = skipEmptySlot((BitmapType *)bitmapP);
+    bmp = BmpSkipEmptySlot((BitmapType *)bitmapP);
     if (widthP) *widthP = BmpGetCommonField(bmp, BitmapFieldWidth);
     if (heightP) *heightP = BmpGetCommonField(bmp, BitmapFieldHeight);
     if (rowBytesP) *rowBytesP = BmpGetCommonField(bmp, BitmapFieldRowBytes);
@@ -1124,7 +1124,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
 
       if (last && bmp >= last) break;
 
-      bitmapP = skipEmptySlot(bitmapP);
+      bitmapP = BmpSkipEmptySlot(bitmapP);
       version = BmpGetVersion(bitmapP);
       BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
       bitmapDepth = BmpGetBitDepth(bitmapP);
@@ -1218,7 +1218,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
   Boolean le;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot(bitmapP);
+    bitmapP = BmpSkipEmptySlot(bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -1268,7 +1268,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   Boolean le;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot(bitmapP);
+    bitmapP = BmpSkipEmptySlot(bitmapP);
 
     if (BmpGetCommonFlag(bitmapP, BitmapFlagHasColorTable)) {
       le = BmpLittleEndian(bitmapP);
@@ -1319,7 +1319,7 @@ void BmpGetSizes(const BitmapType *bitmapP, UInt32 *dataSizeP, UInt32 *headerSiz
   Coord width, height;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
+    bitmapP = BmpSkipEmptySlot((BitmapType *)bitmapP);
     le = BmpLittleEndian(bitmapP);
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
     bits = BmpGetBits((BitmapType *)bitmapP);
@@ -1440,7 +1440,7 @@ BitmapType *BmpGetNextBitmapAnyDensity(BitmapType *bitmapP) {
   UInt32 offset;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot(bitmapP);
+    bitmapP = BmpSkipEmptySlot(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
       case 0:
@@ -1538,7 +1538,7 @@ Boolean BmpGetTransparentValue(const BitmapType *bitmapP, UInt32 *transparentVal
   if (transparentValueP) *transparentValueP = 0;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot((BitmapType *)bitmapP);
+    bitmapP = BmpSkipEmptySlot((BitmapType *)bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -1589,7 +1589,7 @@ void BmpSetTransparentValue(BitmapType *bitmapP, UInt32 transparentValue) {
   Boolean le;
 
   if (bitmapP) {
-    bitmapP = skipEmptySlot(bitmapP);
+    bitmapP = BmpSkipEmptySlot(bitmapP);
     le = BmpLittleEndian(bitmapP);
 
     switch (BmpGetVersion(bitmapP)) {
@@ -3314,11 +3314,11 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
   bitmapP = MemHandleLock(handle);
 
   for (bmp = bitmapP, total = compressed = totalSize = 0; bmp && total < 32; total++) {
-    if (isEmptySlot(bmp)) {
+    if (BmpIsEmptySlot(bmp)) {
       debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", total);
       oldBmp[total] = bmp;
       newSize[total] = BitmapV1HeaderSize;
-      bmp = skipEmptySlot(bmp);
+      bmp = BmpSkipEmptySlot(bmp);
 
     } else {
       oldBmp[total] = bmp;
@@ -3385,7 +3385,7 @@ void BmpDecompressBitmapChain(MemHandle handle, DmResType resType, DmResID resID
   p = p0;
 
   for (i = 0; i < total; i++) {
-    if (isEmptySlot(oldBmp[i])) {
+    if (BmpIsEmptySlot(oldBmp[i])) {
       debug(DEBUG_TRACE, "Bitmap", "bitmap index %d empty slot", i);
       MemMove(p, oldBmp[i], newSize[i]);
 
@@ -3478,7 +3478,7 @@ BitmapType *BmpRotate(BitmapType *bitmapP, Int16 angle) {
   while (angle < 0) angle += 360;
   while (angle >= 360) angle -= 360;
 
-  bitmapP = skipEmptySlot(bitmapP);
+  bitmapP = BmpSkipEmptySlot(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
   leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
   density = BmpGetDensity(bitmapP);
@@ -3533,7 +3533,7 @@ BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal) {
   UInt32 transparentValue, color;
   Boolean leBits, hasTransparency;
 
-  bitmapP = skipEmptySlot(bitmapP);
+  bitmapP = BmpSkipEmptySlot(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
   leBits = BmpGetCommonFlag(bitmapP, BitmapFlagLittleEndian);
   density = BmpGetDensity(bitmapP);
