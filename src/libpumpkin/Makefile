@@ -95,7 +95,7 @@ build.o: build.c $(ROOT)/.git/HEAD $(ROOT)/.git/index
 	@$(CC) $(CFLAGS) -c -o $@ $<
 endif
 
-notif_serde.c: notifications.struct launch_serde.c $(LIBPUMPKIN)/serde.sh
+notif_serde.c: notifications.struct $(LIBPUMPKIN)/serde.sh
 	@echo Generating $@
 	@$(LIBPUMPKIN)/serde.sh notif $<
 
