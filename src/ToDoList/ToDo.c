@@ -1282,7 +1282,7 @@ static void DetermineDueDate (UInt16 itemSelected, DateType * dueDateP)
  ***********************************************************************/
 static void OptionsApply (void)
 {
-	UInt8 sortOrder;
+	UInt8 sortOrder = 0;
 	UInt16 listItem;
 	Int16 val;
 
@@ -3933,7 +3933,7 @@ static void ListViewCrossOutItem (Int16 row)
 static void ListViewChangeCompleteStatus (Int16 row, UInt16 complete)
 {
 	UInt16 recordNum;
-	UInt32 ticks;
+	UInt32 ticks = 0;
 	Boolean deleted;
 	TablePtr table;
 	DateType dueDate;
@@ -5906,7 +5906,7 @@ static void EventLoop (void)
  ***********************************************************************/
 PUBLIC UInt32	PilotMain (UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
-	Err error;
+	Err error = errNone;
 	DmOpenRef dbP;
 
 	// Normal Launch

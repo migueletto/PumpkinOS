@@ -546,7 +546,7 @@ Boolean TransferImportVCard(DmOpenRef dbP, UInt16 pdiRefNum, PdiReaderType* read
 	//Char* 						addressBufferP = NULL;
 	//Char* 						nameBufferP = NULL;
 	UInt16						i;
-	UInt16						categoryID;
+	UInt16						categoryID = 0;
 	char 						categoryName[dmCategoryLength];
 
 

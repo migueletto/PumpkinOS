@@ -2922,6 +2922,9 @@ static void addWidgets(launcher_data_t *data) {
   i = 0;
   for (newSearch = true; i < MAX_WIDGETS; newSearch = false) {
     if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTypeWidget, 0, false, NULL, &dbID) != errNone) break;
+    widgetFinish = NULL;
+    widgetData = NULL;
+    sys_memset(&aux, 0, sizeof(aux));
 
     if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
       debug(DEBUG_INFO, "Launcher", "loading widgets from \"%s\"", name);

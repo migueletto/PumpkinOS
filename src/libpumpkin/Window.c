@@ -3239,7 +3239,7 @@ void WinPopDrawState(void) {
 
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  ColorTableType *colorTable;
+  ColorTableType *colorTable = NULL;
   Coord width, height;
   UInt16 depth, entry;
   Err err = sysErrParamErr;

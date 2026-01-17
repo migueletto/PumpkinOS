@@ -581,8 +581,8 @@ void PrvLookupDrawRecordFields(LookupVariablesPtr vars, AddrDBRecordPtr record, 
 {
 	Char * name1;
 	Char * name2;
-	Char * field1;
-	Char * field2;
+	Char * field1 = NULL;
+	Char * field2 = NULL;
 	Int16 x;
 	Int16 y;
 	Int16 field1Length;

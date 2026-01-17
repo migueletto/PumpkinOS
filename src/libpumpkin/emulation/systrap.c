@@ -1540,7 +1540,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       int vararg = trap == sysTrapStrVPrintF;
       Int16 res = 0;
       if (s && f) {
-        int i, j = 0, k = 1, t = 0, sz, arglen = 0;
+        int i, j = 0, k = 1, t = 0, sz = 0, arglen = 0;
         uint32_t arg, v_arg;
         char *p, *q, fmt[16];
         if (vararg) {

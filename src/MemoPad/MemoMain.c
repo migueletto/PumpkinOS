@@ -3673,7 +3673,7 @@ static void ListViewSelectMemo (EventType * event)
 	Boolean moving = false;
 	Boolean selected = true;
 	TablePtr table;
-	WinHandle savedBits;
+	WinHandle savedBits = NULL;
 	RectangleType r;
 	UInt16 attr;
 
