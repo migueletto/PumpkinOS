@@ -20,7 +20,7 @@ static char escape_char(char c) {
 
 int pit_findargs(char *buf, char *argv[], int nargs, char *(eval)(void *data, char *expr), void *data) {
   char aux[MAX_LINE], expr[MAX_LINE], *reply;
-  int s, i, j, k, e, prev, argc;
+  int s, i, j, k, e, prev = 0, argc;
 
   for (s = 0, i = 0, j = 0, argc = 0; buf[i]; i++) {
     switch (s) {
