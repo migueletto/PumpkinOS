@@ -930,7 +930,8 @@ extern Boolean ToDoImportVToDo(DmOpenRef dbP, UInt16 pdiRefNum, PdiReaderType* r
     PdiEnterObject(pdiRefNum, reader);
     
     // Initialize the record to default values
-    *((UInt16 *) &newToDo.dueDate) = toDoNoDueDate;
+    //*((UInt16 *) &newToDo.dueDate) = toDoNoDueDate;
+    IntToDate(newToDo.dueDate, toDoNoDueDate);
     newToDo.priority = defaultPriority;
     newToDo.priority &= incompleteFlag;
     newToDo.description = NULL;

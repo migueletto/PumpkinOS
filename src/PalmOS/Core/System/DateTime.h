@@ -226,6 +226,7 @@ enum {
 #define DateToInt(date) (*(UInt16 *) &date)
 #else
 #define DateToInt(date) ((UInt16)(((date).year << 9) | ((date).month << 5) | (date).day))
+#define IntToDate(date, i) do { UInt16 d = i; date.day = d & 0x1F; date.month = (d >> 5) & 0x0F; date.year = (d >> 9) & 0x7F; } while (0)
 #endif
  
  

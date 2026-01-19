@@ -3673,7 +3673,8 @@ static void ListInitTableRow (TablePtr table, UInt16 row, UInt16 recordNum,
 		toDoRec->priority & priorityOnly);
 	
 	// Store the due date in the table.
-	TblSetItemInt (table, row, dueDateColumn, (*(Int16 *) &toDoRec->dueDate));
+	//TblSetItemInt (table, row, dueDateColumn, (*(Int16 *) &toDoRec->dueDate));
+	TblSetItemInt (table, row, dueDateColumn, DateToInt(toDoRec->dueDate));
 
 	// Mark the row invalid so that it will drawn when we call the 
 	// draw routine.
@@ -3943,7 +3944,8 @@ static void ListViewDrawDueDate (void* table, Int16 row, Int16 column,
 	
 
 	// Get the due date to the item being drawn.
-	*((Int16 *) (&date)) = TblGetItemInt (table, row, dueDateColumn);
+	//*((Int16 *) (&date)) = TblGetItemInt (table, row, dueDateColumn);
+        IntToDate(date, TblGetItemInt(table, row, dueDateColumn));
 
 
 	// If there is no date draw a dash to indicate such.
