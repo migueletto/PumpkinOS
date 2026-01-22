@@ -60,7 +60,7 @@ $(DIRS):
 
 $(MODULES):
 	@echo "$(COLOR_GREEN)Building $@$(COLOR_END)"
-	@$(MAKE) -s --no-print-directory -j4 -C $@
+	@$(MAKE) -s --no-print-directory -j -C $@
 
 clean: $(CLEAN_MODULES)
 
