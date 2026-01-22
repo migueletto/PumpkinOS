@@ -805,6 +805,7 @@ static int audio_action(void *_arg) {
   debug(DEBUG_INFO, "Windows", "audio thread starting");
   sys_memset(&hdr, 0, sizeof(hdr));
   wait = 2000;
+  ptr = 0;
 
   for (; !thread_must_end();) {
     debug(DEBUG_TRACE, "Windows", "receiving msg wait=%u ...", wait);

@@ -2203,7 +2203,7 @@ static UInt32 BmpConvertFrom32Bits(UInt32 b, UInt8 depth, ColorTableType *dstCol
 static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
@@ -2276,7 +2276,7 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
@@ -2346,7 +2346,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
@@ -2412,7 +2412,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   UInt8 *bits, old, r1, g1, b1, r2, g2, b2, fg, bg;
   UInt32 offset, dataSize;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
   BmpGetSizes(dst, &dataSize, NULL);
@@ -2492,7 +2492,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
 static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   RGBColorType rgb;
   UInt8 *bits;
-  UInt16 rowBytes, old, fg, bg;
+  UInt16 rowBytes = 0, old, fg, bg;
   UInt32 offset, dataSize;
   Boolean le, leBits;
 
@@ -2579,7 +2579,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
 static void BmpCopyBit24(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   RGBColorType rgb, aux;
   UInt8 *bits;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
   UInt32 old, fg, bg;
   UInt32 offset, dataSize;
 
@@ -2663,7 +2663,7 @@ static void BmpCopyBit24(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Co
 static void BmpCopyBit32(UInt32 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   RGBColorType rgb, aux;
   UInt8 *bits;
-  UInt16 rowBytes;
+  UInt16 rowBytes = 0;
   UInt32 old, fg, bg;
   UInt32 offset, dataSize;
 
