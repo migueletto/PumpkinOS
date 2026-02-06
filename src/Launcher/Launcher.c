@@ -1572,7 +1572,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
       switch (data->mode) {
         case launcher_app:
           i = row * ncols + col + data->topItem;
-          if (i >= 0 && i < data->numItems) {
+          if (i >= 0 && i < data->numItems && col < ncols && row < nrows) {
             WinSetDrawMode(winOverlay);
             x = gad->rect.topLeft.x + col * iw;
             y = gad->rect.topLeft.y + 2 + row * ih;
