@@ -38,7 +38,7 @@ typedef void *XATTR;
 typedef void *STAT;
 typedef void *POLLFD;
 typedef void *COOKIE;
-typedef void *timezone;
+typedef void *timezone_t;
 typedef void *MPB;
 typedef void *BPB;
 typedef void *MOUSE;

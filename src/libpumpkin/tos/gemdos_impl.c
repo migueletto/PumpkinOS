@@ -1122,12 +1122,12 @@ int32_t Ssystem(int16_t mode, int32_t arg1, int32_t arg2) {
   return 0;
 }
 
-int32_t Tgettimeofday(struct g_timeval *tv, timezone *tzp) {
+int32_t Tgettimeofday(struct g_timeval *tv, timezone_t *tzp) {
   debug(DEBUG_ERROR, "TOS", "Tgettimeofday not implemented");
   return 0;
 }
 
-int32_t Tsettimeofday(struct g_timeval *tv, timezone *tzp) {
+int32_t Tsettimeofday(struct g_timeval *tv, timezone_t *tzp) {
   debug(DEBUG_ERROR, "TOS", "Tsettimeofday not implemented");
   return 0;
 }

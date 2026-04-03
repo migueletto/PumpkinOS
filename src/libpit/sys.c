@@ -45,14 +45,19 @@
 #include <sys/select.h>
 #include <sys/statvfs.h>
 #else
+#if !defined(HAIKU)
 #include <sys/syscall.h>
 #include <sys/vfs.h>
+#endif
 #endif
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
+#if defined(HAIKU)
+#include <OS.h>
+#endif
 #endif
 
 #include "sys.h"
@@ -536,6 +541,10 @@ uint32_t sys_get_tid(void) {
 #endif
 #if defined(EMSCRIPTEN)
   return 0;
+#endif
+#if defined(HAIKU)
+  thread_id id = find_thread(NULL);
+  return id;
 #endif
 #if defined(KERNEL)
   return 0;
@@ -2116,7 +2125,7 @@ int64_t sys_get_clock(void) {
   ticks.QuadPart *= 1000000;
   ticks.QuadPart /= ticks_per_second.QuadPart;
   ts = ticks.QuadPart;
-#elif defined(EMSCRIPTEN)
+#elif defined(EMSCRIPTEN) || defined(HAIKU)
   ts = gettime(CLOCK_MONOTONIC);
 #else
 #if _POSIX_TIMERS > 0

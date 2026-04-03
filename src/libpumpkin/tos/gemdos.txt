@@ -148,8 +148,8 @@
 338 int32_t Dreadlabel 3 char@* path char@* label int16_t length
 339 int32_t Dwritelabel 2 char@* path char@* label
 340 int32_t Ssystem 3 int16_t mode int32_t arg1 int32_t arg2
-341 int32_t Tgettimeofday 2 struct@timeval@* tv timezone@* tzp
-342 int32_t Tsettimeofday 2 struct@timeval@* tv timezone@* tzp
+341 int32_t Tgettimeofday 2 struct@timeval@* tv timezone_t@* tzp
+342 int32_t Tsettimeofday 2 struct@timeval@* tv timezone_t@* tzp
 343 int Tadjtime 2 struct@timeval@* delta struct@timeval@* olddelta
 344 int32_t Pgetpriority 2 int16_t which int16_t who
 345 int32_t Psetpriority 3 int16_t which int16_t who int16_t pri

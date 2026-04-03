@@ -48,6 +48,11 @@ if not lib then
   return
 end
 
+fullrefresh = false
+if pit.getenv("BE_HOST_CPU") then
+  fullrefresh = true
+end
+
 pit.mount("./vfs/", "/")
 
 pumpkin = pit.loadlib("libos")
@@ -58,6 +63,7 @@ pumpkin.start {
   width    = 1024,
   height   = 768,
   abgr     = abgr,
+  fullrefresh = fullrefresh,
   depth    = 16,
   hdepth   = lib.hdepth
 }

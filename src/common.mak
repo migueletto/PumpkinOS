@@ -164,6 +164,16 @@ OSDEFS=$(MBITS) -DKERNEL $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
 PILRCDEFS=-D KERNEL
 CC=gcc
 
+else ifeq ($(OSNAME),Haiku)
+SYS_OS=7
+EXTLIBS=-lnetwork
+SOEXT=.so
+LUAPLAT=posix
+OS=Haiku
+OSDEFS=$(MBITS) -DHAIKU -DSOEXT=\"$(SOEXT)\"
+CC=gcc
+FC=gfortran
+
 else
 $(error Unknown OS $(OSNAME))
 endif

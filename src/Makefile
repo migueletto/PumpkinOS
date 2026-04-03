@@ -32,6 +32,10 @@ endif
 
 EXTRA_MODULES=$(UNICORN_MODULE) windows
 
+else ifeq ($(OSNAME),Haiku)
+
+EXTRA_MODULES=liblsdl2 haiku
+
 else ifeq ($(OSNAME),Emscripten)
 
 EMCC=$(shell which emcc)
