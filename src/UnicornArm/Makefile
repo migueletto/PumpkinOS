@@ -19,6 +19,15 @@ UNICORN_LIB=-L$(UNICORN)/bin
 endif
 endif
 
+ifeq ($(OSNAME),Haiku)
+ifeq ($(UNICORN),)
+$(error Missing UNICORN parameter (UNICORN must point to your Unicorn root directory))
+else
+UNICORN_INC=-I$(UNICORN)/include
+UNICORN_LIB=-L$(UNICORN)/build
+endif
+endif
+
 SOURCE=ucarm.c
 APPNAME=UnicornArm
 APPID=ucAr
