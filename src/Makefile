@@ -56,30 +56,30 @@ MODULES=$(BASE_MODULES) $(EXTRA_MODULES)
 CLEAN_MODULES=$(addsuffix _clean,$(MODULES))
 
 all: messages $(ERROR) $(DIRS) $(MODULES)
-	@echo -e "$(COLOR_CYAN)End$(COLOR_END)"
+	@echo "$(COLOR_CYAN)End$(COLOR_END)"
 
 messages:
-	@echo -e "$(COLOR_CYAN)Building PumpkinOS$(COLOR_END)"
-	@echo -e "$(COLOR_CYAN)Platform:$(COLOR_END) $(OSNAME) $(BITS) bits"
-	@echo -e "$(COLOR_CYAN)Modules:$(COLOR_END) $(MODULES)"
-	@echo -e "$(COLOR_CYAN)Compiler flags:$(COLOR_END) $(CFLAGS)"
+	@echo "$(COLOR_CYAN)Building PumpkinOS$(COLOR_END)"
+	@echo "$(COLOR_CYAN)Platform:$(COLOR_END) $(OSNAME) $(BITS) bits"
+	@echo "$(COLOR_CYAN)Modules:$(COLOR_END) $(MODULES)"
+	@echo "$(COLOR_CYAN)Compiler flags:$(COLOR_END) $(CFLAGS)"
 
 make_error:
-	@echo -e "$(COLOR_RED)ERROR: $(ERROR_MSG)$(COLOR_END)"
+	@echo "$(COLOR_RED)ERROR: $(ERROR_MSG)$(COLOR_END)"
 	@exit 1
 
 $(DIRS):
-	@echo -e "$(COLOR_GREEN)Creating directory $@$(COLOR_END)"
+	@echo "$(COLOR_GREEN)Creating directory $@$(COLOR_END)"
 	@mkdir -p $@
 
 $(MODULES):
-	@echo -e "$(COLOR_GREEN)Building $@$(COLOR_END)"
+	@echo "$(COLOR_GREEN)Building $@$(COLOR_END)"
 	@$(MAKE) -s --no-print-directory -j -C $@
 
 clean: $(CLEAN_MODULES)
 
 $(CLEAN_MODULES):
-	@echo -e "$(COLOR_GREEN)Cleaning $(subst _clean,,$@)$(COLOR_END)"
+	@echo "$(COLOR_GREEN)Cleaning $(subst _clean,,$@)$(COLOR_END)"
 	@$(MAKE) -s --no-print-directory -C $(subst _clean,,$@) clean
 
 .PHONY: all clean conf $(MODULES) $(CLEAN_MODULES)
