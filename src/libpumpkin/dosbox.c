@@ -46,7 +46,7 @@ UInt32 DOSBoxMain(Boolean sameTask) {
             err = -1;
           }
         } else {
-          FrmCustomAlert(1000, "Error creaing dir: ", name, "");
+          FrmCustomAlert(1000, "Error creating dir: ", name, "");
         }
       }
 
