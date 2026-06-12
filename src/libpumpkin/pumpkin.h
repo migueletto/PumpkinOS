@@ -440,6 +440,7 @@ Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr);
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
 UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex);
+void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32 *size);
 MemHandle MemLocalIDToHandle(LocalID local);
 void DmSync(void);
 Err DmSyncDatabase(DmOpenRef dbRef);

@@ -2156,6 +2156,67 @@ MemHandle DmGet1Resource(DmResType type, DmResID resID) {
   return DmGetResourceEx(NULL, type, resID, true, false);
 }
 
+void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32 *size) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+  storage_db_t *db;
+  vfs_file_t *f;
+  storage_handle_t *h;
+  DmOpenType *dbRef;
+  char buf[VFS_PATH], st[8];
+  uint32_t i, found;
+  void *p;
+  Err err = dmErrResourceNotFound;
+
+  *size = 0;
+  p = NULL;
+
+  if (mutex_lock(sto->mutex) == 0) {
+    pumpkin_id2s(type, st);
+    debug(DEBUG_TRACE, "STOR", "DmExtractResource searching resource %s %d first %d", st, resID, firstOnly);
+    dbRef = sto->dbRef;
+    for (found = 0; dbRef && !found; dbRef = dbRef->next) {
+      if (dbRef->overlayDb) dbRef = dbRef->overlayDb;
+      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
+      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (db->ftype != STO_TYPE_RES) continue;
+
+      debug(DEBUG_TRACE, "STOR", "DmExtractResource checking database \"%s\" (%d resources)", db->name, db->numRecs);
+      for (i = 0; i < db->numRecs; i++) {
+        h = db->elements[i];
+        pumpkin_id2s(h->d.res.type, st);
+        debug(DEBUG_TRACE, "STOR", "DmExtractResource resource %d: %s %d", i, st, h->d.res.id);
+        if (h->d.res.type == type && h->d.res.id == resID) {
+          debug(DEBUG_TRACE, "STOR", "DmExtractResource found resource %s %d on \"%s\"", st, resID, db->name);
+          found = 1;
+          if ((p = sys_malloc(h->size)) != NULL) {
+            debug(DEBUG_TRACE, "STOR", "reading %5d bytes from resource %s %d", h->size, st, h->d.res.id);
+            storage_name(sto, db->name, STO_FILE_ELEMENT, resID, type, 0, 0, buf);
+            if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
+              if (vfs_read(f, p, h->size) == h->size) {
+                *size = h->size;
+                err = errNone;
+              } else {
+                sys_free(p);
+                p = NULL;
+              }
+              vfs_close(f);
+            } else {
+              sys_free(p);
+              p = NULL;
+            }
+          }
+          break;
+        }
+      }
+      if (firstOnly) break;
+    }
+    mutex_unlock(sto->mutex);
+  }
+
+  StoCheckErr(err);
+  return p;
+}
+
 // Search all open resource databases for a resource by type and ID, or by pointer if it is non-NULL.
 UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);

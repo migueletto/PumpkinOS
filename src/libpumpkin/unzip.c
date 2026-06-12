@@ -262,16 +262,13 @@ int pumpkin_unzip_memory(UInt8 *p, UInt32 size, UInt16 volRefNum, char *dir) {
 }
 
 int pumpkin_unzip_resource(UInt32 type, UInt16 id, UInt16 volRefNum, char *dir) {
-  MemHandle h;
+  UInt32 size;
   UInt8 *p;
   int r = -1;
 
-  if (dir && (h = DmGetResource(type, id)) != NULL) {
-    if ((p = MemHandleLock(h)) != NULL) {
-      r = pumpkin_unzip_memory(p, MemHandleSize(h), volRefNum, dir);
-      MemHandleUnlock(h);
-    }
-    DmReleaseResource(h);
+  if ((p = DmExtractResource(type, id, true, &size)) != NULL) {
+    r = pumpkin_unzip_memory(p, size, volRefNum, dir);
+    sys_free(p);
   }
 
   return r;
