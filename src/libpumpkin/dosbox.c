@@ -6,8 +6,6 @@
 #include "unzip.h"
 #include "debug.h"
 
-#define DOSBOX_DRIVEC DOSBOX_HOME "/C"
-#define DOSBOX_RUN    "run.bat"
 #define DOSBOX_BAT    "dosbox.bat"
 #define DOSBOX_APP    "DOSBox"
 #define DOSBOX_NAME   'dosN'
