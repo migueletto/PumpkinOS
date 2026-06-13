@@ -53,6 +53,7 @@ typedef struct {
   FontID font;
   pterm_t *t;
   pterm_callback_t cb;
+  BitmapType *bmp;
 } tos_data_t;
 
 typedef struct {

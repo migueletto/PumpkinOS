@@ -516,7 +516,13 @@ static void screen_refresh(tos_data_t *data) {
     uint64_t t = sys_get_clock();
 
     if ((t - data->last_refresh) >= 50000) {
-      pumpkin_screen_copy(data->screen, 0, 400);
+      if (data->bmp) {
+        // TOS screen is 16 bits, but host screen is not RGB565
+        WinPaintBitmap(data->bmp, 0, 0);
+      } else {
+        // TOS screen and host screen are 16 bits
+        pumpkin_screen_copy(data->screen, 0, 400);
+      }
       data->screen_updated = 0;
       data->last_refresh = t;
     }
@@ -707,7 +713,7 @@ static void tos_setcolor(void *_data, uint32_t fg, uint32_t bg) {
 static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, uint32_t tosSize, int argc, char *argv[]) {
   MemHandle hMemory, hIo;
   uint8_t *memory, *reloc;
-  uint16_t jump, aflags;
+  uint16_t jump, aflags, error;
   uint32_t offset, textSize, dataSize, bssSize, symSize, relocSize, reserved, pflags, memorySize;
   uint32_t pc, a7, basePageStart, stackStart, textStart, dataStart, bssStart, *relocBase, value, rem;
   m68ki_cpu_core main_cpu;
@@ -782,9 +788,14 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       data.lineaVars = sysvarsSize + kbdvSize;
       data.physbase  = sysvarsSize + kbdvSize + lineaSize;
       data.logbase   = data.physbase;
-      data.screen = sys_malloc(640 * 400 * 2);
       data.screen_res = 0;
       data.font = tos8x8Font;
+      if (pumpkin_get_encoding() == SURFACE_ENCODING_RGB565) {
+        data.screen = sys_malloc(640 * 400 * 2);
+      } else {
+        data.bmp = BmpCreate3(640, 400, 0, kDensityDouble, 16, false, 0, NULL, &error);
+        data.screen = BmpGetBits(data.bmp);
+      }
       FntSetFont(data.font);
 
       for (i = 0; scan_codes[i+1]; i += 3) {
@@ -941,7 +952,11 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       emupalmos_deinstall(oldState);
       MemHandleFree(hMemory);
       MemHandleFree(hIo);
-      sys_free(data.screen);
+      if (data.bmp) {
+        BmpDelete(data.bmp);
+      } else {
+        sys_free(data.screen);
+      }
     } else {
       debug(DEBUG_ERROR, "TOS", "0x601a signature not found");
       debug_bytes(DEBUG_INFO, "TOS", tos, headerSize);
