@@ -1032,7 +1032,7 @@ int m68k_execute(m68k_state_t *m68k_state, int num_cycles)
 			m68ki_instruction_jump_table[REG_IR](m68k_state);
 			USE_CYCLES(CYC_INSTRUCTION[REG_IR]);
 
-			m68ki_instr_hook2(REG_PPC);
+			if (CALLBACK_INSTR_HOOK2) m68ki_instr_hook2(REG_PPC);
 
 			/* Trace m68k_exception, if necessary */
 			m68ki_exception_if_trace(); /* auto-disable (see m68kcpu.h) */
