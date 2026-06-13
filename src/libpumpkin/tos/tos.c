@@ -710,6 +710,15 @@ static void tos_putchar(void *_data, char c) {
 static void tos_setcolor(void *_data, uint32_t fg, uint32_t bg) {
 }
 
+static UInt16 tos_map_drive(char drive, char *dir, Boolean *created) {
+  char vfsd[64];
+
+  StrNPrintF(vfsd, sizeof(vfsd) - 1, "/app_tos/%c/%s/", drive, dir);
+  if (created) *created = !VFSVolumeExists(vfsd);
+      
+  return VFSAddVolume(vfsd);
+}
+
 static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, uint32_t tosSize, int argc, char *argv[]) {
   MemHandle hMemory, hIo;
   uint8_t *memory, *reloc;
@@ -901,7 +910,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
 
       data.a = volRefNumA;
       data.b = volRefNumB;
-      data.c = VFSAddVolume("/app_card/TOS/C/");
+      data.c = tos_map_drive('C', "hd", NULL);
       Dsetdrv(0);
 
       data.t = pterm_init(80, 25, 1);
@@ -966,15 +975,6 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
   }
 
   return r;
-}
-
-static UInt16 tos_map_drive(char drive, char *dir, Boolean *created) {
-  char vfsd[64];
-
-  StrNPrintF(vfsd, sizeof(vfsd) - 1, "/app_tos/%c/%s/", drive, dir);
-  *created = !VFSVolumeExists(vfsd);
-
-  return VFSAddVolume(vfsd);
 }
 
 static int tos_main(UInt16 volRefNumA, UInt16 volRefNumB, char *program, int argc, char *argv[]) {
