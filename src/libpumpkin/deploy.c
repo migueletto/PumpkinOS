@@ -33,10 +33,11 @@ void pumpkin_registry_create(UInt32 creator) {
   RegPositionType regPos;
   RegDisplayEndianType regEnd;
   RegSoundType regSnd;
+  RegHeapType regHeap;
   DmOpenRef dbRef;
   MemHandle h;
   UInt32 regSize;
-  UInt16 width, height;
+  UInt16 width, height, heapSize;
   UInt8 *ptr;
   int swidth, sheight;
 
@@ -47,6 +48,7 @@ void pumpkin_registry_create(UInt32 creator) {
     width /= 2;
     height /= 2;
   }
+  heapSize = 0;
 
   if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
     if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
@@ -57,6 +59,13 @@ void pumpkin_registry_create(UInt32 creator) {
           width /= 2;
           height /= 2;
         }
+        MemHandleUnlock(h);
+      }
+      DmReleaseResource(h);
+    }
+    if ((h = DmGet1Resource(sysRsrcTypeHeap, 1)) != NULL) {
+      if ((ptr = MemHandleLock(h)) != NULL) {
+        get2b(&heapSize, ptr, 0);
         MemHandleUnlock(h);
       }
       DmReleaseResource(h);
@@ -87,6 +96,9 @@ void pumpkin_registry_create(UInt32 creator) {
 
   regSnd.enableSound = 0;
   pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
+
+  regHeap.heapSize = heapSize;
+  pumpkin_reg_set(creator, regHeapID, &regHeap, sizeof(RegHeapType));
 }
 
 static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {

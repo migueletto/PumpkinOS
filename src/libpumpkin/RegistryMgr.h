@@ -9,6 +9,7 @@ typedef struct RegMgrType RegMgrType;
 #define regNotifID      7
 #define regEndianID     8
 #define regSoundID      9
+#define regHeapID       10
 
 #define regFlagReset    1
 
@@ -54,6 +55,10 @@ typedef struct {
 typedef struct {
   UInt16 enableSound;
 } RegSoundType;
+
+typedef struct {
+  UInt16 heapSize;
+} RegHeapType;
 
 RegMgrType *RegInit(void);
 void RegFinish(RegMgrType *rm);

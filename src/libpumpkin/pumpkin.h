@@ -100,6 +100,7 @@ extern "C" {
 
 #define sysRsrcTypeDlib   'dlib'
 #define sysRsrcTypeWinD   'wind'
+#define sysRsrcTypeHeap   'heap'
 
 #define armPluginType     'armp'
 #define ArmEmulatorAlert  15001
@@ -658,9 +659,6 @@ int VFSAddVolume(char *volume);
 
 void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);
 void AbtShowAboutPumpkin(UInt32 creator);
-
-WChar TxtUpperChar(WChar inChar);
-WChar TxtLowerChar(WChar inChar);
 
 Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP);
 
