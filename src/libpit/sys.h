@@ -315,8 +315,6 @@ sys_size_t sys_strnlen(const char *s, sys_size_t n);
 
 char *sys_strchrnul(const char *s, int c);
 
-void *sys_memrchr(const void *m, int c, sys_size_t n);
-
 char *sys_strchr(const char *s, int c);
 
 char *sys_strrchr(const char *s, int c);
