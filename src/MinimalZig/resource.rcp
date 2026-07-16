@@ -29,4 +29,7 @@ BEGIN
   BITMAP "zigh.bmp" BPP 8 DENSITY 144
 END
 
+HEX "heap" ID 1
+  0x00 0x10 0x00 0x08
+
 VERSION "1.0"
