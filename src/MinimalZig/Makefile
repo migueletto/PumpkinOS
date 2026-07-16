@@ -9,7 +9,7 @@ ZIGLIB=zig-out/lib/lib$(PROGRAM)$(SOEXT)
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 
 $(PROGRAM).prc: $(DLIB) res
-	$(PRCDUILD) -f $(PROGRAM).prc -t appl -c MinZ -n $(PROGRAM) *.bin
+	$(PRCBUILD) -f $(PROGRAM).prc -t appl -c MinZ -n $(PROGRAM) *.bin
 	cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(ZIGLIB)
