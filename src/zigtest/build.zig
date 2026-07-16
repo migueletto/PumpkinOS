@@ -5,6 +5,12 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const os = b.option([]const u8, "OS", "OS") orelse "";
 
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path("../libpumpkin/zigpumpkin.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const mod = b.addModule("pumpkin", .{
         .root_source_file = b.path("../libpumpkin/pumpkin.zig"),
         .target = target,
@@ -18,6 +24,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
+                .{ .name = "c", .module = translate_c.createModule(), },
                 .{ .name = "pumpkin", .module = mod },
             },
         }),

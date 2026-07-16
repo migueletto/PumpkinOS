@@ -1,9 +1,5 @@
 const std = @import("std");
-
-const c = @cImport({
-    @cInclude("zigpumpkin.h");
-    @cDefine("DEBUG_INFO", "1");
-});
+const c = @import("c");
 
 export fn CommandMain(c_argc: c_int, c_argv: [*][*]u8) c_int {
     const argc = c_argc;
@@ -11,7 +7,7 @@ export fn CommandMain(c_argc: c_int, c_argv: [*][*]u8) c_int {
 
     var i: u32 = 0;
     while (i < argc) {
-        c.debug_full("", "", 0, c.DEBUG_INFO, "zig", "arg %d: %s", i, argv[i]);
+        c.debug_full("", "", 0, 1, "zig", "arg %d: %s", i, argv[i]);
         c.pumpkin_puts(argv[i]);
         c.pumpkin_puts("\r\n");
         i += 1;
