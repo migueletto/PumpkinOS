@@ -15,14 +15,20 @@ pub fn build(b: *std.Build) void {
         })
     });
 
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path("../libpumpkin/zigpumpkin.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const pumpkin = b.createModule(.{
         .root_source_file = b.path("../libpumpkin/pumpkin.zig"),
-        .imports = &.{},
+        .imports = &.{
+            .{ .name = "c", .module = translate_c.createModule(), },
+         },
     });
-    pumpkin.addIncludePath(b.path("../libpumpkin"));
 
     lib.root_module.addImport("pumpkin", pumpkin);
-    lib.root_module.addIncludePath(b.path("../libpumpkin"));
     lib.root_module.addLibraryPath(b.path("../../bin"));
     lib.root_module.linkSystemLibrary("pit", .{});
     lib.root_module.linkSystemLibrary("pumpkin", .{});

@@ -2,9 +2,7 @@ const pumpkin = @import("pumpkin.zig");
 const FieldType = pumpkin.FieldType;
 const MemHandle = pumpkin.MemHandle;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 pub fn setText(fldP: *FieldType, textHandle: MemHandle, offset: u16, size: u16) void {
   c.FldSetText(fldP, textHandle, offset, size);

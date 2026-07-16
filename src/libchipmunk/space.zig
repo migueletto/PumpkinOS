@@ -1,6 +1,4 @@
-const ch = @cImport({
-  @cInclude("chipmunk.h");
-});
+const ch = @import("ch");
 
 pub const SpaceBody = struct {
   space: ?*ch.cpSpace = null,

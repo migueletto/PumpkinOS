@@ -1,9 +1,7 @@
 const pumpkin = @import("pumpkin.zig");
 const EventType = pumpkin.EventType;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 pub const waitForever: i32 = -1;
 

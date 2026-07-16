@@ -1,9 +1,7 @@
 const pumpkin = @import("pumpkin.zig");
 const MemHandle = pumpkin.MemHandle;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 pub fn getResource(resType: u32, resID: u16) MemHandle {
   return @ptrCast(c.DmGetResource(resType, resID));

@@ -40,9 +40,7 @@ pub const warningOkAlert = 10031;
 pub const warningOkCancelAlert = 10032;
 pub const warningCancelAlert = 10033;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 pub const invalidObjectId: u16 = 0xffff;
 

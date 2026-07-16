@@ -1,9 +1,7 @@
 const pumpkin = @import("pumpkin.zig");
 const MemHandle = pumpkin.MemHandle;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 pub fn handleLock(handle: MemHandle) *void {
   return @ptrCast(c.MemHandleLock(handle));

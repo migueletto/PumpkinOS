@@ -3,9 +3,7 @@ const BitmapType = pumpkin.BitmapType;
 const MemHandle = pumpkin.MemHandle;
 const Dm = pumpkin.Dm;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+const c = @import("c");
 
 fn isBitmap(handle: MemHandle) bool {
   var resType: u32 = 0;

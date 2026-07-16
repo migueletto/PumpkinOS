@@ -2,9 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
-const c = @cImport({
-  @cInclude("zigpumpkin.h");
-});
+pub const c = @import("c");
 
 pub const launchCodes = enum(u16) {
   normalLaunch,
@@ -419,7 +417,7 @@ pub const DEBUG_TRACE: i32 = 2;
 pub fn debug(level: i32, sys: [*]const u8, comptime format: []const u8, args: anytype) void {
   var buf: [1024]u8 = undefined;
   // formats the message into a zero terminated C-string
-  const slice = std.fmt.bufPrintZ(&buf, format, args) catch { return; };
+  const slice = std.fmt.bufPrintSentinel(&buf, format, args, 0) catch { return; };
   // and call debug C function on PumpkinOS
   c.debug_full("", "", 0, level, sys, "%s", slice.ptr);
 }
