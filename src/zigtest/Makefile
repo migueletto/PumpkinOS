@@ -8,7 +8,7 @@ PROGRAM=zigtest
 PRC=$(VFS)/app_install/$(PROGRAM).prc
 
 $(PROGRAM).prc: $(DLIB)
-	$(PRCDUILD) -f $(PROGRAM).prc -t CmdE -c ZigT -n $(PROGRAM) *.bin
+	$(PRCBUILD) -f $(PROGRAM).prc -t CmdE -c ZigT -n $(PROGRAM) *.bin
 	cp $(PROGRAM).prc $(PRC)
 
 $(DLIB): $(ZIGLIB)

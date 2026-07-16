@@ -32,6 +32,5 @@ pub fn build(b: *std.Build) void {
       lib.root_module.linkSystemLibrary("pit", .{});
       lib.root_module.linkSystemLibrary("pumpkin", .{});
     }
-    lib.linkLibC();
     b.installArtifact(lib);
 }
