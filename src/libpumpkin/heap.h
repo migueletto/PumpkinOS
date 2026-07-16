@@ -3,7 +3,7 @@
 
 typedef struct heap_t heap_t;
 
-heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, void *wp);
+heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, uint32_t align, void *wp);
 heap_t *heap_get(void);
 void heap_finish(heap_t *heap);
 void *heap_base(heap_t *heap);

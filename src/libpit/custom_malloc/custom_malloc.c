@@ -45,8 +45,8 @@ void *CustomMalloc(HEAP_INFO_t *pHeapInfo, uint32_t size) {
   void *p;
 
   iter = pHeapInfo->avail_dll->next;
-  rem = size & 3;
-  if (rem) size += 4 - rem;
+  rem = size & (pHeapInfo->align - 1);
+  if (rem) size += pHeapInfo->align - rem;
 
   while (iter != NULL) {
     residueMemory = iter->blkSize - size;

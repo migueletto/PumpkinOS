@@ -58,6 +58,7 @@ typedef struct {
 
 typedef struct {
   UInt16 heapSize;
+  UInt16 heapAlign;
 } RegHeapType;
 
 RegMgrType *RegInit(void);

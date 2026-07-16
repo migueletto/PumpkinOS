@@ -37,7 +37,7 @@ void pumpkin_registry_create(UInt32 creator) {
   DmOpenRef dbRef;
   MemHandle h;
   UInt32 regSize;
-  UInt16 width, height, heapSize;
+  UInt16 width, height, heapSize, heapAlign;
   UInt8 *ptr;
   int swidth, sheight;
 
@@ -49,6 +49,7 @@ void pumpkin_registry_create(UInt32 creator) {
     height /= 2;
   }
   heapSize = 0;
+  heapAlign = 0;
 
   if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL)  {
     if ((h = DmGet1Resource(sysRsrcTypeWinD, 1)) != NULL) {
@@ -66,6 +67,7 @@ void pumpkin_registry_create(UInt32 creator) {
     if ((h = DmGet1Resource(sysRsrcTypeHeap, 1)) != NULL) {
       if ((ptr = MemHandleLock(h)) != NULL) {
         get2b(&heapSize, ptr, 0);
+        get2b(&heapAlign, ptr, 2);
         MemHandleUnlock(h);
       }
       DmReleaseResource(h);
@@ -98,6 +100,7 @@ void pumpkin_registry_create(UInt32 creator) {
   pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
 
   regHeap.heapSize = heapSize;
+  regHeap.heapAlign = heapAlign;
   pumpkin_reg_set(creator, regHeapID, &regHeap, sizeof(RegHeapType));
 }
 

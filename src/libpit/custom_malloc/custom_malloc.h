@@ -13,6 +13,7 @@ typedef struct HEAP_INFO_t {
   uint8_t *pHeap;
   uint32_t heapSize;
   uint32_t allocSize;
+  uint32_t align;
   BD_t *alloc_dll;
   BD_t *avail_dll;
   BD_t dummy1;

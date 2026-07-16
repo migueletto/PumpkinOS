@@ -107,6 +107,7 @@ typedef struct {
   int littleEndian;
   int enableSound;
   int heapSize;
+  int heapAlign;
   UInt32 creator;
 } launch_data_t;
 
@@ -659,7 +660,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
-  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, wp);
+  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, 4, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   //pumpkin_module.dm = DataMgrInit("/app_data/");
   //DataMgrInitModule(pumpkin_module.dm);
@@ -1807,7 +1808,7 @@ static void pumpkin_init_icon(void) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int enableSound, int heapSize, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int enableSound, int heapSize, int heapAlign, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
@@ -1905,7 +1906,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   if (pumpkin_module.mode != 1) {
     if (heapSize < 0) heapSize = 0;
     else if (heapSize > 64) heapSize = 64;
-    task->heap = heap_init(NULL, heapSize ? (heapSize*1024*1024) : HEAP_SIZE, SMALL_HEAP_SIZE, NULL);
+    if (heapAlign == 0) heapAlign = 4;
+    task->heap = heap_init(NULL, heapSize ? (heapSize*1024*1024) : HEAP_SIZE, SMALL_HEAP_SIZE, heapAlign, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
     //DataMgrInitModule(pumpkin_module.dm);
   } else {
@@ -2189,7 +2191,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2239,7 +2241,7 @@ static int pumpkin_launch_action(void *arg) {
   thread_set_name(name);
 
   if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height,
-        data->littleEndian, data->enableSound, data->heapSize, data->x, data->y) == 0) {
+        data->littleEndian, data->enableSound, data->heapSize, data->heapAlign, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -2462,8 +2464,9 @@ int pumpkin_launch(launch_request_t *request) {
 
       if ((regHeap = pumpkin_reg_get(creator, regHeapID, &regSize)) != NULL) {
         if (regHeap->heapSize) {
-          debug(DEBUG_INFO, PUMPKINOS, "using heap size %u MB from registry for %s", regHeap->heapSize, request->name);
+          debug(DEBUG_INFO, PUMPKINOS, "using heap size %uMB (align %u) from registry for %s", regHeap->heapSize, regHeap->heapAlign, request->name);
           data->heapSize = regHeap->heapSize;
+          data->heapAlign = regHeap->heapAlign;
         }
         MemPtrFree(regHeap);
       }
@@ -6074,7 +6077,7 @@ void pumpkin_audio_task_init(void) {
 
   if ((task = sys_calloc(1, sizeof(pumpkin_task_t))) != NULL) {
     thread_set(task_key, task);
-    task->heap = heap_init(NULL, 256*1024, 0, NULL);
+    task->heap = heap_init(NULL, 256*1024, 0, 4, NULL);
     StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
     VFSInitModule();
     VFSAddVolume(VFS_CARD);

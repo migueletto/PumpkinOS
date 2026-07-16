@@ -23,7 +23,7 @@ struct heap_t {
 #endif
 };
 
-heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, void *_wp) {
+heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, uint32_t align, void *_wp) {
   heap_t *heap;
   uint32_t rem;
   uintptr_t p;
@@ -71,6 +71,7 @@ heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, void *_wp
 
   heap->state.pHeap = heap->start;
   heap->state.heapSize = heap->size;
+  heap->state.align = align;
   CustomMallocInit(&heap->state);
 
 #if defined(HEAP_DEBUG)
