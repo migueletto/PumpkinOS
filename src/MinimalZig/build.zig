@@ -5,23 +5,26 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addSharedLibrary(.{
+    const lib = b.addLibrary(.{
+        .linkage = .dynamic,
         .name = "MinimalZig",
-        .root_source_file = .{ .path = "main.zig" },
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("main.zig"),
+            .target = target,
+            .optimize = optimize,
+        })
     });
 
     const pumpkin = b.createModule(.{
-        .source_file = .{ .path = "../libpumpkin/pumpkin.zig"},
-        .dependencies = &.{},
+        .root_source_file = b.path("../libpumpkin/pumpkin.zig"),
+        .imports = &.{},
     });
+    pumpkin.addIncludePath(b.path("../libpumpkin"));
 
-    lib.addModule("pumpkin", pumpkin);
-
-    lib.addIncludePath("../libpumpkin");
-    lib.addLibraryPath("../../bin");
-    lib.linkSystemLibraryName("pit");
-    lib.linkSystemLibraryName("pumpkin");
-    lib.install();
+    lib.root_module.addImport("pumpkin", pumpkin);
+    lib.root_module.addIncludePath(b.path("../libpumpkin"));
+    lib.root_module.addLibraryPath(b.path("../../bin"));
+    lib.root_module.linkSystemLibrary("pit", .{});
+    lib.root_module.linkSystemLibrary("pumpkin", .{});
+    b.installArtifact(lib);
 }
