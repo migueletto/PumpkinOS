@@ -36,7 +36,7 @@ fn mainFormEventHandler(event: *pumpkin.EventType) bool {
 
 export fn PilotMain(cmd: c_ushort, cmdPBP: *void, launchFlags: c_ushort) c_uint {
   // convert cmd argument to enum launchCodes
-  var launchCode = @intToEnum(pumpkin.launchCodes, cmd);
+  const launchCode: pumpkin.launchCodes = @enumFromInt(cmd);
   _ = cmdPBP; // not used
   _ = launchFlags; // not used
 
