@@ -1,0 +1,15 @@
+[package]
+name = "MinimalRust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "MinimalRust"
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 3            # Enables all aggressive optimizations (default for release)
+lto = true               # Link-Time Optimization across all graphs/crates
+codegen-units = 1        # Restricts parallel generation to maximize optimization scope
+panic = "abort"          # Drops stack-unwinding code, reducing overhead and file size
+strip = true
