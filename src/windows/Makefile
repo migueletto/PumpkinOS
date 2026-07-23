@@ -4,7 +4,7 @@ include ../commonp.mak
 RESAMPLE=libresample
 OBJS=main.o drop.o midi.o $(RESAMPLE)/resample.o $(RESAMPLE)/resamplesubs.o $(RESAMPLE)/filterkit.o
 RES=icon.res version.res
-PROGRAM=$(ROOT)/pumpkin.exe
+PROGRAM=$(PUMPKINOS)/pumpkin.exe
 CUSTOMPFLAGS=-I$(RESAMPLE)
 
 $(PROGRAM): $(OBJS) $(RES)

@@ -1,11 +1,15 @@
-ifeq ($(ROOT),)
-ROOT=../..
+ifeq ($(PUMPKINOS),)
+ifneq ($(wildcard ../../script/pumpkin.lua),)
+PUMPKINOS=../..
+else
+$(error Set variable PUMPKINOS to the root of your PumpkinOS installation)
+endif
 endif
 
-BIN=$(ROOT)/bin
-SRC=$(ROOT)/src
-VFS=$(ROOT)/vfs
-TOOLS=$(ROOT)/tools
+BIN=$(PUMPKINOS)/bin
+SRC=$(PUMPKINOS)/src
+VFS=$(PUMPKINOS)/vfs
+TOOLS=$(PUMPKINOS)/tools
 LIBPIT=$(SRC)/libpit
 LIBPUMPKIN=$(SRC)/libpumpkin
 STUBS=syscalls_stubs

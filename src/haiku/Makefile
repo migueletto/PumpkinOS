@@ -1,6 +1,6 @@
 include ../common.mak
 
-PROGRAM=$(ROOT)/pumpkin
+PROGRAM=$(PUMPKINOS)/pumpkin
 
 OBJS=main.o
 
