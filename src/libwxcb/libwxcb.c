@@ -42,6 +42,7 @@ typedef struct {
   xcb_window_t window;
   xcb_gcontext_t gc;
   xcb_get_keyboard_mapping_reply_t *kb_map;
+  xcb_timestamp_t last_key;
   struct xkb_context *ctx;
   struct xkb_keymap *keymap;
   struct xkb_compose_state *compose_state;
@@ -225,8 +226,12 @@ static int libwxcb_event2(libwxcb_window_t *window, int wait, int *arg1, int *ar
       break;
     case XCB_KEY_PRESS:
       key_event = (xcb_key_press_event_t *)event;
-      *arg1 = map_key(window, key_event);
-      if (*arg1) r = WINDOW_KEYDOWN;
+      // try to avoid multiple key press events when holding down a key
+      if (key_event->time - window->last_key > 200) {
+        *arg1 = map_key(window, key_event);
+        if (*arg1) r = WINDOW_KEYDOWN;
+        window->last_key = key_event->time;
+      }
       break;
     case XCB_KEY_RELEASE:
       key_event = (xcb_key_press_event_t *)event;
@@ -292,6 +297,11 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
   xcb_intern_atom_cookie_t selection, target, property;
   xcb_intern_atom_reply_t *reply_selection, *reply_target, *reply_property;
   xcb_intern_atom_cookie_t *ewmh_cookie;
+  xcb_xkb_use_extension_cookie_t use_cookie;
+  xcb_xkb_use_extension_reply_t *use_reply;
+  xcb_xkb_per_client_flags_cookie_t flag_cookie;
+  xcb_xkb_per_client_flags_reply_t *flag_reply;
+  const xcb_query_extension_reply_t *ext_reply;
   const char *locale;
   uint32_t spixel;
   uint32_t mask, values[3];
@@ -363,6 +373,37 @@ static window_t *libwxcb_window_create(int encoding, int *width, int *height, in
 
     window->gc = xcb_generate_id(window->c);
     xcb_create_gc(window->c, window->gc, window->window, mask, values);
+
+    // disable multiple key up events when holding down a key
+    ext_reply = xcb_get_extension_data(window->c, &xcb_xkb_id);
+    if (ext_reply && ext_reply->present) {
+      use_cookie = xcb_xkb_use_extension(window->c, XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
+      use_reply = xcb_xkb_use_extension_reply(window->c, use_cookie, NULL);
+
+      if (use_reply) {
+        if (use_reply->supported) {
+          flag_cookie = xcb_xkb_per_client_flags(
+            window->c,
+            XCB_XKB_ID_USE_CORE_KBD,                          // Target standard system keyboard
+            XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,   // Bitmask: changes to apply
+            XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,   // Bitmask: new active state value
+            0, 0, 0                                           // Controls/options parameters (unused)
+          );
+
+          flag_reply = xcb_xkb_per_client_flags_reply(window->c, flag_cookie, NULL);
+          int r = (flag_reply && (flag_reply->supported & XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT)) ? 0 : -1;
+          free(flag_reply);
+          debug(DEBUG_INFO, "XCB", "disable auto repeat: %d", r);
+        } else {
+          debug(DEBUG_ERROR, "XCB", "xcb_xkb_use_extension_reply nor supported");
+        }
+        free(use_reply);
+      } else {
+        debug(DEBUG_ERROR, "XCB", "xcb_xkb_use_extension failed");
+      }
+    } else {
+      debug(DEBUG_ERROR, "XCB", "xcb_get_extension_data failed");
+    }
 
     if (!xkb_x11_setup_xkb_extension(window->c, XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
            XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, NULL, NULL, NULL, NULL)) {
