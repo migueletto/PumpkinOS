@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
   int width, height, spixel;
-  int x, y, buttons, mods, other;
+  int x, y, buttons, mods, other, last_key;
   int64_t shift_up;
   xcb_connection_t *c;
   const xcb_setup_t *setup;
@@ -42,7 +42,7 @@ typedef struct {
   xcb_window_t window;
   xcb_gcontext_t gc;
   xcb_get_keyboard_mapping_reply_t *kb_map;
-  xcb_timestamp_t last_key;
+  xcb_timestamp_t last_timestamp;
   struct xkb_context *ctx;
   struct xkb_keymap *keymap;
   struct xkb_compose_state *compose_state;
@@ -226,11 +226,12 @@ static int libwxcb_event2(libwxcb_window_t *window, int wait, int *arg1, int *ar
       break;
     case XCB_KEY_PRESS:
       key_event = (xcb_key_press_event_t *)event;
+      *arg1 = map_key(window, key_event);
       // try to avoid multiple key press events when holding down a key
-      if (key_event->time - window->last_key > 200) {
-        *arg1 = map_key(window, key_event);
+      if (*arg1 != window->last_key || key_event->time - window->last_timestamp > 200) {
         if (*arg1) r = WINDOW_KEYDOWN;
-        window->last_key = key_event->time;
+        window->last_timestamp = key_event->time;
+        window->last_key = *arg1;
       }
       break;
     case XCB_KEY_RELEASE:

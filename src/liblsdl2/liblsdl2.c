@@ -48,8 +48,8 @@ typedef struct {
 
 typedef struct {
   int width, height, xfactor, yfactor, rotate, fullscreen, software, spixel;
-  int x, y, buttons, mods, other;
-  uint32_t format, last_key;
+  int x, y, buttons, mods, other, last_key;
+  uint32_t format, last_timestamp;
   char driver[MAX_DRIVER];
   SDL_Window *window;
   SDL_Renderer *renderer;
@@ -414,15 +414,18 @@ static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2
   if (has_ev) {
     switch (ev.type) {
       case SDL_KEYDOWN:
-        if (ev.key.timestamp - window->last_key > 200) {
-          *arg1 = map_key(window, &ev);
+        *arg1 = map_key(window, &ev);
+        // try to avoid multiple key press events when holding down a key
+        if (*arg1 != window->last_key || ev.key.timestamp - window->last_timestamp > 200) {
           if (*arg1) r = WINDOW_KEYDOWN;
-          window->last_key = ev.key.timestamp;
+          window->last_timestamp = ev.key.timestamp;
+          window->last_key = *arg1;
         }
         break;
       case SDL_KEYUP:
         *arg1 = map_key(window, &ev);
         if (*arg1) r = WINDOW_KEYUP;
+        window->last_timestamp = 0;
         break;
       case SDL_MOUSEBUTTONDOWN:
         *arg1 = map_button(window, &ev);
