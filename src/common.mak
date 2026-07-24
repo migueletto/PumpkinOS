@@ -1,5 +1,7 @@
 ifeq ($(PUMPKINOS),)
-ifneq ($(wildcard ../../script/pumpkin.lua),)
+ifneq ($(wildcard ../script/pumpkin.lua),)
+PUMPKINOS=..
+else ifneq ($(wildcard ../../script/pumpkin.lua),)
 PUMPKINOS=../..
 else
 $(error Set variable PUMPKINOS to the root of your PumpkinOS installation)
