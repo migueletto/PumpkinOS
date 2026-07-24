@@ -1362,9 +1362,12 @@ void WinDrawRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinDrawOperation prev = WinSetDrawMode(winPaint);
+  PatternType oldp = WinGetPatternType();
+  WinSetPatternType(blackPattern);
   module->swapColors = true;
   WinPaintRectangle(rP, cornerDiam);
   module->swapColors = false;
+  WinSetPatternType(oldp);
   WinSetDrawMode(prev);
 }
 
