@@ -1089,82 +1089,84 @@ Err SndDoCmd(void * /*SndChanPtr*/ channelP, SndCommandPtr cmdP, Boolean noWait)
   UInt16 volume;
   Err err = sndErrBadParam;
 
-  if (channelP == NULL && cmdP != NULL && pumpkin_sound_enabled()) {
-    switch (cmdP->cmd) {
-      case sndCmdFreqDurationAmp:
-        // Play a tone. SndDoCmd blocks until the tone has finished.
-        // param1 is the tone’s frequency in Hertz.
-        // param2 is its duration in milliseconds
-        // param3 is its amplitude in the range [0, sndMaxAmp].
-        // If the amplitude is 0, the sound isn’t played and the function returns immediately.
+  if (channelP == NULL && cmdP != NULL) {
+    if (pumpkin_sound_enabled()) {
+      switch (cmdP->cmd) {
+        case sndCmdFreqDurationAmp:
+          // Play a tone. SndDoCmd blocks until the tone has finished.
+          // param1 is the tone’s frequency in Hertz.
+          // param2 is its duration in milliseconds
+          // param3 is its amplitude in the range [0, sndMaxAmp].
+          // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
-        debug(DEBUG_TRACE, "Sound", "sndCmdFreqDurationAmp frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
-        if (cmdP->param2 > 0 && cmdP->param3 > 0) {
-          volume = cmdP->param3;
-          if (volume > sndMaxAmp) volume = sndMaxAmp;
-          volume <<= 4; // 0..64 -> 0..1024
-          module->lastFrequency = cmdP->param1;
-          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
-          err = playFrequency(cmdP->param1, size, volume);
-        }
-        break;
-      case sndCmdFrqOn:
-        // Initiate a tone. SndDoCmd returns immediately while the tone plays
-        // in the background. Subsequent sound playback requests interrupt the tone.
-        // param1 is the tone’s frequency in Hertz.
-        // param2 is its duration in milliseconds
-        // param3 is its amplitude in the range [0, sndMaxAmp].
-        // If the amplitude is 0, the sound isn’t played and the function returns immediately.
+          debug(DEBUG_TRACE, "Sound", "sndCmdFreqDurationAmp frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
+          if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+            volume = cmdP->param3;
+            if (volume > sndMaxAmp) volume = sndMaxAmp;
+            volume <<= 4; // 0..64 -> 0..1024
+            module->lastFrequency = cmdP->param1;
+            size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+            err = playFrequency(cmdP->param1, size, volume);
+          }
+          break;
+        case sndCmdFrqOn:
+          // Initiate a tone. SndDoCmd returns immediately while the tone plays
+          // in the background. Subsequent sound playback requests interrupt the tone.
+          // param1 is the tone’s frequency in Hertz.
+          // param2 is its duration in milliseconds
+          // param3 is its amplitude in the range [0, sndMaxAmp].
+          // If the amplitude is 0, the sound isn’t played and the function returns immediately.
 
-        debug(DEBUG_TRACE, "Sound", "sndCmdFrqOn frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
-        if (cmdP->param2 > 0 && cmdP->param3 > 0) {
-          volume = cmdP->param3;
-          if (volume > sndMaxAmp) volume = sndMaxAmp;
-          volume <<= 4; // 0..64 -> 0..1024
-          module->lastVolume = volume;
-          module->lastFrequency = cmdP->param1;
-          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
-          err = playFrequency(cmdP->param1, size, volume);
-        }
-        break;
-      case sndCmdNoteOn:
-        // Initiate a MIDI-defined tone. SndDoCmd returns immediately
-        // while the tone plays in the background. Subsequent sound
-        // playback requests interrupt the tone.
-        // param1 is the tone’s pitch given as a MIDI key number in the range [0, 127].
-        // param2 is the tone’s duration in milliseconds
-        // param3 is its amplitude given as MIDI velocity [0, 127].
+          debug(DEBUG_TRACE, "Sound", "sndCmdFrqOn frequency=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
+          if (cmdP->param2 > 0 && cmdP->param3 > 0) {
+            volume = cmdP->param3;
+            if (volume > sndMaxAmp) volume = sndMaxAmp;
+            volume <<= 4; // 0..64 -> 0..1024
+            module->lastVolume = volume;
+            module->lastFrequency = cmdP->param1;
+            size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+            err = playFrequency(cmdP->param1, size, volume);
+          }
+          break;
+        case sndCmdNoteOn:
+          // Initiate a MIDI-defined tone. SndDoCmd returns immediately
+          // while the tone plays in the background. Subsequent sound
+          // playback requests interrupt the tone.
+          // param1 is the tone’s pitch given as a MIDI key number in the range [0, 127].
+          // param2 is the tone’s duration in milliseconds
+          // param3 is its amplitude given as MIDI velocity [0, 127].
 
-        debug(DEBUG_TRACE, "Sound", "sndCmdNoteOn key=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
-        if (cmdP->param1 >= 0 && cmdP->param1 < 128 && cmdP->param2 > 0 && cmdP->param3 > 0) {
-          // XXX convert from MIDI velocity (?) to volume
-          volume = cmdP->param3;
-          if (volume > 127) volume = 127;
-          volume <<= 3; // 0..127 -> 0..1016
-          if (volume >= 1016) volume = 1024;
-          module->lastFrequency = module->midiNoteFreqency[cmdP->param1];
-          size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
-          err = playFrequency(module->lastFrequency, size, volume);
-        }
-        break;
-      case sndCmdQuiet:
-        // Stop the playback of the currently generated tone.
-        // All parameter values are ignored.
-        debug(DEBUG_TRACE, "Sound", "sndCmdQuiet");
-        if (module->lastFrequency) {
-          // play a single sample with the last frequency and the last volume.
-          // this 1 sample sound will interrupt the current sound.
-          playFrequency(module->lastFrequency, 1, module->lastVolume);
-          module->lastFrequency = 0;
-        }
-        err = errNone;
-        break;
-      default:
-        debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid cmd %d", cmdP->cmd);
-        break;
+          debug(DEBUG_TRACE, "Sound", "sndCmdNoteOn key=%d duration=%u amplitude=%u", cmdP->param1, cmdP->param2, cmdP->param3);
+          if (cmdP->param1 >= 0 && cmdP->param1 < 128 && cmdP->param2 > 0 && cmdP->param3 > 0) {
+            // XXX convert from MIDI velocity (?) to volume
+            volume = cmdP->param3;
+            if (volume > 127) volume = 127;
+            volume <<= 3; // 0..127 -> 0..1016
+            if (volume >= 1016) volume = 1024;
+            module->lastFrequency = module->midiNoteFreqency[cmdP->param1];
+            size = (cmdP->param2 * DOCMD_SAMPLE_RATE) / 1000;
+            err = playFrequency(module->lastFrequency, size, volume);
+          }
+          break;
+        case sndCmdQuiet:
+          // Stop the playback of the currently generated tone.
+          // All parameter values are ignored.
+          debug(DEBUG_TRACE, "Sound", "sndCmdQuiet");
+          if (module->lastFrequency) {
+            // play a single sample with the last frequency and the last volume.
+            // this 1 sample sound will interrupt the current sound.
+            playFrequency(module->lastFrequency, 1, module->lastVolume);
+            module->lastFrequency = 0;
+          }
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid cmd %d", cmdP->cmd);
+          break;
+      }
     }
   } else {
-    debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid parameters");
+    debug(DEBUG_ERROR, "Sound", "SndDoCmd invalid parameters (channelP=%p cmdP=%p)", channelP, cmdP);
   }
 
   return err;
