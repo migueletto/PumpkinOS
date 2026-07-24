@@ -72,7 +72,7 @@ typedef struct {
   int l_linger;
 } sys_linger_t;
 
-typedef struct {
+struct sys_tm_t {
   int tm_year;
   int tm_mon;
   int tm_mday;
@@ -82,7 +82,9 @@ typedef struct {
   int tm_sec;
   int tm_isdst;
   int tm_yday;
-} sys_tm_t;
+};
+
+typedef struct sys_tm_t sys_tm_t;
 
 typedef struct {
   uint32_t tv_sec;
