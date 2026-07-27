@@ -2821,7 +2821,7 @@ void CtlDirectAccessHack(ControlType *c) {
   put2b(attr, (uint8_t *)c, 14);
   put1(c->style, (uint8_t *)c, 16);
 
-  if (c->style == sliderCtl && c->style == feedbackSliderCtl) {
+  if (c->style == sliderCtl || c->style == feedbackSliderCtl) {
     sc = (SliderControlType *)c;
     put2b(sc->thumbID, (uint8_t *)sc, 10);
     put2b(sc->backgroundID, (uint8_t *)sc, 12);
