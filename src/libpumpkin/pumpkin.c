@@ -65,7 +65,11 @@
 
 #define HEAP_SIZE (8*1024*1024)
 #define SMALL_HEAP_SIZE (128*1024)
+#if defined(FILC)
 #define HEAP_ALIGN 8
+#else
+#define HEAP_ALIGN 4
+#endif
 
 #define APP_STORAGE "/app_storage/"
 
