@@ -56,7 +56,7 @@ Int32 _fp_get_fpscr(void) {
   return flpOverflow;
 }
 
-void _fp_set_fpscr(Int32) {
+void _fp_set_fpscr(Int32 a) {
 }
 
 FlpFloat _f_utof(UInt32 a) {

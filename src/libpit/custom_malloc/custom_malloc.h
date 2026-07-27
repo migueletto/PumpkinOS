@@ -1,7 +1,7 @@
 #ifndef _CUSTOM_MALLOC_H_
 #define _CUSTOM_MALLOC_H_
 
-#pragma pack(4)
+//#pragma pack(4)
 typedef struct BD_t {
   struct BD_t *prev;
   struct BD_t *next;

@@ -43,6 +43,10 @@ if not lib then
 end
 
 if not lib then
+  lib = pit.loadlib("libwnull")
+end
+
+if not lib then
   print("could not load a display lib")
   pit.finish(0)
   return

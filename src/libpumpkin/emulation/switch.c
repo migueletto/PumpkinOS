@@ -27,13 +27,14 @@ break;
 case sysTrapSysTaskDelay: {
   // Err SysTaskDelay(Int32 delay)
   int32_t delay = ARG32;
-  err = SysTaskDelay(delay);
+  Err err = SysTaskDelay(delay);
   debug(DEBUG_TRACE, "EmuPalmOS", "SysTaskDelay(%d): %d", delay, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
-case sysTrapSysLibFind: { // Return a reference number for a library that is already loaded, given its name.
+case sysTrapSysLibFind: {
   // Err SysLibFind(const Char *nameP, UInt16 *refNumP)
+  // Return a reference number for a library that is already loaded, given its name.
   uint32_t nameP = ARG32;
   uint32_t refNumP = ARG32;
   char *name = (char *)emupalmos_trap_in(nameP, trap, 0);
@@ -42,7 +43,7 @@ case sysTrapSysLibFind: { // Return a reference number for a library that is alr
   if (SysLibFind(name, &refNum) != errNone || refNum == 0) {
     refNum = SysLibFind68K(name);
   }
-  err = refNum ? errNone : sysErrLibNotFound;
+  Err err = refNum ? errNone : sysErrLibNotFound;
   if (refNum == 0) refNum = 0xffff;
   if (refNumP) m68k_write_memory_16(refNumP, refNum);
   debug(DEBUG_INFO, "EmuPalmOS", "SysLibFind(0x%08X \"%s\", 0x%08X): %d", nameP, name ? name : "", refNumP, err);
@@ -85,7 +86,7 @@ case sysTrapSysLibRegister68K: {
   uint32_t dispatchTblP = ARG32;
   uint32_t globalsP = ARG32;
   LocalID dbID = id;
-  err = SysLibRegister68K(refNum, dbID, emupalmos_trap_in(code, trap, 2), size, emupalmos_trap_in(dispatchTblP, trap, 4), emupalmos_trap_in(globalsP, trap, 5));
+  Err err = SysLibRegister68K(refNum, dbID, emupalmos_trap_in(code, trap, 2), size, emupalmos_trap_in(dispatchTblP, trap, 4), emupalmos_trap_in(globalsP, trap, 5));
   if (err == errNone) {
     SysLibTblEntryType tbl;
     uint8_t *p = SysLibTblEntry68K(refNum, &tbl);
@@ -383,7 +384,7 @@ case sysTrapDlkGetSyncInfo: {
   char *nameBuf = emupalmos_trap_in(nameBufP, trap, 3);
   char *logBuf = emupalmos_trap_in(logBufP, trap, 4);
   Int32 logLen;
-  err = DlkGetSyncInfo(&succSyncDate, &lastSyncDate, &syncState, nameBuf, logBuf, &logLen);
+  Err err = DlkGetSyncInfo(&succSyncDate, &lastSyncDate, &syncState, nameBuf, logBuf, &logLen);
   if (succSyncDateP) m68k_write_memory_32(succSyncDateP, succSyncDate);
   if (lastSyncDateP) m68k_write_memory_32(lastSyncDateP, lastSyncDate);
   if (syncStateP) m68k_write_memory_8(syncStateP, syncState);
@@ -430,6 +431,7 @@ case sysTrapFtrPtrNew: {
   uint32_t newPtrP = ARG32;
   emupalmos_trap_in(newPtrP, trap, 3);
   uint8_t *p = MemPtrNew(size);
+  Err err;
   if (p) {
     uint32_t a = emupalmos_trap_out(p);
     if (newPtrP) m68k_write_memory_32(newPtrP, a);
@@ -437,8 +439,9 @@ case sysTrapFtrPtrNew: {
   } else {
     err = memErrNotEnoughSpace;
   }
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrNew('%s', %d, %d, 0x%08X): %d", buf, featureNum, size, newPtrP, err);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrNew('%s', %d, %d, 0x%08X): %d", screator, featureNum, size, newPtrP, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
@@ -447,13 +450,14 @@ case sysTrapFtrPtrFree: {
   uint32_t creator = ARG32;
   uint16_t featureNum = ARG16;
   uint32_t a;
-  err = FtrGet(creator, featureNum, &a);
+  Err err = FtrGet(creator, featureNum, &a);
   if (err == errNone && a) {
     uint8_t *p = emupalmos_trap_in(a, trap, -1);
     MemPtrFree(p);
   }
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrFree('%s', %d): %d", buf, featureNum, err);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrFree('%s', %d): %d", screator, featureNum, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
@@ -461,9 +465,10 @@ case sysTrapFtrUnregister: {
   // Err FtrUnregister(UInt32 creator, UInt16 featureNum)
   uint32_t creator = ARG32;
   uint16_t featureNum = ARG16;
-  err = FtrUnregister(creator, featureNum);
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FtrUnregister('%s', %d): %d", buf, featureNum, err);
+  Err err = FtrUnregister(creator, featureNum);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FtrUnregister('%s', %d): %d", screator, featureNum, err);
 }
 break;
 case sysTrapFtrGet: {
@@ -473,8 +478,9 @@ case sysTrapFtrGet: {
   uint32_t valueP = ARG32;
   emupalmos_trap_in(valueP, trap, 2);
   uint32_t value;
-  pumpkin_id2s(creator, buf);
-  err = FtrGet(creator, featureNum, &value);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  Err err = FtrGet(creator, featureNum, &value);
 
   if (creator == sysFileCSystem && featureNum == sysFtrNumProcessorID && err == errNone) {
 #ifdef ARMEMU
@@ -488,7 +494,7 @@ case sysTrapFtrGet: {
 #endif
 }
 
-  debug(DEBUG_TRACE, "EmuPalmOS", "FtrGet('%s', %d, 0x%08X [0x%08X]): %d", buf, featureNum, valueP, value, err);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FtrGet('%s', %d, 0x%08X [0x%08X]): %d", screator, featureNum, valueP, value, err);
   m68k_write_memory_32(valueP, value);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -498,9 +504,10 @@ case sysTrapFtrSet: {
   uint32_t creator = ARG32;
   uint16_t featureNum = ARG16;
   uint32_t newValue = ARG32;
-  pumpkin_id2s(creator, buf);
-  err = FtrSet(creator, featureNum, newValue);
-  debug(DEBUG_TRACE, "EmuPalmOS", "FtrSet('%s', %d, %d): %d", buf, featureNum, newValue, err);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  Err err = FtrSet(creator, featureNum, newValue);
+  debug(DEBUG_TRACE, "EmuPalmOS", "FtrSet('%s', %d, %d): %d", screator, featureNum, newValue, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
@@ -763,7 +770,7 @@ case sysTrapWinScreenMode: {
   if (heightP) height = m68k_read_memory_32(heightP);
   if (depthP) depth = m68k_read_memory_32(depthP);
   if (enableColorP) enableColor = m68k_read_memory_8(enableColorP);
-  err = WinScreenMode(operation, widthP ? &width : NULL, heightP ? &height : NULL, depthP ? &depth : NULL, enableColorP ? &enableColor : NULL);
+  Err err = WinScreenMode(operation, widthP ? &width : NULL, heightP ? &height : NULL, depthP ? &depth : NULL, enableColorP ? &enableColor : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "WinScreenMode(%d, 0x%08X [%d], 0x%08X [%d], 0x%08X [%d], 0x%08X [%d]): %d",
     operation, widthP, width, heightP, height, depthP, depth, enableColorP, enableColor, err);
   if (widthP) m68k_write_memory_32(widthP, width);
@@ -803,7 +810,7 @@ case sysTrapWinPalette: {
       }
     }
   }
-  err = WinPalette(operation, startIndex, paletteEntries, tableP ? table : NULL);
+  Err err = WinPalette(operation, startIndex, paletteEntries, tableP ? table : NULL);
   if (operation == winPaletteGet && tableP && err == errNone) {
     for (i = 0; i < paletteEntries; i++) {
       encode_rgb(tableP + i*4, &table[i]);
@@ -820,7 +827,7 @@ case sysTrapFntDefineFont: {
   uint8_t font = ARG8;
   uint32_t fontP = ARG32;
   FontPtr fontp = (FontPtr)emupalmos_trap_in(fontP, trap, 1);
-  err = FntDefineFont(font, fontp);
+  Err err = FntDefineFont(font, fontp);
   debug(DEBUG_TRACE, "EmuPalmOS", "FntDefineFont(%d, 0x%08X): %d", font, fontP, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -992,7 +999,7 @@ case sysTrapBmpDelete: {
   uint32_t bitmapP = ARG32;
   BitmapType *bitmap = (BitmapType *)emupalmos_trap_in(bitmapP, trap, 0);
   debug(DEBUG_TRACE, "EmuPalmOS", "BmpDelete(0x%08X) ...", bitmapP);
-  err = BmpDelete(bitmap);
+  Err err = BmpDelete(bitmap);
   debug(DEBUG_TRACE, "EmuPalmOS", "BmpDelete(0x%08X): %d", bitmapP, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -1014,14 +1021,14 @@ case sysTrapFontSelect: {
 break;
 case sysTrapUIColorPushTable: {
   // Err UIColorPushTable(void)
-  err = UIColorPushTable();
+  Err err = UIColorPushTable();
   debug(DEBUG_TRACE, "EmuPalmOS", "UIColorPushTable(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
 case sysTrapUIColorPopTable: {
   // Err UIColorPopTable(void)
-  err = UIColorPopTable();
+  Err err = UIColorPopTable();
   debug(DEBUG_TRACE, "EmuPalmOS", "UIColorPopTable(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -1033,7 +1040,7 @@ case sysTrapUIColorSetTableEntry: {
   emupalmos_trap_in(rgbP, trap, 1);
   RGBColorType rgb;
   decode_rgb(rgbP, &rgb);
-  err = UIColorSetTableEntry(which, rgbP ? &rgb : NULL);
+  Err err = UIColorSetTableEntry(which, rgbP ? &rgb : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "UIColorSetTableEntry(%d, 0x%08X [%d,%d,%d,%d]): %d", which, rgbP, rgb.index, rgb.r, rgb.g, rgb.b, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -1119,8 +1126,9 @@ case sysTrapPrefSetAppPreferences: {
   uint16_t prefsSize = ARG16;
   uint8_t saved = ARG8;
   PrefSetAppPreferences(creator, id, version, emupalmos_trap_in(prefsP, trap, 3), prefsSize, saved);
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferences('%s', %d, %d, 0x%08X, %d, %d)", buf, id, version, prefsP, prefsSize, saved);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferences('%s', %d, %d, 0x%08X, %d, %d)", screator, id, version, prefsP, prefsSize, saved);
 }
 break;
 case sysTrapPrefSetAppPreferencesV10: {
@@ -1130,8 +1138,9 @@ case sysTrapPrefSetAppPreferencesV10: {
   uint32_t prefsP = ARG32;
   uint16_t prefsSize = ARG16;
   PrefSetAppPreferencesV10(creator, version, emupalmos_trap_in(prefsP, trap, 2), prefsSize);
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferencesV10('%s', %d, 0x%08X, %d)", buf, version, prefsP, prefsSize);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "PrefSetAppPreferencesV10('%s', %d, 0x%08X, %d)", screator, version, prefsP, prefsSize);
 }
 break;
 case sysTrapPrefGetAppPreferences: {
@@ -1144,8 +1153,9 @@ case sysTrapPrefGetAppPreferences: {
   emupalmos_trap_in(prefsSizeP, trap, 3);
   UInt16 prefsSize = prefsSizeP ? m68k_read_memory_16(prefsSizeP) : 0;
   UInt16 version = PrefGetAppPreferences(creator, id, emupalmos_trap_in(prefsP, trap, 2), prefsSizeP ? &prefsSize : NULL, saved);
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetAppPreferences('%s', %d, 0x%08X, 0x%08X, %d): %d", buf, id, prefsP, prefsSizeP, saved, version);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetAppPreferences('%s', %d, 0x%08X, 0x%08X, %d): %d", screator, id, prefsP, prefsSizeP, saved, version);
   if (prefsSizeP) m68k_write_memory_16(prefsSizeP, prefsSize);
   m68k_set_reg(M68K_REG_D0, version);
 }
@@ -1157,8 +1167,9 @@ case sysTrapPrefGetAppPreferencesV10: {
   uint32_t prefsP = ARG32;
   uint16_t prefsSize = ARG16;
   Boolean b = PrefGetAppPreferencesV10(type, version, emupalmos_trap_in(prefsP, trap, 2), prefsSize);
-  pumpkin_id2s(type, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetAppPreferencesV10('%s', %d, 0x%08X, %d): %d", buf, version, prefsP, prefsSize, b);
+  char screator[8];
+  pumpkin_id2s(type, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "PrefGetAppPreferencesV10('%s', %d, 0x%08X, %d): %d", screator, version, prefsP, prefsSize, b);
   m68k_set_reg(M68K_REG_D0, b);
 }
 break;
@@ -1169,6 +1180,7 @@ case sysTrapMemSet: {
   uint8_t value = ARG8;
   UInt32 start, end;
   WinLegacyGetAddr(&start, &end);
+  Err err;
   if ((dstP >= start && dstP < end) ||
       (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
       (dstP < start && dstP+numBytes >= end)) {
@@ -1195,6 +1207,7 @@ case sysTrapMemMove: {
   int32_t numBytes = ARG32;
   UInt32 start, end;
   WinLegacyGetAddr(&start, &end);
+  Err err;
   if ((dstP >= start && dstP < end) ||
       (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
       (dstP < start && dstP+numBytes >= end) ||
@@ -1265,8 +1278,9 @@ case sysTrapDmSearchResource: {
   DmOpenRef dbP;
   UInt16 index = DmSearchResource(type, resID, h, dbPP ? &dbP : NULL);
   if (dbPP) m68k_write_memory_32(dbPP, emupalmos_trap_out(dbP));
-  pumpkin_id2s(type, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmSearchResource('%s', %d, 0x%08X, 0x%08X): %d", buf, resID, ih, dbPP, index);
+  char stype[8];
+  pumpkin_id2s(type, stype);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmSearchResource('%s', %d, 0x%08X, 0x%08X): %d", stype, resID, ih, dbPP, index);
   m68k_set_reg(M68K_REG_D0, index);
 }
 break;
@@ -1299,16 +1313,18 @@ case sysTrapDmGetNextDatabaseByTypeCreator: {
     uint32_t info = m68k_read_memory_32(stateInfoP);
     stateInfo.p = emupalmos_trap_in(info, trap, -1);
   }
-  err = DmGetNextDatabaseByTypeCreator(newSearch, stateInfoP ? &stateInfo : NULL, type, creator, onlyLatestVers, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL);
+  Err err = DmGetNextDatabaseByTypeCreator(newSearch, stateInfoP ? &stateInfo : NULL, type, creator, onlyLatestVers, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL);
   if (stateInfoP) {
     uint32_t info = emupalmos_trap_out(stateInfo.p);
     m68k_write_memory_32(stateInfoP, info);
   }
   if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
   if (dbIDP) m68k_write_memory_32(dbIDP, dbID);
-  pumpkin_id2s(type, buf);
-  pumpkin_id2s(creator, buf2);
-  debug(DEBUG_TRACE, "EmuPalmOS", "DmGetNextDatabaseByTypeCreator(%d, 0x%08X, '%s', '%s', %d, 0x%08X, 0x%08X): %d", newSearch, stateInfoP, buf, buf2, onlyLatestVers, cardNoP, dbIDP, err);
+  char stype[8];
+  char screator[8];
+  pumpkin_id2s(type, stype);
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "DmGetNextDatabaseByTypeCreator(%d, 0x%08X, '%s', '%s', %d, 0x%08X, 0x%08X): %d", newSearch, stateInfoP, stype, screator, onlyLatestVers, cardNoP, dbIDP, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
@@ -1752,8 +1768,9 @@ case sysTrapFrmSetEventHandler: {
   debug(DEBUG_TRACE, "EmuPalmOS", "FrmSetEventHandler(0x%08X, 0x%08X)", formP, handlerP);
 }
 break;
-case sysTrapFrmGetEventHandler68K: { // custom trap created for use in 68K code
+case sysTrapFrmGetEventHandler68K: {
   // FormEventHandlerType *FrmGetEventHandler68K(FormType *formP)
+  // custom trap created for use in 68K code
   uint32_t formP = ARG32;
   FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
   uint32_t handlerP = form ? form->m68k_handler : 0;
@@ -2212,8 +2229,9 @@ case sysTrapCtlNewControl: {
   m68k_set_reg(M68K_REG_A0, a);
 }
 break;
-case sysTrapCtlGetStyle68K: { // custom trap created for use in 68K code
+case sysTrapCtlGetStyle68K: {
   // ControlStyleType CtlGetStyle(ControlType *controlP)
+  // custom trap created for use in 68K code
   uint32_t controlP = ARG32;
   ControlType *control = (ControlType *)emupalmos_trap_in(controlP, trap, 0);
   ControlStyleType style = control ? control->style : 0;
@@ -2347,7 +2365,7 @@ case sysTrapEvtEnableGraffiti: {
 break;
 case sysTrapEvtResetAutoOffTimer: {
   // Err EvtResetAutoOffTimer(void)
-  err = EvtResetAutoOffTimer();
+  Err err = EvtResetAutoOffTimer();
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtResetAutoOffTimer(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2385,7 +2403,7 @@ case sysTrapEvtEnqueueKey: {
   uint16_t ascii = ARG16;
   uint16_t keycode = ARG16;
   uint16_t modifiers = ARG16;
-  err = EvtEnqueueKey(ascii, keycode, modifiers);
+  Err err = EvtEnqueueKey(ascii, keycode, modifiers);
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtEnqueueKey(0x%04X, 0x%04X, 0x%04X): %d", ascii, keycode, modifiers, err);
 }
 break;
@@ -2398,7 +2416,7 @@ case sysTrapEvtEventAvail: {
 break;
 case sysTrapEvtWakeup: {
   // Err EvtWakeup(void)
-  err = EvtWakeup();
+  Err err = EvtWakeup();
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtWakeup(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2436,28 +2454,28 @@ case sysTrapEvtCopyEvent: {
 break;
 case sysTrapPenResetCalibration: {
   // Err PenResetCalibration(void)
-  err = PenResetCalibration();
+  Err err = PenResetCalibration();
   debug(DEBUG_TRACE, "EmuPalmOS", "PenResetCalibration(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
 case sysTrapPenCalibrate: {
   // Err PenCalibrate(PointType *digTopLeftP, PointType *digBotRightP, PointType *scrTopLeftP, PointType *scrBotRightP)
-  err = PenCalibrate(NULL, NULL, NULL, NULL);
+  Err err = PenCalibrate(NULL, NULL, NULL, NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "PenCalibrate %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
 case sysTrapPenSleep: {
   // Err PenSleep(void)
-  err = PenSleep();
+  Err err = PenSleep();
   debug(DEBUG_TRACE, "EmuPalmOS", "PenSleep(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
 break;
 case sysTrapPenWake: {
   // Err PenWake(void)
-  err = PenWake();
+  Err err = PenWake();
   debug(DEBUG_TRACE, "EmuPalmOS", "PenWake(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2487,17 +2505,19 @@ case sysTrapEvtSysEventAvail: {
   m68k_set_reg(M68K_REG_D0, res);
 }
 break;
-case sysTrapEvtFlushKeyQueue:
+case sysTrapEvtFlushKeyQueue: {
   // Err EvtFlushKeyQueue(void)
-  err = EvtFlushKeyQueue();
+  Err err = EvtFlushKeyQueue();
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushKeyQueue(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
+}
 break;
-case sysTrapEvtFlushPenQueue:
+case sysTrapEvtFlushPenQueue: {
   // Err EvtFlushPenQueue(void)
-  err = EvtFlushPenQueue();
+  Err err = EvtFlushPenQueue();
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushPenQueue(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
+}
 break;
 case sysTrapEvtSetNullEventTick: {
   // Boolean EvtSetNullEventTick(UInt32 tick)
@@ -2507,11 +2527,12 @@ case sysTrapEvtSetNullEventTick: {
   m68k_set_reg(M68K_REG_D0, res);
 }
 break;
-case sysTrapEvtFlushNextPenStroke:
+case sysTrapEvtFlushNextPenStroke: {
   // Err EvtFlushNextPenStroke(void)
-  err = EvtFlushNextPenStroke();
+  Err err = EvtFlushNextPenStroke();
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtFlushNextPenStroke(): %d", err);
   m68k_set_reg(M68K_REG_D0, err);
+}
 break;
 case sysTrapEvtKeyQueueEmpty: {
   // Boolean EvtKeyQueueEmpty(void)
@@ -2690,8 +2711,9 @@ case sysTrapSndCreateMidiList: {
   Boolean res = SndCreateMidiList(creator, multipleDBs, wCountP ? &wCount : NULL, entHP ? &entH : NULL);
   if (wCountP) m68k_write_memory_16(wCountP, wCount);
   if (entHP) m68k_write_memory_32(entHP, emupalmos_trap_out(entH));
-  pumpkin_id2s(creator, buf);
-  debug(DEBUG_TRACE, "EmuPalmOS", "SndCreateMidiList('%s', %d, 0x%08X, 0x%08X): %d", buf, multipleDBs, wCountP, entHP, res);
+  char screator[8];
+  pumpkin_id2s(creator, screator);
+  debug(DEBUG_TRACE, "EmuPalmOS", "SndCreateMidiList('%s', %d, 0x%08X, 0x%08X): %d", screator, multipleDBs, wCountP, entHP, res);
   m68k_set_reg(M68K_REG_D0, res);
 }
 break;
@@ -2734,7 +2756,7 @@ case sysTrapSndDoCmd: {
   emupalmos_trap_in(channelP, trap, 0);
   SndCommandType cmd;
   decode_sndcmd(cmdP, &cmd);
-  err = SndDoCmd(NULL, cmdP ? &cmd : NULL, noWait);
+  Err err = SndDoCmd(NULL, cmdP ? &cmd : NULL, noWait);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndDoCmd(0x%08X, 0x%08X, %d): %d", channelP, cmdP, noWait, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2784,7 +2806,7 @@ case sysTrapSndStreamCreate: {
   SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
   SndStreamBufferCallback func = (SndStreamBufferCallback)emupalmos_trap_in(funcP, trap, 5);
   void *userdata = emupalmos_trap_in(userdataP, trap, 6);
-  err = SndStreamCreate(channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
+  Err err = SndStreamCreate(channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
   if (channelP) m68k_write_memory_32(channelP, *channel);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreate(0x%08X, %d, %d, %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
     channelP, mode, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
@@ -2806,7 +2828,7 @@ case sysTrapSndStreamCreateExtended: {
   SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
   SndStreamVariableBufferCallback func = (SndStreamVariableBufferCallback)emupalmos_trap_in(funcP, trap, 6);
   void *userdata = emupalmos_trap_in(userdataP, trap, 7);
-  err = SndStreamCreateExtended(channel, mode, format, samplerate, type, width, func, userdata, buffsize, armNative);
+  Err err = SndStreamCreateExtended(channel, mode, format, samplerate, type, width, func, userdata, buffsize, armNative);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreateExtented(0x%08X, %d, %d, %d %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
     channelP, mode, format, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
   m68k_set_reg(M68K_REG_D0, err);
@@ -2815,7 +2837,7 @@ break;
 case sysTrapSndStreamDelete: {
   // Err SndStreamDelete(SndStreamRef channel)
   uint32_t channel = ARG32;
-  err = SndStreamDelete(channel);
+  Err err = SndStreamDelete(channel);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamDelete(0x%08X): %d", channel, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2824,7 +2846,7 @@ case sysTrapSndStreamSetVolume: {
   // Err SndStreamSetVolume(SndStreamRef channel, Int32 volume)
   uint32_t channel = ARG32;
   uint32_t volume = ARG32;
-  err = SndStreamSetVolume(channel, volume);
+  Err err = SndStreamSetVolume(channel, volume);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamSetVolume(0x%08X, %d): %d", channel, volume, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2832,7 +2854,7 @@ break;
 case sysTrapSndStreamStart: {
   // Err SndStreamStart(SndStreamRef channel)
   uint32_t channel = ARG32;
-  err = SndStreamStart(channel);
+  Err err = SndStreamStart(channel);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamStart(0x%08X): %d", channel, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2840,7 +2862,7 @@ break;
 case sysTrapSndStreamStop: {
   // Err SndStreamStop(SndStreamRef channel)
   uint32_t channel = ARG32;
-  err = SndStreamStop(channel);
+  Err err = SndStreamStop(channel);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamStop(0x%08X): %d", channel, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2857,7 +2879,7 @@ case sysTrapGrfGetState: {
   emupalmos_trap_in(autoShiftedP, trap, 3);
   Boolean capsLock, numLock, autoShifted;
   UInt16 tempShift;
-  err = GrfGetState(&capsLock, &numLock, &tempShift, &autoShifted);
+  Err err = GrfGetState(&capsLock, &numLock, &tempShift, &autoShifted);
   debug(DEBUG_TRACE, "EmuPalmOS", "GrfGetState(%d, %d, %d, %d): %d", capsLock, numLock, tempShift, autoShifted, err);
   if (capsLockP) m68k_write_memory_8(capsLockP, capsLock);
   if (numLockP) m68k_write_memory_8(numLockP, numLock);
@@ -2871,7 +2893,7 @@ case sysTrapGrfSetState: {
   uint8_t capsLock = ARG8;
   uint8_t numLock = ARG8;
   uint8_t upperShift = ARG8;
-  err = GrfSetState(capsLock, numLock, upperShift);
+  Err err = GrfSetState(capsLock, numLock, upperShift);
   debug(DEBUG_TRACE, "EmuPalmOS", "GrfSetState(%d, %d, %d): %d", capsLock, numLock, upperShift, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -2883,7 +2905,7 @@ case sysTrapSysNotifyBroadcastDeferred: {
   emupalmos_trap_in(notifyP, trap, 0);
   SysNotifyParamType notify;
   decode_notify(notifyP, &notify);
-  err = SysNotifyBroadcastDeferred(notifyP ? &notify : NULL, paramSize);
+  Err err = SysNotifyBroadcastDeferred(notifyP ? &notify : NULL, paramSize);
   debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyBroadcastDeferred(0x%08X, %d): %d", notifyP, paramSize, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -3029,7 +3051,7 @@ case sysTrapAlmSetAlarm: {
   uint32_t ref = ARG32;
   uint32_t alarmSeconds = ARG32;
   uint8_t quiet = ARG8;
-  err = AlmSetAlarm(cardNo, dbID, ref, alarmSeconds, quiet);
+  Err err = AlmSetAlarm(cardNo, dbID, ref, alarmSeconds, quiet);
   debug(DEBUG_TRACE, "EmuPalmOS", "AlmSetAlarm(%d, 0x%08X, %u, %u, %u): %d", cardNo, dbID, ref, alarmSeconds, quiet, err);
   m68k_set_reg(M68K_REG_D0, err);
 }
@@ -4487,6 +4509,7 @@ break;
 case sysTrapWinRemoveWindow: {
   // void WinRemoveWindow(WinHandle winHandle)
   uint32_t winHandle = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   WinHandle l_winHandle = winHandle ? (WinHandle)(ram + winHandle) : NULL;
   WinRemoveWindow(winHandle ? l_winHandle : 0);
   debug(DEBUG_TRACE, "EmuPalmOS", "WinRemoveWindow(winHandle=0x%08X)", winHandle);
@@ -5287,6 +5310,7 @@ break;
 case sysTrapBmpCompress: {
   // Err BmpCompress(in BitmapType *bitmapP, BitmapCompressionType compType)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   uint8_t compType = ARG8;
   Err res = BmpCompress(bitmapP ? l_bitmapP : NULL, compType);
@@ -5297,6 +5321,7 @@ break;
 case sysTrapBmpGetBits: {
   // void *BmpGetBits(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   void *res = BmpGetBits(bitmapP ? l_bitmapP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
@@ -5307,6 +5332,7 @@ break;
 case sysTrapBmpGetColortable: {
   // ColorTableType *BmpGetColortable(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   ColorTableType *res = BmpGetColortable(bitmapP ? l_bitmapP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
@@ -5317,6 +5343,7 @@ break;
 case sysTrapBmpSize: {
   // UInt16 BmpSize(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   UInt16 res = BmpSize(bitmapP ? l_bitmapP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -5326,6 +5353,7 @@ break;
 case sysTrapBmpBitsSize: {
   // UInt16 BmpBitsSize(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   UInt16 res = BmpBitsSize(bitmapP ? l_bitmapP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -5335,6 +5363,7 @@ break;
 case sysTrapBmpGetSizes: {
   // void BmpGetSizes(in BitmapType *bitmapP, out UInt32 *dataSizeP, out UInt32 *headerSizeP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   uint32_t dataSizeP = ARG32;
   UInt32 l_dataSizeP = 0;
@@ -5349,6 +5378,7 @@ break;
 case sysTrapBmpColortableSize: {
   // UInt16 BmpColortableSize(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   UInt16 res = BmpColortableSize(bitmapP ? l_bitmapP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -5358,6 +5388,7 @@ break;
 case sysTrapBmpGetDimensions: {
   // void BmpGetDimensions(in BitmapType *bitmapP, out Coord *widthP, out Coord *heightP, out UInt16 *rowBytesP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   uint32_t widthP = ARG32;
   Coord l_widthP = 0;
@@ -5375,6 +5406,7 @@ break;
 case sysTrapBmpGetBitDepth: {
   // UInt8 BmpGetBitDepth(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   UInt8 res = BmpGetBitDepth(bitmapP ? l_bitmapP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -5384,6 +5416,7 @@ break;
 case sysTrapBmpGetNextBitmap: {
   // BitmapType *BmpGetNextBitmap(in BitmapType *bitmapP)
   uint32_t bitmapP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
   BitmapType *res = BmpGetNextBitmap(bitmapP ? l_bitmapP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
@@ -5942,6 +5975,7 @@ case sysTrapFldSetText: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t textHandle = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
   uint16_t offset = ARG16;
   uint16_t size = ARG16;
@@ -5954,6 +5988,7 @@ case sysTrapFldSetTextHandle: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t textHandle = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
   FldSetTextHandle(fldP ? s_fldP : NULL, textHandle ? l_textHandle : 0);
   debug(DEBUG_TRACE, "EmuPalmOS", "FldSetTextHandle(fldP=0x%08X, textHandle=0x%08X)", fldP, textHandle);
@@ -5964,6 +5999,7 @@ case sysTrapFldSetTextPtr: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t textP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_textP = textP ? (char *)(ram + textP) : NULL;
   FldSetTextPtr(fldP ? s_fldP : NULL, textP ? s_textP : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "FldSetTextPtr(fldP=0x%08X, textP=0x%08X [%s])", fldP, textP, s_textP);
@@ -6116,6 +6152,7 @@ break;
 case sysTrapFldCalcFieldHeight: {
   // UInt16 FldCalcFieldHeight(in Char *chars, UInt16 maxWidth)
   uint32_t chars = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_chars = chars ? (char *)(ram + chars) : NULL;
   uint16_t maxWidth = ARG16;
   UInt16 res = FldCalcFieldHeight(chars ? s_chars : NULL, maxWidth);
@@ -6126,6 +6163,7 @@ break;
 case sysTrapFldWordWrap: {
   // UInt16 FldWordWrap(in Char *chars, Int16 maxWidth)
   uint32_t chars = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_chars = chars ? (char *)(ram + chars) : NULL;
   int16_t maxWidth = ARG16;
   UInt16 res = FldWordWrap(chars ? s_chars : NULL, maxWidth);
@@ -6182,6 +6220,7 @@ case sysTrapFldInsert: {
   uint32_t fldP = ARG32;
   FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
   uint32_t insertChars = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_insertChars = insertChars ? (char *)(ram + insertChars) : NULL;
   uint16_t insertLen = ARG16;
   Boolean res = FldInsert(fldP ? s_fldP : NULL, insertChars ? s_insertChars : NULL, insertLen);
@@ -6450,6 +6489,7 @@ case sysTrapTblSetItemPtr: {
   int16_t row = ARG16;
   int16_t column = ARG16;
   uint32_t value = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   void *s_value = value ? (void *)(ram + value) : NULL;
   TblSetItemPtr(tableP ? s_tableP : NULL, row, column, value ? s_value : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "TblSetItemPtr(tableP=0x%08X, row=%d, column=%d, value=0x%08X)", tableP, row, column, value);
@@ -6981,6 +7021,7 @@ case sysTrapLstSetListChoices: {
   uint32_t listP = ARG32;
   ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
   uint32_t itemsText = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char **s_itemsText = itemsText ? (char **)(ram + itemsText) : NULL;
   int16_t numItems = ARG16;
   LstSetListChoices(listP ? s_listP : NULL, itemsText ? s_itemsText : NULL, numItems);
@@ -7072,6 +7113,7 @@ break;
 case sysTrapMenuSetActiveMenu: {
   // MenuBarType *MenuSetActiveMenu(in MenuBarType *menuP)
   uint32_t menuP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
   MenuBarType *res = MenuSetActiveMenu(menuP ? s_menuP : NULL);
   uint32_t r_res = emupalmos_trap_out(res);
@@ -7082,6 +7124,7 @@ break;
 case sysTrapMenuDispose: {
   // void MenuDispose(in MenuBarType *menuP)
   uint32_t menuP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
   MenuDispose(menuP ? s_menuP : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "MenuDispose(menuP=0x%08X)", menuP);
@@ -7090,6 +7133,7 @@ break;
 case sysTrapMenuHandleEvent: {
   // Boolean MenuHandleEvent(in MenuBarType *menuP, in EventType *event, out UInt16 *error)
   uint32_t menuP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
   uint32_t event = ARG32;
   EventType l_event;
@@ -7105,6 +7149,7 @@ break;
 case sysTrapMenuDrawMenu: {
   // void MenuDrawMenu(in MenuBarType *menuP)
   uint32_t menuP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
   MenuDrawMenu(menuP ? s_menuP : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "MenuDrawMenu(menuP=0x%08X)", menuP);
@@ -7113,6 +7158,7 @@ break;
 case sysTrapMenuEraseStatus: {
   // void MenuEraseStatus(in MenuBarType *menuP)
   uint32_t menuP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
   MenuEraseStatus(menuP ? s_menuP : NULL);
   debug(DEBUG_TRACE, "EmuPalmOS", "MenuEraseStatus(menuP=0x%08X)", menuP);
@@ -7132,6 +7178,7 @@ case sysTrapMenuCmdBarAddButton: {
   uint8_t resultType = ARG8;
   uint32_t result = ARG32;
   uint32_t nameP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
   Err res = MenuCmdBarAddButton(where, bitmapId, resultType, result, nameP ? s_nameP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -7148,6 +7195,7 @@ case sysTrapMenuCmdBarGetButtonData: {
   uint32_t resultP = ARG32;
   UInt32 l_resultP = 0;
   uint32_t nameP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
   Boolean res = MenuCmdBarGetButtonData(buttonIndex, bitmapIdP ? &l_bitmapIdP : NULL, resultTypeP ? &l_resultTypeP : NULL, resultP ? &l_resultP : NULL, nameP ? s_nameP : NULL);
   if (bitmapIdP) m68k_write_memory_16(bitmapIdP, l_bitmapIdP);
@@ -7185,6 +7233,7 @@ case sysTrapMenuAddItem: {
   uint16_t id = ARG16;
   int8_t cmd = ARG8;
   uint32_t textP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_textP = textP ? (char *)(ram + textP) : NULL;
   Err res = MenuAddItem(positionId, id, cmd, textP ? s_textP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -7341,6 +7390,7 @@ break;
 case sysTrapCtlSetGraphics: {
   // void CtlSetGraphics(in ControlType *ctlP, DmResID newBitmapID, DmResID newSelectedBitmapID)
   uint32_t ctlP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
   uint16_t newBitmapID = ARG16;
   uint16_t newSelectedBitmapID = ARG16;
@@ -7351,6 +7401,7 @@ break;
 case sysTrapCtlSetSliderValues: {
   // void CtlSetSliderValues(in ControlType *ctlP, in UInt16 *minValueP, in UInt16 *maxValueP, in UInt16 *pageSizeP, in UInt16 *valueP)
   uint32_t ctlP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
   uint32_t minValueP = ARG32;
   UInt16 l_minValueP = 0;
@@ -7375,6 +7426,7 @@ break;
 case sysTrapCtlGetSliderValues: {
   // void CtlGetSliderValues(in ControlType *ctlP, out UInt16 *minValueP, out UInt16 *maxValueP, out UInt16 *pageSizeP, out UInt16 *valueP)
   uint32_t ctlP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
   uint32_t minValueP = ARG32;
   UInt16 l_minValueP = 0;
@@ -7425,6 +7477,7 @@ case sysTrapFileOpen: {
   // FileHand FileOpen(UInt16 cardNo, in Char *nameP, UInt32 type, UInt32 creator, UInt32 openMode, out Err *errP)
   uint16_t cardNo = ARG16;
   uint32_t nameP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
   uint32_t type = ARG32;
   uint32_t creator = ARG32;
@@ -7441,6 +7494,7 @@ break;
 case sysTrapFileClose: {
   // Err FileClose(FileHand stream)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   Err res = FileClose(stream ? l_stream : 0);
   m68k_set_reg(M68K_REG_D0, res);
@@ -7451,6 +7505,7 @@ case sysTrapFileDelete: {
   // Err FileDelete(UInt16 cardNo, in Char *nameP)
   uint16_t cardNo = ARG16;
   uint32_t nameP = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
   Err res = FileDelete(cardNo, nameP ? s_nameP : NULL);
   m68k_set_reg(M68K_REG_D0, res);
@@ -7460,6 +7515,7 @@ break;
 case sysTrapFileReadLow: {
   // Int32 FileReadLow(FileHand stream, out void *baseP, Int32 offset, Boolean dataStoreBased, Int32 objSize, Int32 numObj, out Err *errP)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   uint32_t baseP = ARG32;
   void *s_baseP = baseP ? (void *)(ram + baseP) : NULL;
@@ -7478,6 +7534,7 @@ break;
 case sysTrapFileWrite: {
   // Int32 FileWrite(FileHand stream, in void *dataP, Int32 objSize, Int32 numObj, out Err *errP)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   uint32_t dataP = ARG32;
   void *s_dataP = dataP ? (void *)(ram + dataP) : NULL;
@@ -7494,6 +7551,7 @@ break;
 case sysTrapFileSeek: {
   // Err FileSeek(FileHand stream, Int32 offset, FileOriginEnum origin)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   int32_t offset = ARG32;
   uint8_t origin = ARG8;
@@ -7505,6 +7563,7 @@ break;
 case sysTrapFileTell: {
   // Int32 FileTell(FileHand stream, out Int32 *fileSizeP, out Err *errP)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   uint32_t fileSizeP = ARG32;
   Int32 l_fileSizeP = 0;
@@ -7520,6 +7579,7 @@ break;
 case sysTrapFileTruncate: {
   // Err FileTruncate(FileHand stream, Int32 newSize)
   uint32_t stream = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
   int32_t newSize = ARG32;
   Err res = FileTruncate(stream ? l_stream : 0, newSize);
@@ -7727,6 +7787,7 @@ break;
 case sysTrapCategoryCreateListV10: {
   // void CategoryCreateListV10(DmOpenRef db, in ListType *lst, UInt16 currentCategory, Boolean showAll)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t lst = ARG32;
   ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
@@ -7739,6 +7800,7 @@ break;
 case sysTrapCategoryCreateList: {
   // void CategoryCreateList(DmOpenRef db, in ListType *listP, UInt16 currentCategory, Boolean showAll, Boolean showUneditables, UInt8 numUneditableCategories, UInt32 editingStrID, Boolean resizeList)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t listP = ARG32;
   ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
@@ -7755,6 +7817,7 @@ break;
 case sysTrapCategoryFreeListV10: {
   // void CategoryFreeListV10(DmOpenRef db, in ListType *lst)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t lst = ARG32;
   ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
@@ -7765,6 +7828,7 @@ break;
 case sysTrapCategoryFreeList: {
   // void CategoryFreeList(DmOpenRef db, in ListType *listP, Boolean showAll, UInt32 editingStrID)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t listP = ARG32;
   ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
@@ -7777,6 +7841,7 @@ break;
 case sysTrapCategoryFind: {
   // UInt16 CategoryFind(DmOpenRef db, in Char *name)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t name = ARG32;
   char *s_name = name ? (char *)(ram + name) : NULL;
@@ -7788,6 +7853,7 @@ break;
 case sysTrapCategoryGetName: {
   // void CategoryGetName(DmOpenRef db, UInt16 index, out Char *name)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint16_t index = ARG16;
   uint32_t name = ARG32;
@@ -7799,6 +7865,7 @@ break;
 case sysTrapCategoryEditV10: {
   // Boolean CategoryEditV10(DmOpenRef db, inout UInt16 *category)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t category = ARG32;
   UInt16 l_category = 0;
@@ -7812,6 +7879,7 @@ break;
 case sysTrapCategoryEditV20: {
   // Boolean CategoryEditV20(DmOpenRef db, inout UInt16 *category, UInt32 titleStrID)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t category = ARG32;
   UInt16 l_category = 0;
@@ -7826,6 +7894,7 @@ break;
 case sysTrapCategoryEdit: {
   // Boolean CategoryEdit(DmOpenRef db, inout UInt16 *category, UInt32 titleStrID, UInt8 numUneditableCategories)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t category = ARG32;
   UInt16 l_category = 0;
@@ -7841,6 +7910,7 @@ break;
 case sysTrapCategorySelectV10: {
   // Boolean CategorySelectV10(DmOpenRef db, in FormType *frm, UInt16 ctlID, UInt16 lstID, Boolean title, out UInt16 *categoryP, out Char *categoryName)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t frm = ARG32;
   FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
@@ -7860,6 +7930,7 @@ break;
 case sysTrapCategorySelect: {
   // Boolean CategorySelect(DmOpenRef db, in FormType *frm, UInt16 ctlID, UInt16 lstID, Boolean title, out UInt16 *categoryP, out Char *categoryName, UInt8 numUneditableCategories, UInt32 editingStrID)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint32_t frm = ARG32;
   FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
@@ -7881,6 +7952,7 @@ break;
 case sysTrapCategoryGetNext: {
   // UInt16 CategoryGetNext(DmOpenRef db, UInt16 index)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint16_t index = ARG16;
   UInt16 res = CategoryGetNext(db ? l_db : 0, index);
@@ -7891,6 +7963,7 @@ break;
 case sysTrapCategorySetTriggerLabel: {
   // void CategorySetTriggerLabel(in ControlType *ctl, Char *name)
   uint32_t ctl = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   ControlType *s_ctl = ctl ? (ControlType *)(ram + ctl) : NULL;
   uint32_t name = ARG32;
   char *s_name = name ? (char *)(ram + name) : NULL;
@@ -7901,6 +7974,7 @@ break;
 case sysTrapCategoryTruncateName: {
   // void CategoryTruncateName(inout Char *name, UInt16 maxWidth)
   uint32_t name = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   char *s_name = name ? (char *)(ram + name) : NULL;
   uint16_t maxWidth = ARG16;
   CategoryTruncateName(name ? s_name : NULL, maxWidth);
@@ -7924,6 +7998,7 @@ break;
 case sysTrapCategorySetName: {
   // void CategorySetName(DmOpenRef db, UInt16 index, in Char *nameP)
   uint32_t db = ARG32;
+  uint8_t *ram = pumpkin_heap_base();
   DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
   uint16_t index = ARG16;
   uint32_t nameP = ARG32;

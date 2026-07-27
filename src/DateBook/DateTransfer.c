@@ -223,7 +223,7 @@ static UInt32 ApptGetAlarmTimeVCalForm (ApptDBRecordPtr apptRec)
 
 
     // An alarm on an untimed event triggers at midnight.
-    if (TimeToInt (apptRec->when->startTime) == apptNoTime)
+    if (TimeToInt (apptRec->when->startTime) == (UInt16)apptNoTime)
     {
         apptDateTime.minute = 0;
         apptDateTime.hour = 0;
@@ -297,7 +297,7 @@ static void TranslateAlarm(ApptDBRecordType *newDateRecordP, UInt32 alarmDTinSec
     eventDT.month  = newDateRecordP->when->date.month;
     eventDT.day  = newDateRecordP->when->date.day;
 
-    if (TimeToInt (newDateRecordP->when->startTime) == noTime)
+    if (TimeToInt (newDateRecordP->when->startTime) == (UInt16)noTime)
     {
         // The time for alarms is midnight.
         eventDT.hour  = 0;
@@ -1611,7 +1611,7 @@ void DateExportVCal(DmOpenRef dbP, Int16 index, ApptDBRecordPtr recordP, UInt16 
     // and _no_ DTEND proprty.  This is permitted by ISO 8601.
 
     PdiWriteProperty(pdiRefNum, writer, kPdiPRN_DTSTART);
-    if (TimeToInt(recordP->when->startTime) != apptNoTime)
+    if (TimeToInt(recordP->when->startTime) != (UInt16)apptNoTime)
     {
         GenerateDateTimeToken(tempString, &recordP->when->date, &recordP->when->startTime);
 		PdiWritePropertyValue(pdiRefNum, writer, tempString, kPdiWriteData);
@@ -2373,8 +2373,8 @@ extern Err DateReceiveData(DmOpenRef dbP, ExgSocketPtr exgSocketP)
 {
     volatile Err err;
     UInt16 pdiRefNum = sysInvalidRefNum;
-    PdiReaderType* reader;
-    UDAReaderType* stream;
+    PdiReaderType* reader = NULL;
+    UDAReaderType* stream = NULL;
     Boolean loaded;
 
     // accept will open a progress dialog and wait for your receive commands

@@ -2203,6 +2203,9 @@ int64_t sys_get_thread_time(void) {
 
 int sys_set_thread_name(char *name) {
 #if defined(LINUX)
+#if !defined pthread_setname_np
+  extern int pthread_setname_np (pthread_t __target_thread, const char *__name);
+#endif
   pthread_setname_np(pthread_self(), name);
 #endif
   return 0;

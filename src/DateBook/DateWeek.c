@@ -646,7 +646,7 @@ static void WeekViewDrawDataMarks (void)
 		if (week->days[i].numAppts)
 			{
 			appts = MemHandleLock (week->days[i].apptsH);
-			untimed = (TimeToInt (appts[0].startTime) == apptNoTime);
+			untimed = (TimeToInt (appts[0].startTime) == (UInt16)apptNoTime);
 	 		MemPtrUnlock(appts);
 			}
 

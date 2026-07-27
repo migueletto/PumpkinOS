@@ -477,8 +477,8 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t cardNoP = ARG32;
       uint32_t dbIDP = ARG32;
       char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
-      UInt16 cardNo;
-      LocalID dbID;
+      UInt16 cardNo = 0;
+      LocalID dbID = 0;
       Err res = VFSImportDatabaseFromFileEx(volRefNum, pathName, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL, NULL, NULL, 0, 0);
       if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
       if (dbIDP) m68k_write_memory_32(dbIDP, dbID);
@@ -495,8 +495,8 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t importProcP = ARG32;
       uint32_t userDataP = ARG32;
       char *pathName = emupalmos_trap_sel_in(pathNameP, sysTrapFileSystemDispatch, sel, 1);
-      UInt16 cardNo;
-      LocalID dbID;
+      UInt16 cardNo = 0;
+      LocalID dbID = 0;
       Err res = VFSImportDatabaseFromFileEx(volRefNum, pathName, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL, NULL, NULL, importProcP, userDataP);
       if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
       if (dbIDP) m68k_write_memory_32(dbIDP, dbID);

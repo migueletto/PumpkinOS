@@ -67,7 +67,7 @@ void palmos_expansiontrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint16_t slotRefNum = ARG16;
       uint32_t slotLibRefNumP = ARG32;
       if (slotRefNum == 0) slotRefNum = 1;
-      UInt16 slotLibRefNum;
+      UInt16 slotLibRefNum = 0;
       emupalmos_trap_sel_in(slotLibRefNum, sysTrapExpansionDispatch, sel, 1);
       err = ExpSlotLibFind(slotRefNum, slotLibRefNumP ? &slotLibRefNum : NULL);
       if (slotLibRefNumP) m68k_write_memory_16(slotLibRefNumP, slotLibRefNum);

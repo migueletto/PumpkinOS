@@ -110,7 +110,7 @@ static uint8_t cz80_getb(computer_t *c, uint16_t addr) {
   cz80_data_t *cz80;
 
   cz80 = (cz80_data_t *)c->data;
-  if (addr >= MEM_SIZE) return 0xFF;
+  //if (addr >= MEM_SIZE) return 0xFF;
   return cz80->ram[addr];
 }
 
@@ -118,9 +118,9 @@ static void cz80_putb(computer_t *c, uint16_t addr, uint8_t b) {
   cz80_data_t *cz80;
 
   cz80 = (cz80_data_t *)c->data;
-  if (addr < MEM_SIZE) {
+  //if (addr < MEM_SIZE) {
     cz80->ram[addr] = b;
-  }
+  //}
 }
 
 static surface_t *lock_surface(cz80_data_t *cz80) {

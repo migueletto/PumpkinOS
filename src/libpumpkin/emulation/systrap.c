@@ -23,6 +23,8 @@
 #include "emu_launch_serde.h"
 #include "debug.h"
 
+#include "sc_prot.h"
+
 static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
   char buf[256];
 
@@ -43,9 +45,8 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
 uint32_t palmos_systrap(uint16_t trap) {
   uint32_t sp;
   uint16_t idx, selector;
-  char buf[256], buf2[8];
+  char buf[256], screator[8];
   char *s;
-  uint8_t *ram = pumpkin_heap_base();
   emu_state_t *state = m68k_get_emu_state();
   Err err;
   uint32_t r = 0;
@@ -104,7 +105,139 @@ uint32_t palmos_systrap(uint16_t trap) {
       palmos_navtrap(sp, idx, selector);
       break;
 
-    #include "switch.c"
+    //#include "switch.c"
+
+    case sysTrapSysAppStartup: {
+      // Err SysAppStartup(SysAppInfoPtr *appInfoPP, MemPtr *prevGlobalsP, MemPtr *globalsPtrP)
+      uint32_t appInfoPP = ARG32;
+      uint32_t prevGlobalsP = ARG32;
+      uint32_t globalsPtrP = ARG32;
+      if (appInfoPP) m68k_write_memory_32(appInfoPP, state->sysAppInfoStart);
+      if (prevGlobalsP) m68k_write_memory_32(prevGlobalsP, 0);
+      if (globalsPtrP) m68k_write_memory_32(globalsPtrP, 0);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysAppStartup called");
+      m68k_set_reg(M68K_REG_D0, 0);
+    }
+    break;
+    case sysTrapSysAppExit:
+      // Err SysAppExit(SysAppInfoPtr appInfoP, MemPtr prevGlobalsP, MemPtr globalsP)
+      debug(DEBUG_INFO, "EmuPalmOS", "SysAppExit called");
+      m68k_set_reg(M68K_REG_D0, 0);
+      m68k_pulse_halt();
+      emupalmos_finish(1);
+    break;
+    case sysTrapSysGetAppInfo: {
+      // SysAppInfoPtr SysGetAppInfo(SysAppInfoPtr *uiAppPP, SysAppInfoPtr *actionCodeAppPP)
+      // XXX uiAppPP and actionCodeAppPP ignored
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysGetAppInfo(): 0x%08X", state->sysAppInfoStart);
+      m68k_set_reg(M68K_REG_A0, state->sysAppInfoStart);
+    }
+    break;
+    case sysTrapSysTaskDelay: {
+      // Err SysTaskDelay(Int32 delay)
+      int32_t delay = ARG32;
+      err = SysTaskDelay(delay);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysTaskDelay(%d): %d", delay, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
+    case sysTrapSysLibFind: {
+      // Err SysLibFind(const Char *nameP, UInt16 *refNumP)
+      // Return a reference number for a library that is already loaded, given its name.
+      uint32_t nameP = ARG32;
+      uint32_t refNumP = ARG32;
+      char *name = (char *)emupalmos_trap_in(nameP, trap, 0);
+      emupalmos_trap_in(refNumP, trap, 1);
+      UInt16 refNum;
+      if (SysLibFind(name, &refNum) != errNone || refNum == 0) {
+        refNum = SysLibFind68K(name);
+      }
+      err = refNum ? errNone : sysErrLibNotFound;
+      if (refNum == 0) refNum = 0xffff;
+      if (refNumP) m68k_write_memory_16(refNumP, refNum);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibFind(0x%08X \"%s\", 0x%08X): %d", nameP, name ? name : "", refNumP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
+    case sysTrapSysLibLoad: {
+      // Err SysLibLoad(UInt32 libType, UInt32 libCreator, UInt16 *refNumP)
+      uint32_t libType = ARG32;
+      uint32_t libCreator = ARG32;
+      uint32_t refNumP = ARG32;
+      emupalmos_trap_in(refNumP, trap, 2);
+      pumpkin_id2s(libType, buf);
+      pumpkin_id2s(libCreator, screator);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibLoad('%s', '%s', 0x%08X) native", buf, screator, refNumP);
+      r = state->SysLibLoad_addr;
+    }
+    break;
+    case sysTrapSysLibNewRefNum68K: {
+      // Boolean SysLibNewRefNum68K(UInt32 type, UInt32 creator, UInt16 *refNum)
+      uint32_t type = ARG32;
+      uint32_t creator = ARG32;
+      uint32_t refNumP = ARG32;
+      emupalmos_trap_in(refNumP, trap, 2);
+      UInt16 refNum;
+      Boolean exists = SysLibNewRefNum68K(type, creator, &refNum);
+      if (refNumP) m68k_write_memory_16(refNumP, refNum);
+      pumpkin_id2s(type, buf);
+      pumpkin_id2s(creator, screator);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibNewRefNum68K('%s', '%s', 0x%08X): %d ", buf, screator, refNumP, exists);
+      m68k_set_reg(M68K_REG_D0, exists);
+    }
+    break;
+    case sysTrapSysLibRegister68K: {
+      // Err SysLibRegister68K(UInt16 refNum, LocalID dbID, void *code, UInt32 size, UInt16 *dispatchTblP, UInt8 *globalsP)
+      uint16_t refNum = ARG16;
+      uint32_t id = ARG32;
+      uint32_t code = ARG32;
+      uint32_t size = ARG32;
+      uint32_t dispatchTblP = ARG32;
+      uint32_t globalsP = ARG32;
+      LocalID dbID = id;
+      err = SysLibRegister68K(refNum, dbID, emupalmos_trap_in(code, trap, 2), size, emupalmos_trap_in(dispatchTblP, trap, 4), emupalmos_trap_in(globalsP, trap, 5));
+      if (err == errNone) {
+        SysLibTblEntryType tbl;
+        uint8_t *p = SysLibTblEntry68K(refNum, &tbl);
+        if (p) {
+      uint32_t pP = emupalmos_trap_out(p);
+      m68k_write_memory_32(pP +  0, emupalmos_trap_out(tbl.dispatchTblP));
+      m68k_write_memory_32(pP +  4, emupalmos_trap_out(tbl.globalsP));
+      m68k_write_memory_32(pP +  8, tbl.dbID);
+      m68k_write_memory_32(pP + 12, 0); // XXX codeResH
+        }
+      }
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibRegister68K(%d, 0x%08X, 0x%08X, %d, 0x%08X, 0x%08X)", refNum, id, code, size, dispatchTblP, globalsP);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
+    case sysTrapSysLibCancelRefNum68K: {
+      // void SysLibCancelRefNum68K(UInt16 refNum)
+      uint16_t refNum = ARG16;
+      SysLibCancelRefNum68K(refNum);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibCancelRefNum68K(%d)", refNum);
+    }
+    break;
+    case sysTrapSysLibTblEntry: {
+      // SysLibTblEntryType *SysLibTblEntry(UInt16 refNum)
+      uint16_t refNum = ARG16;
+      SysLibTblEntryType tbl;
+      uint8_t *p = SysLibTblEntry68K(refNum, &tbl);
+      uint32_t a = emupalmos_trap_out(p);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysLibTblEntry(%d): 0x%08X", refNum, a);
+      m68k_set_reg(M68K_REG_A0, a);
+    }
+    break;
+    case sysTrapSysLibRemove: {
+      // Err SysLibRemove(UInt16 refNum)
+      uint16_t refNum = ARG16;
+      SysLibCancelRefNum68K(refNum);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibRemove(%d): 0", refNum);
+      m68k_set_reg(M68K_REG_D0, errNone);
+    }
+    break;
+
+    #include "sc_case.c"
 
     case sysTrapPumpkinDebug: {
       // changes in M68K /opt/palmdev/<sdk>/include/Core/CoreTraps.h:

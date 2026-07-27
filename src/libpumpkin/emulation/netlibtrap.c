@@ -75,7 +75,7 @@ void palmos_netlibtrap(uint16_t trap) {
       // Err NetLibOpenCount(UInt16 refNum, out UInt16 *countP);
       uint16_t refNum = ARG16;
       uint32_t countP = ARG32;
-      UInt16 l_countP;
+      UInt16 l_countP = 0;
       Err res = NetLibOpenCount(refNum, countP ? &l_countP : NULL);
       if (countP) m68k_write_memory_16(countP, l_countP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -99,7 +99,7 @@ void palmos_netlibtrap(uint16_t trap) {
       uint32_t allInterfacesUpP = ARG32;
       UInt8 l_allInterfacesUpP;
       uint32_t netIFErrP = ARG32;
-      UInt16 l_netIFErrP;
+      UInt16 l_netIFErrP = 0;
       Err res = NetLibConnectionRefresh(refNum, refresh, allInterfacesUpP ? &l_allInterfacesUpP : NULL, netIFErrP ? &l_netIFErrP : NULL);
       if (allInterfacesUpP) m68k_write_memory_8(allInterfacesUpP, l_allInterfacesUpP);
       if (netIFErrP) m68k_write_memory_16(netIFErrP, l_netIFErrP);
@@ -268,9 +268,9 @@ void palmos_netlibtrap(uint16_t trap) {
       uint16_t libRefNum = ARG16;
       uint16_t index = ARG16;
       uint32_t ifCreatorP = ARG32;
-      UInt32 l_ifCreatorP;
+      UInt32 l_ifCreatorP = 0;
       uint32_t ifInstanceP = ARG32;
-      UInt16 l_ifInstanceP;
+      UInt16 l_ifInstanceP = 0;
       Err res = NetLibIFGet(libRefNum, index, ifCreatorP ? &l_ifCreatorP : NULL, ifInstanceP ? &l_ifInstanceP : NULL);
       if (ifCreatorP) m68k_write_memory_32(ifCreatorP, l_ifCreatorP);
       if (ifInstanceP) m68k_write_memory_16(ifInstanceP, l_ifInstanceP);
@@ -362,7 +362,7 @@ void palmos_netlibtrap(uint16_t trap) {
       uint16_t configIndex = ARG16;
       uint32_t openFlags = ARG32;
       uint32_t netIFErrP = ARG32;
-      UInt16 l_netIFErrP;
+      UInt16 l_netIFErrP = 0;
       Err res = NetLibOpenConfig(refNum, configIndex, openFlags, netIFErrP ? &l_netIFErrP : NULL);
       if (netIFErrP) m68k_write_memory_16(netIFErrP, l_netIFErrP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -385,7 +385,7 @@ void palmos_netlibtrap(uint16_t trap) {
       NetConfigNameType l_nameP;
       decode_NetConfigNameType(nameP, &l_nameP);
       uint32_t indexP = ARG32;
-      UInt16 l_indexP;
+      UInt16 l_indexP = 0;
       Err res = NetLibConfigIndexFromName(refNum, nameP ? &l_nameP : NULL, indexP ? &l_indexP : NULL);
       if (indexP) m68k_write_memory_16(indexP, l_indexP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -439,9 +439,9 @@ void palmos_netlibtrap(uint16_t trap) {
       uint16_t refNum = ARG16;
       uint16_t aliasIndex = ARG16;
       uint32_t indexP = ARG32;
-      UInt16 l_indexP;
+      UInt16 l_indexP = 0;
       uint32_t isAnotherAliasP = ARG32;
-      Boolean l_isAnotherAliasP;
+      Boolean l_isAnotherAliasP = false;
       Err res = NetLibConfigAliasGet(refNum, aliasIndex, indexP ? &l_indexP : NULL, isAnotherAliasP ? &l_isAnotherAliasP : NULL);
       if (indexP) m68k_write_memory_16(indexP, l_indexP);
       if (isAnotherAliasP) m68k_write_memory_8(isAnotherAliasP, l_isAnotherAliasP);

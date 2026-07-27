@@ -20,15 +20,15 @@
 
 /*---------- Link Adressing mode to its display function ----------*/
 
-#define INHERENT      (int (*)(void))AM_Inherent      /* Adressing mode INHERENT   */
-#define IMMEDIAT_8    (int (*)(void))AM_Immediat_8    /* Immediat 8 Bit    */
-#define IMMEDIAT_16   (int (*)(void))AM_Immediat_16   /* Immediate 16 Bit    */
-#define BRANCH_REL_8  (int (*)(void))AM_Branch_Rel_8  /* Branch relative 8 bit. +127 -128 bytes move */
-#define BRANCH_REL_16 (int (*)(void))AM_Branch_Rel_16 /* Branch relative 16 bit. +32767 -32768 bytes move */
-#define DIRECT        (int (*)(void))AM_Direct        /* Via DP register for msb      */
-#define EXTENDED      (int (*)(void))AM_Extended      /* in C =  *(u8*)         */
-#define INDEXED       (int (*)(void))AM_Indexed       /* Indexed mode */
-#define ILLEGAL       (int (*)(void))AM_Illegal       /* Illegal addressing mode */
+#define INHERENT      AM_Inherent      /* Adressing mode INHERENT   */
+#define IMMEDIAT_8    AM_Immediat_8    /* Immediat 8 Bit    */
+#define IMMEDIAT_16   AM_Immediat_16   /* Immediate 16 Bit    */
+#define BRANCH_REL_8  AM_Branch_Rel_8  /* Branch relative 8 bit. +127 -128 bytes move */
+#define BRANCH_REL_16 AM_Branch_Rel_16 /* Branch relative 16 bit. +32767 -32768 bytes move */
+#define DIRECT        AM_Direct        /* Via DP register for msb      */
+#define EXTENDED      AM_Extended      /* in C =  *(u8*)         */
+#define INDEXED       AM_Indexed       /* Indexed mode */
+#define ILLEGAL       AM_Illegal       /* Illegal addressing mode */
 
 /*---------- Defines used for Inherent Adressing Mode ----------*/
 
@@ -60,11 +60,11 @@ typedef struct M6809CPU {
   void *data;
 } M6809CPU;
 
-typedef struct {
+typedef struct M6809Opcode {
   u8 Opcode;        /* Operande Opcode */
   u8 Clock;         /* Number of cycle duration */
   u8 Size;          /* Opcode+Operande size */
-  int (*AddrMode)();                 /* Addressing mode dep. operand decoder */
+  int (*AddrMode)(M6809CPU *CPU,struct M6809Opcode *Op,u16 Add,char *Operands,u8 *Cycles_nbr);                 /* Addressing mode dep. operand decoder */
   char Mnemonic[MNEMONIC_LEN];       /* Mnemonic string */
   char Description[DESCRIPTION_LEN]; /* Mnemonic short description */
   char MnemoHelp[MNEMO_HELP_LEN];    /* More complete description */

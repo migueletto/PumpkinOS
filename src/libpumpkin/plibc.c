@@ -134,7 +134,7 @@ int plibc_open(int vol, const char *pathname, int flags) {
   if (fd < MAX_FDS) {
     if (flags & PLIBC_CREAT) {
       if (VFSFileOpen(vol, pathname, vfsModeRead, &fileRef) != errNone) {
-        VFSFileCreate(vol, pathname) == errNone ? 0 : -1;
+        VFSFileCreate(vol, pathname);
       } else {
         VFSFileClose(fileRef);
       }

@@ -742,7 +742,7 @@ static void SearchDraw (ApptDBRecordPtr apptRecP, Int16 x, Int16 y,
 		dateFormat = (DateFormatType)PrefGetPreference(prefDateFormat);
 		timeFormat = (TimeFormatType)PrefGetPreference(prefTimeFormat);
 
-		if (TimeToInt (apptRecP->when->startTime) != apptNoTime)
+		if (TimeToInt (apptRecP->when->startTime) != (UInt16)apptNoTime)
 			{
 			TimeToAscii (apptRecP->when->startTime.hours, 
 				apptRecP->when->startTime.minutes, timeFormat, timeStr);
@@ -1117,7 +1117,7 @@ void DrawTime (
 	Int16								x;
 
 	// No-time appointment?
-	if (TimeToInt(inTime) == apptNoTime)
+	if (TimeToInt(inTime) == (UInt16)apptNoTime)
 		{
 		// Show a centered diamond symbol, overriding the font params
 		//inFont = FossilSymbolFont;
