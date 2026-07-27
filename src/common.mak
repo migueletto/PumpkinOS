@@ -204,8 +204,12 @@ else
 C99=-std=c99
 endif
 
+ifneq ($(APPID),)
+FAPPID=-DAPPID=\'$(APPID)\'
+endif
+
 SYSDEFS=-DSYS_CPU=$(SYS_CPU) -DSYS_SIZE=$(SYS_SIZE) -DSYS_OS=$(SYS_OS) -DSYS_ENDIAN=$(SYS_ENDIAN)
-CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar $(OPTIMIZATION) -fPIC -fno-stack-protector -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" -DAPPID=\'$(APPID)\' $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS) $(MUTE_DEBUG) -DLOGTRAP_SYS
+CPPFLAGS=-Wall -Wno-unknown-pragmas -fsigned-char -Wno-multichar $(OPTIMIZATION) -fPIC -fno-stack-protector -I$(LIBPIT) -DSYSTEM_NAME=\"$(SYSNAME)\" -DSYSTEM_VERSION=\"$(VERSION)\" -DSYSTEM_OS=\"$(OS)\" -DAPPNAME="\"$(APPNAME)\"" $(FAPPID) $(CUSTOMFLAGS) $(SYSDEFS) $(OSDEFS) $(MUTE_DEBUG) -DLOGTRAP_SYS
 CFLAGS=$(CPPFLAGS) -ffreestanding $(C99)
 HOSTCFLAGS=-Wall
 FFLAGS=-fPIC $(OPTIMIZATION)
