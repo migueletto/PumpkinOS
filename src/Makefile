@@ -16,17 +16,18 @@ ERROR=make_error
 ERROR_MSG=Could not find SDL2, Wayland or XCB development headers
 endif
 
-WINDOW_MODULE=libwnull
-
 ifneq ($(UNICORN),)
 UNICORN_MODULE=UnicornArm
 else ifneq ($(wildcard /usr/include/unicorn/unicorn.h),)
 UNICORN_MODULE=UnicornArm
 endif
 
-UNICORN_MODULE=
+EXTRA_MODULES=$(UNICORN_MODULE) $(WINDOW_MODULE) libaalsa linux
 
-#EXTRA_MODULES=$(UNICORN_MODULE) $(WINDOW_MODULE) libaalsa linux
+else ifeq ($(OSNAME),filc)
+
+WINDOW_MODULE=libwnull
+UNICORN_MODULE=
 EXTRA_MODULES=$(UNICORN_MODULE) $(WINDOW_MODULE) linux
 
 else ifeq ($(OSNAME),Msys)
@@ -79,8 +80,7 @@ $(DIRS):
 
 $(MODULES):
 	@echo "$(COLOR_GREEN)Building $@$(COLOR_END)"
-#	@$(MAKE) -s --no-print-directory -j -C $@
-	@$(MAKE) -s --no-print-directory -C $@
+	@$(MAKE) -s --no-print-directory -j -C $@
 
 clean: $(CLEAN_MODULES)
 
