@@ -1,7 +1,9 @@
 #ifndef _CUSTOM_MALLOC_H_
 #define _CUSTOM_MALLOC_H_
 
-//#pragma pack(4)
+#if !defined(FILC)
+#pragma pack(4)
+#endif
 typedef struct BD_t {
   struct BD_t *prev;
   struct BD_t *next;
