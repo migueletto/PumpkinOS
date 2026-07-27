@@ -595,7 +595,7 @@ static uint64 READ_EA_64(m68k_state_t *m68k_state, int ea)
 
 static floatx80 READ_EA_FPE(m68k_state_t *m68k_state, int mode, int reg, uint32 di_mode_ea)
 {
-	floatx80 fpr;
+	floatx80 fpr = { 0, 0 };
 
 	switch (mode)
 	{
@@ -658,7 +658,7 @@ static floatx80 READ_EA_FPE(m68k_state_t *m68k_state, int mode, int reg, uint32 
 
 static floatx80 READ_EA_PACK(m68k_state_t *m68k_state, int ea)
 {
-	floatx80 fpr;
+	floatx80 fpr = { 0, 0 };
 	int mode = (ea >> 3) & 0x7;
 	int reg = (ea & 0x7);
 
@@ -1049,7 +1049,7 @@ static void fpgen_rm_reg(m68k_state_t *m68k_state, uint16 w2)
 	int src = (w2 >> 10) & 0x7;
 	int dst = (w2 >>  7) & 0x7;
 	int opmode = w2 & 0x7f;
-	floatx80 source;
+	floatx80 source = { 0, 0 };
 
 	// fmovecr #$f, fp0	f200 5c0f
 
