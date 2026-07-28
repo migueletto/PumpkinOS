@@ -1,4 +1,5 @@
 #include "sys.h"
+#include "endianness.h"
 #include "script.h"
 #include "thread.h"
 #include "media.h"
@@ -8,18 +9,13 @@
 #include "rgb.h"
 #include "debug.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define STBI_WRITE_NO_STDIO
-#include "stb_image_write.h"
-
 #define RGB 3
 
 typedef struct {
-  int width, height;
-  int spixel;
+  int fd, encoding, width, height, spixel;
+  int x, y;
+  uint32_t buttons;
   uint8_t *buf;
-  uint8_t *png;
-  uint32_t count;
 } libwnull_window_t;
 
 struct texture_t {
@@ -29,17 +25,79 @@ struct texture_t {
 
 static window_provider_t window_provider;
 
+#define CMD_WINDOW 1
+#define CMD_BUFFER 2
+#define CMD_FINISH 3
+#define CMD_MOTION 4
+#define CMD_BUTTON 5
+
+static int send_window_cmd(libwnull_window_t *window) {
+  uint16_t cmd[4];
+  int r = -1;
+
+  if (window) {
+    cmd[0] = sys_htole16(CMD_WINDOW);
+    cmd[1] = sys_htole16(window->encoding);
+    cmd[2] = sys_htole16(window->width);
+    cmd[3] = sys_htole16(window->height);
+    r = sys_write(window->fd, (uint8_t *)cmd, 8) == 8 ? 0 : -1;
+  }
+
+  return r;
+}
+
+static int send_buffer_cmd(libwnull_window_t *window) {
+  uint16_t cmd;
+  uint32_t len;
+  int r = -1;
+
+  if (window) {
+    cmd = sys_htole16(CMD_BUFFER);
+    if (sys_write(window->fd, (uint8_t *)&cmd, 2) == 2) {
+      len = window->width * window->height * window->spixel;
+      r = sys_write(window->fd, window->buf, len) == len;
+    }
+  }
+
+  return r;
+}
+
+static int send_finish_cmd(libwnull_window_t *window) {
+  uint16_t cmd;
+  int r = -1;
+
+  if (window) {
+    cmd = sys_htole16(CMD_FINISH);
+    if (sys_write(window->fd, (uint8_t *)&cmd, 2) == 2) {
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
 static window_t *libwnull_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   libwnull_window_t *window = NULL;
 
-  if (encoding == ENC_RGB565) {
+  if (encoding == ENC_RGB565 && window_provider.data) {
     if ((window = sys_calloc(1, sizeof(libwnull_window_t))) != NULL) {
-      window->width = *width;
-      window->height = *height;
-      window->spixel = sizeof(uint16_t);
-      if ((window->buf = sys_calloc(window->width * window->height, sizeof(uint16_t))) != NULL) {
-        window->png = sys_calloc(1, window->width * window->height * RGB);
-        debug(DEBUG_INFO, "WNULL", "create encoding=%d size=%dx%d w=%p", encoding, *width, *height, window);
+      if ((window->fd = sys_socket_open_connect((char *)window_provider.data, 65432, IP_STREAM)) != -1) {
+        window->encoding = encoding;
+        window->width = *width;
+        window->height = *height;
+        window->spixel = sizeof(uint16_t);
+        if ((window->buf = sys_calloc(window->width * window->height, window->spixel)) != NULL) {
+          if (send_window_cmd(window) == 0) {
+            debug(DEBUG_INFO, "WNULL", "create encoding=%d size=%dx%d w=%p", encoding, window->width, window->height, window);
+          } else {
+            sys_close(window->fd);
+            sys_free(window);
+            window = NULL;
+          }
+        } else {
+          sys_free(window);
+          window = NULL;
+        }
       } else {
         sys_free(window);
         window = NULL;
@@ -58,8 +116,9 @@ static int libwnull_destroy(window_t *_window) {
   debug(DEBUG_INFO, "WNULL", "destroy w=%p", window);
 
   if (window) {
+    send_finish_cmd(window);
+    if (window->fd > 0) sys_close(window->fd);
     if (window->buf) sys_free(window->buf);
-    if (window->png) sys_free(window->png);
     sys_free(window);
     r = 0;
   }
@@ -67,35 +126,13 @@ static int libwnull_destroy(window_t *_window) {
   return r;
 }
 
-static void window_stbi_write_func(void *context, void *data, int size) {
-  int fd = *(int *)context;
-  sys_write(fd, data, size);
-}
-
 static int libwnull_render(window_t *_window) {
   libwnull_window_t *window = (libwnull_window_t *)_window;
-  char filename[64];
-  uint16_t color;
-  int i, j, k, l, fd, r = -1;
+  int r = -1;
 
   debug(DEBUG_INFO, "WNULL", "render %p", window);
-  if (window && window->png) {
-    for (i = 0, l = 0, k = 0; i < window->height; i++) {
-      for (j = 0; j < window->width; j++) {
-        color = (window->buf[l+1] << 8) | window->buf[l];
-        l += 2;
-        window->png[k++] = r565(color);
-        window->png[k++] = g565(color);
-        window->png[k++] = b565(color);
-      }
-    }
-
-    sys_snprintf(filename, sizeof(filename)-1, "w%05u.png", window->count++);
-    if ((fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-    //if ((fd = sys_socket_open_connect("127.0.0.1", 65432, IP_STREAM)) != -1) {
-      r = !stbi_write_png_to_func(window_stbi_write_func, &fd, window->width, window->height, RGB, window->png, window->width * RGB);
-      sys_close(fd);
-    }
+  if (window) {
+    r = send_buffer_cmd(window);
   }
 
   return r;
@@ -223,16 +260,78 @@ static int libwnull_draw_texture(window_t *window, texture_t *texture, int x, in
   return libwnull_draw_texture_rect(window, texture, 0, 0, texture->width, texture->height, 0, 0);
 }
 
-static void libwnull_status(window_t *window, int *x, int *y, int *buttons) {
-  debug(DEBUG_INFO, "WNULL", "status w=%p x=%p y=%p buttons=%p", window, x, y, buttons);
-  if (x) *x = 0;
-  if (y) *y = 0;
-  if (buttons) *buttons = 0;
+static void libwnull_status(window_t *_window, int *x, int *y, int *buttons) {
+  libwnull_window_t *window = (libwnull_window_t *)_window;
+
+  debug(DEBUG_INFO, "WNULL", "status w=%p x=%d y=%d buttons=%u", window, window->x, window->y, window->buttons);
+  if (x) *x = window->x;
+  if (y) *y = window->y;
+  if (buttons) *buttons = window->buttons;
 }
 
-static int libwnull_event2(window_t *window, int wait, int *arg1, int *arg2) {
-  //debug(DEBUG_INFO, "WNULL", "event2 w=%p wait=%d arg1=%p arg2=%p", window, wait, arg1, arg2);
-  return 0;
+static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
+  libwnull_window_t *window = (libwnull_window_t *)_window;
+  uint16_t cmd, args[2];
+  int nread, r = 0;
+
+  if (window && window->fd > 0) {
+    if ((r = sys_read_timeout(window->fd, (uint8_t *)&cmd, 2, &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread == 2) {
+      cmd = sys_le16toh(cmd);
+      //debug(DEBUG_INFO, "WNULL", "event2 w=%p wait=%d cmd=%u", window, wait, cmd);
+      r = 0;
+
+      switch (cmd) {
+        case CMD_MOTION:
+          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 4, &nread, 0)) == 1 && nread == 4) {
+            window->x = sys_le16toh(args[0]);
+            window->y = sys_le16toh(args[1]);
+            //debug(DEBUG_INFO, "WNULL", "event2 w=%p motion %d,%d", window, window->x, window->y);
+            *arg1 = window->x;
+            *arg2 = window->y;
+            r = WINDOW_MOTION;
+          } else {
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid argument size %u for CMD_MOTION", window, nread);
+          }
+          break;
+        case CMD_BUTTON:
+          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+            args[0] = sys_le16toh(args[0]);
+            *arg1 = args[0] & 0x0F;
+            if (args[0] & 0x8000) {
+              window->buttons |= *arg1;
+              //debug(DEBUG_INFO, "WNULL", "event2 w=%p button %d down", window, *arg1);
+              r = WINDOW_BUTTONDOWN;
+            } else {
+              window->buttons &= !(*arg1);
+              //debug(DEBUG_INFO, "WNULL", "event2 w=%p button %d up", window, *arg1);
+              r = WINDOW_BUTTONUP;
+            }
+          } else {
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid argument size %u for CMD_BUTTON", window, nread);
+          }
+          break;
+        default:
+          debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid cmd %u", window, cmd);
+          break;
+      }
+    }
+  }
+
+  return r;
+}
+
+static int libwnull_setup(int pe) {
+  char *host = NULL;
+  int r = -1;
+
+  if (script_get_string(pe, 0, &host) == 0) {
+    window_provider.data = sys_strdup(host);
+    r = 0;
+  }
+
+  if (host) sys_free(host);
+
+  return r;
 }
 
 int libwnull_load(void) {
@@ -255,6 +354,8 @@ int libwnull_load(void) {
 int libwnull_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "WNULL", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &window_provider);
+
+  script_add_function(pe, obj, "setup",  libwnull_setup);
 
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
