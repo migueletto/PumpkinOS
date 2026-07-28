@@ -101,8 +101,7 @@ SOEXT=.so
 LUAPLAT=linux
 OS=Linux
 OSDEFS=$(MBITS) -DLINUX $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
-#CC=gcc
-CC=filcc
+CC=gcc
 FC=gfortran
 
 else ifeq ($(OSNAME),filc)
@@ -113,7 +112,7 @@ LUAPLAT=linux
 OS=Linux
 OSDEFS=$(MBITS) -DLINUX $(RPI_DEFS) -DSOEXT=\"$(SOEXT)\"
 CC=filcc
-WARN_FLAGS=-Wno-typedef-redefinition -Wno-pragma-pack -DFILC
+WARN_FLAGS=-Wno-typedef-redefinition -DFILC -O2
 
 else ifeq ($(OSNAME),Msys)
 SYS_OS=2
