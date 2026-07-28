@@ -12,10 +12,13 @@
 #define STBI_WRITE_NO_STDIO
 #include "stb_image_write.h"
 
+#define RGB 3
+
 typedef struct {
   int width, height;
   int spixel;
   uint8_t *buf;
+  uint8_t *png;
   uint32_t count;
 } libwnull_window_t;
 
@@ -35,6 +38,7 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
       window->height = *height;
       window->spixel = sizeof(uint16_t);
       if ((window->buf = sys_calloc(window->width * window->height, sizeof(uint16_t))) != NULL) {
+        window->png = sys_calloc(1, window->width * window->height * RGB);
         debug(DEBUG_INFO, "WNULL", "create encoding=%d size=%dx%d w=%p", encoding, *width, *height, window);
       } else {
         sys_free(window);
@@ -55,6 +59,7 @@ static int libwnull_destroy(window_t *_window) {
 
   if (window) {
     if (window->buf) sys_free(window->buf);
+    if (window->png) sys_free(window->png);
     sys_free(window);
     r = 0;
   }
@@ -71,29 +76,26 @@ static int libwnull_render(window_t *_window) {
   libwnull_window_t *window = (libwnull_window_t *)_window;
   char filename[64];
   uint16_t color;
-  uint8_t *buf;
-  int i, j, k, l, fd, ocomp = 3, r = -1;
+  int i, j, k, l, fd, r = -1;
 
   debug(DEBUG_INFO, "WNULL", "render %p", window);
-  if (window) {
-    buf = sys_calloc(1, window->width * window->height * ocomp);
-
+  if (window && window->png) {
     for (i = 0, l = 0, k = 0; i < window->height; i++) {
       for (j = 0; j < window->width; j++) {
         color = (window->buf[l+1] << 8) | window->buf[l];
         l += 2;
-        buf[k++] = r565(color);
-        buf[k++] = g565(color);
-        buf[k++] = b565(color);
+        window->png[k++] = r565(color);
+        window->png[k++] = g565(color);
+        window->png[k++] = b565(color);
       }
     }
 
     sys_snprintf(filename, sizeof(filename)-1, "w%05u.png", window->count++);
-    fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644);
-    r = !stbi_write_png_to_func(window_stbi_write_func, &fd, window->width, window->height, ocomp, buf, window->width * ocomp);
-    sys_close(fd);
-
-    sys_free(buf);
+    if ((fd = sys_create(filename, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
+    //if ((fd = sys_socket_open_connect("127.0.0.1", 65432, IP_STREAM)) != -1) {
+      r = !stbi_write_png_to_func(window_stbi_write_func, &fd, window->width, window->height, RGB, window->png, window->width * RGB);
+      sys_close(fd);
+    }
   }
 
   return r;
