@@ -51,6 +51,7 @@ int debug_init(char *filename) {
 }
 
 int debug_close(void) {
+  inited = 0;
 #if !defined(KERNEL)
   if (fd && fd != stderr && fd != stdout) {
     fclose(fd);
