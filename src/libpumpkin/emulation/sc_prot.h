@@ -1,4 +1,5 @@
 
+extern void palmos_SysSysTrap(uint32_t sp, uint16_t idx, uint32_t trap);
 extern void palmos_PceSysTrap(uint32_t sp, uint16_t idx, uint32_t trap);
 extern void palmos_HwrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap);
 extern void palmos_HostSysTrap(uint32_t sp, uint16_t idx, uint32_t trap);
