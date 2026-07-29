@@ -27,12 +27,12 @@ struct texture_t {
 static window_provider_t window_provider;
 
 #define CMD_WINDOW  1
-#define CMD_BUFFER  2
-#define CMD_FINISH  3
-#define CMD_MOTION  4
-#define CMD_BUTTON  5
-#define CMD_KEYDOWN 6
-#define CMD_KEYUP   7
+#define CMD_FINISH  2
+#define CMD_MOTION  3
+#define CMD_BUTTON  4
+#define CMD_KEYDOWN 5
+#define CMD_KEYUP   6
+#define CMD_DRAW    7
 
 static int send_window_cmd(libwnull_window_t *window) {
   uint16_t cmd[4];
@@ -49,17 +49,17 @@ static int send_window_cmd(libwnull_window_t *window) {
   return r;
 }
 
-static int send_buffer_cmd(libwnull_window_t *window) {
-  uint16_t cmd;
-  uint32_t len;
+static int send_draw_cmd(libwnull_window_t *window, int x, int y, int w, int h) {
+  uint16_t cmd[5];
   int r = -1;
 
   if (window) {
-    cmd = sys_htole16(CMD_BUFFER);
-    if (sys_write(window->fd, (uint8_t *)&cmd, 2) == 2) {
-      len = window->width * window->height * window->spixel;
-      r = sys_write(window->fd, window->buf, len) == len;
-    }
+    cmd[0] = sys_htole16(CMD_DRAW);
+    cmd[1] = sys_htole16(x);
+    cmd[2] = sys_htole16(y);
+    cmd[3] = sys_htole16(w);
+    cmd[4] = sys_htole16(h);
+    r = sys_write(window->fd, (uint8_t *)cmd, 10) == 10 ? 0 : -1;
   }
 
   return r;
@@ -130,15 +130,7 @@ static int libwnull_destroy(window_t *_window) {
 }
 
 static int libwnull_render(window_t *_window) {
-  libwnull_window_t *window = (libwnull_window_t *)_window;
-  int r = -1;
-
-  debug(DEBUG_INFO, "WNULL", "render %p", window);
-  if (window) {
-    r = send_buffer_cmd(window);
-  }
-
-  return r;
+  return 0;
 }
 
 static texture_t *libwnull_create_texture(window_t *_window, int width, int height) {
@@ -245,15 +237,19 @@ static int libwnull_draw_texture_rect(window_t *_window, texture_t *texture, int
       spitch = texture->width * window->spixel;
       dpitch = window->width * window->spixel;
       len = w * window->spixel;
+      send_draw_cmd(window, x, y, w, h);
       for (i = 0; i < h; i++) {
         sys_memcpy(d, s, len);
+        sys_write(window->fd, (uint8_t *)d, len);
         s += spitch;
         d += dpitch;
       }
       r = 0;
     } else {
-      debug(DEBUG_ERROR, "WNULL", "invalid libwnull %d,%d %dx%d %d,%d", tx, ty, w, h, x, y);
+      debug(DEBUG_ERROR, "WNULL", "invalid libwnull w/d %d,%d %dx%d %d,%d", tx, ty, w, h, x, y);
     }
+  } else {
+    debug(DEBUG_ERROR, "WNULL", "invalid libwnull %d,%d %dx%d %d,%d", tx, ty, w, h, x, y);
   }
 
   return r;
