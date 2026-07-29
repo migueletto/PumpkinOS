@@ -13,7 +13,7 @@
 #define MAX_PS_THREADS 256
 
 struct thread_key_t {
-  pthread_key_t key;
+  pthread_key_t *key;
 };
 
 typedef struct {
@@ -59,24 +59,26 @@ static void dummy_destructor(void *value) {
 thread_key_t *thread_key(void) {
   struct thread_key_t *key = sys_malloc(sizeof(struct thread_key_t));
   if (key) {
-    pthread_key_create(&key->key, dummy_destructor);
+    key->key = sys_malloc(sizeof(pthread_key_t));
+    pthread_key_create(key->key, dummy_destructor);
   }
   return key;
 }
 
 void thread_key_delete(thread_key_t *key) {
   if (key) {
-    pthread_key_delete(key->key);
+    pthread_key_delete(*key->key);
+    sys_free(key->key);
     sys_free(key);
   }
 }
 
 void thread_set(thread_key_t *key, void *value) {
-  pthread_setspecific(key->key, value);
+  pthread_setspecific(*key->key, value);
 }
 
 void *thread_get(thread_key_t *key) {
-  return pthread_getspecific(key->key);
+  return key && key->key ? pthread_getspecific(*key->key) : NULL;
 }
 
 static int thread_create(void *(*action)(void *), void *arg) {
