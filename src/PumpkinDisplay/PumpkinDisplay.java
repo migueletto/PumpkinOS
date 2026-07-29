@@ -19,7 +19,6 @@ import java.nio.ByteOrder;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 public class PumpkinDisplay extends JComponent {
 	private static final long serialVersionUID = 1L;
@@ -65,75 +64,36 @@ public class PumpkinDisplay extends JComponent {
 		addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {
-				int x = e.getX();
-				int y = e.getY();
-				//System.out.println("Motion " + x + ", " + y);
+				mouseMotion(e, clientSocket);
+			}
 
-				if (clientSocket != null && !clientSocket.isClosed()) {
-					short[] cmd = new short[3];
-					cmd[0] = CMD_MOTION;
-					cmd[1] = (short)x;
-					cmd[2] = (short)y;
-					sendCmdArgs(clientSocket, cmd);
-				}
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				mouseMotion(e, clientSocket);
 			}
 		});
 
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				int button = e.getButton();
-				System.out.println("Button " + button + " pressed");
-
-				if (clientSocket != null && (button == MouseEvent.BUTTON1 || button == MouseEvent.BUTTON3)) {
-					short[] cmd = new short[2];
-					cmd[0] = CMD_BUTTON;
-					cmd[1] = (short)((button == MouseEvent.BUTTON1 ? 1 : 2) | 0x8000);
-					sendCmdArgs(clientSocket, cmd);
-				}
+				mouseClick(e, true, clientSocket);
 			}
-		});
 
-		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				int button = e.getButton();
-				System.out.println("Button " + button + " released");
-
-				if (clientSocket != null && (button == MouseEvent.BUTTON1 || button == MouseEvent.BUTTON3)) {
-					short[] cmd = new short[2];
-					cmd[0] = CMD_BUTTON;
-					cmd[1] = (short)(button == MouseEvent.BUTTON1 ? 1 : 2);
-					sendCmdArgs(clientSocket, cmd);
-				}
+				mouseClick(e, false, clientSocket);
 			}
 		});
 
 		addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
-				if (clientSocket != null) {
-					short[] cmd = new short[2];
-					cmd[0] = CMD_KEYDOWN;
-					cmd[1] = (short)(mapKey(e.getKeyCode(), e.getKeyChar()));
-					if (cmd[1] > 0) {
-						//System.out.println("key down " + cmd[1]);
-						sendCmdArgs(clientSocket, cmd);
-					}
-				}
+				keyboardClick(e, true, clientSocket);
 			}
 
 			@Override
 			public void keyReleased(KeyEvent e) {
-				if (clientSocket != null) {
-					short[] cmd = new short[2];
-					cmd[0] = CMD_KEYUP;
-					cmd[1] = (short)(mapKey(e.getKeyCode(), e.getKeyChar()));
-					if (cmd[1] > 0) {
-						//System.out.println("key up   " + cmd[1]);
-						sendCmdArgs(clientSocket, cmd);
-					}
-				}
+				keyboardClick(e, false, clientSocket);
 			}
 		});
 
@@ -144,6 +104,39 @@ public class PumpkinDisplay extends JComponent {
 			}
 		});
 		thread.start();
+	}
+
+	private void mouseMotion(MouseEvent e, Socket socket) {
+		if (socket != null && !socket.isClosed()) {
+			short[] cmd = new short[3];
+			cmd[0] = CMD_MOTION;
+			cmd[1] = (short)e.getX();
+			cmd[2] = (short)e.getY();
+			sendCmdArgs(socket, cmd);
+		}
+	}
+
+	private void mouseClick(MouseEvent e, boolean down, Socket socket) {
+		int button = e.getButton();
+
+		if (clientSocket != null && (button == MouseEvent.BUTTON1 || button == MouseEvent.BUTTON3)) {
+			short[] cmd = new short[2];
+			cmd[0] = CMD_BUTTON;
+			cmd[1] = (short)(button == MouseEvent.BUTTON1 ? 1 : 2);
+			if (down) cmd[1] |= 0x8000;
+			sendCmdArgs(clientSocket, cmd);
+		}
+	}
+
+	private void keyboardClick(KeyEvent e, boolean down, Socket socket) {
+		if (clientSocket != null) {
+			short[] cmd = new short[2];
+			cmd[0] = (short)(down ? CMD_KEYDOWN : CMD_KEYUP);
+			cmd[1] = (short)(mapKey(e.getKeyCode(), e.getKeyChar()));
+			if (cmd[1] > 0) {
+				sendCmdArgs(clientSocket, cmd);
+			}
+		}
 	}
 
 	private void sendCmdArgs(Socket socket, short[] cmd) {
@@ -191,14 +184,6 @@ public class PumpkinDisplay extends JComponent {
 	}
 
 	private static void createFrame() throws ClassNotFoundException {
-/*
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception ex) {
-		}
-
-		JFrame.setDefaultLookAndFeelDecorated(true);
-*/
 		JFrame frame = new JFrame("PumpkinOS");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(false);
