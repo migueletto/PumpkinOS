@@ -13,8 +13,9 @@
 
 typedef struct {
   int fd, encoding, width, height, spixel;
-  int x, y;
+  int x, y, last_key;
   uint32_t buttons;
+  uint64_t last_timestamp;
   uint8_t *buf;
 } libwnull_window_t;
 
@@ -25,11 +26,13 @@ struct texture_t {
 
 static window_provider_t window_provider;
 
-#define CMD_WINDOW 1
-#define CMD_BUFFER 2
-#define CMD_FINISH 3
-#define CMD_MOTION 4
-#define CMD_BUTTON 5
+#define CMD_WINDOW  1
+#define CMD_BUFFER  2
+#define CMD_FINISH  3
+#define CMD_MOTION  4
+#define CMD_BUTTON  5
+#define CMD_KEYDOWN 6
+#define CMD_KEYUP   7
 
 static int send_window_cmd(libwnull_window_t *window) {
   uint16_t cmd[4];
@@ -272,6 +275,7 @@ static void libwnull_status(window_t *_window, int *x, int *y, int *buttons) {
 static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   libwnull_window_t *window = (libwnull_window_t *)_window;
   uint16_t cmd, args[2];
+  uint64_t timestamp;
   int nread, r = 0;
 
   if (window && window->fd > 0) {
@@ -308,6 +312,29 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
             }
           } else {
             debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid argument size %u for CMD_BUTTON", window, nread);
+          }
+          break;
+        case CMD_KEYDOWN:
+          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+            timestamp = sys_get_clock();
+            args[0] = sys_le16toh(args[0]);
+            *arg1 = args[0];
+            debug(DEBUG_INFO, "WNULL", "event2 w=%p key %d down", window, *arg1);
+            // try to avoid multiple key press events when holding down a key
+            if (*arg1 != window->last_key || timestamp - window->last_timestamp > 200000) {
+              if (*arg1) r = WINDOW_KEYDOWN;
+              window->last_timestamp = timestamp;
+              window->last_key = *arg1;
+            }
+          }
+          break;
+        case CMD_KEYUP:
+          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+            args[0] = sys_le16toh(args[0]);
+            *arg1 = args[0];
+            debug(DEBUG_INFO, "WNULL", "event2 w=%p key %d up", window, *arg1);
+            if (*arg1) r = WINDOW_KEYUP;
+            window->last_timestamp = 0;
           }
           break;
         default:
