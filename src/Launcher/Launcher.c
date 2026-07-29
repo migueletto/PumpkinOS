@@ -2812,7 +2812,7 @@ static void EventLoop(launcher_data_t *data) {
 }
 
 static Err LauncherNotificationHandler(SysNotifyParamType *notifyParamsP) {
-  launcher_data_t *data = (launcher_data_t *)notifyParamsP->userDataP;
+  launcher_data_t *data = pumpkin_get_data();
   SysNotifyDBCreatedType *dbCreated;
   SysNotifyDBDeletedType *dbDeleted;
   SysNotifyAppLaunchOrQuitType *launch;
