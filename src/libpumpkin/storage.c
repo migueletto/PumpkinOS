@@ -116,60 +116,55 @@ typedef struct {
   UInt16 fontSize;
 } storage_t;
 
+typedef struct {
+  storage_handle_t *h;
+  uint8_t buffer[0];
+} storage_ptr_t;
+
 static void StoDecodeResource(storage_handle_t *res, Boolean decoded);
 
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
-  void **q;
+  storage_ptr_t *sp;
   char st[8];
-  UInt8 *p = NULL;
-
-  if ((q = pumpkin_heap_alloc(sizeof(storage_handle_t *) + size, "HandlePtr")) != NULL) {
+  UInt8 *p = NULL; 
+        
+  if ((sp = pumpkin_heap_alloc(sizeof(storage_ptr_t) + size, "HandlePtr")) != NULL) {
     if (type) {
       pumpkin_id2s(type, st);
-      debug(DEBUG_TRACE, "Heap", "RSRC %p %p %s %d", h, q, st, id);
+      debug(DEBUG_TRACE, "Heap", "RSRC %p %p %s %d", h, sp, st, id);
     }
-    q[0] = h;
-    p = (UInt8 *)&q[1];
-  }
+    sp->h = h;
+    p = sp->buffer;
+  } 
 
   return p;
 }
 
 static void *StoPtrRealloc(storage_handle_t *h, void *p, UInt32 size) {
-  void **q;
+  storage_ptr_t *sp, *sp2;
 
   if (p) {
-    q = (void **)p;
-    p = &q[-1];
+    sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
 
-    if ((q = pumpkin_heap_realloc(p, sizeof(storage_handle_t *) + size, "HandlePtr")) != NULL) {
-      q[0] = h;
-      p = (UInt8 *)&q[1];
+    if ((sp2 = pumpkin_heap_realloc(sp, sizeof(storage_ptr_t) + size, "HandlePtr")) != NULL) {
+      sp = sp2;
+      sp->h = h;
+      p = sp->buffer;
     }
   }
 
   return p;
 }
 
-static void StoPtrFree(void *p) {
-  void **q;
-
-  if (p) {
-    q = (void **)p;
-    p = &q[-1];
-    pumpkin_heap_free(p, "HandlePtr");
-  }
-}
-
 static storage_handle_t *StoPtrRecoverHandle(void *p) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h = NULL;
-  void **q;
+  storage_ptr_t *sp;
 
   if (p) {
     if ((uint8_t *)p >= sto->base && (uint8_t *)p < sto->end) {
-      q = (void **)p;
-      h = (storage_handle_t *)q[-1];
+      sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
+      h = sp->h;
       if ((uint8_t *)h >= sto->base && (uint8_t *)h < sto->end) {
         if (h->magic != STO_MAGIC) {
           debug(DEBUG_ERROR, "STOR", "StoPtrRecoverHandle invalid handle magic 0x%08X for handle %p pointer %p", h->magic, h, p);
@@ -185,6 +180,15 @@ static storage_handle_t *StoPtrRecoverHandle(void *p) {
   }
 
   return h;
+}
+
+static void StoPtrFree(void *p) {
+  storage_ptr_t *sp;
+
+  if (p) {
+    sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
+    pumpkin_heap_free(sp, "HandlePtr");
+  }
 }
 
 static void StoEscapeName(uint8_t *src, char *dst, int n) {

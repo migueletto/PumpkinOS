@@ -1104,7 +1104,15 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
     if (checkAddr) {
       base = (uint8_t *)pumpkin_heap_base();
       end = base + pumpkin_heap_size();
+#if defined(FILC)
+      // XXX ugly hack: somes 68k apps do pointer arithmetic with bitmap pointers, making the resulting
+      // address not aligned to 8 bytes and hence not suitable for fil-c strict aligment requirements.
+      // MemPtrSize() will panic under fil-c if bitmapP is not aligned to 8 bytes.
+      uint64_t addr = (uint64_t)bitmapP;
+      size = (addr & 0x7) == 0 ? MemPtrSize(bitmapP) : 0;
+#else
       size = MemPtrSize(bitmapP);
+#endif
     } else {
       size = 0;
     }
