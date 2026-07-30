@@ -53,7 +53,7 @@ void palmos_DmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapDmSearchResource: {
       // UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP)
       uint32_t type = ARG32;
-      uint32_t resID = ARG16;
+      uint16_t resID = ARG16;
       uint32_t ih = ARG32;
       uint32_t dbPP = ARG32;
       MemHandle h = emupalmos_trap_in(ih, trap, 2);

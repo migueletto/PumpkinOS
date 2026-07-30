@@ -1099,7 +1099,7 @@ static uint32_t tos_gemdos_systrap(void) {
     case 260: { // int32_t Fcntl(int16_t fh, int32_t arg, int16_t cmd)
         int16_t fh = ARG16;
         uint32_t arg = ARG32;
-        int32_t cmd = ARG16;
+        int16_t cmd = ARG16;
         int32_t res = -1;
         switch (cmd) {
           case 0x5406: // TIOCGPGRP: returns via the parameter arg a pointer to the process group ID of the terminal

@@ -45,7 +45,7 @@ void palmos_SndSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapSndPlaySmfResource: {
       //Err SndPlaySmfResource(UInt32 resType, Int16 resID, SystemPreferencesChoice volumeSelector)
       uint32_t resType = ARG32;
-      int16_t resID = ARG32;
+      int16_t resID = ARG16;
       uint8_t volumeSelector = ARG8;
       Err res = SndPlaySmfResource(resType, resID, volumeSelector);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndPlaySmfResource(0x%08X, %d, %d): %d", resType, resID, volumeSelector, res);

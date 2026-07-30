@@ -74,7 +74,7 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       // UInt16 TxtSetNextChar(Char *ioText, UInt32 inOffset, WChar inChar)
       uint32_t ioTextP = ARG32;
       uint32_t inOffset = ARG32;
-      uint32_t inChar = ARG16;
+      uint16_t inChar = ARG16;
       char *ioText = emupalmos_trap_sel_in(ioTextP, sysTrapIntlDispatch, sel, 0);
       UInt16 res = TxtSetNextChar(ioText, inOffset, inChar);
       debug(DEBUG_TRACE, "EmuPalmOS", "TxtSetNextChar(0x%08X \"%s\", %u, %u): %d", ioTextP, ioText, inOffset, inChar, res);

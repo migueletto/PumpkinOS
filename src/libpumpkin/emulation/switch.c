@@ -259,7 +259,7 @@ case sysTrapSysNotifyRegister: {
   uint32_t dbID = ARG32;
   uint32_t notifyType = ARG32;
   uint32_t callbackP = ARG32;
-  int32_t priority = ARG8;
+  int8_t priority = ARG8;
   uint32_t userDataP = ARG32;
   SysNotifyProcPtr callback = emupalmos_trap_in(callbackP, trap, 3);
   void *userData = emupalmos_trap_in(userDataP, trap, 5);
@@ -273,7 +273,7 @@ case sysTrapSysNotifyUnregister: {
   uint16_t cardNo = ARG16;
   uint32_t dbID = ARG32;
   uint32_t notifyType = ARG32;
-  int32_t priority = ARG8;
+  int8_t priority = ARG8;
   Err res = SysNotifyUnregister(cardNo, dbID, notifyType, priority);
   debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyUnregister(%d, 0x%08X, 0x%08X, %u): %d", cardNo, dbID, notifyType, priority, res);
   m68k_set_reg(M68K_REG_D0, res);
@@ -354,7 +354,7 @@ case sysTrapAttnListOpen: {
 break;
 case sysTrapAttnIndicatorEnable: {
   // void AttnIndicatorEnable(Boolean enableIt)
-  uint16_t enableIt = ARG8;
+  uint8_t enableIt = ARG8;
   AttnIndicatorEnable(enableIt);
   debug(DEBUG_TRACE, "EmuPalmOS", "AttnIndicatorEnable(%d)", enableIt);
 }
@@ -1270,7 +1270,7 @@ break;
 case sysTrapDmSearchResource: {
   // UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP)
   uint32_t type = ARG32;
-  uint32_t resID = ARG16;
+  uint16_t resID = ARG16;
   uint32_t ih = ARG32;
   uint32_t dbPP = ARG32;
   MemHandle h = emupalmos_trap_in(ih, trap, 2);
@@ -2521,7 +2521,7 @@ case sysTrapEvtFlushPenQueue: {
 break;
 case sysTrapEvtSetNullEventTick: {
   // Boolean EvtSetNullEventTick(UInt32 tick)
-  UInt32 tick = ARG32;
+  uint32_t tick = ARG32;
   Boolean res = EvtSetNullEventTick(tick);
   debug(DEBUG_TRACE, "EmuPalmOS", "EvtSetNullEventTick(%u): %d", tick, res);
   m68k_set_reg(M68K_REG_D0, res);
@@ -2691,7 +2691,7 @@ break;
 case sysTrapSndPlaySmfResource: {
   //Err SndPlaySmfResource(UInt32 resType, Int16 resID, SystemPreferencesChoice volumeSelector)
   uint32_t resType = ARG32;
-  int16_t resID = ARG32;
+  int16_t resID = ARG16;
   uint8_t volumeSelector = ARG8;
   Err res = SndPlaySmfResource(resType, resID, volumeSelector);
   debug(DEBUG_TRACE, "EmuPalmOS", "SndPlaySmfResource(0x%08X, %d, %d): %d", resType, resID, volumeSelector, res);

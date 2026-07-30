@@ -159,7 +159,7 @@ void palmos_EvtSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     break;
     case sysTrapEvtSetNullEventTick: {
       // Boolean EvtSetNullEventTick(UInt32 tick)
-      UInt32 tick = ARG32;
+      uint32_t tick = ARG32;
       Boolean res = EvtSetNullEventTick(tick);
       debug(DEBUG_TRACE, "EmuPalmOS", "EvtSetNullEventTick(%u): %d", tick, res);
       m68k_set_reg(M68K_REG_D0, res);

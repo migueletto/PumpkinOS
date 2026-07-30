@@ -328,7 +328,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t dbID = ARG32;
       uint32_t notifyType = ARG32;
       uint32_t callbackP = ARG32;
-      int32_t priority = ARG8;
+      int8_t priority = ARG8;
       uint32_t userDataP = ARG32;
       SysNotifyProcPtr callback = emupalmos_trap_in(callbackP, trap, 3);
       void *userData = emupalmos_trap_in(userDataP, trap, 5);
@@ -342,7 +342,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t cardNo = ARG16;
       uint32_t dbID = ARG32;
       uint32_t notifyType = ARG32;
-      int32_t priority = ARG8;
+      int8_t priority = ARG8;
       Err res = SysNotifyUnregister(cardNo, dbID, notifyType, priority);
       debug(DEBUG_TRACE, "EmuPalmOS", "SysNotifyUnregister(%d, 0x%08X, 0x%08X, %u): %d", cardNo, dbID, notifyType, priority, res);
       m68k_set_reg(M68K_REG_D0, res);

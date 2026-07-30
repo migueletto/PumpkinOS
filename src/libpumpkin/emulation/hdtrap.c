@@ -247,15 +247,15 @@ void palmos_highdensitytrap(uint32_t sp, uint16_t idx, uint32_t sel) {
 
     case HDSelectorWinSetScalingMode: {
       // UInt32 WinSetScalingMode(UInt32 mode)
-      UInt32 mode = ARG32;
-      UInt32 res = WinSetScalingMode(mode);
+      uint32_t mode = ARG32;
+      uint32_t res = WinSetScalingMode(mode);
       m68k_set_reg(M68K_REG_D0, res);
     }
     break;
 
     case HDSelectorWinGetScalingMode: {
       // UInt32 WinGetScalingMode(void)
-      UInt32 res = WinGetScalingMode();
+      uint32_t res = WinGetScalingMode();
       m68k_set_reg(M68K_REG_D0, res);
     }
     break;

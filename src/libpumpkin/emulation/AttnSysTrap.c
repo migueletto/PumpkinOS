@@ -30,7 +30,7 @@ void palmos_AttnSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     break;
     case sysTrapAttnIndicatorEnable: {
       // void AttnIndicatorEnable(Boolean enableIt)
-      uint16_t enableIt = ARG8;
+      uint8_t enableIt = ARG8;
       AttnIndicatorEnable(enableIt);
       debug(DEBUG_TRACE, "EmuPalmOS", "AttnIndicatorEnable(%d)", enableIt);
     }
