@@ -92,7 +92,13 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
 
       if (window_provider.data) {
         // working as a client
+        debug(DEBUG_INFO, "WNULL", "connecting to server %s ...", (char *)window_provider.data);
         window->fd = sys_socket_open_connect((char *)window_provider.data, PORT, IP_STREAM);
+        if (window->fd > 0) {
+          debug(DEBUG_INFO, "WNULL", "server connected");
+        } else {
+          debug(DEBUG_ERROR, "WNULL", "error connecting to server");
+        }
       } else {
         // working as a server
         window->fd = -1;
@@ -107,6 +113,8 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
           } else if (window->fd == 0) {
             debug(DEBUG_INFO, "WNULL", "no client did connect");
             window->fd = -1;
+          } else {
+            debug(DEBUG_ERROR, "WNULL", "error waiting for client");
           }
           sys_close(fd);
         }
@@ -144,7 +152,7 @@ static int libwnull_destroy(window_t *_window) {
   int r = -1;
 
   window = (libwnull_window_t *)_window;
-  debug(DEBUG_INFO, "WNULL", "destroy w=%p", window);
+  debug(DEBUG_TRACE, "WNULL", "destroy w=%p", window);
 
   if (window) {
     send_finish_cmd(window);
@@ -172,7 +180,7 @@ static texture_t *libwnull_create_texture(window_t *_window, int width, int heig
       texture->width = width;
       texture->height = height;
       if ((texture->buf = sys_calloc(texture->width * texture->height, window->spixel)) != NULL) {
-        debug(DEBUG_INFO, "WNULL", "create_texture size=%dx%d t=%p", width, height, texture);
+        debug(DEBUG_TRACE, "WNULL", "create_texture size=%dx%d t=%p", width, height, texture);
       } else {
         sys_free(texture);
         texture = NULL;
@@ -190,7 +198,7 @@ static int libwnull_destroy_texture(window_t *_window, texture_t *texture) {
   window = (libwnull_window_t *)_window;
 
   if (window && texture) {
-    debug(DEBUG_INFO, "WNULL", "destroy_texture t=%p", texture);
+    debug(DEBUG_TRACE, "WNULL", "destroy_texture t=%p", texture);
     if (texture->buf) sys_free(texture->buf);
     sys_free(texture);
   }
@@ -203,7 +211,7 @@ static int libwnull_update_texture_rect(window_t *_window, texture_t *texture, u
   uint8_t *s, *d;
   int pitch, len, i, r = -1;
 
-  debug(DEBUG_INFO, "WNULL", "update_texture_rect t=%p src=%p tpos=%d,%d tsize=%d,%d", texture, src, tx, ty, w, h);
+  debug(DEBUG_TRACE, "WNULL", "update_texture_rect t=%p src=%p tpos=%d,%d tsize=%d,%d", texture, src, tx, ty, w, h);
   if (_window && texture && src && w > 0 && h > 0 && tx >= 0 && ty >= 0 && (tx+w) <= texture->width && (ty+h) <= texture->height) {
     window = (libwnull_window_t *)_window;
     s = &src[(ty * texture->width + tx) * window->spixel];
@@ -222,7 +230,7 @@ static int libwnull_update_texture_rect(window_t *_window, texture_t *texture, u
 }
 
 static int libwnull_update_texture(window_t *window, texture_t *texture, uint8_t *raw) {
-  debug(DEBUG_INFO, "WNULL", "update_texture t=%p raw=%p", texture, raw);
+  debug(DEBUG_TRACE, "WNULL", "update_texture t=%p raw=%p", texture, raw);
   if (texture) {
     sys_memcpy(texture->buf, raw, texture->width * texture->height * sizeof(uint16_t));
   }
@@ -235,7 +243,7 @@ static int libwnull_draw_texture_rect(window_t *_window, texture_t *texture, int
   uint8_t *s, *d;
   int spitch, dpitch, len, i, r = -1;
 
-  debug(DEBUG_INFO, "WNULL", "draw_texture_rect t=%p tpos=%d,%d tsize=%d,%d pos=%d,%d", texture, tx, ty, w, h, x, y);
+  debug(DEBUG_TRACE, "WNULL", "draw_texture_rect t=%p tpos=%d,%d tsize=%d,%d pos=%d,%d", texture, tx, ty, w, h, x, y);
   if (window && texture && w > 0 && h > 0 && tx >= 0 && ty >= 0 && tx+w <= texture->width && ty+h <= texture->height &&
       x < window->width && y < window->height && x+w > 0 && y+h > 0) {
 
@@ -290,7 +298,7 @@ static int libwnull_draw_texture(window_t *window, texture_t *texture, int x, in
 static void libwnull_status(window_t *_window, int *x, int *y, int *buttons) {
   libwnull_window_t *window = (libwnull_window_t *)_window;
 
-  debug(DEBUG_INFO, "WNULL", "status w=%p x=%d y=%d buttons=%u", window, window->x, window->y, window->buttons);
+  debug(DEBUG_TRACE, "WNULL", "status w=%p x=%d y=%d buttons=%u", window, window->x, window->y, window->buttons);
   if (x) *x = window->x;
   if (y) *y = window->y;
   if (buttons) *buttons = window->buttons;
@@ -305,7 +313,6 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   if (window && window->fd > 0) {
     if ((r = sys_read_timeout(window->fd, (uint8_t *)&cmd, 2, &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread == 2) {
       cmd = sys_le16toh(cmd);
-      //debug(DEBUG_INFO, "WNULL", "event2 w=%p wait=%d cmd=%u", window, wait, cmd);
       r = 0;
 
       switch (cmd) {
@@ -313,7 +320,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
           if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 4, &nread, 0)) == 1 && nread == 4) {
             window->x = sys_le16toh(args[0]);
             window->y = sys_le16toh(args[1]);
-            //debug(DEBUG_INFO, "WNULL", "event2 w=%p motion %d,%d", window, window->x, window->y);
+            debug(DEBUG_TRACE, "WNULL", "event2 w=%p motion %d,%d", window, window->x, window->y);
             *arg1 = window->x;
             *arg2 = window->y;
             r = WINDOW_MOTION;
@@ -327,11 +334,11 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
             *arg1 = args[0] & 0x0F;
             if (args[0] & 0x8000) {
               window->buttons |= *arg1;
-              //debug(DEBUG_INFO, "WNULL", "event2 w=%p button %d down", window, *arg1);
+              debug(DEBUG_TRACE, "WNULL", "event2 w=%p button %d down", window, *arg1);
               r = WINDOW_BUTTONDOWN;
             } else {
               window->buttons &= !(*arg1);
-              //debug(DEBUG_INFO, "WNULL", "event2 w=%p button %d up", window, *arg1);
+              debug(DEBUG_TRACE, "WNULL", "event2 w=%p button %d up", window, *arg1);
               r = WINDOW_BUTTONUP;
             }
           } else {
@@ -343,7 +350,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
             timestamp = sys_get_clock();
             args[0] = sys_le16toh(args[0]);
             *arg1 = args[0];
-            debug(DEBUG_INFO, "WNULL", "event2 w=%p key %d down", window, *arg1);
+            debug(DEBUG_TRACE, "WNULL", "event2 w=%p key %d down", window, *arg1);
             // try to avoid multiple key press events when holding down a key
             if (*arg1 != window->last_key || timestamp - window->last_timestamp > 200000) {
               if (*arg1) r = WINDOW_KEYDOWN;
@@ -356,7 +363,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
           if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
             args[0] = sys_le16toh(args[0]);
             *arg1 = args[0];
-            debug(DEBUG_INFO, "WNULL", "event2 w=%p key %d up", window, *arg1);
+            debug(DEBUG_TRACE, "WNULL", "event2 w=%p key %d up", window, *arg1);
             if (*arg1) r = WINDOW_KEYUP;
             window->last_timestamp = 0;
           }
