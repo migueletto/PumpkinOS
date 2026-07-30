@@ -21,6 +21,7 @@
 *.pdb
 *.log
 *.pyc
+*.class
 *.mod
 *.fo
 *_serde.h
