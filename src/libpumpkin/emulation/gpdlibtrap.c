@@ -36,7 +36,7 @@ void palmos_gpdlibtrap(uint16_t trap) {
     case sysLibTrapClose: {
       // Err GPDClose(UInt16 uRefNum, UInt32 *dwRefCountP)
       uint16_t refNum = ARG16;
-      uint16_t refCountP = ARG32;
+      uint32_t refCountP = ARG32;
       emupalmos_trap_in(refCountP, trap, 1);
       UInt32 refCount;
       err = GPDClose(refNum, &refCount);
@@ -56,7 +56,7 @@ void palmos_gpdlibtrap(uint16_t trap) {
     case GPDTrapGetVersion: {
       //Err GPDGetVersion(UInt16 uRefNum, UInt32 *dwVerP)
       uint16_t refNum = ARG16;
-      uint8_t verP = ARG32;
+      uint32_t verP = ARG32;
       emupalmos_trap_in(verP, trap, 1);
       UInt32 ver;
       err = GPDGetVersion(refNum, &ver);
@@ -68,7 +68,7 @@ void palmos_gpdlibtrap(uint16_t trap) {
     case GPDTrapRead: {
       // Err GPDReadInstant(UInt16 uRefNum, UInt8 *resultP)
       uint16_t refNum = ARG16;
-      uint8_t resultP = ARG8;
+      uint32_t resultP = ARG32;
       emupalmos_trap_in(resultP, trap, 1);
       UInt8 result;
       err = GPDReadInstant(refNum, &result);
