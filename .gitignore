@@ -22,6 +22,7 @@
 *.log
 *.pyc
 *.class
+*.jar
 *.mod
 *.fo
 *_serde.h
