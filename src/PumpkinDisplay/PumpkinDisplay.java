@@ -7,6 +7,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferUShort;
 import java.io.InputStream;
@@ -52,9 +53,10 @@ public class PumpkinDisplay extends JComponent {
 	private static final int WINDOW_HEIGHT =  768;
 
 	private BufferedImage image;
-	private Socket clientSocket;
+	private Socket peerSocket;
+	private static JFrame frame;
 
-	public PumpkinDisplay() {
+	public PumpkinDisplay(String serverHost) {
 		image = new BufferedImage(WINDOW_WIDTH, WINDOW_HEIGHT, BufferedImage.TYPE_USHORT_565_RGB);
 
 		setLayout(new BorderLayout());
@@ -64,43 +66,47 @@ public class PumpkinDisplay extends JComponent {
 		addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {
-				mouseMotion(e, clientSocket);
+				mouseMotion(e, peerSocket);
 			}
 
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				mouseMotion(e, clientSocket);
+				mouseMotion(e, peerSocket);
 			}
 		});
 
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				mouseClick(e, true, clientSocket);
+				mouseClick(e, true, peerSocket);
 			}
 
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				mouseClick(e, false, clientSocket);
+				mouseClick(e, false, peerSocket);
 			}
 		});
 
 		addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
-				keyboardClick(e, true, clientSocket);
+				keyboardClick(e, true, peerSocket);
 			}
 
 			@Override
 			public void keyReleased(KeyEvent e) {
-				keyboardClick(e, false, clientSocket);
+				keyboardClick(e, false, peerSocket);
 			}
 		});
 
 		Thread thread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				server();
+				if (serverHost != null) {
+					client(serverHost);
+				} else {
+					server();
+				}
 			}
 		});
 		thread.start();
@@ -119,22 +125,22 @@ public class PumpkinDisplay extends JComponent {
 	private void mouseClick(MouseEvent e, boolean down, Socket socket) {
 		int button = e.getButton();
 
-		if (clientSocket != null && (button == MouseEvent.BUTTON1 || button == MouseEvent.BUTTON3)) {
+		if (peerSocket != null && (button == MouseEvent.BUTTON1 || button == MouseEvent.BUTTON3)) {
 			short[] cmd = new short[2];
 			cmd[0] = CMD_BUTTON;
 			cmd[1] = (short)(button == MouseEvent.BUTTON1 ? 1 : 2);
 			if (down) cmd[1] |= 0x8000;
-			sendCmdArgs(clientSocket, cmd);
+			sendCmdArgs(peerSocket, cmd);
 		}
 	}
 
 	private void keyboardClick(KeyEvent e, boolean down, Socket socket) {
-		if (clientSocket != null) {
+		if (peerSocket != null) {
 			short[] cmd = new short[2];
 			cmd[0] = (short)(down ? CMD_KEYDOWN : CMD_KEYUP);
 			cmd[1] = (short)(mapKey(e.getKeyCode(), e.getKeyChar()));
 			if (cmd[1] > 0) {
-				sendCmdArgs(clientSocket, cmd);
+				sendCmdArgs(peerSocket, cmd);
 			}
 		}
 	}
@@ -183,11 +189,11 @@ public class PumpkinDisplay extends JComponent {
 		}
 	}
 
-	private static void createFrame() throws ClassNotFoundException {
-		JFrame frame = new JFrame("PumpkinOS");
+	private static void createFrame(String serverHost) throws ClassNotFoundException {
+		frame = new JFrame("PumpkinOS");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(false);
-		frame.getContentPane().add(new PumpkinDisplay());
+		frame.getContentPane().add(new PumpkinDisplay(serverHost));
 		frame.pack();
 		frame.setVisible(true);
 	}
@@ -269,6 +275,31 @@ public class PumpkinDisplay extends JComponent {
 		//System.out.println("Client finished");
 	}
 
+	private void clearScreen() {
+		synchronized (image) {
+			Graphics2D g2d = image.createGraphics();
+			g2d.setColor(Color.BLACK);
+			g2d.fillRect(0, 0, image.getWidth(), image.getHeight());
+			g2d.dispose();
+		}
+		repaint();
+	}
+
+	private void client(String serverHost) {
+		try {
+			peerSocket = new Socket(serverHost, PORT);
+			handle(peerSocket);
+			peerSocket.close();
+			clearScreen();
+
+		} catch (Exception ex) {
+			System.out.println(ex);
+			ex.printStackTrace();
+		}
+
+		frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+	}
+
 	private void server() {
 		ServerSocket serverSocket = null;
 
@@ -277,18 +308,11 @@ public class PumpkinDisplay extends JComponent {
 			//System.out.println("Socket created");
 
 			while (true) {
-				clientSocket = serverSocket.accept();
+				peerSocket = serverSocket.accept();
 				//System.out.println("Client accepted");
-				handle(clientSocket);
-				clientSocket.close();
-
-				synchronized (image) {
-					Graphics2D g2d = image.createGraphics();
-					g2d.setColor(Color.BLACK);
-					g2d.fillRect(0, 0, image.getWidth(), image.getHeight());
-					g2d.dispose();
-				}
-				repaint();
+				handle(peerSocket);
+				peerSocket.close();
+				clearScreen();
 			}
 			//serverSocket.close();
 			
@@ -302,7 +326,7 @@ public class PumpkinDisplay extends JComponent {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					createFrame();
+					createFrame(args.length == 1 ? args[0] : null);
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}

@@ -9,6 +9,8 @@
 #include "rgb.h"
 #include "debug.h"
 
+#define PORT 65432
+
 #define RGB 3
 
 typedef struct {
@@ -81,10 +83,36 @@ static int send_finish_cmd(libwnull_window_t *window) {
 
 static window_t *libwnull_create(int encoding, int *width, int *height, int xfactor, int yfactor, int rotate, int fullscreen, int software, char *driver, void *data) {
   libwnull_window_t *window = NULL;
+  sys_timeval_t tv;
+  char host[256];
+  int port, fd;
 
-  if (encoding == ENC_RGB565 && window_provider.data) {
+  if (encoding == ENC_RGB565) {
     if ((window = sys_calloc(1, sizeof(libwnull_window_t))) != NULL) {
-      if ((window->fd = sys_socket_open_connect((char *)window_provider.data, 65432, IP_STREAM)) != -1) {
+
+      if (window_provider.data) {
+        // working as a client
+        window->fd = sys_socket_open_connect((char *)window_provider.data, PORT, IP_STREAM);
+      } else {
+        // working as a server
+        window->fd = -1;
+        port = PORT;
+        if ((fd = sys_socket_bind("0.0.0.0", &port, IP_STREAM)) != -1) {
+          tv.tv_sec = 15;
+          tv.tv_usec = 0;
+          debug(DEBUG_INFO, "WNULL", "waiting for client to connect ...");
+          window->fd = sys_socket_accept(fd, host, sizeof(host), &port, &tv);
+          if (window->fd > 0) {
+            debug(DEBUG_INFO, "WNULL", "client %s connected", host);
+          } else if (window->fd == 0) {
+            debug(DEBUG_INFO, "WNULL", "no client did connect");
+            window->fd = -1;
+          }
+          sys_close(fd);
+        }
+      }
+
+      if (window->fd != -1) {
         window->encoding = encoding;
         window->width = *width;
         window->height = *height;
