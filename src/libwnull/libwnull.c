@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "ptr.h"
 #include "rgb.h"
+#include "websocket.h"
 #include "debug.h"
 
 #define PORT 65432
@@ -19,6 +20,7 @@ typedef struct {
   uint32_t buttons;
   uint64_t last_timestamp;
   uint8_t *buf;
+  websocket_t *ws;
 } libwnull_window_t;
 
 struct texture_t {
@@ -37,11 +39,27 @@ static window_provider_t window_provider;
 #define CMD_DRAW    7
 
 static int peer_write(libwnull_window_t *window, uint8_t *buf, uint32_t len) {
-  return sys_write(window->fd, buf, len) == len ? 0 : -1;
+  int r;
+
+  if (window->ws) {
+    r = websocket_write(window->ws, buf, len) == len ? 0 : -1;
+  } else {
+    r = sys_write(window->fd, buf, len) == len ? 0 : -1;
+  }
+
+  return r;
 }
 
 static int peer_read(libwnull_window_t *window, uint8_t *buf, uint32_t len, int *nread, int wait) {
-  return sys_read_timeout(window->fd, buf, len, nread, wait);
+  int r;
+
+  if (window->ws) {
+    r = websocket_read(window->ws, buf, len, nread, wait);
+  } else {
+    r = sys_read_timeout(window->fd, buf, len, nread, wait);
+  }
+
+  return r;
 }
 
 static int send_window_cmd(libwnull_window_t *window) {
@@ -117,7 +135,16 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
             window->fd = sys_socket_accept(fd, host, sizeof(host), &port, &tv);
             if (window->fd > 0) {
               debug(DEBUG_INFO, "WNULL", "client %s connected", host);
-              break;
+              window->ws = websocket_create(window->fd);
+              debug(DEBUG_INFO, "WNULL", "waiting websocket handshake ...");
+              if (websocket_handshake(window->ws, 1000000) == 0) {
+                debug(DEBUG_INFO, "WNULL", "websocket handshake completed");
+                break;
+              } else {
+                debug(DEBUG_ERROR, "WNULL", "websocket handshake failed");
+                websocket_destroy(window->ws);
+                window->fd = -1;
+              }
             } else if (window->fd == 0) {
               debug(DEBUG_INFO, "WNULL", "client did not connect");
             } else {
@@ -282,14 +309,18 @@ static int libwnull_draw_texture_rect(window_t *_window, texture_t *texture, int
       spitch = texture->width * window->spixel;
       dpitch = window->width * window->spixel;
       len = w * window->spixel;
-      send_draw_cmd(window, x, y, w, h);
-      for (i = 0; i < h; i++) {
-        sys_memcpy(d, s, len);
-        peer_write(window, (uint8_t *)d, len);
-        s += spitch;
-        d += dpitch;
+      if (send_draw_cmd(window, x, y, w, h) == 0) {
+        r = 0;
+        for (i = 0; i < h; i++) {
+          sys_memcpy(d, s, len);
+          if (peer_write(window, (uint8_t *)d, len) == -1) {
+            r = -1;
+            break;
+          }
+          s += spitch;
+          d += dpitch;
+        }
       }
-      r = 0;
     } else {
       debug(DEBUG_ERROR, "WNULL", "invalid libwnull w/d %d,%d %dx%d %d,%d", tx, ty, w, h, x, y);
     }
