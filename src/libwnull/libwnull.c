@@ -36,6 +36,14 @@ static window_provider_t window_provider;
 #define CMD_KEYUP   6
 #define CMD_DRAW    7
 
+static int peer_write(libwnull_window_t *window, uint8_t *buf, uint32_t len) {
+  return sys_write(window->fd, buf, len) == len ? 0 : -1;
+}
+
+static int peer_read(libwnull_window_t *window, uint8_t *buf, uint32_t len, int *nread, int wait) {
+  return sys_read_timeout(window->fd, buf, len, nread, wait);
+}
+
 static int send_window_cmd(libwnull_window_t *window) {
   uint16_t cmd[4];
   int r = -1;
@@ -45,7 +53,7 @@ static int send_window_cmd(libwnull_window_t *window) {
     cmd[1] = sys_htole16(window->encoding);
     cmd[2] = sys_htole16(window->width);
     cmd[3] = sys_htole16(window->height);
-    r = sys_write(window->fd, (uint8_t *)cmd, 8) == 8 ? 0 : -1;
+    r = peer_write(window, (uint8_t *)cmd, 8);
   }
 
   return r;
@@ -61,7 +69,7 @@ static int send_draw_cmd(libwnull_window_t *window, int x, int y, int w, int h) 
     cmd[2] = sys_htole16(y);
     cmd[3] = sys_htole16(w);
     cmd[4] = sys_htole16(h);
-    r = sys_write(window->fd, (uint8_t *)cmd, 10) == 10 ? 0 : -1;
+    r = peer_write(window, (uint8_t *)cmd, 10);
   }
 
   return r;
@@ -73,9 +81,7 @@ static int send_finish_cmd(libwnull_window_t *window) {
 
   if (window) {
     cmd = sys_htole16(CMD_FINISH);
-    if (sys_write(window->fd, (uint8_t *)&cmd, 2) == 2) {
-      r = 0;
-    }
+    r = peer_write(window, (uint8_t *)&cmd, 2);
   }
 
   return r;
@@ -104,17 +110,20 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
         window->fd = -1;
         port = PORT;
         if ((fd = sys_socket_bind("0.0.0.0", &port, IP_STREAM)) != -1) {
-          tv.tv_sec = 15;
-          tv.tv_usec = 0;
-          debug(DEBUG_INFO, "WNULL", "waiting for client to connect ...");
-          window->fd = sys_socket_accept(fd, host, sizeof(host), &port, &tv);
-          if (window->fd > 0) {
-            debug(DEBUG_INFO, "WNULL", "client %s connected", host);
-          } else if (window->fd == 0) {
-            debug(DEBUG_INFO, "WNULL", "no client did connect");
-            window->fd = -1;
-          } else {
-            debug(DEBUG_ERROR, "WNULL", "error waiting for client");
+          for (;;) {
+            tv.tv_sec = 5;
+            tv.tv_usec = 0;
+            debug(DEBUG_INFO, "WNULL", "waiting for client to connect ...");
+            window->fd = sys_socket_accept(fd, host, sizeof(host), &port, &tv);
+            if (window->fd > 0) {
+              debug(DEBUG_INFO, "WNULL", "client %s connected", host);
+              break;
+            } else if (window->fd == 0) {
+              debug(DEBUG_INFO, "WNULL", "client did not connect");
+            } else {
+              debug(DEBUG_ERROR, "WNULL", "error waiting for client");
+              break;
+            }
           }
           sys_close(fd);
         }
@@ -276,7 +285,7 @@ static int libwnull_draw_texture_rect(window_t *_window, texture_t *texture, int
       send_draw_cmd(window, x, y, w, h);
       for (i = 0; i < h; i++) {
         sys_memcpy(d, s, len);
-        sys_write(window->fd, (uint8_t *)d, len);
+        peer_write(window, (uint8_t *)d, len);
         s += spitch;
         d += dpitch;
       }
@@ -311,13 +320,13 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   int nread, r = 0;
 
   if (window && window->fd > 0) {
-    if ((r = sys_read_timeout(window->fd, (uint8_t *)&cmd, 2, &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread == 2) {
+    if ((r = peer_read(window, (uint8_t *)&cmd, 2, &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread == 2) {
       cmd = sys_le16toh(cmd);
       r = 0;
 
       switch (cmd) {
         case CMD_MOTION:
-          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 4, &nread, 0)) == 1 && nread == 4) {
+          if ((r = peer_read(window, (uint8_t *)args, 4, &nread, 0)) == 1 && nread == 4) {
             window->x = sys_le16toh(args[0]);
             window->y = sys_le16toh(args[1]);
             debug(DEBUG_TRACE, "WNULL", "event2 w=%p motion %d,%d", window, window->x, window->y);
@@ -329,7 +338,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
           }
           break;
         case CMD_BUTTON:
-          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
             args[0] = sys_le16toh(args[0]);
             *arg1 = args[0] & 0x0F;
             if (args[0] & 0x8000) {
@@ -346,7 +355,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
           }
           break;
         case CMD_KEYDOWN:
-          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
             timestamp = sys_get_clock();
             args[0] = sys_le16toh(args[0]);
             *arg1 = args[0];
@@ -360,7 +369,7 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
           }
           break;
         case CMD_KEYUP:
-          if ((r = sys_read_timeout(window->fd, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
             args[0] = sys_le16toh(args[0]);
             *arg1 = args[0];
             debug(DEBUG_TRACE, "WNULL", "event2 w=%p key %d up", window, *arg1);
