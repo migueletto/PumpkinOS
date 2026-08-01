@@ -31,6 +31,7 @@ struct websocket_t {
 */
 
 #define WS_FIN      0x80
+#define WS_MASK     0x80
 
 #define WS_OP_CONT  0x00
 #define WS_OP_TEXT  0x01
@@ -97,7 +98,7 @@ static int websocket_length_mask(websocket_t *ws, uint8_t *header, uint32_t *len
   uint32_t aux;
   int n;
 
-  masked = header[1] & 0x80;
+  masked = header[1] & WS_MASK;
   len8 = header[1] & 0x7F;
 
   if (len8 <= 125) {

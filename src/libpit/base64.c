@@ -1,4 +1,5 @@
 #include "sys.h"
+#include "base64.h"
 
 static const char base64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

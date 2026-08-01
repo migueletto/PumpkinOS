@@ -46,17 +46,12 @@ A million repetitions of "a"
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transform(
-    uint32_t state[5],
-    const unsigned char buffer[64]
-)
-{
+void SHA1Transform(uint32_t state[5], const uint8_t buffer[64]) {
     uint32_t a, b, c, d, e;
 
-    typedef union
-    {
-        unsigned char c[64];
-        uint32_t l[16];
+    typedef union {
+      uint8_t c[64];
+      uint32_t l[16];
     } CHAR64LONG16;
 
 #ifdef SHA1HANDSOFF
@@ -171,13 +166,9 @@ void SHA1Transform(
 #endif
 }
 
-
 /* SHA1Init - Initialize new context */
 
-void SHA1Init(
-    SHA1_CTX * context
-)
-{
+void SHA1Init(SHA1_CTX * context) {
     /* SHA1 initialization constants */
     context->state[0] = 0x67452301;
     context->state[1] = 0xEFCDAB89;
@@ -190,32 +181,22 @@ void SHA1Init(
 
 /* Run your data through this. */
 
-void SHA1Update(
-    SHA1_CTX * context,
-    const unsigned char *data,
-    uint32_t len
-)
-{
-    uint32_t i;
-
-    uint32_t j;
+void SHA1Update(SHA1_CTX * context, const uint8_t *data, uint32_t len) {
+    uint32_t i, j;
 
     j = context->count[0];
     if ((context->count[0] += len << 3) < j)
         context->count[1]++;
     context->count[1] += (len >> 29);
     j = (j >> 3) & 63;
-    if ((j + len) > 63)
-    {
+    if ((j + len) > 63) {
         sys_memcpy(&context->buffer[j], data, (i = 64 - j));
         SHA1Transform(context->state, context->buffer);
-        for (; i + 63 < len; i += 64)
-        {
+        for (; i + 63 < len; i += 64) {
             SHA1Transform(context->state, &data[i]);
         }
         j = 0;
-    }
-    else
+    } else
         i = 0;
     sys_memcpy(&context->buffer[j], &data[i], len - i);
 }
@@ -223,16 +204,10 @@ void SHA1Update(
 
 /* Add padding and return the message digest. */
 
-void SHA1Final(
-    unsigned char digest[20],
-    SHA1_CTX * context
-)
-{
-    unsigned i;
-
-    unsigned char finalcount[8];
-
-    unsigned char c;
+void SHA1Final(uint8_t digest[20], SHA1_CTX * context) {
+    uint32_t i;
+    uint8_t finalcount[8];
+    uint8_t c;
 
 #if 0    /* untested "improvement" by DHR */
     /* Convert context->count to a sequence of bytes
@@ -240,7 +215,7 @@ void SHA1Final(
      * big-endian order within element.
      * But we do it all backwards.
      */
-    unsigned char *fcp = &finalcount[8];
+    uint8_t *fcp = &finalcount[8];
 
     for (i = 0; i < 2; i++)
     {
@@ -249,43 +224,36 @@ void SHA1Final(
         int j;
 
         for (j = 0; j < 4; t >>= 8, j++)
-            *--fcp = (unsigned char) t}
+            *--fcp = (uint8_t) t}
 #else
     for (i = 0; i < 8; i++)
     {
-        finalcount[i] = (unsigned char) ((context->count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 255);      /* Endian independent */
+        finalcount[i] = (uint8_t) ((context->count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 255);      /* Endian independent */
     }
 #endif
     c = 0200;
     SHA1Update(context, &c, 1);
-    while ((context->count[0] & 504) != 448)
-    {
+    while ((context->count[0] & 504) != 448) {
         c = 0000;
         SHA1Update(context, &c, 1);
     }
     SHA1Update(context, finalcount, 8); /* Should cause a SHA1Transform() */
-    for (i = 0; i < 20; i++)
-    {
-        digest[i] = (unsigned char)
-            ((context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
+    for (i = 0; i < 20; i++) {
+        digest[i] = (uint8_t)((context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
     }
     /* Wipe variables */
     sys_memset(context, '\0', sizeof(*context));
     sys_memset(&finalcount, '\0', sizeof(finalcount));
 }
 
-void SHA1(
-    char *hash_out,
-    const char *str,
-    int len)
-{
+void SHA1(char *hash_out, const char *str, int len) {
     SHA1_CTX ctx;
-    unsigned int ii;
+    uint32_t ii;
 
     SHA1Init(&ctx);
     for (ii=0; ii<len; ii+=1)
-        SHA1Update(&ctx, (const unsigned char*)str + ii, 1);
-    SHA1Final((unsigned char *)hash_out, &ctx);
+        SHA1Update(&ctx, (const uint8_t *)str + ii, 1);
+    SHA1Final((uint8_t *)hash_out, &ctx);
     hash_out[20] = '\0';
 }
 
