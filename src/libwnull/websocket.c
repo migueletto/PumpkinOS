@@ -77,7 +77,9 @@ static int websocket_write_op(websocket_t *ws, uint8_t op, uint8_t *buf, uint32_
   debug(DEBUG_TRACE, "WSOCK", "websocket_write op %u data %u bytes", op, len);
   debug_bytes(DEBUG_TRACE, "WSOCK", header, hlen);
   if (sys_write(ws->fd, header, hlen) == hlen) {
-    debug_bytes(DEBUG_TRACE, "WSOCK", buf, len);
+    if (len <= 16) {
+      debug_bytes(DEBUG_TRACE, "WSOCK", buf, len);
+    }
     r = len > 0 ? sys_write(ws->fd, buf, len) : 0;
   }
 
@@ -88,40 +90,46 @@ int websocket_write(websocket_t *ws, uint8_t *buf, uint32_t len) {
   return websocket_write_op(ws, WS_OP_BIN, buf, len);
 }
 
-static int websocket_length_mask(uint8_t *header, uint32_t *len, uint8_t *mask) {
-  uint8_t len8;
+static int websocket_length_mask(websocket_t *ws, uint8_t *header, uint32_t *len, uint8_t *mask) {
+  uint8_t buf[12];
+  uint8_t len8, masked;
   uint16_t len16;
   uint32_t aux;
+  int n;
 
-  if (!(header[1] & 0x80)) {
-    debug(DEBUG_ERROR, "WSOCK", "client sent unmasked payload");
-    return -1;
-  }
-
+  masked = header[1] & 0x80;
   len8 = header[1] & 0x7F;
 
   if (len8 <= 125) {
     *len = len8;
-    sys_memcpy(mask, header+2, 4);
-    return 0;
-  }
-
-  if (len8 == 126) {
-    get2b(&len16, header, 2);
+  } else if (len8 == 126) {
+    if (sys_read_timeout(ws->fd, buf, 2, &n, 0) != 1 || n != 2) {
+      debug(DEBUG_ERROR, "WSOCK", "client sent incomplete len header (%d bytes, %d expected)", n, 2);
+      return -1;
+    }
+    get2b(&len16, buf, 0);
     *len = len16;
-    sys_memcpy(mask, header+4, 4);
-    return 0;
+  } else { // len8 == 127
+    if (sys_read_timeout(ws->fd, buf, 8, &n, 0) != 1 || n != 8) {
+      debug(DEBUG_ERROR, "WSOCK", "client sent incomplete len header (%d bytes, %d expected)", n, 8);
+      return -1;
+    }
+    get4b(&aux, buf, 0);
+    if (aux != 0) {
+      debug(DEBUG_ERROR, "WSOCK", "payload length >= 2^32");
+      return -1;
+    }
+    get4b(len, buf, 4);
   }
 
-  // len8 == 127
-  get4b(&aux, header, 2);
-  if (aux != 0) {
-    debug(DEBUG_ERROR, "WSOCK", "payload length >= 2^32");
-    return -1;
+  if (masked) {
+    if (sys_read_timeout(ws->fd, mask, 4, &n, 0) != 1 || n != 4) {
+      debug(DEBUG_ERROR, "WSOCK", "client sent incomplete mask header (%d bytes, %d expected)", n, 4);
+      return -1;
+    }
+  } else {
+    sys_memset(mask, 0, 4);
   }
-
-  get4b(len, header, 6);
-  sys_memcpy(mask, header+10, 4);
 
   return 0;
 }
@@ -242,11 +250,11 @@ int websocket_handshake(websocket_t *ws, int wait) {
 }
 
 int websocket_read(websocket_t *ws, uint8_t *buf, uint32_t len, int *nread, int wait) {
-  uint8_t header[14], mask[4], control_data[256], opcode;
+  uint8_t header[2], mask[4], control_data[256], opcode;
   uint32_t payload_len;
   int n, r;
 
-  if ((r = sys_read_timeout(ws->fd, header, sizeof(header), &n, wait)) < 0) {
+  if ((r = sys_read_timeout(ws->fd, header, 2, &n, wait)) < 0) {
     debug(DEBUG_ERROR, "WSOCK", "error reading from client");
     return r;
   }
@@ -264,17 +272,17 @@ int websocket_read(websocket_t *ws, uint8_t *buf, uint32_t len, int *nread, int 
   debug(DEBUG_TRACE, "WSOCK", "received header");
   debug_bytes(DEBUG_TRACE, "WSOCK", header, n);
 
-  if (n != sizeof(header)) {
+  if (n != 2) {
     debug(DEBUG_ERROR, "WSOCK", "client sent incomplete header (%d bytes)", n);
     return -1;
   }
 
-  if ((buf[0] & 0xF0) != WS_FIN) {
+  if ((header[0] & 0xF0) != WS_FIN) {
     debug(DEBUG_ERROR, "WSOCK", "invalid FIN or extensions (0x%02X)", buf[0]);
     return -1;
   }
 
-  opcode = buf[0] & 0x0F;
+  opcode = header[0] & 0x0F;
   switch (opcode) {
     case WS_OP_CONT:
       debug(DEBUG_ERROR, "WSOCK", "continuation frame not expected");
@@ -290,7 +298,7 @@ int websocket_read(websocket_t *ws, uint8_t *buf, uint32_t len, int *nread, int 
       len = sizeof(control_data);
       // fall through
     case WS_OP_BIN:
-      if (websocket_length_mask(header, &payload_len, mask) == 0) {
+      if (websocket_length_mask(ws, header, &payload_len, mask) == 0) {
         debug(DEBUG_TRACE, "WSOCK", "opcode %u payload length is %u", opcode, payload_len);
         debug(DEBUG_TRACE, "WSOCK", "opcode %u mask is %02X %02X %02X %02X", opcode, mask[0], mask[1], mask[2], mask[3]);
         if (payload_len <= len) {
@@ -299,7 +307,10 @@ int websocket_read(websocket_t *ws, uint8_t *buf, uint32_t len, int *nread, int 
          
           if (r == 1) {
             if (n == payload_len) {
-              websocket_unmask(buf, payload_len, mask);
+              if (payload_len > 0 && (mask[0] || mask[1] || mask[2] || mask[3])) {
+                websocket_unmask(buf, payload_len, mask);
+              }
+
               switch (opcode) {
                 case WS_OP_BIN:
                   *nread = payload_len;

@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "ptr.h"
 #include "rgb.h"
+#include "bytes.h"
 #include "websocket.h"
 #include "debug.h"
 
@@ -15,8 +16,8 @@
 #define RGB 3
 
 typedef struct {
-  int fd, encoding, width, height, spixel;
-  int x, y, last_key;
+  int fd, encoding, width, height, spixel, last_key;
+  uint16_t x, y;
   uint32_t buttons;
   uint64_t last_timestamp;
   uint8_t *buf;
@@ -29,6 +30,8 @@ struct texture_t {
 };
 
 static window_provider_t window_provider;
+static char *server_host = NULL;
+static int websocket = 1;
 
 #define CMD_WINDOW  1
 #define CMD_FINISH  2
@@ -63,43 +66,43 @@ static int peer_read(libwnull_window_t *window, uint8_t *buf, uint32_t len, int 
 }
 
 static int send_window_cmd(libwnull_window_t *window) {
-  uint16_t cmd[4];
+  uint8_t cmd[8];
   int r = -1;
 
   if (window) {
-    cmd[0] = sys_htole16(CMD_WINDOW);
-    cmd[1] = sys_htole16(window->encoding);
-    cmd[2] = sys_htole16(window->width);
-    cmd[3] = sys_htole16(window->height);
-    r = peer_write(window, (uint8_t *)cmd, 8);
+    put2l(CMD_WINDOW, cmd, 0);
+    put2l(window->encoding, cmd, 2);
+    put2l(window->width, cmd, 4);
+    put2l(window->height, cmd, 6);
+    r = peer_write(window, cmd, 8);
   }
 
   return r;
 }
 
 static int send_draw_cmd(libwnull_window_t *window, int x, int y, int w, int h) {
-  uint16_t cmd[5];
+  uint8_t cmd[10];
   int r = -1;
 
   if (window) {
-    cmd[0] = sys_htole16(CMD_DRAW);
-    cmd[1] = sys_htole16(x);
-    cmd[2] = sys_htole16(y);
-    cmd[3] = sys_htole16(w);
-    cmd[4] = sys_htole16(h);
-    r = peer_write(window, (uint8_t *)cmd, 10);
+    put2l(CMD_DRAW, cmd, 0);
+    put2l(x, cmd, 2);
+    put2l(y, cmd, 4);
+    put2l(w, cmd, 6);
+    put2l(h, cmd, 8);
+    r = peer_write(window, cmd, 10);
   }
 
   return r;
 }
 
 static int send_finish_cmd(libwnull_window_t *window) {
-  uint16_t cmd;
+  uint8_t cmd[2];
   int r = -1;
 
   if (window) {
-    cmd = sys_htole16(CMD_FINISH);
-    r = peer_write(window, (uint8_t *)&cmd, 2);
+    put2l(CMD_FINISH, cmd, 0);
+    r = peer_write(window, cmd, 2);
   }
 
   return r;
@@ -114,10 +117,10 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
   if (encoding == ENC_RGB565) {
     if ((window = sys_calloc(1, sizeof(libwnull_window_t))) != NULL) {
 
-      if (window_provider.data) {
+      if (server_host) {
         // working as a client
-        debug(DEBUG_INFO, "WNULL", "connecting to server %s ...", (char *)window_provider.data);
-        window->fd = sys_socket_open_connect((char *)window_provider.data, PORT, IP_STREAM);
+        debug(DEBUG_INFO, "WNULL", "connecting to server %s ...", server_host);
+        window->fd = sys_socket_open_connect(server_host, PORT, IP_STREAM);
         if (window->fd > 0) {
           debug(DEBUG_INFO, "WNULL", "server connected");
         } else {
@@ -128,22 +131,26 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
         window->fd = -1;
         port = PORT;
         if ((fd = sys_socket_bind("0.0.0.0", &port, IP_STREAM)) != -1) {
-          for (;;) {
+          for (; !thread_must_end();) {
             tv.tv_sec = 5;
             tv.tv_usec = 0;
             debug(DEBUG_INFO, "WNULL", "waiting for client to connect ...");
             window->fd = sys_socket_accept(fd, host, sizeof(host), &port, &tv);
             if (window->fd > 0) {
               debug(DEBUG_INFO, "WNULL", "client %s connected", host);
-              window->ws = websocket_create(window->fd);
-              debug(DEBUG_INFO, "WNULL", "waiting websocket handshake ...");
-              if (websocket_handshake(window->ws, 1000000) == 0) {
-                debug(DEBUG_INFO, "WNULL", "websocket handshake completed");
-                break;
+              if (websocket) {
+                window->ws = websocket_create(window->fd);
+                debug(DEBUG_INFO, "WNULL", "waiting websocket handshake ...");
+                if (websocket_handshake(window->ws, 1000000) == 0) {
+                  debug(DEBUG_INFO, "WNULL", "websocket handshake completed");
+                  break;
+                } else {
+                  debug(DEBUG_ERROR, "WNULL", "websocket handshake failed");
+                  websocket_destroy(window->ws);
+                  window->fd = -1;
+                }
               } else {
-                debug(DEBUG_ERROR, "WNULL", "websocket handshake failed");
-                websocket_destroy(window->ws);
-                window->fd = -1;
+                break;
               }
             } else if (window->fd == 0) {
               debug(DEBUG_INFO, "WNULL", "client did not connect");
@@ -156,7 +163,7 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
         }
       }
 
-      if (window->fd != -1) {
+      if (window->fd > 0) {
         window->encoding = encoding;
         window->width = *width;
         window->height = *height;
@@ -346,33 +353,35 @@ static void libwnull_status(window_t *_window, int *x, int *y, int *buttons) {
 
 static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   libwnull_window_t *window = (libwnull_window_t *)_window;
-  uint16_t cmd, args[2];
   uint64_t timestamp;
+  uint16_t cmd, aux;
+  uint8_t buf[16];
   int nread, r = 0;
 
   if (window && window->fd > 0) {
-    if ((r = peer_read(window, (uint8_t *)&cmd, 2, &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread == 2) {
-      cmd = sys_le16toh(cmd);
+    if ((r = peer_read(window, buf, sizeof(buf), &nread, wait < 0 ? -1 : wait * 1000)) == 1 && nread >= 2) {
+      get2l(&cmd, buf, 0);
+      debug(DEBUG_TRACE, "WNULL", "event2 w=%p read %u bytes, cmd %u", window, nread, cmd);
       r = 0;
 
       switch (cmd) {
         case CMD_MOTION:
-          if ((r = peer_read(window, (uint8_t *)args, 4, &nread, 0)) == 1 && nread == 4) {
-            window->x = sys_le16toh(args[0]);
-            window->y = sys_le16toh(args[1]);
-            debug(DEBUG_TRACE, "WNULL", "event2 w=%p motion %d,%d", window, window->x, window->y);
+          if (nread == 6) {
+            get2l(&window->x, buf, 2);
+            get2l(&window->y, buf, 4);
+            debug(DEBUG_TRACE, "WNULL", "event2 w=%p motion %u,%u", window, window->x, window->y);
             *arg1 = window->x;
             *arg2 = window->y;
             r = WINDOW_MOTION;
           } else {
-            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid argument size %u for CMD_MOTION", window, nread);
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid size %u for CMD_MOTION", window, nread);
           }
           break;
         case CMD_BUTTON:
-          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
-            args[0] = sys_le16toh(args[0]);
-            *arg1 = args[0] & 0x0F;
-            if (args[0] & 0x8000) {
+          if (nread == 4) {
+            get2l(&aux, buf, 2);
+            *arg1 = aux & 0x0F;
+            if (aux & 0x8000) {
               window->buttons |= *arg1;
               debug(DEBUG_TRACE, "WNULL", "event2 w=%p button %d down", window, *arg1);
               r = WINDOW_BUTTONDOWN;
@@ -382,14 +391,14 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
               r = WINDOW_BUTTONUP;
             }
           } else {
-            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid argument size %u for CMD_BUTTON", window, nread);
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid size %u for CMD_BUTTON", window, nread);
           }
           break;
         case CMD_KEYDOWN:
-          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
+          if (nread == 4) {
             timestamp = sys_get_clock();
-            args[0] = sys_le16toh(args[0]);
-            *arg1 = args[0];
+            get2l(&aux, buf, 2);
+            *arg1 = aux;
             debug(DEBUG_TRACE, "WNULL", "event2 w=%p key %d down", window, *arg1);
             // try to avoid multiple key press events when holding down a key
             if (*arg1 != window->last_key || timestamp - window->last_timestamp > 200000) {
@@ -397,15 +406,19 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
               window->last_timestamp = timestamp;
               window->last_key = *arg1;
             }
+          } else {
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid size %u for CMD_KEYDOWN", window, nread);
           }
           break;
         case CMD_KEYUP:
-          if ((r = peer_read(window, (uint8_t *)args, 2, &nread, 0)) == 1 && nread == 2) {
-            args[0] = sys_le16toh(args[0]);
-            *arg1 = args[0];
+          if (nread == 4) {
+            get2l(&aux, buf, 2);
+            *arg1 = aux;
             debug(DEBUG_TRACE, "WNULL", "event2 w=%p key %d up", window, *arg1);
             if (*arg1) r = WINDOW_KEYUP;
             window->last_timestamp = 0;
+          } else {
+            debug(DEBUG_ERROR, "WNULL", "event2 w=%p invalid size %u for CMD_KEYUP", window, nread);
           }
           break;
         default:
@@ -418,16 +431,26 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
   return r;
 }
 
-static int libwnull_setup(int pe) {
+static int libwnull_connect(int pe) {
   char *host = NULL;
   int r = -1;
 
   if (script_get_string(pe, 0, &host) == 0) {
-    window_provider.data = sys_strdup(host);
+    server_host = sys_strdup(host);
     r = 0;
   }
 
   if (host) sys_free(host);
+
+  return r;
+}
+
+static int libwnull_accept(int pe) {
+  int r = -1;
+
+  if (script_get_boolean(pe, 0, &websocket) == 0) {
+    r = 0;
+  }
 
   return r;
 }
@@ -453,7 +476,8 @@ int libwnull_init(int pe, script_ref_t obj) {
   debug(DEBUG_INFO, "WNULL", "registering provider %s", WINDOW_PROVIDER);
   script_set_pointer(pe, WINDOW_PROVIDER, &window_provider);
 
-  script_add_function(pe, obj, "setup",  libwnull_setup);
+  script_add_function(pe, obj, "connect", libwnull_connect);
+  script_add_function(pe, obj, "accept",  libwnull_accept);
 
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);
@@ -464,5 +488,7 @@ int libwnull_init(int pe, script_ref_t obj) {
 }
 
 int libwnull_unload(void) {
+  if (server_host) sys_free(server_host);
+
   return 0;
 }

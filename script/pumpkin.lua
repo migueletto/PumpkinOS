@@ -44,7 +44,8 @@ end
 
 if not lib then
   lib = pit.loadlib("libwnull")
-  lib.setup("127.0.0.1")
+  lib.accept(true)
+  --lib.connect("127.0.0.1")
 end
 
 if not lib then
