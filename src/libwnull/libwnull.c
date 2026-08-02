@@ -16,8 +16,6 @@
 
 #include "display_html.h"
 
-#define PORT 65432
-
 #define RGB 3
 
 typedef struct {
@@ -36,6 +34,7 @@ struct texture_t {
 
 static window_provider_t window_provider;
 static char *server_host = NULL;
+static int server_port = 0;
 static int websocket = 1;
 static int httpd = 0;
 
@@ -126,7 +125,7 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
       if (server_host) {
         // working as a client
         debug(DEBUG_INFO, "WNULL", "connecting to server %s ...", server_host);
-        window->fd = sys_socket_open_connect(server_host, PORT, IP_STREAM);
+        window->fd = sys_socket_open_connect(server_host, server_port, IP_STREAM);
         if (window->fd > 0) {
           debug(DEBUG_INFO, "WNULL", "server connected");
         } else {
@@ -135,7 +134,13 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
       } else {
         // working as a server
         window->fd = -1;
-        port = PORT;
+        if (websocket) {
+          port = websocket ? server_port + 1 : server_port;
+          debug(DEBUG_INFO, "WNULL", "starting websocket server on port %d ...", port);
+        } else {
+          port = server_port;
+          debug(DEBUG_INFO, "WNULL", "starting plain server on port %d ...", port);
+        }
         if ((fd = sys_socket_bind("0.0.0.0", &port, IP_STREAM)) != -1) {
           for (; !thread_must_end();) {
             tv.tv_sec = 5;
@@ -147,8 +152,6 @@ static window_t *libwnull_create(int encoding, int *width, int *height, int xfac
               debug(DEBUG_INFO, "WNULL", "client %s connected", host);
 
               if (websocket) {
-                debug(DEBUG_INFO, "WNULL", "starting httpd ...");
-
                 window->ws = websocket_create(window->fd);
                 debug(DEBUG_INFO, "WNULL", "waiting websocket handshake ...");
                 if (websocket_handshake(window->ws, 1000000) == 0) {
@@ -444,25 +447,19 @@ static int libwnull_event2(window_t *_window, int wait, int *arg1, int *arg2) {
 }
 
 static int libwnull_connect(int pe) {
+  script_int_t port;
   char *host = NULL;
   int r = -1;
 
-  if (script_get_string(pe, 0, &host) == 0) {
+  if (script_get_string(pe, 0, &host) == 0 &&
+      script_get_integer(pe, 1, &port) == 0) {
+
     server_host = sys_strdup(host);
+    server_port = port;
     r = 0;
   }
 
   if (host) sys_free(host);
-
-  return r;
-}
-
-static int libwnull_accept(int pe) {
-  int r = -1;
-
-  if (script_get_boolean(pe, 0, &websocket) == 0) {
-    r = 0;
-  }
 
   return r;
 }
@@ -503,21 +500,19 @@ static int httpd_callback(http_connection_t *con) {
   return 0;
 }
 
-static int libwnull_httpd(int pe) {
+static int libwnull_accept(int pe) {
   script_int_t port;
-  int start, r = -1;
+  int r = -1;
   
-  if (script_get_boolean(pe, 0, &start) == 0) {
-    if (start) {
-      script_opt_integer(pe, 1, &port);
-      if (port == 0) port = 8080;
+  if (script_get_boolean(pe, 0, &websocket) == 0 &&
+      script_get_integer(pe, 1, &port) == 0) {
 
-      if ((httpd = httpd_create("0.0.0.0", port, "libwnull", NULL, NULL, NULL, NULL, NULL, NULL, httpd_callback, NULL, 1)) == -1) {
+    server_port = port;
+    if (websocket) {
+      debug(DEBUG_INFO, "WNULL", "starting httpd on port %d ...", server_port);
+      if ((httpd = httpd_create("0.0.0.0", server_port, "libwnull", NULL, NULL, NULL, NULL, NULL, NULL, httpd_callback, NULL, 1)) == -1) {
         debug(DEBUG_ERROR, "WNULL", "error starting httpd");
       }
-    } else if (httpd > 0) {
-      httpd_close(httpd);
-      httpd = 0;
     }
 
     r = 0;
@@ -549,7 +544,6 @@ int libwnull_init(int pe, script_ref_t obj) {
 
   script_add_function(pe, obj, "connect", libwnull_connect);
   script_add_function(pe, obj, "accept",  libwnull_accept);
-  script_add_function(pe, obj, "httpd",  libwnull_httpd);
 
   script_add_iconst(pe, obj, "motion", WINDOW_MOTION);
   script_add_iconst(pe, obj, "down", WINDOW_BUTTONDOWN);

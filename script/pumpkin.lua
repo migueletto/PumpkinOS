@@ -44,9 +44,8 @@ end
 
 if not lib then
   lib = pit.loadlib("libwnull")
-  lib.httpd(true)
-  lib.accept(true)
-  --lib.connect("127.0.0.1")
+  lib.accept(true, 7000)
+  --lib.connect("127.0.0.1", 7000)
 end
 
 if not lib then

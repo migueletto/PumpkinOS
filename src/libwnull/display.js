@@ -213,7 +213,10 @@ async function eventLoop(url) {
 }
 
 async function main() {
-  const serverUrl = "ws://" + window.location.hostname + ":65432";
+  let currentPort = window.location.port;
+  if (!currentPort) currentPort = '80';
+  let nextPort = Number(currentPort) + 1;
+  const serverUrl = "ws://" + window.location.hostname + ":" + nextPort;
 
   try {
     await eventLoop(serverUrl); 
