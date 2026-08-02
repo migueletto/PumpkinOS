@@ -397,7 +397,7 @@ static int httpd_handle(http_connection_t *con) {
 
   debug(DEBUG_TRACE, "WEB", "path \"%s\"", path);
 
-  if (sys_stat(path, &statbuf) == -1 || (statbuf.mode & SYS_IFDIR)) {
+  if (!con->home || sys_stat(path, &statbuf) == -1 || (statbuf.mode & SYS_IFDIR)) {
     debug(DEBUG_TRACE, "WEB", "calling callback");
     con->status = HTTPD_ACTION;
     if ((r = con->callback(con)) != 0) {
@@ -545,11 +545,9 @@ static char *status_msg(int code) {
   return msg;
 }
 
-int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
-  int len, n;
+int httpd_lstring(http_connection_t *con, int code, char *str, int len, char *mime) {
   char *buffer;
-
-  len = sys_strlen(str);
+  int n;
 
   n = len;
   if (n < MAX_PACKET) n = MAX_PACKET;
@@ -565,6 +563,10 @@ int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
   xfree(buffer);
 
   return 0;
+}
+
+int httpd_string(http_connection_t *con, int code, char *str, char *mime) {
+  return httpd_lstring(con, code, str, sys_strlen(str), mime);
 }
 
 int httpd_file_stream(http_connection_t *con, int fd, char *mime, uint64_t mtime) {
@@ -894,7 +896,7 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
   httpd_server_t *server;
   int handle;
 
-  if (system == NULL || home == NULL) {
+  if (system == NULL) {
     return -1;
   }
 
@@ -928,7 +930,7 @@ int httpd_create(char *host, int port, char *system, char *home, char *user, cha
 
   server->multithreaded = multithreaded;
   server->system = xstrdup(system);
-  server->home = xstrdup(home);
+  server->home = home ? xstrdup(home) : NULL;
   server->user = user && user[0] ? xstrdup(user) : NULL;
   server->password = password && password[0] ? xstrdup(password) : NULL;
   server->secure = secure;

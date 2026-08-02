@@ -61,6 +61,7 @@ typedef struct http_connection_t {
   int num_types;
 } http_connection_t;
 
+int httpd_lstring(http_connection_t *con, int code, char *str, int len, char *mime);
 int httpd_string(http_connection_t *con, int code, char *str, char *mime);
 int httpd_file(http_connection_t *con, char *filename);
 int httpd_file_stream(http_connection_t *con, int fd, char *mime, uint64_t mtime);
