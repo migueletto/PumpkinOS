@@ -213,7 +213,7 @@ async function eventLoop(url) {
 }
 
 async function main() {
-  const serverUrl = "ws://127.0.0.1:65432";
+  const serverUrl = "ws://" + window.location.hostname + ":65432";
 
   try {
     await eventLoop(serverUrl); 
