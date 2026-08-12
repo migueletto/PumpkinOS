@@ -31,6 +31,10 @@ if not lib and pit.getenv("DISPLAY") then
 end
 
 if not lib then
+  lib = pit.loadlib("liblsdl3")
+end
+
+if not lib then
   lib = pit.loadlib("liblsdl2")
 end
 
