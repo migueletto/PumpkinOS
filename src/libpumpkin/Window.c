@@ -954,9 +954,9 @@ static UInt32 getColor(win_module_t *module, UInt16 depth, Boolean back) {
       break;
     case 32:
       if (back) {
-        c = rgb32(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
+        c = rgba32(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b, 0xFF);
       } else {
-        c = rgb32(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
+        c = rgba32(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b, 0xFF);
       }
       break;
   }
