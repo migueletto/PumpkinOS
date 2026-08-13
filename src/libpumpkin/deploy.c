@@ -75,6 +75,9 @@ void pumpkin_registry_create(UInt32 creator) {
     DmCloseDatabase(dbRef);
   }
 
+  if (swidth > 0 && width > swidth) width = swidth;
+  if (sheight > 0 && height > sheight) height = sheight;
+
   if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
     MemPtrFree(regFlagsP);
   } else {
