@@ -2804,9 +2804,12 @@ int pumpkin_change_display(int width, int height) {
 static int pumpkin_changed_display(pumpkin_task_t *task, task_screen_t *screen, int width, int height) {
   surface_t *surface;
   texture_t *texture, *old;
+  uint32_t bg;
   int r = -1;
 
   if ((surface = surface_create(width, height, pumpkin_module.encoding)) != NULL) {
+    bg = surface->color_rgb(surface->data, 255, 255, 255, 255);
+    surface_rectangle(surface, 0, 0, width - 1, height - 1, 1, bg);
     surface_draw(surface, 0, 0, screen->surface, 0, 0, task->width, task->height);
     surface_destroy(screen->surface);
     screen->surface = surface;
@@ -4750,7 +4753,7 @@ void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height) {
   RegDimensionType regDim;
 
   regDim.width = width;
-  regDim.width = height;
+  regDim.height = height;
   pumpkin_reg_set(creator, regDimensionID, &regDim, sizeof(RegDimensionType));
 }
 
