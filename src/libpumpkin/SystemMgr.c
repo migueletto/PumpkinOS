@@ -298,7 +298,7 @@ Err SysLibFind(const Char *nameP, UInt16 *refNumP) {
     *refNumP = GPSLibRefNum;
   } else if (nameP && !StrCompare(nameP, CpmLibName)) {
     *refNumP = CpmLibRefNum;
-  } else if (nameP && !StrCompare(nameP, SonyHRLibName)) {
+  } else if (nameP && !StrCompare(nameP, sonySysLibNameHR)) {
     *refNumP = SonyHRLibRefNum;
   } else {
     *refNumP = 0;

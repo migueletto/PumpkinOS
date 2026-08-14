@@ -50,7 +50,6 @@ extern "C" {
 #define PmUILibName  "PmUIUtilLib-PmUU"
 
 #define SonyHRLibRefNum (MAX_SYSLIBS+7)
-#define SonyHRLibName  "Sony HR Library"
 
 #define BUTTONS_HEIGHT 64
 
@@ -226,6 +225,7 @@ typedef enum {
   charattr_key,
   data_key,
   emu2_key,
+  sonylib_key,
   last_key
 } local_storage_key_t;
 

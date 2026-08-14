@@ -86,7 +86,7 @@ enum hrFontID {
 
 typedef enum hrFontID HRFontID;
 
-#if CPU_TYPE == CPU_68K
+//#if CPU_TYPE == CPU_68K
 /********************************************************************
  * define HRTrapNumEnum
  ********************************************************************/
@@ -171,7 +171,7 @@ typedef enum tagHRTrapNumEnum
 	HRTrapFntGetScrollValues
 
 } HRTrapNumEnum;
-#endif
+//#endif
 
 
 /********************************************************************
