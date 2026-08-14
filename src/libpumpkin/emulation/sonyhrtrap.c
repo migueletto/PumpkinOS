@@ -124,6 +124,38 @@ void palmos_sonyhrtrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawBitmap(%u, bitmapP=0x%08X, x=%d, y=%d)", refNum, bitmapP, x, y);
       }
       break;
+    case HRTrapBmpCreate: {
+      //BitmapType *HRBmpCreate(UInt16 refNum, Coord width, Coord height, UInt8 depth, ColorTableType *colorTableP, UInt16 *error)
+      uint16_t refNum = ARG16;
+      int16_t width = ARG16;
+      int16_t height = ARG16;
+      uint8_t depth = ARG8;
+      uint32_t colorTableP = ARG32;
+      uint32_t errorP = ARG32;
+      ColorTableType *colorTable = emupalmos_trap_in(colorTableP, trap, 4);
+      UInt16 error;
+      BitmapType *bitmap = HRBmpCreate(refNum, width, height, depth, colorTable, &error);
+      if (errorP) m68k_write_memory_16(errorP, error);
+      uint32_t bitmapP = emupalmos_trap_out(bitmap);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRBmpCreate(%u, width=%d, height=%d, depth=%d, colorTableP=0x%08X, error=0x%08X [%d]): 0x%08X",
+        refNum, width, height, depth, colorTableP, errorP, error, bitmapP);
+      m68k_set_reg(M68K_REG_A0, bitmapP);
+      }
+      break;
+    case HRTrapWinCreateBitmapWindow: {
+      //WinHandle HRWinCreateBitmapWindow(UInt16 refNum, BitmapType *bitmapP, UInt16 *error)
+      uint16_t refNum = ARG16;
+      uint32_t bitmapP = ARG32;
+      uint32_t errorP = ARG32;
+      BitmapType *bitmap = emupalmos_trap_in(bitmapP, trap, 1);
+      UInt16 error;
+      WinHandle wh = HRWinCreateBitmapWindow(refNum, bitmap, &error);
+      if (errorP) m68k_write_memory_16(errorP, error);
+      uint32_t whP = emupalmos_trap_out(wh);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinCreateBitmapWindow(%u, 0x%08X, 0x%08X [%d]): 0x%08X", refNum, bitmapP, errorP, error, whP);
+      m68k_set_reg(M68K_REG_A0, whP);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "SonyHRLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

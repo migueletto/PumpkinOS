@@ -58,7 +58,16 @@ void HRWinCopyRectangle(UInt16 refNum, WinHandle srcWin, WinHandle dstWin, Recta
 }
 
 WinHandle HRWinCreateBitmapWindow(UInt16 refNum, BitmapType *bitmapP, UInt16 *error) {
-  return NULL;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  WinHandle wh = NULL;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    wh = WinCreateBitmapWindow(bitmapP, error);
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return wh;
 }
 
 WinHandle HRWinCreateOffscreenWindow(UInt16 refNum, Coord width, Coord height, WindowFormatType format, UInt16 *error) {
@@ -292,7 +301,7 @@ Err HRWinScreenMode(UInt16 refNum, WinScreenModeOperation operation, UInt32 *wid
   } else {
     debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
   }
-  
+
   return err;
 }
 
@@ -321,7 +330,16 @@ UInt32 HRBmpSize(UInt16 refNum, BitmapType *bitmapP) {
 }
 
 BitmapType *HRBmpCreate(UInt16 refNum, Coord width, Coord height, UInt8 depth, ColorTableType *colortableP, UInt16 *error) {
-  return NULL;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  BitmapType *bitmap = NULL;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    bitmap = BmpCreate(width, height, depth, colortableP, error);
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return bitmap;
 }
 
 HRFontID HRFntGetFont(UInt16 refNum) {
