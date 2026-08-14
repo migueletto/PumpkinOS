@@ -1,7 +1,9 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
+#include <SonyCLIE.h>
 
 #include "RegistryMgr.h"
+#include "bytes.h"
 #include "debug.h"
 
 #define MAX_FEATURES 1024
@@ -19,6 +21,8 @@
 #define navFtrVersion  0           // Feature id for 5-Way
 #define navVersion     0x00010000  // Version for 5-Way
 
+#define sonySysInfoSize 42
+
 typedef struct {
   UInt32 creator;
   UInt16 featureNum;
@@ -31,6 +35,7 @@ typedef struct {
   UInt32 numFeatures;
   RegFeatureType *reg;
   UInt32 regSize;
+  UInt8 *sonySysInfo, *ram;
 } ftr_module_t;
 
 int FtrInitModule(void) {
@@ -40,6 +45,12 @@ int FtrInitModule(void) {
     return -1;
   }
  
+  if ((module->sonySysInfo = MemPtrNew(sonySysInfoSize)) != NULL) {
+    put2b(sonySysFtrSysInfoRevision, module->sonySysInfo, 0); // revision
+    put4b(0, module->sonySysInfo, 4);                         // extn
+    put4b(sonySysFtrSysInfoLibrHR, module->sonySysInfo, 8);   // libr
+  }
+
   module->reg = pumpkin_reg_get(pumpkin_get_app_creator(), regFeatureID, &module->regSize);
   pumpkin_set_local_storage(ftr_key, module);
 
@@ -50,6 +61,7 @@ int FtrFinishModule(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
 
   if (module) {
+    if (module->sonySysInfo) MemPtrFree(module->sonySysInfo);
     if (module->reg) MemPtrFree(module->reg);
     sys_free(module);
   }
@@ -65,6 +77,7 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i;
   Int32 osversion;
+  UInt8 *ram;
   RegFeatureType *reg;
   char st[8];
   Err err = ftrErrNoSuchFeature;
@@ -284,6 +297,22 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           break;
       }
       break;
+    case sonySysFtrCreator:
+      switch (featureNum) {
+        case sonySysFtrNumSysInfoP:
+          if (module->sonySysInfo) {
+            // this feature will be meaninful only for m68k apps
+            ram = pumpkin_heap_base();
+            *valueP = module->sonySysInfo - ram;
+            err = errNone;
+          }
+          break;
+        default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet sonySysFtrCreator %d not defined", featureNum);
+          err = ftrErrNoSuchFeature;
+          break;
+      }
+      break;
     default:
       if (module->numFeatures > 0) {
         for (i = 0; i < module->numFeatures; i++) {
@@ -311,7 +340,7 @@ Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP) {
   UInt8 *ram;
   Err err;
 
-  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone && ptr) {
+  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
     if (ptr) {
       ram = pumpkin_heap_base();
       *valueP = ram + value;

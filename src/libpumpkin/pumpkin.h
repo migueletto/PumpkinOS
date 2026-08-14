@@ -49,6 +49,9 @@ extern "C" {
 #define PmUILibRefNum (MAX_SYSLIBS+6)
 #define PmUILibName  "PmUIUtilLib-PmUU"
 
+#define SonyHRLibRefNum (MAX_SYSLIBS+7)
+#define SonyHRLibName  "Sony HR Library"
+
 #define BUTTONS_HEIGHT 64
 
 #define MSG_KEY     1
