@@ -20,6 +20,7 @@
 #include "storage.h"
 #include "DDm.h"
 #include "pumpkin.h"
+#include "WindowAccessor.h"
 #include "tos.h"
 #include "debug.h"
 
@@ -647,6 +648,7 @@ static void launcherScanResources(launcher_data_t *data) {
           localId = MemHandleToLocalID(h);
           b = MemLocalIDToPtr(localId, 0);
           if (b) {
+/*
             union {
               uint16_t u16flags;
               WindowFlagsType wflags;
@@ -657,6 +659,12 @@ static void launcherScanResources(launcher_data_t *data) {
             get2b(&width, b, 14);
             get2b(&height, b, 16);
             StrNPrintF(buf, sizeof(buf)-1, "Form %dx%d at %d,%d%s", width, height, x, y, flags.wflags.modal ? " modal" : "");
+*/
+            x = WinGetField((WinHandle)b, WindowFieldWindowBoundsX);
+            y = WinGetField((WinHandle)b, WindowFieldWindowBoundsY);
+            width = WinGetField((WinHandle)b, WindowFieldWindowBoundsW);
+            height = WinGetField((WinHandle)b, WindowFieldWindowBoundsH);
+            StrNPrintF(buf, sizeof(buf)-1, "Form %dx%d at %d,%d%s", width, height, x, y, WinGetFlag((WinHandle)b, WindowFlagModal) ? " modal" : "");
           } else {
             StrNPrintF(buf, sizeof(buf)-1, "Form");
           }
@@ -1933,8 +1941,10 @@ static void find(launcher_data_t *data) {
         }
       }
 
-      MemMove(&rect, &frm->window.windowBounds, sizeof(RectangleType));
-      if (frm->window.windowFlags.modal) {
+      //MemMove(&rect, &frm->window.windowBounds, sizeof(RectangleType));
+      RctSetRectFromWin(&rect, &frm->window);
+      //if (frm->window.windowFlags.modal)
+      if (WinGetFlag(&frm->window, WindowFlagModal)) {
         rect.topLeft.x -= 2;
         rect.topLeft.y -= 2;
         rect.extent.x += 4;

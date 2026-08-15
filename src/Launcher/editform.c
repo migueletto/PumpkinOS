@@ -4,6 +4,7 @@
 #include "resource.h"
 #include "resedit.h"
 #include "pumpkin.h"
+#include "WindowAccessor.h"
 #include "debug.h"
 
 #define MAX_TITLE 64
@@ -143,7 +144,7 @@ static const dynamic_form_item_t grfPropertiesItems[] = {
 
 static void drawForm(FormType *current, form_edit_t *data) {
   FormType *frm;
-  RectangleType rect;
+  RectangleType rect, rect2;
   RGBColorType oldFormFrame;
   IndexedColorType back, oldb;
   WinHandle olda, oldd;
@@ -151,8 +152,12 @@ static void drawForm(FormType *current, form_edit_t *data) {
 
   if (data->formP) {
     frm = FrmGetActiveForm();
-    x0 = data->formP->window.windowBounds.topLeft.x - frm->window.windowBounds.topLeft.x;
-    y0 = data->formP->window.windowBounds.topLeft.y - frm->window.windowBounds.topLeft.y;
+    //x0 = data->formP->window.windowBounds.topLeft.x - frm->window.windowBounds.topLeft.x;
+    //y0 = data->formP->window.windowBounds.topLeft.y - frm->window.windowBounds.topLeft.y;
+    RctSetRectFromWin(&rect, &data->formP->window);
+    RctSetRectFromWin(&rect2, &frm->window);
+    x0 = rect.topLeft.x - rect2.topLeft.x;
+    y0 = rect.topLeft.y - rect2.topLeft.y;
 
     UIColorGetTableEntryRGB(UIFormFrame, &oldFormFrame);
     UIColorSetTableEntry(UIFormFrame, &purple);
@@ -338,6 +343,7 @@ static void drawObjectList(Int16 itemNum, RectangleType *bounds, Char **itemsTex
 
 static void formPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, void *_data) {
   form_edit_t *data = (form_edit_t *)_data;
+  BitmapType *bmp;
   RectangleType rect;
   UInt16 density, depth;
   Err err;
@@ -357,12 +363,20 @@ static void formPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, vo
       rect.extent.y = getFieldNum(frm, 1003);
       data->topLeft.x = rect.topLeft.x;
       data->topLeft.y = rect.topLeft.y;
-      data->formP->window.windowBounds.extent.x = rect.extent.x;
-      data->formP->window.windowBounds.extent.y = rect.extent.y;
-      density = BmpGetDensity(data->formP->window.bitmapP);
-      depth = BmpGetBitDepth(data->formP->window.bitmapP);
-      BmpDelete(data->formP->window.bitmapP);
-      data->formP->window.bitmapP = BmpCreate3(rect.extent.x, rect.extent.y, 0, density, depth, false, 0, NULL, &err);
+      //data->formP->window.windowBounds.extent.x = rect.extent.x;
+      //data->formP->window.windowBounds.extent.y = rect.extent.y;
+      WinSetField(&data->formP->window, WindowFieldWindowBoundsW, rect.extent.x);
+      WinSetField(&data->formP->window, WindowFieldWindowBoundsH, rect.extent.y);
+      bmp = (BitmapType *)WinGetField(&data->formP->window, WindowFieldBitmapP);
+      //density = BmpGetDensity(data->formP->window.bitmapP);
+      //depth = BmpGetBitDepth(data->formP->window.bitmapP);
+      //BmpDelete(data->formP->window.bitmapP);
+      //data->formP->window.bitmapP = BmpCreate3(rect.extent.x, rect.extent.y, 0, density, depth, false, 0, NULL, &err);
+      density = BmpGetDensity(bmp);
+      depth = BmpGetBitDepth(bmp);
+      BmpDelete(bmp);
+      bmp = BmpCreate3(rect.extent.x, rect.extent.y, 0, density, depth, false, 0, NULL, &err);
+      WinSetField(&data->formP->window, WindowFieldBitmapP, (UIntPtr)bmp);
       data->changed = true;
       break;
     case finishForm:
@@ -791,7 +805,7 @@ static void grfPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, voi
 
 static Boolean eventHandler(EventType *event) {
   form_edit_t *data;
-  RectangleType rect;
+  RectangleType rect, bounds, *r;
   FormType *frm;
   ListType *lst;
   ControlType *ctl;
@@ -837,16 +851,24 @@ static Boolean eventHandler(EventType *event) {
       index = FrmGetObjectIndex(frm, formGad);
       FrmGetObjectBounds(frm, index, &rect);
 
-      data->formP->window.windowBounds.topLeft.x = rect.topLeft.x + (rect.extent.x - data->formP->window.windowBounds.extent.x) / 2;
-      data->formP->window.windowBounds.topLeft.y = rect.topLeft.y + (rect.extent.y - data->formP->window.windowBounds.extent.y) / 2;
-      data->formP->window.windowBounds.topLeft.x += frm->window.windowBounds.topLeft.x;
-      data->formP->window.windowBounds.topLeft.y += frm->window.windowBounds.topLeft.y;
+      //data->formP->window.windowBounds.topLeft.x = rect.topLeft.x + (rect.extent.x - data->formP->window.windowBounds.extent.x) / 2;
+      //data->formP->window.windowBounds.topLeft.y = rect.topLeft.y + (rect.extent.y - data->formP->window.windowBounds.extent.y) / 2;
+      //data->formP->window.windowBounds.topLeft.x += frm->window.windowBounds.topLeft.x;
+      //data->formP->window.windowBounds.topLeft.y += frm->window.windowBounds.topLeft.y;
+      bounds.topLeft.x = rect.topLeft.x + (rect.extent.x - WinGetField(&data->formP->window, WindowFieldWindowBoundsW)) / 2;
+      bounds.topLeft.y = rect.topLeft.y + (rect.extent.y - WinGetField(&data->formP->window, WindowFieldWindowBoundsH)) / 2;
+      bounds.topLeft.x += WinGetField(&frm->window, WindowFieldWindowBoundsX);
+      bounds.topLeft.y += WinGetField(&frm->window, WindowFieldWindowBoundsY);
+      r = &bounds;
+      RctSetWinFromRect(r, &data->formP->window);
 
       for (index = 0; index < data->formP->numObjects; index++) {
         if (FrmGetObjectType(data->formP, index) == frmListObj) {
           lst = (ListType *)FrmGetObjectPtr(data->formP, index);
-          lst->popupWin->windowBounds.topLeft.x = data->formP->window.windowBounds.topLeft.x + lst->bounds.topLeft.x;
-          lst->popupWin->windowBounds.topLeft.y = data->formP->window.windowBounds.topLeft.y + lst->bounds.topLeft.y;
+          //lst->popupWin->windowBounds.topLeft.x = data->formP->window.windowBounds.topLeft.x + lst->bounds.topLeft.x;
+          //lst->popupWin->windowBounds.topLeft.y = data->formP->window.windowBounds.topLeft.y + lst->bounds.topLeft.y;
+          WinSetField(lst->popupWin, WindowFieldWindowBoundsX, WinGetField(&data->formP->window, WindowFieldWindowBoundsX) + lst->bounds.topLeft.x);
+          WinSetField(lst->popupWin, WindowFieldWindowBoundsY, WinGetField(&data->formP->window, WindowFieldWindowBoundsY) + lst->bounds.topLeft.y);
         }
       }
 
@@ -942,6 +964,7 @@ static Boolean eventHandler(EventType *event) {
 Boolean editForm(FormType *frm, char *title, MemHandle h) {
   form_edit_t data;
   Coord width, height;
+  BitmapType *bmp;
   UInt32 density, depth;
   UInt16 index;
   void *p;
@@ -964,17 +987,27 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
     if ((data.formP = pumpkin_create_form(data.rsrc, data.size)) != NULL) {
       WinScreenGetAttribute(winScreenDensity, &density);
       WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
-      width = data.formP->window.windowBounds.extent.x;
-      height = data.formP->window.windowBounds.extent.y;
+      //width = data.formP->window.windowBounds.extent.x;
+      //height = data.formP->window.windowBounds.extent.y;
+      width = WinGetField(&data.formP->window, WindowFieldWindowBoundsW);
+      height = WinGetField(&data.formP->window, WindowFieldWindowBoundsH);
       WinAdjustCoords(&width, &height);
-      data.formP->window.bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
-      data.formP->window.density = density;
-      data.formP->window.clippingBounds.left = 0;
-      data.formP->window.clippingBounds.right = width-1;
-      data.formP->window.clippingBounds.top = 0;
-      data.formP->window.clippingBounds.bottom = height-1;
-      data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
-      data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
+      //data.formP->window.bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+      bmp = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
+      WinSetField(&data.formP->window, WindowFieldBitmapP, (UIntPtr)bmp);
+      //data.formP->window.density = density;
+      //data.formP->window.clippingBounds.left = 0;
+      //data.formP->window.clippingBounds.right = width-1;
+      //data.formP->window.clippingBounds.top = 0;
+      //data.formP->window.clippingBounds.bottom = height-1;
+      WinSetField(&data.formP->window, WindowFieldClippingBoundsX1, 0);
+      WinSetField(&data.formP->window, WindowFieldClippingBoundsX2, width - 1);
+      WinSetField(&data.formP->window, WindowFieldClippingBoundsY1, 0);
+      WinSetField(&data.formP->window, WindowFieldClippingBoundsY2, height - 1);
+      //data.topLeft.x = data.formP->window.windowBounds.topLeft.x;
+      //data.topLeft.y = data.formP->window.windowBounds.topLeft.y;
+      data.topLeft.x = WinGetField(&data.formP->window, WindowFieldWindowBoundsX);
+      data.topLeft.y = WinGetField(&data.formP->window, WindowFieldWindowBoundsY);
       data.bounds = sys_calloc(data.formP->numObjects, sizeof(RectangleType));
       fillObjectNames(&data);
 
@@ -984,8 +1017,10 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       FrmSetEventHandler(frm, eventHandler);
       FrmDoDialog(frm);
 
-      if (data.formP->window.bitmapP) {
-        BmpDelete(data.formP->window.bitmapP);
+      //if (data.formP->window.bitmapP)
+        if (WinGetField(&data.formP->window, WindowFieldBitmapP)) {
+        //BmpDelete(data.formP->window.bitmapP);
+        BmpDelete((BitmapType *)WinGetField(&data.formP->window, WindowFieldBitmapP));
       }
       if (data.formP->bitsBehindForm) {
         WinDeleteWindow(data.formP->bitsBehindForm, false);
