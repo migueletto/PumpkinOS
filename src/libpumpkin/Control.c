@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 
+#include "WindowAccessor.h"
 #include "debug.h"
 
 void CtlDrawControl(ControlType *controlP) {
@@ -459,7 +460,8 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
 
     formP = controlP->formP;
     if (formP) {
-      right = formP->window.windowBounds.extent.x;
+      //right = formP->window.windowBounds.extent.x;
+      right = WinGetField(&formP->window, WindowFieldWindowBoundsW);
       if (controlP->bounds.topLeft.x + controlP->bounds.extent.x >= right) {
         controlP->bounds.topLeft.x = right - controlP->bounds.extent.x - 1;
       }

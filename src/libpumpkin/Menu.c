@@ -8,6 +8,7 @@
 #include "bytes.h"
 #include "pumpkin.h"
 #include "storage.h"
+#include "WindowAccessor.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -78,8 +79,10 @@ MenuBarType *MenuInit(UInt16 resourceId) {
       h = pd->bounds.extent.y;
       if (w && h) {
         pd->menuWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
-        pd->menuWin->windowBounds.topLeft.x = pd->bounds.topLeft.x;
-        pd->menuWin->windowBounds.topLeft.y = pd->bounds.topLeft.y;
+        //pd->menuWin->windowBounds.topLeft.x = pd->bounds.topLeft.x;
+        //pd->menuWin->windowBounds.topLeft.y = pd->bounds.topLeft.y;
+        WinSetField(pd->menuWin, WindowFieldWindowBoundsX, pd->bounds.topLeft.x);
+        WinSetField(pd->menuWin, WindowFieldWindowBoundsY, pd->bounds.topLeft.y);
         pd->bitsBehind = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
       }
       pd->hidden = 1;
@@ -159,7 +162,8 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
     WinSetBackColor(mFill);
     WinSetTextColor(mFore);
   }
-  RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, menu->barWin->windowBounds.extent.y-2);
+  //RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, menu->barWin->windowBounds.extent.y-2);
+  RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, WinGetField(menu->barWin, WindowFieldWindowBoundsH) - 2);
   WinEraseRectangle(&rect, 0);
   WinDrawChars(pd->title, sys_strlen(pd->title), pd->titleBounds.topLeft.x+3, pd->titleBounds.topLeft.y+1);
 
@@ -199,7 +203,8 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
     oldt = WinSetTextColor(mFore);
   }
 
-  RctSetRectangle(&rect, 1, 1, pd->menuWin->windowBounds.extent.x - 2, pd->menuWin->windowBounds.extent.y - 2);
+  //RctSetRectangle(&rect, 1, 1, pd->menuWin->windowBounds.extent.x - 2, pd->menuWin->windowBounds.extent.y - 2);
+  RctSetRectangle(&rect, 1, 1, WinGetField(pd->menuWin, WindowFieldWindowBoundsW) - 2, WinGetField(pd->menuWin, WindowFieldWindowBoundsH) - 2);
   WinSetClip(&rect);
   WinEraseRectangle(&item->localBounds, 0);
   WinDrawChars(item->itemStr, sys_strlen(item->itemStr), 2, y);
@@ -275,6 +280,7 @@ static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
 Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
   EventType ev;
   MenuPullDownType *pd, *prev;
+  RectangleType rect;
   Boolean handled = false;
   int i, j;
 
@@ -318,7 +324,9 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               }
               WinSetActiveWindow(menuP->savedActiveWin);
               WinSetDrawWindow(menuP->savedActiveWin);
-              WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+              //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+              RctSetRectFromWin(&rect, menuP->barWin);
+              WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
               handled = true;
             }
@@ -374,7 +382,9 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 pd->hidden = 0;
                 WinSetActiveWindow(menuP->savedActiveWin);
                 WinSetDrawWindow(menuP->savedActiveWin);
-                WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+                //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+                RctSetRectFromWin(&rect, menuP->barWin);
+                WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
 
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent menuEvent item %d", pd->items[pd->selectedItem].id);
@@ -403,7 +413,9 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown hide menu");
             WinSetActiveWindow(menuP->savedActiveWin);
             WinSetDrawWindow(menuP->savedActiveWin);
-            WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+            //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+            RctSetRectFromWin(&rect, menuP->barWin);
+            WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
           } else {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown show menu");
@@ -434,7 +446,9 @@ void MenuDrawMenu(MenuBarType *menuP) {
   menuP->savedActiveWin = WinGetActiveWindow();
 
   // save menu box
-  WinSaveRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+  //WinSaveRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
+  RctSetRectFromWin(&rect, menuP->barWin);
+  WinSaveRectangle(menuP->bitsBehind, &rect);
 
   mFrame = UIColorGetTableEntryIndex(UIMenuFrame);
   mFill = UIColorGetTableEntryIndex(UIMenuFill);
@@ -444,10 +458,17 @@ void MenuDrawMenu(MenuBarType *menuP) {
   WinSetActiveWindow(menuP->barWin);
 
   WinSetBackColor(mFrame);
-  WinEraseRectangle(&menuP->barWin->windowBounds, 0);
+  //WinEraseRectangle(&menuP->barWin->windowBounds, 0);
+  RctSetRectFromWin(&rect, menuP->barWin);
+  WinEraseRectangle(&rect, 0);
 
   WinSetBackColor(mFill);
-  RctSetRectangle(&rect, 1, 1, menuP->barWin->windowBounds.extent.x-2, menuP->barWin->windowBounds.extent.y-2);
+  //RctSetRectangle(&rect, 1, 1, menuP->barWin->windowBounds.extent.x-2, menuP->barWin->windowBounds.extent.y-2);
+  RctSetRectFromWin(&rect, menuP->barWin);
+  rect.topLeft.x = 1;
+  rect.topLeft.y = 1;
+  rect.extent.x -= 2;
+  rect.extent.y -= 2;
   WinEraseRectangle(&rect, 0);
 
   for (i = 0; i < menuP->numMenus; i++) {
@@ -528,8 +549,10 @@ Err MenuAddItem(UInt16 positionId, UInt16 id, Char cmd, const Char *textP) {
               mbar->menus[i].bounds.extent.y += FntCharHeight();
               WinDeleteWindow(mbar->menus[i].menuWin, false);
               mbar->menus[i].menuWin = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
-              mbar->menus[i].menuWin->windowBounds.topLeft.x = mbar->menus[i].bounds.topLeft.x;
-              mbar->menus[i].menuWin->windowBounds.topLeft.y = mbar->menus[i].bounds.topLeft.y;
+              //mbar->menus[i].menuWin->windowBounds.topLeft.x = mbar->menus[i].bounds.topLeft.x;
+              //mbar->menus[i].menuWin->windowBounds.topLeft.y = mbar->menus[i].bounds.topLeft.y;
+              WinSetField(mbar->menus[i].menuWin, WindowFieldWindowBoundsX, mbar->menus[i].bounds.topLeft.x);
+              WinSetField(mbar->menus[i].menuWin, WindowFieldWindowBoundsY, mbar->menus[i].bounds.topLeft.y);
               mbar->menus[i].bitsBehind = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
 
               stop = true;

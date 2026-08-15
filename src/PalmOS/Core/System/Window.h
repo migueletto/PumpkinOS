@@ -153,7 +153,7 @@ typedef enum WinScreenAttrTag
 
 
 typedef struct DrawStateFlagsType
-#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
+//#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
 {
 	UInt16	unscaledBitmaps:1;			// if set, do not scale bitmaps
 	UInt16	unscaledText:1;				// if set, do not scale text
@@ -161,7 +161,7 @@ typedef struct DrawStateFlagsType
 	UInt16	useFloor:1;						// used internally by OS
 	UInt16 	reserved:12;
 }
-#endif
+//#endif
 DrawStateFlagsType;
 
 
@@ -170,7 +170,7 @@ DrawStateFlagsType;
 //-----------------------------------------------
 
 typedef struct DrawStateType
-#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
+//#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
 {
 	WinDrawOperation	transferMode;
 	PatternType			pattern;
@@ -200,7 +200,7 @@ typedef struct DrawStateType
 #endif
         UInt32 scalingMode;
 }
-#endif
+//#endif
 DrawStateType;
 
 
@@ -259,8 +259,8 @@ typedef struct WindowFlagsType
 WindowFlagsType;
 
 typedef struct WindowType
-#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
 {
+#ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
   // hack to allow 68K programs to access some fields inside WindowType.
   // pad accounts for displayWidthV20, displayHeightV20, displayAddrV20 and windowFlags.
   // x, y, w, h allow programs to access windowBounds (SubHunt does this)
@@ -290,8 +290,10 @@ typedef struct WindowType
   // density is stored inside BitmapV3,
   // it is replicated here for performance reasons
   UInt16 density;
-}
+#else
+  UInt8 buf[40];
 #endif
+}
 WindowType;
 
 typedef WindowType *WinPtr;

@@ -1,5 +1,3 @@
-#define ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS
-
 #include <PalmOS.h>
 
 #include "ColorTable.h"
@@ -13,6 +11,7 @@
 #include "bytes.h"
 #include "pumpkin.h"
 #include "language.h"
+#include "WindowAccessor.h"
 #include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -55,6 +54,7 @@ typedef struct {
   UInt16 coordSys;
 } win_surface_t;
 
+/*
 void WinDirectAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
   BitmapType *bitmapP = WinGetBitmap(wh);
   uint8_t *bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
@@ -68,6 +68,7 @@ void WinDirectAccessHack(WinHandle wh, uint16_t x, uint16_t y, uint16_t width, u
   put2b(height, (uint8_t *)wh, 16);
   put4b(addr,   (uint8_t *)wh, 28);
 }
+*/
 
 static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
   ColorTableType *colorTableP;
@@ -88,8 +89,10 @@ static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
   win_module_t *module;
+  BitmapType *bmp;
   ColorTableType *colorTable;
   UInt16 i, entry;
+  UInt8 *ds;
   char buf[64];
   Err err;
 
@@ -179,23 +182,38 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   } else {
     module->displayWindow = pumpkin_heap_alloc(sizeof(WindowType), "Window");
-    module->displayWindow->windowFlags.freeBitmap = true;
-    module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, colorTable, &err);
-    module->displayWindow->density = module->density;
-    BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
+    //module->displayWindow->windowFlags.freeBitmap = true;
+    WinSetFlag(module->displayWindow, WindowFlagFreeBitmap, true);
+    //module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, colorTable, &err);
+    bmp = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, colorTable, &err);
+    WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)bmp);
+    //module->displayWindow->density = module->density;
+    //BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
+    BmpSetLittleEndianBits(bmp, module->littleEndian);
 
-    module->displayWindow->clippingBounds.left = 0;
-    module->displayWindow->clippingBounds.right = width-1;
-    module->displayWindow->clippingBounds.top = 0;
-    module->displayWindow->clippingBounds.bottom = height-1;
-    if (module->displayWindow->density == kDensityDouble) {
+    //module->displayWindow->clippingBounds.left = 0;
+    //module->displayWindow->clippingBounds.right = width-1;
+    //module->displayWindow->clippingBounds.top = 0;
+    //module->displayWindow->clippingBounds.bottom = height-1;
+    WinSetField(module->displayWindow, WindowFieldClippingBoundsX1, 0);
+    WinSetField(module->displayWindow, WindowFieldClippingBoundsX2, width - 1);
+    WinSetField(module->displayWindow, WindowFieldClippingBoundsY1, 0);
+    WinSetField(module->displayWindow, WindowFieldClippingBoundsY2, height - 1); 
+
+    //if (module->displayWindow->density == kDensityDouble)
+    if (module->density == kDensityDouble) {
       width >>= 1;
       height >>= 1;
     }
-    module->displayWindow->windowBounds.extent.x = width;
-    module->displayWindow->windowBounds.extent.y = height;
-    module->displayWindow->drawStateP = &module->drawState;
-    WinDirectAccessHack(module->displayWindow, 0, 0, width, height);
+    //module->displayWindow->windowBounds.extent.x = width;
+    //module->displayWindow->windowBounds.extent.y = height;
+    WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
+    WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
+    //module->displayWindow->drawStateP = &module->drawState;
+    ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
+    encode_drawState(ds, &module->drawState);
+    WinSetField(module->displayWindow, WindowFieldDrawStateP, (UIntPtr)ds);
+    //WinDirectAccessHack(module->displayWindow, 0, 0, width, height);
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   }
 
@@ -230,7 +248,8 @@ int WinFinishModule(Boolean deleteDisplay) {
 
   if (module) {
     if (deleteDisplay) {
-      if (module->displayWindow->bitmapP) BmpDelete(module->displayWindow->bitmapP);
+      //if (module->displayWindow->bitmapP) BmpDelete(module->displayWindow->bitmapP);
+      if (WinGetField(module->displayWindow, WindowFieldBitmapP)) BmpDelete((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
       pumpkin_heap_free(module->displayWindow, "Window");
     }
     xfree(module);
@@ -298,7 +317,8 @@ ColorTableType *WinGetColorTable(Int16 depth) {
   if (depth == 0) depth = module->depth;
 
   switch (depth) {
-    case -1: return BmpGetColortable(module->displayWindow->bitmapP);
+    //case -1: return BmpGetColortable(module->displayWindow->bitmapP);
+    case -1: return BmpGetColortable((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
     case  1: return module->colorTable1;
     case  2: return module->colorTable2;
     case  4: return module->colorTable4;
@@ -322,7 +342,8 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
     active = wh == module->activeWindow ? 'a' : '.';
     draw = wh == module->drawWindow ? 'w' : '.';
     display = wh == module->displayWindow ? 'd' : '.';
-    StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", (uint8_t *)wh - ram, BmpGetDescr(wh->bitmapP, bmpBuf, sizeof(bmpBuf)), active, draw, display);
+    //StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", (uint8_t *)wh - ram, BmpGetDescr(wh->bitmapP, bmpBuf, sizeof(bmpBuf)), active, draw, display);
+    StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", (uint8_t *)wh - ram, BmpGetDescr((BitmapType *)WinGetField(wh, WindowFieldBitmapP), bmpBuf, sizeof(bmpBuf)), active, draw, display);
   } else {
     StrNCopy(buf, "null", size-1);
   }
@@ -332,6 +353,7 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
 
 WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  UInt8 *ds;
   WinHandle wh;
 
   debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d)",
@@ -340,12 +362,20 @@ WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean 
   // uses the bitmap and drawing state of the current draw window
   // windows created by this routine draw to the display
   if ((wh = WinCreateBitmapWindow(WinGetBitmap(WinGetDisplayWindow()), error)) != NULL) {
-    wh->windowBounds.topLeft.x = bounds->topLeft.x;
-    wh->windowBounds.topLeft.y = bounds->topLeft.y;
-    wh->frameType.word = frame;
-    wh->windowFlags.modal = modal;
-    wh->windowFlags.focusable = focusable;
-    wh->drawStateP = &module->drawState;
+    //wh->windowBounds.topLeft.x = bounds->topLeft.x;
+    //wh->windowBounds.topLeft.y = bounds->topLeft.y;
+    WinSetField(wh, WindowFieldWindowBoundsX, bounds->topLeft.x);
+    WinSetField(wh, WindowFieldWindowBoundsY, bounds->topLeft.y);
+    //wh->frameType.word = frame;
+    WinSetField(wh, WindowFieldFrameType, frame);
+    //wh->windowFlags.modal = modal;
+    //wh->windowFlags.focusable = focusable;
+    WinSetFlag(wh, WindowFlagModal, modal);
+    WinSetFlag(wh, WindowFlagFocusable, focusable);
+    //wh->drawStateP = &module->drawState;
+    ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
+    encode_drawState(ds, &module->drawState);
+    WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
   }
 
   return wh;
@@ -355,6 +385,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh = NULL;
   Coord width, height;
+  UInt8 *ds;
   char buf[64];
   Err err = sysErrNoFreeResource;
 
@@ -362,20 +393,31 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
     BmpGetDimensions(bitmapP, &width, &height, NULL);
 
     if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL) {
-      wh->bitmapP = bitmapP;
-      wh->windowFlags.freeBitmap = false;
-      wh->density = BmpGetDensity(bitmapP);
-      wh->clippingBounds.left = 0;
-      wh->clippingBounds.right = width-1;
-      wh->clippingBounds.top = 0;
-      wh->clippingBounds.bottom = height-1;
-      if (wh->density == kDensityDouble) {
+      //wh->bitmapP = bitmapP;
+      WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bitmapP);
+      //wh->windowFlags.freeBitmap = false;
+      WinSetFlag(wh, WindowFlagFreeBitmap, false);
+      //wh->density = BmpGetDensity(bitmapP);
+      //wh->clippingBounds.left = 0;
+      //wh->clippingBounds.right = width-1;
+      //wh->clippingBounds.top = 0;
+      //wh->clippingBounds.bottom = height-1;
+      WinSetField(wh, WindowFieldClippingBoundsX1, 0);
+      WinSetField(wh, WindowFieldClippingBoundsX2, width - 1);
+      WinSetField(wh, WindowFieldClippingBoundsY1, 0);
+      WinSetField(wh, WindowFieldClippingBoundsY2, height - 1);
+      //if (wh->density == kDensityDouble)
+      if (BmpGetDensity(bitmapP) == kDensityDouble) {
         width >>= 1;
         height >>= 1;
       }
-      wh->drawStateP = &module->drawState;
-      RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
-      WinDirectAccessHack(wh, 0, 0, width, height);
+      //wh->drawStateP = &module->drawState;
+      ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
+      encode_drawState(ds, &module->drawState);
+      WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
+      //RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
+      RctSetWinFromValues(wh, 0, 0, width, height);
+      //WinDirectAccessHack(wh, 0, 0, width, height);
       debug(DEBUG_TRACE, "Window", "WinCreateBitmapWindow %s", WinGetDescr(wh, buf, sizeof(buf)));
       err = errNone;
     }
@@ -389,6 +431,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
 void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
+  uint8_t *p;
   char buf[64];
 
   if (winHandle) {
@@ -400,10 +443,13 @@ void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
       module->activeWindow = module->displayWindow;
     }
     bitmapP = WinGetBitmap(winHandle);
-    if (bitmapP && winHandle->windowFlags.freeBitmap) {
+    //if (bitmapP && winHandle->windowFlags.freeBitmap)
+    if (bitmapP && WinGetFlag(winHandle, WindowFlagFreeBitmap)) {
       debug(DEBUG_TRACE, "Window", "WinDeleteWindow BmpDelete %p", bitmapP);
       BmpDelete(bitmapP);
     }
+    p = (uint8_t *)WinGetField(winHandle, WindowFieldDrawStateP);
+    if (p) pumpkin_heap_free(p, "DrawState");
     pumpkin_heap_free(winHandle, "Window");
   }
 }
@@ -477,17 +523,19 @@ void WinDisableWindow(WinHandle winHandle) {
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect) {
   Int16 xmargin = 0, ymargin = 0;
 
-  MemMove(rect, &wh->windowBounds, sizeof(RectangleType));
-  if (wh->windowFlags.modal) {
-    if (wh->windowBounds.topLeft.x >= 2) {
+  //MemMove(rect, &wh->windowBounds, sizeof(RectangleType));
+  RctSetRectFromWin(rect, wh);
+  //if (wh->windowFlags.modal)
+  if (WinGetFlag(wh, WindowFlagModal)) {
+    if ((Coord)WinGetField(wh, WindowFieldWindowBoundsX) >= 2) {
       xmargin = 2;
     } else {
-      xmargin = wh->windowBounds.topLeft.x;
+      xmargin = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
     }
-    if (wh->windowBounds.topLeft.y >= 2) {
+    if ((Coord)WinGetField(wh, WindowFieldWindowBoundsY) >= 2) {
       ymargin = 2;
     } else {
-      ymargin = wh->windowBounds.topLeft.y;
+      ymargin = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
     }
 
     rect->topLeft.x -= xmargin;
@@ -550,7 +598,7 @@ void WinRestoreBits(WinHandle winHandle, Coord destX, Coord destY) {
 
   if (winHandle) {
     debug(DEBUG_TRACE, "Window", "WinRestoreBits %d,%d", destX, destY);
-    RctSetRectangle(&rect, 0, 0, winHandle->windowBounds.extent.x, winHandle->windowBounds.extent.y);
+    RctSetRectangle(&rect, 0, 0, (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW), (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH));
     WinCopyRectangle(winHandle, WinGetDrawWindow(), &rect, destX, destY, winPaint);
     WinDeleteWindow(winHandle, false);
   }
@@ -565,8 +613,10 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   module->width = extentX;
   module->height = extentY;
 
-  module->displayWindow->windowBounds.extent.x = module->width/2;
-  module->displayWindow->windowBounds.extent.y = module->height/2;
+  //module->displayWindow->windowBounds.extent.x = module->width/2;
+  //module->displayWindow->windowBounds.extent.y = module->height/2;
+  WinSetField(module->displayWindow, WindowFieldWindowBoundsW, module->width/2);
+  WinSetField(module->displayWindow, WindowFieldWindowBoundsH, module->height/2);
   bitmapP = WinGetBitmap(module->displayWindow);
   newBitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, BmpGetColortable(bitmapP), &err);
   if (bitmapP) {
@@ -574,8 +624,9 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
     debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
     BmpDelete(bitmapP);
   }
-  module->displayWindow->bitmapP = newBitmapP;
-  WinDirectAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
+  //module->displayWindow->bitmapP = newBitmapP;
+  WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)newBitmapP);
+  //WinDirectAccessHack(module->displayWindow, 0, 0, module->width/2, module->height/2);
 }
 
 void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
@@ -588,8 +639,10 @@ void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
 
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y) {
   if (winH && x && y) {
-    *x = winH->windowBounds.topLeft.x;
-    *y = winH->windowBounds.topLeft.y;
+    //*x = winH->windowBounds.topLeft.x;
+    //*y = winH->windowBounds.topLeft.y;
+    *x = WinGetField(winH, WindowFieldWindowBoundsX);
+    *y = WinGetField(winH, WindowFieldWindowBoundsY);
   }
 }
 
@@ -600,7 +653,8 @@ void WinGetDrawWindowBounds(RectangleType *rP) {
 // Return the bounds of a window in display-relative coordinates.
 void WinGetBounds(WinHandle winH, RectangleType *rP) {
   if (winH && rP) {
-    MemMove(rP, &winH->windowBounds, sizeof(RectangleType));
+    //MemMove(rP, &winH->windowBounds, sizeof(RectangleType));
+    RctSetRectFromWin(rP, winH);
     WinScaleRectangle(rP);
   }
 }
@@ -609,34 +663,40 @@ void WinGetBounds(WinHandle winH, RectangleType *rP) {
 // A visible window cannot have its bounds modified.
 void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  RectangleType rect;
+  RectangleType rect, *r;
   BitmapType *bmp, *old;
   UInt32 density, depth;
   Coord width, height;
   UInt16 prevCoordSys;
   Err err;
 
-  if (winHandle && rP && (rP->extent.x  != winHandle->windowBounds.extent.x  || rP->extent.y  != winHandle->windowBounds.extent.y ||
-                          rP->topLeft.x != winHandle->windowBounds.topLeft.x || rP->topLeft.y != winHandle->windowBounds.topLeft.y)) {
-    MemMove(&winHandle->windowBounds, rP, sizeof(RectangleType));
-    WinUnscaleRectangle(&winHandle->windowBounds);
-    width = winHandle->windowBounds.extent.x;
-    height = winHandle->windowBounds.extent.y;
+  if (winHandle && rP && (rP->extent.x  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW) || rP->extent.y  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH) ||
+                          rP->topLeft.x != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsX) || rP->topLeft.y != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsY))) {
+    //MemMove(&winHandle->windowBounds, rP, sizeof(RectangleType));
+    //WinUnscaleRectangle(&winHandle->windowBounds);
+    MemMove(&rect, rP, sizeof(RectangleType));
+    WinUnscaleRectangle(&rect);
+    r = &rect;
+    RctSetWinFromRect(r, winHandle);
+    width = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW);
+    height = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH);
     prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
     width = WinScaleCoord(width, false);
     height = WinScaleCoord(height, false);
     WinSetCoordinateSystem(prevCoordSys);
     WinScreenGetAttribute(winScreenDensity, &density);
     WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
-    old = winHandle->bitmapP;
+    //old = winHandle->bitmapP;
+    old = (BitmapType *)WinGetField(winHandle, WindowFieldBitmapP);
     bmp = BmpCreate3(width, height, 0, density, depth, false, 0, BmpGetColortable(old), &err);
     if (bmp) {
       BmpSetLittleEndianBits(bmp, module->littleEndian);
-      winHandle->bitmapP = bmp;
+      //winHandle->bitmapP = bmp;
+      WinSetField(winHandle, WindowFieldBitmapP, (UIntPtr)bmp);
       debug(DEBUG_TRACE, "Window", "WinSetBounds BmpDelete %p", old);
       BmpDelete(old);
     }
-    WinDirectAccessHack(winHandle, winHandle->windowBounds.topLeft.x, winHandle->windowBounds.topLeft.y, winHandle->windowBounds.extent.x, winHandle->windowBounds.extent.y);
+    //WinDirectAccessHack(winHandle, winHandle->windowBounds.topLeft.x, winHandle->windowBounds.topLeft.y, (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW), (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH));
 
     RctSetRectangle(&rect, 0, 0, width, height);
     WinSetClipingBounds(winHandle, &rect);
@@ -647,8 +707,10 @@ void WinGetWindowExtent(Coord *extentX, Coord *extentY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
-    if (extentX) *extentX = module->drawWindow->windowBounds.extent.x;
-    if (extentY) *extentY = module->drawWindow->windowBounds.extent.y;
+    //if (extentX) *extentX = module->drawWindow->windowBounds.extent.x;
+    //if (extentY) *extentY = module->drawWindow->windowBounds.extent.y;
+    if (extentX) *extentX = WinGetField(module->drawWindow, WindowFieldWindowBoundsW);
+    if (extentY) *extentY = WinGetField(module->drawWindow, WindowFieldWindowBoundsH);
   }
 }
 
@@ -661,13 +723,16 @@ void WinWindowToDisplayPt(Coord *extentX, Coord *extentY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
   if (module->drawWindow) {
-    if (extentX) *extentX += module->drawWindow->windowBounds.topLeft.x;
-    if (extentY) *extentY += module->drawWindow->windowBounds.topLeft.y;
+    //if (extentX) *extentX += module->drawWindow->windowBounds.topLeft.x;
+    //if (extentY) *extentY += module->drawWindow->windowBounds.topLeft.y;
+    if (extentX) *extentX += WinGetField(module->drawWindow, WindowFieldWindowBoundsX);
+    if (extentY) *extentY += WinGetField(module->drawWindow, WindowFieldWindowBoundsY);
   }
 }
 
 BitmapType *WinGetBitmap(WinHandle winHandle) {
-  return winHandle ? winHandle->bitmapP : NULL;
+  //return winHandle ? winHandle->bitmapP : NULL;
+  return winHandle ? (BitmapType *)WinGetField(winHandle, WindowFieldBitmapP) : NULL;
 }
 
 // Note that the bounds and clippingBounds fields in the WindowType data structure are always stored using native coordinates.
@@ -676,6 +741,7 @@ BitmapType *WinGetBitmap(WinHandle winHandle) {
 void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x1, y1, x2, y2;
+  BitmapType *bmp;
 
   if (wh && rP) {
     x1 = rP->topLeft.x;
@@ -683,7 +749,10 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
     x2 = rP->extent.x > 0 ? x1 + rP->extent.x - 1 : x1;
     y2 = rP->extent.y > 0 ? y1 + rP->extent.y - 1 : y1;
 
-    if (wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+    //if (wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard)
+    bmp = (BitmapType *)WinGetField(wh, WindowFieldBitmapP);
+    //if (wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard)
+    if (BmpGetDensity(bmp) == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 << 1;
       y1 = y1 << 1;
       x2 = x2 << 1;
@@ -694,10 +763,14 @@ void WinSetClipingBounds(WinHandle wh, const RectangleType *rP) {
 
     debug(DEBUG_TRACE, "Window", "WinSetClipingBounds (%d,%d,%d,%d) -> (%d,%d,%d,%d)",
       rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, x1, y1, x2, y2);
-    wh->clippingBounds.left = x1;
-    wh->clippingBounds.right = x2;
-    wh->clippingBounds.top = y1;
-    wh->clippingBounds.bottom = y2;
+    //wh->clippingBounds.left = x1;
+    //wh->clippingBounds.right = x2;
+    //wh->clippingBounds.top = y1;
+    //wh->clippingBounds.bottom = y2;
+    WinSetField(wh, WindowFieldClippingBoundsX1, x1);
+    WinSetField(wh, WindowFieldClippingBoundsX2, x2);
+    WinSetField(wh, WindowFieldClippingBoundsY1, y1);
+    WinSetField(wh, WindowFieldClippingBoundsY2, y2);
   }
 }
 
@@ -719,8 +792,10 @@ void WinResetClip(void) {
     module->drawState.coordinateSystem = kCoordinatesStandard;
     rect.topLeft.x = 0;
     rect.topLeft.y = 0;
-    rect.extent.x = module->drawWindow->windowBounds.extent.x;
-    rect.extent.y = module->drawWindow->windowBounds.extent.y;
+    //rect.extent.x = module->drawWindow->windowBounds.extent.x;
+    //rect.extent.y = module->drawWindow->windowBounds.extent.y;
+    rect.extent.x = WinGetField(module->drawWindow, WindowFieldWindowBoundsW);
+    rect.extent.y = WinGetField(module->drawWindow, WindowFieldWindowBoundsH);
     WinSetClipingBounds(module->drawWindow, &rect);
     module->drawState.coordinateSystem = coordSys;
   }
@@ -731,10 +806,14 @@ void WinGetClip(RectangleType *rP) {
   Coord x1, y1, x2, y2;
 
   if (module->drawWindow && rP) {
-    x1 = module->drawWindow->clippingBounds.left;
-    x2 = module->drawWindow->clippingBounds.right;
-    y1 = module->drawWindow->clippingBounds.top;
-    y2 = module->drawWindow->clippingBounds.bottom;
+    //x1 = module->drawWindow->clippingBounds.left;
+    //x2 = module->drawWindow->clippingBounds.right;
+    //y1 = module->drawWindow->clippingBounds.top;
+    //y2 = module->drawWindow->clippingBounds.bottom;
+    x1 = WinGetField(module->drawWindow, WindowFieldClippingBoundsX1);
+    x2 = WinGetField(module->drawWindow, WindowFieldClippingBoundsX2);
+    y1 = WinGetField(module->drawWindow, WindowFieldClippingBoundsY1);
+    y2 = WinGetField(module->drawWindow, WindowFieldClippingBoundsY2);
 
     if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 >> 1;
@@ -756,7 +835,8 @@ void WinClipRectangle(RectangleType *rP) {
   Coord x1, y1, x2, y2;
 
   if (module->drawWindow) {
-    if (rP && !(module->drawWindow->clippingBounds.left == 0 && module->drawWindow->clippingBounds.right == 0)) {
+    //if (rP && !(module->drawWindow->clippingBounds.left == 0 && module->drawWindow->clippingBounds.right == 0))
+    if (rP && !((Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX1) == 0 && (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX2) == 0)) {
       x1 = rP->topLeft.x;
       y1 = rP->topLeft.y;
       x2 = x1 + rP->extent.x - 1;
@@ -769,6 +849,7 @@ void WinClipRectangle(RectangleType *rP) {
         y2 = (y2 << 1) + 1;
       }
 
+/*
       if (x1 <= module->drawWindow->clippingBounds.right  && x2 >= module->drawWindow->clippingBounds.left &&
           y1 <= module->drawWindow->clippingBounds.bottom && y2 >= module->drawWindow->clippingBounds.top) {
 
@@ -783,6 +864,24 @@ void WinClipRectangle(RectangleType *rP) {
         }
         if (y2 > module->drawWindow->clippingBounds.bottom) {
           y2 = module->drawWindow->clippingBounds.bottom;
+        }
+*/
+      if (x1 <= (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX2) &&
+          x2 >= (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX1) &&
+          y1 <= (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY2) &&
+          y2 >= (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY1)) {
+
+        if (x1 < (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX1)) {
+          x1 = (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX1);
+        }
+        if (x2 > (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX2)) {
+          x2 = (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsX2);
+        }
+        if (y1 < (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY1)) {
+          y1 = (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY1);
+        }
+        if (y2 > (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY2)) {
+          y2 = (Coord)WinGetField(module->drawWindow, WindowFieldClippingBoundsY2);
         }
 
         if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
@@ -803,7 +902,8 @@ void WinClipRectangle(RectangleType *rP) {
 }
 
 Boolean WinModal(WinHandle winHandle) {
-  return winHandle ? winHandle->windowFlags.modal : false;
+  //return winHandle ? winHandle->windowFlags.modal : false;
+  return winHandle ? WinGetFlag(winHandle, WindowFlagModal) : false;
 }
 
 static IndexedColorType getBit(win_module_t *module, WinHandle wh, Coord x, Coord y, RGBColorType *rgb) {
@@ -897,33 +997,45 @@ static void WinCopyBit(BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord 
 }
 
 #define CLIP_OK(left,right,top,bottom,x,y) (((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
-#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
+//#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
+#define CLIPW_OK(wh,x,y) CLIP_OK(WinGetField(wh,WindowFieldClippingBoundsX1),WinGetField(wh,WindowFieldClippingBoundsX2),WinGetField(wh,WindowFieldClippingBoundsY1),WinGetField(wh,WindowFieldClippingBoundsY2),x,y)
 
 static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
   Coord cx, cy, x0, y0;
+  BitmapType *bmp;
+  UInt16 density;
   Boolean dbl, display;
 
   if (wh) {
     cx = x;
     cy = y;
-    pointTo(module, wh->density, &cx, &cy);
+    bmp = (BitmapType *)WinGetField(wh, WindowFieldBitmapP);
+    //pointTo(module, wh->density, &cx, &cy);
+    pointTo(module, BmpGetDensity(bmp), &cx, &cy);
 
     if (CLIPW_OK(wh, cx, cy)) {
-      display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
-      dbl = wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
+      //display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
+      display = wh == module->displayWindow || WinGetField(wh, WindowFieldBitmapP) == WinGetField(module->displayWindow, WindowFieldBitmapP);
+      //dbl = wh->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
+      dbl = BmpGetDensity(bmp) == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
       WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || display);
 
       if (wh == module->activeWindow && !display) {
         cx = x;
         cy = y;
-        pointTo(module, module->displayWindow->density, &cx, &cy);
-        x0 = wh->windowBounds.topLeft.x;
-        y0 = wh->windowBounds.topLeft.y;
-        if (module->displayWindow->density == kDensityDouble) {
+        bmp = (BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP);
+        density = BmpGetDensity(bmp);
+        //pointTo(module, module->displayWindow->density, &cx, &cy);
+        pointTo(module, density, &cx, &cy);
+        x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
+        y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
+        //if (module->displayWindow->density == kDensityDouble)
+        if (density == kDensityDouble) {
           x0 <<= 1;
           y0 <<= 1;
         }
-        dbl = module->displayWindow->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
+        //dbl = module->displayWindow->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
+        dbl = density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
         WinPutBit(displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl, false);
       }
     }
@@ -1523,6 +1635,7 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
   BitmapType *dstBmp;
   UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
+  AbsRectType absr;
   UInt16 depth, srcRowBytes, dstRowBytes;
   Boolean clipping, display;
   Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
@@ -1553,7 +1666,9 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     dstBits = BmpGetBits(dstBmp);
     BmpGetDimensions(srcBmp, &srcWidth, &srcHeight, &srcRowBytes);
     BmpGetDimensions(dstBmp, &dstWidth, &dstHeight, &dstRowBytes);
-    clipping = (dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top);
+    //clipping = (dst->clippingBounds.right > dst->clippingBounds.left) && (dst->clippingBounds.bottom > dst->clippingBounds.top);
+    clipping = WinGetField(dst, WindowFieldClippingBoundsX2) > WinGetField(dst, WindowFieldClippingBoundsX1) &&
+               WinGetField(dst, WindowFieldClippingBoundsY2) > WinGetField(dst, WindowFieldClippingBoundsY1);
 
     if (rect == NULL && dstX == 0 && dstY == 0 && srcSize == dstSize && !clipping) {
       // copy the whole window (best case)
@@ -1613,7 +1728,13 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
 
       if (clipping) {
         // destination window has an active clipping region, compute intersection
-        RctAbsToRect(&dst->clippingBounds, &clip);
+        //RctAbsToRect(&dst->clippingBounds, &clip);
+        absr.left   = WinGetField(dst, WindowFieldClippingBoundsX1);
+        absr.right  = WinGetField(dst, WindowFieldClippingBoundsX2);
+        absr.top    = WinGetField(dst, WindowFieldClippingBoundsY1);
+        absr.bottom = WinGetField(dst, WindowFieldClippingBoundsY2);
+        RctAbsToRect(&absr, &clip);
+        
         RctGetIntersection(&dstRect, &clip, &intersection);
         // adjust srcRect
         dx = intersection.topLeft.x - dstRect.topLeft.x;
@@ -1693,7 +1814,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     debug(DEBUG_ERROR, "Window", "WinCopyBitmap density or depth does not match");
   }
 
-  display = dst == module->displayWindow || dst->bitmapP == module->displayWindow->bitmapP;
+  //display = dst == module->displayWindow || dst->bitmapP == module->displayWindow->bitmapP;
+  display = dst == module->displayWindow || WinGetField(dst, WindowFieldBitmapP) == WinGetField(module->displayWindow, WindowFieldBitmapP);
 
   if (dirtyRect && (dst == module->activeWindow || display)) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
@@ -1764,8 +1886,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     bitmapTransp = BmpGetTransparentValue(bitmapP, &transparentValue);
 
     RctCopyRectangle(rect, &srcRect);
-    x0 = wh->windowBounds.topLeft.x;
-    y0 = wh->windowBounds.topLeft.y;
+    x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
+    y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
 
     if (scaleBitmapOff) {
       wx = x;
@@ -1836,10 +1958,14 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       return;
     }
 
-    x1 = wh->clippingBounds.left;
-    x2 = wh->clippingBounds.right;
-    y1 = wh->clippingBounds.top;
-    y2 = wh->clippingBounds.bottom;
+    //x1 = wh->clippingBounds.left;
+    //x2 = wh->clippingBounds.right;
+    //y1 = wh->clippingBounds.top;
+    //y2 = wh->clippingBounds.bottom;
+    x1 = (Coord)WinGetField(wh, WindowFieldClippingBoundsX1);
+    x2 = (Coord)WinGetField(wh, WindowFieldClippingBoundsX2);
+    y1 = (Coord)WinGetField(wh, WindowFieldClippingBoundsY1);
+    y2 = (Coord)WinGetField(wh, WindowFieldClippingBoundsY2);
 
     if (scaleBitmapOff) {
       dblw = false;
@@ -1883,7 +2009,8 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
     t1 = sys_get_clock();
-    display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
+    //display = wh == module->displayWindow || wh->bitmapP == module->displayWindow->bitmapP;
+    display = wh == module->displayWindow || WinGetField(wh, WindowFieldBitmapP) == WinGetField(module->displayWindow, WindowFieldBitmapP);
     for (i = 0; i < srcRect.extent.y; i++) {
       wx = wx0;
       dx = dx0;
@@ -1951,8 +2078,8 @@ void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x0, y0;
 
-  x0 = wh->windowBounds.topLeft.x;
-  y0 = wh->windowBounds.topLeft.y;
+  x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
+  y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
 
   if (module->drawState.coordinateSystem == kCoordinatesStandard) {
     *x += x0;
@@ -2581,7 +2708,8 @@ UInt8 *WinScreenLock(WinLockInitType initMode) {
 
   // XXX simply return the bitmap buffer of the display
   // this may not be the right thing to do, but it should be OK
-  return BmpGetBits(module->displayWindow->bitmapP);
+  //return BmpGetBits(module->displayWindow->bitmapP);
+  return BmpGetBits((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
 }
 
 void WinScreenUnlock(void) {
@@ -2969,12 +3097,16 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
 WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 density, depth;
+  BitmapType *bmp;
+  RectangleType rect;
   WinHandle wh = NULL;
+  UInt8 *ds;
   char buf[64];
   Err err = sysErrNoFreeResource;
 
   if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL) {
-    RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
+    //RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
+    RctSetWinFromValues(wh, 0, 0, width, height);
 
     switch (format) {
       case screenFormat:
@@ -2986,7 +3118,8 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         break;
       case genericFormat:
         // Like screenFormat, except that genericFormat offscreen windows do not accept pen input.
-        wh->windowFlags.format = true;
+        //wh->windowFlags.format = true;
+        WinSetFlag(wh, WindowFlagFormat, true);
         density = kDensityLow;
         depth = module->depth;
         debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
@@ -3006,32 +3139,48 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         break;
     }
 
-    wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
-    if (wh->bitmapP) {
+    //wh->bitmapP = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
+    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
+    WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bmp);
+    //if (wh->bitmapP)
+    if (bmp) {
       debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %s format %d", WinGetDescr(wh, buf, sizeof(buf)), format);
-      BmpSetLittleEndianBits(wh->bitmapP, module->littleEndian);
-      wh->drawStateP = &module->drawState;
-      wh->windowFlags.offscreen = true;
-      wh->windowFlags.freeBitmap = true;
-      wh->density = density;
+      //BmpSetLittleEndianBits(wh->bitmapP, module->littleEndian);
+      BmpSetLittleEndianBits(bmp, module->littleEndian);
+      //wh->drawStateP = &module->drawState;
+      ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
+      encode_drawState(ds, &module->drawState);
+      WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
+      //wh->windowFlags.offscreen = true;
+      //wh->windowFlags.freeBitmap = true;
+      WinSetFlag(wh, WindowFlagOffscreen, true);
+      WinSetFlag(wh, WindowFlagFreeBitmap, true);
+      //wh->density = density;
       err = errNone;
 
       // fill window bitmap with white color
       IndexedColorType old = WinSetForeColor(0x00);
       WinHandle p = WinSetDrawWindow(wh);
-      WinDrawRectangle(&wh->windowBounds, 0);
+      //WinDrawRectangle(&wh->windowBounds, 0);
+      RctSetRectFromWin(&rect, wh);
+      WinDrawRectangle(&rect, 0);
       WinSetDrawWindow(p);
       WinSetForeColor(old);
 
-      wh->clippingBounds.left = 0;
-      wh->clippingBounds.right = width-1;
-      wh->clippingBounds.top = 0;
-      wh->clippingBounds.bottom = height-1;
-      if (wh->density == kDensityDouble) {
+      //wh->clippingBounds.left = 0;
+      //wh->clippingBounds.right = width-1;
+      //wh->clippingBounds.top = 0;
+      //wh->clippingBounds.bottom = height-1;
+      WinSetField(wh, WindowFieldClippingBoundsX1, 0);
+      WinSetField(wh, WindowFieldClippingBoundsX2, width - 1);
+      WinSetField(wh, WindowFieldClippingBoundsY1, 0);
+      WinSetField(wh, WindowFieldClippingBoundsY2, height - 1);
+      //if (wh->density == kDensityDouble)
+      if (density == kDensityDouble) {
         width >>= 1;
         height >>= 1;
       }
-      WinDirectAccessHack(wh, 0, 0, width, height);
+      //WinDirectAccessHack(wh, 0, 0, width, height);
     } else {
       pumpkin_heap_free(wh, "Window");
       wh = NULL;
@@ -3242,6 +3391,7 @@ void WinPopDrawState(void) {
 
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  BitmapType *bmp;
   ColorTableType *colorTable = NULL;
   Coord width, height;
   UInt16 depth, entry;
@@ -3318,9 +3468,13 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
             module->legacyDepth = depth;
           }
 
-          BmpDelete(module->displayWindow->bitmapP);
-          module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, colorTable, &err);
-          BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
+          //BmpDelete(module->displayWindow->bitmapP);
+          BmpDelete((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
+          //module->displayWindow->bitmapP = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, colorTable, &err);
+          bmp = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, colorTable, &err);
+          WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)bmp);
+          //BmpSetLittleEndianBits(module->displayWindow->bitmapP, module->littleEndian);
+          BmpSetLittleEndianBits(bmp, module->littleEndian);
           module->depth = depth;
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
@@ -3364,12 +3518,12 @@ Err WinSetConstraintsSize(WinHandle winH, Coord minH, Coord prefH, Coord maxH, C
   Err err = sysErrParamErr;
 
   if (winH) {
-    winH->minH = minH;
-    winH->prefH = prefH;
-    winH->maxH = maxH;
-    winH->minW = minW;
-    winH->prefW = prefW;
-    winH->maxW = maxW;
+    //winH->minH = minH;
+    //winH->prefH = prefH;
+    //winH->maxH = maxH;
+    //winH->minW = minW;
+    //winH->prefW = prefW;
+    //winH->maxW = maxW;
     err = errNone;
   }
 
