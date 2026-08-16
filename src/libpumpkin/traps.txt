@@ -1765,3 +1765,15 @@ SYS_TRAP sysTrapScrDefaultPaletteState 0 void ScrDefaultPaletteState 0
 SYS_TRAP sysTrapScrUpdateScreenBitmap 0 void sysTrapScrUpdateScreenBitmap 0
 SYS_TRAP sysTrapDmSync 0 void DmSync 0
 SYS_TRAP sysTrapDmSyncDatabase 0 Err DmSyncDatabase 1 DmOpenRef dbP
+SONY_HR_LIB sysLibTrapOpen 0 Err HROpen 1 UInt16 refNum
+SONY_HR_LIB sysLibTrapClose 0 Err HRClose 1 UInt16 refNum
+SONY_HR_LIB sysLibTrapSleep 0 Err HRSleep 1 UInt16 refNum
+SONY_HR_LIB sysLibTrapWake 0 Err HRWake 1 UInt16 refNum
+SONY_HR_LIB HRTrapGetAPIVersion 0 Err HRGetAPIVersion 2 UInt16 refNum UInt16_* versionP
+SONY_HR_LIB HRTrapWinClipRectangle 0 void HRWinClipRectangle 2 UInt16 refNum RectangleType_* rP
+SONY_HR_LIB HRTrapWinCopyRectangle 0 void HRWinCopyRectangle 7 UInt16 refNum WinHandle srcWin WinHandle dstWin RectangleType_* srcRect Coord destX Coord destY WinDrawOperation mode
+SONY_HR_LIB HRTrapWinCreateBitmapWindow 0 WinHandle HRWinCreateBitmapWindow 3 UInt16 refNum BitmapType_* bitmapP UInt16_* error
+SONY_HR_LIB HRTrapWinDrawBitmap 0 void HRWinDrawBitmap 4 UInt16 refNum BitmapType_* bitmapP Coord x Coord y
+SONY_HR_LIB HRTrapWinScreenMode 0 Err HRWinScreenMode 6 UInt16 refNum WinScreenModeOperation operation UInt32_* 1widthP UInt32_* 1heightP UInt32_* 1depthP Boolean_* 1enableColorP
+SONY_HR_LIB HRTrapBmpCreate 0 BitmapType_* HRBmpCreate 6 UInt16 refNum Coord width Coord height UInt8 depth ColorTableType_* colortableP UInt16_* error
+SONY_HR_LIB HRTrapBmpBitsSize 0 UInt16 HRBmpBitsSize 2 UInt16 refNum BitmapType_* bitmapP

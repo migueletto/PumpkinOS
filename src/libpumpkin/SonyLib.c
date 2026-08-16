@@ -2,6 +2,7 @@
 #include <SonyCLIE.h>
 
 #include "pumpkin.h"
+#include "syslibs.h"
 #include "debug.h"
 
 typedef struct {
@@ -12,7 +13,6 @@ Err HROpen(UInt16 refNum) {
   sony_lib_t *module;
   Err err = hrErrNoFeature;
 
-  debug(DEBUG_INFO, "SonyHR", "HROpen %u", refNum);
   if (refNum == SonyHRLibRefNum) {
     if (pumpkin_get_density() == kDensityDouble) {
       if ((module = sys_calloc(1, sizeof(sony_lib_t))) != NULL) {
@@ -33,8 +33,6 @@ Err HRClose(UInt16 refNum) {
   sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
   Err err = hrErrNotOpen;
 
-  debug(DEBUG_INFO, "SonyHR", "HRClose %u", refNum);
-
   if (refNum == SonyHRLibRefNum && module) {
     pumpkin_set_local_storage(sonylib_key, NULL);
     sys_free(module);
@@ -46,7 +44,7 @@ Err HRClose(UInt16 refNum) {
   return err;
 }
 
-Err	HRGetAPIVersion(UInt16 refNum, UInt16 *versionP) {
+Err HRGetAPIVersion(UInt16 refNum, UInt16 *versionP) {
   if (versionP) *versionP = HR_VERSION_SUPPORT_FNTSIZE;
   return errNone;
 }
@@ -55,6 +53,23 @@ void HRWinClipRectangle(UInt16 refNum, RectangleType *rP) {
 }
 
 void HRWinCopyRectangle(UInt16 refNum, WinHandle srcWin, WinHandle dstWin, RectangleType *srcRect, Coord destX, Coord destY, WinDrawOperation mode) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt32 oldScalingMode;
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      oldScalingMode = WinSetScalingMode(kBitmapScalingOff);
+      WinCopyRectangle(srcWin, dstWin, srcRect, destX, destY, mode);
+      WinSetScalingMode(oldScalingMode);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinCopyRectangle(srcWin, dstWin, srcRect, destX, destY, mode);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 WinHandle HRWinCreateBitmapWindow(UInt16 refNum, BitmapType *bitmapP, UInt16 *error) {
@@ -255,8 +270,6 @@ Err HRWinScreenMode(UInt16 refNum, WinScreenModeOperation operation, UInt32 *wid
   sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
   Err err = sysErrParamErr;
 
-  debug(DEBUG_INFO, "SonyHR", "HRWinScreenMode %u", refNum);
-
   if (refNum == SonyHRLibRefNum && module) {
     switch (operation) {
       case winScreenModeGet:
@@ -322,7 +335,9 @@ Err HRWinGetPixelRGB(UInt16 refNum, Coord x, Coord y, RGBColorType *rgbP) {
 }
 
 UInt32 HRBmpBitsSize(UInt16 refNum, BitmapType *bitmapP) {
-  return 0;
+  UInt32 bitsSize;
+  BmpGetSizes(bitmapP, &bitsSize, NULL);
+  return bitsSize;
 }
 
 UInt32 HRBmpSize(UInt16 refNum, BitmapType *bitmapP) {

@@ -156,6 +156,34 @@ void palmos_sonyhrtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_A0, whP);
       }
       break;
+    case HRTrapBmpBitsSize: {
+      //UInt32 HRBmpBitsSize(UInt16 refNum, BitmapType *bitmapP)
+      uint16_t refNum = ARG16;
+      uint32_t bitmapP = ARG32;
+      BitmapType *bitmap = emupalmos_trap_in(bitmapP, trap, 1);
+      UInt32 size = HRBmpBitsSize(refNum, bitmap);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRTrapBmpBitsSize(%u, 0x%08X): %u", refNum, bitmapP, size);
+      m68k_set_reg(M68K_REG_D0, size);
+      }
+      break;
+    case HRTrapWinCopyRectangle: {
+      //void HRWinCopyRectangle(UInt16 refNum, WinHandle srcWin, WinHandle dstWin, RectangleType *srcRect, Coord destX, Coord destY, WinDrawOperation mode)
+      uint16_t refNum = ARG16;
+      uint32_t srcWinP = ARG32;
+      uint32_t dstWinP = ARG32;
+      uint32_t srcRectP = ARG32;
+      int16_t destX = ARG16;
+      int16_t destY = ARG16;
+      uint8_t mode = ARG8;
+      WinHandle srcWin = emupalmos_trap_in(srcWinP, trap, 1);
+      WinHandle dstWin = emupalmos_trap_in(dstWinP, trap, 2);
+      emupalmos_trap_in(srcRectP, trap, 3);
+      RectangleType srcRect;
+      decode_rectangle(srcRectP, &srcRect);
+      HRWinCopyRectangle(refNum, srcWin, dstWin, &srcRect, destX, destY, mode);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinCopyRectangle(%u, 0x%08X, 0x%08X, 0x%08X, %d, %d, %u)", refNum, srcWinP, dstWinP, srcRectP, destX, destY, mode);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "SonyHRLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
