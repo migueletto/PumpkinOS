@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include "syslibs.h"
+
 #define logtrap_SP  1
 #define logtrap_D0  8
 #define logtrap_A0 16
@@ -50,6 +52,7 @@ typedef struct {
   void (*rethook)(logtrap_t *lt, uint32_t pc);
 
   trap_t allTraps[0x1000];
+  trap_t libTraps[MAX_SYSLIBS][0x100];
 } logtrap_def;
 
 logtrap_def *logtrap_get_def(void);

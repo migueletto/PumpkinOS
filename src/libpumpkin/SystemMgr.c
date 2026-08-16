@@ -10,6 +10,7 @@
 #include "pwindow.h"
 #include "vfs.h"
 #include "pumpkin.h"
+#include "syslibs.h"
 #include "debug.h"
 #include "xalloc.h"
 

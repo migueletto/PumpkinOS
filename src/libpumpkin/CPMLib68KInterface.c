@@ -2,6 +2,7 @@
 #include <CPMLib.h>
 
 #include "pumpkin.h"
+#include "syslibs.h"
 #include "CryptoPlugin.h"
 #include "debug.h"
 

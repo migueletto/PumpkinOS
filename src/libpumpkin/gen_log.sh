@@ -4,11 +4,13 @@
 # SYS_TRAP sysTrapStrLen 0 UInt16 StrLen 1 const_Char_* src
 # SEL_TRAP sysTrapIntlDispatch intlTxtCharAttr UInt16 TxtCharAttr 1 WChar inChar
 
-rm -f trapArgs.c
-
 awk -v tt=$1 '
 BEGIN {
-  trapArgs = "trapArgs.c";
+  if (tt == "0") {
+    trapArgs = "trapArgs.c";
+  } else {
+    trapArgs = "trapArgs_" tt ".c";
+  }
 
   ptr["DmOpenRef"]   = 1;
   ptr["FileRef"]     = 1;
@@ -18,6 +20,8 @@ BEGIN {
   ptr["PutStringF"]  = 1;
   ptr["sys_va_list"] = 1;
   ptr["..."]         = 1;
+
+  ptr["NetSocketRef"] = 1;
 
   tchar["Char"]      = 1;
   tchar["char"]      = 1;
@@ -107,6 +111,10 @@ BEGIN {
   usize["FlpFloat"] = 4;
   usize["FlpDouble"] = 8;
 
+  usize["NetSocketTypeEnum"] = 1;
+  usize["NetSocketAddrEnum"] = 1;
+  usize["NetIPAddr"] = 4;
+
   dmid["DmResType"] = 1;
   rgb["RGBColorType"] = 1;
   evt["EventType"] = 1;
@@ -146,27 +154,41 @@ BEGIN {
   accessor[28] = "CtlGlueIsGraphical";
   accessor[29] = "CtlGlueSetFrameStyle";
 
-  print "#define T_VOID  0" >> trapArgs;
-  print "#define T_SIG   1" >> trapArgs;
-  print "#define T_USIG  2" >> trapArgs;
-  print "#define T_CHAR  3" >> trapArgs;
-  print "#define T_WCHR  4" >> trapArgs;
-  print "#define T_HEX   5" >> trapArgs;
-  print "#define T_ID    6" >> trapArgs;
-  print "#define T_STR   7" >> trapArgs;
-  print "#define T_RGB   8" >> trapArgs;
-  print "#define T_EVT   9" >> trapArgs;
-  print "#define T_RCT  10" >> trapArgs;
-  print "#define T_LOC  11" >> trapArgs;
-  print "#define T_DATE 12" >> trapArgs;
-  print "#define T_BMP  13" >> trapArgs;
-  print "" >> trapArgs;
+  if (tt == "0") {
+    print "// This file was generated with the command: gen_log.sh" > trapArgs;
+    print "// DO NOT MODIFY!" >> trapArgs;
+    print "" >> trapArgs;
 
-  print "#define OMIT_IN  1" >> trapArgs;
-  print "#define OMIT_OUT 2" >> trapArgs;
-  print "" >> trapArgs;
+    print "#define T_VOID  0" >> trapArgs;
+    print "#define T_SIG   1" >> trapArgs;
+    print "#define T_USIG  2" >> trapArgs;
+    print "#define T_CHAR  3" >> trapArgs;
+    print "#define T_WCHR  4" >> trapArgs;
+    print "#define T_HEX   5" >> trapArgs;
+    print "#define T_ID    6" >> trapArgs;
+    print "#define T_STR   7" >> trapArgs;
+    print "#define T_RGB   8" >> trapArgs;
+    print "#define T_EVT   9" >> trapArgs;
+    print "#define T_RCT  10" >> trapArgs;
+    print "#define T_LOC  11" >> trapArgs;
+    print "#define T_DATE 12" >> trapArgs;
+    print "#define T_BMP  13" >> trapArgs;
+    print "" >> trapArgs;
 
-  print "static trap_t trapArgs[] = {" >> trapArgs;
+    print "#define OMIT_IN  1" >> trapArgs;
+    print "#define OMIT_OUT 2" >> trapArgs;
+    print "" >> trapArgs;
+
+    print "static trap_t trapArgs[] = {" >> trapArgs;
+
+  } else {
+    print "// This file was generated with the command: gen_log.sh " tt > trapArgs;
+    print "// DO NOT MODIFY!" >> trapArgs;
+    print "" >> trapArgs;
+
+    print "static trap_t trapArgs_" tt "[] = {" >> trapArgs;
+  }
+
 }
 /^#/ {
   next;
@@ -177,9 +199,7 @@ $1 == tt || ($1 !~ /LIB$/ && tt == "0") {
   selector = $3;
 
   if (selector == "0" && $2 !~ /Dispatch$/) {
-    if (trap ~ /^sysTrap/) name = substr(trap, 8);
-    else if (trap ~ /^sysLib/) name = substr(trap, 4);
-    else name = "ERROR_" trap;
+    name = $5;
   } else {
     name = selector;
     if (name ~ /^sysTrap/) name = substr(name, 8);

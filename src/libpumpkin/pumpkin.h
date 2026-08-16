@@ -27,29 +27,8 @@ extern "C" {
 #define APP_SCREEN_HEIGHT 320
 
 #define MAX_SERIAL  8
-#define MAX_SYSLIBS 32
 
 #define MISSING_SYMBOL_WIDTH 5  // XXX
-
-#define NetLibRefNum (MAX_SYSLIBS+1)
-#define NetLibName   "Net.lib"
-
-#define GPDLibRefNum (MAX_SYSLIBS+2)
-#define GPDLibName   GPD_LIB_NAME
-
-#define GPSLibRefNum (MAX_SYSLIBS+3)
-
-#define CpmLibRefNum (MAX_SYSLIBS+4)
-#define CpmLibName   "CPM Library"
-
-#define PFilLibRefNum (MAX_SYSLIBS+5)
-#define PFilLibName  "FileBrowser-PFil"
-#define PFilCacheLibName  "FileBrowserCacheLib-PFil"
-
-#define PmUILibRefNum (MAX_SYSLIBS+6)
-#define PmUILibName  "PmUIUtilLib-PmUU"
-
-#define SonyHRLibRefNum (MAX_SYSLIBS+7)
 
 #define BUTTONS_HEIGHT 64
 

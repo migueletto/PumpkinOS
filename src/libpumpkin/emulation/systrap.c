@@ -9,6 +9,7 @@
 #include "mutex.h"
 #include "storage.h"
 #include "pumpkin.h"
+#include "syslibs.h"
 #include "bytes.h"
 #ifdef ARMEMU
 #include "armemu.h"
@@ -655,7 +656,7 @@ uint32_t palmos_systrap(uint16_t trap) {
     default:
       if (trap > sysLibTrapName) {
         uint16_t refNum = ARG16;
-        if (refNum > MAX_SYSLIBS) {
+        if (refNum > BASE_SYSLIBS) {
           palmos_libtrap(refNum, trap);
           break;
         }

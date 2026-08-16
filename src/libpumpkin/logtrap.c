@@ -2015,56 +2015,6 @@
 #define lmLocaleToIndex                         2
 #define lmGetLocaleSetting                      3
 
-#define vfsTrapInit            0
-#define vfsTrapCustomControl      1
-
-#define vfsTrapFileCreate        2
-#define vfsTrapFileOpen          3
-#define vfsTrapFileClose        4
-#define vfsTrapFileReadData      5
-#define vfsTrapFileRead          6
-#define vfsTrapFileWrite        7
-#define vfsTrapFileDelete        8
-#define vfsTrapFileRename        9
-#define vfsTrapFileSeek          10
-#define vfsTrapFileEOF          11
-#define vfsTrapFileTell          12
-#define vfsTrapFileResize        13
-#define vfsTrapFileGetAttributes    14
-#define vfsTrapFileSetAttributes    15
-#define vfsTrapFileGetDate        16
-#define vfsTrapFileSetDate        17
-#define vfsTrapFileSize          18
-
-#define vfsTrapDirCreate        19
-#define vfsTrapDirEntryEnumerate    20
-#define vfsTrapGetDefaultDirectory  21
-#define vfsTrapRegisterDefaultDirectory  22
-#define vfsTrapUnregisterDefaultDirectory  23
-
-#define vfsTrapVolumeFormat      24
-#define vfsTrapVolumeMount        25
-#define vfsTrapVolumeUnmount      26
-#define vfsTrapVolumeEnumerate    27
-#define vfsTrapVolumeInfo        28
-#define vfsTrapVolumeGetLabel      29
-#define vfsTrapVolumeSetLabel      30
-#define vfsTrapVolumeSize        31
-
-#define vfsTrapInstallFSLib      32
-#define vfsTrapRemoveFSLib        33
-#define vfsTrapImportDatabaseFromFile  34
-#define vfsTrapExportDatabaseToFile    35
-#define vfsTrapFileDBGetResource    36
-#define vfsTrapFileDBInfo        37
-#define vfsTrapFileDBGetRecord    38
-
-#define vfsTrapImportDatabaseFromFileCustom  39
-#define vfsTrapExportDatabaseToFileCustom    40
-
-// System use only
-#define vfsTrapPrivate1          41
-
 #define intlMaxSelector   intlTxtLowerChar
 #define omMaxSelector     omGetNextSystemLocale
 #define vfsMaxSelector    vfsTrapPrivate1
@@ -2075,9 +2025,89 @@
 // end selectors
 
 
+typedef enum {
+	HRTrapGetAPIVersion = sysLibTrapCustom,
+	HRTrapWinClipRectangle,
+	HRTrapWinCopyRectangle,
+	HRTrapWinCreateBitmapWindow,
+	HRTrapWinCreateOffscreenWindow,
+	HRTrapWinCreateWindow,
+	HRTrapWinDisplayToWindowPt,
+	HRTrapWinDrawBitmap,
+	HRTrapWinDrawChar,
+	HRTrapWinDrawChars,
+	HRTrapWinDrawGrayLine,
+	HRTrapWinDrawGrayRectangleFrame,
+	HRTrapWinDrawInvertedChars,
+	HRTrapWinDrawLine,
+	HRTrapWinDrawPixel,
+	HRTrapWinDrawRectangle,
+	HRTrapWinDrawRectangleFrame,
+	HRTrapWinDrawTruncChars,
+	HRTrapWinEraseChars,
+	HRTrapWinEraseLine,
+	HRTrapWinErasePixel,
+	HRTrapWinEraseRectangle,
+	HRTrapWinEraseRectangleFrame,
+	HRTrapWinFillLine,
+	HRTrapWinFillRectangle,
+	HRTrapWinGetClip,
+	HRTrapWinGetDisplayExtent,
+	HRTrapWinGetFramesRectangle,
+	HRTrapWinGetPixel,
+	HRTrapWinGetWindowBounds,
+	HRTrapWinGetWindowExtent,
+	HRTrapWinGetWindowFrameRect,
+	HRTrapWinInvertChars,
+	HRTrapWinInvertLine,
+	HRTrapWinInvertPixel,
+	HRTrapWinInvertRectangle,
+	HRTrapWinInvertRectangleFrame,
+	HRTrapWinPaintBitmap,
+	HRTrapWinPaintChar,
+	HRTrapWinPaintChars,
+	HRTrapWinPaintLine,
+	HRTrapWinPaintLines,
+	HRTrapWinPaintPixel,
+	HRTrapWinPaintPixels,
+	HRTrapWinPaintRectangle,
+	HRTrapWinPaintRectangleFrame,
+	HRTrapWinRestoreBits,
+	HRTrapWinSaveBits,
+	HRTrapWinScreenMode,
+	HRTrapWinScrollRectangle,
+	HRTrapWinSetClip,
+	HRTrapWinSetWindowBounds,
+	HRTrapWinWindowToDisplayPt,
+	HRTrapBmpBitsSize,
+	HRTrapBmpSize,
+	HRTrapBmpCreate,
+	HRTrapFntGetFont,
+	HRTrapFntSetFont,
+	HRTrapFontSelect,
+	HRTrapSystem,
+	HRTrapWinGetPixelRGB,
+	HRTrapGetInfo,
+	HRTrapFntBaseLine,
+	HRTrapFntCharHeight,
+	HRTrapFntLineHeight,
+	HRTrapFntAverageCharWidth,
+	HRTrapFntCharWidth,
+	HRTrapFntWCharWidth,
+	HRTrapFntCharsWidth,
+	HRTrapFntWidthToOffset,
+	HRTrapFntCharsInWidth,
+	HRTrapFntDescenderHeight,
+	HRTrapFntLineWidth,
+	HRTrapFntWordWrap,
+	HRTrapFntWordWrapReverseNLines,
+	HRTrapFntGetScrollValues
+} HRTrapNumEnum;
+
 #define MAX_STACK 256
 
 #include "trapArgs.c"
+#include "trapArgs_SONY_HR_LIB.c"
 
 #include "m68kdasm.c"
 
@@ -2102,6 +2132,7 @@ struct logtrap_t {
   uint32_t log_dbRef;
   uint32_t log_f;
   trap_t *allTraps;
+  trap_t *libTraps[MAX_SYSLIBS];
   m68k_disassemble_t dis;
 };
 
@@ -2254,14 +2285,20 @@ static void logtrap_log(logtrap_t *lt, char *fmt, ...) {
 }
 
 int logtrap_global_init(logtrap_def *def) {
-  uint32_t trap, selector, i;
+  uint32_t trap, selector, i, j;
 
   def->hook = logtrap_hook;
   def->hook2 = logtrap_hook2;
   def->rethook = logtrap_rethook;
 
   for (i = 0; i < 0x1000; i++) {
-    def->allTraps[i].name = "unknown";
+    def->allTraps[i].name = "unknown-global";
+  }
+
+  for (j = 0; j < MAX_SYSLIBS; j++) {
+    for (i = 0; i < 0x100; i++) {
+      def->libTraps[j][i].name = "unknown-lib";
+    }
   }
 
   for (i = 0; trapArgs[i].name; i++) {
@@ -2297,6 +2334,14 @@ int logtrap_global_init(logtrap_def *def) {
     }
   }
 
+  for (i = 0; trapArgs_SONY_HR_LIB[i].name; i++) {
+    trap = trapArgs_SONY_HR_LIB[i].trap;
+    if (trap >= sysLibTrapName && trap <= 0xA8FF) {
+      trap -= sysLibTrapName;
+      def->libTraps[SonyHRLibRefNum - BASE_SYSLIBS][trap] = trapArgs_SONY_HR_LIB[i];
+    }
+  }
+
   return 0;
 }
 
@@ -2314,6 +2359,7 @@ void logtrap_global_finish(logtrap_def *def) {
 
 logtrap_t *logtrap_init(logtrap_def *def) {
   logtrap_t *lt = NULL;
+  int i;
 
   if (def != NULL && (lt = def->alloc(sizeof(logtrap_t), def->data)) != NULL) {
     lt->alloc = def->alloc;
@@ -2327,6 +2373,9 @@ logtrap_t *logtrap_init(logtrap_def *def) {
     lt->data = def->data;
 
     lt->allTraps = def->allTraps;
+    for (i = 0; i < MAX_SYSLIBS; i++) {
+      lt->libTraps[i] = def->libTraps[i];
+    }
 
     lt->dis.read16 = def->read16;
     lt->dis.read32 = def->read32;
@@ -2671,11 +2720,35 @@ static void print_params(logtrap_t *lt, trap_t *trap, uint32_t sp, char *buf, ui
   }
 }
 
+static trap_t syslibTrapUnknown = 
+  { .trap=sysLibTrapName, .selector=-1, .name="unknown", .rtype=T_VOID, .rptr=0, .rsize=0, .nargs=0, .args={ } };
+
+static trap_t *logtrap_syslib(logtrap_t *lt, uint16_t trap, uint16_t refNum) {
+  trap_t *t = &syslibTrapUnknown;
+
+  switch (refNum) {
+    case NetLibRefNum:
+    case GPDLibRefNum:
+    case GPSLibRefNum:
+    case CpmLibRefNum:
+    case PFilLibRefNum:
+    case PmUILibRefNum:
+      t = &syslibTrapUnknown;
+      break;
+    case SonyHRLibRefNum:
+      t = &lt->libTraps[refNum - BASE_SYSLIBS][trap - sysLibTrapName];
+      break;
+  }
+
+  return t;
+}
+
 void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
   char buf[1024], rbuf[256];
   uint32_t sp, name, value, value0, addr, selector;
   uint32_t rtype, rsize, rptr;
-  uint16_t trap, rtrap, i;
+  uint16_t trap, rtrap, refNum, i;
+  trap_t *libTrap;
   int standalone;
   char *spc, *s;
 
@@ -2700,7 +2773,13 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       }
       rbuf[0] = 0;
 
-      if (lt->allTraps[rtrap].numsel == 0 || selector > lt->allTraps[rtrap].maxsel) {
+      if (trap >= sysLibTrapOpen && trap <= 0xA8FF) {
+        refNum = lt->read16(sp, lt->data) & 0xFFFF;
+        libTrap = logtrap_syslib(lt, trap, refNum); 
+        rtype = libTrap->rtype;
+        rsize = libTrap->rsize;
+        rptr = libTrap->rptr;
+      } else if (lt->allTraps[rtrap].numsel == 0 || selector > lt->allTraps[rtrap].maxsel) {
         rtype = lt->allTraps[rtrap].rtype;
         rsize = lt->allTraps[rtrap].rsize;
         rptr = lt->allTraps[rtrap].rptr;
@@ -2741,17 +2820,24 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
       if (lt->log_f) {
         spc = standalone ? "" : spaces(lt->stackp);
         if (lt->allTraps[rtrap].numsel == 0) {
-          if (lt->allTraps[rtrap].rsize == 8) sp += 4;
-          print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
-          logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc-4, trap, spc, lt->allTraps[rtrap].name, buf, rbuf);
+          if (trap >= sysLibTrapOpen && trap <= 0xA8FF) {
+            refNum = lt->read16(sp, lt->data) & 0xFFFF;
+            libTrap = logtrap_syslib(lt, trap, refNum); 
+            print_params(lt, libTrap, sp, buf, sizeof(buf), 1);
+            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, libTrap->name, buf, rbuf);
+          } else {
+            if (lt->allTraps[rtrap].rsize == 8) sp += 4;
+            print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
+            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc-4, trap, spc, lt->allTraps[rtrap].name, buf, rbuf);
+          }
         } else if (selector <= lt->allTraps[rtrap].maxsel) {
           if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
           print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 1);
           s = lt->allTraps[rtrap].selectors[selector].name;
-          if (s == NULL) s = "unknown";
+          if (s == NULL) s = "unknown-sel";
           logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s)%s", pc-4, trap, selector, spc, s, buf, rbuf);
         } else {
-          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown()", pc-4, trap, selector, spc);
+          logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown-isel()", pc-4, trap, selector, spc);
         }
       }
     }
@@ -2820,8 +2906,9 @@ static void hex_opcodes(logtrap_t *lt, char *buf, uint32_t pc, uint32_t length) 
 static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
   uint32_t instruction, sp, selector;
   char *s, *spc, *elp, buf[1024];
-  uint16_t trap, rtrap;
+  uint16_t trap, rtrap, refNum;
   int standalone;
+  trap_t *libTrap;
 
   if ((pc & 0xFF000000) == 0xFF000000) {
     trap = pc & 0xFFFF;
@@ -2873,17 +2960,24 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
           spc = standalone ? "" : spaces(lt->stackp);
           elp = standalone ? "" : " ...";
           if (lt->allTraps[rtrap].numsel == 0) {
-            if (lt->allTraps[rtrap].rsize == 8) sp += 4;
-            print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 0);
-            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, lt->allTraps[rtrap].name, buf, elp);
+            if (trap >= sysLibTrapOpen && trap <= 0xA8FF) {
+              refNum = lt->read16(sp, lt->data) & 0xFFFF;
+              libTrap = logtrap_syslib(lt, trap, refNum); 
+              print_params(lt, libTrap, sp, buf, sizeof(buf), 0);
+              logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, libTrap->name, buf, elp);
+            } else {
+              if (lt->allTraps[rtrap].rsize == 8) sp += 4;
+              print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 0);
+              logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, lt->allTraps[rtrap].name, buf, elp);
+            }
           } else if (selector <= lt->allTraps[rtrap].maxsel) {
             if (lt->allTraps[rtrap].selectors[selector].rsize == 8) sp += 4;
             print_params(lt, &lt->allTraps[rtrap].selectors[selector], sp, buf, sizeof(buf), 0);
             s = lt->allTraps[rtrap].selectors[selector].name;
-            if (s == NULL) s = "unknown";
+            if (s == NULL) s = "unknown-sel";
             logtrap_log(lt, "%08X: trap 0x%04X.%-2d %s%s(%s)%s ", pc, trap, selector, spc, s, buf, elp);
           } else {
-            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown()%s", pc, trap, selector, spc, elp);
+            logtrap_log(lt, "%08X: trap 0x%04X.%-2d %sunknown-isel()%s", pc, trap, selector, spc, elp);
           }
         }
       }

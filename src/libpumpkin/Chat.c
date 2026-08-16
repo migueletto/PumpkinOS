@@ -2,6 +2,7 @@
 
 #include "thread.h"
 #include "pumpkin.h"
+#include "syslibs.h"
 #include "Chat.h"
 #include "debug.h"
 
