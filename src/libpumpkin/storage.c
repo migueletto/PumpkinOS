@@ -4681,7 +4681,7 @@ UInt16 MemHeapID(UInt16 cardNo, UInt16 heapIndex) {
 }
 
 Boolean MemHeapDynamic(UInt16 heapID) {
-  return heapID == 0;
+  return heapID == 1;
 }
 
 Err MemHeapFreeBytes(UInt16 heapID, UInt32 *freeP, UInt32 *maxP) {
