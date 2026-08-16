@@ -53,6 +53,7 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
             case WindowFlagDialog:     v16 &= 0xFDFF; v16 |= value ? 0x0200 : 0x0000; break;
             case WindowFlagFreeBitmap: v16 &= 0xFEFF; v16 |= value ? 0x0100 : 0x0000; break;
           }
+          put2b(v16, (UInt8 *)wh, selector);
         } else {
           switch (flagSelector) {
             case WindowFlagFormat:     value = (v16 & 0x8000) ? 1 : 0; break;
