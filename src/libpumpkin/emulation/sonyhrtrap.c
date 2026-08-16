@@ -156,6 +156,22 @@ void palmos_sonyhrtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_A0, whP);
       }
       break;
+    case HRTrapWinCreateOffscreenWindow: {
+      //WinHandle HRWinCreateOffscreenWindow(UInt16 refNum, Coord width, Coord height, WindowFormatType format, UInt16 *error)
+      uint16_t refNum = ARG16;
+      int16_t width = ARG16;
+      int16_t height = ARG16;
+      uint8_t format = ARG8;
+      uint32_t errorP = ARG32;
+      emupalmos_trap_in(errorP, trap, 4);
+      UInt16 error;
+      WinHandle wh = HRWinCreateOffscreenWindow(refNum, width, height, format, &error);
+      if (errorP) m68k_write_memory_16(errorP, error);
+      uint32_t whP = emupalmos_trap_out(wh);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinCreateOffscreenWindow(%u, %d, %d, %d, 0x%08X [%d]): 0x%08X", refNum, width, height, format, errorP, error, whP);
+      m68k_set_reg(M68K_REG_A0, whP);
+      }
+      break;
     case HRTrapBmpBitsSize: {
       //UInt32 HRBmpBitsSize(UInt16 refNum, BitmapType *bitmapP)
       uint16_t refNum = ARG16;

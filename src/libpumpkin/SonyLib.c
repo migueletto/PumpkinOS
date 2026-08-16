@@ -86,7 +86,16 @@ WinHandle HRWinCreateBitmapWindow(UInt16 refNum, BitmapType *bitmapP, UInt16 *er
 }
 
 WinHandle HRWinCreateOffscreenWindow(UInt16 refNum, Coord width, Coord height, WindowFormatType format, UInt16 *error) {
-  return NULL;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  WinHandle wh = NULL;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    wh = WinCreateOffscreenWindow(width, height, format, error);
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return wh;
 }
 
 WinHandle HRWinCreateWindow(UInt16 refNum, RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
