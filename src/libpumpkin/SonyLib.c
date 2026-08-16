@@ -178,6 +178,20 @@ void HRWinDrawRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void HRWinDrawRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinDrawRectangleFrame(frame, rP);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinDrawRectangleFrame(frame, rP);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinDrawTruncChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord y, Coord maxWidth) {
@@ -230,6 +244,20 @@ void HRWinInvertChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coor
 }
 
 void HRWinInvertLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinInvertLine(x1, y1, x2, y2);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinInvertLine(x1, y1, x2, y2);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinInvertPixel(UInt16 refNum, Coord x, Coord y) {
@@ -239,6 +267,20 @@ void HRWinInvertRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinInvertRectangleFrame(frame, rP);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinInvertRectangleFrame(frame, rP);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinPaintBitmap(UInt16 refNum, BitmapType *bitmapP, Coord x, Coord y) {

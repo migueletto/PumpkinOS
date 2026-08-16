@@ -100,6 +100,17 @@ void palmos_sonyhrtrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
       }
       break;
+    case HRTrapWinInvertLine: {
+      // HRWinInvertLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2)
+      uint16_t refNum = ARG16;
+      int16_t x1 = ARG16;
+      int16_t y1 = ARG16;
+      int16_t x2 = ARG16;
+      int16_t y2 = ARG16;
+      HRWinInvertLine(refNum, x1, y1, x2, y2);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinInvertLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
+      }
+      break;
     case HRTrapWinDrawRectangle: {
       //void HRWinDrawRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam)
       uint16_t refNum = ARG16;
@@ -111,6 +122,32 @@ void palmos_sonyhrtrap(uint16_t trap) {
       encode_rectangle(rP, &rect);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawRectangle(%u, rP=0x%08X [%d,%d,%d,%d], cornerDiam=%d)",
         refNum, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, cornerDiam);
+      }
+      break;
+    case HRTrapWinInvertRectangleFrame: {
+      // void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP)
+      uint16_t refNum = ARG16;
+      uint16_t frame = ARG16;
+      uint32_t rP = ARG32;
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      HRWinInvertRectangleFrame(refNum, frame, &rect);
+      encode_rectangle(rP, &rect);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRTrapWinInvertRectangleFrame(%u, frame=0x%04X rP=0x%08X [%d,%d,%d,%d])",
+        refNum, frame, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
+      }
+      break;
+    case HRTrapWinDrawRectangleFrame: {
+      // void HRWinDrawRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP)
+      uint16_t refNum = ARG16;
+      uint16_t frame = ARG16;
+      uint32_t rP = ARG32;
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      HRWinDrawRectangleFrame(refNum, frame, &rect);
+      encode_rectangle(rP, &rect);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRTrapWinDrawRectangleFrame(%u, frame=0x%04X rP=0x%08X [%d,%d,%d,%d])",
+        refNum, frame, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
       }
       break;
     case HRTrapWinDrawBitmap: {
