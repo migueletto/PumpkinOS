@@ -5,6 +5,8 @@
 #include "rgb.h"
 #include "bytes.h"
 #include "pumpkin.h"
+#include "pumpkin.h"
+#include "WindowAccessor.h"
 #include "debug.h"
 
 static void emitn(FileRef fileRef, char *buf, int len) {
@@ -154,6 +156,7 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
   FormType *form;
   FormObjectType obj;
   SliderControlType *slider;
+  RectangleType rect;
   UInt16 version;
   UInt16 *u16, d, i, j, k, num, max, featNum;
   UInt32 *u32, size, creator, featVal;
@@ -230,13 +233,16 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
         FrmCenterDialogs(false);
         form = FrmInitForm(resID);
         FrmCenterDialogs(center);
-        StrPrintF(buf, "FORM ID %d AT (%d %d %d %d)\n", resID, form->window.windowBounds.topLeft.x, form->window.windowBounds.topLeft.y, form->window.windowBounds.extent.x, form->window.windowBounds.extent.y);
+        RctSetRectFromWin(&rect, &form->window);
+        StrPrintF(buf, "FORM ID %d AT (%d %d %d %d)\n", resID, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
         emit(fileRef, buf);
-        if (form->window.frameType.word == 0) {
+        //if (form->window.frameType.word == 0)
+        if (WinGetField(&form->window, WindowFieldFrameType) == 0) {
           StrCopy(buf, "  NOFRAME\n");
           emit(fileRef, buf);
         }
-        if (form->window.windowFlags.modal) {
+        //if (form->window.windowFlags.modal)
+        if (WinGetFlag(&form->window, WindowFlagModal)) {
           StrCopy(buf, "  MODAL\n");
           emit(fileRef, buf);
         }

@@ -321,10 +321,13 @@ typedef Boolean FormEventHandlerType (EventType *eventP);
 
 typedef FormEventHandlerType *FormEventHandlerPtr;
 
+#define FORM_STRUCT_SIZE 28
+
 typedef struct FormType
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
 {
 	WindowType					window;
+        UInt8 rsrch[FORM_STRUCT_SIZE];
 	UInt16						formId;
    FormAttrType				attr;
 	WinHandle	       		bitsBehindForm;

@@ -25,8 +25,7 @@ typedef enum {
   WindowFieldBitmapP = 26,
   WindowFieldFrameType = 30,
   WindowFieldDrawStateP = 32,
-  WindowFieldNextWindow = 36,
-  WindowFieldsSize = 40
+  WindowFieldNextWindow = 36
 } WindowSelector;
 
 typedef enum {

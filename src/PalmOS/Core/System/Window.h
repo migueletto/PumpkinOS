@@ -258,6 +258,8 @@ typedef struct WindowFlagsType
 #endif
 WindowFlagsType;
 
+#define WINDOW_STRUCT_SIZE 40
+
 typedef struct WindowType
 {
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_WINDOWS	// These fields will not be available in the next OS release!
@@ -291,7 +293,7 @@ typedef struct WindowType
   // it is replicated here for performance reasons
   UInt16 density;
 #else
-  UInt8 buf[40];
+  UInt8 buf[WINDOW_STRUCT_SIZE];
 #endif
 }
 WindowType;

@@ -42,7 +42,7 @@ TOS_SOURCE=tos/tos.c tos/gemdos_impl.c tos/bios_impl.c tos/xbios_impl.c tos/vdi.
 
 GLUE_SOURCE=BmpGlue.c CtlGlue.c DateGlue.c FldGlue.c FntGlue.c FrmGlue.c LstGlue.c MemGlue.c TblGlue.c TxtGlue.c WinGlue.c
 
-SOURCE=notif_serde.c launch_serde.c build.c pumpkin.c deploy.o storage.c script.c fill.c AboutBox.c AddressSortLib.c AlarmMgr.c AttentionMgr.c Bitmap.c CharAttr.c ColorTable.c BtLib.c Category.c Clipboard.c ConnectionMgr.c ConsoleMgr.c Control.c CPMLib68KInterface.c SonyLib.c Crc.c DateTime.c Day.c DebugMgr.c DLServer.c Encrypt.c md5.c sha1.c ErrorBase.c Event.c ExgLib.c ExgMgr.c ExpansionMgr.c FatalAlert.c FeatureMgr.c Field.c FileStream.c Find.c FixedMath.c FloatMgr.c Font.c FontSelect.c Form.c FSLib.c Graffiti.c GraffitiReference.c GraffitiShift.c HAL.c HostControl.c IMCUtils.c INetMgr.c InsPoint.c IntlMgr.c IrLib.c Keyboard.c KeyMgr.c Launcher.c List.c LocaleMgr.c Localize.c Lz77Mgr.c Menu.c ModemMgr.c NetBitUtils.c NetMgr.c OverlayMgr.c Password.c PceNativeCall.c PdiLib.c PenInputMgr.c PenMgr.c PhoneLookup.c Preferences.c PrivateRecords.c Progress.c Rect.c ScrollBar.c SelTime.c SelDay.c SelTimeZone.c SerialLinkMgr.c SerialMgr.c SerialMgrOld.c SerialSdrv.c SerialVdrv.c SlotDrvrLib.c SoundMgr.c SslLib.c StringMgr.c SysEvtMgr.c SystemMgr.c SysUtils.c Table.c TelephonyMgr.c TextMgr.c TextServicesMgr.c TimeMgr.c UDAMgr.c UIColor.c UIControls.c UIResources.c VFSMgr.c VFSExplorer.c FileBrowser.c Window.c WindowAccessor.c Chat.c cmheap.c grail.c wav.c dia.c taskbar.o wman.c peditor.c syntax.c edit.c RegistryMgr.c language.c calibrate.c unzip.c junzip.c puff.c plibc.c dosbox.c ssfn_font.c logtrap.c $(GLUE_SOURCE) $(GPSLIB_SOURCE) $(GPDLIB_SOURCE) $(EMU_SOURCE) $(TOS_SOURCE) kdtree.c
+SOURCE=launch_serde.c notif_serde.c build.c pumpkin.c deploy.o storage.c script.c fill.c AboutBox.c AddressSortLib.c AlarmMgr.c AttentionMgr.c Bitmap.c CharAttr.c ColorTable.c BtLib.c Category.c Clipboard.c ConnectionMgr.c ConsoleMgr.c Control.c CPMLib68KInterface.c SonyLib.c Crc.c DateTime.c Day.c DebugMgr.c DLServer.c Encrypt.c md5.c sha1.c ErrorBase.c Event.c ExgLib.c ExgMgr.c ExpansionMgr.c FatalAlert.c FeatureMgr.c Field.c FileStream.c Find.c FixedMath.c FloatMgr.c Font.c FontSelect.c Form.c FSLib.c Graffiti.c GraffitiReference.c GraffitiShift.c HAL.c HostControl.c IMCUtils.c INetMgr.c InsPoint.c IntlMgr.c IrLib.c Keyboard.c KeyMgr.c Launcher.c List.c LocaleMgr.c Localize.c Lz77Mgr.c Menu.c ModemMgr.c NetBitUtils.c NetMgr.c OverlayMgr.c Password.c PceNativeCall.c PdiLib.c PenInputMgr.c PenMgr.c PhoneLookup.c Preferences.c PrivateRecords.c Progress.c Rect.c ScrollBar.c SelTime.c SelDay.c SelTimeZone.c SerialLinkMgr.c SerialMgr.c SerialMgrOld.c SerialSdrv.c SerialVdrv.c SlotDrvrLib.c SoundMgr.c SslLib.c StringMgr.c SysEvtMgr.c SystemMgr.c SysUtils.c Table.c TelephonyMgr.c TextMgr.c TextServicesMgr.c TimeMgr.c UDAMgr.c UIColor.c UIControls.c UIResources.c VFSMgr.c VFSExplorer.c FileBrowser.c Window.c WindowAccessor.c Chat.c cmheap.c grail.c wav.c dia.c taskbar.o wman.c peditor.c syntax.c edit.c RegistryMgr.c language.c calibrate.c unzip.c junzip.c puff.c plibc.c dosbox.c ssfn_font.c logtrap.c $(GLUE_SOURCE) $(GPSLIB_SOURCE) $(GPDLIB_SOURCE) $(EMU_SOURCE) $(TOS_SOURCE) kdtree.c
 #pumpkin_syscall.c
 
 ifeq ($(OSNAME),Emscripten)
@@ -114,7 +114,7 @@ emulation/emu_launch_serde.c: launchcodes.struct $(LIBPUMPKIN)/serde.sh
 	@echo Generating $@
 	@$(LIBPUMPKIN)/serde.sh launch $<
 
-logtrap.o: trapArgs.c m68kdasm.c logtrap.c
+logtrap.o: trapArgs.c trapArgs_SONY_HR_LIB.c m68kdasm.c logtrap.c
 	@echo Compiling logtrap.c
 	@$(CC) $(CFLAGS) -c -o $@ logtrap.c
 
@@ -122,5 +122,9 @@ trapArgs.c: traps.txt gen_log.sh
 	@echo Generating $@
 	@./gen_log.sh 0
 
+trapArgs_SONY_HR_LIB.c: traps.txt gen_log.sh
+	@echo Generating $@
+	@./gen_log.sh SONY_HR_LIB
+
 clean:
-	@rm -f $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS) notif_serde.h notif_serde.c emulation/emu_notif_serde.h emulation/emu_notif_serde.c launch_serde.h launch_serde.c emulation/emu_launch_serde.h emulation/emu_launch_serde.c trapArgs.c
+	@rm -f $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS) notif_serde.h notif_serde.c emulation/emu_notif_serde.h emulation/emu_notif_serde.c launch_serde.h launch_serde.c emulation/emu_launch_serde.h emulation/emu_launch_serde.c trapArgs.c trapArgs_SONY_HR_LIB.c

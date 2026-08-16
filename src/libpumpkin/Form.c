@@ -232,7 +232,7 @@ FormType *FrmInitForm(UInt16 rscID) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormType *formP = NULL;
   MemHandle h;
-  UInt16 size;
+  UInt16 size = 0;
   char buf[64];
   void *p, *rsrc = NULL;
 
@@ -251,6 +251,7 @@ FormType *FrmInitForm(UInt16 rscID) {
 
   if (rsrc) {
     formP = pumpkin_create_form(rsrc, size);
+    MemMove(formP->rsrch, rsrc, size < FORM_STRUCT_SIZE ? size : FORM_STRUCT_SIZE);
     //debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, formP->window.windowFlags.modal);
     debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, WinGetFlag(&formP->window, WindowFlagModal));
     FrmInitFormInternal(formP);
@@ -3537,8 +3538,8 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     form->window.windowBounds.extent.x = ww;
     form->window.windowBounds.extent.y = wh;
 */
-    MemMove(&form->window, p, WindowFieldsSize);
-    i = WindowFieldsSize;
+    MemMove(&form->window, p, WINDOW_STRUCT_SIZE);
+    i = WINDOW_STRUCT_SIZE;
 
     //RctSetRectangle(&rect, x0, y0, x1-x0+1, y1-y0+1);
     //WinSetClipingBounds(form->wh, &rect);
