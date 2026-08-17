@@ -89,6 +89,30 @@ void palmos_sonyhrtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case HRTrapWinPaintChars: {
+      //void HRWinPaintChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord y)
+      uint16_t refNum = ARG16;
+      uint32_t charsP = ARG32;
+      int16_t len = ARG16;
+      int16_t x = ARG16;
+      int16_t y = ARG16; 
+      char *chars = emupalmos_trap_in(charsP, trap, 1);
+      HRWinPaintChars(refNum, chars, len, x, y);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWiPaintChars(%u, chars=0x%08X [%.*s] len=%d x=%d, y=%d)", refNum, charsP, len, chars, len, x, y);
+      }
+      break;
+    case HRTrapWinDrawChars: {
+      //void HRWinDrawChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord y)
+      uint16_t refNum = ARG16;
+      uint32_t charsP = ARG32;
+      int16_t len = ARG16;
+      int16_t x = ARG16;
+      int16_t y = ARG16;
+      char *chars = emupalmos_trap_in(charsP, trap, 1);
+      HRWinDrawChars(refNum, chars, len, x, y);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawChars(%u, chars=0x%08X [%.*s] len=%d x=%d, y=%d)", refNum, charsP, len, chars, len, x, y);
+      }
+      break;
     case HRTrapWinDrawLine: {
       //void HRWinDrawLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2)
       uint16_t refNum = ARG16;
@@ -98,6 +122,17 @@ void palmos_sonyhrtrap(uint16_t trap) {
       int16_t y2 = ARG16;
       HRWinDrawLine(refNum, x1, y1, x2, y2);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
+      }
+      break;
+    case HRTrapWinDrawGrayLine: {
+      //void HRWinDrawGrayLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2)
+      uint16_t refNum = ARG16;
+      int16_t x1 = ARG16;
+      int16_t y1 = ARG16;
+      int16_t x2 = ARG16;
+      int16_t y2 = ARG16;
+      HRWinDrawGrayLine(refNum, x1, y1, x2, y2);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawGrayLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
       }
       break;
     case HRTrapWinFillLine: {
@@ -301,6 +336,59 @@ void palmos_sonyhrtrap(uint16_t trap) {
       encode_rgb(rgbP, &rgb);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinGetPixelRGB(%u, %d, %d, 0x%08X): %d", refNum, x, y, rgbP, err);
       m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case HRTrapFntLineHeight: {
+      //Int16 HRFntLineHeight(UInt16 refNum)
+      uint16_t refNum = ARG16;
+      Int16 height = HRFntLineHeight(refNum);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRFntLineHeight(%u): %d", refNum, height);
+      m68k_set_reg(M68K_REG_D0, height);
+      }
+      break;
+    case HRTrapFntCharsWidth: {
+      //Int16 HRFntCharsWidth(UInt16 refNum, Char const *chars, Int16 len)
+      uint16_t refNum = ARG16;
+      uint32_t charsP = ARG32;
+      int16_t len = ARG16;
+      char *chars = emupalmos_trap_in(charsP, trap, 1);
+      Int16 width = HRFntCharsWidth(refNum, chars, len);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRFntCharsWidth(%u, chars=0x%08X [%.*s], len=%d): %d", refNum, charsP, len, chars, len, width);
+      m68k_set_reg(M68K_REG_D0, width);
+      }
+      break;
+    case HRTrapFntCharsInWidth: {
+      //void HRFntCharsInWidth(UInt16 refNum, Char const *string, Int16 *stringWidthP, Int16 *stringLengthP, Boolean *fitWithinWidth)
+      uint16_t refNum = ARG16;
+      uint32_t stringP = ARG32;
+      uint32_t stringWidthP = ARG32;
+      uint32_t stringLengthP = ARG32;
+      uint32_t fitWithinWidthP = ARG32;
+      char *string = emupalmos_trap_in(stringP, trap, 1);
+      emupalmos_trap_in(stringWidthP, trap, 2);
+      emupalmos_trap_in(stringLengthP, trap, 3);
+      emupalmos_trap_in(fitWithinWidthP, trap, 4);
+      Int16 stringWidth = 0, stringLength = 0;
+      Boolean fitWithinWidth;
+      if (stringWidthP) stringWidth = m68k_read_memory_16(stringWidthP);
+      if (stringLengthP) stringLength = m68k_read_memory_16(stringLengthP);
+      HRFntCharsInWidth(refNum, string, &stringWidth, &stringLength, &fitWithinWidth);
+      if (stringWidthP) m68k_write_memory_16(stringWidthP, stringWidth);
+      if (stringLengthP) m68k_write_memory_16(stringLengthP, stringLength);
+      if (fitWithinWidthP) m68k_write_memory_8(fitWithinWidthP, fitWithinWidth);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRFntCharsInWidth(%u, string=0x%08X [%.*s], width=%d len=%d fits=%d)",
+        refNum, stringP, stringLength, string, stringWidth, stringLength, fitWithinWidth);
+      }
+      break;
+    case HRTrapFntWordWrap: {
+      // UInt16 HRFntWordWrap(UInt16 refNum, Char const *chars, UInt16 maxWidth)
+      uint16_t refNum = ARG16;
+      uint32_t charsP = ARG32;
+      uint16_t maxWidth = ARG16;
+      char *chars = emupalmos_trap_in(charsP, trap, 1);
+      UInt16 r = HRFntWordWrap(refNum, chars, maxWidth);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRFntWordWrap(%u, chars=0x%08X [%s], maxWidth=%u): %u", refNum, charsP, chars, maxWidth, r);
+      m68k_set_reg(M68K_REG_D0, r);
       }
       break;
     default:

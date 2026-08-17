@@ -129,9 +129,37 @@ void HRWinDrawChar(UInt16 refNum, WChar theChar, Coord x, Coord Y) {
 }
 
 void HRWinDrawChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord y) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinDrawChars(chars, len, x, y);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinDrawChars(chars, len, x, y);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinDrawGrayLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinDrawGrayLine(x1, y1, x2, y2); 
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinDrawGrayLine(x1, y1, x2, y2); 
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinDrawGrayRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {
@@ -346,6 +374,20 @@ void HRWinPaintChar(UInt16 refNum, WChar theChar, Coord x, Coord y) {
 }
 
 void HRWinPaintChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord y) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinPaintChars(chars, len, x, y);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinPaintChars(chars, len, x, y);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinPaintLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2) {
@@ -382,15 +424,9 @@ Err HRWinScreenMode(UInt16 refNum, WinScreenModeOperation operation, UInt32 *wid
       case winScreenModeGet:
         err = WinScreenMode(operation, widthP, heightP, depthP, enableColorP);
         if (err == errNone) {
-          if (module->hrmode) {
-            if (widthP) *widthP = hrWidth;
-            if (heightP) *heightP = hrHeight;
-            debug(DEBUG_INFO, "SonyHR", "winScreenModeGet in high-resolution mode");
-          } else {
-            if (widthP) *widthP = stdWidth;
-            if (heightP) *heightP = stdHeight;
-            debug(DEBUG_INFO, "SonyHR", "winScreenModeGet in compatibility mode");
-          }
+          // XXX Apparently, winScreenModeGet always returns 320x320 (at least WinLauncher expects it)
+          if (widthP) *widthP = hrWidth;
+          if (heightP) *heightP = hrHeight;
         }
         break;
       case winScreenModeSet:
@@ -453,10 +489,17 @@ void HRWinWindowToDisplayPt(UInt16 refNum, Coord *extentX, Coord *extentY) {
 
 Err HRWinGetPixelRGB(UInt16 refNum, Coord x, Coord y, RGBColorType *rgbP) {
   sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
   Err err = sysErrParamErr;
 
   if (refNum == SonyHRLibRefNum && module) {
-    err = WinGetPixelRGB(x, y, rgbP);
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      err = WinGetPixelRGB(x, y, rgbP);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      err = WinGetPixelRGB(x, y, rgbP);
+    }
   } else {
     debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
   }
@@ -508,7 +551,23 @@ Int16 HRFntCharHeight(UInt16 refNum) {
 }
 
 Int16 HRFntLineHeight(UInt16 refNum) {
-  return 0;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  Int16 height = 0;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      height = FntLineHeight();
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      height = FntLineHeight();
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return height;
 }
 
 Int16 HRFntAverageCharWidth(UInt16 refNum) {
@@ -524,7 +583,23 @@ Int16 HRFntWCharWidth(UInt16 refNum, WChar iChar) {
 }
 
 Int16 HRFntCharsWidth(UInt16 refNum, Char const *chars, Int16 len) {
-  return 0;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  Int16 width = 0;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      width = FntCharsWidth(chars, len);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      width = FntCharsWidth(chars, len);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return width;
 }
 
 Int16 HRFntWidthToOffset(UInt16 refNum, Char const *pChars, UInt16 length, Int16 pixelWidth, Boolean *leadingEdge, Int16 *truncWidth) {
@@ -532,6 +607,20 @@ Int16 HRFntWidthToOffset(UInt16 refNum, Char const *pChars, UInt16 length, Int16
 }
 
 void HRFntCharsInWidth(UInt16 refNum, Char const *string, Int16 *stringWidthP, Int16 *stringLengthP, Boolean *fitWithinWidth) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      FntCharsInWidth(string, stringWidthP, stringLengthP, fitWithinWidth);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      FntCharsInWidth(string, stringWidthP, stringLengthP, fitWithinWidth);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 Int16 HRFntDescenderHeight(UInt16 refNum) {
@@ -543,7 +632,23 @@ Int16 HRFntLineWidth(UInt16 refNum, Char const *pChars, UInt16 length) {
 }
 
 UInt16 HRFntWordWrap(UInt16 refNum, Char const *chars, UInt16 maxWidth) {
-  return 0;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  Int16 r = 0;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      r = FntWordWrap(chars, maxWidth);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      r = FntWordWrap(chars, maxWidth);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return r;
 }
 
 void HRFntWordWrapReverseNLines(UInt16 refNum, Char const *const chars, UInt16 maxWidth, UInt16 *linesToScrollP, UInt16 *scrollPosP) {

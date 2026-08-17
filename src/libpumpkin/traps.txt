@@ -1778,3 +1778,15 @@ SONY_HR_LIB HRTrapWinDrawBitmap 0 void HRWinDrawBitmap 4 UInt16 refNum BitmapTyp
 SONY_HR_LIB HRTrapWinScreenMode 0 Err HRWinScreenMode 6 UInt16 refNum WinScreenModeOperation operation UInt32_* 1widthP UInt32_* 1heightP UInt32_* 1depthP Boolean_* 1enableColorP
 SONY_HR_LIB HRTrapBmpCreate 0 BitmapType_* HRBmpCreate 6 UInt16 refNum Coord width Coord height UInt8 depth ColorTableType_* colortableP UInt16_* error
 SONY_HR_LIB HRTrapBmpBitsSize 0 UInt16 HRBmpBitsSize 2 UInt16 refNum BitmapType_* bitmapP
+SONY_HR_LIB HRTrapWinDrawChars 0 void HRWinDrawChars 5 UInt16 refNum const_Char_* chars Int16 len Coord x Coord y
+SONY_HR_LIB HRTrapWinPaintChars 0 void HRWinPaintChars 5 UInt16 refNum const_Char_* chars Int16 len Coord x Coord y
+SONY_HR_LIB HRTrapWinDrawLine 0 void HRWinDrawLine 5 UInt16 refNum Coord x1 Coord y1 Coord x2 Coord y2
+SONY_HR_LIB HRTrapWinDrawGrayLine 0 void HRWinDrawGrayLine 5 UInt16 refNum Coord x1 Coord y1 Coord x2 Coord y2
+SONY_HR_LIB HRTrapWinDrawPixel 0 void HRWinDrawPixel 3 UInt16 refNum Coord x Coord y
+SONY_HR_LIB HRTrapFntCharsWidth 0 Int16 HRFntCharsWidth 3 UInt16 refNum const_Char_* chars Int16 len
+SONY_HR_LIB HRTrapFntCharsInWidth 0 void HRFntCharsInWidth 5 UInt16 refNum const_Char_* string Int16_* stringWidthP Int16_* stringLengthP Boolean_* 1fitWithinWidth
+SONY_HR_LIB HRTrapFntWordWrap 0 UInt16 HRFntWordWrap 3 UInt16 refNum const_Char_* chars UInt16 maxWidth
+SONY_HR_LIB HRTrapFntLineHeight 0 Int16 HRFntLineHeight 1 UInt16 refNum
+SONY_HR_LIB HRTrapWinDrawRectangle 0 void HRWinDrawRectangle 3 UInt16 refNum const_RectangleType_* rP UInt16 cornerDiam
+SONY_HR_LIB HRTrapWinDrawRectangleFrame 0 void HRWinDrawRectangleFrame 3 UInt16 refNum FrameType frame const_RectangleType_* rP
+SONY_HR_LIB HRTrapWinFillLine 0 void HRWinFillLine 5 UInt16 refNum Coord x1 Coord y1 Coord x2 Coord y2
