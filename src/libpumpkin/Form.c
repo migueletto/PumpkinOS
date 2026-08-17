@@ -188,6 +188,10 @@ static Err FrmInitFormInternal(FormType *formP) {
   //h = height = formP->window.windowBounds.extent.y;
   w = width  = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW);
   h = height = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH);
+  if (w == 0 || h == 0) {
+    debug(DEBUG_ERROR, "Form", "FrmInitFormInternal form %u invalid width %d or height %d", formP->formId, w, h);
+    return sysErrParamErr;
+  }
   formP->bitsBehindForm = WinCreateOffscreenWindow(width + 2*xmargin, height + 2*ymargin, nativeFormat, &err);
   WinAdjustCoords(&w, &h);
 
@@ -254,12 +258,16 @@ FormType *FrmInitForm(UInt16 rscID) {
     MemMove(formP->rsrch, rsrc, size < FORM_STRUCT_SIZE ? size : FORM_STRUCT_SIZE);
     //debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, formP->window.windowFlags.modal);
     debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, WinGetFlag(&formP->window, WindowFlagModal));
-    FrmInitFormInternal(formP);
-    //if (formP->window.windowFlags.modal && module->centerDialogs)
-    if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
-      FrmCenterForm(formP);
+    if (FrmInitFormInternal(formP) != errNone) {
+      pumpkin_destroy_form(formP);
+      formP = NULL;
+    } else {
+      //if (formP->window.windowFlags.modal && module->centerDialogs)
+      if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
+        FrmCenterForm(formP);
+      }
+      debug(DEBUG_TRACE, "Window", "FrmInitForm window %s", WinGetDescr(&formP->window, buf, sizeof(buf)));
     }
-    debug(DEBUG_TRACE, "Window", "FrmInitForm window %s", WinGetDescr(&formP->window, buf, sizeof(buf)));
   }
 
   return formP;
