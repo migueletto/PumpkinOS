@@ -57,7 +57,7 @@ $(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
 	@echo Creating libpumpkin.a
 	@$(ARCMD) $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
 
-emulation/systrap.wasm: emulation/systrap.c emulation/switch.c
+emulation/systrap.wasm: emulation/systrap.c emulation/sc_case.c
 	@echo Compiling $<
 	@$(EM_CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.wasm
 
@@ -73,7 +73,7 @@ $(PROGRAM): $(OBJS) $(LAUNCHER_OBJS)
 	@echo Creating libpumpkin.a
 	@$(ARCMD) $(PROGRAM) $(OBJS) $(LAUNCHER_OBJS)
 
-emulation/systrap.o: emulation/systrap.c emulation/switch.c
+emulation/systrap.o: emulation/systrap.c emulation/sc_case.c
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
 
@@ -86,7 +86,7 @@ $(PROGRAM): $(OBJS)
 	@$(CC) -shared -o $(PROGRAM) $(OBJS) $(EXTLIBS) -L$(BIN) -lpit -lm
 	@$(STRIP) $(PROGRAM)
 
-emulation/systrap.o: emulation/systrap.c emulation/switch.c
+emulation/systrap.o: emulation/systrap.c emulation/sc_case.c
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c emulation/systrap.c -o emulation/systrap.o
 
