@@ -87,10 +87,17 @@ WinHandle HRWinCreateBitmapWindow(UInt16 refNum, BitmapType *bitmapP, UInt16 *er
 
 WinHandle HRWinCreateOffscreenWindow(UInt16 refNum, Coord width, Coord height, WindowFormatType format, UInt16 *error) {
   sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
   WinHandle wh = NULL;
 
   if (refNum == SonyHRLibRefNum && module) {
-    wh = WinCreateOffscreenWindow(width, height, format, error);
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      wh = WinCreateOffscreenWindow(width, height, format, error);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      wh = WinCreateOffscreenWindow(width, height, format, error);
+    }
   } else {
     debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
   }
