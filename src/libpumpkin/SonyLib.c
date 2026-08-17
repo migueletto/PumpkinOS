@@ -238,6 +238,20 @@ void HRWinEraseRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void HRWinEraseRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinEraseRectangleFrame(frame, rP);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinEraseRectangleFrame(frame, rP);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinFillLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2) {

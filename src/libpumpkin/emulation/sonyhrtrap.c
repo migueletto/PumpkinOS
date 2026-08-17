@@ -155,6 +155,18 @@ void palmos_sonyhrtrap(uint16_t trap) {
         refNum, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, cornerDiam);
       }
       break;
+    case HRTrapWinEraseRectangleFrame: {
+      //void HRWinEraseRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP)
+      uint16_t refNum = ARG16;
+      uint16_t frame = ARG16;
+      uint32_t rP = ARG32;
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      HRWinEraseRectangleFrame(refNum, frame, &rect);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinEraseRectangleFrame(%u, frame=0x%04X rP=0x%08X [%d,%d,%d,%d])",
+        refNum, frame, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
+      }
+      break;
     case HRTrapWinInvertRectangleFrame: {
       // void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP)
       uint16_t refNum = ARG16;
