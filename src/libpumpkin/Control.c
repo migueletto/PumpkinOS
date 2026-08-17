@@ -641,6 +641,11 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       break;
 
     case ctlEnterEvent:
+      if (controlP == NULL) {
+        frm = FrmGetActiveForm();
+        index = FrmGetObjectIndex(frm, pEvent->data.ctlEnter.controlID);
+        controlP = (ControlType *)FrmGetObjectPtr(frm, index);
+      }
       debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlEnter control %d", controlP->id);
       if (controlP->style == pushButtonCtl) {
         debug(DEBUG_TRACE, "Control", "CtlHandleEvent updating pushButton %d to %d", controlP->id, !controlP->attr.on);
@@ -661,6 +666,11 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       break;
 
     case ctlSelectEvent:
+      if (controlP == NULL) {
+        frm = FrmGetActiveForm();
+        index = FrmGetObjectIndex(frm, pEvent->data.ctlEnter.controlID);
+        controlP = (ControlType *)FrmGetObjectPtr(frm, index);
+      }
       debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlSelect control %d style %d listID %d", controlP->id, controlP->style, controlP->listID);
       if (controlP->style == popupTriggerCtl && controlP->listID) {
         if ((frm = (FormType *)controlP->formP) != NULL) {
@@ -702,23 +712,32 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       break;
 
     case ctlExitEvent:
-      debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit control %d", controlP->id);
-      // XXX se e pushButton de grupo multiplo, precisa retornar para o membro que estava selecionado anteriormente
-      if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
-        if (controlP->attr.on) {
-          controlP->attr.on = false;
-          if (controlP->style == buttonCtl && controlP->attr.visible) {
-            debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit invert control %d to 0", controlP->id);
-            CtlDrawControl(controlP);
+      if (controlP == NULL) {
+        frm = FrmGetActiveForm();
+        index = FrmGetObjectIndex(frm, pEvent->data.ctlExit.controlID);
+        controlP = (ControlType *)FrmGetObjectPtr(frm, index);
+      }
+      if (controlP != NULL) {
+        debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit control %d", controlP->id);
+        // XXX se e pushButton de grupo multiplo, precisa retornar para o membro que estava selecionado anteriormente
+        if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
+          if (controlP->attr.on) {
+            controlP->attr.on = false;
+            if (controlP->style == buttonCtl && controlP->attr.visible) {
+              debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit invert control %d to 0", controlP->id);
+              CtlDrawControl(controlP);
+            }
+            //controlP->attr.on = false;
+          } else {
+            if (controlP->attr.visible) {
+              debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit draw control %d on 0", controlP->id);
+              CtlDrawControl(controlP);
+            }
           }
-          //controlP->attr.on = false;
-        } else {
-          if (controlP->attr.visible) {
-            debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit draw control %d on 0", controlP->id);
-            CtlDrawControl(controlP);
-          }
+          handled = true;
         }
-        handled = true;
+      } else {
+        debug(DEBUG_ERROR, "Control", "CtlHandleEvent ctlExit control %d is NULL", pEvent->data.ctlExit.controlID);
       }
       break;
 
