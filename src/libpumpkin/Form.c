@@ -2191,8 +2191,27 @@ Boolean FrmValidatePtr(const FormType *formP) {
 }
 
 Err FrmRemoveObject(FormType **formPP, UInt16 objIndex) {
-  debug(DEBUG_ERROR, "Form", "FrmRemoveObject not implemented");
-  return 0;
+  FormType *formP;
+  UInt16 id;
+  Err err = sysErrParamErr;
+
+  if (formPP) {
+    formP = *formPP;
+
+    if (formP) {
+      if (objIndex < formP->numObjects) {
+        // XXX Application Photo Editor (for Sony CLIE) uses FrmRemoveObject, but we do not remove anything here.
+        // Return errNone and hope the application does not complain.
+        id = FrmGetObjectId(formP, objIndex);
+        debug(DEBUG_ERROR, "Form", "FrmRemoveObject index %u id %u in form %u not implemented", objIndex, id, formP->formId);
+        err = errNone;
+      } else {
+        debug(DEBUG_ERROR, "Form", "FrmRemoveObject index %u in form %u not found (%u objects)", objIndex, formP->formId, formP->numObjects);
+      }
+    }
+  }
+
+  return err;
 }
 
 typedef struct {

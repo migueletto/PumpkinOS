@@ -637,6 +637,18 @@ void palmos_FrmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_A0, a);
     }
     break;
+    case sysTrapFrmRemoveObject: {
+      // Err FrmRemoveObject(FormType **formPP, UInt16 objIndex)
+      uint32_t formPP = ARG32;
+      uint16_t objIndex = ARG16;
+      uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+      FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
+      uint32_t a = emupalmos_trap_out(form);
+      Err err = FrmRemoveObject(&form, objIndex);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmRemoveObject(0x%08X [0x%08X], %u): %d", formPP, a, objIndex, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
     case sysTrapFrmNewGadget: {
       // FormGadgetType *FrmNewGadget(FormType **formPP, UInt16 id, Coord x, Coord y, Coord width, Coord height)
       uint32_t formPP = ARG32;
