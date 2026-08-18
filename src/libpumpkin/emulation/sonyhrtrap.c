@@ -294,6 +294,18 @@ void palmos_sonyhrtrap(uint16_t trap) {
       uint32_t whP = emupalmos_trap_out(wh);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinCreateOffscreenWindow(%u, %d, %d, %d, 0x%08X [%d]): 0x%08X", refNum, width, height, format, errorP, error, whP);
       m68k_set_reg(M68K_REG_A0, whP);
+/*
+      if (wh) {
+        BitmapType *bmp = WinGetBitmap(wh);
+        if (bmp) {
+          uint8_t *ram = pumpkin_heap_base();
+          uint8_t *b = BmpGetBits(bmp);
+          UInt32 dataSize;
+          BmpGetSizes(bmp, &dataSize, NULL);
+          emupalmos_monitor_set(b - ram, b - ram + dataSize);
+        }
+      }
+*/
       }
       break;
     case HRTrapBmpBitsSize: {
