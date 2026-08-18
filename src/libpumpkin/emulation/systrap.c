@@ -322,7 +322,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(searchF, trap, 3);
       emupalmos_trap_in(searchData, trap, 4);
       emupalmos_trap_in(positionP, trap, 6);
-      debug(DEBUG_TRACE, "EmuPalmOS", "SysBinarySearch(0x%08X, %d, %d, 0x%08X, 0x%08X, %d, 0x%08X, %d) native 0x%08X", baseP, numOfElements, width, searchF, searchData, other, positionP, findFirst, state->SysQSort_addr);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysBinarySearch(0x%08X, %d, %d, 0x%08X, 0x%08X, %d, 0x%08X, %d) native 0x%08X", baseP, numOfElements, width, searchF, searchData, other, positionP, findFirst, state->SysBinarySearch_addr);
       r = state->SysBinarySearch_addr;
     }
     break;
