@@ -17,7 +17,6 @@
 #endif
 #include "pumpkin.h"
 #include "debug.h"
-#include "xalloc.h"
 
 #include "logtrap.h"
 #include "m68k/m68k.h"
@@ -31,6 +30,24 @@
 #include "emu_notif_serde.h"
 
 #define TRAPS_SIZE 0x40000
+
+struct emu_internal_state_t {
+  int finish;
+  char *panic;
+  uint32_t screenStart;
+  uint32_t screenEnd;
+  int disasm;
+  arm_plugin_t uarm;
+  arm_plugin_t *armp;
+  uint8_t *armReturnAddr;
+  uint8_t *armCall68KAddr;
+  uint8_t *armEmulState;
+  uint8_t *armStack;
+
+  uint32_t monitored_addr_begin;
+  uint32_t monitored_addr_end;
+  MemHandle hNative;
+};
 
 static const uint8_t SysFormPointerArrayToStrings_code[] = {
 0x4e, 0x56, 0x00, 0x00,
@@ -81,6 +98,7 @@ static const uint8_t SysFormPointerArrayToStrings_code[] = {
 0x4e, 0x75
 };
 
+/*
 static const uint8_t FrmDrawForm_code[] = {
 0x4e, 0x56, 0x00, 0x00, 0x48, 0xe7, 0x18, 0x20, 0x28, 0x2e, 0x00, 0x08, 0x67, 0x40, 0x42, 0x43,
 0x60, 0x00, 0x00, 0x2a, 0x3f, 0x03, 0x2f, 0x04, 0x4e, 0x4f, 0xa1, 0x82, 0x5c, 0x8f, 0x0c, 0x00,
@@ -89,6 +107,7 @@ static const uint8_t FrmDrawForm_code[] = {
 0x4e, 0x4f, 0xa5, 0x02, 0x24, 0x48, 0x5c, 0x8f, 0xb4, 0xfc, 0x00, 0x00, 0x66, 0xc6, 0x4c, 0xee,
 0x04, 0x18, 0xff, 0xf4, 0x4e, 0x5e, 0x4e, 0x75,
 };
+*/
 
 static const uint8_t SysBinarySearch_code[] = {
 0x4e, 0x56, 0x00, 0x00, 0x48, 0xe7, 0x1f, 0x38, 0x28, 0x6e, 0x00, 0x10, 0x26, 0x6e, 0x00, 0x14,
@@ -124,12 +143,12 @@ static const uint8_t SysLibLoad_code[] = {
 void emupalmos_finish(int f) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->m68k_state.finish = f;
-  state->finish = f;
+  state->istate->finish = f;
 }
 
 int emupalmos_finished(void) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  return state->finish;
+  return state->istate->finish;
 }
 
 void emupalmos_panic(char *msg, int code) {
@@ -137,7 +156,7 @@ void emupalmos_panic(char *msg, int code) {
   UInt32 creator;
 
   debug(DEBUG_ERROR, "EmuPalmOS", "panic: %s", msg);
-  state->panic = xstrdup(msg);
+  state->istate->panic = sys_strdup(msg);
   emupalmos_finish(1);
 
   creator = pumpkin_get_app_creator();
@@ -202,6 +221,20 @@ uint32_t emupalmos_trap_out(void *address) {
   return addr - ram;
 }
 
+void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  state->istate->monitored_addr_begin = addr_begin;
+  state->istate->monitored_addr_end = addr_end;
+  debug(DEBUG_INFO, "EmuPalmOS", "monitoring address 0x%08X to 0x%08X", addr_begin, addr_end);
+}
+
+void emupalmos_monitor_address(uint32_t address, uint32_t size) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  if (address >= state->istate->monitored_addr_begin && address < state->istate->monitored_addr_end) {
+    debug(DEBUG_INFO, "EmuPalmOS", "write %u bytes to monitored address 0x%08X", size, address);
+  }
+}
+
 int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
   char buf[256];
   int valid;
@@ -236,9 +269,9 @@ uint8_t cpu_read_byte(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd) {
-      value = WinLegacyRead(address - state->screenStart);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
+      value = WinLegacyRead(address - state->istate->screenStart);
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  byte 0x%08X = 0x%02X", address, value);
     } else {
       ram = pumpkin_heap_base();
@@ -265,11 +298,11 @@ uint16_t cpu_read_word(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
-      value = WinLegacyRead(address - state->screenStart);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
+      value = WinLegacyRead(address - state->istate->screenStart);
       value <<= 8;
-      value |= WinLegacyRead(address - state->screenStart + 1);
+      value |= WinLegacyRead(address - state->istate->screenStart + 1);
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  word 0x%08X = 0x%04X", address, value);
     } else {
       ram = pumpkin_heap_base();
@@ -291,8 +324,8 @@ uint32_t cpu_read_long(uint32_t address) {
     if (state->m68k_state.s_m68ki_cpu.palmos) {
       switch (address) {
         case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
-          WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-          value = state->screenStart;
+          WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+          value = state->istate->screenStart;
           debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
           break;
         default:
@@ -303,17 +336,17 @@ uint32_t cpu_read_long(uint32_t address) {
     }
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 3) {
-      value = WinLegacyRead(address - state->screenStart);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
+      value = WinLegacyRead(address - state->istate->screenStart);
       value <<= 24;
-      b = WinLegacyRead(address - state->screenStart + 1);
+      b = WinLegacyRead(address - state->istate->screenStart + 1);
       b <<= 16;
       value |= b;
-      b = WinLegacyRead(address - state->screenStart + 2);
+      b = WinLegacyRead(address - state->istate->screenStart + 2);
       b <<= 8;
       value |= b;
-      value |= WinLegacyRead(address - state->screenStart + 3);
+      value |= WinLegacyRead(address - state->istate->screenStart + 3);
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  long 0x%08X = 0x%08X", address, value);
     } else {
       ram = pumpkin_heap_base();
@@ -334,10 +367,11 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 1, 0)) return;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd) {
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
-      WinLegacyWrite(address - state->screenStart, value);
+      WinLegacyWrite(address - state->istate->screenStart, value);
     } else {
       ram = pumpkin_heap_base();
       WRITE_BYTE(ram, address, value);
@@ -355,11 +389,12 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 1) {
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
-      WinLegacyWrite(address - state->screenStart,     (value >> 8) & 0xff);
-      WinLegacyWrite(address - state->screenStart + 1,  value       & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart,     (value >> 8) & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart + 1,  value       & 0xff);
     } else {
       ram = pumpkin_heap_base();
       WRITE_WORD(ram, address, value);
@@ -377,13 +412,14 @@ void cpu_write_long(uint32_t address, uint32_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
-    WinLegacyGetAddr(&state->screenStart, &state->screenEnd);
-    if (state->screenStart && state->screenEnd && address >= state->screenStart && address < state->screenEnd - 3) {
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4);
+    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
-      WinLegacyWrite(address - state->screenStart,     (value >> 24) & 0xff);
-      WinLegacyWrite(address - state->screenStart + 1, (value >> 16) & 0xff);
-      WinLegacyWrite(address - state->screenStart + 2, (value >>  8) & 0xff);
-      WinLegacyWrite(address - state->screenStart + 3,  value        & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart,     (value >> 24) & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart + 1, (value >> 16) & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart + 2, (value >>  8) & 0xff);
+      WinLegacyWrite(address - state->istate->screenStart + 3,  value        & 0xff);
     } else {
       ram = pumpkin_heap_base();
       WRITE_LONG(ram, address, value);
@@ -1195,7 +1231,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func trap 0x%04X", 0xA000 | trapOrFunction);
     sp = m68k_get_reg(NULL, M68K_REG_SP);
     sp -= argsSize;
-    xmemcpy(ram + sp, argsOnStack, argsSize);
+    sys_memcpy(ram + sp, argsOnStack, argsSize);
     m68k_set_reg(M68K_REG_SP, sp);
 
     if (emulState) {
@@ -1221,7 +1257,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func function 0x%08X", trapOrFunction);
     sp = m68k_get_reg(NULL, M68K_REG_SP);
     sp -= argsSize;
-    xmemcpy(ram + sp, argsOnStack, argsSize);
+    sys_memcpy(ram + sp, argsOnStack, argsSize);
 
     // return address: 0x00000000 so that m68k_execute aborts the loop
     sp -= 4;
@@ -1337,8 +1373,8 @@ Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt
   pumpkin_set_local_storage(emu_key, state);
 
   state = pumpkin_get_local_storage(emu_key);
-  stackAddr = state->armStack - ram;
-  state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+  stackAddr = state->istate->armStack - ram;
+  state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
   err = arm_native_call_sub(addr, 0, data, channel, buffer, nsamples);
   debug(DEBUG_TRACE, "ARM", "CallSndFuncArm(0x%08X 0x%08X %u 0x%08X %u): %d", addr, data, channel, buffer, nsamples, err);
 
@@ -1622,29 +1658,29 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   // each pointing to a syscall function table
   sysAddr = (uint8_t *)state->systable - ram;
 
-  retAddr = state->armReturnAddr - ram;
-  callAddr = state->armCall68KAddr - ram;
-  emulStateAddr = state->armEmulState - ram;
-  stackAddr = state->armStack - ram;
+  retAddr = state->istate->armReturnAddr - ram;
+  callAddr = state->istate->armCall68KAddr - ram;
+  emulStateAddr = state->istate->armEmulState - ram;
+  stackAddr = state->istate->armStack - ram;
 
-  state->armp->armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
-  state->armp->armSetReg(state->arm, 15, code);    // PC
-  state->armp->armSetReg(state->arm, 14, retAddr); // LR
-  state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+  state->istate->armp->armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
+  state->istate->armp->armSetReg(state->arm, 15, code);    // PC
+  state->istate->armp->armSetReg(state->arm, 14, retAddr); // LR
+  state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X return 0x%08X begin", code, userData, stackAddr + stackSize, retAddr);
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
-  state->armp->armSetReg(state->arm, 0, emulStateAddr);
-  state->armp->armSetReg(state->arm, 1, userData);
-  state->armp->armSetReg(state->arm, 2, callAddr);
+  state->istate->armp->armSetReg(state->arm, 0, emulStateAddr);
+  state->istate->armp->armSetReg(state->arm, 1, userData);
+  state->istate->armp->armSetReg(state->arm, 2, callAddr);
 
   for (; !emupalmos_finished();) {
-    if (state->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+    if (state->istate->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
-  return state->armp->armGetReg(state->arm, 0);
+  return state->istate->armp->armGetReg(state->arm, 0);
 }
 
 uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3) {
@@ -1653,28 +1689,28 @@ uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t
   uint8_t *ram = pumpkin_heap_base();
 
   sysAddr = (uint8_t *)state->systable - ram;
-  retAddr = state->armReturnAddr - ram;
-  callAddr = state->armCall68KAddr - ram;
+  retAddr = state->istate->armReturnAddr - ram;
+  callAddr = state->istate->armCall68KAddr - ram;
 
-  state->armp->armSetReg(state->arm,  9, sysAddr + 16);
+  state->istate->armp->armSetReg(state->arm,  9, sysAddr + 16);
   put4l(sysAddr, ram, sysAddr + 16);
   put4l(sysAddr + 16, ram, sysAddr + 2052);
 
-  state->armp->armSetReg(state->arm, 15, code);    // PC
-  state->armp->armSetReg(state->arm, 14, retAddr); // LR
-  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) 0x%08X return 0x%08X begin", code, state->armp->armGetReg(state->arm, 13), retAddr);
+  state->istate->armp->armSetReg(state->arm, 15, code);    // PC
+  state->istate->armp->armSetReg(state->arm, 14, retAddr); // LR
+  debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) 0x%08X return 0x%08X begin", code, state->istate->armp->armGetReg(state->arm, 13), retAddr);
 
-  state->armp->armSetReg(state->arm, 0, p0);
-  state->armp->armSetReg(state->arm, 1, p1);
-  state->armp->armSetReg(state->arm, 2, p2);
-  state->armp->armSetReg(state->arm, 3, p3);
+  state->istate->armp->armSetReg(state->arm, 0, p0);
+  state->istate->armp->armSetReg(state->arm, 1, p1);
+  state->istate->armp->armSetReg(state->arm, 2, p2);
+  state->istate->armp->armSetReg(state->arm, 3, p3);
 
   for (; !emupalmos_finished();) {
-    if (state->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
+    if (state->istate->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
   debug(DEBUG_TRACE, "ARM", "arm_native_call_sub(0x%08X) end", code);
-  return state->armp->armGetReg(state->arm, 0);
+  return state->istate->armp->armGetReg(state->arm, 0);
 }
 #endif
 
@@ -1730,10 +1766,10 @@ static void enumArmPlugincallback(pumpkin_plugin_t *plugin, void *data) {
   emu_state_t *state = (emu_state_t *)data;
   char buf[8];
 
-  if (state->armp == NULL) {
+  if (state->istate->armp == NULL) {
     pumpkin_id2s(plugin->id, buf);
     debug(DEBUG_TRACE, "ARM", "using external ARM emulator '%s'", buf);
-    state->armp = plugin->pluginMain(NULL);
+    state->istate->armp = plugin->pluginMain(NULL);
   } else {
     debug(DEBUG_INFO, "ARM", "ignoring external ARM emulator '%s'", buf);
   }
@@ -1742,51 +1778,57 @@ static void enumArmPlugincallback(pumpkin_plugin_t *plugin, void *data) {
 static emu_state_t *emupalmos_new(void) {
   emu_state_t *state;
 
-  if ((state = xcalloc(1, sizeof(emu_state_t))) != NULL) {
+  if ((state = sys_calloc(1, sizeof(emu_state_t))) != NULL) {
+    if ((state->istate = sys_calloc(1, sizeof(emu_internal_state_t))) != NULL) {
+
 #ifdef ARMEMU
-    uint8_t *ram = pumpkin_heap_base();
-    uint32_t size = pumpkin_heap_size();
-    uint32_t *dalFunctions, *bootFunctions, *uiFunctions;
-    uint32_t i;
+      uint8_t *ram = pumpkin_heap_base();
+      uint32_t size = pumpkin_heap_size();
+      uint32_t *dalFunctions, *bootFunctions, *uiFunctions;
+      uint32_t i;
 
-    pumpkin_enum_plugins(armPluginType, enumArmPlugincallback, state);
+      pumpkin_enum_plugins(armPluginType, enumArmPlugincallback, state);
 
-    if (state->armp == NULL) {
-      debug(DEBUG_INFO, "ARM", "using builtin ARM emulator");
-      state->uarm.armInit = uarmInit;
-      state->uarm.armFinish = uarmFinish;
-      state->uarm.armGetReg = uarmGetReg;
-      state->uarm.armSetReg = uarmSetReg;
-      state->uarm.armRun = uarmRun;
-      state->uarm.armDisasm = uarmDisasm;
-      state->armp = &state->uarm;
-    }
+      if (state->istate->armp == NULL) {
+        debug(DEBUG_INFO, "ARM", "using builtin ARM emulator");
+        state->istate->uarm.armInit = uarmInit;
+        state->istate->uarm.armFinish = uarmFinish;
+        state->istate->uarm.armGetReg = uarmGetReg;
+        state->istate->uarm.armSetReg = uarmSetReg;
+        state->istate->uarm.armRun = uarmRun;
+        state->istate->uarm.armDisasm = uarmDisasm;
+        state->istate->armp = &state->istate->uarm;
+      }
 
-    state->arm = state->armp->armInit(ram, size);
+      state->arm = state->istate->armp->armInit(ram, size);
 
-    // fill the ARM syscall tables for DAL, BOOT and UI functions
-    state->systable = pumpkin_heap_alloc(4096, "sysTable");
-    dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFunctions");
-    bootFunctions = pumpkin_heap_alloc(0x1000, "bootFunctions");
-    uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFunctions");
-    state->systable[1] = (uint8_t *)dalFunctions  - ram;
-    state->systable[2] = (uint8_t *)bootFunctions - ram;
-    state->systable[3] = (uint8_t *)uiFunctions   - ram;
+      // fill the ARM syscall tables for DAL, BOOT and UI functions
+      state->systable = pumpkin_heap_alloc(4096, "sysTable");
+      dalFunctions  = pumpkin_heap_alloc(0x1000, "dalFunctions");
+      bootFunctions = pumpkin_heap_alloc(0x1000, "bootFunctions");
+      uiFunctions   = pumpkin_heap_alloc(0x1000, "uiFunctions");
+      state->systable[1] = (uint8_t *)dalFunctions  - ram;
+      state->systable[2] = (uint8_t *)bootFunctions - ram;
+      state->systable[3] = (uint8_t *)uiFunctions   - ram;
 
-    state->armReturnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
-    state->armCall68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
-    state->armEmulState = pumpkin_heap_alloc(0x100, "emulState");
-    state->armStack = pumpkin_heap_alloc(stackSize, "stack");
+      state->istate->armReturnAddr = pumpkin_heap_alloc(0x8, "returnAddr");
+      state->istate->armCall68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
+      state->istate->armEmulState = pumpkin_heap_alloc(0x100, "emulState");
+      state->istate->armStack = pumpkin_heap_alloc(stackSize, "stack");
 
-    // each syscall is identified by a special address of the form 0x04G0NNNN,
-    // where G is the group (1, 2, or 3) and NNNN is the function "number" (multiple of 4).
-    // if the PC reaches such address, emupalmos_arm_syscall will be called.
-    for (i = 0; i < 0x1000 / 4; i++) {
-      dalFunctions[i]  = 0x04000000 | 0x00100000 | (i << 2); // group 1: DAL
-      bootFunctions[i] = 0x04000000 | 0x00200000 | (i << 2); // group 2: BOOT
-      uiFunctions[i]   = 0x04000000 | 0x00300000 | (i << 2); // group 3: UI
-    }
+      // each syscall is identified by a special address of the form 0x04G0NNNN,
+      // where G is the group (1, 2, or 3) and NNNN is the function "number" (multiple of 4).
+      // if the PC reaches such address, emupalmos_arm_syscall will be called.
+      for (i = 0; i < 0x1000 / 4; i++) {
+        dalFunctions[i]  = 0x04000000 | 0x00100000 | (i << 2); // group 1: DAL
+        bootFunctions[i] = 0x04000000 | 0x00200000 | (i << 2); // group 2: BOOT
+        uiFunctions[i]   = 0x04000000 | 0x00300000 | (i << 2); // group 3: UI
+      }
 #endif
+    } else {
+      sys_free(state);
+      state = NULL;
+    }
   }
 
   return state;
@@ -1794,20 +1836,21 @@ static emu_state_t *emupalmos_new(void) {
 
 static void emupalmos_destroy(emu_state_t *state) {
   if (state) {
+    if (state->istate) sys_free(state->istate);
 #ifdef ARMEMU
     uint8_t *ram = pumpkin_heap_base();
-    state->armp->armFinish(state->arm);
+    state->istate->armp->armFinish(state->arm);
     pumpkin_heap_free(ram + state->systable[1], "dalFunctions");
     pumpkin_heap_free(ram + state->systable[2], "bootFunctions");
     pumpkin_heap_free(ram + state->systable[3], "uiFunctions");
     pumpkin_heap_free(state->systable, "sysTable");
 
-    pumpkin_heap_free(state->armReturnAddr, "returnAddr");
-    pumpkin_heap_free(state->armCall68KAddr, "call68kAddr");
-    pumpkin_heap_free(state->armEmulState, "emulState");
-    pumpkin_heap_free(state->armStack, "stack");
+    pumpkin_heap_free(state->istate->armReturnAddr, "returnAddr");
+    pumpkin_heap_free(state->istate->armCall68KAddr, "call68kAddr");
+    pumpkin_heap_free(state->istate->armEmulState, "emulState");
+    pumpkin_heap_free(state->istate->armStack, "stack");
 #endif
-    xfree(state);
+    sys_free(state);
   }
 }
 
@@ -1873,9 +1916,9 @@ static void palmos_systrap_init(emu_state_t *state) {
   uint8_t *native, *addr;
   uint32_t szfunc, nativeSize;
 
-  nativeSize = sizeof(SysFormPointerArrayToStrings_code) + sizeof(FrmDrawForm_code) + sizeof(SysBinarySearch_code) + sizeof(SysLibLoad_code);
-  state->hNative = MemHandleNew(nativeSize);
-  native = MemHandleLock(state->hNative);
+  nativeSize = sizeof(SysFormPointerArrayToStrings_code) + /*sizeof(FrmDrawForm_code) +*/ sizeof(SysBinarySearch_code) + sizeof(SysLibLoad_code);
+  state->istate->hNative = MemHandleNew(nativeSize);
+  native = MemHandleLock(state->istate->hNative);
   addr = native;
 
   szfunc = sizeof(SysFormPointerArrayToStrings_code);
@@ -1883,10 +1926,10 @@ static void palmos_systrap_init(emu_state_t *state) {
   state->SysFormPointerArrayToStrings_addr = emupalmos_trap_out(addr);
   addr += szfunc;
 
-  szfunc = sizeof(FrmDrawForm_code);
-  MemMove(addr, FrmDrawForm_code, szfunc);
-  state->FrmDrawForm_addr = emupalmos_trap_out(addr);
-  addr += szfunc;
+  //szfunc = sizeof(FrmDrawForm_code);
+  //MemMove(addr, FrmDrawForm_code, szfunc);
+  //state->FrmDrawForm_addr = emupalmos_trap_out(addr);
+  //addr += szfunc;
 
   szfunc = sizeof(SysBinarySearch_code);
   MemMove(addr, SysBinarySearch_code, szfunc);
@@ -1900,9 +1943,9 @@ static void palmos_systrap_init(emu_state_t *state) {
 }
 
 static void palmos_systrap_finish(emu_state_t *state) {
-  if (state && state->hNative) {
-    MemHandleUnlock(state->hNative);
-    MemHandleFree(state->hNative);
+  if (state && state->istate->hNative) {
+    MemHandleUnlock(state->istate->hNative);
+    MemHandleFree(state->istate->hNative);
   }
 }
 
@@ -1997,7 +2040,7 @@ static void logtrap_install(emu_state_t *state, UInt32 creator) {
         pumpkin_s2id(&logtrap_creator, logtrap);
         if (logtrap_creator == creator) {
           debug(DEBUG_INFO, "logtrap", "installing logtrap for creator '%s'", logtrap);
-          logtrap_start(lt, state->disasm, NULL);
+          logtrap_start(lt, state->istate->disasm, NULL);
         }
       }
     }
@@ -2042,7 +2085,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     state = emupalmos_new();
     oldState = pumpkin_get_local_storage(emu_key);
     pumpkin_set_local_storage(emu_key, state);
-    state->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
+    state->istate->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
 
     paramBlock = getParamBlock(launchCode, param, ram);
     paramBlockStart = paramBlock ? paramBlock - ram : 0;
@@ -2062,8 +2105,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
     creator = pumpkin_get_app_creator();
     emupalmos_finish(0);
 
-    uint32_t stackAddr = state->armStack - ram;
-    state->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+    uint32_t stackAddr = state->istate->armStack - ram;
+    state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
 
     arm_native_call_sub(amdc0 - ram, amdd0 - ram, 0, 0, 0, 0);
 
@@ -2099,8 +2142,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       state = emupalmos_new();
       oldState = pumpkin_get_local_storage(emu_key);
       pumpkin_set_local_storage(emu_key, state);
-      state->disasm = debug_getsyslevel("DISASM") == DEBUG_TRACE;
-      state->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
+      state->istate->disasm = debug_getsyslevel("DISASM") == DEBUG_TRACE;
+      state->istate->armp->armDisasm(state->arm, debug_getsyslevel("ADISASM") == DEBUG_TRACE);
 
       codeStart = code1 - ram;
       codeSize = MemHandleSize(hCode1);
@@ -2149,7 +2192,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
         i = get4b((uint32_t *)&code1_xrefs, data0, 0);
 
-        for (m = 0; m < 3 && !state->panic; m++) {
+        for (m = 0; m < 3 && !state->istate->panic; m++) {
           i += get4b((uint32_t *)&offset, data0, i);
           st = dataSize + offset;
           debug(DEBUG_INFO, "EmuPalmOS", "decoding data chain %d", m);
@@ -2158,7 +2201,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
           start = &data[st];
           p8 = data0;
 
-          for (k = 0; !state->panic;) {
+          for (k = 0; !state->istate->panic;) {
             b = p8[i++];
             if (b == 0x00) {
               debug(DEBUG_TRACE, "EmuPalmOS", "data chain %d end %d (0x%04X) i 0x%04X", m, st+k, st+k, i);
@@ -2246,7 +2289,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         if (data0_xrefs < data0Size - 12) {
           debug(DEBUG_INFO, "EmuPalmOS", "data xrefs at 0x%04X", data0_xrefs);
 
-          for (m = 0; m < 3 && !state->panic; m++) {
+          for (m = 0; m < 3 && !state->istate->panic; m++) {
             i += get4b(&count, data0, i);
             debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
             uint32_t segment, relocbase;
@@ -2260,7 +2303,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
             segment = dataStart + dataSize;
             offset = 0;
 
-            for (xr = 0; xr < count && !state->panic; xr++) {
+            for (xr = 0; xr < count && !state->istate->panic; xr++) {
               b = data0[i++];
               if (b & 0x80) {
                 // relative 8 bits signed delta
@@ -2307,7 +2350,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         if (code1_xrefs < data0Size - 12) {
           debug(DEBUG_INFO, "EmuPalmOS", "code xrefs at 0x%04X", code1_xrefs);
 
-          for (m = 0; m < 3 && !state->panic; m++) {
+          for (m = 0; m < 3 && !state->istate->panic; m++) {
             i += get4b(&count, data0, i);
             debug(DEBUG_INFO, "EmuPalmOS", "decoding %d xrefs for chain %d at 0x%04X", count, m, i);
             if (count) {
@@ -2353,7 +2396,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       debug(DEBUG_INFO, "EmuPalmOS", "stack segment from 0x%08X to 0x%08X size 0x%04X", stackStart, stackStart + stackSize - 1, stackSize);
       if (dataSize+aboveSize) debug(DEBUG_INFO, "EmuPalmOS", "data  segment from 0x%08X to 0x%08X size 0x%04X", dataStart,  dataStart  + dataSize + aboveSize - 1, dataSize+ aboveSize);
 
-      if (!state->panic) {
+      if (!state->istate->panic) {
         creator = pumpkin_get_app_creator();
         logtrap_install(state, creator);
         emupalmos_finish(0);
@@ -2366,9 +2409,9 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         logtrap_deinstall(state);
       }
 
-      if (state->panic) {
-        SysFatalAlert(state->panic);
-        xfree(state->panic);
+      if (state->istate->panic) {
+        SysFatalAlert(state->istate->panic);
+        sys_free(state->istate->panic);
         pumpkin_app_crashed();
         r = 1;
       }
@@ -2417,8 +2460,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 void emupalmos_disasm(int m68k, int arm) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   logtrap_disasm(state->lt, m68k);
-  state->disasm = m68k;
-  state->armp->armDisasm(state->arm, arm);
+  state->istate->disasm = m68k;
+  state->istate->armp->armDisasm(state->arm, arm);
 }
 
 #define DBREAD_SIZE 65488

@@ -60,8 +60,9 @@ typedef union {
   double d;
 } flp_double_t;
 
+typedef struct emu_internal_state_t emu_internal_state_t;
+
 typedef struct {
-  int finish;
   uint32_t stackStart;
   uint32_t sysAppInfoStart;
 #ifdef ARMEMU
@@ -69,18 +70,11 @@ typedef struct {
   uint32_t *systable;
 #endif
   m68k_state_t m68k_state;
-  char *panic;
   uint32_t SysFormPointerArrayToStrings_addr;
-  uint32_t FrmDrawForm_addr;
+  //uint32_t FrmDrawForm_addr;
   uint32_t SysQSort_addr;
   uint32_t SysBinarySearch_addr;
   uint32_t SysLibLoad_addr;
-  MemHandle hNative;
-  uint32_t screenStart;
-  uint32_t screenEnd;
-  uint32_t stackp;
-  uint32_t stack[256];
-  uint32_t stackt[256];
   uint8_t (*read_byte)(uint32_t address);
   uint16_t (*read_word)(uint32_t address);
   uint32_t (*read_long)(uint32_t address);
@@ -88,15 +82,8 @@ typedef struct {
   void (*write_word)(uint32_t address, uint16_t value);
   void (*write_long)(uint32_t address, uint32_t value);
   void *extra;
-  int disasm;
   logtrap_t *lt;
-
-  arm_plugin_t uarm;
-  arm_plugin_t *armp;
-  uint8_t *armReturnAddr;
-  uint8_t *armCall68KAddr;
-  uint8_t *armEmulState;
-  uint8_t *armStack;
+  emu_internal_state_t *istate;
 } emu_state_t;
 
 emu_state_t *m68k_get_emu_state(void);
