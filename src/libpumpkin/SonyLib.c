@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include <SonyCLIE.h>
 
+#include "SonyLib.h"
 #include "pumpkin.h"
 #include "syslibs.h"
 #include "debug.h"
@@ -42,6 +43,11 @@ Err HRClose(UInt16 refNum) {
   }
 
   return err;
+}
+
+Boolean HRMode(void) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  return module->hrmode;
 }
 
 Err HRGetAPIVersion(UInt16 refNum, UInt16 *versionP) {

@@ -12,6 +12,7 @@
 #include "pumpkin.h"
 #include "language.h"
 #include "WindowAccessor.h"
+#include "SonyLib.h"
 #include "sys.h"
 #include "debug.h"
 #include "xalloc.h"
@@ -46,6 +47,7 @@ typedef struct {
   UInt8 legacyDepth;
   Boolean littleEndian;
   int numPush;
+  UInt32 directWriteCount;
 } win_module_t;
 
 typedef struct {
@@ -3789,7 +3791,7 @@ UInt8 WinLegacyRead(UInt32 offset) {
   ColorTableType *colorTable, *srcColorTable;
   Boolean isSrcDefault;
   UInt16 i, cols, c, density, realDepth;
-  Coord x, y;
+  Coord x, y, width, height;
   UInt8 value = 0;
 
   bitmapP = WinGetBitmap(module->displayWindow);
@@ -3838,16 +3840,18 @@ UInt8 WinLegacyRead(UInt32 offset) {
         break;
     }
   } else {
+    BmpGetDimensions(bitmapP, &width, &height, NULL);
+
     switch (realDepth) {
       case 8:
-        cols = 160;
+        cols = width;
         x = offset % cols;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
         value = WinLegacyGetPixel(module, bitmapP, NULL, false, density, realDepth, realDepth, x, y);
         break;
       case 16:
-        cols = 160 * 2;
+        cols = width * 2;
         x = (offset % cols) / 2;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
@@ -3885,9 +3889,16 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
   BitmapType *bitmapP;
   UInt8 b;
   UInt16 i, cols, c, oldColor565, realDepth, density;
-  Coord x, y;
+  Coord x, y, width, height;
+  Boolean hrmode;
+  UInt16 prevCoordSys;
   IndexedColorType oldColor;
   WinHandle oldActive, oldDraw;
+
+  hrmode = HRMode();
+  if (hrmode && module->directWriteCount == 0) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+  }
 
   oldActive = module->activeWindow;
   oldDraw = module->drawWindow;
@@ -3940,15 +3951,21 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
     pumpkin_dirty_region_mode(dirtyRegionEnd);
 
   } else {
+    BmpGetDimensions(bitmapP, &width, &height, NULL);
+    if (hrmode) {
+      // if emulating Sony HighRes mode, direct screen writes must use kDensityDouble
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+    }
+
     switch (realDepth) {
       case 8:
-        cols = 160;
+        cols = width;
         x = offset % cols;
         y = offset / cols;
         WinLegacyDrawPixel(module, realDepth, value, x, y);
         break;
       case 16:
-        cols = 160 * 2;
+        cols = width * 2;
         x = (offset % cols) / 2;
         y = offset / cols;
         density = BmpGetDensity(bitmapP);
@@ -3961,12 +3978,22 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
         WinLegacyDrawPixel(module, realDepth, c, x, y);
         break;
     }
+
+    if (hrmode) {
+      WinSetCoordinateSystem(prevCoordSys);
+    }
   }
 
   module->activeWindow = oldActive;
   module->drawWindow = oldDraw;
   module->drawState.foreColor = oldColor;
   module->foreColor565 = oldColor565;
+
+  module->directWriteCount++;
+  if (hrmode && module->directWriteCount >= 320*40) {
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
+    module->directWriteCount = 0;
+  }
 }
 
 static void WinSurfaceSetPixel(void *data, int x, int y, uint32_t color) {
