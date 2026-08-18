@@ -855,6 +855,8 @@ static Boolean eventHandler(EventType *event) {
       //data->formP->window.windowBounds.topLeft.y = rect.topLeft.y + (rect.extent.y - data->formP->window.windowBounds.extent.y) / 2;
       //data->formP->window.windowBounds.topLeft.x += frm->window.windowBounds.topLeft.x;
       //data->formP->window.windowBounds.topLeft.y += frm->window.windowBounds.topLeft.y;
+      bounds.extent.x = WinGetField(&data->formP->window, WindowFieldWindowBoundsW);
+      bounds.extent.y = WinGetField(&data->formP->window, WindowFieldWindowBoundsH);
       bounds.topLeft.x = rect.topLeft.x + (rect.extent.x - WinGetField(&data->formP->window, WindowFieldWindowBoundsW)) / 2;
       bounds.topLeft.y = rect.topLeft.y + (rect.extent.y - WinGetField(&data->formP->window, WindowFieldWindowBoundsH)) / 2;
       bounds.topLeft.x += WinGetField(&frm->window, WindowFieldWindowBoundsX);
