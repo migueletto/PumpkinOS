@@ -1,5 +1,6 @@
 #ifdef LOGTRAP_SYS
 #include "sys.h"
+#include "debug.h"
 
 #define memset    sys_memset
 #define memcpy    sys_memcpy
@@ -2528,11 +2529,10 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_SIG:
           if (printarg) {
             sig = 0;
-            if (!(value % 2))
             switch (size) {
               case 1: sig = (int8_t)(lt->read8(value, lt->data) & 0xFF); break;
-              case 2: sig = (int16_t)(lt->read16(value, lt->data) & 0xFFFF); break;
-              case 4: sig = (int32_t)lt->read32(value, lt->data); break;
+              case 2: if (!(value % 2)) sig = (int16_t)(lt->read16(value, lt->data) & 0xFFFF); break;
+              case 4: if (!(value % 2)) sig = (int32_t)lt->read32(value, lt->data); break;
               default: sig = 0; break;
             }
             snprintf(aux, len - 1, "int%d{ptr_%08X %d}", isize, value, sig);
@@ -2543,11 +2543,10 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_USIG:
           if (printarg) {
             usig = 0;
-            if (!(value % 2))
             switch (size) {
               case 1: usig = lt->read8(value, lt->data); break;
-              case 2: usig = lt->read16(value, lt->data); break;
-              case 4: usig = lt->read32(value, lt->data); break;
+              case 2: if (!(value % 2)) usig = lt->read16(value, lt->data); break;
+              case 4: if (!(value % 2)) usig = lt->read32(value, lt->data); break;
               default: usig = 0; break;
             }
             snprintf(aux, len - 1, "uint%d{ptr_%08X %u}", isize, value, usig);
@@ -2558,18 +2557,17 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_HEX:
           if (printarg) {
             usig = 0;
-            if (!(value % 2))
             switch (size) {
               case 1:
                 usig = lt->read8(value, lt->data);
                 snprintf(aux, len - 1, "uint8{ptr_%08X 0x%02X}", value, usig);
                 break;
               case 2:
-                usig = lt->read16(value, lt->data);
+                if (!(value % 2)) usig = lt->read16(value, lt->data);
                 snprintf(aux, len - 1, "uint16{ptr_%08X 0x%04X}", value, usig);
                 break;
               case 4:
-                usig = lt->read32(value, lt->data);
+                if (!(value % 2)) usig = lt->read32(value, lt->data);
                 snprintf(aux, len - 1, "uint32{ptr_%08X 0x%08X}", value, usig);
                 break;
             }
@@ -2580,8 +2578,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_WCHR:
           if (printarg) {
             usig = 0;
-            if (!(value % 2))
-            usig = lt->read16(value, lt->data);
+            if (!(value % 2)) usig = lt->read16(value, lt->data);
             snprintf(aux, len - 1, "wchar{ptr_%08X 0x%04X}", value, usig);
           } else {
             snprintf(aux, len - 1, "wchar{ptr_%08X}", value);
@@ -2590,8 +2587,7 @@ static char *param_value(logtrap_t *lt, uint32_t type, uint32_t ptr, uint32_t si
         case T_ID:
           if (printarg) {
             usig = 0;
-            if (!(value % 2))
-            usig = lt->read32(value, lt->data);
+            if (!(value % 2)) usig = lt->read32(value, lt->data);
             id2s(usig, sid);
             snprintf(aux, len - 1, "id{ptr_%08X '%s'}", value, sid);
           } else {
