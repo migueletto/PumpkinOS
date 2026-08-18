@@ -3955,6 +3955,8 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
     if (hrmode) {
       // if emulating Sony HighRes mode, direct screen writes must use kDensityDouble
       prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+    } else {
+      prevCoordSys = WinGetCoordinateSystem();
     }
 
     switch (realDepth) {
