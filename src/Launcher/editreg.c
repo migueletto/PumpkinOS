@@ -67,12 +67,13 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegDisplayType regDisp, *regDispP;
   RegDisplayEndianType regEnd, *regEndP;
   RegSoundType regSnd, *regSndP;
+  RegFlagsType regFlags, *regFlagsP;
   ListType *lst;
   ControlType *ctl;
   UInt32 regSize;
   UInt16 osversion, density, depth, littleEndian, enableSound, index, id, num, i;
   char buf[16], *text;
-  Boolean r = false;
+  Boolean fastScreenWrite, r = false;
 
   FrmSetTitle(frm, name);
 
@@ -88,6 +89,9 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   regSndP = pumpkin_reg_get(creator, regSoundID, &regSize);
   enableSound = regSndP ? regSndP->enableSound : 0;
+
+  regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize);
+  fastScreenWrite = regFlagsP ? regFlagsP->flags & regFlagFastScreenWrite : false;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -129,6 +133,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   index = FrmGetObjectIndex(frm, enableSoundCtl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, enableSound);
+
+  // set fastScreenWrite
+  index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, fastScreenWrite);
 
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == okBtn) {
@@ -172,6 +181,17 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     ctl = FrmGetObjectPtr(frm, index);
     regSnd.enableSound = CtlGetValue(ctl) ? 1 : 0; 
     pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
+
+    // update fastScreenWrite
+    index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
+    if (CtlGetValue(ctl)) {
+      regFlags.flags |= regFlagFastScreenWrite;
+    } else {
+      regFlags.flags &= ~regFlagFastScreenWrite;
+    }
+    pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
 
     r = true;
   }

@@ -11,7 +11,8 @@ typedef struct RegMgrType RegMgrType;
 #define regSoundID      9
 #define regHeapID       10
 
-#define regFlagReset    1
+#define regFlagReset           1
+#define regFlagFastScreenWrite 2
 
 typedef struct {
   UInt16 version;

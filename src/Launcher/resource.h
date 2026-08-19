@@ -58,6 +58,7 @@
 #define depth16Ctl  1039
 #define depth16leCtl 1040
 #define enableSoundCtl 1041
+#define fastScreenWriteCtl 1042
 
 #define moveBmp     52001
 #define drawBmp     52002

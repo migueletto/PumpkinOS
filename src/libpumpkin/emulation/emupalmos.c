@@ -16,6 +16,7 @@
 #include "armp.h"
 #endif
 #include "pumpkin.h"
+#include "RegistryMgr.h"
 #include "debug.h"
 
 #include "logtrap.h"
@@ -48,6 +49,7 @@ struct emu_internal_state_t {
   uint32_t monitored_addr_end;
   MemHandle hNative;
 
+  Boolean fastScreenWrite;
   Boolean regionStarted;
   Coord firstY, lastY, firstX, lastX;
 };
@@ -360,17 +362,24 @@ uint32_t cpu_read_long(uint32_t address) {
   return value;
 }
 
+int emupalmos_fast_screen_write(void) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  return state->istate->fastScreenWrite;
+}
+
 static void write_screen(emu_state_t *state, uint32_t address, uint32_t value, uint32_t size) {
-  WinHandle wh;
-  BitmapType *bmp;
+  WinHandle wh = NULL;
+  BitmapType *bmp = NULL;
   Coord width, height, x1, x2, y;
-  UInt32 depth, pixelSize, offset;
+  UInt32 pixelSize, offset, depth = 0;
   uint8_t *ram;
 
-  wh = WinGetDisplayWindow();
-  bmp = WinGetBitmap(wh);
-  BmpGetDimensions(bmp, &width, &height, NULL);
-  depth = BmpGetBitDepth(bmp);
+  if (state->istate->fastScreenWrite) {
+    wh = WinGetDisplayWindow();
+    bmp = WinGetBitmap(wh);
+    BmpGetDimensions(bmp, &width, &height, NULL);
+    depth = BmpGetBitDepth(bmp);
+  }
 
   if (depth == 8 || depth == 16) {
     ram = pumpkin_heap_base();
@@ -1851,9 +1860,16 @@ static void enumArmPlugincallback(pumpkin_plugin_t *plugin, void *data) {
 
 static emu_state_t *emupalmos_new(void) {
   emu_state_t *state;
+  UInt32 creator, regSize;
+  RegFlagsType *regFlagsP;
 
   if ((state = sys_calloc(1, sizeof(emu_state_t))) != NULL) {
     if ((state->istate = sys_calloc(1, sizeof(emu_internal_state_t))) != NULL) {
+      creator = pumpkin_get_app_creator();
+      if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
+        state->istate->fastScreenWrite = regFlagsP->flags & regFlagFastScreenWrite;
+        MemPtrFree(regFlagsP);
+      }
 
 #ifdef ARMEMU
       uint8_t *ram = pumpkin_heap_base();

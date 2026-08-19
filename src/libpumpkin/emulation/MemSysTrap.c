@@ -20,18 +20,21 @@
 #include "debug.h"
 
 static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes, uint8_t value, uint32_t start, uint32_t end, Err *err) {
-  BitmapType *bmp;
-  WinHandle wh;
-  UInt32 offset, numPixels, pixelSize, depth;
-  Coord width, height, x1, y1, x2, y2;
+  BitmapType *bmp = NULL;
+  WinHandle wh = NULL;
+  UInt32 offset, numPixels, pixelSize, depth = 0;
+  Coord width = 0, height = 0, x1, y1, x2, y2;
   Boolean moved = false;
 
   if (dstP >= start && dstP < end) {
-    wh = WinGetDisplayWindow();
-    bmp = WinGetBitmap(wh);
-    BmpGetDimensions(bmp, &width, &height, NULL);
-    depth = BmpGetBitDepth(bmp);
     debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove completely inside screen depth=%d width=%d height=%d", depth, width, height);
+
+    if (emupalmos_fast_screen_write()) {
+      wh = WinGetDisplayWindow();
+      bmp = WinGetBitmap(wh);
+      BmpGetDimensions(bmp, &width, &height, NULL);
+      depth = BmpGetBitDepth(bmp);
+    }
 
     if (depth == 8 || depth == 16) {
       if (sP) {
