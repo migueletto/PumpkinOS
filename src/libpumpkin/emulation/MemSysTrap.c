@@ -19,8 +19,45 @@
 #include "emupalmos.h"
 #include "debug.h"
 
-void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
+static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes, uint8_t value, uint32_t start, uint32_t end, Err *err) {
+  BitmapType *bmp;
+  WinHandle wh;
+  UInt32 offset, numPixels, pixelSize, depth;
+  Coord width, height, x1, y1, x2, y2;
+  Boolean moved = false;
 
+  if (dstP >= start && dstP < end) {
+    wh = WinGetDisplayWindow();
+    bmp = WinGetBitmap(wh);
+    BmpGetDimensions(bmp, &width, &height, NULL);
+    depth = BmpGetBitDepth(bmp);
+    debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove completely inside screen depth=%d width=%d height=%d", depth, width, height);
+
+    if (depth == 8 || depth == 16) {
+      if (sP) {
+        *err = MemMove(emupalmos_trap_in(dstP, sysTrapMemMove, 0), emupalmos_trap_in(sP, sysTrapMemMove, 1), numBytes);
+      } else {
+        *err = MemSet(emupalmos_trap_in(dstP, sysTrapMemSet, 0), numBytes, value);
+      }
+      pixelSize = depth / 8;
+      numPixels = numBytes / pixelSize;
+      offset = (dstP - start) / pixelSize;
+      x1 = offset % width;
+      y1 = offset / width;
+      x2 = (offset + numPixels - 1) % width;
+      y2 = (offset + numPixels - 1) / width;
+      debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove screen x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
+      pumpkin_dirty_region_mode(dirtyRegionBegin);
+      pumpkin_screen_dirty(wh, x1, y1, x2, y2);
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
+      moved = true;
+    }
+  }
+
+  return moved;
+}
+
+void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
   switch (trap) {
     case sysTrapMemSet: {
       // Err MemSet(void *dstP, Int32 numBytes, UInt8 value)
@@ -28,16 +65,19 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t numBytes = ARG32;
       uint8_t value = ARG8;
       UInt32 start, end;
+      Err err = errNone;
+
       WinLegacyGetAddr(&start, &end);
-      Err err;
       if ((dstP >= start && dstP < end) ||
           (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
           (dstP < start && dstP+numBytes >= end)) {
+
         debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X) inside screen", dstP, numBytes, value);
-        for (uint32_t i = 0; i < numBytes; i++) {
-          m68k_write_memory_8(dstP+i, value);
+        if (!MemSetOrMoveDisplay(dstP, 0, numBytes, value, start, end, &err)) {
+          for (uint32_t i = 0; i < numBytes; i++) {
+            m68k_write_memory_8(dstP+i, value);
+          }
         }
-        err = 0;
       } else {
         if (emupalmos_check_address(dstP, numBytes, 0)) {
           err = MemSet(emupalmos_trap_in(dstP, trap, 0), numBytes, value);
@@ -55,20 +95,23 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t sP = ARG32;
       int32_t numBytes = ARG32;
       UInt32 start, end;
+      Err err = errNone;
+
       WinLegacyGetAddr(&start, &end);
-      Err err;
       if ((dstP >= start && dstP < end) ||
           (dstP+numBytes-1 >= start && dstP+numBytes-1 < end) ||
           (dstP < start && dstP+numBytes >= end) ||
           (sP >= start && sP < end) ||
           (sP+numBytes-1 >= start && sP+numBytes-1 < end) ||
           (sP < start && sP+numBytes >= end)) {
+
         debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen", dstP, sP, numBytes);
-        for (uint32_t i = 0; i < numBytes; i++) {
-          uint8_t value = m68k_read_memory_8(sP+i);
-          m68k_write_memory_8(dstP+i, value);
+        if (!MemSetOrMoveDisplay(dstP, sP, numBytes, 0, start, end, &err)) {
+          for (uint32_t i = 0; i < numBytes; i++) {
+            uint8_t value = m68k_read_memory_8(sP+i);
+            m68k_write_memory_8(dstP+i, value);
+          }
         }
-        err = 0;
       } else {
         if (emupalmos_check_address(dstP, numBytes, 0) && emupalmos_check_address(sP, numBytes, 1)) {
           err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
