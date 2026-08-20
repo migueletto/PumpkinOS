@@ -377,7 +377,6 @@ static void write_screen(emu_state_t *state, uint32_t address, uint32_t value, u
   if (state->istate->fastScreenWrite) {
     wh = WinGetDisplayWindow();
     bmp = WinGetBitmap(wh);
-    BmpGetDimensions(bmp, &width, &height, NULL);
     depth = BmpGetBitDepth(bmp);
   }
 
@@ -389,6 +388,7 @@ static void write_screen(emu_state_t *state, uint32_t address, uint32_t value, u
       case 4: WRITE_LONG(ram, address, value); break;
     }
 
+    BmpGetDimensions(bmp, &width, &height, NULL);
     pixelSize = depth / 8;
     offset = (address - state->istate->screenStart) / pixelSize;
     x1 = offset % width;

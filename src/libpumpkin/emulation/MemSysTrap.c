@@ -20,40 +20,39 @@
 #include "debug.h"
 
 static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes, uint8_t value, uint32_t start, uint32_t end, Err *err) {
-  BitmapType *bmp = NULL;
-  WinHandle wh = NULL;
-  UInt32 offset, numPixels, pixelSize, depth = 0;
-  Coord width = 0, height = 0, x1, y1, x2, y2;
+  BitmapType *bmp;
+  WinHandle wh;
+  UInt32 offset, numPixels, pixelSize, depth;
+  Coord width, height, x1, y1, x2, y2;
   Boolean moved = false;
 
   if (dstP >= start && dstP < end) {
-    debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove completely inside screen depth=%d width=%d height=%d", depth, width, height);
-
     if (emupalmos_fast_screen_write()) {
       wh = WinGetDisplayWindow();
       bmp = WinGetBitmap(wh);
-      BmpGetDimensions(bmp, &width, &height, NULL);
       depth = BmpGetBitDepth(bmp);
-    }
 
-    if (depth == 8 || depth == 16) {
-      if (sP) {
-        *err = MemMove(emupalmos_trap_in(dstP, sysTrapMemMove, 0), emupalmos_trap_in(sP, sysTrapMemMove, 1), numBytes);
-      } else {
-        *err = MemSet(emupalmos_trap_in(dstP, sysTrapMemSet, 0), numBytes, value);
+      if (depth == 8 || depth == 16) {
+        if (sP) {
+          *err = MemMove(emupalmos_trap_in(dstP, sysTrapMemMove, 0), emupalmos_trap_in(sP, sysTrapMemMove, 1), numBytes);
+        } else {
+          *err = MemSet(emupalmos_trap_in(dstP, sysTrapMemSet, 0), numBytes, value);
+        }
+
+        BmpGetDimensions(bmp, &width, &height, NULL);
+        pixelSize = depth / 8;
+        numPixels = numBytes / pixelSize;
+        offset = (dstP - start) / pixelSize;
+        x1 = offset % width;
+        y1 = offset / width;
+        x2 = (offset + numPixels - 1) % width;
+        y2 = (offset + numPixels - 1) / width;
+        debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove screen x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
+        pumpkin_dirty_region_mode(dirtyRegionBegin);
+        pumpkin_screen_dirty(wh, x1, y1, x2, y2);
+        pumpkin_dirty_region_mode(dirtyRegionEnd);
+        moved = true;
       }
-      pixelSize = depth / 8;
-      numPixels = numBytes / pixelSize;
-      offset = (dstP - start) / pixelSize;
-      x1 = offset % width;
-      y1 = offset / width;
-      x2 = (offset + numPixels - 1) % width;
-      y2 = (offset + numPixels - 1) / width;
-      debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove screen x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
-      pumpkin_dirty_region_mode(dirtyRegionBegin);
-      pumpkin_screen_dirty(wh, x1, y1, x2, y2);
-      pumpkin_dirty_region_mode(dirtyRegionEnd);
-      moved = true;
     }
   }
 
