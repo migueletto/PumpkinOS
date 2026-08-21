@@ -307,6 +307,7 @@ typedef union {
 typedef struct {
   surface_t *surface;
   UInt32 creator;
+  char name[dmDBNameLength];
 } save_screen_t;
 
 struct pumpkin_httpd_t {
@@ -3196,22 +3197,63 @@ static void save_screen_callback(void *context, void *screen, int size) {
   save_screen_t *scr = (save_screen_t *)context;
   LocalID dbID;
   DmOpenRef dbRef;
-  char buf[8];
-        
+  DmSearchStateType stateInfo;
+  MemHandle nameRes, versionRes;
+  char buf[8], *name, *version, *s;
+
   pumpkin_id2s(scr->creator, buf);
           
-  debug(DEBUG_INFO, PUMPKINOS, "save screen app '%s', dimension %dx%d, size %d", buf, scr->surface->width, scr->surface->height, size);
-        
+  debug(DEBUG_INFO, PUMPKINOS, "save screen app '%s' \"%s\", dimension %dx%d, size %d", buf, scr->name, scr->surface->width, scr->surface->height, size);
+  name = NULL;
+  version = NULL;
+
+  if (DmGetNextDatabaseByTypeCreator(true, &stateInfo, sysFileTApplication, scr->creator, false, NULL, &dbID) == errNone) {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+      if ((nameRes = DmGet1Resource(ainRsc, 1000)) != NULL) {
+        if ((s = MemHandleLock(nameRes)) != NULL) {
+          name = StrDup(s);
+          MemHandleUnlock(nameRes);
+        }
+        DmReleaseResource(nameRes);
+      }
+
+      versionRes = DmGet1Resource(verRsc, 1);
+      // some apps store the version in tver.1000
+      if (versionRes == NULL) versionRes = DmGet1Resource(verRsc, 1000);
+  
+      if (versionRes != NULL) {
+        if ((s = MemHandleLock(versionRes)) != NULL) {
+          version = StrDup(s);
+          MemHandleUnlock(versionRes);
+        }
+        DmReleaseResource(versionRes);
+      }
+    }
+  }
+
+  if (name == NULL) {
+    name = StrDup(scr->name);
+  }
+
   if ((dbID = DmFindDatabase(0, SCREEN_DB)) == 0) {
     DmCreateDatabase(0, SCREEN_DB, 'Scrn', 'Data', true);
   }     
-        
+
   if ((dbID = DmFindDatabase(0, SCREEN_DB)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
       DmNewResourceEx(dbRef, scr->creator, 1, size, screen);
+      if (name) {
+        DmNewResourceEx(dbRef, scr->creator, 2, StrLen(name), name);
+      }
+      if (version) {
+        DmNewResourceEx(dbRef, scr->creator, 3, StrLen(version), version);
+      }
       DmCloseDatabase(dbRef);
     }       
   }         
+
+  if (name) MemPtrFree(name);
+  if (version) MemPtrFree(version);
 }           
             
 static void save_screen(void) {   
@@ -3219,8 +3261,10 @@ static void save_screen(void) {
   save_screen_t scr;
 
   if ((screen = ptr_lock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN))) {
+    MemSet(&scr, sizeof(save_screen_t), 0);
     scr.surface = screen->surface;
     scr.creator = pumpkin_module.tasks[pumpkin_module.current_task].creator;
+    StrNCopy(scr.name, pumpkin_module.tasks[pumpkin_module.current_task].name, dmDBNameLength);
     surface_save_mem(screen->surface, 0, &scr, save_screen_callback);
     ptr_unlock(pumpkin_module.tasks[pumpkin_module.current_task].screen_ptr, TAG_SCREEN);
   }
