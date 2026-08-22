@@ -33,7 +33,7 @@
 #define return_err(err) \
   pumpkin_set_lasterr(err); \
   if (err && err != vfsErrFileEOF && err != vfsErrFileNotFound && err != expErrEnumerationEmpty) \
-    debug(DEBUG_ERROR, "VFS", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
+    debug(DEBUG_ERROR, PALMOS_MODULE, "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err)); \
   return err
 
 #define checkvol(module, volRefNum) \
@@ -962,15 +962,18 @@ Err VFSGetAttributes(UInt16 volRefNum, const Char *pathNameP, UInt32 *attributes
 
   if (pathNameP && pathNameP[0] && attributesP) {
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
-    debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileType \"%s\" -> \"%s\"", pathNameP, module->path);
     type = vfs_checktype(module->session[volRefNum-1], module->path);
 
     if (type == VFS_FILE) {
+      debug(DEBUG_TRACE, PALMOS_MODULE, "VFSGetAttributes file \"%s\" -> \"%s\"", pathNameP, module->path);
       *attributesP = 0;
       err = errNone;
     } else if (type == VFS_DIR) {
+      debug(DEBUG_TRACE, PALMOS_MODULE, "VFSGetAttributes dir \"%s\" -> \"%s\"", pathNameP, module->path);
       *attributesP = vfsFileAttrDirectory;
       err = errNone;
+    } else {
+      debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetAttributes error \"%s\" -> \"%s\"", pathNameP, module->path);
     }
   }
 
