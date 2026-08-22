@@ -19,6 +19,8 @@ extern PLIBC_FILE *plibc_stderr;
 
 enum { PLIBC_SEEK_SET, PLIBC_SEEK_CUR, PLIBC_SEEK_END };
 
+enum { PLIBC_FS_FILE, PLIBC_FS_DIR };
+
 int plibc_init(void);
 int plibc_finish(void);
 int plibc_setfd(int fd, void *fileRef);
@@ -26,6 +28,7 @@ int plibc_mkdir(int vol, const char *pathname);
 int plibc_chdir(int vol, const char *pathname);
 int plibc_getdir(int vol, char *pathname, int max);
 int plibc_open(int vol, const char *pathname, int flags);
+int plibc_stat(int vol, const char *pathname);
 int plibc_close(int fd);
 sys_ssize_t plibc_read(int fd, void *buf, sys_size_t count);
 sys_ssize_t plibc_write(int fd, void *buf, sys_size_t count);

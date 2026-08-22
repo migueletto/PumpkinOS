@@ -173,6 +173,17 @@ int plibc_open(int vol, const char *pathname, int flags) {
   return fd;
 }
 
+int plibc_stat(int vol, const char *pathname) {
+  UInt32 attributes;
+  int r = -1;
+
+  if (VFSGetAttributes(vol, pathname, &attributes) == errNone) {
+    r = attributes & vfsFileAttrDirectory ? PLIBC_FS_DIR : PLIBC_FS_FILE;
+  }
+
+  return r;
+}
+
 int plibc_close(int fd) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
   int i, r = -1;
