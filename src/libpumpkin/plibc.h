@@ -29,6 +29,7 @@ int plibc_chdir(int vol, const char *pathname);
 int plibc_getdir(int vol, char *pathname, int max);
 int plibc_open(int vol, const char *pathname, int flags);
 int plibc_stat(int vol, const char *pathname);
+int plibc_file_dates(int vol, const char *pathname, uint32_t *ctime, uint32_t *mtime, uint32_t *atime);
 int plibc_close(int fd);
 sys_ssize_t plibc_read(int fd, void *buf, sys_size_t count);
 sys_ssize_t plibc_write(int fd, void *buf, sys_size_t count);

@@ -184,6 +184,37 @@ int plibc_stat(int vol, const char *pathname) {
   return r;
 }
 
+int plibc_file_dates(int vol, const char *pathname, uint32_t *ctime, uint32_t *mtime, uint32_t *atime) {
+  FileRef fileRef;
+  UInt32 date;
+  int r = -1;
+
+  if (VFSFileOpen(vol, pathname, vfsModeRead, &fileRef) == errNone) {
+    if (ctime) {
+      *ctime = 0;
+      if (VFSFileGetDate(fileRef, vfsFileDateCreated, &date) == errNone) {
+       *ctime = date;
+      }
+    }
+    if (mtime) {
+      *mtime = 0;
+      if (VFSFileGetDate(fileRef, vfsFileDateModified, &date) == errNone) {
+       *mtime = date;
+      }
+    }
+    if (atime) {
+      *atime = 0;
+      if (VFSFileGetDate(fileRef, vfsFileDateAccessed, &date) == errNone) {
+       *atime = date;
+      }
+    }
+    VFSFileClose(fileRef);
+    r = 0;
+  }
+
+  return r;
+}
+
 int plibc_close(int fd) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
   int i, r = -1;
