@@ -299,6 +299,10 @@ int sys_isinf(double x) {
   return isinf(x);
 }
 
+int sys_isfinite(double x) {
+  return isfinite(x);
+}
+
 int sys_signbit(double x) {
   return signbit(x);
 }
