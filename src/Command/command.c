@@ -124,6 +124,7 @@ struct command_internal_data_t {
   Boolean moved, selected, down;
   SndStreamRef sound;
   command_prefs_t prefs;
+  UInt32 ioCount;
   FileRef in, out;
   UInt16 num_ext;
   command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
@@ -160,6 +161,10 @@ static int command_script_pit(int pe, void *data);
 static int command_script_play(int pe, void *data);
 static int command_script_crash(int pe, void *data);
 static int command_script_setio(int pe, void *data);
+static int command_script_firstio(int pe, void *data);
+static int command_script_nextio(int pe, void *data);
+static int command_script_lastio(int pe, void *data);
+static int command_script_finishio(int pe, void *data);
 static int command_script_def(int pe, void *data);
 static int command_script_help(int pe, void *data);
 
@@ -189,6 +194,10 @@ static const command_builtin_t builtinCommands[] = {
   { "play",     command_script_play,     NULL, NULL },
   { "crash",    command_script_crash,    NULL, NULL },
   { "setio",    command_script_setio,    NULL, NULL },
+  { "firstio",  command_script_firstio,  NULL, NULL },
+  { "nextio",   command_script_nextio,   NULL, NULL },
+  { "lastio",   command_script_lastio,   NULL, NULL },
+  { "finishio", command_script_finishio, NULL, NULL },
   { "def",      command_script_def,      NULL, NULL },
   { "help",     command_script_help,     NULL, "List available commands" },
   { NULL, NULL }
@@ -1661,6 +1670,117 @@ static int command_script_crash(int pe, void *data) {
   if (script_get_integer(pe, 0, &fatal) == 0) {
     pumpkin_test_exception(fatal);
   }
+
+  return 0;
+}
+
+static void command_ioname(command_internal_data_t *idata, UInt32 i, char *name, int max) {
+  StrNPrintF(name, max, "io_%08X_%08X_%u.tmp", sys_get_pid(), pumpkin_get_taskid(), i);
+}
+
+static int command_script_firstio(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  char name[64];
+  int r = -1;
+
+  idata->ioCount = 1;
+  command_ioname(idata, idata->ioCount, name, sizeof(name));
+  if (VFSFileCreate(idata->volume, name) == errNone) {
+    if (VFSFileOpen(idata->volume, name, vfsModeRead | vfsModeWrite, &idata->out) == errNone) {
+      debug(DEBUG_TRACE, "Command", "firstio set input to nil");
+      debug(DEBUG_TRACE, "Command", "firstio set output to \"%s\"", name);
+      plibc_setfd(0, NULL);
+      plibc_setfd(1, idata->out);
+      idata->ioCount++;
+      r = 0;
+    } else {
+      VFSFileDelete(idata->volume, name);
+    }
+  }
+
+  return r;
+}
+
+// first: nil 1 (2)
+// next : 1 2 (3)
+// next : 2 3 (4)
+// last : 3 nil
+// last : nil nil
+
+static int command_script_nextio(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  char name[64];
+  FileRef *fd;
+  Err err;
+  int r = -1;
+
+  if (idata->ioCount > 2) {
+    command_ioname(idata, idata->ioCount - 2, name, sizeof(name));
+    debug(DEBUG_TRACE, "Command", "nextio delete \"%s\"", name);
+    VFSFileDelete(idata->volume, name);
+  }
+
+  if ((fd = plibc_getfd(1)) != NULL) {
+    if ((err = VFSFileSeek(fd, vfsOriginBeginning, 0)) == errNone || err == vfsErrFileEOF) {
+      debug(DEBUG_TRACE, "Command", "nextio set input to previous output");
+      plibc_setfd(0, fd);
+
+      command_ioname(idata, idata->ioCount, name, sizeof(name));
+      if (VFSFileCreate(idata->volume, name) == errNone) {
+        if (VFSFileOpen(idata->volume, name, vfsModeRead | vfsModeWrite, &idata->out) == errNone) {
+          debug(DEBUG_TRACE, "Command", "nextio set output to \"%s\"", name);
+          plibc_setfd(1, idata->out);
+          idata->ioCount++;
+          r = 0;
+        } else {
+          VFSFileDelete(idata->volume, name);
+        }
+      }
+    }
+  }
+
+  return r;
+}
+
+static int command_script_lastio(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  char name[64];
+  FileRef *fd;
+  Err err;
+  int r = -1;
+
+  if (idata->ioCount > 2) {
+    command_ioname(idata, idata->ioCount - 2, name, sizeof(name));
+    debug(DEBUG_TRACE, "Command", "lastio delete \"%s\"", name);
+    VFSFileDelete(idata->volume, name);
+  }
+
+  if ((fd = plibc_getfd(1)) != NULL) {
+    if ((err = VFSFileSeek(fd, vfsOriginBeginning, 0)) == errNone || err == vfsErrFileEOF) {
+      debug(DEBUG_TRACE, "Command", "lastio set input to previous output");
+      plibc_setfd(0, fd);
+      debug(DEBUG_TRACE, "Command", "lastio set output to nil");
+      plibc_setfd(1, NULL);
+      r = 0;
+    }
+  }
+
+  return r;
+}
+
+static int command_script_finishio(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  char name[64];
+
+  if (idata->ioCount > 1) {
+    command_ioname(idata, idata->ioCount - 1, name, sizeof(name));
+    debug(DEBUG_TRACE, "Command", "finishio delete \"%s\"", name);
+    VFSFileDelete(idata->volume, name);
+  }
+
+  debug(DEBUG_TRACE, "Command", "finishio restore input and output");
+  plibc_setfd(0, NULL);
+  plibc_setfd(1, NULL);
 
   return 0;
 }

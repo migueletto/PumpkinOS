@@ -5,6 +5,33 @@ function command_eval(cmd)
   if func and type(func) == "function" then
     return "'" .. cmd .. "' is a function, try using " .. cmd .. "()"
   end
+
+  if string.sub(cmd, 1, 1) == "|" and string.sub(cmd, -1, -1) == "|" then
+    cmd = string.sub(cmd, 2)
+    local len = string.len(cmd)
+    local s = ""
+    local first = true
+    for i = 1,len do
+      local c = string.sub(cmd, i, i)
+      if c == "|" then
+        if first then
+          firstio()
+          first = false
+        elseif i < len then
+          nextio()
+        else
+          lastio()
+        end
+        command_eval(s)
+        s = ""
+      else
+        s = s .. c
+      end
+    end
+    finishio()
+    return ""
+  end
+
   local s,flag = nil,false
   local f,r = load("return " .. cmd)
   if not f then
