@@ -24,6 +24,7 @@ enum { PLIBC_FS_FILE, PLIBC_FS_DIR };
 int plibc_init(void);
 int plibc_finish(void);
 int plibc_setfd(int fd, void *fileRef);
+void *plibc_getfd(int fd);
 int plibc_mkdir(int vol, const char *pathname);
 int plibc_chdir(int vol, const char *pathname);
 int plibc_getdir(int vol, char *pathname, int max);

@@ -87,6 +87,12 @@ int plibc_setfd(int fd, void *fileRef) {
   return r;
 }
 
+void *plibc_getfd(int fd) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+
+  return fd >= 0 && fd < MAX_FDS ? table[fd]->fileRef : NULL;
+}
+
 int plibc_isatty(int fd) {
   fd_t **table = pumpkin_gettable(MAX_FDS);
   int r = 0;
@@ -603,8 +609,9 @@ char *plibc_fgets(char *s, int size, PLIBC_FILE *stream) {
 
   if (s && size > 0 && stream && table[stream->fd]) {
     if (table[stream->fd]->fileRef == stdinFileRef) {
-      pumpkin_gets(s, size, 1);
-      r = s;
+      if (pumpkin_gets(s, size, 1) != -1) {
+        r = s;
+      }
     } else {
       r = VFSFileGets(table[stream->fd]->fileRef, size, s);
     }

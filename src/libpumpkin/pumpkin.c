@@ -6081,6 +6081,7 @@ int32_t pumpkin_gets(char *buf, uint32_t max, int echo) {
       c = pumpkin_getchar();
       if (c == -1 && i == 0) return -1;
       if (c <= 0) break;
+      if (c == 3) return -1; // ctrl-c
       if (c == '\r') continue;
       if (c == '\n') {
         if (echo) pumpkin_putchar('\r');
