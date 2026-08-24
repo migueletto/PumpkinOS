@@ -1058,7 +1058,47 @@ static int command_script_cat(int pe, void *data) {
 }
 
 static int command_script_run(int pe, void *data) {
-  return command_script_file(pe, 1, data);
+  command_internal_data_t *idata = command_get_data();
+  PLIBC_FILE *f;
+  int n;
+  char buf[4096], line[128];
+  char *name = NULL;
+
+  if (script_get_string(pe, 0, &name) == 0) {
+    buf[0] = 0;
+    if ((f = plibc_fopen(idata->volume, name, "r")) != NULL) {
+      for (;;) {
+        if (plibc_fgets(line, sizeof(line) - 1, f) == NULL) break;
+        n = StrLen(line);
+        if (n > 0 && line[n - 1] == '\n') {
+          n--;
+          line[n] = 0;
+        }
+        if (n > 0 && line[n - 1] == '\r') {
+          n--;
+          line[n] = 0;
+        }
+        if (n > 0 && line[0] == '|') {
+          if (buf[0]) {
+            command_execute(idata, buf);
+            buf[0] = 0;
+          }
+          command_execute(idata, line);
+          continue;
+        }
+        StrNCat(buf, " ", sizeof(buf) - 1);
+        StrNCat(buf, line, sizeof(buf) - 1);
+      }
+      plibc_fclose(f);
+      if (buf[0]) {
+        command_execute(idata, buf);
+      }
+    }
+  }
+
+  if (name) sys_free(name);
+
+  return 0;
 }
 
 static int command_script_rm(int pe, void *data) {
