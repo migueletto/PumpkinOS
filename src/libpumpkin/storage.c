@@ -4479,6 +4479,11 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
 
   if (h) {
     handle = (storage_handle_t *)h;
+    if (handle->magic != STO_MAGIC) {
+      debug(DEBUG_INFO, "STOR", "MemHandleLockEx %p trying to lock a non handle", handle);
+      handle = MemPtrRecoverHandle(h);
+    }
+
     if (handle->lockCount < 14) {
       switch (handle->htype & ~STO_INFLATED) {
         case STO_TYPE_MEM:
@@ -4532,6 +4537,11 @@ Err MemHandleUnlock(MemHandle h) {
 
   if (h) {
     handle = (storage_handle_t *)h;
+    if (handle->magic != STO_MAGIC) {
+      debug(DEBUG_INFO, "STOR", "MemHandleUnlock %p trying to unlock a non handle", handle);
+      handle = MemPtrRecoverHandle(h);
+    }
+
     if (handle->lockCount > 0) {
       switch (handle->htype & ~STO_INFLATED) {
         case STO_TYPE_MEM:
@@ -4905,6 +4915,10 @@ UInt32 MemHandleSize(MemHandle h) {
 
   if (h) {
     handle = (storage_handle_t *)h;
+    if (handle->magic != STO_MAGIC) {
+      debug(DEBUG_INFO, "STOR", "MemHandleSize %p non handle", handle);
+      handle = MemPtrRecoverHandle(h);
+    }
     size = handle->size;
     err = errNone;
   }
