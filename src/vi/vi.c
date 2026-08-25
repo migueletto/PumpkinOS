@@ -4456,18 +4456,23 @@ static int edit_edit(editor_t *e, char *filename) {
   int r = -1;
 
   if ((g = sys_calloc(1, sizeof(struct globals))) != NULL) {
-    argv[0] = filename;
     g->e = e;
     g->foregroundColor = RGBToLong((RGBColorType *)&foregroundColorRGB);
     g->backgroundColor = RGBToLong((RGBColorType *)&backgroundColorRGB);
-    if ((ext = getext(filename)) != NULL) {
-      if ((g->syntax = syntax_get_plugin(ext)) != NULL) {
-        g->shigh = g->syntax->syntax_create(RGBToLong((RGBColorType *)&backgroundColorRGB));
-      } 
-    } 
+    argv[0] = filename;
 
-    r = vi_main(g, 1, argv);
-    if (g->syntax) g->syntax->syntax_destroy(g->shigh);
+    if (filename) {
+      if ((ext = getext(filename)) != NULL) {
+        if ((g->syntax = syntax_get_plugin(ext)) != NULL) {
+          g->shigh = g->syntax->syntax_create(RGBToLong((RGBColorType *)&backgroundColorRGB));
+        } 
+      } 
+      r = vi_main(g, 1, argv);
+      if (g->syntax) g->syntax->syntax_destroy(g->shigh);
+    } else {
+      r = vi_main(g, 0, argv);
+    }
+
     sys_free(g);
   }
 
