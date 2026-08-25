@@ -1022,9 +1022,26 @@ static void print_usage(command_internal_data_t *idata, command_builtin_t *cmd) 
 }
 
 static int command_scroll_pause(command_internal_data_t *idata) {
+  RGBColorType oldf, oldb;
+  RectangleType rect;
+  FontID old;
   EventType event;
+  Coord y;
   Err err;
   int c;
+
+  pumpkin_dirty_region_mode(dirtyRegionBegin);
+  old = FntSetFont(idata->font);
+  WinSetBackColorRGB(&idata->prefs.foreground, &oldb);
+  WinSetTextColorRGB(&idata->prefs.background, &oldf);
+  y = (idata->nrows - 1) * idata->fheight;
+  RctSetRectangle(&rect, 0, y, (idata->ncols - 1) * idata->fwidth, idata->fheight);
+  WinEraseRectangle(&rect, 0);
+  WinPaintChars("--PAUSE--", 9, 0, y);
+  WinSetBackColorRGB(&oldb, NULL);
+  WinSetTextColorRGB(&oldf, NULL);
+  FntSetFont(old);
+  pumpkin_dirty_region_mode(dirtyRegionEnd);
 
   for (c = 0; c == 0;) {
     EvtGetEvent(&event, idata->wait);
@@ -1043,6 +1060,8 @@ static int command_scroll_pause(command_internal_data_t *idata) {
       }
     }
   }
+
+  command_update_line(idata, idata->nrows-1, 0, idata->ncols-1, false);
 
   return c;
 }
