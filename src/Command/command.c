@@ -130,7 +130,6 @@ struct command_internal_data_t {
   command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
   command_builtin_t def_commands[MAX_DEF_CMDS];
   Int32 ndefs;
-  Boolean pipe;
 };
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
@@ -1051,14 +1050,21 @@ static int command_scroll_pause(command_internal_data_t *idata) {
 static int command_script_cat(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   PLIBC_FILE *f;
-  int pause, n, i;
+  int pause, isterminal, n, i;
   char line[256];
   char *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
     script_opt_boolean(pe, 1, &pause);
 
-    if ((f = plibc_fopen(idata->volume, name, "r")) != NULL) {
+    if (StrCompare(name, "-") == 0) {
+      f = plibc_stdin;
+    } else {
+      f = plibc_fopen(idata->volume, name, "r");
+    }
+
+    if (f != NULL) {
+      isterminal = plibc_isatty(1);
       for (i = 0;;) {
         if (plibc_fgets(line, sizeof(line) - 1, f) == NULL) break;
         if ((n = StrLen(line)) == 0) continue;
@@ -1066,7 +1072,7 @@ static int command_script_cat(int pe, void *data) {
         if (n > 1 && line[n-1] == '\n' && line[n-2] != '\r') {
           command_putc(idata, '\r');
         }
-        if (pause && !idata->pipe) {
+        if (pause && isterminal) {
           i++;
           if (i == idata->nrows - 1) {
             if (command_scroll_pause(idata) == 'q') break;
@@ -1074,7 +1080,7 @@ static int command_script_cat(int pe, void *data) {
           }
         }
       }
-      plibc_fclose(f);
+      if (f != plibc_stdin) plibc_fclose(f);
     }
   }
 
@@ -1109,9 +1115,7 @@ static int command_script_run(int pe, void *data) {
             command_execute(idata, buf);
             buf[0] = 0;
           }
-          idata->pipe = true;
           command_execute(idata, line);
-          idata->pipe = false;
           continue;
         }
         StrNCat(buf, " ", sizeof(buf) - 1);
@@ -1743,7 +1747,7 @@ static int command_script_crash(int pe, void *data) {
 }
 
 static void command_ioname(command_internal_data_t *idata, UInt32 i, char *name, int max) {
-  StrNPrintF(name, max, "io_%08X_%08X_%u.tmp", sys_get_pid(), pumpkin_get_taskid(), i);
+  StrNPrintF(name, max, "/io_%08X_%08X_%u.tmp", sys_get_pid(), pumpkin_get_taskid(), i);
 }
 
 static int command_script_firstio(int pe, void *data) {
