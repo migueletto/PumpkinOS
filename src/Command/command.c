@@ -130,6 +130,7 @@ struct command_internal_data_t {
   command_ext_t ext_commands[MAX_EXTERNAL_CMDS];
   command_builtin_t def_commands[MAX_DEF_CMDS];
   Int32 ndefs;
+  Boolean pipe;
 };
 
 static const RGBColorType defaultForeground = { 0, 0xFF, 0xFF, 0xFF };
@@ -587,9 +588,11 @@ static void command_draw(command_internal_data_t *idata) {
   WinSetBackColorRGB(NULL, &oldb);
   WinSetTextColorRGB(NULL, &oldt);
 
+  pumpkin_dirty_region_mode(dirtyRegionBegin);
   for (row = 0; row < idata->nrows; row++) {
     command_update_line(idata, row, 0, idata->ncols-1, false);
   }
+  pumpkin_dirty_region_mode(dirtyRegionEnd);
 
   WinSetBackColorRGB(&oldb, NULL);
   WinSetTextColorRGB(&oldt, NULL);
@@ -608,11 +611,13 @@ static void command_update(command_internal_data_t *idata, Int16 row1, Int16 col
   if (row1 == row2) {
     command_update_line(idata, row1, col1, col2, selected);
   } else if (row1 < row2) {
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
     command_update_line(idata, row1, col1, idata->ncols-1, selected);
     for (row = row1 + 1; row < row2; row++) {
       command_update_line(idata, row, 0, idata->ncols-1, selected);
     }
     command_update_line(idata, row2, 0, col2, selected);
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 
   WinSetBackColorRGB(&oldb, NULL);
@@ -1017,44 +1022,65 @@ static void print_usage(command_internal_data_t *idata, command_builtin_t *cmd) 
   command_putc(idata, '\n');
 }
 
-static int command_script_file(int pe, int run, void *data) {
+static int command_scroll_pause(command_internal_data_t *idata) {
+  EventType event;
+  Err err;
+  int c;
+
+  for (c = 0; c == 0;) {
+    EvtGetEvent(&event, idata->wait);
+    if (SysHandleEvent(&event)) continue;
+    if (MenuHandleEvent(NULL, &event, &err)) continue;
+    if (ApplicationHandleEvent(&event)) continue;
+
+    if (event.eType == appStopEvent) {
+      c = -1;
+    } else if (event.eType == keyDownEvent) {
+      switch (event.data.keyDown.chr) {
+        case ' ':
+        case 'q':
+          c = event.data.keyDown.chr;
+          break;
+      }
+    }
+  }
+
+  return c;
+}
+
+static int command_script_cat(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
-  Int32 n, max = 65536;
-  char *buf, *name = NULL;
+  PLIBC_FILE *f;
+  int pause, n, i;
+  char line[256];
+  char *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
-    if ((buf = MemPtrNew(max)) != NULL) {
-      MemSet(buf, max, 0);
+    script_opt_boolean(pe, 1, &pause);
 
-      if ((n = read_file(name, buf, max-1)) == -1) {
-        command_puts(idata, "Error reading file\r\n");
-
-      } else if (n > 0) {
-        if (run) {
-          if (pumpkin_script_run_string(pe, buf) != 0) {
-            command_puts(idata, "Error loading file\r\n");
-          }
-        } else {
-          command_puts(idata, buf);
-          if (buf[n-1] != '\n') {
-            command_putc(idata, '\r');
-            command_putc(idata, '\n');
+    if ((f = plibc_fopen(idata->volume, name, "r")) != NULL) {
+      for (i = 0;;) {
+        if (plibc_fgets(line, sizeof(line) - 1, f) == NULL) break;
+        if ((n = StrLen(line)) == 0) continue;
+        command_puts(idata, line);
+        if (n > 1 && line[n-1] == '\n' && line[n-2] != '\r') {
+          command_putc(idata, '\r');
+        }
+        if (pause && !idata->pipe) {
+          i++;
+          if (i == idata->nrows - 1) {
+            if (command_scroll_pause(idata) == 'q') break;
+            i = 0;
           }
         }
       }
-      MemPtrFree(buf);
+      plibc_fclose(f);
     }
-  } else {
-    print_usage(idata, (command_builtin_t *)data);
   }
 
   if (name) sys_free(name);
 
   return 0;
-}
-
-static int command_script_cat(int pe, void *data) {
-  return command_script_file(pe, 0, data);
 }
 
 static int command_script_run(int pe, void *data) {
@@ -1083,7 +1109,9 @@ static int command_script_run(int pe, void *data) {
             command_execute(idata, buf);
             buf[0] = 0;
           }
+          idata->pipe = true;
           command_execute(idata, line);
+          idata->pipe = false;
           continue;
         }
         StrNCat(buf, " ", sizeof(buf) - 1);
