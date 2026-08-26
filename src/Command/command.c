@@ -12,7 +12,6 @@
 #include "util.h"
 #include "findargs.h"
 #include "filter.h"
-#include "shell.h"
 #include "telnet.h"
 #include "pterm.h"
 #include "editor.h"
@@ -151,16 +150,15 @@ static int command_script_launch(int pe, void *data);
 static int command_script_ps(int pe, void *data);
 static int command_script_kill(int pe, void *data);
 static int command_script_cat(int pe, void *data);
+static int command_script_dump(int pe, void *data);
 static int command_script_rm(int pe, void *data);
 static int command_script_run(int pe, void *data);
 static int command_script_deploy(int pe, void *data);
 static int command_script_edit(int pe, void *data);
 static int command_script_telnet(int pe, void *data);
 static int command_script_exit(int pe, void *data);
-static int command_script_pit(int pe, void *data);
 static int command_script_play(int pe, void *data);
 static int command_script_crash(int pe, void *data);
-static int command_script_setio(int pe, void *data);
 static int command_script_firstio(int pe, void *data);
 static int command_script_nextio(int pe, void *data);
 static int command_script_lastio(int pe, void *data);
@@ -184,16 +182,15 @@ static const command_builtin_t builtinCommands[] = {
   { "ps",       command_script_ps,       NULL, "List active tasks" },
   { "kill",     command_script_kill,     "tid", "Kill a task" },
   { "cat",      command_script_cat,      "file", "Print the contents of a file" },
+  { "dump",     command_script_dump,     "file", "Dump the contents of a file" },
   { "rm",       command_script_rm,       "file", "Remove a file or a directory" },
   { "run",      command_script_run,      "file", "Run a script" },
   { "deploy",   command_script_deploy,   "name,creator,file", "Deploys a script file as an application" },
   { "edit",     command_script_edit,     "file", "Edit a file using the system editor" },
   { "telnet",   command_script_telnet,   NULL, NULL },
   { "exit",     command_script_exit,     NULL, "Exit this session" },
-  { "pit",      command_script_pit,      NULL, NULL },
   { "play",     command_script_play,     NULL, NULL },
   { "crash",    command_script_crash,    NULL, NULL },
-  { "setio",    command_script_setio,    NULL, NULL },
   { "firstio",  command_script_firstio,  NULL, NULL },
   { "nextio",   command_script_nextio,   NULL, NULL },
   { "lastio",   command_script_lastio,   NULL, NULL },
@@ -1069,13 +1066,11 @@ static int command_scroll_pause(command_internal_data_t *idata) {
 static int command_script_cat(int pe, void *data) {
   command_internal_data_t *idata = command_get_data();
   PLIBC_FILE *f;
-  int pause, isterminal, n, i;
+  int isterminal, n, i;
   char line[256];
   char *name = NULL;
 
   if (script_get_string(pe, 0, &name) == 0) {
-    script_opt_boolean(pe, 1, &pause);
-
     if (StrCompare(name, "-") == 0) {
       f = plibc_stdin;
     } else {
@@ -1091,7 +1086,7 @@ static int command_script_cat(int pe, void *data) {
         if (n > 1 && line[n-1] == '\n' && line[n-2] != '\r') {
           command_putc(idata, '\r');
         }
-        if (pause && isterminal) {
+        if (isterminal) {
           i++;
           if (i == idata->nrows - 1) {
             if (command_scroll_pause(idata) == 'q') break;
@@ -1104,6 +1099,125 @@ static int command_script_cat(int pe, void *data) {
   }
 
   if (name) sys_free(name);
+
+  return 0;
+}
+
+static int command_script_dump(int pe, void *data) {
+  command_internal_data_t *idata = command_get_data();
+  PLIBC_FILE *f;
+  char *name = NULL;
+  char *s_offset = NULL;
+  char *s_len = NULL;
+  uint8_t buf[16];
+  char aux[16], hbuf[128];
+  uint32_t offset, nread, len, i0;
+  int isterminal, hex, i, j, k, n, nlines;
+
+  f = NULL;
+  hex = 1;
+  offset = 0;
+  len = 0;
+  i0 = 0;
+
+  if (script_get_string(pe, 0, &name) == 0) {
+    if (StrCompare(name, "-") == 0) {
+      f = plibc_stdin;
+    } else {
+      debug(DEBUG_INFO, "Command", "dump file [%s]", name);
+      f = plibc_fopen(idata->volume, name, "r");
+
+      if (script_opt_string(pe, 1, &s_offset) == 0) {
+        if (!StrNCompare(s_offset, "0x", 2)) {
+          offset = sys_strtoul(&s_offset[2], NULL, 16);
+        } else {
+          offset = sys_atoi(s_offset);
+        }
+        debug(DEBUG_TRACE, "Command", "dump offset %u", offset);
+        i0 = offset & 0xF;
+      }
+
+      if (script_opt_string(pe, 2, &s_len) == 0) {
+        if (!StrNCompare(s_len, "0x", 2)) {
+          len = sys_strtoul(&s_len[2], NULL, 16);
+        } else {
+          len = sys_atoi(s_len);
+        }
+        debug(DEBUG_TRACE, "Command", "dump length %u", len);
+      }
+    }
+  }
+
+  if (f) {
+    isterminal = plibc_isatty(1);
+
+    if (offset > 0) {
+      debug(DEBUG_INFO, "Command", "seek %u", offset);
+      plibc_fseek(f, offset, PLIBC_SEEK_SET);
+    }
+
+    for (nread = 0, nlines = 0; len == 0 || nread <= len;) {
+      n = 16 - i0;
+      if (len > 0) n = ((nread + n) <= len) ? n : len - nread;
+      debug(DEBUG_INFO, "Command", "read %d ...", n);
+      n = plibc_fread(&buf[i0], 1, n, f);
+      debug(DEBUG_INFO, "Command", "read: %d", n);
+      if (n <= 0) break;
+
+      MemSet(hbuf, sizeof(hbuf), ' ');
+      StrPrintF(aux, "%08X", offset & 0xFFFFFFF0);
+      offset += n;
+      nread += n;
+
+      if (hex) {
+        j = 0;
+        hbuf[j++] = aux[0];
+        hbuf[j++] = aux[1];
+        hbuf[j++] = aux[2];
+        hbuf[j++] = aux[3];
+        hbuf[j++] = aux[4];
+        hbuf[j++] = aux[5];
+        hbuf[j++] = aux[6];
+        hbuf[j++] = aux[7];
+        hbuf[j++] = ' ';
+        hbuf[j++] = ' ';
+
+        for (i = 0, k = j + 8*3 + 1 + 8*3 + 1; i < i0+n; i++) {
+          StrPrintF(aux, "%02X", buf[i]);
+          hbuf[j++] = i >= i0 ? aux[0] : ' ';
+          hbuf[j++] = i >= i0 ? aux[1] : ' ';
+          hbuf[j++] = ' ';
+          if (i == 7) hbuf[j++] = ' ';
+          hbuf[k++] = i >= i0 ? (buf[i] < 32 || buf[i] >= 127 ? '.' : buf[i]) : ' ';
+        }
+        for (; i < 16; i++) {
+          hbuf[j++] = ' ';
+          hbuf[j++] = ' ';
+          hbuf[j++] = ' ';
+          if (i == 7) hbuf[j++] = ' ';
+          hbuf[k++] = ' ';
+        }
+        hbuf[k] = 0;
+        command_puts(idata, hbuf);
+        command_puts(idata, "\r\n");
+
+      } else {
+        command_puts(idata, (char *)buf);
+      }
+
+      if (isterminal) {
+        nlines++;
+        if (nlines == idata->nrows - 1) {
+          if (command_scroll_pause(idata) == 'q') break;
+          nlines = 0;
+         }
+      }
+
+      i0 = 0;
+    }
+
+    if (f != plibc_stdin) plibc_fclose(f);
+  }
 
   return 0;
 }
@@ -1608,77 +1722,6 @@ static int command_script_exit(int pe, void *data) {
   return 0;
 }
 
-static int command_shell_filter_peek(conn_filter_t *filter, uint32_t us) {
-  command_internal_data_t *idata = command_get_data();
-
-  idata->blink++;
-  if (idata->blink == 50) {
-    pterm_cursor_blink(idata->t);
-    idata->blink = 0;
-  }
-
-  return EvtSysEventAvail(true) ? 1 : EvtPumpEvents(us);
-}
-
-static int command_shell_filter_read(conn_filter_t *filter, uint8_t *b) {
-  command_internal_data_t *idata = command_get_data();
-  EventType event;
-  Err err;
-  int stop = 0, r = -1;
-
-  do {
-    EvtGetEvent(&event, idata->wait);
-    if (SysHandleEvent(&event)) continue;
-    if (MenuHandleEvent(NULL, &event, &err)) continue;
-
-    switch (event.eType) {
-      case keyDownEvent:
-        if (!(event.data.keyDown.modifiers & commandKeyMask)) {
-          *b = event.data.keyDown.chr;
-          if (*b == '\n') *b = '\r';
-          stop = 1;
-          r = 1;
-        }
-        break;
-      case appStopEvent:
-        stop = 1;
-        break;
-      default:
-        FrmDispatchEvent(&event);
-        break;
-    }
-  } while (!stop);
-
-  return r;
-}
-
-static int command_shell_filter_write(conn_filter_t *filter, uint8_t *b, int n) {
-  command_internal_data_t *idata = command_get_data();
-  int i;
-
-  for (i = 0; i < n; i++) {
-    command_putc(idata, (char)b[i]);
-  }
-
-  return n;
-}
-
-static int command_script_pit(int pe, void *data) {
-  shell_provider_t *p;
-  conn_filter_t filter;
-  int r = -1;
-
-  if ((p = script_get_pointer(pe, SHELL_PROVIDER)) != NULL) {
-    sys_memset(&filter, 0, sizeof(conn_filter_t));
-    filter.peek = command_shell_filter_peek;
-    filter.read = command_shell_filter_read;
-    filter.write = command_shell_filter_write;
-    r = p->run(&filter, pe, 0);
-  }
-
-  return r;
-}
-
 static Err sndCallback(void *userdata, SndStreamRef sound, void *buffer, UInt32 numberofframes) {
   command_play_t *play = (command_play_t *)userdata;
   UInt32 n, nread;
@@ -1872,65 +1915,6 @@ static int command_script_finishio(int pe, void *data) {
   debug(DEBUG_TRACE, "Command", "finishio restore input and output");
   plibc_setfd(0, NULL);
   plibc_setfd(1, NULL);
-
-  return 0;
-}
-
-static int command_script_setio(int pe, void *data) {
-  command_internal_data_t *idata = command_get_data();
-  Boolean hasInput, hasOutput;
-  char *iname = NULL;
-  char *oname = NULL;
-  Err err;
-
-  hasInput  = script_opt_string(pe, 0, &iname) == 0 && iname && iname[0];
-  hasOutput = script_opt_string(pe, 1, &oname) == 0 && oname && oname[0];
-
-  if (idata->in) {
-    debug(DEBUG_TRACE, "Command", "setio: closing old input");
-    VFSFileClose(idata->in);
-    idata->in = NULL;
-  }
-  if (idata->out) {
-    debug(DEBUG_TRACE, "Command", "setio: closing old output");
-    VFSFileClose(idata->out);
-    idata->out = NULL;
-  }
-
-  if (hasInput) {
-    debug(DEBUG_TRACE, "Command", "setio: input \"%s\"", iname);
-    err = VFSFileOpen(idata->volume, iname, vfsModeRead, &idata->in);
-    if (err != errNone) {
-      debug(DEBUG_TRACE, "Command", "setio: create input \"%s\"", iname);
-      VFSFileCreate(idata->volume, iname);
-      err = VFSFileOpen(idata->volume, iname, vfsModeRead, &idata->in);
-    }
-  } else {
-    debug(DEBUG_TRACE, "Command", "setio: no input");
-  }
-  plibc_setfd(0, idata->in);
-
-  if (hasOutput) {
-    debug(DEBUG_TRACE, "Command", "setio: output \"%s\"", oname);
-    err = VFSFileOpen(idata->volume, oname, vfsModeWrite, &idata->out);
-    if (err != errNone) {
-      debug(DEBUG_TRACE, "Command", "setio: create output \"%s\"", oname);
-      VFSFileCreate(idata->volume, oname);
-      err = VFSFileOpen(idata->volume, oname, vfsModeWrite, &idata->out);
-    } else {
-      debug(DEBUG_TRACE, "Command", "setio: recreate output \"%s\"", oname);
-      VFSFileClose(idata->out);
-      VFSFileDelete(idata->volume, oname);
-      VFSFileCreate(idata->volume, oname);
-      err = VFSFileOpen(idata->volume, oname, vfsModeWrite, &idata->out);
-    }
-  } else {
-    debug(DEBUG_TRACE, "Command", "setio: no output");
-  }
-  plibc_setfd(1, idata->out);
-
-  if (iname) sys_free(iname);
-  if (oname) sys_free(oname);
 
   return 0;
 }
@@ -2264,8 +2248,6 @@ static Err StartApplication(void *param) {
 
   if ((idata->pe = pumpkin_script_create()) > 0) {
     pumpkin_script_init_env(idata->pe);
-    script_loadlib(idata->pe, "libshell");
-    script_loadlib(idata->pe, "liboshell");
 
     for (i = 0; builtinCommands[i].name; i++) {
       pumpkin_script_global_function_data(idata->pe, builtinCommands[i].name, builtinCommands[i].function, (void *)&builtinCommands[i]);

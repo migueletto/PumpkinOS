@@ -49,42 +49,6 @@ function command_eval(cmd)
   return r
 end
 
-function aa()
-  print("abcd")
-  print("efg")
-  print("hijk")
-end
-
-function bb(len)
-  while true do
-    local line = gets()
-    if not line then break end
-    if string.len(line) >= len then
-      print(line)
-    end
-  end
-end
-
-function cc()
-  while true do
-    local line = gets()
-    if not line then break end
-    print(string.upper(line))
-  end
-end
-
-function chain()
-  setio(nil, "tmp1")
-  aa()
-  setio("tmp1", "tmp2")
-  bb(4)
-  setio("tmp2", nil)
-  rm("tmp1")
-  cc()
-  setio(nil, nil)
-  rm("tmp2")
-end
-
 function ls(dir, f)
   if not dir then dir = "." end
   local t = nil
