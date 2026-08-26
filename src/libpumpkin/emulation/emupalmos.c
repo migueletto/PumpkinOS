@@ -649,6 +649,12 @@ void decode_event(uint32_t eventP, EventType *event) {
     case menuEvent:
       event->data.menu.itemID = m68k_read_memory_16(eventP + 8);
       break;
+    case menuOpenEvent:
+      event->data.menuOpen.menuRscID = m68k_read_memory_16(eventP + 8);
+      event->data.menuOpen.cause = m68k_read_memory_16(eventP + 10);
+      break;
+    case menuCloseEvent:
+      break;
     case fldEnterEvent:
       event->data.fldEnter.fieldID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
@@ -860,6 +866,12 @@ void encode_event(uint32_t eventP, EventType *event) {
       break;
     case menuEvent:
       m68k_write_memory_16(eventP + 8, event->data.menu.itemID);
+      break;
+    case menuOpenEvent:
+      m68k_write_memory_16(eventP +  8, event->data.menuOpen.menuRscID);
+      m68k_write_memory_16(eventP + 10, event->data.menuOpen.cause);
+      break;
+    case menuCloseEvent:
       break;
     case fldEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.fldEnter.fieldID);

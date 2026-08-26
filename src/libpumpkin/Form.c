@@ -287,6 +287,7 @@ void FrmSetActiveForm(FormType *formP) {
     WinSetActiveWindow(&module->currentForm->window);
     WinSetDrawWindow(&module->currentForm->window);
     MenuSetActiveMenu(module->currentForm->mbar);
+    MenuSetActiveMenuRscID(module->currentForm->menuRscId);
 
     if (wh != WinGetActiveWindow()) {
       if (wh != NULL) {
@@ -2188,6 +2189,7 @@ void FrmSetMenu(FormType *formP, UInt16 menuRscID) {
     formP->mbar = MenuInit(menuRscID);
     if (formP == module->currentForm) {
       MenuSetActiveMenu(formP->mbar);
+      MenuSetActiveMenuRscID(formP->menuRscId);
     }
   }
 }
