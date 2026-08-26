@@ -92,8 +92,18 @@ int os_shell(int argc, char *argv[]) {
   CloseHandle(piProcInfo.hProcess);
   CloseHandle(piProcInfo.hThread);
 
-  rows = 25;
-  cols = 80;
+  if ((s = pumpkin_script_get_env_var("cols")) != NULL) {
+    cols = sys_atoi(s);
+    sys_free(s);
+  } else {
+    cols = 80;
+  }
+  if ((s = pumpkin_script_get_env_var("rows")) != NULL) {
+    rows = sys_atoi(s);
+    sys_free(s);
+  } else {
+    rows = 25;
+  }
   debug(DEBUG_INFO, "OSSHELL", "window size is %dx%d", cols, rows);
 
   // clear screen

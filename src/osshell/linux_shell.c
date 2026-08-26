@@ -69,16 +69,27 @@ static int getptyslave(int masterfd, int slavefd, int cols, int rows) {
 int os_shell(int argc, char *argv[]) {
   struct timeval tv;
   int masterfd, slavefd;
-  char ch, *line, *arg[3];
+  char ch, *s,*line, *arg[3];
   char buf[256];
   fd_set rfds;
   pid_t pid;
   int cols, rows;
   int n, m, r;
 
-  rows = 25;
-  cols = 80;
   debug(DEBUG_INFO, "OSSHELL", "osshell start");
+
+  if ((s = pumpkin_script_get_env_var("cols")) != NULL) {
+    cols = sys_atoi(s);
+    sys_free(s);
+  } else {
+    cols = 80;
+  }
+  if ((s = pumpkin_script_get_env_var("rows")) != NULL) {
+    rows = sys_atoi(s);
+    sys_free(s);
+  } else {
+    rows = 25;
+  }
   debug(DEBUG_INFO, "OSSHELL", "window size is %dx%d", cols, rows);
 
   if (openpty(&masterfd, &slavefd, NULL, NULL, NULL) == -1) {
