@@ -59,6 +59,10 @@
 #define depth16leCtl 1040
 #define enableSoundCtl 1041
 #define fastScreenWriteCtl 1042
+#define heap8Ctl    1043
+#define heap16Ctl   1044
+#define heap32Ctl   1045
+#define heap64Ctl   1046
 
 #define moveBmp     52001
 #define drawBmp     52002

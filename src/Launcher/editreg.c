@@ -66,12 +66,13 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
   RegDisplayEndianType regEnd, *regEndP;
+  RegHeapType regHeap, *regHeapP;
   RegSoundType regSnd, *regSndP;
   RegFlagsType regFlags, *regFlagsP;
   ListType *lst;
   ControlType *ctl;
   UInt32 regSize;
-  UInt16 osversion, density, depth, littleEndian, enableSound, index, id, num, i;
+  UInt16 osversion, density, depth, littleEndian, heapSize, heapAlign, enableSound, index, id, num, i;
   char buf[16], *text;
   Boolean fastScreenWrite, r = false;
 
@@ -83,6 +84,10 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   regDispP = pumpkin_reg_get(creator, regDisplayID, &regSize);
   density = regDispP ? regDispP->density : pumpkin_get_density();
   depth = regDispP ? regDispP->depth : pumpkin_get_depth();
+
+  regHeapP = pumpkin_reg_get(creator, regHeapID, &regSize);
+  heapSize = regHeapP ? regHeapP->heapSize : 8;
+  heapAlign = regHeapP ? regHeapP->heapAlign : 0;
 
   regEndP = pumpkin_reg_get(creator, regEndianID, &regSize);
   littleEndian = regEndP ? regEndP->littleEndian : 0;
@@ -124,6 +129,18 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   }
   if (id == depth16Ctl && littleEndian) {
     id = depth16leCtl;
+  }
+  index = FrmGetObjectIndex(frm, id);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, 1);
+
+  // set heap size
+  switch (heapSize) {
+    case  8: id = heap8Ctl;  break;
+    case 16: id = heap16Ctl; break;
+    case 32: id = heap32Ctl; break;
+    case 64: id = heap64Ctl; break;
+    default: id = heap8Ctl;  break;
   }
   index = FrmGetObjectIndex(frm, id);
   ctl = FrmGetObjectPtr(frm, index);
@@ -175,6 +192,23 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
     pumpkin_reg_set(creator, regDisplayID, &regDisp, sizeof(RegDisplayType));
     pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
+
+    // update heap size
+    for (i = heap8Ctl; i <= heap64Ctl; i++) {
+      index = FrmGetObjectIndex(frm, i);
+      ctl = FrmGetObjectPtr(frm, index);
+      if (CtlGetValue(ctl)) break;
+    }
+    switch (i) {
+      case heap8Ctl:    regHeap.heapSize =  8; break;
+      case heap16Ctl:   regHeap.heapSize = 16; break;
+      case heap32Ctl:   regHeap.heapSize = 32; break;
+      case heap64Ctl:   regHeap.heapSize = 64; break;
+      default:          regHeap.heapSize =  8; break;
+    }
+
+    regHeap.heapAlign = heapAlign;
+    pumpkin_reg_set(creator, regHeapID, &regHeap, sizeof(RegHeapType));
 
     // update sound
     index = FrmGetObjectIndex(frm, enableSoundCtl);
