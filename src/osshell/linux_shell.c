@@ -11,8 +11,6 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#include "sys.h"
-#include "pumpkin.h"
 #include "os_shell.h"
 #include "debug.h"
 
@@ -80,7 +78,7 @@ int os_shell(int argc, char *argv[]) {
 
   rows = 25;
   cols = 80;
-  debug(DEBUG_INFO, "OSSHELL", "oshell start");
+  debug(DEBUG_INFO, "OSSHELL", "osshell start");
   debug(DEBUG_INFO, "OSSHELL", "window size is %dx%d", cols, rows);
 
   if (openpty(&masterfd, &slavefd, NULL, NULL, NULL) == -1) {
@@ -158,7 +156,7 @@ int os_shell(int argc, char *argv[]) {
   }
 
   close(masterfd);
-  debug(DEBUG_INFO, "OSSHELL", "oshell end");
+  debug(DEBUG_INFO, "OSSHELL", "osshell end");
 
   return 0;
 }

@@ -4,8 +4,6 @@
 #include <tchar.h>
 #include <stdio.h>
 
-#include "sys.h"
-#include "script.h"
 #include "os_shell.h"
 #include "debug.h"
 
@@ -25,36 +23,36 @@ int os_shell(int argc, char *argv[]) {
   STARTUPINFO siStartInfo;
   DWORD dwWritten, dwRead, available;
   BOOL bSuccess;
-  char ch, buf[128], cmd[MAX_CMD], *s;
+  char buf[2], cmd[MAX_CMD], *s;
   int i, n, icmd, ignore, cols, rows;
 
-  debug(DEBUG_INFO, "WSHELL", "oshell start");
+  debug(DEBUG_INFO, "OSSHELL", "osshell start");
 
   saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
   saAttr.bInheritHandle = TRUE;
   saAttr.lpSecurityDescriptor = NULL;
 
   if (!CreatePipe(&hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &saAttr, 0)) {
-    debug(DEBUG_ERROR, "WSHELL", "CreatePipe ChildStd_OUT failed");
+    debug(DEBUG_ERROR, "OSSHELL", "CreatePipe ChildStd_OUT failed");
     return -1;
   }
 
   if (!SetHandleInformation(hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
-    debug(DEBUG_ERROR, "WSHELL", "SetHandleInformation ChildStd_OUT failed");
+    debug(DEBUG_ERROR, "OSSHELL", "SetHandleInformation ChildStd_OUT failed");
     CloseHandle(hChildStd_OUT_Rd);
     CloseHandle(hChildStd_OUT_Wr);
     return -1;
   }
 
   if (!CreatePipe(&hChildStd_IN_Rd, &hChildStd_IN_Wr, &saAttr, 0)) {
-    debug(DEBUG_ERROR, "WSHELL", "CreatePipe ChildStd_IN failed");
+    debug(DEBUG_ERROR, "OSSHELL", "CreatePipe ChildStd_IN failed");
     CloseHandle(hChildStd_OUT_Rd);
     CloseHandle(hChildStd_OUT_Wr);
     return -1;
   }
 
   if (!SetHandleInformation(hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0)) {
-    debug(DEBUG_ERROR, "WSHELL", "SetHandleInformation ChildStd_IN failed");
+    debug(DEBUG_ERROR, "OSSHELL", "SetHandleInformation ChildStd_IN failed");
     CloseHandle(hChildStd_OUT_Rd);
     CloseHandle(hChildStd_OUT_Wr);
     CloseHandle(hChildStd_IN_Rd);
@@ -85,7 +83,7 @@ int os_shell(int argc, char *argv[]) {
   CloseHandle(hChildStd_IN_Rd);
 
   if (!bSuccess) {
-    debug(DEBUG_ERROR, "WSHELL", "CreateProcess failed");
+    debug(DEBUG_ERROR, "OSSHELL", "CreateProcess failed");
     CloseHandle(hChildStd_OUT_Rd);
     CloseHandle(hChildStd_IN_Wr);
     return -1;
@@ -94,9 +92,9 @@ int os_shell(int argc, char *argv[]) {
   CloseHandle(piProcInfo.hProcess);
   CloseHandle(piProcInfo.hThread);
 
-  p = script_get_pointer(pe, SHELL_PROVIDER);
-  p->window(shell, &cols, &rows);
-  debug(DEBUG_INFO, "WSHELL", "window size is %dx%d", cols, rows);
+  rows = 25;
+  cols = 80;
+  debug(DEBUG_INFO, "OSSHELL", "window size is %dx%d", cols, rows);
 
   // clear screen
   buf[0] = 0x0C;
@@ -111,49 +109,44 @@ int os_shell(int argc, char *argv[]) {
       if ((buf[0] = pumpkin_getchar()) == -1) {
         break;
       }
-      n = 1;
 
-      if (n > 0) {
-        for (i = 0; i < n; i++) {
-          if (icmd < MAX_CMD-1) {
-            switch (buf[i]) {
-              case '\b':
-                if (icmd) {
-                  pumpkin_write(&buf[i], 1);
-                  icmd--;
-                }
-                break;
-              case '\r':
-                cmd[icmd++] = '\n';
-                if (!WriteFile(hChildStd_IN_Wr, cmd, icmd, &dwWritten, NULL)) {
-                  debug(DEBUG_ERROR, "WSHELL", "WriteFile failed");
-                }
-                ignore = icmd;
-                icmd = 0;
-                buf[0] = '\r';
-                buf[1] = '\n';
-                pumpkin_write(buf, 2);
-                break;
-              default:
-                if (buf[i] >= 32) {
-                  cmd[icmd++] = buf[i];
-                  pumpkin_write(&buf[i], 1);
-                }
-                break;
+      if (icmd < MAX_CMD-1) {
+        switch (buf[i]) {
+          case '\b':
+            if (icmd) {
+              pumpkin_write(&buf[i], 1);
+              icmd--;
             }
-          }
+            break;
+          case '\n':
+            cmd[icmd++] = '\n';
+            if (!WriteFile(hChildStd_IN_Wr, cmd, icmd, &dwWritten, NULL)) {
+              debug(DEBUG_ERROR, "OSSHELL", "WriteFile failed");
+            }
+            ignore = icmd;
+            icmd = 0;
+            buf[0] = '\r';
+            buf[1] = '\n';
+            pumpkin_write(buf, 2);
+            break;
+          default:
+            if (buf[i] >= 32) {
+              cmd[icmd++] = buf[i];
+              pumpkin_write(&buf[i], 1);
+            }
+            break;
         }
       }
     }
 
     if (!PeekNamedPipe(hChildStd_OUT_Rd, NULL, 0, NULL, &available, NULL)) {
-      debug(DEBUG_ERROR, "WSHELL", "PeekNamedPipe failed");
+      debug(DEBUG_ERROR, "OSSHELL", "PeekNamedPipe failed");
       break;
     }
 
     if (available) {
       if (!ReadFile(hChildStd_OUT_Rd, buf, sizeof(buf), &dwRead, NULL)) {
-        debug(DEBUG_ERROR, "WSHELL", "ReadFile failed");
+        debug(DEBUG_ERROR, "OSSHELL", "ReadFile failed");
         break;
       }
 
@@ -173,7 +166,7 @@ int os_shell(int argc, char *argv[]) {
   CloseHandle(hChildStd_OUT_Rd);
   CloseHandle(hChildStd_IN_Wr);
 
-  debug(DEBUG_INFO, "WSHELL", "oshell end");
+  debug(DEBUG_INFO, "OSSHELL", "osshell end");
 
   return 0;
 }
