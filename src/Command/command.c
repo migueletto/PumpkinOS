@@ -2187,6 +2187,13 @@ static void command_load_external_commands(command_internal_data_t *idata) {
   idata->num_ext = i;
 }
 
+static void command_set_env_ivar(char *name, int value) {
+  char buf[64];
+
+  StrNPrintF(buf, sizeof(buf)-1, "%d", value);
+  pumpkin_script_set_env_var(name, buf);
+}
+
 static Err StartApplication(void *param) {
   command_data_t *data;
   command_internal_data_t *idata;
@@ -2248,6 +2255,8 @@ static Err StartApplication(void *param) {
 
   if ((idata->pe = pumpkin_script_create()) > 0) {
     pumpkin_script_init_env(idata->pe);
+    command_set_env_ivar("cols", idata->ncols);
+    command_set_env_ivar("rows", idata->nrows);
 
     for (i = 0; builtinCommands[i].name; i++) {
       pumpkin_script_global_function_data(idata->pe, builtinCommands[i].name, builtinCommands[i].function, (void *)&builtinCommands[i]);
@@ -2313,6 +2322,8 @@ static void StopApplication(void) {
 
   plibc_close(3);
   plibc_finish();
+  pumpkin_script_remove_env_var("cols");
+  pumpkin_script_remove_env_var("rows");
   pumpkin_script_finish_env();
   pumpkin_script_destroy(idata->pe);
 
