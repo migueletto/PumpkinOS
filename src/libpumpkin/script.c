@@ -1160,6 +1160,8 @@ int pumpkin_script_init_env(int pe) {
     data->pe = pe;
     pumpkin_set_subdata(data);
 
+    pumpkin_script_create_obj(pe, "env");
+
     if ((obj = pumpkin_script_create_obj(pe, "sys")) != -1) {
       pumpkin_script_obj_function(pe, obj, "debug",    app_script_sys_debug);
     }
@@ -1250,6 +1252,85 @@ int pumpkin_script_init_env(int pe) {
     }
 
     r = 0;
+  }
+
+  return r;
+}
+
+int pumpkin_script_set_env_var(char *key, char *value) {
+  script_data_t *data = pumpkin_get_subdata();
+  script_arg_t okey, ovalue;
+  script_ref_t obj;
+  int r = -1;
+
+  if (key) {
+    if (script_global_get(data->pe, "env", &ovalue) == 0) {
+      if (ovalue.type == SCRIPT_ARG_OBJECT) {
+        obj = ovalue.value.r;
+        okey.type = SCRIPT_ARG_STRING;
+        okey.value.s = key;
+        ovalue.type = SCRIPT_ARG_STRING;
+        if (value == NULL) value = "";
+        ovalue.value.s = value;
+        if (script_object_set(data->pe, obj, &okey, &ovalue) == 0) {
+          r = 0;
+        }
+      }
+    }
+  }
+
+  return r;
+}
+
+int pumpkin_script_remove_env_var(char *key) {
+  script_data_t *data = pumpkin_get_subdata();
+  script_arg_t okey, ovalue;
+  script_ref_t obj;
+  int r = -1;
+
+  if (key) {
+    if (script_global_get(data->pe, "env", &ovalue) == 0) {
+      if (ovalue.type == SCRIPT_ARG_OBJECT) {
+        obj = ovalue.value.r;
+        okey.type = SCRIPT_ARG_STRING;
+        okey.value.s = key;
+        if (script_object_get(data->pe, obj, &okey, &ovalue) == 0) {
+          if (ovalue.type == SCRIPT_ARG_STRING) {
+            ovalue.type = SCRIPT_ARG_NULL;
+            ovalue.value.i = 0;
+            script_object_set(data->pe, obj, &okey, &ovalue);
+            r = 0;
+          }
+        }
+      }
+    }
+  }
+
+  return r;
+}
+
+char *pumpkin_script_get_env_var(char *key) {
+  script_data_t *data = pumpkin_get_subdata();
+  script_arg_t okey, ovalue;
+  script_ref_t obj;
+  char buf[64], *r = NULL;
+
+  if (key) {
+    if (script_global_get(data->pe, "env", &ovalue) == 0) {
+      if (ovalue.type == SCRIPT_ARG_OBJECT) {
+        obj = ovalue.value.r;
+        okey.type = SCRIPT_ARG_STRING;
+        okey.value.s = key;
+        if (script_object_get(data->pe, obj, &okey, &ovalue) == 0) {
+          if (ovalue.type == SCRIPT_ARG_INTEGER) {
+            StrNPrintF(buf, sizeof(buf)-1, "%d", ovalue.value.i);
+            r = sys_strdup(buf);
+          } else if (ovalue.type == SCRIPT_ARG_STRING) {
+            r = sys_strdup(ovalue.value.s);
+          }
+        }
+      }
+    }
   }
 
   return r;

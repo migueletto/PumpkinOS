@@ -699,6 +699,9 @@ void pumpkin_test_exception(int fatal);
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
 int pumpkin_script_init_env(int pe);
+int pumpkin_script_set_env_var(char *key, char *value);
+int pumpkin_script_remove_env_var(char *key);
+char *pumpkin_script_get_env_var(char *key);
 int pumpkin_script_finish_env(void);
 
 void *pumpkin_gettable(uint32_t n);
