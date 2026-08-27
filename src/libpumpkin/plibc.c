@@ -621,12 +621,30 @@ char *plibc_fgets(char *s, int size, PLIBC_FILE *stream) {
 }
 
 int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...) {
- sys_va_list ap;
+  sys_va_list ap;
   int r;
 
   sys_va_start(ap, format);
   r = plibc_vfprintf(stream, format, ap);
   sys_va_end(ap);
+
+  return r;
+}
+
+int plibc_dprintf(int fd, const char *format, ...) {
+  fd_t **table = pumpkin_gettable(MAX_FDS);
+  sys_va_list ap;
+  int r = -1;
+
+  if (fd >= 0 && fd < MAX_FDS && table[fd] && table[fd]->fileRef) {
+    sys_va_start(ap, format);
+    if (table[fd]->fileRef == stdoutFileRef || table[fd]->fileRef == stderrFileRef) {
+       r = plibc_vprintf(format, ap);
+    } else {
+      r = VFSFileVPrintF(table[fd]->fileRef, format, ap);
+    }
+    sys_va_end(ap);
+  }
 
   return r;
 }

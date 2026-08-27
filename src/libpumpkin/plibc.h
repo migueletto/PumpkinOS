@@ -73,6 +73,7 @@ int plibc_haschar(void);
 
 int plibc_fprintf(PLIBC_FILE *stream, const char *format, ...);
 int plibc_vfprintf(PLIBC_FILE *stream, const char *format, sys_va_list ap);
+int plibc_dprintf(int fd, const char *format, ...);
 int plibc_printf(const char *format, ...);
 int plibc_vprintf(const char *format, sys_va_list ap);
 
