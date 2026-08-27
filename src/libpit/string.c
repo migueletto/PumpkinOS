@@ -223,14 +223,8 @@ void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
 }
 
 void *sys_mempcpy(void *dest, const void *src, sys_size_t n) {
-#if defined(KERNEL)
-  unsigned char *d = dest;
-  const unsigned char *s = src;
-  for (; n; n--) *d++ = *s++;
-  return d;
-#else
-  return mempcpy(dest, src, n);
-#endif
+  char *p = sys_memcpy(dest, src, n);
+  return p ? p + n : NULL;
 }
 
 void *sys_memmove(void *dest, const void *src, sys_size_t n) {
