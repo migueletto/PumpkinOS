@@ -49,7 +49,9 @@ void *sys_realloc(void *ptr, sys_size_t size) {
 #include <stdlib.h>
 
 void *sys_malloc(sys_size_t size) {
-  return malloc(size);
+  void *p = malloc(size);
+  if (p) sys_memset(p, 0, size);
+  return p;
 }
 
 void sys_free(void *ptr) {
