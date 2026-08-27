@@ -297,6 +297,8 @@ int sys_mkstemp(void);
 
 void *sys_malloc(sys_size_t size);
 
+#define sys_alloca(s) __builtin_alloca(s)
+
 void sys_free(void *ptr);
 
 void *sys_calloc(sys_size_t nmemb, sys_size_t size);
@@ -309,7 +311,11 @@ char *sys_strndup(const char *s, sys_size_t n);
 
 char *sys_strcpy(char *dest, const char *src);
 
+char *sys_stpcpy(char *dest, const char *src);
+
 char *sys_strncpy(char *dest, const char *src, sys_size_t n);
+
+char *sys_stpncpy(char *dest, const char *src, sys_size_t n);
 
 sys_size_t sys_strlen(const char *s);
 
@@ -320,6 +326,8 @@ char *sys_strchrnul(const char *s, int c);
 char *sys_strchr(const char *s, int c);
 
 char *sys_strrchr(const char *s, int c);
+
+char *sys_strtok_r(char *str, const char *delim, char **saveptr);
 
 void *sys_memchr(const void *src, int c, sys_size_t n);
 
@@ -360,6 +368,8 @@ int sys_memcmp(const void *s1, const void *s2, sys_size_t n) ;
 void *sys_memmove(void *dest, const void *src, sys_size_t n);
 
 void *sys_memcpy(void *dest, const void *src, sys_size_t n);
+
+void *sys_mempcpy(void *dest, const void *src, sys_size_t n);
 
 void *sys_memset(void *s, int c, sys_size_t n);
 

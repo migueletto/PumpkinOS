@@ -39,13 +39,25 @@ char *sys_strndup(const char *s, sys_size_t n) {
 }
 
 char *sys_strcpy(char *dest, const char *src) {
+  char *d = dest;
+  for (; (*dest = *src); src++, dest++);
+  return d;
+}
+
+char *sys_stpcpy(char *dest, const char *src) {
   for (; (*dest = *src); src++, dest++);
   return dest;
 }
 
 char *sys_strncpy(char *dest, const char *src, sys_size_t n) {
+  char *d = dest;
   for (; n && (*dest = *src); n--, src++, dest++);
-  return dest;
+  return d;
+}
+
+char *sys_stpncpy(char *dest, const char *src, sys_size_t n) {
+  for (; n && (*dest = *src); n--, src++, dest++);
+  return dest + n;
 }
 
 sys_size_t sys_strlen(const char *s) {
@@ -87,6 +99,33 @@ void *sys_memrchr(const void *m, int c, sys_size_t n) {
 
 char *sys_strrchr(const char *s, int c) {
   return sys_memrchr(s, c, sys_strlen(s) + 1);
+}
+
+char *sys_strtok_r(char *str, const char *delim, char **saveptr) {
+  char *token;
+
+  if (str == NULL) {
+    str = *saveptr;
+  }
+
+  str += sys_strspn(str, delim);
+
+  if (*str == '\0') {
+    *saveptr = str;
+    return NULL;
+  }
+
+  token = str;
+  str = sys_strpbrk(token, delim);
+
+  if (str == NULL) {
+    *saveptr = token + sys_strlen(token);
+  } else {
+    *str = '\0';
+    *saveptr = str + 1;
+  }
+
+  return token;
 }
 
 #define BITOP(a,b,op) \
@@ -180,6 +219,17 @@ void *sys_memcpy(void *dest, const void *src, sys_size_t n) {
   return dest;
 #else
   return memcpy(dest, src, n);
+#endif
+}
+
+void *sys_mempcpy(void *dest, const void *src, sys_size_t n) {
+#if defined(KERNEL)
+  unsigned char *d = dest;
+  const unsigned char *s = src;
+  for (; n; n--) *d++ = *s++;
+  return d;
+#else
+  return mempcpy(dest, src, n);
 #endif
 }
 
