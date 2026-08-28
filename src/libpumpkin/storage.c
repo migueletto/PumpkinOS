@@ -114,6 +114,7 @@ typedef struct {
   UInt8 fontFamily;
   UInt8 fontStyle;
   UInt16 fontSize;
+  char *heapLabel;
 } storage_t;
 
 typedef struct {
@@ -851,6 +852,14 @@ void StoHeapWalk(uint32_t *p, uint32_t size, uint32_t task) {
     }
   } else if (task == 0) {
     debug(DEBUG_INFO, "STOR", "leak %p %u (%u)", p, size, (uint32_t)sizeof(storage_handle_t));
+  }
+}
+
+void StoHeapLabel(char *label) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+
+  if (sto) {
+    sto->heapLabel = label;
   }
 }
 
@@ -4230,6 +4239,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   return err;
 }
 
+#if 0
 void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *h2, *handle = NULL;
@@ -4263,6 +4273,23 @@ void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID res
       }
       err = errNone;
     }
+  }
+
+  StoCheckErr(err);
+  return p;
+}
+#endif
+
+void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+  storage_handle_t *h2;
+  void *p = NULL;
+  Err err = dmErrInvalidParam;
+
+  if (h && size) {
+    h2 = h;
+    p = StoPtrNew(h2, size, h2->d.res.type, h2->d.res.id);
+    err = errNone;
   }
 
   StoCheckErr(err);
@@ -4474,6 +4501,7 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   DmOpenRef dbRef;
+  uint8_t *ram;
   void *p = NULL;
   Err err = dmErrInvalidParam;
 
@@ -4511,6 +4539,10 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
             decoded = false;
           }
           p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
+          if (p && handle->d.res.type == bitmapRsc) {
+            ram = pumpkin_heap_base();
+            debug(DEBUG_TRACE, "logmem", "lock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)p - ram), handle->size);
+          }
           err = errNone;
           break;
         default:
@@ -4533,6 +4565,7 @@ MemPtr MemHandleLock(MemHandle h) {
 Err MemHandleUnlock(MemHandle h) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
+  uint8_t *ram;
   Err err = dmErrInvalidParam;
 
   if (h) {
@@ -4549,6 +4582,10 @@ Err MemHandleUnlock(MemHandle h) {
         case STO_TYPE_RES:
           if (!(handle->htype & STO_INFLATED)) {
             debug(DEBUG_ERROR, "STOR", "MemHandleUnlock %p type %d not inflated", handle, handle->htype);
+          }
+          if ((handle->htype & ~STO_INFLATED) == STO_TYPE_RES && handle->d.res.type == bitmapRsc && handle->buf) {
+            ram = pumpkin_heap_base();
+            debug(DEBUG_TRACE, "logmem", "unlock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)handle->buf - ram), handle->size);
           }
           handle->lockCount--;
           err = errNone;
