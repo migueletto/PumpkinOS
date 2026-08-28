@@ -125,11 +125,13 @@ typedef struct {
 static void StoDecodeResource(storage_handle_t *res, Boolean decoded);
 
 static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_ptr_t *sp;
   char st[8];
   UInt8 *p = NULL; 
         
-  if ((sp = pumpkin_heap_alloc(sizeof(storage_ptr_t) + size, "HandlePtr")) != NULL) {
+  //if ((sp = pumpkin_heap_alloc(sizeof(storage_ptr_t) + size, "HandlePtr")) != NULL) {
+  if ((sp = pumpkin_heap_alloc(sizeof(storage_ptr_t) + size, sto->heapLabel ? sto->heapLabel : "HandlePtr")) != NULL) {
     if (type) {
       pumpkin_id2s(type, st);
       debug(DEBUG_TRACE, "Heap", "RSRC %p %p %s %d", h, sp, st, id);
@@ -137,21 +139,24 @@ static void *StoPtrNew(storage_handle_t *h, UInt32 size, UInt32 type, UInt16 id)
     sp->h = h;
     p = sp->buffer;
   } 
+  sto->heapLabel = NULL;
 
   return p;
 }
 
 static void *StoPtrRealloc(storage_handle_t *h, void *p, UInt32 size) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_ptr_t *sp, *sp2;
 
   if (p) {
     sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
 
-    if ((sp2 = pumpkin_heap_realloc(sp, sizeof(storage_ptr_t) + size, "HandlePtr")) != NULL) {
+    if ((sp2 = pumpkin_heap_realloc(sp, sizeof(storage_ptr_t) + size, sto->heapLabel ? sto->heapLabel : "HandlePtr")) != NULL) {
       sp = sp2;
       sp->h = h;
       p = sp->buffer;
     }
+    sto->heapLabel = NULL;
   }
 
   return p;
@@ -184,11 +189,13 @@ static storage_handle_t *StoPtrRecoverHandle(void *p) {
 }
 
 static void StoPtrFree(void *p) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_ptr_t *sp;
 
   if (p) {
     sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
-    pumpkin_heap_free(sp, "HandlePtr");
+    pumpkin_heap_free(sp, sto->heapLabel ? sto->heapLabel : "HandlePtr");
+    sto->heapLabel = NULL;
   }
 }
 
