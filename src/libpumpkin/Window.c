@@ -182,7 +182,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     module->displayWindow = displayWindow;
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   } else {
-    module->displayWindow = pumpkin_heap_alloc(sizeof(WindowType), "Window");
+    //module->displayWindow = pumpkin_heap_alloc(sizeof(WindowType), "Window");
+    module->displayWindow = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window");
     //module->displayWindow->windowFlags.freeBitmap = true;
     WinSetFlag(module->displayWindow, WindowFlagFreeBitmap, true);
     //module->displayWindow->bitmapP = BmpCreate3(width, height, 0, module->density, module->depth, false, 0, colorTable, &err);
@@ -393,7 +394,8 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   if (bitmapP) {
     BmpGetDimensions(bitmapP, &width, &height, NULL);
 
-    if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL) {
+    //if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL)
+    if ((wh = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) != NULL) {
       //wh->bitmapP = bitmapP;
       WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bitmapP);
       //wh->windowFlags.freeBitmap = false;
@@ -3105,7 +3107,8 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
   char buf[64];
   Err err = sysErrNoFreeResource;
 
-  if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL) {
+  //if ((wh = pumpkin_heap_alloc(sizeof(WindowType), "Window")) != NULL)
+  if ((wh = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) != NULL) {
     //RctSetRectangle(&wh->windowBounds, 0, 0, width, height);
     RctSetWinFromValues(wh, 0, 0, width, height);
 
