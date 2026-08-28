@@ -274,6 +274,7 @@ uint8_t cpu_read_byte(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
+    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 1);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
       value = WinLegacyRead(address - state->istate->screenStart);
@@ -303,6 +304,7 @@ uint16_t cpu_read_word(uint32_t address) {
     value = 0;
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
+    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
       value = WinLegacyRead(address - state->istate->screenStart);
@@ -341,6 +343,7 @@ uint32_t cpu_read_long(uint32_t address) {
     }
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
+    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
       value = WinLegacyRead(address - state->istate->screenStart);

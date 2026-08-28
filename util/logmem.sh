@@ -83,7 +83,7 @@ $5 == label && $6 == "logmem:" && ($7 == "free" || $7 == "unlock") {
   }
   next;
 }
-$5 == label && $6 == "logmem:" && $7 == "write" {
+$5 == label && $6 == "logmem:" && ($7 == "read" || $7 == "write")  {
   mem_addr = 0 + $8;
   i = table_mem[mem_addr];
   if (i) {
@@ -91,8 +91,9 @@ $5 == label && $6 == "logmem:" && $7 == "write" {
     if (addr) {
       type = table_type[addr];
       offset = mem_addr - addr;
+      len = 0 + $9;
       if (struct[type]) {
-        print NR ": write to " type " structure at " addr " addr " mem_addr " offset " offset " (" table_line[i] ")";
+        print NR ": " $7 " " type " structure at " addr " addr " mem_addr " offset " offset " len " len " (" table_line[i] ")";
       }
     }
   }
