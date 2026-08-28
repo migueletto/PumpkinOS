@@ -596,6 +596,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
     newSize += rowBytes * height;
 
+    StoHeapLabel("Bitmap");
     if ((newBmp = MemPtrNew(newSize)) != NULL) {
       // density: if 0, the returned bitmap's density is set to the default value of kDensityLow
       if (density == 0) density = kDensityLow;
@@ -723,6 +724,7 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
 
   bitsOffset = newSize;
   newSize += rowBytes * height;
+  StoHeapLabel("Bitmap");
   if ((bitmapP = MemPtrNew(newSize)) == NULL) {
     if (error) *error = sysErrNoFreeResource;
     return NULL;
@@ -802,6 +804,7 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
   }
 
   newSize += rowBytes * height;
+  StoHeapLabel("Bitmap");
   if ((bitmapP = MemPtrNew(newSize)) == NULL) {
     if (error) *error = sysErrNoFreeResource;
     return NULL;
@@ -1069,6 +1072,7 @@ surface_t *BmpCreateSurface(UInt16 id) {
 Err BmpDelete(BitmapType *bitmapP) {
   if (bitmapP) {
     debug(DEBUG_TRACE, "Bitmap", "MemChunkFree %p", bitmapP);
+    StoHeapLabel("Bitmap");
     MemChunkFree(bitmapP); // caused a fault in BookWorm once
   }
 

@@ -378,10 +378,12 @@ void pumpkin_test_exception(int fatal) {
 
 void *pumpkin_heap_alloc(uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint8_t *ram = pumpkin_heap_base();
   void *p;
 
   p = heap_alloc(task ? task->heap : pumpkin_module.heap, size);
   debug(DEBUG_TRACE, "Heap", "pumpkin_heap_alloc %s %u : %p", tag, size, p);
+  debug(DEBUG_TRACE, "logmem", "alloc heap %s %u %u", tag, p ? (uint32_t)((uint8_t *)p - ram) : 0, size);
   if (p) {
     sys_memset(p, 0, size);
   }
@@ -391,20 +393,24 @@ void *pumpkin_heap_alloc(uint32_t size, char *tag) {
 
 void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint8_t *ram = pumpkin_heap_base();
   void *q = NULL;
 
   if (p) {
     q = size ? heap_realloc(task ? task->heap : pumpkin_module.heap, p, size) : NULL;
   }
   debug(DEBUG_TRACE, "Heap", "pumpkin_heap_realloc %s %u %p : %p", tag, size, p, q);
+  debug(DEBUG_TRACE, "logmem", "realloc heap %s %u %u %u", tag, p ? (uint32_t)((uint8_t *)p - ram) : 0, q ? (uint32_t)((uint8_t *)q - ram) : 0, size);
 
   return q;
 }
 
 void pumpkin_heap_free(void *p, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint8_t *ram = pumpkin_heap_base();
 
   debug(DEBUG_TRACE, "Heap", "pumpkin_heap_free %s %p", tag, p);
+  debug(DEBUG_TRACE, "logmem", "free heap %s %u", tag, p ? (uint32_t)((uint8_t *)p - ram) : 0);
   if (p) {
     heap_free(task ? task->heap : pumpkin_module.heap, p);
   }

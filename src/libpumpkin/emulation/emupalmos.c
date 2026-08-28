@@ -454,6 +454,7 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 1, 0)) return;
+    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
@@ -476,6 +477,7 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
+    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
@@ -498,6 +500,7 @@ void cpu_write_long(uint32_t address, uint32_t value) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
+    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {

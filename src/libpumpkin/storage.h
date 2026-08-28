@@ -9,6 +9,7 @@ Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size);
 Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size);
 void *StoNewDecodedResource(void *h, UInt32 size, DmResType resType, DmResID resID);
 void StoHeapWalk(uint32_t *p, uint32_t size, uint32_t task);
+void StoHeapLabel(char *label);
 
 MemHandle MemLocalIDToHandle(LocalID local);
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
