@@ -47,7 +47,7 @@ Err HRClose(UInt16 refNum) {
 
 Boolean HRMode(void) {
   sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
-  return module->hrmode;
+  return module ? module->hrmode : false;
 }
 
 Err HRGetAPIVersion(UInt16 refNum, UInt16 *versionP) {
