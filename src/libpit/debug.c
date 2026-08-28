@@ -32,9 +32,8 @@ static int indent = 0;
 static int raw = 0;
 static int inited = 0;
 
-static char level_name[] = { 'E', 'I', 'T' };
-
 int debug_init(char *filename) {
+#ifndef MUTE_DEBUG
 #if !defined(KERNEL)
   mutex = mutex_create("debug");
   if (filename) {
@@ -47,10 +46,12 @@ int debug_init(char *filename) {
   if (fd == NULL) fd = stderr;
 #endif
   inited = 1;
+#endif
   return 0;
 }
 
 int debug_close(void) {
+#ifndef MUTE_DEBUG
   inited = 0;
 #if !defined(KERNEL)
   if (fd && fd != stderr && fd != stdout) {
@@ -59,7 +60,7 @@ int debug_close(void) {
   }
   mutex_destroy(mutex);
 #endif
-
+#endif
   return 0;
 }
 
@@ -121,6 +122,9 @@ void debug_scope(int show) {
   show_scope = show;
 }
 
+#ifndef MUTE_DEBUG
+static char level_name[] = { 'E', 'I', 'T' };
+
 static char hex(uint8_t n) {
   n &= 0x0F;
   return n < 10 ? '0' + n : 'A' + n - 10;
@@ -137,13 +141,13 @@ static int dec(uint32_t n, int d, char *s, int max) {
   return i;
 }
 
-int ch(char c, char *s, int max) {
+static int ch(char c, char *s, int max) {
   if (max <= 0) return 0;
   s[0] = c;
   return 1;
 }
 
-int str(char *buf, int d, char *s, int max) {
+static int str(char *buf, int d, char *s, int max) {
   int i;
 
   for (i = 0; buf[i] && i < max; i++) {
@@ -157,7 +161,6 @@ int str(char *buf, int d, char *s, int max) {
   return i;
 }
 
-#ifndef MUTE_DEBUG
 void debugva_full(const char *file, const char *func, int line, int _level, const char *sys, const char *fmt, sys_va_list ap) {
   char tmp[MAX_BUF], buf[MAX_BUF], *s;
   int i, j, k, us;
