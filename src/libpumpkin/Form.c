@@ -246,7 +246,7 @@ FormType *FrmInitForm(UInt16 rscID) {
   if ((h = DmGetResource(formRscType, rscID)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       size = MemHandleSize(h);
-      rsrc = pumpkin_heap_alloc(size, "form_rsrc");
+      rsrc = pumpkin_heap_alloc(size, "FormRsrc");
       MemMove(rsrc, p, size);
       MemHandleUnlock(h);
     }
@@ -3806,7 +3806,7 @@ void pumpkin_destroy_form(FormType *formP) {
       xfree(formP->objects);
     }
     if (formP->rsrc) {
-      pumpkin_heap_free(formP->rsrc, "form_rsrc");
+      pumpkin_heap_free(formP->rsrc, "FormRsrc");
     }
     pumpkin_heap_free(formP, "Form");
   }
