@@ -1184,7 +1184,7 @@ BitmapType *BmpGetBestBitmapEx(BitmapPtr bitmapP, UInt16 density, UInt8 depth, B
           bitmapDensity = BmpGetDensity(bitmapP);
           debug(DEBUG_TRACE, "Bitmap", "BmpGetBestBitmap candidate V%d, %dx%d, bpp %d, density %d", version, width, height, bitmapDepth, bitmapDensity);
           if (best == NULL || (bitmapDepth >= best_depth && bitmapDensity >= best_density &&
-              bitmapDepth <= displayDepth && bitmapDensity <= displayDensity && (!exact_density || exact_density))) {
+              bitmapDepth <= displayDepth && bitmapDensity <= displayDensity && (!exact_density || bitmapDensity == density))) {
             best = bitmapP;
             best_depth = bitmapDepth;
             best_density = bitmapDensity;
