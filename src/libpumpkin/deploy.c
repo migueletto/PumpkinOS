@@ -207,26 +207,24 @@ int pumpkin_deploy_files_session(vfs_session_t *session, char *path) {
 
   if (path) {
     if ((dir = vfs_opendir(session, path)) != NULL) {
-      for (r = 0; r == 0;) {
+      for (r = 0;;) {
         if ((ent = vfs_readdir(dir)) == NULL) break;
         if (ent->type != VFS_FILE) continue;
         ext = getext(ent->name);
+        if (ext == NULL) continue;
+        sys_memset(buf, 0, sizeof(buf));
+        sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
         if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
-          sys_memset(buf, 0, sizeof(buf));
-          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
           rr = pumpkin_deploy_file_session(session, buf);
           vfs_unlink(session, buf);
           if (rr == 0) {
-            r = 0;
+            r++;
           } else {
-            sys_snprintf(buf, sizeof(buf)-1, "Error deploying \"%s\"", ent->name);
-            debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_deploy_files: %s", buf);
+            debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_deploy_files: error deploying \"%s\"", ent->name);
           }
         } else {
-          sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
           vfs_unlink(session, buf);
-          sys_snprintf(buf, sizeof(buf)-1, "Cannot deploy file \"%s\"", ent->name);
-          debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_deploy_files: %s", buf);
+          debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_deploy_files: cannot deploy file \"%s\"", ent->name);
         }
       }
       vfs_closedir(dir);
