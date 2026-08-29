@@ -162,8 +162,9 @@ void palmos_StrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       char *s_src = emupalmos_trap_in(src, trap, 1);
       Char *res = NULL;
       if (s_dst && s_src) {
-        if (emupalmos_check_address(dst, sys_strlen(s_src)+1, 0)) {
-          debug(DEBUG_TRACE, "EmuPalmOS", "StrCopy %d bytes", (int)sys_strlen(s_src)+1);
+        uint32_t len = sys_strlen(s_src)+1;
+        if (emupalmos_check_address(dst, len, 0)) {
+          debug(DEBUG_TRACE, "logmem", "write %u %u", dst, len);
           res = StrCopy(s_dst, s_src);
         }
       }
@@ -179,7 +180,13 @@ void palmos_StrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t src = ARG32;
       char *s_src = emupalmos_trap_in(src, trap, 1);
       int16_t n = ARG16;
-      Char *res = s_dst && s_src ? StrNCopy(s_dst, s_src, n) : NULL;
+      Char *res = NULL;
+      if (s_dst && s_src) {
+        if (emupalmos_check_address(dst, n, 0)) {
+          debug(DEBUG_TRACE, "logmem", "write %u %u", dst, n);
+          res = StrNCopy(s_dst, s_src, n);
+        }
+      }
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);
       debug(DEBUG_TRACE, "EmuPalmOS", "StrNCopy(dst=0x%08X [%s], src=0x%08X [%s], n=%d): 0x%08X", dst, s_dst, src, s_src, n, r_res);
@@ -193,8 +200,9 @@ void palmos_StrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       char *s_src = emupalmos_trap_in(src, trap, 1);
       Char *res = NULL;
       if (s_dst && s_src) {
-        if (emupalmos_check_address(dst + sys_strlen(s_dst), sys_strlen(s_src)+1, 0)) {
-          debug(DEBUG_TRACE, "EmuPalmOS", "StrCat %d bytes into %d bytes with %d total", (int)sys_strlen(s_src)+1, (int)sys_strlen(s_dst), (int)sys_strlen(s_dst) + (int)sys_strlen(s_src)+1);
+        uint32_t len = sys_strlen(s_src)+1;
+        if (emupalmos_check_address(dst + sys_strlen(s_dst), len, 0)) {
+          debug(DEBUG_TRACE, "logmem", "write %u %u", dst, len);
           res = StrCat(s_dst, s_src);
         }
       }
@@ -210,7 +218,13 @@ void palmos_StrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t src = ARG32;
       char *s_src = emupalmos_trap_in(src, trap, 1);
       int16_t n = ARG16;
-      Char *res = s_dst && s_src ? StrNCat(s_dst, s_src, n) : NULL;
+      Char *res = NULL;
+      if (s_dst && s_src) {
+        if (emupalmos_check_address(dst, n, 0)) {
+          debug(DEBUG_TRACE, "logmem", "write %u %u", dst, n);
+          res = StrNCat(s_dst, s_src, n);
+        }
+      }
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);
       debug(DEBUG_TRACE, "EmuPalmOS", "StrNCat(dst=0x%08X [%s], src=0x%08X [%s], n=%d): 0x%08X", dst, s_dst, src, s_src, n, r_res);

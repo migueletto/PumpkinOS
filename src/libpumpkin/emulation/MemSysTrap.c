@@ -87,6 +87,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
           err = dmErrInvalidParam;
         }
       }
+      debug(DEBUG_TRACE, "logmem", "write %u %u", dstP, numBytes);
       debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X): %d", dstP, numBytes, value, err);
       m68k_set_reg(M68K_REG_D0, err);
     }
@@ -121,6 +122,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
           err = dmErrInvalidParam;
         }
       }
+      debug(DEBUG_TRACE, "logmem", "write %u %u", dstP, numBytes);
       debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d): %d", dstP, sP, numBytes, err);
       m68k_set_reg(M68K_REG_D0, err);
     }
