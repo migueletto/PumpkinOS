@@ -1456,7 +1456,6 @@ UInt16 FrmGetObjectIndex(const FormType *formP, UInt16 objID) {
 
   if (formP) {
     for (index = 0; index < formP->numObjects; index++) {
-debug(1, "XXX", "FrmGetObjectIndex form %u obj %u formObj %u: %u", formP->formId, objID, index, formP->objects[index].id);
       if (formP->objects[index].id == objID) break;
     }
     if (index == formP->numObjects) index = frmInvalidObjectId;
