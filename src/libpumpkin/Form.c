@@ -11,6 +11,7 @@
 #include "pumpkin.h"
 #include "storage.h"
 #include "WindowAccessor.h"
+#include "FormAccessor.h"
 #include "debug.h"
 #include "xalloc.h"
 
@@ -392,7 +393,8 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmTitleObj:
         if (formP->attr.visible) {
-          MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
+          //MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
+          RctSetRectFromAddr(&rect, obj.title, 0);
           erase = true;
         }
         break;
@@ -499,6 +501,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FontID old;
   UInt16 totalLines, max, graffitiState;
   Int16 x, y, tw, th;
+  char *text;
 
   if (formP && objIndex < formP->numObjects) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
@@ -601,15 +604,15 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           old = FntSetFont(boldFont);
           oldb = WinSetBackColor(formFrame);
           oldt = WinSetTextColor(formTitle);
-          tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
+          //tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
+          text = (char *)FrmObjectGetField(obj.title, frmTitleObj, FormTitleFieldText);
+          tw = text ? FntCharsWidth(text, sys_strlen(text)) : 4;
           th = FntCharHeight();
-          //if (formP->window.windowFlags.modal)
           if (WinGetFlag(&formP->window, WindowFlagModal)) {
-            //RctSetRectangle(&rect, 0, 0, formP->window.windowBounds.extent.x, th+1);
             RctSetRectangle(&rect, 0, 0, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW), th+1);
             WinEraseRectangle(&rect, 0);
-            MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
-            //x = (formP->window.windowBounds.extent.x - tw) / 2;
+            //MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
+            RctSetAddrFromRect(&rect, obj.title, 0);
             x = (Coord)(WinGetField(&formP->window, WindowFieldWindowBoundsW) - tw) / 2;
             y = 0;
           } else {
@@ -624,22 +627,23 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
             RctSetRectangle(&rect, 0, 0, tw+4, th+4);
             WinEraseRectangle(&rect, 1);
-            MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
-            //RctSetRectangle(&rect, 0, th+2, formP->window.windowBounds.extent.x, 2);
+            //MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
+            RctSetAddrFromRect(&rect, obj.title, 0);
             RctSetRectangle(&rect, 0, th+2, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW), 2);
             WinEraseRectangle(&rect, 0);
           }
-          if (obj.title->text) {
+          //if (obj.title->text)
+          text = (char *)FrmObjectGetField(obj.title, frmTitleObj, FormTitleFieldText);
+          if (text) {
             WinDrawOperation prev = WinSetDrawMode(winOverlay);
-            WinPaintChars(obj.title->text, sys_strlen(obj.title->text), x, y);
+            //WinPaintChars(obj.title->text, sys_strlen(obj.title->text), x, y);
+            WinPaintChars(text, sys_strlen(text), x, y);
             WinSetDrawMode(prev);
           }
-          //if (formP->window.windowFlags.modal && formP->helpRscId)
           if (WinGetFlag(&formP->window, WindowFlagModal) && formP->helpRscId) {
             FntSetFont(symbol11Font);
             bw = FntCharWidth(0x04);
             bh = FntCharHeight();
-            //RctSetRectangle(&formP->helpRect, formP->window.windowBounds.extent.x - bw, 0, bw, bh);
             RctSetRectangle(&formP->helpRect, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - bw, 0, bw, bh);
             WinSetTextColor(formFrame);
             WinSetBackColor(formTitle);
@@ -829,7 +833,8 @@ Boolean FrmTrackPenUp(UInt32 x, UInt32 y) {
         handled = LstHandleEvent(obj.list, &event);
         break;
       case frmTitleObj:
-        RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
+        //RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
+        RctSetRectFromAddr(&rect, obj.title, 0);
         if (RctPtInRectangle(x, y, &rect)) {
           event.eType = frmTitleSelectEvent;
           event.data.frmTitleSelect.formID = formP->formId;
@@ -952,7 +957,8 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
             break;
           case frmTitleObj:
             if (formP->activeList != -1) break;
-            RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
+            //RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
+            RctSetRectFromAddr(&rect, obj.title, 0);
             if (RctPtInRectangle(eventP->screenX, eventP->screenY, &rect)) {
               FrmReleaseFocus(formP);
               //FldSetActiveField(NULL);
@@ -1450,6 +1456,7 @@ UInt16 FrmGetObjectIndex(const FormType *formP, UInt16 objID) {
 
   if (formP) {
     for (index = 0; index < formP->numObjects; index++) {
+debug(1, "XXX", "FrmGetObjectIndex form %u obj %u formObj %u: %u", formP->formId, objID, index, formP->objects[index].id);
       if (formP->objects[index].id == objID) break;
     }
     if (index == formP->numObjects) index = frmInvalidObjectId;
@@ -1547,7 +1554,8 @@ const Char *FrmGetTitle(const FormType *formP) {
   if (formP) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
-        return formP->objects[i].object.title->text;
+        //return formP->objects[i].object.title->text;
+        return (char *)FrmObjectGetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText);
       }
     }
   }
@@ -1563,20 +1571,24 @@ stack-based object
 void FrmSetTitle(FormType *formP, Char *newTitle) {
   RectangleType old, rect;
   FormObjectType obj;
-  UInt16 i, width;
+  UInt16 i, width, objIndex;
 
   if (formP && newTitle) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
-        formP->objects[i].object.title->text = newTitle;
+        //formP->objects[i].object.title->text = newTitle;
+        FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)newTitle);
         if (formP->attr.visible) {
           obj = formP->objects[i].object;
-          MemMove(&old, &obj.title->rect, sizeof(RectangleType));
+          //MemMove(&old, &obj.title->rect, sizeof(RectangleType));
+          RctSetRectFromAddr(&old, obj.title, 0);
 
           // draw new title
-          FrmDrawObject(formP, formP->objects[i].object.title->objIndex, false);
-          MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
+          objIndex = FrmGetObjectIndexFromPtr(formP, formP->objects[i].object.title);
+          FrmDrawObject(formP, objIndex, false);
+          //MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
+          RctSetRectFromAddr(&rect, obj.title, 0);
 
           // if new title is shorter than old title
           if (rect.extent.x < old.extent.x) {
@@ -1595,18 +1607,20 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
 }
 
 void FrmCopyTitle(FormType *formP, const Char *newTitle) {
-  UInt16 i;
+  UInt16 i, objIndex;
 
   if (formP && newTitle) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmCopyTitle %d \"%s\"", formP->formId, newTitle);
+        objIndex = FrmGetObjectIndexFromPtr(formP, formP->objects[i].object.title);
         if (formP->attr.visible) {
-          FrmEraseObject(formP, formP->objects[i].object.title->objIndex, false);
+          FrmEraseObject(formP, objIndex, false);
         }
-        StrCopy(formP->objects[i].object.title->text, newTitle);
+        //StrCopy(formP->objects[i].object.title->text, newTitle);
+        StrCopy((char *)FrmObjectGetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText), newTitle);
         if (formP->attr.visible) {
-          FrmDrawObject(formP, formP->objects[i].object.title->objIndex, false);
+          FrmDrawObject(formP, objIndex, false);
         }
         break;
       }
@@ -2165,12 +2179,15 @@ void FrmSaveAllForms(void) {
 
 Boolean FrmPointInTitle(const FormType *formP, Coord x, Coord y) {
   UInt16 index;
+  RectangleType rect;
   Boolean r = false;
 
   if (formP) {
     for (index = 0; index < formP->numObjects; index++) {
       if (formP->objects[index].objectType == frmTitleObj) {
-        r = RctPtInRectangle(x, y, &formP->objects[index].object.title->rect);
+        //r = RctPtInRectangle(x, y, &formP->objects[index].object.title->rect);
+        RctSetRectFromAddr(&rect, formP->objects[index].object.title, 0);
+        r = RctPtInRectangle(x, y, &rect);
         break;
       }
     }
@@ -2467,7 +2484,8 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
       case frmTitleObj:
         debug(DEBUG_TRACE, "Form", "FrmSetObjectBounds title (%d,%d,%d,%d)",
           bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
-        MemMove(&formP->objects[objIndex].object.title->rect, bounds, sizeof(RectangleType));
+        //MemMove(&formP->objects[objIndex].object.title->rect, bounds, sizeof(RectangleType));
+        RctSetAddrFromRect(bounds, formP->objects[objIndex].object.title, 0);
         break;
       case frmGraffitiStateObj:
         formP->objects[objIndex].object.grfState->pos.x = bounds->topLeft.x;
@@ -2536,7 +2554,8 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         MemMove(rP, &formP->objects[objIndex].object.scrollBar->bounds, sizeof(RectangleType));
         break;
       case frmTitleObj:
-        MemMove(rP, &formP->objects[objIndex].object.title->rect, sizeof(RectangleType));
+        //MemMove(rP, &formP->objects[objIndex].object.title->rect, sizeof(RectangleType));
+        RctSetRectFromAddr(rP, formP->objects[objIndex].object.title, 0);
         break;
       case frmGraffitiStateObj:
         old = FntSetFont(symbolFont);
@@ -2636,6 +2655,7 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormTitleType *title;
   FormType *formP;
+  char *text;
   int len;
 
   if ((formP = pumpkin_heap_alloc(sizeof(FormType), "Form")) != NULL) {
@@ -2671,11 +2691,14 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
     }
 
     if (titleStrP) {
-      if ((title = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL) {
+      //if ((title = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL)
+      if ((title = pumpkin_heap_alloc(FORM_TITLE_STRUCT_SIZE, "Title")) != NULL) {
         len = StrLen(titleStrP);
-        title->text = MemPtrNew(len + 1);
-        StrNCopy(title->text, titleStrP, len);
-        title->objIndex = 0;
+        //title->text = MemPtrNew(len + 1);
+        //StrNCopy(title->text, titleStrP, len);
+        text = MemPtrNew(len + 1);
+        StrNCopy(text, titleStrP, len);
+        FrmObjectSetField(title, frmTitleObj, FormTitleFieldText, (UIntPtr)text);
         formP->objects = xcalloc(1, sizeof(FormObjListType));
         formP->objects[0].objectType = frmTitleObj;
         formP->objects[0].object.title = title;
@@ -3349,11 +3372,51 @@ static FormLabelType *pumpkin_create_label(uint8_t *p, int *i) {
   return c;
 }
 
+#if 0
 static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
   FormTitleType *c = NULL;
+  RectangleType rect;
   uint16_t x, y, w, h, len;
   uint32_t dummy32;
-  char *title;
+  char *title, *text;
+    
+  // szRCFORMTITLE "w4,p"
+  *i += get2b(&x, p, *i);
+  *i += get2b(&y, p, *i);
+  *i += get2b(&w, p, *i);
+  *i += get2b(&h, p, *i);
+  *i += get4b(&dummy32, p, *i);
+  *i += pumpkin_getstr(&title, p, *i);
+  len = sys_strlen(title);
+  debug(DEBUG_TRACE, "Form",  "title \"%s\" at (%d,%d,%d,%d)", title, x, y, w, h);
+  *i += palign(2, *i);
+
+  //if ((c = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL)
+  if ((c = pumpkin_heap_alloc(FORM_TITLE_STRUCT_SIZE, "Title")) != NULL) { 
+    //c->rect.topLeft.x = x;
+    //c->rect.topLeft.y = y;
+    //c->rect.extent.x = w;
+    //c->rect.extent.y = h;
+    RctSetRectangle(&rect, x, y, w, h);
+    RctSetAddrFromRect(&rect, c, 0);
+    //c->text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
+    //xmemcpy(c->text, title, len);
+    text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
+    StrNCopy(text, title, len);
+    FrmObjectSetField(c, frmTitleObj, FormTitleFieldText, (UIntPtr)text);
+  } 
+  
+  return c;
+}
+#endif
+
+static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
+  FormTitleType *c;
+  uint16_t x, y, w, h, len;
+  uint32_t dummy32;
+  char *title, *text;
+
+  c = (FormTitleType *)(p + *i);
 
   // szRCFORMTITLE "w4,p"
   *i += get2b(&x, p, *i);
@@ -3366,14 +3429,9 @@ static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
   debug(DEBUG_TRACE, "Form",  "title \"%s\" at (%d,%d,%d,%d)", title, x, y, w, h);
   *i += palign(2, *i);
 
-  if ((c = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL) {
-    c->rect.topLeft.x = x;
-    c->rect.topLeft.y = y;
-    c->rect.extent.x = w;
-    c->rect.extent.y = h;
-    c->text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
-    xmemcpy(c->text, title, len);
-  }
+  text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
+  StrNCopy(text, title, len);
+  FrmObjectSetField(c, frmTitleObj, FormTitleFieldText, (UIntPtr)text);
 
   return c;
 }
@@ -3645,12 +3703,10 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
           debug(DEBUG_TRACE, "Form",  "object %d is a Field %d", j, form->objects[j].object.field->id);
           form->objects[j].id = form->objects[j].object.field->id;
           form->objects[j].object.field->formP = form;
-          form->objects[j].object.field->objIndex = j;
           break;
         case frmControlObj:
           control = pumpkin_create_control(p, &i);
           control->formP = form;
-          control->objIndex = j;
 
           if (control->style == sliderCtl || control->style == feedbackSliderCtl) {
             slider = (SliderControlType *)control;
@@ -3692,7 +3748,6 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
         case frmTitleObj:
           debug(DEBUG_TRACE, "Form",  "object %d is a Title", j);
           form->objects[j].object.title = pumpkin_create_title(p, &i);
-          form->objects[j].object.title->objIndex = j;
           break;
         case frmPopupObj:
           debug(DEBUG_TRACE, "Form",  "object %d is a Popup", j);
@@ -3731,9 +3786,8 @@ void pumpkin_destroy_alert(void *p) {
   }
 }
 
-static void pumpkin_destroy_form_object(FormObjListType *obj) {
+static void pumpkin_destroy_form_object(FormType *formP, FormObjListType *obj) {
   if (obj && obj->object.ptr) {
-
     switch (obj->objectType) {
       case frmFieldObj:
         debug(DEBUG_TRACE, "Form", "free form field");
@@ -3761,8 +3815,10 @@ static void pumpkin_destroy_form_object(FormObjListType *obj) {
         pumpkin_heap_free(obj->object.label, "Label");
         break;
       case frmTitleObj:
-        debug(DEBUG_TRACE, "Form", "free form title");
-        pumpkin_heap_free(obj->object.title, "Title");
+        if (!formP->rsrc) {
+          debug(DEBUG_TRACE, "Form", "free form title");
+          pumpkin_heap_free(obj->object.title, "Title");
+        }
         break;
       case frmPopupObj:
         debug(DEBUG_TRACE, "Form", "free form popup");
@@ -3801,7 +3857,7 @@ void pumpkin_destroy_form(FormType *formP) {
     debug(DEBUG_TRACE, "Form", "pumpkin_destroy_form %d with %d objects", formP->formId, formP->numObjects);
     if (formP->objects) {
       for (j = 0; j < formP->numObjects; j++) {
-        pumpkin_destroy_form_object(&formP->objects[j]);
+        pumpkin_destroy_form_object(formP, &formP->objects[j]);
       }
       xfree(formP->objects);
     }
