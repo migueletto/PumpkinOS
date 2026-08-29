@@ -102,7 +102,7 @@ typedef struct FieldType
 	FontID				fontID;
 	UInt8 				maxVisibleLines;		// added in 4.0 to support FldSetMaxVisibleLines
 
-  UInt16 objIndex, numUsedLines, totalLines;
+  UInt16 numUsedLines, totalLines;
   UInt16 offset, size; // for textHandle
   Boolean updateTextHandle;
   UInt16 top, pos;

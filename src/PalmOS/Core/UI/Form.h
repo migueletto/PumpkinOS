@@ -220,14 +220,16 @@ typedef struct FormLabelTag
 FormLabelType;
 
 
+#define FORM_TITLE_STRUCT_SIZE 12
+
 typedef struct FormTitleTag
+#if 0
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
 {
 	RectangleType				rect;
 	Char *						text;
-
-  UInt16 objIndex;
 }
+#endif
 #endif
 FormTitleType;
 

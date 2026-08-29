@@ -1487,6 +1487,7 @@ FieldType *FldNewField(void **formPP, UInt16 id,
 
   FieldType *fldP;
   FormType *formP;
+  UInt16 objIndex;
 
   if ((fldP = pumpkin_heap_alloc(sizeof(FieldType), "Field")) != NULL) {
     fldP->id = id;
@@ -1509,13 +1510,13 @@ FieldType *FldNewField(void **formPP, UInt16 id,
     if (formPP) {
       formP = *formPP;
       if (formP) {
-        fldP->objIndex = formP->numObjects++;
+        objIndex = formP->numObjects++;
         formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
         if (formP->objects) {
-          formP->objects[fldP->objIndex].objectType = frmFieldObj;
-          formP->objects[fldP->objIndex].id = id;
-          formP->objects[fldP->objIndex].object.field = fldP;
-          formP->objects[fldP->objIndex].object.field->formP = formP;
+          formP->objects[objIndex].objectType = frmFieldObj;
+          formP->objects[objIndex].id = id;
+          formP->objects[objIndex].object.field = fldP;
+          formP->objects[objIndex].object.field->formP = formP;
         }
       }
     }

@@ -804,7 +804,6 @@ ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, con
         controlP->group = group;
         controlP->text = controlP->buf;
         controlP->formP = formP;
-        controlP->objIndex = formP->numObjects;
 
         if (formP->numObjects == 0) {
           formP->objects = sys_calloc(1, sizeof(FormObjListType));
