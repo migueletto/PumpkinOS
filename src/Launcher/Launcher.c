@@ -2561,6 +2561,15 @@ static Boolean WidgetDialogEventHandler(EventType *event) {
   return handled;
 }
 
+static void FreeTitle(FormType *frm) {
+  char *title;
+        
+  if ((title = (char *)FrmGetTitle(frm)) != NULL) {
+    MemPtrFree(title);
+    FrmSetTitle(frm, NULL);
+  }
+}
+
 static Boolean MainFormHandleEvent(EventPtr event) {
   launcher_data_t *data;
   FormType *frm;
@@ -2587,6 +2596,7 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       frm = FrmGetActiveForm();
       frm->mbar = data->mainMenu;
       MenuSetActiveMenu(frm->mbar);
+      FreeTitle(frm);
       gadIndex = FrmGetObjectIndex(frm, iconsGad);
       FrmGetObjectBounds(frm, gadIndex, &data->gadRect);
       sclIndex = FrmGetObjectIndex(frm, iconsScl);
@@ -3090,7 +3100,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
       break;
   }
 
-  data = sys_calloc(1, sizeof(launcher_data_t));
+  data = pumpkin_heap_alloc(sizeof(launcher_data_t), "LauncherData");
   pumpkin_set_data(data);
   data->mutex = mutex_create("launcher");
   data->lastMinute = -1;
@@ -3147,7 +3157,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   launcherResetItems(data);
   pumpkin_set_data(NULL);
   mutex_destroy(data->mutex);
-  sys_free(data);
+  pumpkin_heap_free(data, "LauncherData");
   if (!(launchFlags & sysAppLaunchFlagFork)) pumpkin_set_finish(1);
 
   return 0;
