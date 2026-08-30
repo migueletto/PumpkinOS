@@ -715,7 +715,10 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
 
   if (colorTableP) {
     get2b(&v16, (UInt8 *)colorTableP, 0);
-    if (v16 != numEntries) {
+    if (v16 == 0) {
+      colorTableP = NULL;
+      numEntries = 0;
+    } else if (v16 != numEntries) {
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
@@ -796,7 +799,10 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
 
   if (colorTableP) {
     get2b(&v16, (UInt8 *)colorTableP, 0);
-    if (v16 != numEntries) {
+    if (v16 == 0) {
+      colorTableP = NULL;
+      numEntries = 0;
+    } else if (v16 != numEntries) {
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
@@ -2036,7 +2042,7 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
 }
 
 // In PalmOS, 1bpp bitmaps behave like fonts: in 8bpp or 16bpp displays they are rendered
-// using forground and background colors.
+// using foreground and background colors.
 
 UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, UInt32 fg, UInt32 bg) {
   switch (depth) {
@@ -2834,7 +2840,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       case 1:
         srcPixel = bits[sy * srcRowBytes + (sx >> 3)];
         srcPixel = (srcPixel >> (7 - (sx & 0x07))) & 1;
-        dstPixel = (dstDepth == 1) ? srcPixel : BmpConvertFrom1Bit(srcPixel, dstDepth, tc, bc);
+        dstPixel = (dstDepth == 1) ? (srcPixel ? tc : bc) : BmpConvertFrom1Bit(srcPixel, dstDepth, tc, bc);
         break;
       case 2:
         srcPixel = bits[sy * srcRowBytes + (sx >> 2)];
