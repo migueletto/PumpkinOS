@@ -85,15 +85,17 @@ $5 == label && $6 == "logmem:" && ($7 == "free" || $7 == "unlock") {
 }
 $5 == label && $6 == "logmem:" && ($7 == "read" || $7 == "write")  {
   mem_addr = 0 + $8;
-  i = table_mem[mem_addr];
-  if (i) {
-    addr = table_idx[i];
-    if (addr) {
-      type = table_type[addr];
-      offset = mem_addr - addr;
-      len = 0 + $9;
-      if (struct[type]) {
-        print NR ": " $7 " " type " structure at " addr " addr " mem_addr " offset " offset " len " len " (" table_line[i] ")";
+  len = 0 + $9;
+  for (j = 0; j < len; j++) {
+    i = table_mem[mem_addr + j];
+    if (i) {
+      addr = table_idx[i];
+      if (addr) {
+        type = table_type[addr];
+        offset = mem_addr + j - addr;
+        if (struct[type]) {
+          print NR ": " $7 " " type " structure at " addr " addr " (mem_addr + j) " offset " offset " len " len " (" table_line[i] ")";
+        }
       }
     }
   }
