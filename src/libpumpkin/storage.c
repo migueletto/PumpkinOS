@@ -1572,10 +1572,19 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
         // uses of calling DmOpenDatabase() in read mode.
         switch (db->creator) {
           case sysFileCDatebook:
+            if (pumpkin_get_app_creator() != sysFileCDatebook) {
+              mutex_unlock(sto->mutex);
+              ErrFatalDisplayEx("68K app tried to open Date Book database in write mode.", 1);
+              return NULL;
+            }
+            break;
           case sysFileCToDo:
-            mutex_unlock(sto->mutex);
-            ErrFatalDisplayEx("68K app tried to open Date Book / To Do List database in write mode.", 1);
-            return NULL;
+            if (pumpkin_get_app_creator() != sysFileCToDo) {
+              mutex_unlock(sto->mutex);
+              ErrFatalDisplayEx("68K app tried to open To Do List database in write mode.", 1);
+              return NULL;
+            }
+            break;
         }
       }
 
