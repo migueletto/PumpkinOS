@@ -789,6 +789,11 @@ void decode_event(uint32_t eventP, EventType *event) {
       a = m68k_read_memory_32(eventP + 12);
       event->data.winExit.exitWindow = a ? (WinHandle)(ram + a) : NULL;
       break;
+    case frmObjectFocusTakeEvent:
+      event->data.frmObjectFocusTake.formID = m68k_read_memory_16(eventP + 8);
+      event->data.frmObjectFocusTake.objectID = m68k_read_memory_16(eventP + 10);
+      event->data.frmObjectFocusTake.dispatchHint = m68k_read_memory_32(eventP + 12);
+      break;
     default:
       if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
@@ -993,6 +998,11 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_32(eventP + 8, a);
       a = event->data.winExit.exitWindow ? (uint32_t)((uint8_t *)event->data.winExit.exitWindow - ram) : 0;
       m68k_write_memory_32(eventP + 12, a);
+      break;
+    case frmObjectFocusTakeEvent:
+      m68k_write_memory_16(eventP +   8, event->data.frmObjectFocusTake.formID);
+      m68k_write_memory_16(eventP +  10, event->data.frmObjectFocusTake.objectID);
+      m68k_write_memory_32(eventP +  12, event->data.frmObjectFocusTake.dispatchHint);
       break;
     default:
       if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
