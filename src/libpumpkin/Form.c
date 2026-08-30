@@ -633,7 +633,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
             WinEraseRectangle(&rect, 0);
           }
           //if (obj.title->text)
-          text = (char *)FrmObjectGetField(obj.title, frmTitleObj, FormTitleFieldText);
           if (text) {
             WinDrawOperation prev = WinSetDrawMode(winOverlay);
             //WinPaintChars(obj.title->text, sys_strlen(obj.title->text), x, y);
