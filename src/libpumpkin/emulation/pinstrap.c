@@ -40,7 +40,13 @@ void palmos_pinstrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
-    //case pinPINGetInputTriggerState:
+    case pinPINGetInputTriggerState: {
+      // Int16 PINGetInputTriggerState(void)
+      Int16 state = PINGetInputTriggerState();
+      debug(DEBUG_TRACE, "EmuPalmOS", "PINGetInputTriggerState(): %d", state);
+      m68k_set_reg(M68K_REG_D0, state);
+    }
+    break;
     //case pinPINAltInputSystemEnabled:
     //case pinPINGetCurrentPinletName:
     //case pinPINSwitchToPinlet:
