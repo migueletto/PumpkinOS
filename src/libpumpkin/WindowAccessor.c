@@ -34,10 +34,10 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
       case WindowFieldDrawStateP:
         ram = pumpkin_heap_base();
         if (set) {
-          put4b(value - (UIntPtr)ram, (UInt8 *)wh, selector);
+          put4b(value ? (value - (UIntPtr)ram) : 0, (UInt8 *)wh, selector);
         } else {
           get4b(&v32, (UInt8 *)wh, selector);
-          value = (UIntPtr)ram + v32;
+          value = v32 ? ((UIntPtr)ram + v32) : 0;
         }
         break;
       case WindowFieldWindowFlags:

@@ -153,7 +153,7 @@ void emupalmos_finish(int f) {
 
 int emupalmos_finished(void) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  return state->istate->finish;
+  return state->istate->finish || state->istate->panic;
 }
 
 void emupalmos_panic(char *msg, int code) {

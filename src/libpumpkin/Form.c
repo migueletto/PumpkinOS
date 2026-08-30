@@ -204,7 +204,9 @@ static Err FrmInitFormInternal(FormType *formP) {
   colorTable = WinGetColorTable(depth);
   //formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
   //formP->window.density = density;
-  bmp = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
+  if ((bmp = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err)) == NULL) {
+    return err;
+  }
   WinSetField(&formP->window, WindowFieldBitmapP, (UIntPtr)bmp);
   BmpSetLittleEndianBits(bmp, littleEndian);
 
