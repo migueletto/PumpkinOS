@@ -794,6 +794,11 @@ void decode_event(uint32_t eventP, EventType *event) {
       event->data.frmObjectFocusTake.objectID = m68k_read_memory_16(eventP + 10);
       event->data.frmObjectFocusTake.dispatchHint = m68k_read_memory_32(eventP + 12);
       break;
+    case frmObjectFocusLostEvent:
+      event->data.frmObjectFocusLost.formID = m68k_read_memory_16(eventP + 8);
+      event->data.frmObjectFocusLost.objectID = m68k_read_memory_16(eventP + 10);
+      event->data.frmObjectFocusLost.dispatchHint = m68k_read_memory_32(eventP + 12);
+      break;
     default:
       if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
@@ -1003,6 +1008,11 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_16(eventP +   8, event->data.frmObjectFocusTake.formID);
       m68k_write_memory_16(eventP +  10, event->data.frmObjectFocusTake.objectID);
       m68k_write_memory_32(eventP +  12, event->data.frmObjectFocusTake.dispatchHint);
+      break;
+    case frmObjectFocusLostEvent:
+      m68k_write_memory_16(eventP +   8, event->data.frmObjectFocusLost.formID);
+      m68k_write_memory_16(eventP +  10, event->data.frmObjectFocusLost.objectID);
+      m68k_write_memory_32(eventP +  12, event->data.frmObjectFocusLost.dispatchHint);
       break;
     default:
       if (event->eType < firstUserEvent /*|| event->eType > lastUserEvent*/) {
