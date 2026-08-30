@@ -162,6 +162,7 @@ void emupalmos_panic(char *msg, int code) {
 
   debug(DEBUG_ERROR, "EmuPalmOS", "panic: %s", msg);
   state->istate->panic = sys_strdup(msg);
+  state->m68k_state.finish = 1;
   emupalmos_finish(1);
 
   creator = pumpkin_get_app_creator();
