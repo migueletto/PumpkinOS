@@ -115,6 +115,8 @@ typedef struct {
   UInt8 fontStyle;
   UInt16 fontSize;
   char *heapLabel;
+  Boolean toDoIs68k;
+  Boolean dateBookIs68k;
 } storage_t;
 
 typedef struct {
@@ -870,6 +872,30 @@ void StoHeapLabel(char *label) {
   }
 }
 
+static Boolean StoCheckApp86k(UInt32 creator) {
+  DmOpenRef dbRef;
+  MemHandle h;
+  Boolean is68k = false;
+
+  if ((dbRef = DmOpenDatabaseByTypeCreator(sysFileTApplication, creator, dmModeReadOnly)) != NULL) {
+    if ((h = DmGet1Resource(sysResTAppCode, 0)) != NULL) {
+      is68k = true;
+      DmReleaseResource(h);
+    }
+    DmCloseDatabase(dbRef);
+  }
+
+  return is68k;
+}
+
+
+void StoCheckDateBookToDo(void) {
+  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
+  
+  sto->toDoIs68k = StoCheckApp86k(sysFileCToDo);
+  sto->dateBookIs68k = StoCheckApp86k(sysFileCDatebook);
+}
+
 Err DmInit(void) {
   return errNone;
 }
@@ -1564,26 +1590,28 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
     if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
       db = (storage_db_t *) (sto->base + dbID);
 
-      if (pumpkin_is_m68k() && (mode & dmModeWrite)) {
+      if (pumpkin_is_m68k() && db->type == 'DATA') {
         // In PumpkinOS, the database formats for Date Book and To Do List are incompatible with the
-        // corresponding formats in PalmOS. Because of this, if a 68K app opens one of these databases in write mode
-        // with the intention of writing records, it will corrupt the database. So we deny access here.
-        // In theory, even reading records from the database will cause problems for the app, but there are other ligitimate
-        // uses of calling DmOpenDatabase() in read mode.
+        // corresponding formats in PalmOS. Because of this, if a 68K app opens one of these databases
+        // it will corrupt the database and/or the app. So we deny access here.
+        // However, if the original PalmOS ToDoList and DateBook applications are installed instead
+        // of the ones compiled from source, access is allowed.
         switch (db->creator) {
           case sysFileCDatebook:
-            if (pumpkin_get_app_creator() != sysFileCDatebook) {
+            if (!sto->dateBookIs68k) {
               mutex_unlock(sto->mutex);
-              ErrFatalDisplayEx("68K app tried to open Date Book database in write mode.", 1);
+              ErrFatalDisplayEx("68K app tried to open Date Book database.", 1);
               return NULL;
             }
+            debug(DEBUG_TRACE, "STOR", "68K app allowed access to Date Book database.");
             break;
           case sysFileCToDo:
-            if (pumpkin_get_app_creator() != sysFileCToDo) {
+            if (!sto->toDoIs68k) {
               mutex_unlock(sto->mutex);
-              ErrFatalDisplayEx("68K app tried to open To Do List database in write mode.", 1);
+              ErrFatalDisplayEx("68K app tried to open To Do List database.", 1);
               return NULL;
             }
+            debug(DEBUG_TRACE, "STOR", "68K app allowed access to To Do List database.");
             break;
         }
       }

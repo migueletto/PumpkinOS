@@ -2004,6 +2004,8 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   CharAttrInitModule();
   SysFatalAlertInit();
 
+  StoCheckDateBookToDo();
+
   if (i == 0) {
     pumpkin_module.mount = VFSGetMount(1);
     debug(DEBUG_INFO, PUMPKINOS, "VFS mount \"%s\"", pumpkin_module.mount);
