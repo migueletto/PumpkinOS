@@ -3412,6 +3412,11 @@ Err DmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP)
 //debug(1, "XXX", "DmAttachRecord numRecs %d", db->numRecs);
           if (*atP > db->numRecs) *atP = db->numRecs;
           h = (storage_handle_t *)newH;
+
+          if (h->magic != STO_MAGIC) {
+            debug(DEBUG_INFO, "STOR", "DmAttachRecord %p trying to attach a non handle", newH);
+            h = MemPtrRecoverHandle(newH);
+          }
           h->owner = 0;
           if ((h->htype & ~STO_INFLATED) != STO_TYPE_REC) {
 //debug(1, "XXX", "DmAttachRecord fix type");
@@ -4732,7 +4737,7 @@ UInt16 MemNumCards(void) {
 }
 
 UInt16 MemNumHeaps(UInt16 cardNo) {
-  return 2;
+  return 3;
 }
 
 UInt16 MemNumRAMHeaps(UInt16 cardNo) {
@@ -4744,24 +4749,60 @@ UInt16 MemHeapID(UInt16 cardNo, UInt16 heapIndex) {
 }
 
 Boolean MemHeapDynamic(UInt16 heapID) {
-  return heapID == 1;
+  return heapID == 0;
 }
 
 Err MemHeapFreeBytes(UInt16 heapID, UInt32 *freeP, UInt32 *maxP) {
-  if (freeP) *freeP = MemHeapSize(heapID);
-  if (maxP) *maxP = MemHeapSize(heapID);
+  switch (heapID) {
+    case 0:
+      if (freeP) *freeP = MemHeapSize(heapID) / 2;
+      if (maxP)  *maxP  = MemHeapSize(heapID) / 2;
+      break;
+    case 1:
+      if (freeP) *freeP = MemHeapSize(heapID);
+      if (maxP)  *maxP  = MemHeapSize(heapID);
+      break;
+    case 2:
+      if (freeP) *freeP = 0;
+      if (maxP)  *maxP  = 0;
+      break;
+  }
+
   return errNone;
 }
 
 UInt32 MemHeapSize(UInt16 heapID) {
   UInt32 size;
-  // XXX Cubis will not run if 8MB is returned here
-  size = heapID == 0 ? 4*1024*1024 : pumpkin_heap_size();
+
+  switch (heapID) {
+    case 0: // RAM dynamic
+      size = 6*1024*1024;
+      break;
+    case 1: // RAM storage
+      size = pumpkin_heap_size();
+      break;
+    case 2: // ROM
+      size = 4*1024*1024;
+      break;
+    default:
+      size = 0;
+      break;
+  }
+
   return size;
 }
 
 UInt16 MemHeapFlags(UInt16 heapID) {
-  return 0;
+  UInt16 flags;
+
+  switch (heapID) {
+    case 0: flags = 0x1000; break;
+    case 1: flags = 0x1000; break;
+    case 2: flags = 0x2001; break; // read-only (ROM)
+    default: flags = 0; break;
+  }
+
+  return flags;
 }
 
 Err MemHeapCompact(UInt16 heapID) {
