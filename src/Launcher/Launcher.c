@@ -120,6 +120,7 @@ typedef struct {
   UInt16 numNotifications;
   Boolean useTaskbar, appCrashed, appQuit;
   Boolean armPluginWarning;
+  Int16 lastTopItem;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -2697,8 +2698,11 @@ static Boolean MainFormHandleEvent(EventPtr event) {
       if (data->topItem >= data->numItems) {
         data->topItem = data->numItems-1;
       }
-      gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(frm, gadIndex);
-      ItemsGadgetCallback(gad, formGadgetDrawCmd, NULL);
+      if (data->topItem != data->lastTopItem) {
+        gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(frm, gadIndex);
+        ItemsGadgetCallback(gad, formGadgetDrawCmd, NULL);
+        data->lastTopItem = data->topItem;
+      }
       break;
 
     case appWidgetEvent:
