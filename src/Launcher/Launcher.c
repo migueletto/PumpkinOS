@@ -1474,6 +1474,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   switch (cmd) {
     case formGadgetDrawCmd:
       debug(DEBUG_TRACE, "Launcher", "draw items cols=%d rows=%d numItems=%d", ncols, nrows, data->numItems);
+      pumpkin_dirty_region_mode(dirtyRegionBegin);
       x = gad->rect.topLeft.x;
       y = gad->rect.topLeft.y + 2;
 
@@ -1570,6 +1571,7 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
       RctSetRectangle(&rect, gad->rect.topLeft.x + x, gad->rect.topLeft.y, gad->rect.extent.x - x, gad->rect.extent.y);
       WinEraseRectangle(&rect, 0);
 
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
       debug(DEBUG_TRACE, "Launcher", "draw items end");
       break;
 
@@ -2734,7 +2736,7 @@ static Boolean MainFormHandleEvent(EventPtr event) {
         sclIndex = FrmGetObjectIndex(frm, iconsScl);
         scl = FrmGetObjectPtr(frm, sclIndex);
         SclGetScrollBar(scl, &value, &minValue, &maxValue, NULL);
-        value += event->screenY;
+        value += -event->screenY;
         if (value >= minValue && value <= maxValue) {
           MemSet(&sclEvent, sizeof(EventType), 0);
           sclEvent.eType = sclRepeatEvent;
