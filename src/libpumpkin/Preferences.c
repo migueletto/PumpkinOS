@@ -403,7 +403,15 @@ void PrefSetPreference(SystemPreferencesChoice choice, UInt32 value) {
     case prefHard4CharAppCreator: prefs.hard4CharAppCreator = value; break;
     case prefCalcCharAppCreator: prefs.calcCharAppCreator = value; break;
     case prefHardCradleCharAppCreator: prefs.hardCradleCharAppCreator = value; break;
-    case prefLauncherAppCreator: prefs.launcherCharAppCreator = value; break;
+    case prefLauncherAppCreator:
+      if (pumpkin_get_mode() == 0) {
+        char screator[8];
+        pumpkin_id2s(value, screator);
+        debug(DEBUG_INFO, PALMOS_MODULE, "attempt to change prefLauncherAppCreator to '%s'", screator);
+      } else {
+        prefs.launcherCharAppCreator = value;
+      }
+      break;
     case prefSysPrefFlags: prefs.sysPrefFlags = value; break;
     case prefHardCradle2CharAppCreator: prefs.hardCradle2CharAppCreator = value; break;
     case prefAnimationLevel: prefs.animationLevel = value; break;
