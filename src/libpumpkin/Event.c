@@ -676,6 +676,14 @@ int EvtPumpEvents(Int32 timeoutUs) {
       r = 1;
       break;
 
+    case MSG_WHEEL:
+      event.eType = wheelEvent;
+      event.screenX = key;
+      event.screenY = mods;
+      EvtAddEventToQueue(&event);
+      r = 1;
+      break;
+
     case MSG_USER:
       if (n <= sizeof(EventType)) {
         sys_memcpy(&event, buf, n);

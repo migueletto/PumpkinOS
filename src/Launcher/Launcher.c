@@ -2575,7 +2575,10 @@ static Boolean MainFormHandleEvent(EventPtr event) {
   FormType *frm;
   RectangleType rect;
   FormGadgetTypeInCallback *gad;
+  ScrollBarType *scl;
+  EventType sclEvent;
   UInt16 index, sclIndex, gadIndex, cols, button;
+  Int16 value, minValue, maxValue;
   UInt32 i;
   Boolean handled;
 
@@ -2719,6 +2722,25 @@ static Boolean MainFormHandleEvent(EventPtr event) {
         }
       }
       handled = true;
+      break;
+
+    case wheelEvent:
+      if (event->screenY != 0) {
+        frm = FrmGetActiveForm();
+        sclIndex = FrmGetObjectIndex(frm, iconsScl);
+        scl = FrmGetObjectPtr(frm, sclIndex);
+        SclGetScrollBar(scl, &value, &minValue, &maxValue, NULL);
+        value += event->screenY;
+        if (value >= minValue && value <= maxValue) {
+          MemSet(&sclEvent, sizeof(EventType), 0);
+          sclEvent.eType = sclRepeatEvent;
+          sclEvent.data.sclRepeat.scrollBarID = scl->id;
+          sclEvent.data.sclRepeat.pScrollBar = scl;
+          sclEvent.data.sclRepeat.newValue = value;
+          sclEvent.data.sclRepeat.time = TimGetTicks();
+          EvtAddEventToQueue(&sclEvent);
+        }
+      }
       break;
 
     default:

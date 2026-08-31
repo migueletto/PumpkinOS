@@ -92,6 +92,7 @@ typedef enum {
 	modKeyDownEvent = 0x4104,
 	modKeyUpEvent = 0x4105,
 	appWidgetEvent = 0x4106,
+	wheelEvent = 0x4107,
 
 	// BGT, 06/24/2003 Clarify the range reserved for licensees
 	firstLicenseeEvent	= 0x5000,

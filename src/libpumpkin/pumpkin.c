@@ -3581,6 +3581,13 @@ int pumpkin_sys_event(void) {
         pumpkin_module.lastX = x;
         pumpkin_module.lastY = y;
         break;
+      case WINDOW_WHEEL:
+        if (i != -1 && pumpkin_module.tasks[i].active) {
+          x = arg1;
+          y = arg2;
+          pumpkin_forward_msg(i, MSG_WHEEL, x, y, 0);
+        }
+        break;
     }
 
     mutex_unlock(mutex);
@@ -3823,6 +3830,7 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
         case MSG_KEYDOWN:
         case MSG_KEYUP:
         case MSG_MOTION:
+        case MSG_WHEEL:
         case MSG_BUTTON:
           if (len == sizeof(uint32_t)*4) {
             *key = arg[1];

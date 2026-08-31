@@ -48,6 +48,7 @@ extern "C" {
 #define MSG_LAUNCHC 14
 #define MSG_AUDIO   15
 #define MSG_RAUDIO  16
+#define MSG_WHEEL   17
 #define MSG_USER    99
 
 #define oemErrNotImplemented (oemErrorClass | 0x7EFF)
