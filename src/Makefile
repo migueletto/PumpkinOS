@@ -1,8 +1,7 @@
 include common.mak
 
 DIRS=../bin ../lib ../tools ../vfs/app_card/PALM/Programs ../vfs/app_install ../vfs/app_storage ../vfs/app_tos/A ../vfs/app_tos/B ../vfs/app_tos/C/hd
-#BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos BOOT Launcher Preferences Command vi LuaSyntax MemoPad AddressBook ToDoList DateBook
-BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos BOOT Launcher Preferences Command vi LuaSyntax
+BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos BOOT Launcher Preferences Command vi LuaSyntax Japanese
 
 ifeq ($(OSNAME),GNU/Linux)
 

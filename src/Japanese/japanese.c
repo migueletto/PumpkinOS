@@ -5,8 +5,8 @@
 #define SYSTEM_FONTS  8
 #define NUM_FONTS    44
 
-// To activate Japanese support, compile this and start PumpkinOS with (on Linux):
-// LANG=ja_jp ./pumpkin.sh
+// To enable Japanese language support in PumpkinOS,
+// open the Preferences application, select "Formats" and in "Preset to" select "Japan".
 
 typedef struct {
   MemHandle kh[SYSTEM_FONTS];
