@@ -400,7 +400,7 @@ Err FtrUnregister(UInt32 creator, UInt16 featureNum) {
           module->features[i].value = module->features[module->numFeatures-1].value;
           module->features[i].ptr = module->features[module->numFeatures-1].ptr;
         }
-        module->numFeatures++;
+        module->numFeatures--;
         err = errNone;
         break;
       }
