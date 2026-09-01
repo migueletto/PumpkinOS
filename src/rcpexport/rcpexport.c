@@ -7,6 +7,7 @@
 #include "pumpkin.h"
 #include "pumpkin.h"
 #include "WindowAccessor.h"
+#include "FormAccessor.h"
 #include "debug.h"
 
 static void emitn(FileRef fileRef, char *buf, int len) {
@@ -161,7 +162,7 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
   UInt16 *u16, d, i, j, k, num, max, featNum;
   UInt32 *u32, size, creator, featVal;
   UInt8 *u8;
-  char *prefix, *str, ts, ds;
+  char *prefix, *str, *text, ts, ds;
   FileRef fileRef2;
   void *p;
 
@@ -374,7 +375,8 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
               break;
             case frmTitleObj:
               emit(fileRef, "  TITLE ");
-              emitstr(fileRef, obj.title->text);
+              text = (char *)FrmObjectGetField(obj.title, frmTitleObj, FormTitleFieldText);
+              emitstr(fileRef, text);
               emitnl(fileRef);
               break;
             case frmLabelObj:
