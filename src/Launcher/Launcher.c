@@ -448,6 +448,7 @@ static void launcherScanApps(launcher_data_t *data) {
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           if ((nameRes = DmGet1Resource(ainRsc, 1000)) != NULL) {
             if ((s = MemHandleLock(nameRes)) != NULL) {
+              debug(DEBUG_TRACE, "Launcher", "found name resource \"%s\" for app \"%s\"", s, data->item[i].name);
               StrNCopy(data->item[i].name, s, dmDBNameLength-1);
               MemHandleUnlock(nameRes);
             }
@@ -459,6 +460,7 @@ static void launcherScanApps(launcher_data_t *data) {
           }
           if (iconRes != NULL) {
             if ((iconBmp = MemHandleLock(iconRes)) != NULL) {
+              debug(DEBUG_TRACE, "Launcher", "found icon resource for app \"%s\"", data->item[i].name);
               BmpGetDimensions(iconBmp, &bw, &bh, NULL);
               data->item[i].bmpHeight = bh < 22 ? bh : 22; // max allowed icon height
               RctSetRectangle(&rect, 0, 0, data->cellWidth, bh);
