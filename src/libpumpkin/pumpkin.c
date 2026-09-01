@@ -4867,6 +4867,12 @@ Boolean SysLibNewRefNum68K(UInt32 type, UInt32 creator, UInt16 *refNum) {
   UInt16 i, first;
   Boolean exists = false;
 
+  if (creator == 0) {
+    creator = pumpkin_get_app_creator();
+    pumpkin_id2s(creator, buf2);
+    debug(DEBUG_INFO, PUMPKINOS, "SysLibNewRefNum68K using creator '%s' from task", buf2);
+  }
+
   *refNum = 0;
 
   for (i = 0, first = 0xFFFF; i < BASE_SYSLIBS; i++) {
@@ -4899,6 +4905,11 @@ Err SysLibRegister68K(UInt16 refNum, LocalID dbID, uint8_t *code, UInt32 size, U
   UInt16 nameOffset, firstOffset, numFunctions;
   UInt32 d, i;
   Err err = 0;
+
+  if (dbID == 0) {
+    dbID = pumpkin_get_app_localid();
+    debug(DEBUG_INFO, PUMPKINOS, "SysLibRegister68K using dbID 0x%08X from task", dbID);
+  }
 
   for (i = 0; i < BASE_SYSLIBS; i++) {
     if (task->syslibs[i].refNum == refNum) {

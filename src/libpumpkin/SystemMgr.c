@@ -4,6 +4,7 @@
 #include <GPSLib.h>
 #include <CPMLib.h>
 #include <SonyCLIE.h>
+#include <INetMgr.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -278,6 +279,8 @@ Err SysLibLoad(UInt32 libType, UInt32 libCreator, UInt16 *refNumP) {
     *refNumP = CpmLibRefNum;
   } else if (libType == sysFileTLibrary && libCreator == sonySysFtrCreator) {
     *refNumP = SonyHRLibRefNum;
+  } else if (libType == inetLibType && libCreator == inetCreator) {
+    *refNumP = INetLibRefNum;
   } else {
     *refNumP = 0;
   }
@@ -301,6 +304,8 @@ Err SysLibFind(const Char *nameP, UInt16 *refNumP) {
     *refNumP = CpmLibRefNum;
   } else if (nameP && !StrCompare(nameP, sonySysLibNameHR)) {
     *refNumP = SonyHRLibRefNum;
+  } else if (nameP && !StrCompare(nameP, inetLibName)) {
+    *refNumP = INetLibRefNum;
   } else {
     *refNumP = 0;
   }

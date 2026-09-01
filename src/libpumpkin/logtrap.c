@@ -2724,6 +2724,7 @@ static trap_t *logtrap_syslib(logtrap_t *lt, uint16_t trap, uint16_t refNum) {
 
   switch (refNum) {
     case NetLibRefNum:
+    case INetLibRefNum:
     case GPDLibRefNum:
     case GPSLibRefNum:
     case CpmLibRefNum:

@@ -24,4 +24,6 @@
 
 #define SonyHRLibRefNum (BASE_SYSLIBS+7)
 
+#define INetLibRefNum (BASE_SYSLIBS+8)
+
 #endif

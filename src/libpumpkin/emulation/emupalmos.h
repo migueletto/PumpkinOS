@@ -75,6 +75,7 @@ typedef struct {
   uint32_t SysQSort_addr;
   uint32_t SysBinarySearch_addr;
   uint32_t SysLibLoad_addr;
+  uint32_t SysLibInstall_addr;
   uint8_t (*read_byte)(uint32_t address);
   uint16_t (*read_word)(uint32_t address);
   uint32_t (*read_long)(uint32_t address);
@@ -149,6 +150,7 @@ void palmos_navtrap(uint32_t sp, uint16_t idx, uint32_t sel);
 void palmos_netlibtrap(uint16_t trap);
 void palmos_gpdlibtrap(uint16_t trap);
 void palmos_sonyhrtrap(uint16_t trap);
+void palmos_inetlibtrap(uint16_t trap);
 
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg);

@@ -39,6 +39,9 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
     case SonyHRLibRefNum:
       palmos_sonyhrtrap(trap);
       break;
+    case INetLibRefNum:
+      palmos_inetlibtrap(trap);
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X refNum %d not mapped", trap, refNum);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
@@ -172,6 +175,16 @@ uint32_t palmos_systrap(uint16_t trap) {
       pumpkin_id2s(libCreator, screator);
       debug(DEBUG_INFO, "EmuPalmOS", "SysLibLoad('%s', '%s', 0x%08X) native", buf, screator, refNumP);
       r = state->SysLibLoad_addr;
+    }
+    break;
+    case sysTrapSysLibInstall: {
+      // Err SysLibInstall(SysLibEntryProcPtr sysLibEntry, UInt16 *refNumP)
+      uint32_t sysLibEntry = ARG32;
+      uint32_t refNumP = ARG32;
+      emupalmos_trap_in(sysLibEntry, trap, 0);
+      emupalmos_trap_in(refNumP, trap, 1);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibInstall(0x%08X, 0x%08X) native", sysLibEntry, refNumP);
+      r = state->SysLibInstall_addr;
     }
     break;
     case sysTrapSysLibNewRefNum68K: {
