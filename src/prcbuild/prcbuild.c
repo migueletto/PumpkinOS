@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
             }
           }
           buf[k++] = 0;
-	  name = buf;
+          name = buf;
           break;
         case 'v':
           verbose = 1;
