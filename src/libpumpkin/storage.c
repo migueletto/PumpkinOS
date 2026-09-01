@@ -1669,6 +1669,20 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
                 dbRef->overlayDb->isOverlay = true;
                 dbRef->overlayDb->next = dbRef;
               }
+            } else {
+              // overlay for current locale not found, fall back to en_US
+              locale.language = lEnglish;
+              locale.country = cUnitedStates;
+              if (OmLocaleToOverlayDBName(dbName, &locale, overlayName) == errNone) {
+                debug(DEBUG_INFO, "STOR", "DmOpenDatabase searching overlay \"%s\" for fallback language %d country %d", overlayName, locale.language, locale.country);
+                if ((overlayID = DmFindDatabase(cardNo, overlayName)) != 0) {
+                  dbRef->overlayDb = DmOpenDatabaseOverlay(cardNo, overlayID, mode, false, false);
+                  if (dbRef->overlayDb) {
+                    dbRef->overlayDb->isOverlay = true;
+                    dbRef->overlayDb->next = dbRef;
+                  }
+                }
+              }
             }
           }
           if (!dbRef->overlayDb) {
