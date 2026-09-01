@@ -509,7 +509,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
     obj = formP->objects[objIndex].object;
-    formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+    //XXX when UIObjectSelectedForeground, ChemTable draws the title text in black in the elements list form
+    //formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+    formTitle = UIColorGetTableEntryIndex(UIFormFill);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     formFrame = UIColorGetTableEntryIndex(UIFormFrame);
     objFill = UIColorGetTableEntryIndex(UIObjectFill);
