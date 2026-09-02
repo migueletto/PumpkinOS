@@ -24,7 +24,7 @@ Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRe
   Err err = inetErrTooManyClients;
   // flags: not used by PalmOS
 
-  if (config == 0 && inetHP) {
+  if (inetHP && config <= 1) {
     if ((h = MemHandleNew(sizeof(INetLibData))) != NULL) {
       if ((data = MemHandleLock(h)) != NULL) {
         data->config = config;
@@ -72,7 +72,8 @@ static Err INetLibSettingGetUInt32(void *buf, UInt16 *bufLenP, UInt32 value) {
   }
 
   if (err) {
-    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetUInt32 invalid parameters");
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetUInt32 invalid parameters buf=%p bufLenP=%p bufLen=%u",
+      buf, bufLenP, bufLenP ? *bufLenP : 0);
   }
 
   return err;
@@ -129,49 +130,51 @@ Err INetLibSettingGet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
   if (inetH && bufP && bufLenP) {
     if ((data = MemHandleLock(inetH)) != NULL) {
       switch (setting) {
-        case inetSettingProxyType:           // (RW) UInt32, INetProxyEnum
+        case inetSettingProxyType:           // (RW) UInt32, INetProxyEnum (0)
           err = INetLibSettingGetUInt32(bufP, bufLenP, inetProxyNone);
           break;
-        case inetSettingProxyName:           // (RW) Char[], name of proxy
+        case inetSettingProxyName:           // (RW) Char[], name of proxy (1)
           err = INetLibSettingGetUInt32(bufP, bufLenP, 0);
           break;
-        case inetSettingProxyPort:           // (RW) UInt32,  TCP port # of proxy
+        case inetSettingProxyPort:           // (RW) UInt32,  TCP port # of proxy (2)
           err = INetLibSettingGetUInt32(bufP, bufLenP, 0);
           break;
-        case inetSettingProxySocketType:     // (RW) UInt32, which type of socket to use netSocketTypeXXX
+        case inetSettingProxySocketType:     // (RW) UInt32, which type of socket to use netSocketTypeXXX (3)
           break;
-        case inetSettingCacheSize:           // (RW) UInt32, max size of cache
+        case inetSettingCacheSize:           // (RW) UInt32, max size of cache (4)
           err = INetLibSettingGetUInt32(bufP, bufLenP, data->cacheSize);
           break;
-        case inetSettingCacheRef:            // (R) DmOpenRef, ref of cache DB
+        case inetSettingCacheRef:            // (R) DmOpenRef, ref of cache DB (5)
           err = INetLibSettingGetPtr(bufP, bufLenP, data->cacheRef);
           break;
-        case inetSettingNetLibConfig:        // (RW) UInt32, Which NetLib config to use.
+        case inetSettingNetLibConfig:        // (RW) UInt32, Which NetLib config to use. (6)
           err = INetLibSettingGetUInt32(bufP, bufLenP, data->config);
           break;
-        case inetSettingRadioID:             // (R)  UInt32[2], the 64-bit radio ID
-        case inetSettingBaseStationID:       // (R)  UInt32, the radio base station ID
-        case inetSettingMaxRspSize:          // (W) UInt32 (in bytes)
-        case inetSettingConvAlgorithm:       // (W) UInt32 (CTPConvEnum)
-        case inetSettingContentWidth:        // (W) UInt32 (in pixels)
-        case inetSettingContentVersion:      // (W) UInt32 Content version (encoder version)
-        case inetSettingNoPersonalInfo:      // (RW) UInt32 send no deviceID/zipcode
-        case inetSettingUserName:
-        case inetSettingGraphicsSel:         // (W) UInt8 (User Graphics selection)
-        case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum
+        case inetSettingRadioID:             // (R)  UInt32[2], the 64-bit radio ID (7)
+        case inetSettingBaseStationID:       // (R)  UInt32, the radio base station ID (8)
+        case inetSettingMaxRspSize:          // (W) UInt32 (in bytes) (9)
+        case inetSettingConvAlgorithm:       // (W) UInt32 (CTPConvEnum) (10)
+        case inetSettingContentWidth:        // (W) UInt32 (in pixels) (11)
+        case inetSettingContentVersion:      // (W) UInt32 Content version (encoder version) (12)
+        case inetSettingNoPersonalInfo:      // (RW) UInt32 send no deviceID/zipcode (13)
+        case inetSettingUserName:            // (14)
+        case inetSettingGraphicsSel:         // (W) UInt8 (User Graphics selection) (15)
           break;
-        case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp
+        case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum (16)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, inetTransportPPP);
+          break;
+        case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp (17)
           err = INetLibSettingGetUInt32(bufP, bufLenP, 0);
           break;
-        case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information.
-        case inetSettingEnableCookies:       // (RW) Boolean
-        case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes
-        case inetSettingLocRawInfo:          // (R) void* Allocated memory buffer - must be free by caller
-        case inetSettingProxyNameDefault:    // Default Name for this config
-        case inetSettingProxyPortDefault:    // Default Port for this config
-        case inetSettingProxyNameEditable:   // Is the proxy name editable?
-        case inetSettingProxyPortEditable:   // Is the proxy port editable?
-        case inetSettingPalmUserID:          // // The palm.net user id
+        case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information. (18)
+        case inetSettingEnableCookies:       // (RW) Boolean (19)
+        case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes (20)
+        case inetSettingLocRawInfo:          // (R) void* Allocated memory buffer - must be free by caller (21)
+        case inetSettingProxyNameDefault:    // Default Name for this config (22)
+        case inetSettingProxyPortDefault:    // Default Port for this config (23)
+        case inetSettingProxyNameEditable:   // Is the proxy name editable? (24)
+        case inetSettingProxyPortEditable:   // Is the proxy port editable? (25)
+        case inetSettingPalmUserID:          // // The palm.net user id (26)
           break;
       }
       MemHandleUnlock(inetH);
@@ -367,7 +370,7 @@ Err INetLibPrepareCacheForHistory(UInt16 libRefnum, MemHandle clientParamH) {
 Err INetLibConfigMakeActive(UInt16 refNum, MemHandle inetH, UInt16 configIndex) {
   Err err = inetErrConfigNotFound;
 
-  if (configIndex == 0) {
+  if (configIndex <= 0) {
     err = errNone;
   }
 
@@ -377,9 +380,10 @@ Err INetLibConfigMakeActive(UInt16 refNum, MemHandle inetH, UInt16 configIndex) 
 Err INetLibConfigList(UInt16 refNum, INetConfigNameType nameArray[], UInt16 *arrayEntriesP) {
   Err err = inetErrConfigNotFound;
 
-  if (nameArray && arrayEntriesP && *arrayEntriesP >= 1) {
+  if (nameArray && arrayEntriesP && *arrayEntriesP >= 2) {
     StrNCopy(nameArray[0].name, inetCfgNameDefault, inetConfigNameSize);
-    *arrayEntriesP = 1;
+    StrNCopy(nameArray[1].name, inetCfgNameCTPDefault, inetConfigNameSize);
+    *arrayEntriesP = 2;
     err = errNone;
   }
 
@@ -391,6 +395,10 @@ Err INetLibConfigIndexFromName(UInt16 refNum, INetConfigNamePtr nameP, UInt16 *i
 
   if (nameP && indexP) {
     if (StrCompare(nameP->name, inetCfgNameDefault) == 0) {
+      *indexP = 0;
+      err = errNone;
+    } else if (StrCompare(nameP->name, inetCfgNameCTPDefault) == 0) {
+      *indexP = 1;
       err = errNone;
     }
   }

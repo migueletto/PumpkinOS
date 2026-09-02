@@ -28,7 +28,7 @@ void palmos_inetlibtrap(uint16_t trap) {
       // Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRef, UInt32 cacheSize, MemHandle *inetHP)
       uint16_t refNum = ARG16;
       uint16_t config = ARG16;
-      uint16_t flags = ARG16; // unused by PalmOS
+      uint32_t flags = ARG32; // unused by PalmOS
       uint32_t cacheRefP = ARG32;
       uint32_t cacheSize = ARG32;
       uint32_t inetHP = ARG32;
@@ -37,7 +37,7 @@ void palmos_inetlibtrap(uint16_t trap) {
       MemHandle inetH;
       err = INetLibOpen(refNum, config, flags, cacheRef, cacheSize, &inetH);
       if (inetHP) m68k_write_memory_32(inetHP, emupalmos_trap_out(inetH));
-      debug(DEBUG_INFO, "EmuPalmOS", "INetLibOpen(refNum=%u, config=%u, flags=0x%04X, cacheRef=0x%08X, cacheSize=%u, inetHP=0x%08X): %d",
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibOpen(refNum=%u, config=%u, flags=0x%08X, cacheRef=0x%08X, cacheSize=%u, inetHP=0x%08X): %d",
         refNum, config, flags, cacheRefP, cacheSize, inetHP, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
@@ -74,9 +74,10 @@ void palmos_inetlibtrap(uint16_t trap) {
       uint32_t bufP = ARG32;
       uint32_t bufLenP = ARG32;
       MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
-      void *buf = emupalmos_trap_in(inetHP, trap, 3);
+      void *buf = emupalmos_trap_in(bufP, trap, 3);
       emupalmos_trap_in(bufLenP, trap, 4);
-      UInt16 bufLen;
+      UInt16 bufLen = 0; 
+      if (bufLenP) bufLen = m68k_read_memory_16(bufLenP);
       err = INetLibSettingGet(refNum, inetH, setting, buf, &bufLen);
       if (bufLenP) m68k_write_memory_16(bufLenP, bufLen);
       debug(DEBUG_INFO, "EmuPalmOS", "INetLibSettingGet(refNum=%d, inetH=0x%08X, setting=%u, bufP=0x%08X, bufLenP=0x%08X): %d",
@@ -148,9 +149,28 @@ void palmos_inetlibtrap(uint16_t trap) {
       emupalmos_trap_in(resultLenP, trap, 4);
       UInt16 resultLen;
       err = INetLibURLsAdd(refNum, baseURLStr, embeddedURLStr, resultURLStr, &resultLen);
-      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLsAdd(refNum=%d, base=\"%s\", embedded=\"%s\", result=\"%s\", resultLenP=0x%08X",
-        refNum, baseURLStr, embeddedURLStr, resultURLStr, resultLenP);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLsAdd(refNum=%d, base=\"%s\", embedded=\"%s\", result=\"%s\", resultLenP=0x%08X): %d",
+        refNum, baseURLStr, embeddedURLStr, resultURLStr, resultLenP, err);
       resultLenP = ARG32;
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibConfigIndexFromName: {
+      // Err INetLibConfigIndexFromName(UInt16 refNum, INetConfigNamePtr nameP, UInt16 *indexP)
+      // typedef struct {
+      //   Char name[inetConfigNameSize];
+      // } INetConfigNameType, *INetConfigNamePtr;
+      uint16_t refNum = ARG16;
+      uint32_t nameP = ARG32;
+      uint32_t indexP = ARG32;
+      char *name = (char *)emupalmos_trap_in(nameP, trap, 1);
+      emupalmos_trap_in(indexP, trap, 2);
+      INetConfigNameType configName;
+      StrNCopy(configName.name, name, inetConfigNameSize-1);
+      UInt16 index = 0;
+      err = INetLibConfigIndexFromName(refNum, &configName, &index);
+      if (err == errNone && indexP) m68k_write_memory_16(indexP, index);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibConfigIndexFromName(refNum=%d, name=\"%s\", index=%d): %d", refNum, name, index, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
