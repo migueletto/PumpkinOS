@@ -1,6 +1,32 @@
 #include <PalmOS.h>
 
 #include "resource.h"
+#include "debug.h"
+
+static Err GoToURL(Char *origurl) {
+  Err err;
+  Char *url;
+  DmSearchStateType searchState;
+  UInt16 cardNo;
+  LocalID dbID;
+
+  url = MemPtrNew(StrLen(origurl) + 1);
+  if (!url) return sysErrNoFreeRAM;
+  StrCopy(url, origurl);
+  MemPtrSetOwner(url, 0);
+
+  err = DmGetNextDatabaseByTypeCreator(true, &searchState, sysFileTApplication, sysFileCClipper, true, &cardNo, &dbID);
+  if (err) {
+    FrmCustomAlert(10021, "Clipper not found", "", "");
+    MemPtrFree(url);
+  } else {
+    debug(1, "XXX", "SysUIAppSwitch clipper dbID=0x%08X url=\"%s\"", dbID, url);
+    err = SysUIAppSwitch(cardNo, dbID, sysAppLaunchCmdGoToURL, url);
+    debug(1, "XXX", "SysUIAppSwitch: %d", err);
+  }
+
+  return err;
+}
 
 static Boolean MainFormHandleEvent(EventType *event) {
   FormType *frm;
@@ -10,6 +36,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
     case frmOpenEvent:
       frm = FrmGetActiveForm();
       FrmDrawForm(frm);
+      GoToURL("test");
       handled = true;
       break;
     case menuEvent:

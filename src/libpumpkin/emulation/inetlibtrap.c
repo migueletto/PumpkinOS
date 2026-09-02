@@ -37,7 +37,7 @@ void palmos_inetlibtrap(uint16_t trap) {
       MemHandle inetH;
       err = INetLibOpen(refNum, config, flags, cacheRef, cacheSize, &inetH);
       if (inetHP) m68k_write_memory_32(inetHP, emupalmos_trap_out(inetH));
-      debug(DEBUG_TRACE, "EmuPalmOS", "INetLibOpen(refNum=%u, config=%u, flags=0x%04X, cacheRef=0x%08X, cacheSize=%u, inetHP=0x%08X): %d",
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibOpen(refNum=%u, config=%u, flags=0x%04X, cacheRef=0x%08X, cacheSize=%u, inetHP=0x%08X): %d",
         refNum, config, flags, cacheRefP, cacheSize, inetHP, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
@@ -48,21 +48,21 @@ void palmos_inetlibtrap(uint16_t trap) {
       uint32_t inetHP = ARG32;
       MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
       err = INetLibClose(refNum, inetH);
-      debug(DEBUG_TRACE, "EmuPalmOS", "INetLibClose(refNum=%d, inetH=0x%08X): %d", refNum, inetHP, err);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibClose(refNum=%d, inetH=0x%08X): %d", refNum, inetHP, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     case sysLibTrapSleep: {
       uint16_t refNum = ARG16;
       err = NetLibSleep(refNum);
-      debug(DEBUG_TRACE, "EmuPalmOS", "INetLibSleep(refNum=%d): %d", refNum, err);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSleep(refNum=%d): %d", refNum, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
     case sysLibTrapWake: {
       uint16_t refNum = ARG16;
       err = NetLibWake(refNum);
-      debug(DEBUG_TRACE, "EmuPalmOS", "INetLibWake(refNum=%d): %d", refNum, err);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibWake(refNum=%d): %d", refNum, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
@@ -79,13 +79,83 @@ void palmos_inetlibtrap(uint16_t trap) {
       UInt16 bufLen;
       err = INetLibSettingGet(refNum, inetH, setting, buf, &bufLen);
       if (bufLenP) m68k_write_memory_16(bufLenP, bufLen);
-      debug(DEBUG_TRACE, "EmuPalmOS", "INetLibSettingGet(refNum=%d, inetH=0x%08X, setting=%u, bufP=0x%08X, bufLenP=0x%08X): %d",
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSettingGet(refNum=%d, inetH=0x%08X, setting=%u, bufP=0x%08X, bufLenP=0x%08X): %d",
         refNum, inetHP, setting, bufP, bufLenP, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case inetLibTrapSettingSet: {
+      // Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnum*/ setting, void *bufP, UInt16 bufLen)
+      uint16_t refNum = ARG16;
+      uint32_t inetHP = ARG32;
+      uint16_t setting = ARG16;
+      uint32_t bufP = ARG32;
+      uint16_t bufLen = ARG16;
+      MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
+      void *buf = emupalmos_trap_in(inetHP, trap, 3);
+      err = INetLibSettingSet(refNum, inetH, setting, buf, bufLen);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSettingSet(refNum=%d, inetH=0x%08X, setting=%u, bufP=0x%08X, bufLen=%u): %d",
+        refNum, inetHP, setting, bufP, bufLen, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibTrapGetEvent: {
+      // void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, Int32 timeout)
+      uint16_t refNum = ARG16;
+      uint32_t inetHP = ARG32;
+      uint32_t eventP = ARG32;
+      int32_t timeout = ARG32;
+      MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
+      emupalmos_trap_in(eventP, trap, 2);
+      INetEventType event;
+      MemSet(&event, sizeof(INetEventType), 0);
+      INetLibGetEvent(refNum, inetH, &event, timeout);
+      char *eventName = EvtGetEventName(event.eType);
+      if (eventName) {
+        debug(DEBUG_INFO, "EmuPalmOS", "INetLibGetEvent(refNum=%d, inetH=0x%08X, eventP=0x%08X [%s], timeout=%d)",
+          refNum, inetHP, eventP, eventName, timeout);
+      } else {
+        debug(DEBUG_INFO, "EmuPalmOS", "INetLibGetEvent(refNum=%d, inetH=0x%08X, eventP=0x%08X [0x%04X], timeout=%d)",
+          refNum, inetHP, eventP, event.eType, timeout);
+      }
+      if (eventP) encode_event(eventP, (EventType *)&event);
+      }
+      break;
+    case inetLibTrapWirelessIndicatorCmd: {
+      // Boolean INetLibWirelessIndicatorCmd(UInt16 refNum, MemHandle inetH, UInt16 /*WiCmdEnum*/ cmd, int enableOrX, int y)
+      uint16_t refNum = ARG16;
+      uint32_t inetHP = ARG32;
+      uint16_t cmd = ARG16;
+      int16_t enableOrX = ARG16;
+      int16_t y = ARG16;
+      MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
+      Boolean res = INetLibWirelessIndicatorCmd(refNum, inetH, cmd, enableOrX, y);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibWirelessIndicatorCmd(refNum=%d, inetH=0x%08X, cmd=%d, enableOrX=%d, y=%d): %d",
+        refNum, inetHP, cmd, enableOrX, y, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
+    case inetLibTrapURLsAdd: {
+      // Err INetLibURLsAdd(UInt16 libRefnum, Char *baseURLStr, Char *embeddedURLStr, Char *resultURLStr, UInt16 *resultLenP)
+      uint16_t refNum = ARG16;
+      uint32_t baseURLStrP = ARG32;
+      uint32_t embeddedURLStrP = ARG32;
+      uint32_t resultURLStrP = ARG32;
+      uint32_t resultLenP = ARG32;
+      char *baseURLStr = (char *)emupalmos_trap_in(baseURLStrP, trap, 1);
+      char *embeddedURLStr = (char *)emupalmos_trap_in(embeddedURLStrP, trap, 2);
+      char *resultURLStr = (char *)emupalmos_trap_in(resultURLStrP, trap, 3);
+      emupalmos_trap_in(resultLenP, trap, 4);
+      UInt16 resultLen;
+      err = INetLibURLsAdd(refNum, baseURLStr, embeddedURLStr, resultURLStr, &resultLen);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLsAdd(refNum=%d, base=\"%s\", embedded=\"%s\", result=\"%s\", resultLenP=0x%08X",
+        refNum, baseURLStr, embeddedURLStr, resultURLStr, resultLenP);
+      resultLenP = ARG32;
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     default:
-      sys_snprintf(buf, sizeof(buf)-1, "INetLib trap 0x%04X not mapped", trap);
+      sys_snprintf(buf, sizeof(buf)-1, "INetLib trap 0x%04X (%u) not mapped", trap, trap - sysLibTrapCustom);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       break;
   }

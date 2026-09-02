@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
 #include <SonyCLIE.h>
+#include <INetMgr.h>
 
 #include "RegistryMgr.h"
 #include "bytes.h"
@@ -309,6 +310,36 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sonySysFtrCreator %d not defined", featureNum);
+          err = ftrErrNoSuchFeature;
+          break;
+      }
+      break;
+    case netCreator:
+      switch (featureNum) {
+        case netFtrNumVersion:
+          // 0xMMmfsbbb, where MM is major version, m is minor version
+          // f is bug fix, s is stage: 3-release,2-beta,1-alpha,0-development,
+          // bbb is build number for non-releases
+          *valueP = 0x10003000;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet netCreator %d not defined", featureNum);
+          err = ftrErrNoSuchFeature;
+          break;
+      }
+      break;
+    case inetLibFtrCreator:
+      switch (featureNum) {
+        case inetFtrNumVersion:
+          // 0xMMmfsbbb, where MM is major version, m is minor version
+          // f is bug fix, s is stage: 3-release,2-beta,1-alpha,0-development,
+          // bbb is build number for non-releases
+          *valueP = 0x10003000;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet inetLibFtrCreator %d not defined", featureNum);
           err = ftrErrNoSuchFeature;
           break;
       }

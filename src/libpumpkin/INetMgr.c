@@ -4,6 +4,13 @@
 #include "bytes.h"
 #include "debug.h"
 
+// To launch the Viewer and display a web clipping page, use the
+// launch code sysAppLaunchCmdOpenDB. Pass the database ID and
+// card number for the .pqa that you want to display.
+// To launch the Viewer and display a specific URL, use the launch
+// code sysAppLaunchCmdGoToURL. Pass a pointer to the URL string
+// as a parameter to this launch code.
+
 typedef struct {
   UInt16 config;
   UInt32 flags;
@@ -15,17 +22,22 @@ Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRe
   INetLibData *data;
   MemHandle h;
   Err err = inetErrTooManyClients;
+  // flags: not used by PalmOS
 
-  if ((h = MemHandleNew(sizeof(INetLibData))) != NULL) {
-    if ((data = MemHandleLock(h)) != NULL) {
-      data->config = config;
-      data->flags = flags;
-      data->cacheRef = cacheRef;
-      data->cacheSize = cacheSize;
-      *inetHP = h;
-      MemHandleUnlock(h);
-      err = errNone;
+  if (config == 0 && inetHP) {
+    if ((h = MemHandleNew(sizeof(INetLibData))) != NULL) {
+      if ((data = MemHandleLock(h)) != NULL) {
+        data->config = config;
+        data->flags = flags;
+        data->cacheRef = cacheRef;
+        data->cacheSize = cacheSize;
+        *inetHP = h;
+        MemHandleUnlock(h);
+        err = errNone;
+      }
     }
+  } else {
+    debug(DEBUG_ERROR, "INetMgr", "config %u not supported or null inetHP %p", config, inetHP);
   }
 
   return err;
@@ -59,6 +71,10 @@ static Err INetLibSettingGetUInt32(void *buf, UInt16 *bufLenP, UInt32 value) {
     err = errNone;
   }
 
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetUInt32 invalid parameters");
+  }
+
   return err;
 }
 
@@ -79,7 +95,30 @@ static Err INetLibSettingGetPtr(void *buf, UInt16 *bufLenP, void *value) {
       }
     }
   }
+
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetPtr invalid parameters");
+  }
     
+  return err;
+}
+
+static Err INetLibSettingSetUInt32(void *buf, UInt16 bufLen, UInt32 *valueP) {
+  Err err = inetErrSettingSizeInvalid;
+
+  if (buf && bufLen == sizeof(UInt32) && valueP) {
+    if (pumpkin_is_m68k()) {
+      get4b(valueP, (uint8_t *)buf, 0);
+    } else {
+      get4l(valueP, (uint8_t *)buf, 0);
+    }
+    err = errNone;
+  }
+
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingSetUInt32 invalid parameters");
+  }
+
   return err;
 }
 
@@ -120,7 +159,10 @@ Err INetLibSettingGet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
         case inetSettingUserName:
         case inetSettingGraphicsSel:         // (W) UInt8 (User Graphics selection)
         case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum
+          break;
         case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp
+          err = INetLibSettingGetUInt32(bufP, bufLenP, 0);
+          break;
         case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information.
         case inetSettingEnableCookies:       // (RW) Boolean
         case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes
@@ -146,6 +188,38 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
   if (inetH && bufP) {
     if ((data = MemHandleLock(inetH)) != NULL) {
       switch (setting) {
+        case inetSettingProxyType:           // (RW) UInt32, INetProxyEnum
+        case inetSettingProxyName:           // (RW) Char[], name of proxy
+        case inetSettingProxyPort:           // (RW) UInt32,  TCP port # of proxy
+        case inetSettingProxySocketType:     // (RW) UInt32, which type of socket to use netSocketTypeXXX
+          break;
+        case inetSettingCacheSize:           // (RW) UInt32, max size of cache
+          if ((err = INetLibSettingSetUInt32(bufP, bufLen, &data->cacheSize)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet cacheSize=%u", data->cacheSize);
+          }
+          break;
+        case inetSettingCacheRef:            // (R) DmOpenRef, ref of cache DB
+        case inetSettingNetLibConfig:        // (RW) UInt32, Which NetLib config to use.
+        case inetSettingRadioID:             // (R)  UInt32[2], the 64-bit radio ID
+        case inetSettingBaseStationID:       // (R)  UInt32, the radio base station ID
+        case inetSettingMaxRspSize:          // (W) UInt32 (in bytes)
+        case inetSettingConvAlgorithm:       // (W) UInt32 (CTPConvEnum)
+        case inetSettingContentWidth:        // (W) UInt32 (in pixels)
+        case inetSettingContentVersion:      // (W) UInt32 Content version (encoder version)
+        case inetSettingNoPersonalInfo:      // (RW) UInt32 send no deviceID/zipcode
+        case inetSettingUserName:
+        case inetSettingGraphicsSel:         // (W) UInt8 (User Graphics selection)
+        case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum
+        case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp
+        case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information.
+        case inetSettingEnableCookies:       // (RW) Boolean
+        case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes
+        case inetSettingLocRawInfo:          // (R) void* Allocated memory buffer - must be free by caller
+        case inetSettingProxyNameDefault:    // Default Name for this config
+        case inetSettingProxyPortDefault:    // Default Port for this config
+        case inetSettingProxyNameEditable:   // Is the proxy name editable?
+        case inetSettingProxyPortEditable:   // Is the proxy port editable?
+        case inetSettingPalmUserID:          // // The palm.net user id
         default:
           break;
       }
@@ -157,6 +231,18 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
 }
 
 void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, Int32 timeout) {
+  if (inetH == NULL) {
+    debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent inetH is null, calling EvtGetEvent");
+    EvtGetEvent((EventType *)eventP, timeout);
+  } else {
+    debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent inetH is not null");
+    EvtGetEvent((EventType *)eventP, timeout);
+    //eventP->penDown = false;
+    //eventP->screenX = 0;
+    //eventP->screenY = 0;
+    // inetSockReadyEvent
+    // inetSockStatusChangeEvent
+  }
 }
 
 Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheIndexURLP, MemHandle *sockHP, Int32 timeout, UInt16 flags) {
@@ -236,7 +322,18 @@ Boolean INetLibWiCmd(UInt16 refNum, UInt16 /*WiCmdEnum*/ cmd, int enableOrX, int
 }
 
 Boolean INetLibWirelessIndicatorCmd(UInt16 refNum, MemHandle inetH, UInt16 /*WiCmdEnum*/ cmd, int enableOrX, int y) {
-  return false;
+  switch (cmd) {
+    case wiCmdInit:
+    case wiCmdClear:
+    case wiCmdSetEnabled:
+    case wiCmdDraw:
+    case wiCmdEnabled:
+    case wiCmdSetLocation:
+    case wiCmdErase:
+      break;
+  }
+
+  return true;
 }
 
 Err INetLibCheckAntennaState(UInt16 refNum) {
@@ -268,35 +365,57 @@ Err INetLibPrepareCacheForHistory(UInt16 libRefnum, MemHandle clientParamH) {
 }
 
 Err INetLibConfigMakeActive(UInt16 refNum, MemHandle inetH, UInt16 configIndex) {
-  return inetErrConfigNotFound;
+  Err err = inetErrConfigNotFound;
+
+  if (configIndex == 0) {
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err INetLibConfigList(UInt16 refNum, INetConfigNameType nameArray[], UInt16 *arrayEntriesP) {
-  return inetErrConfigNotFound;
+  Err err = inetErrConfigNotFound;
+
+  if (nameArray && arrayEntriesP && *arrayEntriesP >= 1) {
+    StrNCopy(nameArray[0].name, inetCfgNameDefault, inetConfigNameSize);
+    *arrayEntriesP = 1;
+    err = errNone;
+  }
+
+  return err;
 }
 
 Err INetLibConfigIndexFromName(UInt16 refNum, INetConfigNamePtr nameP, UInt16 *indexP) {
-  return inetErrConfigNotFound;
+  Err err = inetErrConfigNotFound;
+
+  if (nameP && indexP) {
+    if (StrCompare(nameP->name, inetCfgNameDefault) == 0) {
+      err = errNone;
+    }
+  }
+
+  return err;
 }
 
 Err INetLibConfigDelete(UInt16 refNum, UInt16 index) {
-  return inetErrConfigNotFound;
+  return inetErrConfigCantDelete;
 }
 
 Err INetLibConfigSaveAs(UInt16 refNum, MemHandle inetH, INetConfigNamePtr nameP) {
-  return inetErrConfigNotFound;
+  return inetErrConfigTooMany;
 }
 
 Err INetLibConfigRename(UInt16 refNum, UInt16 index, INetConfigNamePtr newNameP) {
-  return inetErrConfigNotFound;
+  return inetErrConfigCantDelete;
 }
 
 Err INetLibConfigAliasSet(UInt16 refNum, UInt16 configIndex, UInt16 aliasToIndex) {
-  return inetErrConfigNotFound;
+  return inetErrParamsInvalid;
 }
 
 Err INetLibConfigAliasGet(UInt16 refNum, UInt16 aliasIndex, UInt16 *indexP, Boolean *isAnotherAliasP) {
-  return inetErrConfigNotFound;
+  return inetErrParamsInvalid;
 }
 
 Err INetLibSockFileGetByIndex(UInt16 libRefnum, MemHandle sockH, UInt32 index, MemHandle *handleP, UInt32 *offsetP, UInt32 *lengthP) {

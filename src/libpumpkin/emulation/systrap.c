@@ -198,7 +198,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       if (refNumP) m68k_write_memory_16(refNumP, refNum);
       pumpkin_id2s(type, buf);
       pumpkin_id2s(creator, screator);
-      debug(DEBUG_INFO, "EmuPalmOS", "SysLibNewRefNum68K('%s', '%s', 0x%08X): %d ", buf, screator, refNumP, exists);
+      debug(DEBUG_INFO, "EmuPalmOS", "SysLibNewRefNum68K('%s', '%s', 0x%08X [%u]): %d ", buf, screator, refNumP, refNum, exists);
       m68k_set_reg(M68K_REG_D0, exists);
     }
     break;
@@ -669,6 +669,10 @@ uint32_t palmos_systrap(uint16_t trap) {
     default:
       if (trap > sysLibTrapName) {
         uint16_t refNum = ARG16;
+        if (refNum == 0 /*&& trap == sysLibTrapCustom+2*/) {
+          //XXX Clipper calls INetLibGetEvent() with refNum 0
+          refNum = INetLibRefNum;
+        }
         if (refNum > BASE_SYSLIBS) {
           palmos_libtrap(refNum, trap);
           break;

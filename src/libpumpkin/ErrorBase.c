@@ -60,7 +60,12 @@ void ErrDisplayFileLineMsgEx(const Char * const filename, const Char * const fun
 }
 
 UInt16 ErrAlertCustom(Err errCode, Char *errMsgP, Char *preMsgP, Char *postMsgP) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "ErrAlertCustom %d \"%s\" \"%s\" \"%s\" not implemented", errCode, errMsgP, preMsgP, postMsgP);
+  char buf[16];
+
+  debug(DEBUG_INFO, PALMOS_MODULE, "ErrAlertCustom %d \"%s\" \"%s\" \"%s\" ", errCode, errMsgP, preMsgP, postMsgP);
+  StrNPrintF(buf, sizeof(buf)-1, "0x%04X", errCode);
+  FrmCustomAlert(10021, errMsgP, buf, ""); // XXX just to show some info, I do not know what ErrAlertCustom does
+
   return 0;
 }
 

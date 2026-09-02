@@ -4901,7 +4901,8 @@ Boolean SysLibNewRefNum68K(UInt32 type, UInt32 creator, UInt16 *refNum) {
 
 Err SysLibRegister68K(UInt16 refNum, LocalID dbID, uint8_t *code, UInt32 size, UInt16 *dispatchTblP, UInt8 *globalsP) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  char buf[8], buf2[8];
+  char buf[8], buf2[8], *libname;
+  char name[dmDBNameLength];
   UInt16 nameOffset, firstOffset, numFunctions;
   UInt32 d, i;
   Err err = 0;
@@ -4913,7 +4914,7 @@ Err SysLibRegister68K(UInt16 refNum, LocalID dbID, uint8_t *code, UInt32 size, U
 
   for (i = 0; i < BASE_SYSLIBS; i++) {
     if (task->syslibs[i].refNum == refNum) {
-      if (DmDatabaseInfo(0, dbID, task->syslibs[i].name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
+      if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) == errNone) {
         task->syslibs[i].code = pumpkin_heap_alloc(size, "syslib_code");
         task->syslibs[i].tbl = pumpkin_heap_alloc(sizeof(SysLibTblEntryType), "syslib_tbl");
         if (task->syslibs[i].code) {
@@ -4926,8 +4927,10 @@ Err SysLibRegister68K(UInt16 refNum, LocalID dbID, uint8_t *code, UInt32 size, U
           get2b(&nameOffset, (uint8_t *)task->syslibs[i].dispatchTbl, 0);
           get2b(&firstOffset, (uint8_t *)task->syslibs[i].dispatchTbl, 2);
           numFunctions = firstOffset / 2;
-          debug(DEBUG_INFO, PUMPKINOS, "SysLibRegister68K nameOffset %d firstOffset %d numFunctions %d", nameOffset, firstOffset, numFunctions);
+          libname = (char *)dispatchTblP + nameOffset;
+          debug(DEBUG_INFO, PUMPKINOS, "SysLibRegister68K nameOffset %d [%s] firstOffset %d numFunctions %d", nameOffset, libname, firstOffset, numFunctions);
           debug_bytes(DEBUG_TRACE, PUMPKINOS, (uint8_t *)task->syslibs[i].dispatchTbl, numFunctions*2);
+          StrNCopy(task->syslibs[i].name, libname, dmDBNameLength-1);
           pumpkin_id2s(task->syslibs[i].type, buf);
           pumpkin_id2s(task->syslibs[i].creator, buf2);
           debug(DEBUG_INFO, PUMPKINOS, "registering syslib \"%s\" type '%s' creator '%s' at %d", task->syslibs[i].name, buf, buf2, refNum);
