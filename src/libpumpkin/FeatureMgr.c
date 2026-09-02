@@ -208,6 +208,13 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
             err = errNone;
           }
           break;
+        case sysFtrNumDefaultCompression:
+          // Default Clipper's compression (Palmos 3.5)
+          if (osversion >= 35) {
+            *valueP = inetCompressionTypeNone;
+            err = errNone;
+          }
+          break;
         default:
           debug(DEBUG_ERROR, "Feature", "FtrGet sysFileCSystem %d not defined", featureNum);
           err = ftrErrNoSuchFeature;

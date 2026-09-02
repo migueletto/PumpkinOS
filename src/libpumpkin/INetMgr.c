@@ -16,6 +16,7 @@ typedef struct {
   UInt32 flags;
   DmOpenRef cacheRef;
   UInt32 cacheSize;
+  Boolean enableCookies;
 } INetLibData;
 
 Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRef, UInt32 cacheSize, MemHandle *inetHP) {
@@ -31,6 +32,7 @@ Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRe
         data->flags = flags;
         data->cacheRef = cacheRef;
         data->cacheSize = cacheSize;
+        data->enableCookies = true;
         *inetHP = h;
         MemHandleUnlock(h);
         err = errNone;
@@ -79,6 +81,22 @@ static Err INetLibSettingGetUInt32(void *buf, UInt16 *bufLenP, UInt32 value) {
   return err;
 }
 
+static Err INetLibSettingGetBoolean(void *buf, UInt16 *bufLenP, Boolean value) {
+  Err err = inetErrSettingSizeInvalid;
+
+  if (buf && bufLenP && *bufLenP == 1) {
+    put1(value, (uint8_t *)buf, value);
+    err = errNone;
+  }
+
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetBoolean invalid parameters buf=%p bufLenP=%p bufLen=%u",
+      buf, bufLenP, bufLenP ? *bufLenP : 0);
+  } 
+  
+  return err;
+}
+
 static Err INetLibSettingGetPtr(void *buf, UInt16 *bufLenP, void *value) {
   UInt8 *ram;
   Err err = inetErrSettingSizeInvalid;
@@ -118,6 +136,21 @@ static Err INetLibSettingSetUInt32(void *buf, UInt16 bufLen, UInt32 *valueP) {
 
   if (err) {
     debug(DEBUG_ERROR, "INetMgr", "INetLibSettingSetUInt32 invalid parameters");
+  }
+
+  return err;
+}
+
+static Err INetLibSettingSetBoolean(void *buf, UInt16 bufLen, Boolean *valueP) {
+  Err err = inetErrSettingSizeInvalid;
+
+  if (buf && bufLen == 1 && valueP) {
+    get1(valueP, (uint8_t *)buf, 0);
+    err = errNone;
+  }
+
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingSetBoolean invalid parameters");
   }
 
   return err;
@@ -167,7 +200,10 @@ Err INetLibSettingGet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
           err = INetLibSettingGetUInt32(bufP, bufLenP, 0);
           break;
         case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information. (18)
+          break;
         case inetSettingEnableCookies:       // (RW) Boolean (19)
+          err = INetLibSettingGetBoolean(bufP, bufLenP, true);
+          break;
         case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes (20)
         case inetSettingLocRawInfo:          // (R) void* Allocated memory buffer - must be free by caller (21)
         case inetSettingProxyNameDefault:    // Default Name for this config (22)
@@ -215,7 +251,12 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
         case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum
         case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp
         case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information.
+          break;
         case inetSettingEnableCookies:       // (RW) Boolean
+          if ((err = INetLibSettingSetBoolean(bufP, bufLen, &data->enableCookies)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet enableCookies=%u", data->enableCookies);
+          }
+          break;
         case inetSettingMaxCookieJarSize:    // (RW) UInt32, maximum cookie jar size in in kilobytes
         case inetSettingLocRawInfo:          // (R) void* Allocated memory buffer - must be free by caller
         case inetSettingProxyNameDefault:    // Default Name for this config
@@ -304,12 +345,76 @@ Err INetLibSockHTTPAttrGet(UInt16 libRefnum, MemHandle sockH, UInt16 /*inetHTTPA
   return inetErrConfigNotFound;
 }
 
+#define checkScheme(p, scheme, type) \
+   do { \
+     if (urlP->schemeEnum == inetSchemeUnknown) { \
+       UInt32 len = StrLen(scheme); \
+       if (!StrNCompare((char *)p, scheme, len)) { \
+         urlP->schemeEnum = type; \
+         if (urlP->schemeP) { \
+           MemMove(urlP->schemeP, p, urlP->schemeLen < len ? urlP->schemeLen : len); \
+         } else { \
+           urlP->schemeP = p; \
+         }  \
+         urlP->schemeLen = len; \
+         p += urlP->schemeLen; \
+       } \
+     } \
+   } while (0)
+
 Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
-  return inetErrConfigNotFound;
+   UInt8 *p;
+   Err err = inetErrParamsInvalid;
+
+   if (urlTextP && urlP) {
+     p = urlTextP;
+     urlP->version = 0;
+     urlP->schemeEnum = inetSchemeUnknown;
+
+     checkScheme(p, "http:",     inetSchemeHTTP);
+     checkScheme(p, "https:",    inetSchemeHTTPS);
+     checkScheme(p, "ftp:",      inetSchemeFTP);
+     checkScheme(p, "gopher:",   inetSchemeGopher);
+     checkScheme(p, "file:",     inetSchemeFile);
+     checkScheme(p, "news:",     inetSchemeNews);
+     checkScheme(p, "mailto:",   inetSchemeMailTo);
+     checkScheme(p, "palm:",     inetSchemePalm);
+     checkScheme(p, "palmcall:", inetSchemePalmCall);
+     checkScheme(p, "mac:",      inetSchemeMac);
+
+     if (urlP->schemeEnum != inetSchemeUnknown) {
+       err = errNone;
+     }
+   }
+
+  return err;
 }
 
+// Concatenates two URLs, resulting in one absolute URL.
+// Used to append a URL fragment to a base URL, resulting in an
+// absolute URL string that can be passed to INetLibURLOpen or
+// other functions. This routine ensures that the resulting string
+// conforms to the URL format.
+
 Err INetLibURLsAdd(UInt16 libRefnum, Char *baseURLStr, Char *embeddedURLStr, Char *resultURLStr, UInt16 *resultLenP) {
-  return inetErrConfigNotFound;
+  Err err = inetErrParamsInvalid;
+
+  if (embeddedURLStr && resultLenP) {
+    if (resultURLStr) {
+      resultURLStr[0] = 0;
+      if (baseURLStr) StrNCopy(resultURLStr, baseURLStr, *resultLenP);
+      StrNCat(resultURLStr, embeddedURLStr, *resultLenP);
+      *resultLenP = StrLen(resultURLStr) + 1;
+      err = errNone;
+    } else {
+      *resultLenP = 0;
+      if (baseURLStr) *resultLenP += StrLen(baseURLStr);
+      *resultLenP += StrLen(embeddedURLStr) + 1;
+      err = inetErrURLBufTooSmall;
+    }
+  }
+
+  return err;
 }
 
 Int16 INetLibURLsCompare(UInt16 libRefnum, Char *URLStr1, Char *URLStr2) {

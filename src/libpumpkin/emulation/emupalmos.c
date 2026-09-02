@@ -4,6 +4,7 @@
 #include <DLServer.h>
 #include <Helper.h>
 #include <GPSLib.h>
+#include <INetMgr.h>
 
 #include "sys.h"
 #include "pwindow.h"
@@ -1209,6 +1210,87 @@ void encode_NetConfigNameType(uint32_t nameArrayP, NetConfigNameType *nameArray)
     for (i = 0; i < netConfigNameSize; i++) {
       m68k_write_memory_8(nameArrayP + i, nameArray->name[i]);
     }
+  }
+}
+
+void decode_INetURLType(uint32_t urlP, INetURLType *url) {
+  uint8_t *ram;
+  uint32_t addr;
+
+  if (urlP && url) {
+    ram = pumpkin_heap_base();
+    url->version = m68k_read_memory_16(urlP);
+
+    addr = m68k_read_memory_32(urlP + 2);
+    url->schemeP = addr ? ram + addr : NULL;
+    url->schemeLen = m68k_read_memory_16(urlP + 6);
+    url->schemeEnum = m68k_read_memory_16(urlP + 8);
+
+    addr = m68k_read_memory_32(urlP + 10);
+    url->usernameP = addr ? ram + addr : NULL;
+    url->usernameLen = m68k_read_memory_16(urlP + 14);
+
+    addr = m68k_read_memory_32(urlP + 16);
+    url->passwordP = addr ? ram + addr : NULL;
+    url->passwordLen = m68k_read_memory_16(urlP + 20);
+
+    addr = m68k_read_memory_32(urlP + 22);
+    url->hostnameP = addr ? ram + addr : NULL;
+    url->hostnameLen = m68k_read_memory_16(urlP + 26);
+
+    url->port = m68k_read_memory_16(urlP + 28);
+
+    addr = m68k_read_memory_32(urlP + 30);
+    url->pathP = addr ? ram + addr : NULL;
+    url->pathLen = m68k_read_memory_16(urlP + 34);
+
+    addr = m68k_read_memory_32(urlP + 36);
+    url->paramP = addr ? ram + addr : NULL;
+    url->paramLen = m68k_read_memory_16(urlP + 40);
+
+    addr = m68k_read_memory_32(urlP + 42);
+    url->queryP = addr ? ram + addr : NULL;
+    url->queryLen = m68k_read_memory_16(urlP + 46);
+
+    addr = m68k_read_memory_32(urlP + 48);
+    url->fragP = addr ? ram + addr : NULL;
+    url->fragLen = m68k_read_memory_16(urlP + 52);
+  }
+}
+
+void encode_INetURLType(uint32_t urlP, INetURLType *url) {
+  uint8_t *ram;
+
+  if (urlP && url) {
+    ram = pumpkin_heap_base();
+    m68k_write_memory_16(urlP, url->version);
+
+    m68k_write_memory_32(urlP + 2, url->schemeP ? (url->schemeP - ram) : 0);
+    m68k_write_memory_16(urlP + 6, url->schemeLen);
+    m68k_write_memory_16(urlP + 8, url->schemeEnum);
+
+    m68k_write_memory_32(urlP + 10, url->usernameP ? (url->usernameP - ram) : 0);
+    m68k_write_memory_16(urlP + 14, url->usernameLen);
+
+    m68k_write_memory_32(urlP + 16, url->passwordP ? (url->passwordP - ram) : 0);
+    m68k_write_memory_16(urlP + 20, url->passwordLen);
+
+    m68k_write_memory_32(urlP + 22, url->hostnameP ? (url->hostnameP - ram) : 0);
+    m68k_write_memory_16(urlP + 26, url->hostnameLen);
+
+    m68k_write_memory_16(urlP + 28, url->port);
+
+    m68k_write_memory_32(urlP + 30, url->pathP ? (url->pathP - ram) : 0);
+    m68k_write_memory_16(urlP + 34, url->pathLen);
+
+    m68k_write_memory_32(urlP + 36, url->paramP ? (url->paramP - ram) : 0);
+    m68k_write_memory_16(urlP + 40, url->paramLen);
+
+    m68k_write_memory_32(urlP + 42, url->queryP ? (url->queryP - ram) : 0);
+    m68k_write_memory_16(urlP + 46, url->queryLen);
+
+    m68k_write_memory_32(urlP + 48, url->fragP ? (url->fragP - ram) : 0);
+    m68k_write_memory_16(urlP + 52, url->fragLen);
   }
 }
 

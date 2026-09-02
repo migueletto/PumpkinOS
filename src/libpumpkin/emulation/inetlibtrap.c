@@ -147,10 +147,12 @@ void palmos_inetlibtrap(uint16_t trap) {
       char *embeddedURLStr = (char *)emupalmos_trap_in(embeddedURLStrP, trap, 2);
       char *resultURLStr = (char *)emupalmos_trap_in(resultURLStrP, trap, 3);
       emupalmos_trap_in(resultLenP, trap, 4);
-      UInt16 resultLen;
+      UInt16 resultLen = 0;
+      if (resultLenP) resultLen = m68k_read_memory_16(resultLenP);
       err = INetLibURLsAdd(refNum, baseURLStr, embeddedURLStr, resultURLStr, &resultLen);
-      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLsAdd(refNum=%d, base=\"%s\", embedded=\"%s\", result=\"%s\", resultLenP=0x%08X): %d",
-        refNum, baseURLStr, embeddedURLStr, resultURLStr, resultLenP, err);
+      if (resultLenP) m68k_write_memory_16(resultLenP, resultLen);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLsAdd(refNum=%d, base=\"%s\", embedded=\"%s\", result=\"%s\", resultLen=%u): %d",
+        refNum, baseURLStr, embeddedURLStr, resultURLStr, resultLen, err);
       resultLenP = ARG32;
       m68k_set_reg(M68K_REG_D0, err);
       }
@@ -171,6 +173,20 @@ void palmos_inetlibtrap(uint16_t trap) {
       err = INetLibConfigIndexFromName(refNum, &configName, &index);
       if (err == errNone && indexP) m68k_write_memory_16(indexP, index);
       debug(DEBUG_INFO, "EmuPalmOS", "INetLibConfigIndexFromName(refNum=%d, name=\"%s\", index=%d): %d", refNum, name, index, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibTrapURLCrack: {
+      // Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType *urlP)
+      uint16_t refNum = ARG16;
+      uint32_t urlTextP = ARG32;
+      uint32_t urlP = ARG32;
+      uint8_t *urlText = (uint8_t *)emupalmos_trap_in(urlTextP, trap, 1);
+      INetURLType url;
+      decode_INetURLType(urlP, &url);
+      err = INetLibURLCrack(refNum, urlText, &url);
+      encode_INetURLType(urlP, &url);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLCrack(refNum=%d, urlText=\"%s\", urlP=0x%08X): %d", refNum, (char *)urlText, urlP, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
