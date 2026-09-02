@@ -2091,6 +2091,7 @@ DmOpenRef DmOpenDatabaseByTypeCreator(UInt32 type, UInt32 creator, UInt16 mode) 
     dbRef = DmOpenDatabase(cardNo, dbID, mode);
   }
 
+  StoCheckErr(err);
   return dbRef;
 }
 
