@@ -33,7 +33,7 @@ static Boolean MainFormHandleEvent(EventType *event) {
     case frmOpenEvent:
       frm = FrmGetActiveForm();
       FrmDrawForm(frm);
-      GoToURL("test");
+      GoToURL("file:test.txt");
       handled = true;
       break;
     case menuEvent:
