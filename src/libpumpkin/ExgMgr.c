@@ -36,11 +36,21 @@ static void printSocket(ExgSocketType *socketP) {
   debug(DEBUG_INFO, "ExgMgr", "ExgPut name \"%s\"", socketP->name);
 }
 
+// ExgPut: initiates the transfer of data to the destination device.
+// Specify either a value for the libraryRef field or a URL in
+// the name field. libraryRef should be 0 if the name field
+// contains a URL. The structure should also contain a value for
+// the target, type, or name field.
+
 Err ExgPut(ExgSocketType *socketP) {
   debug(DEBUG_INFO, "ExgMgr", "ExgPut %p", socketP);
 
   if (socketP) {
-     printSocket(socketP);
+    printSocket(socketP);
+
+    if (socketP->name) {
+    } else if (socketP->libraryRef) {
+    }
   }
 
   return errNone;
@@ -67,15 +77,19 @@ Err ExgDisconnect(ExgSocketType *socketP, Err error) {
 }
 
 UInt32 ExgSend(ExgSocketType *socketP, const void *bufP, UInt32 bufLen, Err *err) {
+  UInt32 r = 0;
+
   debug(DEBUG_INFO, "ExgMgr", "ExgSend %p %p %u %p", socketP, bufP, bufLen, err);
+  if (err) *err = sysErrParamErr;
 
   if (socketP) {
      printSocket(socketP);
+     debug_bytes(DEBUG_INFO, "ExgMgr", (uint8_t *)bufP, bufLen);
+     r = bufLen;
+     if (err) *err = errNone;
   }
 
-  if (err) *err = errNone;
-
-  return 0;
+  return r;
 }
 
 UInt32 ExgReceive(ExgSocketType *socketP, void *bufP, UInt32 bufLen, Err *err) {
