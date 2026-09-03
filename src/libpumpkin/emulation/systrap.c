@@ -670,10 +670,6 @@ uint32_t palmos_systrap(uint16_t trap) {
     default:
       if (trap > sysLibTrapName) {
         uint16_t refNum = ARG16;
-        if (refNum == 0 /*&& trap == sysLibTrapCustom+2*/) {
-          //XXX Clipper calls INetLibGetEvent() with refNum 0
-          refNum = INetLibRefNum;
-        }
         if (refNum > BASE_SYSLIBS) {
           palmos_libtrap(refNum, trap);
           break;
