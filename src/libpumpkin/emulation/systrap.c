@@ -4,6 +4,7 @@
 #include <Helper.h>
 #include <CharAttr.h>
 #include <HsNavCommon.h>
+#include <INetMgr.h>
 
 #include "sys.h"
 #include "mutex.h"

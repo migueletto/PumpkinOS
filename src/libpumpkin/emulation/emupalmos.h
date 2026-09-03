@@ -132,6 +132,7 @@ void decode_smfoptions(uint32_t selP, SndSmfOptionsType *options);
 void decode_sndcmd(uint32_t cmdP, SndCommandType *cmd);
 void decode_INetURLType(uint32_t urlP, INetURLType *url);
 void encode_INetURLType(uint32_t urlP, INetURLType *url);
+void decode_ExgSocketType(uint32_t sockP, ExgSocketType *sock);
 
 uint32_t tos_systrap(uint16_t type);
 uint32_t palmos_systrap(uint16_t trap);

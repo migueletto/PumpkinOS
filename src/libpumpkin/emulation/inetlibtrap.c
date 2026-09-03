@@ -230,6 +230,35 @@ void palmos_inetlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case inetLibTrapSockRead: {
+      // Err INetLibSockRead(UInt16 libRefnum, MemHandle sockH, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout)
+      uint16_t refNum = ARG16;
+      uint32_t socketHP = ARG32;
+      uint32_t bufP = ARG32;
+      uint32_t reqBytes = ARG32;
+      uint32_t actBytesP = ARG32;
+      int32_t timeout = ARG32;
+      MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
+      void *buf = emupalmos_trap_in(bufP, trap, 2);
+      emupalmos_trap_in(actBytesP, trap, 4);
+      UInt32 actBytes;
+      err = INetLibSockRead(refNum, socketH, buf, reqBytes, &actBytes, timeout);
+      if (actBytesP) m68k_write_memory_32(actBytesP, actBytes);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockRead(refNum=%d, socketH=0x%08X, bufP=0x%08X, reqBytes=%u, actBytes=%u, timeout=%d): %d",
+        refNum, socketHP, bufP, reqBytes, actBytes, timeout, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibTrapSockClose: {
+      // Err INetLibSockClose(UInt16 libRefnum, MemHandle socketH)
+      uint16_t refNum = ARG16;
+      uint32_t socketHP = ARG32;
+      MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
+      err = INetLibSockClose(refNum, socketH);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockClose(refNum=%d, socketH=0x%08X): %d", refNum, socketHP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "INetLib trap 0x%04X (%u) not mapped", trap, trap - sysLibTrapCustom);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

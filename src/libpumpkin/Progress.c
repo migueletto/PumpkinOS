@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
+#include <INetMgr.h>
 
 #include "pumpkin.h"
 #ifdef ARMEMU

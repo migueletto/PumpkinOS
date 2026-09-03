@@ -2,6 +2,7 @@
 #include <PalmCompatibility.h>
 #include <SonyCLIE.h>
 #include <SonyHRLib.h>
+#include <INetMgr.h>
 
 #include "sys.h"
 #ifdef ARMEMU

@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <VFSMgr.h>
 #include <INetMgr.h>
 
 #include "bytes.h"
@@ -11,6 +12,8 @@
 // code sysAppLaunchCmdGoToURL. Pass a pointer to the URL string
 // as a parameter to this launch code.
 
+#define MAX_SOCKETS 16
+
 typedef struct {
   UInt16 config;
   UInt32 flags;
@@ -21,14 +24,22 @@ typedef struct {
   UInt32 contentWidth;
   UInt8 enableCookies;
   UInt8 graphicsSel;
+  MemHandle sockets[MAX_SOCKETS];
+  UInt32 numSockets;
 } INetLibData;
 
 typedef struct {
+  MemHandle inetH;
   UInt8 *urlP;
   UInt8 *cacheIndexURLP;
   Int32 timeout;
   UInt16 flags;
   INetURLType url;
+  MemHandle dataH;
+  UInt32 dataSize, dataOffset;
+  union {
+    FileRef f;
+  } fd;
 } INetLibSocketData;
 
 Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRef, UInt32 cacheSize, MemHandle *inetHP) {
@@ -60,11 +71,26 @@ Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRe
 }
 
 Err INetLibClose(UInt16 libRefnum, MemHandle inetH) {
+  INetLibData *data;
+  UInt32 numSockets;
+  Err err = inetErrParamsInvalid;
+
   if (inetH) {
-    MemHandleFree(inetH);
+    numSockets = 0;
+    if ((data = MemHandleLock(inetH)) != NULL) {
+      numSockets = data->numSockets;
+      MemHandleUnlock(inetH);
+    }
+
+    if (numSockets == 0) {
+      MemHandleFree(inetH);
+      err = errNone;
+    } else {
+      debug(DEBUG_ERROR, "INetMgr", "INetLibClose there are still %u open sockets", numSockets);
+    }
   }
 
-  return errNone;
+  return err;
 }
 
 Err INetLibSleep(UInt16 libRefnum) {
@@ -111,20 +137,47 @@ static Err INetLibSettingGetBoolean(void *buf, UInt16 *bufLenP, Boolean value) {
   return err;
 }
 
+static Err INetLibSettingGetStr(void *buf, UInt16 *bufLenP, char *value) {
+  UInt32 len;
+  Err err = inetErrSettingSizeInvalid;
+
+  if (bufLenP && value) {
+    len = StrLen(value) + 1;
+    if (buf) {
+      if (len > *bufLenP) {
+        len = *bufLenP;
+      }
+      sys_memcpy(buf, value, len);
+    }
+    *bufLenP = len;
+    err = errNone;
+  }
+
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetStr invalid parameters");
+  }
+
+  return err;
+}
+
 static Err INetLibSettingGetPtr(void *buf, UInt16 *bufLenP, void *value) {
   UInt8 *ram;
+  UInt32 d;
   Err err = inetErrSettingSizeInvalid;
 
   if (buf && bufLenP) {
     if (pumpkin_is_m68k()) {
       if (*bufLenP == sizeof(UInt32)) {
         ram = pumpkin_heap_base();
-        put4b((uint8_t *)value - ram, (uint8_t *)buf, 0);
+        d = (uint8_t *)value - ram;
+        put4b(d, (uint8_t *)buf, 0);
+        debug(DEBUG_INFO, "INetMgr", "INetLibSettingGetPtr 0x%08X", d);
         err = errNone;
       }
     } else { 
       if (*bufLenP == sizeof(void *)) {
         sys_memcpy(buf, &value, sizeof(void *));
+        err = errNone;
       }
     }
   }
@@ -307,39 +360,175 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
 }
 
 void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, Int32 timeout) {
+  INetLibData *data;
+  INetLibSocketData *sockData;
+  UInt32 size, pos, i;
+
   if (inetH == NULL) {
-    debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent inetH is null, calling EvtGetEvent");
+    debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent inetH is null, calling EvtGetEvent directly");
     EvtGetEvent((EventType *)eventP, timeout);
+
   } else {
     debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent inetH is not null");
-    EvtGetEvent((EventType *)eventP, timeout);
-    //eventP->penDown = false;
-    //eventP->screenX = 0;
-    //eventP->screenY = 0;
-    // inetSockReadyEvent
-    // inetSockStatusChangeEvent
+    eventP->eType = nilEvent;
+    eventP->penDown = false;
+    eventP->screenX = 0;
+    eventP->screenY = 0;
+
+    if ((data = MemHandleLock(inetH)) != NULL) {
+      if (data->numSockets > 0) {
+        for (i = 0; i < MAX_SOCKETS; i++) {
+          if (data->sockets[i]) {
+            if ((sockData = MemHandleLock(data->sockets[i])) != NULL) {
+              switch (sockData->url.schemeEnum) {
+                case inetSchemeFile:
+                  if (VFSFileSize(sockData->fd.f, &size) == errNone) {
+                    if (VFSFileTell(sockData->fd.f, &pos) == errNone) {
+                      if (pos < size) {
+                        eventP->eType = inetSockReadyEvent;
+                        eventP->data.inetSockReady.sockH = data->sockets[i];
+                        eventP->data.inetSockReady.context = 0; // not used
+                        eventP->data.inetSockReady.inputReady = true;
+                        eventP->data.inetSockReady.outputReady = false;
+                      }
+                    }
+                  }
+                  break;
+                default:
+                  debug(DEBUG_ERROR, "INetMgr", "INetLibGetEvent invalid scheme %u", sockData->url.schemeEnum);
+                  break;
+              }
+              MemHandleUnlock(data->sockets[i]);
+            }
+            break;
+          }
+        }
+      }
+
+      MemHandleUnlock(inetH);
+    }
+
+    if (eventP->eType == nilEvent) {
+      debug(DEBUG_INFO, "INetMgr", "INetLibGetEvent no socket event, calling EvtGetEvent");
+      EvtGetEvent((EventType *)eventP, timeout);
+    }
   }
 }
 
 Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheIndexURLP, MemHandle *sockHP, Int32 timeout, UInt16 flags) {
-  MemHandle h;
-  INetLibSocketData *data;
+  MemHandle sockHandle = NULL;
+  INetURLType url;
+  INetLibData *data;
+  INetLibSocketData *sockData;
+  char *path;
+  UInt32 i;
   Err err = inetErrParamsInvalid;
 
   if (inetH && urlP && sockHP) {
-    if ((h = MemHandleNew(sizeof(INetLibSocketData))) != NULL) {
-      if ((data = MemHandleLock(h)) != NULL) {
-        data->urlP = (UInt8 *)StrDup((char *)urlP);
-        data->cacheIndexURLP = cacheIndexURLP ? (UInt8 *)StrDup((char *)cacheIndexURLP) : NULL;
-        data->timeout = timeout;
-        data->flags = flags;
-        INetLibURLCrack(libRefnum, urlP, &data->url);
-        MemHandleUnlock(h);
-        *sockHP = h;
-        err = errNone;
+    if ((data = MemHandleLock(inetH)) != NULL) {
+      if (data->numSockets < MAX_SOCKETS) {
+        MemSet(&url, sizeof(INetURLType), 0);
+        if (INetLibURLCrack(libRefnum, urlP, &url) == errNone) {
+          if ((sockHandle = MemHandleNew(sizeof(INetLibSocketData))) != NULL) {
+            if ((sockData = MemHandleLock(sockHandle)) != NULL) {
+              sockData->inetH = inetH;
+              sockData->urlP = (UInt8 *)StrDup((char *)urlP);
+              sockData->cacheIndexURLP = cacheIndexURLP ? (UInt8 *)StrDup((char *)cacheIndexURLP) : NULL;
+              sockData->timeout = timeout;
+              sockData->flags = flags;
+              MemMove(&sockData->url, &url, sizeof(INetURLType));
+              for (i = 0; i < MAX_SOCKETS; i++) {
+                if (data->sockets[i] == NULL) {
+                  data->sockets[i] = sockHandle;
+                  debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen socket %p slot %u scheme %u", sockHandle, i, url.schemeEnum);
+                  data->numSockets++;
+
+                  switch (url.schemeEnum) {
+                     case inetSchemeFile:
+                       if ((path = MemPtrNew(url.pathLen + 1)) != NULL) {
+                         StrNCopy(path, (char *)url.pathP + 1, url.pathLen - 1);
+                         if (VFSFileOpen(0, path, vfsModeRead, &sockData->fd.f) == errNone) {
+                           debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen file \"%s\" fileRef %p", path, sockData->fd.f);
+                           sockData->dataSize = 1024;
+                           sockData->dataH = MemHandleNew(sockData->dataSize);
+                           *sockHP = sockHandle;
+                           err = errNone;
+                         }
+                         MemPtrFree(path);
+                       }
+                       break;
+                     default:
+                       debug(DEBUG_ERROR, "INetMgr", "INetLibURLOpen invalid scheme %u", url.schemeEnum);
+                       break;
+                  }
+                  break;
+                }
+              }
+              MemHandleUnlock(sockHandle);
+            } else {
+              MemHandleFree(sockHandle);
+            }
+          }
+        }
+        MemHandleUnlock(inetH);
       }
-    } else {
-      MemHandleFree(h);
+    }
+  }
+
+  if (err && sockHandle) {
+    MemHandleFree(sockHandle);
+  }
+
+  return err;
+}
+
+Err INetLibSockClose(UInt16 libRefnum, MemHandle sockHandle) {
+  MemHandle inetH;
+  INetLibSocketData *sockData;
+  INetLibData *data;
+  UInt32 i;
+  Err err = inetErrParamsInvalid;
+
+  if (sockHandle) {
+    if ((sockData = MemHandleLock(sockHandle)) != NULL) {
+      inetH = sockData->inetH;
+
+      if ((data = MemHandleLock(inetH)) != NULL) {
+        if (data->numSockets > 0) {
+          for (i = 0; i < MAX_SOCKETS; i++) {
+            if (data->sockets[i] == sockHandle) {
+              debug(DEBUG_INFO, "INetMgr", "INetLibSockClose socket %p slot %u", sockHandle, i);
+              switch (sockData->url.schemeEnum) {
+                case inetSchemeFile:
+                  if (sockData->dataH) {
+                    MemHandleFree(sockData->dataH);
+                    sockData->dataH = NULL;
+                  }
+                  if (sockData->fd.f) {
+                    debug(DEBUG_INFO, "INetMgr", "INetLibSockClose fileRef %p", sockData->fd.f);
+                    VFSFileClose(sockData->fd.f);
+                    sockData->fd.f = NULL;
+                  }
+                  break;
+                default:
+                  debug(DEBUG_ERROR, "INetMgr", "INetLibSockClose invalid scheme %u", sockData->url.schemeEnum);
+                  break;
+              }
+              MemHandleUnlock(sockHandle);
+              MemHandleFree(sockHandle);
+              data->sockets[i] = NULL;
+              data->numSockets--;
+              err = errNone;
+              break;
+            }
+          }
+        } else {
+          MemHandleUnlock(sockHandle);
+        }
+        MemHandleUnlock(inetH);
+      } else {
+        MemHandleUnlock(sockHandle);
+      }
     }
   }
 
@@ -350,16 +539,51 @@ Err INetLibCTPSend(UInt16 libRefnum, MemHandle inetH, MemHandle *sockHP, UInt8 *
   return inetErrConfigNotFound;
 }
 
-Err INetLibSockClose(UInt16 libRefnum, MemHandle socketH) {
-  return inetErrConfigNotFound;
-}
+Err INetLibSockRead(UInt16 libRefnum, MemHandle sockHandle, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout) {
+  INetLibSocketData *sockData;
+  UInt32 len;
+  UInt8 *p;
+  Err err = inetErrParamsInvalid;
 
-Err INetLibSockRead(UInt16 libRefnum, MemHandle sockH, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout) {
-  return inetErrConfigNotFound;
+  if (sockHandle && bufP && actBytesP) {
+    if ((sockData = MemHandleLock(sockHandle)) != NULL) {
+      switch (sockData->url.schemeEnum) {
+        case inetSchemeFile:
+          if (sockData->fd.f) {
+            if (reqBytes == 0) {
+              reqBytes = 65536;
+            }
+            if (VFSFileRead(sockData->fd.f, reqBytes, bufP, actBytesP) == errNone) {
+              debug(DEBUG_INFO, "INetMgr", "INetLibSockRead fileRef %p requested %u bytes, read %u bytes", sockData->fd.f, reqBytes, *actBytesP);
+              if (*actBytesP > 0) {
+                len = *actBytesP;
+                if (sockData->dataOffset + len > sockData->dataSize) {
+                  sockData->dataSize = sockData->dataOffset + len;
+                  MemHandleResize(sockData->dataH, sockData->dataSize);
+                }
+                if ((p = MemHandleLock(sockData->dataH)) != NULL) {
+                  MemMove(p + sockData->dataOffset, bufP, len);
+                  sockData->dataOffset += len;
+                  MemHandleUnlock(sockData->dataH);
+                }
+              }
+              err = errNone;
+            }
+          }
+          break;
+        default:
+          debug(DEBUG_ERROR, "INetMgr", "INetLibSockRead invalid scheme %u", sockData->url.schemeEnum);
+          break;
+      }
+      MemHandleUnlock(sockHandle);
+    }
+  }
+
+  return err;
 }
 
 Err INetLibSockWrite(UInt16 libRefnum, MemHandle sockH, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout) {
-  return inetErrConfigNotFound;
+  return inetErrParamsInvalid;
 }
 
 Err INetLibSockOpen(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSchemEnum*/ scheme, MemHandle *sockHP) {
@@ -371,25 +595,36 @@ Err INetLibSockStatus(UInt16 libRefnum, MemHandle socketH, UInt16 *statusP, Err*
 }
 
 Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSockSettingEnum*/ setting, void *bufP, UInt16 *bufLenP) {
-  INetLibSocketData *data;
+  INetLibSocketData *sockData;
   Err err = inetErrParamsInvalid;
 
-  if (socketH && bufP && bufLenP) {
-    if ((data = MemHandleLock(socketH)) != NULL) {
+  if (socketH && bufLenP) {
+    if ((sockData = MemHandleLock(socketH)) != NULL) {
       switch (setting) {
         case inetSockSettingScheme:             // (R)  UInt32 INetSchemeEnum (0)
-          err = INetLibSettingGetUInt32(bufP, bufLenP, data->url.schemeEnum);
+          err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->url.schemeEnum);
           break;
         case inetSockSettingSockContext:        // (RW) UInt32 (1)
         case inetSockSettingCompressionType:    // (R)  Char[] (2)
         case inetSockSettingCompressionTypeID:  // (R)  UInt32 (INetCompressionTypeEnum) (3)
         case inetSockSettingContentType:        // (R)  Char[] (4)
+          break;
         case inetSockSettingContentTypeID:      // (R)  UInt32 (INetContentTypeEnum) (5)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, inetContentTypeTextPlain); // XXX
+          break;
         case inetSockSettingData:               // (R)  UInt32 pointer to data (6)
+          break;
         case inetSockSettingDataHandle:         // (R)  UInt32 handle to data (7)
+          err = INetLibSettingGetPtr(bufP, bufLenP, sockData->dataH);
+          break;
         case inetSockSettingDataOffset:         // (R)  UInt32 offset to data from handle (8)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->dataOffset);
+          break;
         case inetSockSettingTitle:              // (RW) Char[] (9)
+          break;
         case inetSockSettingURL:                // (R)  Char[] (10)
+          err = INetLibSettingGetStr(bufP, bufLenP, (char *)sockData->urlP);
+          break;
         case inetSockSettingIndexURL:           // (RW) Char[] (11)
         case inetSockSettingFlags:              // (W)  UInt16 one or more of inetOpenURLFlagXXX flags (12)
         case inetSockSettingReadTimeout:        // (RW) UInt32 Read timeout in ticks (13)
@@ -429,22 +664,25 @@ Err INetLibSockHTTPAttrGet(UInt16 libRefnum, MemHandle sockH, UInt16 /*inetHTTPA
   return inetErrConfigNotFound;
 }
 
-#define checkScheme(p, scheme, type) \
-   do { \
-     if (urlP->schemeEnum == inetSchemeUnknown) { \
-       UInt32 len = StrLen(scheme); \
-       if (!StrNCompare((char *)p, scheme, len)) { \
-         urlP->schemeEnum = type; \
-         if (urlP->schemeP) { \
-           MemMove(urlP->schemeP, p, urlP->schemeLen < len ? urlP->schemeLen : len); \
-         } else { \
-           urlP->schemeP = p; \
-         }  \
-         urlP->schemeLen = len; \
-         p += urlP->schemeLen; \
-       } \
-     } \
-   } while (0)
+static UInt8 *checkScheme(UInt8 *p, char *scheme, UInt16 type, INetURLType* urlP) {
+  UInt32 len;
+
+  if (urlP->schemeEnum == (UInt16)inetSchemeUnknown) {
+    len = StrLen(scheme) - 1;  // do not include the ':'
+    if (!StrNCompare((char *)p, scheme, len + 1)) {
+      urlP->schemeEnum = type;
+      if (urlP->schemeP) {
+        MemMove(urlP->schemeP, p, urlP->schemeLen < len ? urlP->schemeLen : len);
+      } else {
+        urlP->schemeP = p;
+      }
+      urlP->schemeLen = len;
+      p += urlP->schemeLen;
+    }
+  }
+
+  return p;
+}
 
 Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
    UInt32 len;
@@ -456,47 +694,74 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
      urlP->version = 0;
      urlP->schemeEnum = inetSchemeUnknown;
 
-     checkScheme(p, "http:",     inetSchemeHTTP);
-     checkScheme(p, "https:",    inetSchemeHTTPS);
-     checkScheme(p, "ftp:",      inetSchemeFTP);
-     checkScheme(p, "gopher:",   inetSchemeGopher);
-     checkScheme(p, "file:",     inetSchemeFile);
-     checkScheme(p, "news:",     inetSchemeNews);
-     checkScheme(p, "mailto:",   inetSchemeMailTo);
-     checkScheme(p, "palm:",     inetSchemePalm);
-     checkScheme(p, "palmcall:", inetSchemePalmCall);
-     checkScheme(p, "mac:",      inetSchemeMac);
+     p = checkScheme(p, "http:",     inetSchemeHTTP, urlP);
+     p = checkScheme(p, "https:",    inetSchemeHTTPS, urlP);
+     p = checkScheme(p, "ftp:",      inetSchemeFTP, urlP);
+     p = checkScheme(p, "gopher:",   inetSchemeGopher, urlP);
+     p = checkScheme(p, "file:",     inetSchemeFile, urlP);
+     p = checkScheme(p, "news:",     inetSchemeNews, urlP);
+     p = checkScheme(p, "mailto:",   inetSchemeMailTo, urlP);
+     p = checkScheme(p, "palm:",     inetSchemePalm, urlP);
+     p = checkScheme(p, "palmcall:", inetSchemePalmCall, urlP);
+     p = checkScheme(p, "mac:",      inetSchemeMac, urlP);
 
-     if (urlP->schemeEnum != inetSchemeUnknown) {
-       if ((s = (UInt8 *)StrChr((char *)p, '/')) != NULL) {
-         len = s - p;
-       } else {
+     urlP->usernameLen = 0;
+     urlP->passwordLen = 0;
+     urlP->paramLen = 0;
+     urlP->queryLen = 0;
+     urlP->fragLen = 0;
+     urlP->port = 0;
+
+     switch (urlP->schemeEnum) {
+       case inetSchemeFile:
+         urlP->hostnameLen = 0;
+
+         // XXX for some odd reason, the path component must include the ':' from the scheme
          len = StrLen((char *)p);
-       }
+         if (urlP->pathP) {
+           if (len) MemMove(urlP->pathP, p, urlP->pathLen < len ? urlP->pathLen : len);
+         } else {
+           urlP->pathP = p;
+         }
+         urlP->pathLen = len;
 
-       if (urlP->hostnameP) {
-         if (len) MemMove(urlP->hostnameP, p, urlP->hostnameLen < len ? urlP->hostnameLen : len);
-       } else {
-         urlP->hostnameP = p;
-       }
-       urlP->hostnameLen = len;
+         debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack file scheme \"%.*s\"", urlP->pathLen, urlP->pathP);
+         err = errNone;
+         break;
 
-       p += len;
-       len = StrLen((char *)p);
-       if (urlP->pathP) {
-         if (len) MemMove(urlP->pathP, p, urlP->pathLen < len ? urlP->pathLen : len);
-       } else {
-         urlP->pathP = p;
-       }
-       urlP->pathLen = len;
+       case inetSchemeHTTP:
+         if ((s = (UInt8 *)StrChr((char *)p, '/')) != NULL) {
+           len = s - p;
+         } else {
+           len = StrLen((char *)p);
+         }
 
-       urlP->port = 80;
-       urlP->usernameLen = 0;
-       urlP->passwordLen = 0;
-       urlP->paramLen = 0;
-       urlP->queryLen = 0;
-       urlP->fragLen = 0;
-       err = errNone;
+         if (urlP->hostnameP) {
+           if (len) MemMove(urlP->hostnameP, p, urlP->hostnameLen < len ? urlP->hostnameLen : len);
+         } else {
+           urlP->hostnameP = p;
+         }
+         urlP->hostnameLen = len;
+
+         p += len;
+         len = StrLen((char *)p);
+         if (urlP->pathP) {
+           if (len) MemMove(urlP->pathP, p, urlP->pathLen < len ? urlP->pathLen : len);
+         } else {
+           urlP->pathP = p;
+         }
+         urlP->pathLen = len;
+
+         urlP->port = inetPortHTTP;
+
+         debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack http scheme host \"%.*s\" path \"%.*s\" port %d",
+           urlP->hostnameLen, urlP->hostnameP, urlP->pathLen, urlP->pathP, urlP->port);
+         err = errNone;
+         break;
+
+       default:
+         debug(DEBUG_ERROR, "INetMgr", "INetLibURLCrack invalid scheme %d for \"%s\"", urlP->schemeEnum, (char *)urlTextP);
+         break;
      }
    }
 

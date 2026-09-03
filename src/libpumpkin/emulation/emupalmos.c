@@ -614,6 +614,7 @@ void decode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a, i;
   char buf[256];
+  INetEventType *inetEvent;
 
   MemSet(event, sizeof(EventType), 0);
 
@@ -813,8 +814,15 @@ void decode_event(uint32_t eventP, EventType *event) {
       event->data.frmObjectFocusLost.objectID = m68k_read_memory_16(eventP + 10);
       event->data.frmObjectFocusLost.dispatchHint = m68k_read_memory_32(eventP + 12);
       break;
+    case inetSockReadyEvent:
+      inetEvent = (INetEventType *)event;
+      inetEvent->data.inetSockReady.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+      inetEvent->data.inetSockReady.context = m68k_read_memory_32(eventP + 12);
+      inetEvent->data.inetSockReady.inputReady = m68k_read_memory_8(eventP + 16);
+      inetEvent->data.inetSockReady.outputReady = m68k_read_memory_8(eventP + 17);
+      break;
     default:
-      if (event->eType < firstUserEvent && event->eType != firstWebLibEvent+1) {
+      if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
@@ -844,6 +852,7 @@ void encode_event(uint32_t eventP, EventType *event) {
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a, i;
   char buf[256];
+  INetEventType *inetEvent;
 
   m68k_write_memory_16(eventP + 0, event->eType);
   m68k_write_memory_8 (eventP + 2, event->penDown);
@@ -1028,8 +1037,15 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_16(eventP +  10, event->data.frmObjectFocusLost.objectID);
       m68k_write_memory_32(eventP +  12, event->data.frmObjectFocusLost.dispatchHint);
       break;
+    case inetSockReadyEvent:
+      inetEvent = (INetEventType *)event;
+      m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockReady.sockH - ram));
+      m68k_write_memory_32(eventP +  12, inetEvent->data.inetSockReady.context);
+      m68k_write_memory_8(eventP +   16, inetEvent->data.inetSockReady.inputReady);
+      m68k_write_memory_8(eventP +   17, inetEvent->data.inetSockReady.outputReady);
+      break;
     default:
-      if (event->eType < firstUserEvent && event->eType != firstWebLibEvent+1) {
+      if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
         sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
@@ -1268,6 +1284,8 @@ void encode_INetURLType(uint32_t urlP, INetURLType *url) {
     m68k_write_memory_32(urlP + 2, url->schemeP ? (url->schemeP - ram) : 0);
     m68k_write_memory_16(urlP + 6, url->schemeLen);
     m68k_write_memory_16(urlP + 8, url->schemeEnum);
+    debug(DEBUG_INFO, "EmuPalmOS", "encode_INetURLType scheme 0x%08X %u \"%.*s\" %u",
+      (UInt32)(url->schemeP - ram), url->schemeLen, url->schemeLen, url->schemeP, url->schemeEnum);
 
     m68k_write_memory_32(urlP + 10, url->usernameP ? (url->usernameP - ram) : 0);
     m68k_write_memory_16(urlP + 14, url->usernameLen);
@@ -1282,6 +1300,8 @@ void encode_INetURLType(uint32_t urlP, INetURLType *url) {
 
     m68k_write_memory_32(urlP + 30, url->pathP ? (url->pathP - ram) : 0);
     m68k_write_memory_16(urlP + 34, url->pathLen);
+    debug(DEBUG_INFO, "EmuPalmOS", "encode_INetURLType path 0x%08X %u \"%.*s\"",
+      (UInt32)((url->pathP - ram)), url->pathLen, url->pathLen, url->pathP);
 
     m68k_write_memory_32(urlP + 36, url->paramP ? (url->paramP - ram) : 0);
     m68k_write_memory_16(urlP + 40, url->paramLen);
@@ -1414,6 +1434,38 @@ void encode_notify(uint32_t notifyP, SysNotifyParamType *notify) {
     m68k_write_memory_32(notifyP + 12, userDataP);
     m68k_write_memory_8(notifyP +  16, notify->handled);
     m68k_write_memory_8(notifyP +  17, 0); // reserved2
+  }
+}
+
+void decode_ExgSocketType(uint32_t sockP, ExgSocketType *sock) {
+  if (sockP && sock) {
+    char *ram = pumpkin_heap_base();
+    sock->libraryRef = m68k_read_memory_16(sockP + 0);
+    sock->socketRef = m68k_read_memory_32(sockP + 2);
+    sock->target = m68k_read_memory_32(sockP + 6);
+    sock->count = m68k_read_memory_32(sockP + 10);
+    sock->length = m68k_read_memory_32(sockP + 14);
+    sock->time = m68k_read_memory_32(sockP + 18);
+    sock->appData = m68k_read_memory_32(sockP + 22);
+    sock->goToCreator = m68k_read_memory_32(sockP + 26);
+    sock->goToParams.dbCardNo = m68k_read_memory_16(sockP + 30);
+    sock->goToParams.dbID = m68k_read_memory_32(sockP + 32);
+    sock->goToParams.recordNum = m68k_read_memory_16(sockP + 36);
+    sock->goToParams.uniqueID = m68k_read_memory_32(sockP + 38);
+    sock->goToParams.matchCustom = m68k_read_memory_32(sockP + 42);
+    uint16_t attr = m68k_read_memory_16(sockP + 46);
+    sock->localMode  = (attr & 0x8000) != 0;
+    sock->packetMode = (attr & 0x4000) != 0;
+    sock->noGoTo     = (attr & 0x2000) != 0;
+    sock->noStatus   = (attr & 0x1000) != 0;
+    sock->preview    = (attr & 0x0800) != 0;
+    sock->reserved   = 0;
+    uint32_t description = m68k_read_memory_32(sockP + 48);
+    uint32_t type = m68k_read_memory_32(sockP + 52);
+    uint32_t name = m68k_read_memory_32(sockP + 56);
+    sock->description = description ? ram + description : NULL;
+    sock->type = type ? ram + type : NULL;
+    sock->name = name ? ram + name : NULL;
   }
 }
 

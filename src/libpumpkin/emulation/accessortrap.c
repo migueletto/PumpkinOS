@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
+#include <INetMgr.h>
 #include <FrmGlue.h>
 #include <CtlGlue.h>
 #include <FldGlue.h>

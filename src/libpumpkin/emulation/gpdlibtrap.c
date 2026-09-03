@@ -2,6 +2,7 @@
 #include <PalmCompatibility.h>
 #include <VFSMgr.h>
 #include <GPDLib.h>
+#include <INetMgr.h>
 
 #include "sys.h"
 #ifdef ARMEMU

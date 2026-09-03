@@ -59,6 +59,7 @@ BEGIN {
   print "#include <PalmOS.h>" >> emusrc;
   print "#include <VFSMgr.h>" >> emusrc;
   print "#include <GPSLib.h>" >> emusrc;
+  print "#include <INetMgr.h>" >> emusrc;
   print "" >> emusrc;
   print "#ifdef ARMEMU" >> emusrc
   print "#include \"armemu.h\"" >> emusrc

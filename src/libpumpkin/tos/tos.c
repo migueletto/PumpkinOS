@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <VFSMgr.h>
+#include <INetMgr.h>
 
 #include "thread.h"
 #include "bytes.h"
