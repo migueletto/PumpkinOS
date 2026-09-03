@@ -2284,6 +2284,11 @@ static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
         debug(DEBUG_INFO, "EmuPalmOS", "getParamBlock sysAppLaunchCmdGoToURL [%s]", s);
       }
       break;
+    case sysAppLaunchCmdOpenDB:
+      p = pumpkin_heap_alloc(6, "paramBlock");
+      a = p - ram;
+      encode_launch(launchCode, a, (launch_union_t *)param);
+      break;
     case sysAppLaunchCmdSystemReset:
       p = pumpkin_heap_alloc(2, "paramBlock");
       a = p - ram;

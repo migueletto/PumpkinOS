@@ -1652,10 +1652,13 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
                 SysAppLaunchEx(0, data->item[i].dbID, flags, sysAppLaunchCmdNormalLaunch, NULL, &result, data->item[i].pilot_main);
               } else if (data->item[i].type == sysFileTpqa) {
                 if (DmGetNextDatabaseByTypeCreator(true, &searchState, sysFileTApplication, sysFileCClipper, true, &cardNo, &dbID) == errNone) {
-                  debug(DEBUG_TRACE, "Launcher", "launching Clipper for \"%s\"", data->item[i].name);
-                  //SysAppLaunch(0, dbID, 0, sysAppLaunchCmdGoToURL, data->item[i].name, &result);
+                  SysAppLaunchCmdOpenDBType param;
+                  debug(DEBUG_TRACE, "Launcher", "launching Clipper for \"%s\" dbID 0x%08X", data->item[i].name, data->item[i].dbID);
+                  param.cardNo = 0;
+                  param.dbID = data->item[i].dbID;
+                  SysAppLaunch(0, dbID, 0, sysAppLaunchCmdOpenDB, &param, &result);
                   // XXX how do I launch Clipper and tell it to open a pqa ?
-                  SysAppLaunch(0, dbID, 0, sysAppLaunchCmdNormalLaunch, NULL, &result);
+                  //SysAppLaunch(0, dbID, 0, sysAppLaunchCmdNormalLaunch, NULL, &result);
                 }
               }
               printApp(data, &data->item[i], x, y, false);

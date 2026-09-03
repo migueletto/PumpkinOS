@@ -37,3 +37,9 @@ name sysAppLaunchCmdPanelCalledFromApp
 struct PanelAppType
 field char name 32
 end
+
+name sysAppLaunchCmdOpenDB
+struct SysAppLaunchCmdOpenDBType
+field UInt16 cardNo
+field LocalID dbID
+end
