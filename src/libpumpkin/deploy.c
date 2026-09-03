@@ -116,7 +116,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
   uint8_t *p;
   int r = -1;
 
-  if (path && (ext = getext(path)) != NULL && (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb"))) {
+  if (path && (ext = getext(path)) != NULL && (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb") || !sys_strcasecmp(ext, "pqa"))) {
     if ((f = vfs_open(session, path, VFS_READ)) != NULL) {
       size = vfs_seek(f, 0, 1);
       hsize = 78;
@@ -214,7 +214,7 @@ int pumpkin_deploy_files_session(vfs_session_t *session, char *path) {
         if (ext == NULL) continue;
         sys_memset(buf, 0, sizeof(buf));
         sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
-        if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb")) {
+        if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb") || !sys_strcasecmp(ext, "pqa")) {
           rr = pumpkin_deploy_file_session(session, buf);
           vfs_unlink(session, buf);
           if (rr == 0) {
