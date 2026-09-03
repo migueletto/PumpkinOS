@@ -16,8 +16,20 @@ typedef struct {
   UInt32 flags;
   DmOpenRef cacheRef;
   UInt32 cacheSize;
-  Boolean enableCookies;
+  UInt32 maxRespSize;
+  UInt32 convAlgorithm;
+  UInt32 contentWidth;
+  UInt8 enableCookies;
+  UInt8 graphicsSel;
 } INetLibData;
+
+typedef struct {
+  UInt8 *urlP;
+  UInt8 *cacheIndexURLP;
+  Int32 timeout;
+  UInt16 flags;
+  INetURLType url;
+} INetLibSocketData;
 
 Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRef, UInt32 cacheSize, MemHandle *inetHP) {
   INetLibData *data;
@@ -37,6 +49,8 @@ Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRe
         MemHandleUnlock(h);
         err = errNone;
       }
+    } else {
+      MemHandleFree(h);
     }
   } else {
     debug(DEBUG_ERROR, "INetMgr", "config %u not supported or null inetHP %p", config, inetHP);
@@ -141,11 +155,11 @@ static Err INetLibSettingSetUInt32(void *buf, UInt16 bufLen, UInt32 *valueP) {
   return err;
 }
 
-static Err INetLibSettingSetBoolean(void *buf, UInt16 bufLen, Boolean *valueP) {
+static Err INetLibSettingSetUInt8(void *buf, UInt16 bufLen, UInt8 *valueP) {
   Err err = inetErrSettingSizeInvalid;
 
   if (buf && bufLen == 1 && valueP) {
-    get1(valueP, (uint8_t *)buf, 0);
+    *valueP = *((uint8_t *)buf);
     err = errNone;
   }
 
@@ -241,19 +255,37 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
         case inetSettingNetLibConfig:        // (RW) UInt32, Which NetLib config to use.
         case inetSettingRadioID:             // (R)  UInt32[2], the 64-bit radio ID
         case inetSettingBaseStationID:       // (R)  UInt32, the radio base station ID
+          break;
         case inetSettingMaxRspSize:          // (W) UInt32 (in bytes)
+          if ((err = INetLibSettingSetUInt32(bufP, bufLen, &data->maxRespSize)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet maxRespSize=%u", data->maxRespSize);
+          }
+          break;
         case inetSettingConvAlgorithm:       // (W) UInt32 (CTPConvEnum)
+          if ((err = INetLibSettingSetUInt32(bufP, bufLen, &data->convAlgorithm)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet convAlgorithm=%u", data->convAlgorithm);
+          }
+          break;
         case inetSettingContentWidth:        // (W) UInt32 (in pixels)
+          if ((err = INetLibSettingSetUInt32(bufP, bufLen, &data->contentWidth)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet contentWidth=%u", data->contentWidth);
+          }
+          break;
         case inetSettingContentVersion:      // (W) UInt32 Content version (encoder version)
         case inetSettingNoPersonalInfo:      // (RW) UInt32 send no deviceID/zipcode
         case inetSettingUserName:
+          break;
         case inetSettingGraphicsSel:         // (W) UInt8 (User Graphics selection)
+          if ((err = INetLibSettingSetUInt8(bufP, bufLen, &data->graphicsSel)) == errNone) {
+            debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet graphicsSel=%u", data->graphicsSel);
+          }
+          break;
         case inetSettingTransportType:       // (RW) UInt32, INetTransportEnum
         case inetSettingServerBits1:         // (RW) UInt32, bits sent by the server over ctp
         case inetSettingSendRawLocationInfo: // (W) Boolean, make the handheld send its Raw Location information.
           break;
         case inetSettingEnableCookies:       // (RW) Boolean
-          if ((err = INetLibSettingSetBoolean(bufP, bufLen, &data->enableCookies)) == errNone) {
+          if ((err = INetLibSettingSetUInt8(bufP, bufLen, &data->enableCookies)) == errNone) {
             debug(DEBUG_INFO, "INetMgr", "INetLibSettingSet enableCookies=%u", data->enableCookies);
           }
           break;
@@ -290,7 +322,28 @@ void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, I
 }
 
 Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheIndexURLP, MemHandle *sockHP, Int32 timeout, UInt16 flags) {
-  return inetErrConfigNotFound;
+  MemHandle h;
+  INetLibSocketData *data;
+  Err err = inetErrParamsInvalid;
+
+  if (inetH && urlP && sockHP) {
+    if ((h = MemHandleNew(sizeof(INetLibSocketData))) != NULL) {
+      if ((data = MemHandleLock(h)) != NULL) {
+        data->urlP = (UInt8 *)StrDup((char *)urlP);
+        data->cacheIndexURLP = cacheIndexURLP ? (UInt8 *)StrDup((char *)cacheIndexURLP) : NULL;
+        data->timeout = timeout;
+        data->flags = flags;
+        INetLibURLCrack(libRefnum, urlP, &data->url);
+        MemHandleUnlock(h);
+        *sockHP = h;
+        err = errNone;
+      }
+    } else {
+      MemHandleFree(h);
+    }
+  }
+
+  return err;
 }
 
 Err INetLibCTPSend(UInt16 libRefnum, MemHandle inetH, MemHandle *sockHP, UInt8 *writeP, UInt32 writelen, Int32 timeout, UInt16 ctpCommand) {
@@ -318,7 +371,38 @@ Err INetLibSockStatus(UInt16 libRefnum, MemHandle socketH, UInt16 *statusP, Err*
 }
 
 Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSockSettingEnum*/ setting, void *bufP, UInt16 *bufLenP) {
-  return inetErrConfigNotFound;
+  INetLibSocketData *data;
+  Err err = inetErrParamsInvalid;
+
+  if (socketH && bufP && bufLenP) {
+    if ((data = MemHandleLock(socketH)) != NULL) {
+      switch (setting) {
+        case inetSockSettingScheme:             // (R)  UInt32 INetSchemeEnum (0)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, data->url.schemeEnum);
+          break;
+        case inetSockSettingSockContext:        // (RW) UInt32 (1)
+        case inetSockSettingCompressionType:    // (R)  Char[] (2)
+        case inetSockSettingCompressionTypeID:  // (R)  UInt32 (INetCompressionTypeEnum) (3)
+        case inetSockSettingContentType:        // (R)  Char[] (4)
+        case inetSockSettingContentTypeID:      // (R)  UInt32 (INetContentTypeEnum) (5)
+        case inetSockSettingData:               // (R)  UInt32 pointer to data (6)
+        case inetSockSettingDataHandle:         // (R)  UInt32 handle to data (7)
+        case inetSockSettingDataOffset:         // (R)  UInt32 offset to data from handle (8)
+        case inetSockSettingTitle:              // (RW) Char[] (9)
+        case inetSockSettingURL:                // (R)  Char[] (10)
+        case inetSockSettingIndexURL:           // (RW) Char[] (11)
+        case inetSockSettingFlags:              // (W)  UInt16 one or more of inetOpenURLFlagXXX flags (12)
+        case inetSockSettingReadTimeout:        // (RW) UInt32 Read timeout in ticks (13)
+        case inetSockSettingContentVersion:     // (R)  UInt32 version number for content (14)
+          break;
+        default:
+          break;
+      }
+      MemHandleUnlock(socketH);
+    }
+  }
+
+  return err;
 }
 
 Err INetLibSockSettingSet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSockSettingEnum*/ setting, void *bufP, UInt16 bufLen) {
@@ -363,7 +447,8 @@ Err INetLibSockHTTPAttrGet(UInt16 libRefnum, MemHandle sockH, UInt16 /*inetHTTPA
    } while (0)
 
 Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
-   UInt8 *p;
+   UInt32 len;
+   UInt8 *p, *s;
    Err err = inetErrParamsInvalid;
 
    if (urlTextP && urlP) {
@@ -383,6 +468,34 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
      checkScheme(p, "mac:",      inetSchemeMac);
 
      if (urlP->schemeEnum != inetSchemeUnknown) {
+       if ((s = (UInt8 *)StrChr((char *)p, '/')) != NULL) {
+         len = s - p;
+       } else {
+         len = StrLen((char *)p);
+       }
+
+       if (urlP->hostnameP) {
+         if (len) MemMove(urlP->hostnameP, p, urlP->hostnameLen < len ? urlP->hostnameLen : len);
+       } else {
+         urlP->hostnameP = p;
+       }
+       urlP->hostnameLen = len;
+
+       p += len;
+       len = StrLen((char *)p);
+       if (urlP->pathP) {
+         if (len) MemMove(urlP->pathP, p, urlP->pathLen < len ? urlP->pathLen : len);
+       } else {
+         urlP->pathP = p;
+       }
+       urlP->pathLen = len;
+
+       urlP->port = 80;
+       urlP->usernameLen = 0;
+       urlP->passwordLen = 0;
+       urlP->paramLen = 0;
+       urlP->queryLen = 0;
+       urlP->fragLen = 0;
        err = errNone;
      }
    }
