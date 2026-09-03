@@ -36,7 +36,7 @@ typedef struct {
   UInt16 flags;
   INetURLType url;
   MemHandle dataH;
-  UInt32 dataSize, dataOffset;
+  UInt32 dataOffset;
   union {
     FileRef f;
   } fd;
@@ -449,8 +449,7 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
                          StrNCopy(path, (char *)url.pathP + 1, url.pathLen - 1);
                          if (VFSFileOpen(0, path, vfsModeRead, &sockData->fd.f) == errNone) {
                            debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen file \"%s\" fileRef %p", path, sockData->fd.f);
-                           sockData->dataSize = 1024;
-                           sockData->dataH = MemHandleNew(sockData->dataSize);
+                           sockData->dataH = MemHandleNew(1024);
                            *sockHP = sockHandle;
                            err = errNone;
                          }
@@ -557,10 +556,7 @@ Err INetLibSockRead(UInt16 libRefnum, MemHandle sockHandle, void *bufP, UInt32 r
               debug(DEBUG_INFO, "INetMgr", "INetLibSockRead fileRef %p requested %u bytes, read %u bytes", sockData->fd.f, reqBytes, *actBytesP);
               if (*actBytesP > 0) {
                 len = *actBytesP;
-                if (sockData->dataOffset + len > sockData->dataSize) {
-                  sockData->dataSize = sockData->dataOffset + len;
-                  MemHandleResize(sockData->dataH, sockData->dataSize);
-                }
+                MemHandleResize(sockData->dataH, sockData->dataOffset + len);
                 if ((p = MemHandleLock(sockData->dataH)) != NULL) {
                   MemMove(p + sockData->dataOffset, bufP, len);
                   sockData->dataOffset += len;
