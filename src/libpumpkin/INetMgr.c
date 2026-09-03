@@ -663,7 +663,7 @@ Err INetLibSockHTTPAttrGet(UInt16 libRefnum, MemHandle sockH, UInt16 /*inetHTTPA
 static UInt8 *checkScheme(UInt8 *p, char *scheme, UInt16 type, INetURLType* urlP) {
   UInt32 len;
 
-  if (urlP->schemeEnum == (UInt16)inetSchemeUnknown) {
+  if (urlP->schemeEnum == (UInt16)inetSchemeDefault) {
     len = StrLen(scheme) - 1;  // do not include the ':'
     if (!StrNCompare((char *)p, scheme, len + 1)) {
       urlP->schemeEnum = type;
@@ -688,7 +688,7 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
    if (urlTextP && urlP) {
      p = urlTextP;
      urlP->version = 0;
-     urlP->schemeEnum = inetSchemeUnknown;
+     urlP->schemeEnum = inetSchemeDefault;
 
      p = checkScheme(p, "http:",     inetSchemeHTTP, urlP);
      p = checkScheme(p, "https:",    inetSchemeHTTPS, urlP);
@@ -709,7 +709,9 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
      urlP->port = 0;
 
      switch (urlP->schemeEnum) {
+       case inetSchemeDefault:
        case inetSchemeFile:
+         urlP->schemeEnum = inetSchemeFile;
          urlP->hostnameLen = 0;
 
          // XXX for some odd reason, the path component must include the ':' from the scheme

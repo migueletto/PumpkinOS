@@ -2676,6 +2676,7 @@ static uint32_t pumpkin_launch_request(LocalID dbID, char *name, UInt16 cmd, lau
     case sysAppLaunchCmdPanelCalledFromApp:
       break;
     case sysAppLaunchCmdGoTo:
+    case sysAppLaunchCmdGoToURL:
       // XXX set sysAppLaunchFlagNewGlobals so that the app initializes properly
       creq.data.launch.flags |= sysAppLaunchFlagNewGlobals;
       break;

@@ -419,14 +419,16 @@ static void launcherResetItems(launcher_data_t *data) {
 static void launcherScanApps(launcher_data_t *data) {
   DmSearchStateType stateInfo;
   Boolean newSearch;
-  UInt32 creator;
+  UInt32 type, creator;
   UInt16 cardNo, attr;
+  LocalID appInfoID;
   Coord bw, bh;
   DmOpenRef dbRef;
-  MemHandle nameRes, iconRes;
+  MemHandle nameRes, iconRes, appInfoH;
   RectangleType rect;
   BitmapType *iconBmp;
   WinHandle old;
+  UInt8 *appInfo;
   char *s;
   int i;
 
@@ -436,13 +438,13 @@ static void launcherScanApps(launcher_data_t *data) {
   data->cellHeight = APP_CELL_HEIGHT;
 
   for (newSearch = true, i = 0; i < MAX_ITEMS; newSearch = false) {
-    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTApplication, 0, false, &cardNo, &data->item[i].dbID) != errNone) {
+    if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, 0, 0, false, &cardNo, &data->item[i].dbID) != errNone) {
       break;
     }
-    if (DmDatabaseInfo(cardNo, data->item[i].dbID, data->item[i].name, &attr, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator) == errNone) {
-      if (StrCompare(data->item[i].name, AppName) && (attr & dmHdrAttrResDB) && !(attr & dmHdrAttrHidden)) {
+    if (DmDatabaseInfo(cardNo, data->item[i].dbID, data->item[i].name, &attr, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
+      if (type == sysFileTApplication && StrCompare(data->item[i].name, AppName) && (attr & dmHdrAttrResDB) && !(attr & dmHdrAttrHidden)) {
         debug(DEBUG_TRACE, "Launcher", "found app \"%s\"", data->item[i].name);
-        data->item[i].type = sysFileTApplication;
+        data->item[i].type = type;
         data->item[i].creator = creator;
         data->item[i].rsrc = true;
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
@@ -484,6 +486,57 @@ static void launcherScanApps(launcher_data_t *data) {
             DmReleaseResource(iconRes);
           }
           i++;
+          DmCloseDatabase(dbRef);
+        }
+      } else if (type == sysFileTpqa && creator == sysFileCClipper && !(attr & dmHdrAttrResDB) && !(attr & dmHdrAttrHidden)) {
+        debug(DEBUG_TRACE, "Launcher", "found pqa \"%s\"", data->item[i].name);
+        data->item[i].type = type;
+        data->item[i].creator = creator;
+        data->item[i].rsrc = false;
+        if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
+          appInfoID = DmGetAppInfoID(dbRef);
+          if ((appInfoH = MemLocalIDToHandle(appInfoID)) != NULL) {
+            if ((appInfo = MemHandleLock(appInfoH)) != NULL) {
+              UInt32 signature, len, offset = 0;
+              UInt16 hdrVersion, encVersion, verStrWords, pqaTitleWords, iconWords;
+              offset += get4b(&signature, appInfo, offset);
+              offset += get2b(&hdrVersion, appInfo, offset);
+              offset += get2b(&encVersion, appInfo, offset);
+              offset += get2b(&verStrWords, appInfo, offset);
+              offset += verStrWords * 2; // skip version
+              offset += get2b(&pqaTitleWords, appInfo, offset);
+              len = pqaTitleWords * 2;
+              if (len >= dmDBNameLength) len = dmDBNameLength-1;
+              s = (char *)appInfo + offset;
+              debug(DEBUG_TRACE, "Launcher", "name \"%.*s\" for pqa \"%s\"", len, s, data->item[i].name);
+              StrNCopy(data->item[i].name, s, len);
+              offset += pqaTitleWords * 2;
+              offset += get2b(&iconWords, appInfo, offset);
+              iconBmp = (BitmapType *)(appInfo + offset);
+              BmpGetDimensions(iconBmp, &bw, &bh, NULL);
+              debug(DEBUG_TRACE, "Launcher", "icon for pqa \"%s\" is %dx%d", data->item[i].name, bh, bh);
+              data->item[i].bmpHeight = bh < 22 ? bh : 22; // max allowed icon height
+              RctSetRectangle(&rect, 0, 0, data->cellWidth, bh);
+
+              data->item[i].iconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
+              old = WinSetDrawWindow(data->item[i].iconWh);
+              WinEraseRectangle(&rect, 0);
+              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
+              WinSetDrawWindow(old);
+  
+              data->item[i].invIconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
+              old = WinSetDrawWindow(data->item[i].invIconWh);
+              setBackColor(BLACK);
+              WinEraseRectangle(&rect, 0);
+              setBackColor(WHITE);
+              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
+              WinSetDrawWindow(old);
+
+              offset += iconWords * 2;
+              MemHandleUnlock(appInfoH);
+              i++;
+            }
+          }
           DmCloseDatabase(dbRef);
         }
       }
@@ -1439,10 +1492,11 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   FormType *frm;
   FontID old;
   UInt16 fc, tc, bc;
-  UInt16 flags;
+  UInt16 flags, cardNo;
   UInt32 result;
   LocalID dbID;
   DmOpenRef myDbRef;
+  DmSearchStateType searchState;
   int i, x, y, iw, ih, num, ncols, nrows, col, row, wgad, hgad, plen, len;
 
   debug(DEBUG_TRACE, "Launcher", "ItemsGadgetCallback %d", cmd);
@@ -1593,8 +1647,17 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
               printApp(data, &data->item[i], x, y, true);
             } else {
               data->top = false;
-              flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
-              SysAppLaunchEx(0, data->item[i].dbID, flags, sysAppLaunchCmdNormalLaunch, NULL, &result, data->item[i].pilot_main);
+              if (data->item[i].type == sysFileTApplication) {
+                flags = sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp;
+                SysAppLaunchEx(0, data->item[i].dbID, flags, sysAppLaunchCmdNormalLaunch, NULL, &result, data->item[i].pilot_main);
+              } else if (data->item[i].type == sysFileTpqa) {
+                if (DmGetNextDatabaseByTypeCreator(true, &searchState, sysFileTApplication, sysFileCClipper, true, &cardNo, &dbID) == errNone) {
+                  debug(DEBUG_TRACE, "Launcher", "launching Clipper for \"%s\"", data->item[i].name);
+                  //SysAppLaunch(0, dbID, 0, sysAppLaunchCmdGoToURL, data->item[i].name, &result);
+                  // XXX how do I launch Clipper and tell it to open a pqa ?
+                  SysAppLaunch(0, dbID, 0, sysAppLaunchCmdNormalLaunch, NULL, &result);
+                }
+              }
               printApp(data, &data->item[i], x, y, false);
             }
           }
