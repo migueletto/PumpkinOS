@@ -616,7 +616,8 @@ typedef enum {
 #define		inetLastEvent						(firstINetLibEvent+1)
 
 typedef struct {
-	UInt16			eType;
+	//UInt16			eType;
+	eventsEnum			eType;
 	Boolean        penDown;
 	UInt8				reserved;
 	Int16          screenX;
