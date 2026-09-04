@@ -13,27 +13,27 @@ Err ExgConnect(ExgSocketType *socketP) {
 }
 
 static void printSocket(ExgSocketType *socketP) {
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut libraryRef %u", socketP->libraryRef);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut socketRef %u", socketP->socketRef);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut target %u", socketP->target);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut count %u", socketP->count);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut length %u", socketP->length);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut time %u", socketP->time);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut appData %u", socketP->appData);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToCreator %u", socketP->goToCreator);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToParams.dbCardNo %u", socketP->goToParams.dbCardNo);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToParams.dbID 0x%08X", socketP->goToParams.dbID);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToParams.recordNum %u", socketP->goToParams.recordNum);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToParams.uniqueID 0x%08X", socketP->goToParams.uniqueID);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut goToParams.matchCustom %u", socketP->goToParams.matchCustom);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut localMode %d", socketP->localMode);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut packetMode %d", socketP->packetMode);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut noGoTo %d", socketP->noGoTo);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut noStatus %d", socketP->noStatus);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut preview %d", socketP->preview);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut description \"%s\"", socketP->description);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut type \"%s\"", socketP->type);
-  debug(DEBUG_INFO, "ExgMgr", "ExgPut name \"%s\"", socketP->name);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType libraryRef %u", socketP->libraryRef);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType socketRef %u", socketP->socketRef);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType target %u", socketP->target);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType count %u", socketP->count);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType length %u", socketP->length);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType time %u", socketP->time);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType appData %u", socketP->appData);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToCreator %u", socketP->goToCreator);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToParams.dbCardNo %u", socketP->goToParams.dbCardNo);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToParams.dbID 0x%08X", socketP->goToParams.dbID);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToParams.recordNum %u", socketP->goToParams.recordNum);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToParams.uniqueID 0x%08X", socketP->goToParams.uniqueID);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType goToParams.matchCustom %u", socketP->goToParams.matchCustom);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType localMode %d", socketP->localMode);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType packetMode %d", socketP->packetMode);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType noGoTo %d", socketP->noGoTo);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType noStatus %d", socketP->noStatus);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType preview %d", socketP->preview);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType description \"%s\"", socketP->description);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType type \"%s\"", socketP->type);
+  debug(DEBUG_INFO, "ExgMgr", "ExgSocketType name \"%s\"", socketP->name);
 }
 
 // ExgPut: initiates the transfer of data to the destination device.
