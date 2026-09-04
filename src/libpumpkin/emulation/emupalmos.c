@@ -822,7 +822,13 @@ void decode_event(uint32_t eventP, EventType *event) {
       inetEvent->data.inetSockReady.outputReady = m68k_read_memory_8(eventP + 17);
       break;
     default:
-      if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
+      if (event->eType == inetSockStatusChangeEvent) {
+        inetEvent = (INetEventType *)event;
+        inetEvent->data.inetSockStatusChange.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+        inetEvent->data.inetSockStatusChange.context = m68k_read_memory_32(eventP + 12);
+        inetEvent->data.inetSockStatusChange.status = m68k_read_memory_16(eventP + 16);
+        inetEvent->data.inetSockStatusChange.sockErr = m68k_read_memory_16(eventP + 18);
+      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
@@ -1045,7 +1051,13 @@ void encode_event(uint32_t eventP, EventType *event) {
       m68k_write_memory_8(eventP +   17, inetEvent->data.inetSockReady.outputReady);
       break;
     default:
-      if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
+      if (event->eType == inetSockStatusChangeEvent) {
+        inetEvent = (INetEventType *)event;
+        m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockStatusChange.sockH - ram));
+        m68k_write_memory_32(eventP +  12, inetEvent->data.inetSockStatusChange.context);
+        m68k_write_memory_16(eventP +  16, inetEvent->data.inetSockStatusChange.status);
+        m68k_write_memory_16(eventP +  18, inetEvent->data.inetSockStatusChange.sockErr);
+      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
         sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {

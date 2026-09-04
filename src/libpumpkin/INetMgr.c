@@ -34,6 +34,7 @@ typedef struct {
   Int32 timeout;
   UInt16 flags;
   INetURLType url;
+  UInt32 dataOffset;
   MemHandle dataH;
   DmOpenRef dbRef;
   UInt16 index;
@@ -356,6 +357,35 @@ Err INetLibSettingSet(UInt16 libRefnum, MemHandle inetH, UInt16 /*INetSettingEnu
   return err;
 }
 
+#if 0
+status:
+  inetStatusNew                 // just opened
+  inetStatusResolvingName       // looking up host address
+  inetStatusNameResolved        // found host address
+  inetStatusConnecting          // connecting to host
+  inetStatusConnected           // connected to host
+  inetStatusSendingRequest      // sending request
+  inetStatusWaitingForResponse  // waiting for response
+  inetStatusReceivingResponse   // receiving response
+  inetStatusResponseReceived    // response received
+  inetStatusClosingConnection   // closing connection
+  inetStatusClosed              // closed
+  inetStatusAcquiringNetwork    // network temporarily unreachable; socket on hold
+#endif
+
+static void addSockStatusChangedEvent(MemHandle sock, UInt16 status) {
+  INetEventType event;
+
+  MemSet(&event, sizeof(INetEventType), 0);
+  event.eType = inetSockStatusChangeEvent;
+  event.data.inetSockStatusChange.sockH = sock;
+  event.data.inetSockStatusChange.context = 0; // not used
+  event.data.inetSockStatusChange.status = status;
+  event.data.inetSockStatusChange.sockErr = 0;
+
+  EvtAddEventToQueue((EventType *)&event);
+}
+
 void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, Int32 timeout) {
   INetLibData *data;
   INetLibSocketData *sockData;
@@ -379,11 +409,15 @@ void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, I
             if ((sockData = MemHandleLock(data->sockets[i])) != NULL) {
               switch (sockData->url.schemeEnum) {
                 case inetSchemeFile:
-                  eventP->eType = inetSockReadyEvent;
-                  eventP->data.inetSockReady.sockH = data->sockets[i];
-                  eventP->data.inetSockReady.context = 0; // not used
-                  eventP->data.inetSockReady.inputReady = true;
-                  eventP->data.inetSockReady.outputReady = false;
+                  if (sockData->dataH) {
+                    if (sockData->dataOffset < MemHandleSize(sockData->dataH)) {
+                      eventP->eType = inetSockReadyEvent;
+                      eventP->data.inetSockReady.sockH = data->sockets[i];
+                      eventP->data.inetSockReady.context = 0; // not used
+                      eventP->data.inetSockReady.inputReady = true;
+                      eventP->data.inetSockReady.outputReady = false;
+                    }
+                  }
                   break;
                 default:
                   debug(DEBUG_ERROR, "INetMgr", "INetLibGetEvent invalid scheme %u", sockData->url.schemeEnum);
@@ -407,13 +441,17 @@ void INetLibGetEvent(UInt16 libRefnum, MemHandle inetH, INetEventType *eventP, I
 }
 
 Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheIndexURLP, MemHandle *sockHP, Int32 timeout, UInt16 flags) {
-  MemHandle sockHandle = NULL;
+  MemHandle h, sockHandle = NULL;
   INetURLType url;
   INetLibData *data;
   INetLibSocketData *sockData;
   LocalID dbID;
-  UInt32 type, creator, i;
-  char *path;
+  UInt32 len, type, creator, oldLength, newLength, i;
+  uint32_t urlOffset, dataOffset, uncompDataSize;
+  uint16_t urlLength, dataLength;
+  uint8_t contentType, compressionType, contentFlags;
+  uint8_t *rec, *p;
+  char *path, *s;
   Err err = inetErrParamsInvalid;
 
   if (inetH && urlP && sockHP) {
@@ -443,7 +481,53 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
                              if (type == sysFileTpqa && creator == sysFileCClipper) {
                                if ((sockData->dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
                                  debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen file \"%s\" dbRef %p", path, sockData->dbRef);
-                                 sockData->dataH = MemHandleNew(1024);
+
+                                 if ((h = DmGetRecord(sockData->dbRef, sockData->index)) != NULL) {
+                                   if ((rec = MemHandleLock(h)) != NULL) {
+                                     len = MemHandleSize(h);
+                                     get4b(&urlOffset, rec, 0);
+                                     get2b(&urlLength, rec, 4);
+                                     get4b(&dataOffset, rec, 6);
+                                     get2b(&dataLength, rec, 10);
+                                     contentType = rec[12];
+                                     compressionType = rec[13];
+                                     get4b(&uncompDataSize, rec, 14);
+                                     contentFlags = rec[18];
+                                     debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen urlOffset=%u, urlLength=%u, dataOffset=%u, dataLength=%u",
+                                       urlOffset, urlLength, dataOffset, dataLength);
+                                     debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen contentType=%u, compressionType=%u, uncompDataSize=%u, flags=0x%02X",
+                                       contentType, compressionType, uncompDataSize, contentFlags);
+                                     if (urlLength > 0) {
+                                       debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen url=\"%.*s\"", urlLength, (char *)rec + urlOffset);
+                                       oldLength = StrLen((char *)sockData->urlP);
+                                       newLength = oldLength + 1 + urlLength + 1;
+                                       if ((s = MemPtrNew(newLength)) != NULL) {
+                                         StrCopy(s, (char *)sockData->urlP);
+                                         s[oldLength] = '/';
+                                         StrNCopy(s + oldLength + 1, (char *)rec + urlOffset, urlLength);
+                                         s[newLength - 1] = 0;
+                                         MemPtrFree(sockData->urlP);
+                                         sockData->urlP = (UInt8 *)s;
+                                       }
+                                       debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen complete url=\"%s\"", (char *)sockData->urlP);
+                                     }
+                                     if (dataLength > 0) {
+                                       debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen data:");
+                                       debug_bytes(DEBUG_INFO, "INetMgr", rec + dataOffset, dataLength);
+                                     }
+                                     // XXX should dataH contain the whole record or just the data section ?
+                                     if ((sockData->dataH = MemHandleNew(len)) != NULL) {
+                                       if ((p = MemHandleLock(sockData->dataH)) != NULL) {
+                                         MemMove(p, rec, len);
+                                         MemHandleUnlock(sockData->dataH);
+                                         debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen read %u bytes from record %d into data handle", len, sockData->index);
+                                       }
+                                     }
+                                     MemHandleUnlock(h);
+                                   }
+                                   DmReleaseRecord(sockData->dbRef, sockData->index, false);
+                                 }
+
                                  *sockHP = sockHandle;
                                  data->numSockets++;
                                  err = errNone;
@@ -472,15 +556,19 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
     }
   }
 
-  if (err && sockHandle) {
-    if ((sockData = MemHandleLock(sockHandle)) != NULL) {
-      if (sockData->urlP) MemPtrFree(sockData->urlP);
-      if (sockData->cacheIndexURLP) MemPtrFree(sockData->cacheIndexURLP);
-      if (sockData->dataH) MemHandleFree(sockData->dataH);
-      if (sockData->dbRef) DmCloseDatabase(sockData->dbRef);
-      MemHandleUnlock(sockHandle);
+  if (err) {
+    if (sockHandle) {
+      if ((sockData = MemHandleLock(sockHandle)) != NULL) {
+        if (sockData->urlP) MemPtrFree(sockData->urlP);
+        if (sockData->cacheIndexURLP) MemPtrFree(sockData->cacheIndexURLP);
+        if (sockData->dataH) MemHandleFree(sockData->dataH);
+        if (sockData->dbRef) DmCloseDatabase(sockData->dbRef);
+        MemHandleUnlock(sockHandle);
+      }
+      MemHandleFree(sockHandle);
     }
-    MemHandleFree(sockHandle);
+  } else {
+    addSockStatusChangedEvent(*sockHP, inetStatusNew);
   }
 
   return err;
@@ -540,9 +628,8 @@ Err INetLibCTPSend(UInt16 libRefnum, MemHandle inetH, MemHandle *sockHP, UInt8 *
 
 Err INetLibSockRead(UInt16 libRefnum, MemHandle sockHandle, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout) {
   INetLibSocketData *sockData;
-  UInt32 currentLen, len;
-  UInt8 *p, *rec;
-  MemHandle h;
+  UInt32 len;
+  UInt8 *p;
   Err err = inetErrParamsInvalid;
 
   if (sockHandle && bufP && actBytesP) {
@@ -550,26 +637,25 @@ Err INetLibSockRead(UInt16 libRefnum, MemHandle sockHandle, void *bufP, UInt32 r
       switch (sockData->url.schemeEnum) {
         case inetSchemeFile:
           if (sockData->dbRef) {
-            debug(DEBUG_INFO, "INetMgr", "INetLibSockRead dbRef %p requested %u bytes", sockData->dbRef, reqBytes);
-            if (reqBytes == 0) {
-              if ((h = DmGetRecord(sockData->dbRef, sockData->index)) != NULL) {
-                if ((rec = MemHandleLock(h)) != NULL) {
-                  currentLen = MemHandleSize(sockData->dataH);
-                  len = MemHandleSize(h);
-                  if (len != currentLen) {
-                    MemHandleResize(sockData->dataH, len);
-                  }
-                  if ((p = MemHandleLock(sockData->dataH)) != NULL) {
-                    MemMove(p, rec, len);
-                    MemHandleUnlock(sockData->dataH);
-                    debug(DEBUG_INFO, "INetMgr", "INetLibSockRead read %u bytes into data handle", len);
-                    *actBytesP = len;
-                    err = errNone;
-                  }
-                  MemHandleUnlock(h);
-                }
-                DmReleaseRecord(sockData->dbRef, sockData->index, false);
+            len = MemHandleSize(sockData->dataH);
+            debug(DEBUG_INFO, "INetMgr", "INetLibSockRead dbRef %p requested %u bytes from %u, offset is %u", sockData->dbRef, reqBytes, len, sockData->dataOffset);
+            if (reqBytes > 0) {
+              if (sockData->dataOffset + reqBytes > len) {
+                reqBytes = len - sockData->dataOffset;
               }
+              if (reqBytes > 0) {
+                if ((p = MemHandleLock(sockData->dataH)) != NULL) {
+                  MemMove(bufP, p, reqBytes);
+                  MemHandleUnlock(sockData->dataH);
+                  sockData->dataOffset += reqBytes;
+                  debug(DEBUG_INFO, "INetMgr", "INetLibSockRead read %u bytes from %u, offset is now %u", reqBytes, len, sockData->dataOffset);
+                }
+              }
+              *actBytesP = reqBytes;
+              err = errNone;
+            } else {
+              *actBytesP = reqBytes;
+              err = errNone;
             }
           }
           break;
@@ -620,7 +706,7 @@ Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSock
           err = INetLibSettingGetPtr(bufP, bufLenP, sockData->dataH);
           break;
         case inetSockSettingDataOffset:         // (R)  UInt32 offset to data from handle (8)
-          err = INetLibSettingGetUInt32(bufP, bufLenP, 0); // XXX
+          err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->dataOffset);
           break;
         case inetSockSettingTitle:              // (RW) Char[] (9)
           break;
