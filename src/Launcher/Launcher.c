@@ -512,25 +512,29 @@ static void launcherScanApps(launcher_data_t *data) {
               StrNCopy(data->item[i].name, s, len);
               offset += pqaTitleWords * 2;
               offset += get2b(&iconWords, appInfo, offset);
-              iconBmp = (BitmapType *)(appInfo + offset);
-              BmpGetDimensions(iconBmp, &bw, &bh, NULL);
-              debug(DEBUG_TRACE, "Launcher", "icon for pqa \"%s\" is %dx%d", data->item[i].name, bh, bh);
-              data->item[i].bmpHeight = bh < 22 ? bh : 22; // max allowed icon height
-              RctSetRectangle(&rect, 0, 0, data->cellWidth, bh);
 
-              data->item[i].iconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
-              old = WinSetDrawWindow(data->item[i].iconWh);
-              WinEraseRectangle(&rect, 0);
-              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
-              WinSetDrawWindow(old);
+              // not all PQAs have icons
+              if (iconWords > 0) {
+                iconBmp = (BitmapType *)(appInfo + offset);
+                BmpGetDimensions(iconBmp, &bw, &bh, NULL);
+                debug(DEBUG_TRACE, "Launcher", "icon for pqa \"%s\" is %dx%d", data->item[i].name, bh, bh);
+                data->item[i].bmpHeight = bh < 22 ? bh : 22; // max allowed icon height
+                RctSetRectangle(&rect, 0, 0, data->cellWidth, bh);
+
+                data->item[i].iconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
+                old = WinSetDrawWindow(data->item[i].iconWh);
+                WinEraseRectangle(&rect, 0);
+                WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
+                WinSetDrawWindow(old);
   
-              data->item[i].invIconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
-              old = WinSetDrawWindow(data->item[i].invIconWh);
-              setBackColor(BLACK);
-              WinEraseRectangle(&rect, 0);
-              setBackColor(WHITE);
-              WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
-              WinSetDrawWindow(old);
+                data->item[i].invIconWh = WinCreateOffscreenWindow(data->cellWidth, bh, nativeFormat, NULL);
+                old = WinSetDrawWindow(data->item[i].invIconWh);
+                setBackColor(BLACK);
+                WinEraseRectangle(&rect, 0);
+                setBackColor(WHITE);
+                WinPaintBitmap(iconBmp, (data->cellWidth - bw) / 2, 0);
+                WinSetDrawWindow(old);
+              }
 
               offset += iconWords * 2;
               MemHandleUnlock(appInfoH);
