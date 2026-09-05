@@ -2821,7 +2821,7 @@ void logtrap_rethook(logtrap_t *lt, uint32_t pc) {
             refNum = lt->read16(sp, lt->data) & 0xFFFF;
             libTrap = logtrap_syslib(lt, trap, refNum); 
             print_params(lt, libTrap, sp, buf, sizeof(buf), 1);
-            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, libTrap->name, buf, rbuf);
+            logtrap_log(lt, "%08X: trap 0x%04X    %s%s(refNum=%d %s)%s", pc, trap, spc, libTrap->name, refNum, buf, rbuf);
           } else {
             if (lt->allTraps[rtrap].rsize == 8) sp += 4;
             print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 1);
@@ -2961,7 +2961,7 @@ static void logtrap_hook(logtrap_t *lt, uint32_t pc) {
               refNum = lt->read16(sp, lt->data) & 0xFFFF;
               libTrap = logtrap_syslib(lt, trap, refNum); 
               print_params(lt, libTrap, sp, buf, sizeof(buf), 0);
-              logtrap_log(lt, "%08X: trap 0x%04X    %s%s(%s)%s", pc, trap, spc, libTrap->name, buf, elp);
+              logtrap_log(lt, "%08X: trap 0x%04X    %s%s(refNum=%d %s)%s", pc, trap, spc, libTrap->name, refNum, buf, elp);
             } else {
               if (lt->allTraps[rtrap].rsize == 8) sp += 4;
               print_params(lt, &lt->allTraps[rtrap], sp, buf, sizeof(buf), 0);
