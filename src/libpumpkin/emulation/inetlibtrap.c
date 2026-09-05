@@ -230,6 +230,21 @@ void palmos_inetlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case inetLibTrapSockSettingSet: {
+      // Err INetLibSockSettingSet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSockSettingEnum*/ setting, void *bufP, UInt16 bufLen)
+      uint16_t refNum = ARG16;
+      uint32_t socketHP = ARG32;
+      uint16_t setting = ARG16;
+      uint32_t bufP = ARG32;
+      uint32_t bufLen = ARG16;
+      MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
+      void *buf = emupalmos_trap_in(bufP, trap, 3);
+      err = INetLibSockSettingSet(refNum, socketH, setting, buf, bufLen);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockSettingSet(refNum=%d, socketH=0x%08X, setting=%u, bufP=0x%08X, bufLen=%u): %d",
+        refNum, socketHP, setting, bufP, bufLen, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case inetLibTrapSockRead: {
       // Err INetLibSockRead(UInt16 libRefnum, MemHandle sockH, void *bufP, UInt32 reqBytes, UInt32 *actBytesP, Int32 timeout)
       uint16_t refNum = ARG16;
@@ -256,6 +271,49 @@ void palmos_inetlibtrap(uint16_t trap) {
       MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
       err = INetLibSockClose(refNum, socketH);
       debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockClose(refNum=%d, socketH=0x%08X): %d", refNum, socketHP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibTrapSockHTTPAttrGet: {
+      // Err INetLibSockHTTPAttrGet(UInt16 libRefnum, MemHandle sockH, UInt16 /*inetHTTPAttrEnum*/ attr, UInt16 attrIndex, void *bufP, UInt32 *bufLenP)
+      uint16_t refNum = ARG16;
+      uint32_t socketHP = ARG32;
+      uint16_t attr = ARG16;
+      uint16_t attrIndex = ARG16;
+      uint32_t bufP = ARG32;
+      uint32_t bufLenP = ARG32;
+      MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
+      void *buf = emupalmos_trap_in(bufP, trap, 4);
+      emupalmos_trap_in(bufLenP, trap, 5);
+      UInt32 bufLen = 0;
+      if (bufLenP) bufLen = m68k_read_memory_32(bufLenP);
+      err = INetLibSockHTTPAttrGet(refNum, socketH, attr, attrIndex, buf, &bufLen);
+      if (bufLenP) m68k_write_memory_32(bufLenP, bufLen);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockHTTPAttrGet(refNum=%d, socketH=0x%08X, attr=%u, attrIndex=%u, bufP=0x%08X, bufLen=%u): %d",
+        refNum, socketHP, attr, attrIndex, bufP, bufLen, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
+    case inetLibTrapSockFileGetByIndex: {
+      // Err INetLibSockFileGetByIndex(UInt16 libRefnum, MemHandle socketH, UInt32 index, MemHandle *handleP, UInt32 *offsetP, UInt32 *lengthP)
+      uint16_t refNum = ARG16;
+      uint32_t socketHP = ARG32;
+      uint32_t index = ARG32;
+      uint32_t handleP = ARG32;
+      uint32_t offsetP = ARG32;
+      uint32_t lengthP = ARG32;
+      MemHandle socketH = emupalmos_trap_in(socketHP, trap, 1);
+      emupalmos_trap_in(handleP, trap, 3);
+      MemHandle handle = NULL;
+      UInt32 offset = 0, length = 0;
+      if (offsetP) offset = m68k_read_memory_32(offsetP);
+      if (lengthP) length = m68k_read_memory_32(lengthP);
+      err = INetLibSockFileGetByIndex(refNum, socketH, index, &handle, &offset, &length);
+      if (handleP) m68k_write_memory_32(handleP, emupalmos_trap_out(handle));
+      if (offsetP) m68k_write_memory_32(offsetP, offset);
+      if (lengthP) m68k_write_memory_32(lengthP, length);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibSockFileGetByIndex(refNum=%d, socketH=0x%08X, index=%u, handleP=0x%08X, offset=%u, length=%u): %d",
+        refNum, socketHP, index, handleP, offset, length, err);
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;

@@ -316,6 +316,9 @@ uint16_t cpu_read_word(uint32_t address) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
     value = 0;
+  } else if (address == 0x272) {
+    // low memory address read by Clipper. It is a PalmOS global variable containing the refNum of NetLib.
+    value = NetLibRefNum;
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);

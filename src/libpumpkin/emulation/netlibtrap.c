@@ -553,6 +553,22 @@ void palmos_netlibtrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "NetLibReceive(libRefNum=%d, socket=%d, bufP=0x%08X, bufLen=%d, flags=%d, fromAddrP=0x%08X, fromLenP=0x%08X, timeout=%d, errP=0x%08X): %d", libRefNum, socket, bufP, bufLen, flags, fromAddrP, fromLenP, timeout, errP, res);
       }
       break;
+    case netLibTrapBitGetFixed: {
+      // UInt32 NetLibBitGetFixed(UInt16 libRefNum, UInt8 *dstP, UInt32 *dstBitOffsetP, UInt16 numBits)
+      uint16_t libRefNum = ARG16;
+      uint32_t dstP = ARG32;
+      uint32_t dstBitOffsetP = ARG32;
+      uint16_t numBits = ARG16;
+      UInt8 *dst = emupalmos_trap_in(dstP, trap, 1);
+      emupalmos_trap_in(dstBitOffsetP, trap, 2);
+      UInt32 dstBitOffset = 0;
+      if (dstBitOffsetP) dstBitOffset = m68k_read_memory_32(dstBitOffsetP);
+      UInt32 res = NetLibBitGetFixed(libRefNum, dst, &dstBitOffset, numBits);
+      if (dstBitOffsetP) m68k_write_memory_32(dstBitOffsetP, dstBitOffset);
+      debug(DEBUG_TRACE, "EmuPalmOS", "NetLibBitGetFixed(libRefNum=%d, dstP=0x%08X, dstBitOffset=%u, numBits=%u): %d", libRefNum, dstP, dstBitOffset, numBits, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "NetLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
