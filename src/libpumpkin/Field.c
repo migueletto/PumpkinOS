@@ -73,6 +73,7 @@ int FldInitModule(void) {
     return -1;
   }
 
+  module->auxField.magic = FIELD_MAGIC;
   module->auxField.id = 1;
   module->auxField.attr.usable = true;
 
@@ -417,7 +418,12 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 }
 
 void FldDrawField(FieldType *fldP) {
-  FldRenderField(fldP, false, true, 0, NULL, NULL);
+  if (fldP && fldP->magic == FIELD_MAGIC) {
+    FldRenderField(fldP, false, true, 0, NULL, NULL);
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldDrawField invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+  }
 }
 
 void FldEraseField(FieldType *fldP) {
@@ -444,7 +450,7 @@ the associated word-wrapping information.
 */
 void FldFreeMemory(FieldType *fldP) {
   IN;
-  if (fldP) {
+  if (fldP && fldP->magic == FIELD_MAGIC) {
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory field %d", fldP->id);
     if (fldP->textHandle) {
       debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle");
@@ -463,6 +469,9 @@ void FldFreeMemory(FieldType *fldP) {
     fldP->numUsedLines = 0;
     fldP->totalLines = 0;
     fldP->pos = 0;
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldFreeMemory invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
   }
   OUTV;
 }
@@ -874,8 +883,13 @@ void FldSetTextHandle(FieldType *fldP, MemHandle textHandle) {
 
   IN;
   debug(DEBUG_TRACE, "Field", "FldSetTextHandle handle %p", textHandle);
-  size = textHandle ? MemHandleSize(textHandle) : 0;
-  FldSetText(fldP, textHandle, 0, size);
+  if (fldP && fldP->magic == FIELD_MAGIC) {
+    size = textHandle ? MemHandleSize(textHandle) : 0;
+    FldSetText(fldP, textHandle, 0, size);
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldSetTextHandle invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+  }
   OUTV;
 }
 
@@ -936,7 +950,12 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
 // This function sets the field attribute hasFocus to true.
 
 void FldGrabFocus(FieldType *fldP) {
-  FldGrabFocusEx(fldP, false);
+  if (fldP && fldP->magic == FIELD_MAGIC) {
+    FldGrabFocusEx(fldP, false);
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldGrabFocus invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+  }
 }
 
 // Turn the blinking insertion point off if the field is visible and has the current focus, reset the Graffiti state, and reset the undo state.
@@ -972,11 +991,16 @@ void FldSetInsPtPosition(FieldType *fldP, UInt16 pos) {
   // Set the location of the insertion point for a given string position.
   // If the position is beyond the visible text, the field is scrolled until the position is visible.
 
-  if (pos >= fldP->textLen) {
-    pos = fldP->textLen > 0 ? fldP->textLen - 1 : 0;
+  if (fldP && fldP->magic == FIELD_MAGIC) {
+    if (pos >= fldP->textLen) {
+      pos = fldP->textLen > 0 ? fldP->textLen - 1 : 0;
+    }
+    FldSetInsertionPoint(fldP, pos);
+    FldSetScrollPosition(fldP, pos);
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldSetInsPtPosition invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
   }
-  FldSetInsertionPoint(fldP, pos);
-  FldSetScrollPosition(fldP, pos);
 }
 
 void FldSetInsertionPoint(FieldType *fldP, UInt16 pos) {
@@ -1424,6 +1448,10 @@ void FldSendHeightChangeNotification(const FieldType *fldP, UInt16 pos, Int16 nu
 
 Boolean FldMakeFullyVisible(FieldType *fldP) {
   NOTIMPLI;
+  if (fldP == NULL || fldP->magic != FIELD_MAGIC) {
+    debug(DEBUG_ERROR, "Field", "FldMakeFullyVisible invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+  }
 }
 
 UInt16 FldGetNumberOfBlankLines(const FieldType *fldP) {
@@ -1490,6 +1518,7 @@ FieldType *FldNewField(void **formPP, UInt16 id,
   UInt16 objIndex;
 
   if ((fldP = pumpkin_heap_alloc(sizeof(FieldType), "Field")) != NULL) {
+    fldP->magic = FIELD_MAGIC;
     fldP->id = id;
     fldP->rect.topLeft.x = x;
     fldP->rect.topLeft.y = y;

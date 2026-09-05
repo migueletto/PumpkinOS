@@ -2858,6 +2858,7 @@ static FieldType *pumpkin_create_field(uint8_t *p, int *i) {
   debug(DEBUG_TRACE, "Form",  "field id %d max %d font %d at (%d,%d,%d,%d)", id, max, font, x, y, w, h);
 
   if ((c = pumpkin_heap_alloc(sizeof(FieldType), "Field")) != NULL) {
+    c->magic = FIELD_MAGIC;
     c->id = id;
     c->rect.topLeft.x = x;
     c->rect.topLeft.y = y;

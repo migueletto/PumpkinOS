@@ -83,9 +83,13 @@ LineInfoType;
 typedef LineInfoType *LineInfoPtr;
 
 
+#define FIELD_MAGIC 'Fild'
+
 typedef struct FieldType
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FIELDS	// These fields will not be available in the next OS release!
 {
+	UInt32 magic;
+
 	UInt16				id;
 	RectangleType		rect;
 	FieldAttrType		attr;
