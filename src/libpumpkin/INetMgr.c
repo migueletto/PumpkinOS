@@ -1,5 +1,6 @@
 #include <PalmOS.h>
 #include <INetMgr.h>
+#include <CMLConst.h>
 
 #include "bytes.h"
 #include "debug.h"
@@ -43,6 +44,7 @@ typedef struct {
   UInt8 compressionType;
   UInt8 contentFlags;
   UInt32 uncompDataSize;
+  UInt32 context;
 } INetLibSocketData;
 
 Err INetLibOpen(UInt16 libRefnum, UInt16 config, UInt32 flags, DmOpenRef cacheRef, UInt32 cacheSize, MemHandle *inetHP) {
@@ -103,6 +105,28 @@ Err INetLibSleep(UInt16 libRefnum) {
 Err INetLibWake(UInt16 libRefnum) {
   return errNone;
 }
+
+#if 0
+static Err INetLibSettingGetUInt16(void *buf, UInt16 *bufLenP, UInt16 value) {
+  Err err = inetErrSettingSizeInvalid;
+
+  if (buf && bufLenP && *bufLenP == sizeof(UInt16)) {
+    if (pumpkin_is_m68k()) {
+      put2b(value, (uint8_t *)buf, 0);
+    } else {
+      put2l(value, (uint8_t *)buf, 0);
+    }
+    err = errNone;
+  }
+  
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetUInt16 invalid parameters buf=%p bufLenP=%p bufLen=%u",
+      buf, bufLenP, bufLenP ? *bufLenP : 0);
+  }
+
+  return err;
+}
+#endif
 
 static Err INetLibSettingGetUInt32(void *buf, UInt16 *bufLenP, UInt32 value) {
   Err err = inetErrSettingSizeInvalid;
@@ -189,6 +213,25 @@ static Err INetLibSettingGetPtr(void *buf, UInt16 *bufLenP, void *value) {
     debug(DEBUG_ERROR, "INetMgr", "INetLibSettingGetPtr invalid parameters");
   }
     
+  return err;
+}
+
+static Err INetLibSettingSetUInt16(void *buf, UInt16 bufLen, UInt16 *valueP) {
+  Err err = inetErrSettingSizeInvalid;
+  
+  if (buf && bufLen == sizeof(UInt16) && valueP) {
+    if (pumpkin_is_m68k()) {
+      get2b(valueP, (uint8_t *)buf, 0);
+    } else {
+      get2l(valueP, (uint8_t *)buf, 0);
+    }
+    err = errNone;
+  }
+  
+  if (err) {
+    debug(DEBUG_ERROR, "INetMgr", "INetLibSettingSetUInt16 invalid parameters");
+  }   
+  
   return err;
 }
 
@@ -453,7 +496,7 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
   INetLibSocketData *sockData;
   LocalID dbID;
   UInt32 type, creator, oldLength, newLength, i;
-  uint32_t urlOffset, dataOffset;
+  uint32_t urlOffset, dataOffset, len;
   uint16_t urlLength, dataLength;
   uint8_t *rec, *p;
   char *path, *s;
@@ -474,6 +517,7 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
               sockData->timeout = timeout;
               sockData->flags = flags;
               MemMove(&sockData->url, &url, sizeof(INetURLType));
+
               for (i = 0; i < MAX_SOCKETS; i++) {
                 if (data->sockets[i] == NULL) {
                   data->sockets[i] = sockHandle;
@@ -482,12 +526,22 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
                   switch (url.schemeEnum) {
                      case inetSchemeFile:
                        if ((path = MemPtrNew(url.pathLen + 1)) != NULL) {
-                         StrNCopy(path, (char *)url.pathP + 1, url.pathLen - 1);
+                         MemMove(path, url.pathP, url.pathLen);
+                         if ((s = StrChr(path, '/')) != NULL) {
+                           len = s - path; 
+                         } else {
+                           len = url.pathLen;
+                         }
+                         path[len] = 0;
                          if ((dbID = DmFindDatabase(0, path)) != 0) {
                            if (DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
                              if (type == sysFileTpqa && creator == sysFileCClipper) {
                                if ((sockData->dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
                                  debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen file \"%s\" dbRef %p", path, sockData->dbRef);
+                                 if (url.fragP != NULL && url.fragLen == 2 && url.fragP[0] == '*' && url.fragP[1] >= 'a' && url.fragP[1] <= 'z') {
+                                   sockData->index = url.fragP[1] - 'a';
+                                   debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen using record index %d for fragment '%c'", sockData->index, url.fragP[1]);
+                                 }
 
                                  if ((h = DmGetRecord(sockData->dbRef, sockData->index)) != NULL) {
                                    if ((rec = MemHandleLock(h)) != NULL) {
@@ -503,6 +557,12 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
                                        urlOffset, urlLength, dataOffset, dataLength);
                                      debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen contentType=%u, compressionType=%u, uncompDataSize=%u, flags=0x%02X",
                                        sockData->contentType, sockData->compressionType, sockData->uncompDataSize, sockData->contentFlags);
+                                     // flags:
+                                     // inetOpenURLFlagLookInCache 0x0001
+                                     // inetOpenURLFlagKeepInCache 0x0002
+                                     // inetOpenURLFlagForceEncOn  0x0008 use encryption even if scheme does not desire it
+                                     // inetOpenURLFlagForceEncOff 0x0010 no encryption even if scheme desires it
+
                                      if (urlLength > 0) {
                                        debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen url=\"%.*s\"", urlLength, (char *)rec + urlOffset);
                                        oldLength = StrLen((char *)sockData->urlP);
@@ -521,12 +581,18 @@ Err INetLibURLOpen(UInt16 libRefnum, MemHandle inetH, UInt8 *urlP, UInt8 *cacheI
                                        debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen data (%u bytes):", dataLength);
                                        debug_bytes(DEBUG_INFO, "INetMgr", rec + dataOffset, dataLength);
                                      }
-                                     if ((sockData->dataH = MemHandleNew(dataLength)) != NULL) {
-                                       if ((p = MemHandleLock(sockData->dataH)) != NULL) {
-                                         MemMove(p, rec + dataOffset, dataLength);
-                                         MemHandleUnlock(sockData->dataH);
-                                         debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen read %u bytes from record %d into data handle", dataLength, sockData->index);
-                                       }
+
+                                     if (sockData->dataH) {
+                                       MemHandleResize(sockData->dataH, dataLength);
+                                     } else {
+                                       sockData->dataH = MemHandleNew(dataLength);
+                                     }
+                                     sockData->dataOffset = 0;
+
+                                     if ((p = MemHandleLock(sockData->dataH)) != NULL) {
+                                       MemMove(p, rec + dataOffset, dataLength);
+                                       MemHandleUnlock(sockData->dataH);
+                                       debug(DEBUG_INFO, "INetMgr", "INetLibURLOpen read %u bytes from record %d into data handle", dataLength, sockData->index);
                                      }
                                      MemHandleUnlock(h);
                                    }
@@ -691,6 +757,7 @@ Err INetLibSockStatus(UInt16 libRefnum, MemHandle socketH, UInt16 *statusP, Err*
 
 Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSockSettingEnum*/ setting, void *bufP, UInt16 *bufLenP) {
   INetLibSocketData *sockData;
+  char *s;
   Err err = inetErrParamsInvalid;
 
   if (socketH && bufLenP) {
@@ -700,13 +767,37 @@ Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSock
           err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->url.schemeEnum);
           break;
         case inetSockSettingSockContext:        // (RW) UInt32 (1)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->context);
           break;
         case inetSockSettingCompressionType:    // (R)  Char[] (2)
+          switch (sockData->compressionType) {
+            case inetCompressionTypeNone:        s = "None"; break;
+            case inetCompressionTypeBitPacked:   s = "Bit Packed"; break;
+            case inetCompressionTypeLZ77:        s = "Lz77"; break;
+            case inetCompressionTypeBest:        s = "Best"; break;
+            case inetCompressionTypeLZ77Primer1: s = "Lz77 Primer1"; break;
+          }
+          if (s) {
+            err = INetLibSettingGetStr(bufP, bufLenP, s);
+          }
           break;
         case inetSockSettingCompressionTypeID:  // (R)  UInt32 (INetCompressionTypeEnum) (3)
           err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->compressionType);
           break;
         case inetSockSettingContentType:        // (R)  Char[] (4)
+          switch (sockData->contentType) {
+            case inetContentTypeTextPlain:      s = cmlContentTypeStrTextPlain; break;
+            case inetContentTypeTextHTML:       s = cmlContentTypeStrTextHTML; break;
+            case inetContentTypeImageGIF:       s = cmlContentTypeStrImageGIF; break;
+            case inetContentTypeImageJPEG:      s = cmlContentTypeStrImageJPEG; break;
+            case inetContentTypeApplicationCML: s = cmlContentTypeStrApplicationCml; break;
+            case inetContentTypeImagePalmOS:    s = cmlContentTypeStrImagePalmOS; break;
+            case inetContentTypeOther:          s = cmlContentTypeStrBinDefault; break;
+            default: s = NULL; break;
+          }
+          if (s) {
+            err = INetLibSettingGetStr(bufP, bufLenP, s);
+          }
           break;
         case inetSockSettingContentTypeID:      // (R)  UInt32 (INetContentTypeEnum) (5)
           err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->contentType);
@@ -730,6 +821,7 @@ Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSock
         case inetSockSettingFlags:              // (W)  UInt16 one or more of inetOpenURLFlagXXX flags (12)
           break;
         case inetSockSettingReadTimeout:        // (RW) UInt32 Read timeout in ticks (13)
+          err = INetLibSettingGetUInt32(bufP, bufLenP, sockData->timeout);
           break;
         case inetSockSettingContentVersion:     // (R)  UInt32 version number for content (14)
           err = INetLibSettingGetUInt32(bufP, bufLenP, 0x8001); // XXX returninch value expected by Clipper
@@ -751,8 +843,20 @@ Err INetLibSockSettingSet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSock
   if (socketH) {
     if ((sockData = MemHandleLock(socketH)) != NULL) {
       switch (setting) {
+        case inetSockSettingSockContext:        // (RW) UInt32 (1)
+          err = INetLibSettingSetUInt32(bufP, bufLen, &sockData->context);
+          break;
         case inetSockSettingTitle:              // (RW) Char[] (9)
           err = errNone;
+          break;
+        case inetSockSettingIndexURL:           // (RW) Char[] (11)
+          //err = INetLibSettingSetStr(bufP, bufLen, (char *)sockData->indexUrlP);
+          break;
+        case inetSockSettingFlags:              // (W)  UInt16 one or more of inetOpenURLFlagXXX flags (12)
+          err = INetLibSettingSetUInt16(bufP, bufLen, &sockData->flags);
+          break;
+        case inetSockSettingReadTimeout:        // (RW) UInt32 Read timeout in ticks (13)
+          err = INetLibSettingSetUInt32(bufP, bufLen, (UInt32 *)&sockData->timeout);
           break;
         default:
           break;
@@ -867,7 +971,7 @@ static UInt8 *checkScheme(UInt8 *p, char *scheme, UInt16 type, INetURLType* urlP
         urlP->schemeP = p;
       }
       urlP->schemeLen = len;
-      p += urlP->schemeLen;
+      p += urlP->schemeLen + 1;
     }
   }
 
@@ -902,13 +1006,14 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
     urlP->fragLen = 0;
     urlP->port = 0;
 
+    // file:WebCQ.pqa/webcq.html#*c
+
     switch (urlP->schemeEnum) {
       case inetSchemeDefault:
       case inetSchemeFile:
         urlP->schemeEnum = inetSchemeFile;
         urlP->hostnameLen = 0;
 
-        // XXX for some odd reason, the path component must include the ':' from the scheme
         len = StrLen((char *)p);
         if (urlP->pathP) {
           if (len) MemMove(urlP->pathP, p, urlP->pathLen < len ? urlP->pathLen : len);
@@ -917,7 +1022,31 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
         }
         urlP->pathLen = len;
 
-        debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack file scheme \"%.*s\"", urlP->pathLen, urlP->pathP);
+        if ((s = (UInt8 *)StrChr((char *)p, '#')) != NULL) {
+          urlP->pathLen = s - p;
+          p = s + 1;
+          len = StrLen((char *)p);
+          if (urlP->fragP) {
+            if (len) MemMove(urlP->fragP, p, urlP->fragLen < len ? urlP->fragLen : len);
+          } else {
+            urlP->fragP = p;
+          }
+          urlP->fragLen = len;
+        }
+
+        debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack file scheme:");
+        if (urlP->pathP && urlP->pathLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   path \"%.*s\"", urlP->pathLen, urlP->pathP);
+        }
+        if (urlP->paramP && urlP->paramLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   param \"%.*s\"", urlP->paramLen, urlP->paramP);
+        }
+        if (urlP->queryP && urlP->queryLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   query \"%.*s\"", urlP->queryLen, urlP->queryP);
+        }
+        if (urlP->fragP && urlP->fragLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   frag \"%.*s\"", urlP->fragLen, urlP->fragP);
+        }
         err = errNone;
         break;
 
@@ -946,8 +1075,13 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
 
         urlP->port = inetPortHTTP;
 
-        debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack http scheme host \"%.*s\" path \"%.*s\" port %d",
-          urlP->hostnameLen, urlP->hostnameP, urlP->pathLen, urlP->pathP, urlP->port);
+        debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack http scheme host: ");
+        if (urlP->hostnameP && urlP->hostnameLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   hostname \"%.*s\" port %d", urlP->hostnameLen, urlP->hostnameP, urlP->port);
+        }
+        if (urlP->pathP && urlP->pathLen) {
+          debug(DEBUG_INFO, "INetMgr", "INetLibURLCrack   path \"%.*s\"", urlP->pathLen, urlP->pathP);
+        }
         err = errNone;
         break;
 
