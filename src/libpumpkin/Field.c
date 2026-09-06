@@ -571,9 +571,12 @@ MemHandle FldGetTextHandle(const FieldType *_fldP) {
 
   IN;
   fldP = (FieldType *)_fldP;
-  if (fldP) {
+  if (fldP && fldP->magic == FIELD_MAGIC) {
     h = fldP->textHandle;
-  }
+  } else {
+    debug(DEBUG_ERROR, "Field", "FldGetTextHandle invalid Field 0x%08X %p",
+      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+  } 
   OUTV;
 
   return h;
