@@ -331,6 +331,8 @@ void pumpkin_trace(uint16_t trap);
 
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
+FieldType *pumpkin_create_field(uint8_t *p, int *i);
+void pumpkin_destroy_field(FieldType *fldP, Boolean freeMemory);
 BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t type, int chain, uint32_t *dsize);
 FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);
 FontTypeV2 *pumpkin_create_fontv2(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);

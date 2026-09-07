@@ -7,6 +7,7 @@ static void nop(Err err);
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
+#include "bytes.h"
 #include "vfs.h"
 #include "pumpkin.h"
 #include "debug.h"
@@ -418,11 +419,40 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 }
 
 void FldDrawField(FieldType *fldP) {
+  MemHandle textHandle;
+  FormType *formP;
+  UInt16 objIndex;
+  uint8_t *ram, *p;
+  uint32_t h;
+  int i;
+
   if (fldP && fldP->magic == FIELD_MAGIC) {
     FldRenderField(fldP, false, true, 0, NULL, NULL);
   } else {
-    debug(DEBUG_ERROR, "Field", "FldDrawField invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+    ram = (uint8_t *)pumpkin_heap_base();
+    debug(DEBUG_ERROR, "Field", "FldDrawField invalid Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
+    p = (uint8_t *)fldP;
+    i = 0;
+    if ((fldP = pumpkin_create_field(p, &i)) != NULL) {
+      get4b(&h, p, 16);
+      if (h) {
+        textHandle = (MemHandle)(ram + h);
+        FldSetTextHandle(fldP, textHandle);
+      }
+      FldRenderField(fldP, false, true, 0, NULL, NULL);
+
+      formP = FrmGetActiveForm();
+      if (formP) {
+        objIndex = formP->numObjects++;
+        formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
+        if (formP->objects) {
+          formP->objects[objIndex].objectType = frmFieldObj;
+          formP->objects[objIndex].id = fldP->id;
+          formP->objects[objIndex].object.field = fldP;
+          formP->objects[objIndex].object.field->formP = formP;
+        }
+      }
+    }
   }
 }
 
@@ -882,6 +912,7 @@ void FldSetText(FieldType *fldP, MemHandle textHandle, UInt16 offset, UInt16 siz
 }
 
 void FldSetTextHandle(FieldType *fldP, MemHandle textHandle) {
+  uint8_t *ram;
   UInt16 size;
 
   IN;
@@ -890,8 +921,10 @@ void FldSetTextHandle(FieldType *fldP, MemHandle textHandle) {
     size = textHandle ? MemHandleSize(textHandle) : 0;
     FldSetText(fldP, textHandle, 0, size);
   } else {
+    ram = (uint8_t *)pumpkin_heap_base();
     debug(DEBUG_ERROR, "Field", "FldSetTextHandle invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+      (uint32_t)((uint8_t *)fldP - ram), fldP);
+    put4b((uint8_t *)textHandle - ram, (uint8_t *)fldP, 16);
   }
   OUTV;
 }
