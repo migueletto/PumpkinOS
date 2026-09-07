@@ -1329,6 +1329,14 @@ void encode_INetURLType(uint32_t urlP, INetURLType *url) {
   }
 }
 
+void encode_INetURLInfoType(uint32_t urlInfoP, INetURLInfoType *info) {
+  if (urlInfoP && info) {
+    m68k_write_memory_16(urlInfoP + 0, info->version);
+    m68k_write_memory_16(urlInfoP + 2, info->flags);
+    m68k_write_memory_32(urlInfoP + 4, info->undefined);
+  }
+}
+
 void decode_FileInfoType(uint32_t fileInfoP, FileInfoType *fileInfo) {
   if (fileInfoP && fileInfo) {
     uint8_t *ram = pumpkin_heap_base();
