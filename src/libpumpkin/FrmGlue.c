@@ -1,5 +1,7 @@
 #include <PalmOS.h>
 
+#include "FormAccessor.h"
+
 FormEventHandlerType *FrmGlueGetEventHandler(const FormType *formP) {
   return formP ? formP->handler : NULL;
 }
@@ -18,7 +20,9 @@ Boolean FrmGlueGetObjectUsable(const FormType *formP, UInt16 objIndex) {
       case frmListObj:      usable = obj.list->attr.usable;      break;
       case frmTableObj:     usable = obj.table->attr.usable;     break;
       case frmGadgetObj:    usable = obj.gadget->attr.usable;    break;
-      case frmScrollBarObj: usable = obj.scrollBar->attr.usable; break;
+      //case frmScrollBarObj: usable = obj.scrollBar->attr.usable; break;
+      case frmScrollBarObj:
+        usable = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable);
       default: break;
     }
   }
@@ -87,7 +91,7 @@ UInt16 FrmGlueGetObjIDFromObjPtr(void *formObjP, FormObjectKind objKind) {
   ListType *lst;
   TableType *tbl;
   FormLabelType *lbl;
-  ScrollBarType *scl;
+  //ScrollBarType *scl;
   FormGadgetType *gad;
   UInt16 id = 0;
 
@@ -120,8 +124,9 @@ UInt16 FrmGlueGetObjIDFromObjPtr(void *formObjP, FormObjectKind objKind) {
         id = gad->id;
         break;
       case frmScrollBarObj:
-        scl = (ScrollBarType *)formObjP;
-        id = scl->id;
+        //scl = (ScrollBarType *)formObjP;
+        //id = scl->id;
+        id = FrmObjectGetField(formObjP, frmScrollBarObj, FormScrollBarFieldId);
         break;
       default:
         break;

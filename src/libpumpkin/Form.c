@@ -468,10 +468,18 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
 
       case frmScrollBarObj:
+/*
         if (setUsable) obj.scrollBar->attr.usable = 0;
         if (obj.scrollBar->attr.visible) {
           MemMove(&rect, &obj.scrollBar->bounds, sizeof(RectangleType));
           obj.scrollBar->attr.visible = 0;
+          erase = true;
+        }
+*/
+        if (setUsable) FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, 0);
+        if (FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible)) {
+          RctSetRectFromAddr(&rect, obj.scrollBar, FormScrollBarFieldRectX);
+          FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 0);
           erase = true;
         }
         break;
@@ -674,8 +682,14 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         FntSetFont(old);
         break;
       case frmScrollBarObj:
+/*
         if (setUsable) obj.scrollBar->attr.usable = 1;
         if (obj.scrollBar->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
+          SclDrawScrollBar(obj.scrollBar);
+        }
+*/
+        if (setUsable) FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, 1);
+        if (FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable) && (formP->attr.drawing || formP->attr.visible)) {
           SclDrawScrollBar(obj.scrollBar);
         }
         break;
@@ -701,7 +715,10 @@ void FrmSetUsable(FormType *formP, UInt16 objIndex, Boolean usable) {
       case frmListObj:      obj.list->attr.usable      = usable; break;
       case frmTableObj:     obj.table->attr.usable     = usable; break;
       case frmGadgetObj:    obj.gadget->attr.usable    = usable; break;
-      case frmScrollBarObj: obj.scrollBar->attr.usable = usable; break;
+      //case frmScrollBarObj: obj.scrollBar->attr.usable = usable; break;
+      case frmScrollBarObj:
+        FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, usable);
+        break;
       default: break;
     }
   }
@@ -721,7 +738,10 @@ Boolean FrmGetUsable(FormType *formP, UInt16 objIndex) {
       case frmListObj:      usable = obj.list->attr.usable;      break;
       case frmTableObj:     usable = obj.table->attr.usable;     break;
       case frmGadgetObj:    usable = obj.gadget->attr.usable;    break;
-      case frmScrollBarObj: usable = obj.scrollBar->attr.usable; break;
+      //case frmScrollBarObj: usable = obj.scrollBar->attr.usable; break;
+      case frmScrollBarObj:
+        usable = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable);
+        break;
       default: break;
     }
   }
@@ -741,9 +761,12 @@ void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible) {
       case frmListObj:      obj.list->attr.visible      = visible; break;
       case frmTableObj:     obj.table->attr.visible     = visible; break;
       case frmGadgetObj:    obj.gadget->attr.visible    = visible; break;
-      case frmScrollBarObj: obj.scrollBar->attr.visible = visible; break;
       case frmLabelObj:     obj.label->attr.visible     = visible; break;
       case frmBitmapObj:    obj.bitmap->attr.visible     = visible; break;
+      //case frmScrollBarObj: obj.scrollBar->attr.visible = visible; break;
+      case frmScrollBarObj:
+        FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, visible);
+        break;
       default: break;
     }
   }
@@ -762,9 +785,12 @@ Boolean FrmGetVisible(FormType *formP, UInt16 objIndex) {
       case frmListObj:      visible = obj.list->attr.visible;      break;
       case frmTableObj:     visible = obj.table->attr.visible;     break;
       case frmGadgetObj:    visible = obj.gadget->attr.visible;    break;
-      case frmScrollBarObj: visible = obj.scrollBar->attr.visible; break;
       case frmLabelObj:     visible = obj.label->attr.visible;     break;
       case frmBitmapObj:    visible = obj.bitmap->attr.visible;    break;
+      //case frmScrollBarObj: visible = obj.scrollBar->attr.visible; break;
+      case frmScrollBarObj:
+        visible = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible);
+        break;
       default: break;
     }
   }
@@ -1416,9 +1442,10 @@ void FrmSetFormBounds(const FormType *formP, RectangleType *rP) {
 
   if (formP && rP) {
     //MemMove((RectangleType *)&formP->window.windowBounds, rP, sizeof(RectangleType));
-    MemMove(&rect, rP, sizeof(RectangleType));
+    //WinUnscaleRectangle((RectangleType *)&formP->window.windowBounds);
+    RctSetRectFromWin(&rect, (WinHandle)&formP->window);
     WinUnscaleRectangle(&rect);
-    RctSetRectFromWin(&rect, (WindowType *)&formP->window);
+    RctSetWinFromRect(&rect, (WinHandle)&formP->window);
   }
 }
 
@@ -2481,7 +2508,8 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
         formP->objects[objIndex].object.bitmap->pos.y = bounds->topLeft.y;
         break;
       case frmScrollBarObj:
-        MemMove(&formP->objects[objIndex].object.scrollBar->bounds, bounds, sizeof(RectangleType));
+        //MemMove(&formP->objects[objIndex].object.scrollBar->bounds, bounds, sizeof(RectangleType));
+        RctSetAddrFromRect(bounds, formP->objects[objIndex].object.scrollBar, FormScrollBarFieldRectX);
         break;
       case frmTitleObj:
         debug(DEBUG_TRACE, "Form", "FrmSetObjectBounds title (%d,%d,%d,%d)",
@@ -2553,7 +2581,8 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         }
         break;
       case frmScrollBarObj:
-        MemMove(rP, &formP->objects[objIndex].object.scrollBar->bounds, sizeof(RectangleType));
+        //MemMove(rP, &formP->objects[objIndex].object.scrollBar->bounds, sizeof(RectangleType));
+        RctSetRectFromAddr(rP, formP->objects[objIndex].object.scrollBar, FormScrollBarFieldRectX);
         break;
       case frmTitleObj:
         //MemMove(rP, &formP->objects[objIndex].object.title->rect, sizeof(RectangleType));
@@ -2830,7 +2859,7 @@ static int palign(int a, int i) {
   return r ? (a - r) : 0;
 }
 
-static FieldType *pumpkin_create_field(uint8_t *p, int *i) {
+FieldType *pumpkin_create_field(uint8_t *p, int *i) {
   FieldType *c = NULL;
   uint8_t dummy8, font;
   uint16_t dummy16, attr, id, x, y, w, h, max;
@@ -3506,29 +3535,30 @@ static FormGadgetType *pumpkin_create_gadget(uint8_t *p, int *i) {
 
 static ScrollBarType *pumpkin_create_scrollbar(uint8_t *p, int *i) {
   ScrollBarType *c = NULL;
-  uint16_t dummy16, attr, id, x, y, w, h, value, min, max, page;
+  //uint16_t dummy16, attr, id, x, y, w, h, value, min, max, page;
+  int32_t i0;
+  uint16_t id, attr, x, y, w, h;
 
   // szRCSCROLLBAR "w4,w,ttttt4,zb,w,w,w,w,zw,zw"
+  i0 = *i;
   *i += get2b(&x, p, *i);
   *i += get2b(&y, p, *i);
   *i += get2b(&w, p, *i);
   *i += get2b(&h, p, *i);
   *i += get2b(&id, p, *i);
   *i += get2b(&attr, p, *i);
-  *i += get2b(&value, p, *i);
-  *i += get2b(&min, p, *i);
-  *i += get2b(&max, p, *i);
-  *i += get2b(&page, p, *i);
-  *i += get2b(&dummy16, p, *i);
-  *i += get2b(&dummy16, p, *i);
-  debug(DEBUG_TRACE, "Form",  "scrollBar id %d at (%d,%d,%d,%d)", id, x, y, w, h);
+  //*i += get2b(&value, p, *i);
+  //*i += get2b(&min, p, *i);
+  //*i += get2b(&max, p, *i);
+  //*i += get2b(&page, p, *i);
+  //*i += get2b(&dummy16, p, *i);
+  //*i += get2b(&dummy16, p, *i);
+  debug(DEBUG_TRACE, "Form",  "scrollBar id %d at (%d,%d,%d,%d) usable %d", id, x, y, w, h, attr & 0x8000 ? 1 : 0);
 
-  if ((c = pumpkin_heap_alloc(sizeof(ScrollBarType), "ScrollBar")) != NULL) {
-    put2b(x, (uint8_t *)c, 0);
-    put2b(y, (uint8_t *)c, 2);
-    put2b(w, (uint8_t *)c, 4);
-    put2b(h, (uint8_t *)c, 6);
-
+  //if ((c = pumpkin_heap_alloc(sizeof(ScrollBarType), "ScrollBar")) != NULL)
+  if ((c = pumpkin_heap_alloc(SCROLLBAR_STRUCT_SIZE, "ScrollBar")) != NULL) {
+    sys_memcpy(c, p + i0, SCROLLBAR_STRUCT_SIZE);
+/*
     c->bounds.topLeft.x = x;
     c->bounds.topLeft.y = y;
     c->bounds.extent.x = w;
@@ -3544,6 +3574,7 @@ static ScrollBarType *pumpkin_create_scrollbar(uint8_t *p, int *i) {
     c->minValue = min;
     c->maxValue = max;
     c->pageSize = page;
+*/
   }
 
   return c;
@@ -3768,7 +3799,8 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
         case frmScrollBarObj:
           debug(DEBUG_TRACE, "Form",  "object %d is a ScrollBar", j);
           form->objects[j].object.scrollBar = pumpkin_create_scrollbar(p, &i);
-          form->objects[j].id = form->objects[j].object.scrollBar->id;
+          //form->objects[j].id = form->objects[j].object.scrollBar->id;
+          form->objects[j].id = FrmObjectGetField(form->objects[j].object.scrollBar, frmScrollBarObj, FormScrollBarFieldId);
           break;
         default:
           debug(DEBUG_ERROR, "Form",  "object %d is of unknown type (%d)", j, objectType);
@@ -3789,13 +3821,19 @@ void pumpkin_destroy_alert(void *p) {
   }
 }
 
+void pumpkin_destroy_field(FieldType *fldP, Boolean freeMemory) {
+  if (freeMemory) {
+    FldFreeMemory(fldP);
+  }
+  pumpkin_heap_free(fldP, "Field");
+}
+
 static void pumpkin_destroy_form_object(FormType *formP, FormObjListType *obj) {
   if (obj && obj->object.ptr) {
     switch (obj->objectType) {
       case frmFieldObj:
         debug(DEBUG_TRACE, "Form", "free form field");
-        FldFreeMemory(obj->object.field);
-        pumpkin_heap_free(obj->object.field, "Field");
+        pumpkin_destroy_field(obj->object.field, true);
         break;
       case frmControlObj:
         debug(DEBUG_TRACE, "Form", "free form control");

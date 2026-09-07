@@ -37,11 +37,12 @@ typedef struct ScrollBarAttrTag
 #endif
 ScrollBarAttrType;
 
+#define SCROLLBAR_STRUCT_SIZE 24
 
 typedef struct ScrollBarType
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_SCROLLBARS	// These fields will not be available in the next OS release!
 {
-	uint16_t x, y, w, h; // for 68K programs accessing fields directly
+	uint16_t pad[SCROLLBAR_STRUCT_SIZE]; // for 68K programs accessing fields directly
 
 	RectangleType		bounds;
 	UInt16				id;

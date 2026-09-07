@@ -77,10 +77,10 @@ UIntPtr DrawStateGetSetField(WinHandle wh, DrawStateSelector selector, DrawState
 } while(0)
 
 #define RctSetWinFromRect(r, wh) do { \
-  WinSetField((wh), WindowFieldWindowBoundsX, r->topLeft.x); \
-  WinSetField((wh), WindowFieldWindowBoundsY, r->topLeft.y); \
-  WinSetField((wh), WindowFieldWindowBoundsW, r->extent.x); \
-  WinSetField((wh), WindowFieldWindowBoundsH, r->extent.y); \
+  WinSetField((wh), WindowFieldWindowBoundsX, (r)->topLeft.x); \
+  WinSetField((wh), WindowFieldWindowBoundsY, (r)->topLeft.y); \
+  WinSetField((wh), WindowFieldWindowBoundsW, (r)->extent.x); \
+  WinSetField((wh), WindowFieldWindowBoundsH, (r)->extent.y); \
 } while(0)
 
 #define RctSetWinFromValues(wh, x, y, w, h) do { \

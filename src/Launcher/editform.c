@@ -318,7 +318,8 @@ static void fillObjectNames(form_edit_t *data) {
         StrNPrintF(buf, sizeof(buf)-1, "Gadget %d", obj.gadget->id);
         break;
       case frmScrollBarObj:
-        StrNPrintF(buf, sizeof(buf)-1, "Scroll %d", obj.scrollBar->id);
+        //StrNPrintF(buf, sizeof(buf)-1, "Scroll %d", obj.scrollBar->id);
+        StrNPrintF(buf, sizeof(buf)-1, "Scroll %d", FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldId));
         break;
     }
     data->itemText[index] = sys_strdup(buf);
@@ -720,10 +721,14 @@ static void scrollPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, 
       setFieldNum(frm, 1001, rect.topLeft.y, false);
       setFieldNum(frm, 1002, rect.extent.x, false);
       setFieldNum(frm, 1003, rect.extent.y, false);
-      setFieldNum(frm, 1004, scl->minValue, false);
-      setFieldNum(frm, 1005, scl->maxValue, false);
-      setFieldNum(frm, 1006, scl->pageSize, false);
-      setControlValue(frm, 1007, scl->attr.usable);
+      //setFieldNum(frm, 1004, scl->minValue, false);
+      //setFieldNum(frm, 1005, scl->maxValue, false);
+      //setFieldNum(frm, 1006, scl->pageSize, false);
+      //setControlValue(frm, 1007, scl->attr.usable);
+      setFieldNum(frm, 1004, FrmObjectGetField(scl, frmScrollBarObj, FormScrollBarFieldMinValue), false);
+      setFieldNum(frm, 1005, FrmObjectGetField(scl, frmScrollBarObj, FormScrollBarFieldMaxValue), false);
+      setFieldNum(frm, 1006, FrmObjectGetField(scl, frmScrollBarObj, FormScrollBarFieldPageSize), false);
+      setControlValue(frm, 1007, FrmObjectGetFlag(scl, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable));
       break;
     case getProperties:
       rect.topLeft.x = getFieldNum(frm, 1000);
@@ -731,10 +736,14 @@ static void scrollPropertiesCallback(FormType *frm, dynamic_form_phase_t phase, 
       rect.extent.x = getFieldNum(frm, 1002);
       rect.extent.y = getFieldNum(frm, 1003);
       FrmSetObjectBounds(data->formP, data->selected, &rect);
-      scl->minValue = getFieldNum(frm, 1004);
-      scl->maxValue = getFieldNum(frm, 1005);
-      scl->pageSize = getFieldNum(frm, 1006);
-      scl->attr.usable = getControlValue(frm, 1007);
+      //scl->minValue = getFieldNum(frm, 1004);
+      //scl->maxValue = getFieldNum(frm, 1005);
+      //scl->pageSize = getFieldNum(frm, 1006);
+      //scl->attr.usable = getControlValue(frm, 1007);
+      FrmObjectSetField(scl, frmScrollBarObj, FormScrollBarFieldMinValue, getFieldNum(frm, 1004));
+      FrmObjectSetField(scl, frmScrollBarObj, FormScrollBarFieldMaxValue, getFieldNum(frm, 1005));
+      FrmObjectSetField(scl, frmScrollBarObj, FormScrollBarFieldPageSize, getFieldNum(frm, 1006));
+      FrmObjectSetFlag(scl, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, getControlValue(frm, 1007));
       data->changed = true;
       break;
     case finishForm:
