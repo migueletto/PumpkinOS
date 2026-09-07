@@ -317,6 +317,22 @@ void palmos_inetlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
       }
       break;
+    case inetLibTrapURLGetInfo: {
+      // Err INetLibURLGetInfo(UInt16 libRefnum, MemHandle inetH, UInt8 *urlTextP, INetURLInfoType *urlInfoP)
+      uint16_t refNum = ARG16;
+      uint32_t inetHP = ARG32;
+      uint32_t urlTextP = ARG32;
+      uint32_t urlInfoP = ARG32;
+      MemHandle inetH = emupalmos_trap_in(inetHP, trap, 1);
+      uint8_t *urlText = (uint8_t *)emupalmos_trap_in(urlTextP, trap, 2);
+      INetURLInfoType info;
+      err = INetLibURLGetInfo(refNum, inetH, urlText, &info);
+      if (urlInfoP) encode_INetURLInfoType(urlInfoP, &info);
+      debug(DEBUG_INFO, "EmuPalmOS", "INetLibURLGetInfo(refNum=%d, inetH=0x%08X, urlTextP=0x%08X, urlInfoP=%u): %d",
+        refNum, inetHP, urlTextP, urlInfoP, err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "INetLib trap 0x%04X (%u) not mapped", trap, trap - sysLibTrapCustom);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
