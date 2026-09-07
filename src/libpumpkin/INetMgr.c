@@ -1126,7 +1126,16 @@ Int16 INetLibURLsCompare(UInt16 libRefnum, Char *URLStr1, Char *URLStr2) {
 }
 
 Err INetLibURLGetInfo(UInt16 libRefnum, MemHandle inetH, UInt8 *urlTextP, INetURLInfoType* urlInfoP) {
-  return inetErrConfigNotFound;
+  Err err = inetErrParamsInvalid;
+
+  if (urlInfoP) {
+    urlInfoP->version = 0;
+    urlInfoP->flags = 0; // XXX none of inetURLInfoFlagIsSecure, inetURLInfoFlagIsRemote, and  inetURLInfoFlagIsInCache
+    urlInfoP->undefined = 0;
+    err = errNone;
+  }
+
+  return err;
 }
 
 Boolean INetLibWiCmd(UInt16 refNum, UInt16 /*WiCmdEnum*/ cmd, int enableOrX, int y) {
