@@ -971,6 +971,7 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
       case textWithNoteTableItem:
       case narrowTextTableItem:
         MemSet(&tableP->currentField, sizeof(FieldType), 0);
+        tableP->currentField.magic = FIELD_MAGIC;
         tableP->currentField.id = 0xFFFE; // XXX
         TblGetItemBounds(tableP, row, column, &rect);
         if (item->itemType == narrowTextTableItem) {
