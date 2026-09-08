@@ -158,8 +158,10 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
   FormObjectType obj;
   SliderControlType *slider;
   RectangleType rect;
+  Boolean usable;
   UInt16 version;
-  UInt16 *u16, d, i, j, k, num, max, featNum;
+  UInt16 *u16, d, i, j, k, num, max, featNum, id;
+  Int16 value, minValue, maxValue, pageSize;
   UInt32 *u32, size, creator, featVal;
   UInt8 *u8;
   char *prefix, *str, *text, ts, ds;
@@ -447,10 +449,22 @@ static void export(MemHandle h, DmResType resType, DmResID resID, FileRef fileRe
               // SCROLLBAR ID <Id.n> AT (<Left.p> <Top.p> <Width.p> <Height.p>)
               // [USABLE] [NONUSABLE] [VALUE <Value.n>] [MIN <MinValue.n>]
               // [MAX <MaxValue.n>] [PAGESIZE <PageSize.n>]
+/*
               StrPrintF(buf, "  SCROLLBAR ID %d AT (%d %d %d %d) %s VALUE %d MIN %d MAX %d PAGESIZE %d\n", obj.scrollBar->id,
                 obj.scrollBar->bounds.topLeft.x, obj.scrollBar->bounds.topLeft.y, obj.scrollBar->bounds.extent.x, obj.scrollBar->bounds.extent.y,
                 obj.scrollBar->attr.usable ? "USABLE" : "NONUSABLE", obj.scrollBar->value, obj.scrollBar->minValue,
                 obj.scrollBar->maxValue, obj.scrollBar->pageSize);
+*/
+              RctSetRectFromAddr(&rect, obj.scrollBar, FormScrollBarFieldRectX);
+              id = FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldId);
+              value = FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldValue);
+              minValue = FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldMinValue);
+              maxValue = FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldMaxValue);
+              pageSize = FrmObjectGetField(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldPageSize);
+              usable = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable);
+              StrPrintF(buf, "  SCROLLBAR ID %d AT (%d %d %d %d) %s VALUE %d MIN %d MAX %d PAGESIZE %d\n", id,
+                rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y,
+                usable ? "USABLE" : "NONUSABLE", value, minValue, maxValue, pageSize);
               emit(fileRef, buf);
               break;
             case frmPopupObj:
