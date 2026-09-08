@@ -443,6 +443,8 @@ static FieldType *FldCheckField(FieldType *fldP) {
             }
             get2b(&maxChars, p, 28);
             FldSetMaxChars(fldP, maxChars);
+            fldP->raw = true; // mark this Field as 'raw'
+
             objIndex = formP->numObjects++;
             formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
             if (formP->objects) {
@@ -490,12 +492,19 @@ Release the handle-based memory allocated to the field’s text and
 the associated word-wrapping information.
 */
 void FldFreeMemory(FieldType *fldP) {
+  uint8_t *ram;
+
   IN;
   if (fldP && fldP->magic == FIELD_MAGIC) {
     debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory field %d", fldP->id);
     if (fldP->textHandle) {
-      debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle");
-      MemHandleFree(fldP->textHandle);
+      if (!fldP->raw) {
+        // only free the textHandle if the Field is not 'raw'.
+        // raw Fields are those created with MemPtrNew() as used in Clipper.
+        ram = (uint8_t *)pumpkin_heap_base();
+        debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle 0x%08X", (uint32_t)((uint8_t *)fldP->textHandle - ram));
+        MemHandleFree(fldP->textHandle);
+      }
       fldP->textHandle = NULL;
     }
     if (fldP->textBuf) {

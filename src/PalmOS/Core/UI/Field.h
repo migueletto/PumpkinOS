@@ -112,6 +112,7 @@ typedef struct FieldType
   UInt16 top, pos;
   Char *textBuf;
   void *formP;
+  Boolean raw;
 }
 #endif
 FieldType;
