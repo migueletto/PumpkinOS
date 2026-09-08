@@ -4399,11 +4399,21 @@ static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
         }
         break;
       case fontRscType:
-        debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);
-        if ((p = pumpkin_create_font(res, res->buf, res->size, &dsize)) != NULL) {
-          res->d.res.destructor = pumpkin_destroy_font;
-          res->d.res.decoded = p;
-          res->d.res.decodedSize = dsize;
+        get2b(&ftype, res->buf, 0);
+        if (ftype == 0x9000) {
+          debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_font(res, res->buf, res->size, &dsize)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_font;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
+        } if (ftype == 0x9200) {
+          debug(DEBUG_TRACE, "STOR", "decoding font v2 resource %s %d", st, res->d.res.id);
+          if ((p = pumpkin_create_fontv2(res, res->buf, res->size, &dsize)) != NULL) {
+            res->d.res.destructor = pumpkin_destroy_fontv2;
+            res->d.res.decoded = p;
+            res->d.res.decodedSize = dsize;
+          }
         }
         break;
       case 'pFNT': // XXX SmallBasic defines a v1 font resource with type 'pFNT'
