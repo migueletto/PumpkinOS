@@ -421,7 +421,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 static FieldType *FldCheckField(FieldType *fldP) {
   MemHandle textHandle;
   FormType *formP;
-  UInt16 objIndex;
+  UInt16 id, maxChars, objIndex;
   uint8_t *ram, *p;
   uint32_t h;
   int i;
@@ -429,10 +429,11 @@ static FieldType *FldCheckField(FieldType *fldP) {
   if (fldP) {
     if (fldP->magic != FIELD_MAGIC) {
       if ((formP = FrmGetActiveForm()) != NULL) {
-        if (FrmGetObjectIndexFromPtr(formP, fldP) == frmInvalidObjectId) {
+        p = (uint8_t *)fldP;
+        get2b(&id, p, 0);
+        if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
           ram = (uint8_t *)pumpkin_heap_base();
           debug(DEBUG_INFO, "Field", "FldCheckField raw Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
-          p = (uint8_t *)fldP;
           i = 0;
           if ((fldP = pumpkin_create_field(p, &i)) != NULL) {
             get4b(&h, p, 16);
@@ -440,6 +441,8 @@ static FieldType *FldCheckField(FieldType *fldP) {
               textHandle = (MemHandle)(ram + h);
               FldSetTextHandle(fldP, textHandle);
             }
+            get2b(&maxChars, p, 28);
+            FldSetMaxChars(fldP, maxChars);
             objIndex = formP->numObjects++;
             formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
             if (formP->objects) {
