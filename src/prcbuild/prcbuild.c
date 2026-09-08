@@ -11,7 +11,7 @@
 
 #define MAX_RSRC 8192
 
-static int prcbuild(char *filename, char *type, char *creator, char *name, char *rsrc[], int num, int verbose) {
+static int prcbuild(char *filename, char *type, char *creator, char *name, uint16_t attr, char *rsrc[], int num, int verbose) {
   pdb_t *pdb;
   uint16_t id;
   int64_t size;
@@ -21,6 +21,7 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, char 
 
   if ((f = creat(filename, 0644)) != -1) {
     if ((pdb = pdb_new(name, type, creator)) != NULL) {
+      pdb_attr(pdb, attr);
       for (i = 0; i < num; i++) {
         len = strlen(rsrc[i]);
         if (len >= 12) {
@@ -62,6 +63,7 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, char 
 int main(int argc, char *argv[]) {
   char *filename = NULL, *type = NULL, *creator = NULL, *name = NULL;
   char *rsrc[MAX_RSRC], *aux, hex[4], buf[32];
+  uint16_t attr = 0x0001; // resDB
   int i, j, k, num, verbose = 0;
 
   for (i = 1, num = 0; i < argc; i++) {
@@ -92,6 +94,9 @@ int main(int argc, char *argv[]) {
           buf[k++] = 0;
           name = buf;
           break;
+        case 'a':
+          attr = strtol(argv[++i], NULL, 16);
+          break;
         case 'v':
           verbose = 1;
           break;
@@ -104,7 +109,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (filename && type && creator && name && num > 0 && strlen(type) == 4 && strlen(creator) == 4) {
-    prcbuild(filename, type, creator, name, rsrc, num, verbose);
+    prcbuild(filename, type, creator, name, attr, rsrc, num, verbose);
   } else {
     fprintf(stderr, "usage: %s -f <filename> -t <type> -c <creator> -n <name> rsrc.bin ...\n", argv[0]);
   }
