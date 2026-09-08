@@ -418,7 +418,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
   OUTV;
 }
 
-void FldDrawField(FieldType *fldP) {
+static FieldType *FldCheckField(FieldType *fldP) {
   MemHandle textHandle;
   FormType *formP;
   UInt16 objIndex;
@@ -426,33 +426,41 @@ void FldDrawField(FieldType *fldP) {
   uint32_t h;
   int i;
 
-  if (fldP && fldP->magic == FIELD_MAGIC) {
-    FldRenderField(fldP, false, true, 0, NULL, NULL);
-  } else {
-    ram = (uint8_t *)pumpkin_heap_base();
-    debug(DEBUG_ERROR, "Field", "FldDrawField invalid Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
-    p = (uint8_t *)fldP;
-    i = 0;
-    if ((fldP = pumpkin_create_field(p, &i)) != NULL) {
-      get4b(&h, p, 16);
-      if (h) {
-        textHandle = (MemHandle)(ram + h);
-        FldSetTextHandle(fldP, textHandle);
-      }
-      FldRenderField(fldP, false, true, 0, NULL, NULL);
-
-      formP = FrmGetActiveForm();
-      if (formP) {
-        objIndex = formP->numObjects++;
-        formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
-        if (formP->objects) {
-          formP->objects[objIndex].objectType = frmFieldObj;
-          formP->objects[objIndex].id = fldP->id;
-          formP->objects[objIndex].object.field = fldP;
-          formP->objects[objIndex].object.field->formP = formP;
+  if (fldP) {
+    if (fldP->magic != FIELD_MAGIC) {
+      if ((formP = FrmGetActiveForm()) != NULL) {
+        if (FrmGetObjectIndexFromPtr(formP, fldP) == frmInvalidObjectId) {
+          ram = (uint8_t *)pumpkin_heap_base();
+          debug(DEBUG_INFO, "Field", "FldCheckField raw Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
+          p = (uint8_t *)fldP;
+          i = 0;
+          if ((fldP = pumpkin_create_field(p, &i)) != NULL) {
+            get4b(&h, p, 16);
+            if (h) {
+              textHandle = (MemHandle)(ram + h);
+              FldSetTextHandle(fldP, textHandle);
+            }
+            objIndex = formP->numObjects++;
+            formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
+            if (formP->objects) {
+              formP->objects[objIndex].objectType = frmFieldObj;
+              formP->objects[objIndex].id = fldP->id;
+              formP->objects[objIndex].object.field = fldP;
+              formP->objects[objIndex].object.field->formP = formP;
+            }
+          }
         }
       }
     }
+  }
+
+  return fldP;
+}
+
+void FldDrawField(FieldType *fldP) {
+  fldP = FldCheckField(fldP);
+  if (fldP && fldP->magic == FIELD_MAGIC) {
+    FldRenderField(fldP, false, true, 0, NULL, NULL);
   }
 }
 
@@ -500,7 +508,7 @@ void FldFreeMemory(FieldType *fldP) {
     fldP->totalLines = 0;
     fldP->pos = 0;
   } else {
-    debug(DEBUG_ERROR, "Field", "FldFreeMemory invalid Field 0x%08X %p",
+    debug(DEBUG_INFO, "Field", "FldFreeMemory raw Field 0x%08X %p will not be freed",
       (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
   }
   OUTV;
@@ -922,7 +930,7 @@ void FldSetTextHandle(FieldType *fldP, MemHandle textHandle) {
     FldSetText(fldP, textHandle, 0, size);
   } else {
     ram = (uint8_t *)pumpkin_heap_base();
-    debug(DEBUG_ERROR, "Field", "FldSetTextHandle invalid Field 0x%08X %p",
+    debug(DEBUG_INFO, "Field", "FldSetTextHandle raw field 0x%08X %p",
       (uint32_t)((uint8_t *)fldP - ram), fldP);
     put4b((uint8_t *)textHandle - ram, (uint8_t *)fldP, 16);
   }
@@ -986,11 +994,9 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
 // This function sets the field attribute hasFocus to true.
 
 void FldGrabFocus(FieldType *fldP) {
+  fldP = FldCheckField(fldP);
   if (fldP && fldP->magic == FIELD_MAGIC) {
     FldGrabFocusEx(fldP, false);
-  } else {
-    debug(DEBUG_ERROR, "Field", "FldGrabFocus invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
   }
 }
 
@@ -1027,15 +1033,13 @@ void FldSetInsPtPosition(FieldType *fldP, UInt16 pos) {
   // Set the location of the insertion point for a given string position.
   // If the position is beyond the visible text, the field is scrolled until the position is visible.
 
+  fldP = FldCheckField(fldP);
   if (fldP && fldP->magic == FIELD_MAGIC) {
     if (pos >= fldP->textLen) {
       pos = fldP->textLen > 0 ? fldP->textLen - 1 : 0;
     }
     FldSetInsertionPoint(fldP, pos);
     FldSetScrollPosition(fldP, pos);
-  } else {
-    debug(DEBUG_ERROR, "Field", "FldSetInsPtPosition invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
   }
 }
 
@@ -1484,10 +1488,6 @@ void FldSendHeightChangeNotification(const FieldType *fldP, UInt16 pos, Int16 nu
 
 Boolean FldMakeFullyVisible(FieldType *fldP) {
   NOTIMPLI;
-  if (fldP == NULL || fldP->magic != FIELD_MAGIC) {
-    debug(DEBUG_ERROR, "Field", "FldMakeFullyVisible invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
-  }
 }
 
 UInt16 FldGetNumberOfBlankLines(const FieldType *fldP) {
