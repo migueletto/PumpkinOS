@@ -768,6 +768,41 @@ void FntSaveFontEx(FontPtr font, FontID id) {
   }
 }
 
+void FntSaveFontChars(FontPtr font, FontID id) {
+  BitmapType *bmp;
+  WinHandle oldw, wh;
+  UInt16 fh, fw, cw, w, h, ch, i, j;
+  FontID old;
+  Err error;
+  char filename[64];
+
+  if (font) {
+    old = FntSetFont(id);
+    fw = FntAverageCharWidth();
+    fh = FntCharHeight();
+    w = 16 * fw * 2;
+    h = 16 * fh * 2;
+    bmp = BmpCreate3(w, h, 0, kDensityDouble, 16, false, 0, NULL, &error);
+    wh = WinCreateBitmapWindow(bmp, &error);
+    oldw = WinSetDrawWindow(wh);
+    WinEraseWindow();
+    for (i = 0, ch = 0; i < 16; i++) {
+      for (j = 0; j < 16; j++, ch++) {
+        cw = FntCharWidth(ch);
+        if (cw > 0) {
+          WinDrawChar(ch, j*fw, i*fh);
+        }
+      }
+    }
+    WinSetDrawWindow(oldw);
+    FntSetFont(old);
+    StrPrintF(filename, "font_%03d_v%d.png", id, font->v);
+    pumpkin_save_bitmap(bmp, 0, 0, 0, 0, 0, filename);
+    WinDeleteWindow(wh, false);
+    BmpDelete(bmp);
+  }
+}
+
 void FntSaveFont(FontPtr font, FontID id) {
   FontTypeV2 *font2;
   Coord width, height;

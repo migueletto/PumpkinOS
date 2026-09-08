@@ -567,6 +567,7 @@ UInt16 FntGetVersion(FontType *f);
 FontPtr FntCopyFont(FontPtr f);
 void FntFreeFont(FontPtr f);
 void FntSaveFont(FontPtr f, FontID id);
+void FntSaveFontChars(FontPtr font, FontID id);
 void FntSaveFontEx(FontPtr font, FontID id);
 void FntSaveFonts(void);
 UInt16 FntGetDensityCount(FontType *f);
