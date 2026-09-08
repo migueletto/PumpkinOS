@@ -84,7 +84,7 @@ void InsPtGetLocation(Int16 *x, Int16 *y) {
   inspt_module_t *module = (inspt_module_t *)pumpkin_get_local_storage(ins_key);
 
   if (x) *x = module->x;
-  if (y) *x = module->y;
+  if (y) *y = module->y;
 }
 
 // Enable or disable the insertion point. When the insertion point is disabled, it’s invisible; when it’s enabled, it blinks.
