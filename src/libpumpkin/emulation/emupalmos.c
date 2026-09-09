@@ -2319,10 +2319,12 @@ static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
       break;
     case sysAppLaunchCmdNotify:
       paramBlockSize = pumpkin_get_param_size(); // SysNotifyParamType + details
-      p = pumpkin_heap_alloc(paramBlockSize, "paramBlock");
-      a = p - ram;
-      debug(DEBUG_INFO, "EmuPalmOS", "alloc %u bytes for param block at %p (0x%08X)", paramBlockSize, p, a);
-      encode_notify(a, param);
+      if (paramBlockSize > 0) {
+        p = pumpkin_heap_alloc(paramBlockSize, "paramBlock");
+        a = p - ram;
+        debug(DEBUG_INFO, "EmuPalmOS", "alloc %u bytes for param block at %p (0x%08X)", paramBlockSize, p, a);
+        encode_notify(a, param);
+      }
       break;
     default:
       if (launchCode >= sysAppLaunchCmdCustomBase) {
