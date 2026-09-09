@@ -1101,12 +1101,20 @@ Err INetLibURLCrack(UInt16 libRefnum, UInt8 *urlTextP, INetURLType* urlP) {
 // conforms to the URL format.
 
 Err INetLibURLsAdd(UInt16 libRefnum, Char *baseURLStr, Char *embeddedURLStr, Char *resultURLStr, UInt16 *resultLenP) {
+  UInt16 len;
   Err err = inetErrParamsInvalid;
 
   if (embeddedURLStr && resultLenP) {
     if (resultURLStr) {
       resultURLStr[0] = 0;
-      if (baseURLStr) StrNCopy(resultURLStr, baseURLStr, *resultLenP);
+      if (baseURLStr) {
+        StrNCopy(resultURLStr, baseURLStr, *resultLenP);
+        len = StrLen(embeddedURLStr);
+        if (StrNCompare(baseURLStr, embeddedURLStr, len) == 0) {
+          resultURLStr[len] = 0;
+          embeddedURLStr += len;
+        }
+      }
       StrNCat(resultURLStr, embeddedURLStr, *resultLenP);
       *resultLenP = StrLen(resultURLStr) + 1;
       err = errNone;
