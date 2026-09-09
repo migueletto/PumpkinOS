@@ -1,7 +1,35 @@
 #include <PalmOS.h>
 
 #include "WindowAccessor.h"
+#include "bytes.h"
 #include "debug.h"
+
+static ControlType *CtlCheckControl(ControlType *ctlP) {
+  FormType *formP;
+  UInt16 id;
+  uint8_t *ram, *p;
+  int i;
+
+  if (ctlP) {
+    if (ctlP->magic != CONTROL_MAGIC) {
+      if ((formP = FrmGetActiveForm()) != NULL) {
+        p = (uint8_t *)ctlP;
+        get2b(&id, p, 0);
+        if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
+          ram = (uint8_t *)pumpkin_heap_base();
+          debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", (uint32_t)((uint8_t *)ctlP - ram), ctlP);
+          i = 0;
+          if ((ctlP = pumpkin_create_control(p, &i)) != NULL) {
+            ctlP->raw = true; // mark this Control as 'raw'
+            FrmAddObject(formP, frmFieldObj, id, ctlP);
+          }
+        }
+      }
+    }
+  }
+
+  return ctlP;
+}
 
 void CtlDrawControl(ControlType *controlP) {
   MemHandle h;
@@ -18,6 +46,7 @@ void CtlDrawControl(ControlType *controlP) {
   int red, green, blue;
   Int16 tw, th, x, y;
 
+  controlP = CtlCheckControl(controlP);
   if (controlP) {
     debug(DEBUG_TRACE, "Control", "CtlDrawControl control %d style %d on %d", controlP->id, controlP->style, controlP->attr.on);
     objFill = UIColorGetTableEntryIndex(UIObjectFill);
@@ -790,6 +819,7 @@ ControlType *CtlNewControl(void **formPP, UInt16 ID, ControlStyleType style, con
       if ((controlP = pumpkin_heap_alloc(sizeof(ControlType) + len + 1, "Control")) != NULL) {
         // space for the label is alloced after the control structure
         StrNCopy(controlP->buf, textP, len);
+        controlP->magic = CONTROL_MAGIC;
         controlP->id = ID;
         controlP->bounds.topLeft.x = x;
         controlP->bounds.topLeft.y = y;

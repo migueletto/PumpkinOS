@@ -421,7 +421,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
 static FieldType *FldCheckField(FieldType *fldP) {
   MemHandle textHandle;
   FormType *formP;
-  UInt16 id, maxChars, objIndex;
+  UInt16 id, maxChars;
   uint8_t *ram, *p;
   uint32_t h;
   int i;
@@ -444,15 +444,7 @@ static FieldType *FldCheckField(FieldType *fldP) {
             get2b(&maxChars, p, 28);
             FldSetMaxChars(fldP, maxChars);
             fldP->raw = true; // mark this Field as 'raw'
-
-            objIndex = formP->numObjects++;
-            formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
-            if (formP->objects) {
-              formP->objects[objIndex].objectType = frmFieldObj;
-              formP->objects[objIndex].id = fldP->id;
-              formP->objects[objIndex].object.field = fldP;
-              formP->objects[objIndex].object.field->formP = formP;
-            }
+            FrmAddObject(formP, frmFieldObj, id, fldP);
           }
         }
       }

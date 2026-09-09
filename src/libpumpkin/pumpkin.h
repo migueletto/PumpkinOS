@@ -332,6 +332,7 @@ void pumpkin_trace(uint16_t trap);
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
 FieldType *pumpkin_create_field(uint8_t *p, int *i);
+ControlType *pumpkin_create_control(uint8_t *p, int *i);
 void pumpkin_destroy_field(FieldType *fldP, Boolean freeMemory);
 BitmapType *pumpkin_create_bitmap(void *h, uint8_t *p, uint32_t size, uint32_t type, int chain, uint32_t *dsize);
 FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsize);
@@ -538,6 +539,7 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
 void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible);
 Boolean FrmGetVisible(FormType *formP, UInt16 objIndex);
 void FrmSetColorTrigger(FormType *formP, UInt16 id, RGBColorType *rgb, Boolean draw);
+void FrmAddObject(FormType *formP, FormObjectKind objectKind, UInt16 id, void *obj);
 
 void pumpkin_fix_popups(FormType *form);
 FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize);

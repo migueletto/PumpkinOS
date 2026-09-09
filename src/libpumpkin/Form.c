@@ -2676,6 +2676,25 @@ void FrmSetObjectPosition(FormType *formP, UInt16 objIndex, Coord x, Coord y) {
   FrmSetObjectBounds(formP, objIndex, &rect);
 }
 
+void FrmAddObject(FormType *formP, FormObjectKind objectKind, UInt16 id, void *obj) {
+  UInt16 objIndex;
+
+  if (formP && obj) {
+    objIndex = formP->numObjects++;
+    if (formP->numObjects == 1) {
+      formP->objects = sys_calloc(formP->numObjects, sizeof(FormObjListType));
+    } else {
+      formP->objects = sys_realloc(formP->objects, formP->numObjects * sizeof(FormObjListType));
+    }
+    if (formP->objects) {
+      formP->objects[objIndex].objectType = objectKind;
+      formP->objects[objIndex].id = id;
+      formP->objects[objIndex].object.ptr = obj;
+      //formP->objects[objIndex].object.field->formP = formP;
+    }
+  }
+}
+
 Err FrmAddSpaceForObject(FormType **formPP, MemPtr *objectPP, FormObjectKind objectKind, UInt16 objectSize) {
   // system use only
   debug(DEBUG_ERROR, "Form", "FrmAddSpaceForObject not implemented");
@@ -2982,14 +3001,14 @@ void CtlDirectAccessHack(ControlType *c) {
   }
 }
 
-static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
+ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   ControlType *c = NULL;
   SliderControlType *sc = NULL;
   uint8_t dummy8, style, font, group;
   uint16_t attr, id, x, y, w, h, bitmapId, selBitmapId, len;
   uint16_t minValue, maxValue, pageSize, value;
-  uint32_t dummy32;
-  char *text;
+  uint32_t textPtr, dummy32;
+  char *ram, *text;
 
   // szRCControlBA16          "w,w4,ssp,uuuuuu3,uuuzu5,b,b,b,zb"
   // szRCSliderControlBA16    "w,w4,w,w,uuuuuu3,uuuzu5,b,zb,w,w,w,w,zl"
@@ -2999,6 +3018,7 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   *i += get2b(&y, p, *i);
   *i += get2b(&w, p, *i);
   *i += get2b(&h, p, *i);
+  get4b(&textPtr, p, *i);
   *i += get2b(&bitmapId, p, *i);
   *i += get2b(&selBitmapId, p, *i);
   *i += get2b(&attr, p, *i);
@@ -3041,6 +3061,7 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   } else if (attr & 0x0040) {
     debug(DEBUG_TRACE, "Form",  "graphical control id %d font %d style %d attr 0x%04X at (%d,%d,%d,%d)", id, font, style, attr, x, y, w, h);
     if ((c = pumpkin_heap_alloc(sizeof(GraphicControlType), "Control")) != NULL) {
+      c->magic = CONTROL_MAGIC;
       c->id = id;
       c->bounds.topLeft.x = x;
       c->bounds.topLeft.y = y;
@@ -3056,7 +3077,13 @@ static ControlType *pumpkin_create_control(uint8_t *p, int *i) {
     *i += pumpkin_getstr(&text, p, *i);
     *i += palign(2, *i);
     len = sys_strlen(text);
+    if (len == 0 && textPtr != 0) {
+      ram = (char *)pumpkin_heap_base();
+      text = ram + textPtr;
+      len = sys_strlen(text);
+    }
     if ((c = pumpkin_heap_alloc(sizeof(ControlType) + len + 1, "Control")) != NULL) {
+      c->magic = CONTROL_MAGIC;
       c->id = id;
       c->bounds.topLeft.x = x;
       c->bounds.topLeft.y = y;
