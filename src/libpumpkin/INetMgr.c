@@ -776,6 +776,7 @@ Err INetLibSockSettingGet(UInt16 libRefnum, MemHandle socketH, UInt16 /*INetSock
             case inetCompressionTypeLZ77:        s = "Lz77"; break;
             case inetCompressionTypeBest:        s = "Best"; break;
             case inetCompressionTypeLZ77Primer1: s = "Lz77 Primer1"; break;
+            default: s = NULL; break;
           }
           if (s) {
             err = INetLibSettingGetStr(bufP, bufLenP, s);
