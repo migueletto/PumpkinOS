@@ -166,8 +166,8 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map_ptr error: %s", uc_strerror(err));
 
       // virtual ARM syscall memory
-      //err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_ALL);
-      //if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
+      err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_ALL);
+      if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
 
       arm->buf = buf;
       arm->size = size;
