@@ -62,12 +62,13 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   char buf[256];
 
   if (addr == arm->call68KAddr) {
-    debug(DEBUG_TRACE, "ARM", "call68KAddr");
     r0 = ucarmGetReg(arm, 0);
     r1 = ucarmGetReg(arm, 1);
     r2 = ucarmGetReg(arm, 2);
     r3 = ucarmGetReg(arm, 3);
+    debug(DEBUG_TRACE, "ARM", "call68KAddr r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X ...", r0, r1, r2, r3);
     r = arm->f(r0, r1, r2, r3);
+    debug(DEBUG_TRACE, "ARM", "call68KAddr r0=0x%08X", r);
     ucarmSetReg(arm, 0, r);
 
     // PC <-- LR
