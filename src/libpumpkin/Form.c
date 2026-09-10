@@ -201,7 +201,8 @@ static Err FrmInitFormInternal(FormType *formP) {
 
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
-  colorTable = WinGetColorTable(depth);
+  //colorTable = WinGetColorTable(depth);
+  colorTable = BmpGetColortable(WinGetBitmap(WinGetDisplayWindow()));
   //formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
   //formP->window.density = density;
   if ((bmp = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err)) == NULL) {
