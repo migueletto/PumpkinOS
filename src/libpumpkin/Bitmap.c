@@ -266,7 +266,7 @@ UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlag
               }
               break;
             default:
-              debug(DEBUG_ERROR, "Bitmap", "invalid bitmap selector %u", selector);
+              debug(DEBUG_ERROR, "Bitmap", "invalid common bitmap selector %u", selector);
               break;
           }
         break;
@@ -305,7 +305,7 @@ UInt32 BmpV0GetSetField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSele
           value = BmpGetSetCommonField(bmp, selector, flagSelector, value, set);
           break;
         default:
-          debug(DEBUG_ERROR, "Bitmap", "invalid bitmap selector %u", selector);
+          debug(DEBUG_ERROR, "Bitmap", "invalid V0 bitmap selector %u", selector);
           value = 0;
           break;
       }
@@ -350,7 +350,7 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
           }
           break;
         default:
-          debug(DEBUG_ERROR, "Bitmap", "invalid bitmap selector %u", selector);
+          debug(DEBUG_ERROR, "Bitmap", "invalid V1 bitmap selector %u", selector);
           value = 0;
           break;
       }
@@ -387,6 +387,7 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
             value = BmpGetSetCommonField(bmp, (BitmapSelector)selector, flagSelector, value, set);
             break;
           case BitmapV2FieldNextDepthOffset:
+          case BitmapV2FieldReserved:
             if (set) {
               put2(value, (UInt8 *)bmp, selector);
             } else {
@@ -404,7 +405,7 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
             }
             break;
          default:
-            debug(DEBUG_ERROR, "Bitmap", "invalid bitmap selector %u", selector);
+            debug(DEBUG_ERROR, "Bitmap", "invalid V2 bitmap selector %u", selector);
             value = 0;
             break;
         }
@@ -477,7 +478,7 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             }
             break;
          default:
-            debug(DEBUG_ERROR, "Bitmap", "invalid bitmap selector %u", selector);
+            debug(DEBUG_ERROR, "Bitmap", "invalid V3 bitmap selector %u", selector);
             value = 0;
             break;
         }
@@ -1517,11 +1518,16 @@ Boolean BmpGetNoDither(const BitmapType *bitmapP) {
 }
 
 UInt16 BmpGetDensity(const BitmapType *bitmapP) {
-  UInt16 d = kDensityLow;
+  UInt16 aux, d = kDensityLow;
 
   if (bitmapP) {
     if (BmpGetVersion(bitmapP) == 3) {
       d = BmpV3GetField((BitmapType *)bitmapP, BitmapV3FieldDensity);
+    } else if (BmpGetVersion(bitmapP) == 2) {
+      aux = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldReserved);
+      if (aux == 0x0008) {
+        d = kDensityDouble;
+      }
     }
   }
 
