@@ -1524,6 +1524,12 @@ UInt16 BmpGetDensity(const BitmapType *bitmapP) {
     if (BmpGetVersion(bitmapP) == 3) {
       d = BmpV3GetField((BitmapType *)bitmapP, BitmapV3FieldDensity);
     } else if (BmpGetVersion(bitmapP) == 2) {
+      // XXX weird fact: if you call BmpGetDensity() on a  V2 bitmap,
+      // it will retrieve the UInt16 value at offsets 14-15 (BitmapV2FieldReserved) and
+      // interpret it as density, even though V2 bitmaps do not support density.
+      // Even weirder, value 0x0008 is interpreted as kDensityDouble,
+      // while all other values are interpreted as kDensityLow.
+      // The game Edge does this.
       aux = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldReserved);
       if (aux == 0x0008) {
         d = kDensityDouble;
