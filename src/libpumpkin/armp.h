@@ -5,4 +5,5 @@ typedef struct {
   void (*armSetReg)(arm_emu_t *arm, uint32_t reg, uint32_t value);
   int (*armRun)(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr);
   void (*armDisasm)(arm_emu_t *arm, int disasm);
+  void (*armCodeRegion)(arm_emu_t *arm, uint32_t startAddr, uint32_t endAddr);
 } arm_plugin_t;

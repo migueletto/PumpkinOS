@@ -17,16 +17,21 @@ static arm_plugin_t ucarm;
 
 struct arm_emu_t {
   uc_engine *uc;
-  uc_hook trace;
+  uc_hook trace1;
+  uc_hook trace2;
+  uc_hook trace3;
   uint32_t call68KAddr;
   call68KFunc_f f;
   uint8_t *buf;
   uint32_t size;
+  uint32_t startAddr, endAddr;
+  uint32_t returnAddr;
+  int invalidIns;
   int disasm;
 };
 
 static uint32_t ucarmGetReg(arm_emu_t *arm, uint32_t reg) {
-  int r;
+  uint32_t r = 0;
 
   if (reg < 13) {
     reg = UC_ARM_REG_R0 + reg;
@@ -34,6 +39,9 @@ static uint32_t ucarmGetReg(arm_emu_t *arm, uint32_t reg) {
     case 13: reg = UC_ARM_REG_R13; break;
     case 14: reg = UC_ARM_REG_R14; break;
     case 15: reg = UC_ARM_REG_R15; break;
+    default:
+      debug(DEBUG_ERROR, "ARM", "ucarmGetReg invalid register %u", reg);
+      break;
   }
   uc_reg_read(arm->uc, reg, &r);
 
@@ -41,7 +49,7 @@ static uint32_t ucarmGetReg(arm_emu_t *arm, uint32_t reg) {
 }
 
 static void ucarmSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
-  int r = value;
+  uint32_t r = value;
 
   if (reg < 13) {
     reg = UC_ARM_REG_R0 + reg;
@@ -49,6 +57,9 @@ static void ucarmSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
     case 13: reg = UC_ARM_REG_R13; break;
     case 14: reg = UC_ARM_REG_R14; break;
     case 15: reg = UC_ARM_REG_R15; break;
+    default:
+      debug(DEBUG_ERROR, "ARM", "ucarmSetReg invalid register %u", reg);
+      break;
   }
 
   uc_reg_write(arm->uc, reg, &r);
@@ -79,7 +90,7 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
 
   if (addr >= 0x04000000) {
     // native ARM syscall emulation: the address identifies which syscall is being called,
-    // beforeno matter which instruction is contained in that address.
+    // no matter which instruction is contained in that address.
     uint32_t group, function;
     group = (addr & 0x00F00000) >> 20;
     function = addr & 0xFFFF;
@@ -92,6 +103,12 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     ucarmSetReg(arm, 0, emupalmos_arm_syscall(group, function, r0, r1, r2, r3, sp));
     ucarmSetReg(arm, 14, lr);
     ucarmSetReg(arm, 15, lr); // return from subroutine
+    return;
+  }
+
+  if (arm->startAddr && arm->endAddr && (addr < arm->startAddr || addr >= arm->endAddr)) {
+    debug(DEBUG_ERROR, "ARM", "pc 0x%08X is outside of code region 0x%08X to 0x%08X", addr, arm->startAddr, arm->endAddr);
+    ucarmSetReg(arm, 15, arm->returnAddr); // force exit
     return;
   }
 
@@ -146,8 +163,27 @@ static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t addres
 }
 
 static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
-  debug(DEBUG_ERROR, "ARM", "invalid instruction");
-  return false;
+  arm_emu_t *arm = (arm_emu_t *)user_data;
+  uint32_t pc;
+  bool r;
+
+  switch (arm->invalidIns) {
+    case 0:
+      pc = ucarmGetReg(arm, 15);
+      debug(DEBUG_ERROR, "ARM", "invalid instruction pc=0x%08X: repeat with disasm on", pc);
+      arm->invalidIns = 1;
+      arm->disasm = 1;
+      r = true;
+      break;
+    case 1:
+      pc = ucarmGetReg(arm, 15);
+      arm->invalidIns = 0;
+      arm->disasm = 0;
+      r = false;
+      break;
+  }
+
+  return r;
 }
 
 static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
@@ -157,9 +193,9 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
-      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, arm->size - 1);
-      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
-      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, arm->size - 1);
+      uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
 
       // main memory
       err = uc_mem_map_ptr(arm->uc, 0, size, UC_PROT_ALL, buf);
@@ -192,12 +228,19 @@ static void ucarmDisasm(arm_emu_t *arm, int disasm) {
   arm->disasm = disasm;
 }
 
+static void ucarmCodeRegion(arm_emu_t *arm, uint32_t startAddr, uint32_t endAddr) {
+  arm->startAddr = startAddr;
+  arm->endAddr = endAddr;
+  debug(DEBUG_TRACE, "ARM", "code region from 0x%08X to 0x%08X", startAddr, endAddr);
+}
+
 static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr) {
   uint32_t pc;
   uc_err err;
 
   arm->call68KAddr = call68KAddr;
   arm->f = f;
+  arm->returnAddr = returnAddr;
 
   pc = ucarmGetReg(arm, 15);
   err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
@@ -212,6 +255,7 @@ static void *PluginMain(void *p) {
   ucarm.armGetReg = ucarmGetReg;
   ucarm.armSetReg = ucarmSetReg;
   ucarm.armRun = ucarmRun;
+  ucarm.armCodeRegion = ucarmCodeRegion;
   ucarm.armDisasm = ucarmDisasm;
 
   return &ucarm;

@@ -1934,6 +1934,7 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
   uint8_t *ram = pumpkin_heap_base();
+  MemHandle h;
 
   // r9 = x
   // [x] = y
@@ -1965,6 +1966,12 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   state->istate->armp->armSetReg(state->arm, 0, emulStateAddr);
   state->istate->armp->armSetReg(state->arm, 1, userData);
   state->istate->armp->armSetReg(state->arm, 2, callAddr);
+
+  if (state->istate->armp->armCodeRegion) {
+    if ((h = MemPtrRecoverHandle(ram + code)) != NULL) {
+      state->istate->armp->armCodeRegion(state->arm, code, code + MemHandleSize(h));
+    }
+  }
 
   for (; !emupalmos_finished();) {
     if (state->istate->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
