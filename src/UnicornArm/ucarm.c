@@ -124,9 +124,29 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   }
 }
 
-static bool ucarmHookFetchUnmapped(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
-  uint32_t addr = (uint32_t)address;
-  debug(DEBUG_ERROR, "ARM", "access to unmapped address 0x%08X", addr);
+static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  char buf[16], *s;
+
+  switch (type) {
+    case UC_MEM_READ:           s = "read";  break;
+    case UC_MEM_WRITE:          s = "write"; break;
+    case UC_MEM_FETCH:          s = "fetch"; break;
+    case UC_MEM_READ_UNMAPPED:  s = "read unmapped"; break;
+    case UC_MEM_WRITE_UNMAPPED: s = "write unmapped"; break;
+    case UC_MEM_FETCH_UNMAPPED: s = "fetch unmapped"; break;
+    case UC_MEM_WRITE_PROT:     s = "write prot"; break;
+    case UC_MEM_READ_PROT:      s = "read prot"; break;
+    case UC_MEM_FETCH_PROT:     s = "fetch prot"; break;
+    case UC_MEM_READ_AFTER:     s = "read after"; break;
+    default: sys_snprintf(buf, sizeof(buf)-1, "type %d", type); s = buf; break;
+  }
+
+  debug(DEBUG_ERROR, "ARM", "%s access to %u byte(s) at address 0x%08X", s, size, (uint32_t)address);
+  return false;
+}
+
+static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
+  debug(DEBUG_ERROR, "ARM", "invalid instruction");
   return false;
 }
 
@@ -137,16 +157,17 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
-      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE, ucarmHookCode, arm, 0, arm->size - 1);
-      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_MEM_UNMAPPED, ucarmHookFetchUnmapped, arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, arm->size - 1);
+      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
 
       // main memory
       err = uc_mem_map_ptr(arm->uc, 0, size, UC_PROT_ALL, buf);
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map_ptr error: %s", uc_strerror(err));
 
       // virtual ARM syscall memory
-      err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_ALL);
-      if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
+      //err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_ALL);
+      //if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
 
       arm->buf = buf;
       arm->size = size;
