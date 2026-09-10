@@ -3226,7 +3226,9 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
   wh = module->drawWindow;
 
   if (wh) {
-    debug(DEBUG_TRACE, "Window", "WinPalette drawWindow %s", WinGetDescr(wh, buf, sizeof(buf)));
+    debug(DEBUG_TRACE, "Window", "WinPalette drawWindow   %s", WinGetDescr(wh, buf, sizeof(buf)));
+    debug(DEBUG_TRACE, "Window", "WinPalette displayWidow %s", WinGetDescr(WinGetDisplayWindow(), buf, sizeof(buf)));
+    debug(DEBUG_TRACE, "Window", "WinPalette activeWidow  %s", WinGetDescr(WinGetActiveWindow(), buf, sizeof(buf)));
     colorTable = BmpGetColortable(WinGetBitmap(wh));
     if (colorTable == NULL) {
       debug(DEBUG_ERROR, "Window", "WinPalette drawWindow colorTable is NULL");
