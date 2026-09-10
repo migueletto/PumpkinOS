@@ -25,7 +25,7 @@ void palmos_PceSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
   switch (trap) {
     case sysTrapPceNativeCall: {
       // UInt32 PceNativeCall(NativeFuncType *nativeFuncP, void *userDataP)
-    #ifdef ARMEMU
+#ifdef ARMEMU
       uint32_t nativeFuncP = ARG32;
       uint32_t userDataP = ARG32;
       emupalmos_trap_in(nativeFuncP, trap, 0);
@@ -34,7 +34,7 @@ void palmos_PceSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "PceNativeCall(0x%08X, 0x%08X): %d", nativeFuncP, userDataP, res);
       m68k_set_reg(M68K_REG_A0, res);
       m68k_set_reg(M68K_REG_D0, res);
-    #endif
+#endif
     }
     break;
   }
