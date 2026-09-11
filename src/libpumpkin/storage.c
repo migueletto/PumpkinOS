@@ -2660,6 +2660,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
             h->d.res.id = resID;
             h->size = size;
             h->buf = StoPtrNew(h, h->size, resType, resID);
+            h->useCount = 1;
             StoAddDatabaseHandle(sto, db, h);
             db->modDate = TimGetSeconds();
 
