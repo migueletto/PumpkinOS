@@ -193,7 +193,10 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
-      uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, arm->size - 1);
+      // XXX for some reason, hooking all memory space makes the emulation faster,
+      // when compared to hooking just startAddr to endAddr.
+      // But, apparently, sometimes the hook callbacks misses some calls (???)
+      uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, -1);
       uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
 
