@@ -2825,15 +2825,6 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
   BmpGetDimensions(dst, &dstWidth, &dstHeight, &dstRowBytes);
 
   if (src && dst && sx >= 0 && sx < srcWidth && sy >= 0 && sy < srcHeight && dx >= 0 && dx < dstWidth && dy >= 0 && dy < dstHeight) {
-    srcDepth = BmpGetBitDepth(src);
-    srcColorTable = BmpGetColortable(src);
-    if (srcColorTable == NULL) {
-      srcColorTable = WinGetColorTable(srcDepth);
-      isSrcDefault = true;
-    } else {
-      isSrcDefault = CtbCompare(srcColorTable, WinGetColorTable(srcDepth));
-    }
-
     dstDepth = BmpGetBitDepth(dst);
     dstColorTable = BmpGetColortable(dst);
     if (dstColorTable == NULL) {
@@ -2841,6 +2832,20 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       isDstDefault = true;
     } else {
       isDstDefault = CtbCompare(dstColorTable, WinGetColorTable(dstDepth));
+    }
+
+    srcDepth = BmpGetBitDepth(src);
+    srcColorTable = BmpGetColortable(src);
+    if (srcColorTable == NULL) {
+      if (dstDepth == 8) {
+        srcColorTable = dstColorTable;
+        isSrcDefault = isDstDefault;
+      } else {
+        srcColorTable = WinGetColorTable(srcDepth);
+        isSrcDefault = true;
+      }
+    } else {
+      isSrcDefault = CtbCompare(srcColorTable, WinGetColorTable(srcDepth));
     }
 
     srcTransp = BmpGetTransparentValue(src, &srcTransparentValue);
@@ -2866,10 +2871,11 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
         break;
       case 8:
         srcPixel = bits[sy * srcRowBytes + sx];
-        if (dstDepth != 8 || !isSrcDefault || !isDstDefault) {
-          dstPixel = BmpConvertFrom8Bits(srcPixel, srcColorTable, isSrcDefault, dstDepth, dstColorTable, isDstDefault);
-        } else {
+        //if (dstDepth == 8 && ((isSrcDefault && isDstDefault) || (srcColorTable == dstColorTable))) {
+        if (dstDepth == 8 && srcColorTable == dstColorTable) {
           dstPixel = srcPixel;
+        } else {
+          dstPixel = BmpConvertFrom8Bits(srcPixel, srcColorTable, isSrcDefault, dstDepth, dstColorTable, isDstDefault);
         }
         break;
       case 16:
