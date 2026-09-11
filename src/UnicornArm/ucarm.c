@@ -108,7 +108,9 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
 
   if (arm->startAddr && arm->endAddr && (addr < arm->startAddr || addr >= arm->endAddr)) {
     debug(DEBUG_ERROR, "ARM", "pc 0x%08X is outside of code region 0x%08X to 0x%08X", addr, arm->startAddr, arm->endAddr);
-    ucarmSetReg(arm, 15, arm->returnAddr); // force exit
+    uc_emu_stop(uc);
+    emupalmos_panic("outside", EMUPALMOS_INVALID_INSTRUCTION);
+    //ucarmSetReg(arm, 15, arm->returnAddr); // force exit
     return;
   }
 
@@ -142,7 +144,9 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
 }
 
 static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  uint32_t addr = (uint32_t)address;
   char buf[16], *s;
+  uc_err err;
 
   switch (type) {
     case UC_MEM_READ:           s = "read";  break;
@@ -158,8 +162,13 @@ static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t addres
     default: sys_snprintf(buf, sizeof(buf)-1, "type %d", type); s = buf; break;
   }
 
-  debug(DEBUG_ERROR, "ARM", "%s access to %u byte(s) at address 0x%08X", s, size, (uint32_t)address);
-  return false;
+  debug(DEBUG_ERROR, "ARM", "%s access to %u byte(s) at address 0x%08X", s, size, addr);
+  addr &= 0xFFFFF000;
+  if ((err = uc_mem_map(uc, addr, 0x1000, UC_PROT_ALL)) != 0) {
+    debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
+  }
+
+  return true;
 }
 
 static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
