@@ -31,6 +31,7 @@ struct arm_emu_t {
 };
 
 static uint32_t ucarmGetReg(arm_emu_t *arm, uint32_t reg) {
+  uc_err err;
   uint32_t r = 0;
 
   if (reg < 13) {
@@ -43,12 +44,15 @@ static uint32_t ucarmGetReg(arm_emu_t *arm, uint32_t reg) {
       debug(DEBUG_ERROR, "ARM", "ucarmGetReg invalid register %u", reg);
       break;
   }
-  uc_reg_read(arm->uc, reg, &r);
+  if ((err = uc_reg_read(arm->uc, reg, &r)) != UC_ERR_OK) {
+    debug(DEBUG_ERROR, "ARM", "uc_reg_read error: %s", uc_strerror(err));
+  }
 
   return r;
 }
 
 static void ucarmSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
+  uc_err err;
   uint32_t r = value;
 
   if (reg < 13) {
@@ -62,7 +66,15 @@ static void ucarmSetReg(arm_emu_t *arm, uint32_t reg, uint32_t value) {
       break;
   }
 
-  uc_reg_write(arm->uc, reg, &r);
+  if ((err = uc_reg_write(arm->uc, reg, &r)) != UC_ERR_OK) {
+    debug(DEBUG_ERROR, "ARM", "uc_reg_write error: %s", uc_strerror(err));
+  }
+}
+
+static void ucarmPanic(uc_engine *uc, char *msg) {
+  debug(DEBUG_ERROR, "ARM", "%s", msg);
+  uc_emu_stop(uc);
+  emupalmos_panic(msg, EMUPALMOS_INVALID_INSTRUCTION);
 }
 
 static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
@@ -77,13 +89,14 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     r1 = ucarmGetReg(arm, 1);
     r2 = ucarmGetReg(arm, 2);
     r3 = ucarmGetReg(arm, 3);
-    debug(DEBUG_TRACE, "ARM", "call68KAddr r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X ...", r0, r1, r2, r3);
+    debug(DEBUG_TRACE, "ARM", "ucarmHookCode call68KAddr r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X ...", r0, r1, r2, r3);
     r = arm->f(r0, r1, r2, r3);
-    debug(DEBUG_TRACE, "ARM", "call68KAddr r0=0x%08X", r);
+    debug(DEBUG_TRACE, "ARM", "ucarmHookCode call68KAddr r0=0x%08X", r);
     ucarmSetReg(arm, 0, r);
 
     // PC <-- LR
     lr = ucarmGetReg(arm, 14);
+    debug(DEBUG_TRACE, "ARM", "ucarmHookCode return to 0x%08X", lr);
     ucarmSetReg(arm, 15, lr);
     return;
   }
@@ -107,10 +120,8 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   }
 
   if (arm->startAddr && arm->endAddr && (addr < arm->startAddr || addr >= arm->endAddr)) {
-    debug(DEBUG_ERROR, "ARM", "pc 0x%08X is outside of code region 0x%08X to 0x%08X", addr, arm->startAddr, arm->endAddr);
-    uc_emu_stop(uc);
-    emupalmos_panic("outside", EMUPALMOS_INVALID_INSTRUCTION);
-    //ucarmSetReg(arm, 15, arm->returnAddr); // force exit
+    StrNPrintF(buf, sizeof(buf)-1, "pc 0x%08X is outside of code region 0x%08X to 0x%08X", addr, arm->startAddr, arm->endAddr);
+    ucarmPanic(uc, buf);
     return;
   }
 
@@ -145,8 +156,7 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
 
 static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
   uint32_t addr = (uint32_t)address;
-  char buf[16], *s;
-  uc_err err;
+  char stype[16], buf[256], *s;
 
   switch (type) {
     case UC_MEM_READ:           s = "read";  break;
@@ -159,35 +169,35 @@ static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t addres
     case UC_MEM_READ_PROT:      s = "read prot"; break;
     case UC_MEM_FETCH_PROT:     s = "fetch prot"; break;
     case UC_MEM_READ_AFTER:     s = "read after"; break;
-    default: sys_snprintf(buf, sizeof(buf)-1, "type %d", type); s = buf; break;
+    default: StrNPrintF(stype, sizeof(stype)-1, "type %d", type); s = stype; break;
   }
 
-  debug(DEBUG_ERROR, "ARM", "%s access to %u byte(s) at address 0x%08X", s, size, addr);
-  addr &= 0xFFFFF000;
-  if ((err = uc_mem_map(uc, addr, 0x1000, UC_PROT_ALL)) != 0) {
-    debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
-  }
+  StrNPrintF(buf, sizeof(buf)-1, "%s access to %u byte(s) at address 0x%08X", s, size, addr);
+  ucarmPanic(uc, buf);
 
-  return true;
+  return false;
 }
 
 static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
+  char buf[256];
   uint32_t pc;
   bool r;
 
+  pc = ucarmGetReg(arm, 15);
+  StrNPrintF(buf, sizeof(buf)-1, "invalid instruction pc=0x%08X: repeat with disasm on", pc);
+
   switch (arm->invalidIns) {
     case 0:
-      pc = ucarmGetReg(arm, 15);
-      debug(DEBUG_ERROR, "ARM", "invalid instruction pc=0x%08X: repeat with disasm on", pc);
+      debug(DEBUG_ERROR, "ARM", "%s", buf);
       arm->invalidIns = 1;
       arm->disasm = 1;
       r = true;
       break;
     case 1:
-      pc = ucarmGetReg(arm, 15);
       arm->invalidIns = 0;
       arm->disasm = 0;
+      ucarmPanic(uc, buf);
       r = false;
       break;
   }
@@ -202,19 +212,15 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
     if ((err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &arm->uc)) == 0) {
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
-      // XXX for some reason, hooking all memory space makes the emulation faster,
-      // when compared to hooking just startAddr to endAddr.
-      // But, apparently, sometimes the hook callbacks misses some calls (???)
-      uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE,         ucarmHookCode,        arm, 0, -1);
       uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
 
-      // main memory
+      // map main memory
       err = uc_mem_map_ptr(arm->uc, 0, size, UC_PROT_ALL, buf);
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map_ptr error: %s", uc_strerror(err));
 
-      // virtual ARM syscall memory
-      err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_ALL);
+      // map virtual ARM syscall memory
+      err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_READ|UC_PROT_EXEC);
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
 
       arm->buf = buf;
@@ -254,9 +260,19 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   arm->f = f;
   arm->returnAddr = returnAddr;
 
+  // XXX for some reason, hooking all memory space makes the emulation faster,
+  // when compared to hooking just startAddr to endAddr.
+  // Also, uc_hook_add can not be called just once in ucarmInit.
+  // It must be called here, paired with uc_hook_del, oherwise the emulator
+  // will behave weirdly, causing the emulated ARM code to crash (don't know why...)
+  uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE, ucarmHookCode, arm, 0, -1);
+
   pc = ucarmGetReg(arm, 15);
   err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
   if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start error: %s", uc_strerror(err));
+
+  // XXX uc_hook_del() can impact performance, take some measurements later...
+  uc_hook_del(arm->uc, arm->trace1);
 
   return pc == returnAddr || err ? -1 : 0;
 }
