@@ -33,7 +33,7 @@
 #define screenSize    32000
 #define lowMemSize     (sysvarsSize + kbdvSize + lineaSize + screenSize)
 #define basePageSize    256
-#define stackSize      4096
+#define tosStackSize   4096
 
 #define ioStart 0x00FF8000
 #define ioEnd   0x01000000
@@ -880,7 +880,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
         debug(DEBUG_INFO, "TOS", "bss: 0x%08X (%u bytes)", bssStart, bssSize);
       }
 
-      debug(DEBUG_INFO, "TOS", "stack: 0x%08X (%u bytes)", stackStart, stackSize);
+      debug(DEBUG_INFO, "TOS", "stack: 0x%08X (%u bytes)", stackStart, tosStackSize);
 
       if (relocSize > 0) {
         relocBase = (uint32_t *)(tos + headerSize + textSize + dataSize + symSize);
@@ -924,7 +924,7 @@ static int tos_main_memory(UInt16 volRefNumA, UInt16 volRefNumB, uint8_t *tos, u
       pumpkin_setio(tos_getchar, tos_haschar, tos_putchar, NULL, tos_setcolor, &data);
 
       pc = textStart;
-      a7 = stackStart + stackSize - 16;
+      a7 = stackStart + tosStackSize - 16;
       state->stackStart = stackStart;
 
       write_long(a7 + 4, basePageStart);

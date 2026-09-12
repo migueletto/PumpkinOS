@@ -38,7 +38,7 @@
 #define netLibTrapConfigAliasSet netLibConfigAliasSet
 #define netLibTrapConfigAliasGet netLibConfigAliasGet
 
-#define stackSize 4096
+#define stackSize 16384
 
 #define sysTrapFrmGetEventHandler68K   0xA500
 #define sysTrapCtlGetStyle68K          0xA501
