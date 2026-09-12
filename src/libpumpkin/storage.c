@@ -2303,6 +2303,7 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
   Err err = dmErrResourceNotFound;
 
   if (dbPP && mutex_lock(sto->mutex) == 0) {
+    *dbPP = NULL;
     if (resH) {
       debug(DEBUG_TRACE, "STOR", "searching resource handle %p", resH);
     } else {
