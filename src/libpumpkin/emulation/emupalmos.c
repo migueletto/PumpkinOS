@@ -180,6 +180,12 @@ void emupalmos_panic(char *msg, int code) {
 
   creator = pumpkin_get_app_creator();
   pumpkin_crash_log(creator, code, msg);
+
+  WinSetDrawWindow(WinGetDisplayWindow());
+  WinSetCoordinateSystem(kCoordinatesStandard);
+  WinPalette(winPaletteSetToDefault, 0, 0, NULL);
+  WinScreenMode(winScreenModeSetToDefaults, NULL, NULL, NULL, NULL);
+  WinEraseWindow();
 }
 
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg) {
@@ -1504,7 +1510,8 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
   uint32_t argsSize, wantA0, selector, a4, a5, sp, r = 0;
   m68k_state_t *m68k_state;
 
-  debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func(0x%08X, 0x%08X, 0x%08X, 0x%08x)", emulStateP, trapOrFunction, argsOnStackP, argsSizeAndwantA0);
+  debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func(emulState=0x%08X, trapOrFn=0x%08X, args=0x%08X, argsSize=0x%08x)",
+    emulStateP, trapOrFunction, argsOnStackP, argsSizeAndwantA0);
 
   // emulStateP: Pointer to the PACE emulation state. Supply the pointer that was passed to your ARM function by PACE.
   emulState = emulStateP ? ram + emulStateP : NULL;
@@ -1522,6 +1529,8 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func trap 0x%04X", 0xA000 | trapOrFunction);
     sp = m68k_get_reg(NULL, M68K_REG_SP);
     sp -= argsSize;
+    debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func argsOnStack 0x%08X (%u bytes):", argsOnStackP, argsSize);
+    debug_bytes(DEBUG_TRACE, "EmuPalmOS", argsOnStack, argsSize);
     sys_memcpy(ram + sp, argsOnStack, argsSize);
     m68k_set_reg(M68K_REG_SP, sp);
 
@@ -1542,6 +1551,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
 #endif
 
     r = m68k_get_reg(NULL, wantA0 ? M68K_REG_A0 : M68K_REG_D0);
+    debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func return %s=0x%08X", wantA0 ? "A0" : "D0", r);
     m68k_set_reg(M68K_REG_SP, sp + argsSize);
 
   } else {
@@ -1959,7 +1969,7 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   state->istate->armp->armSetReg(state->arm, 15, code);    // PC
   state->istate->armp->armSetReg(state->arm, 14, retAddr); // LR
   state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
-  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X return 0x%08X begin", code, userData, stackAddr + stackSize, retAddr);
+  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X to 0x%08X return 0x%08X begin", code, userData, stackAddr, stackAddr + stackSize, retAddr);
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
