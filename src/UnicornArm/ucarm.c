@@ -184,12 +184,8 @@ static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
   uint32_t pc;
   bool r;
 
-  pc = ucarmGetReg(arm, 15);
-  StrNPrintF(buf, sizeof(buf)-1, "invalid instruction pc=0x%08X: repeat with disasm on", pc);
-
   switch (arm->invalidIns) {
     case 0:
-      debug(DEBUG_ERROR, "ARM", "%s", buf);
       arm->invalidIns = 1;
       arm->disasm = 1;
       r = true;
@@ -197,7 +193,12 @@ static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
     case 1:
       arm->invalidIns = 0;
       arm->disasm = 0;
+      pc = ucarmGetReg(arm, 15);
+      StrNPrintF(buf, sizeof(buf)-1, "invalid instruction pc=0x%08X", pc);
       ucarmPanic(uc, buf);
+      if (arm->startAddr == 0 && arm->endAddr == 0) {
+        debug(DEBUG_INFO, "ARM", "since code region is not set, it may be just an invalid code address");
+      }
       r = false;
       break;
   }
@@ -249,7 +250,9 @@ static void ucarmDisasm(arm_emu_t *arm, int disasm) {
 static void ucarmCodeRegion(arm_emu_t *arm, uint32_t startAddr, uint32_t endAddr) {
   arm->startAddr = startAddr;
   arm->endAddr = endAddr;
-  debug(DEBUG_TRACE, "ARM", "code region from 0x%08X to 0x%08X", startAddr, endAddr);
+  if (arm->startAddr && arm->endAddr) {
+    debug(DEBUG_TRACE, "ARM", "code region from 0x%08X to 0x%08X", startAddr, endAddr);
+  }
 }
 
 static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr) {
@@ -265,7 +268,7 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   // Also, uc_hook_add can not be called just once in ucarmInit.
   // It must be called here, paired with uc_hook_del, oherwise the emulator
   // will behave weirdly, causing the emulated ARM code to crash (don't know why...)
-  uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE, ucarmHookCode, arm, 0, -1);
+  uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE, ucarmHookCode, arm, 1, 0);
 
   pc = ucarmGetReg(arm, 15);
   err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
