@@ -138,7 +138,7 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     if (mode == UC_MODE_THUMB) {
       if (size == 4) {
         uint32_t instr = *(uint32_t *)(arm->buf + addr);
-        debug(DEBUG_TRACE, "ARM", "%08X: %08X %s", addr, instr, buf);
+        debug(DEBUG_TRACE, "ARM", "%08X: (thumb 4 bytes) %08X %s", addr, instr, buf);
       } else {
         uint16_t instr = *(uint16_t *)(arm->buf + addr);
         disasm(addr, instr, buf, 1);
@@ -148,7 +148,7 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
         uint32_t instr = *(uint32_t *)(arm->buf + addr);
         disasm(addr, instr, buf, 0);
       } else {
-        debug(DEBUG_ERROR, "ARM", "%08X: wrong size %u %s", addr, size, buf);
+        debug(DEBUG_ERROR, "ARM", "%08X: (wrong size %u) %s", addr, size, buf);
       }
     }
   }
