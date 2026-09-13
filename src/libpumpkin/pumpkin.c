@@ -173,6 +173,7 @@ typedef struct {
   void *iodata;
   void *table;
   void *local_storage[last_key];
+  int logscr;
 } pumpkin_task_t;
 
 typedef struct {
@@ -181,6 +182,7 @@ typedef struct {
   surface_t *msurface;
   int dirty; // app screen changed
   int x0, y0, x1, y1;
+  uint32_t logscr_id;
 } task_screen_t;
 
 typedef struct {
@@ -308,6 +310,8 @@ typedef struct {
   surface_t *surface;
   UInt32 creator;
   char name[dmDBNameLength];
+  uint32_t id;
+  int fd;
 } save_screen_t;
 
 struct pumpkin_httpd_t {
@@ -1837,6 +1841,9 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size;
+  char screator[8];
+  char buf[32];
+  uint16_t u16;
   uint32_t color;
   int j, ptr;
 
@@ -1921,6 +1928,19 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   task->new_height = height;
   task->enableSound = enableSound;
   sys_strncpy(task->name, name, dmDBNameLength-1);
+
+  if (task->creator == pumpkin_get_id_option("logscr")) {
+    sys_snprintf(buf, sizeof(buf)-1, "%08X.scr", creator);
+    if ((task->logscr = sys_create(buf, SYS_WRITE, 0644)) != -1) {
+      debug(DEBUG_INFO, "logscr", "writing logscr to \"%s\"", buf);
+      pumpkin_id2s(task->creator, screator);
+      sys_write(task->logscr, (uint8_t *)screator, 4);
+      u16 = width;
+      sys_write(task->logscr, (uint8_t *)&u16, 2);
+      u16 = height;
+      sys_write(task->logscr, (uint8_t *)&u16, 2);
+    }
+  }
 
   thread_set(task_key, task);
   if (pumpkin_module.mode != 1) {
@@ -2047,6 +2067,11 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   if (mutex_lock(mutex) == -1) {
     return -1;
+  }
+
+  if (task->logscr > 0) {
+    sys_close(task->logscr);
+    task->logscr = 0;
   }
 
   if (task->lang) LanguageFinish(task->lang);
@@ -4272,6 +4297,41 @@ void pumpkin_screen_copy(uint16_t *src, uint16_t y0, uint16_t y1) {
   }
 }
 
+#if !defined(MUTE_LOGSCR)
+static void logscr_save_screen_callback(void *context, void *screen, int size) {
+  save_screen_t *scr = (save_screen_t *)context;
+  uint32_t len = size;
+  uint8_t pad[4];
+  sys_write(scr->fd, (uint8_t *)&len, 4);
+  sys_write(scr->fd, screen, size);
+  len = len % 4;
+  if (len) {
+    sys_memset(pad, 0, 4);
+    sys_write(scr->fd, pad, 4 - len);
+  }
+}
+
+static void logscr_save(int fd, uint32_t creator, task_screen_t *screen) {
+  save_screen_t scr;
+  uint16_t coords[4];
+
+  MemSet(&scr, sizeof(save_screen_t), 0);
+  scr.surface = screen->surface;
+  scr.creator = creator;
+  scr.id = screen->logscr_id++;
+  scr.fd = fd;
+
+  coords[0] = screen->x0;
+  coords[1] = screen->y0;
+  coords[2] = screen->x1;
+  coords[3] = screen->y1;
+  sys_write(fd, (uint8_t *)coords, 8);
+
+  debug(DEBUG_INFO, "logscr", "area %u %d %d %d %d", scr.id, screen->x0, screen->y0, screen->x1, screen->y1);
+  surface_save_mem(screen->surface, 0, &scr, logscr_save_screen_callback);
+}
+#endif
+
 void pumpkin_dirty_region_mode(dirty_region_e d) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   task_screen_t *screen;
@@ -4285,6 +4345,11 @@ void pumpkin_dirty_region_mode(dirty_region_e d) {
       if (task->dirty_level == 0) {
         if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
           if (screen->x0 <= screen->x1 && screen->y0 <= screen->y1) {
+#if !defined(MUTE_LOGSCR)
+            if (task->logscr > 0) {
+              logscr_save(task->logscr, task->creator, screen);
+            }
+#endif
             screen->dirty = 1;
           }
           ptr_unlock(task->screen_ptr, TAG_SCREEN);
