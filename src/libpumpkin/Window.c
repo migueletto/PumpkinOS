@@ -2201,6 +2201,8 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       return;
     }
 
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     if (FntGetVersion(f) == 1) {
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
 //debug(1, "XXX", "WinDrawCharsC font v1 density %d", density);
@@ -2308,6 +2310,8 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
         WinSetCoordinateSystem(prev);
       }
     }
+
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 }
 
