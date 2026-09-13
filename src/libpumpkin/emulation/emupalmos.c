@@ -53,6 +53,8 @@ struct emu_internal_state_t {
   Boolean fastScreenWrite;
   Boolean regionStarted;
   Coord firstY, lastY, firstX, lastX;
+
+  int recursion;
 };
 
 static const uint8_t SysFormPointerArrayToStrings_code[] = {
@@ -1943,6 +1945,7 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) 
 uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint32_t emulStateAddr, stackAddr, callAddr, retAddr, sysAddr;
+  uint32_t saveReg[16], r, i;
   uint8_t *ram = pumpkin_heap_base();
   MemHandle h;
 
@@ -1965,11 +1968,25 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emulStateAddr = state->istate->armEmulState - ram;
   stackAddr = state->istate->armStack - ram;
 
+  // save all ARM registers before emulation begins
+  for (i = 0; i < 16; i++) {
+    saveReg[i] = state->istate->armp->armGetReg(state->arm, i);
+  }
+
   state->istate->armp->armSetReg(state->arm,  9, sysAddr + 16); // register r9 points to the end of the syscall master table
   state->istate->armp->armSetReg(state->arm, 15, code);    // PC
   state->istate->armp->armSetReg(state->arm, 14, retAddr); // LR
-  state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
-  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X to 0x%08X return 0x%08X begin", code, userData, stackAddr, stackAddr + stackSize, retAddr);
+
+  if (state->istate->recursion == 0) {
+    // initializa SP only if arm_native_call_pce() was not called recursively
+    state->istate->armp->armSetReg(state->arm, 13, stackAddr + stackSize); // SP
+  } else {
+    debug(DEBUG_TRACE, "ARM", "recursion level %d detected in arm_native_call!", state->istate->recursion);
+  }
+  state->istate->recursion++;
+
+  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) stack 0x%08X to 0x%08X return 0x%08X begin (%d)",
+    code, userData, stackAddr, stackAddr + stackSize, retAddr, state->istate->recursion);
 
   // unsigned long NativeFuncType(const void *emulStateP, void *userData68KP, Call68KFuncType *call68KFuncP)
   // The first four registers r0-r3 (a1-a4) are used to pass argument values into a subroutine and to return a result value from a function
@@ -1989,8 +2006,16 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
     if (state->istate->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
 
-  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end", code, userData);
-  return state->istate->armp->armGetReg(state->arm, 0);
+  // retrieve R0 and then restore all ARM registers
+  r = state->istate->armp->armGetReg(state->arm, 0);
+  for (i = 0; i < 16; i++) {
+    state->istate->armp->armSetReg(state->arm, i, saveReg[i]);
+  }
+
+  debug(DEBUG_TRACE, "ARM", "arm_native_call(0x%08X, 0x%08X) end (%d)", code, userData, state->istate->recursion);
+  state->istate->recursion--;
+
+  return r;
 }
 
 uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3) {
