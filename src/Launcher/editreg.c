@@ -74,7 +74,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   UInt32 regSize;
   UInt16 osversion, density, depth, littleEndian, heapSize, heapAlign, enableSound, index, id, num, i;
   char buf[16], *text;
-  Boolean fastScreenWrite, r = false;
+  Boolean fastScreenWrite, armScreenWrite, r = false;
 
   FrmSetTitle(frm, name);
 
@@ -97,6 +97,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize);
   fastScreenWrite = regFlagsP ? regFlagsP->flags & regFlagFastScreenWrite : false;
+  armScreenWrite  = regFlagsP ? regFlagsP->flags & regFlagARMScreenWrite  : false;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -155,6 +156,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, fastScreenWrite);
+
+  // set armScreenWrite
+  index = FrmGetObjectIndex(frm, armScreenWriteCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, armScreenWrite);
 
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == okBtn) {
@@ -216,14 +222,21 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     regSnd.enableSound = CtlGetValue(ctl) ? 1 : 0; 
     pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
 
-    // update fastScreenWrite
+    // update fastScreenWrite and armScreenWrite
+    regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
     index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
     ctl = FrmGetObjectPtr(frm, index);
-    regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
     if (CtlGetValue(ctl)) {
       regFlags.flags |= regFlagFastScreenWrite;
     } else {
       regFlags.flags &= ~regFlagFastScreenWrite;
+    }
+    index = FrmGetObjectIndex(frm, armScreenWriteCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    if (CtlGetValue(ctl)) {
+      regFlags.flags |= regFlagARMScreenWrite;
+    } else {
+      regFlags.flags &= ~regFlagARMScreenWrite;
     }
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
 

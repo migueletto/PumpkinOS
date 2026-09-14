@@ -4,6 +4,7 @@
 
 #include "sys.h"
 #include "pumpkin.h"
+#include "RegistryMgr.h"
 #include "logtrap.h"
 #include "armemu.h"
 #include "armp.h"
@@ -29,6 +30,7 @@ struct arm_emu_t {
   int invalidIns;
   int disasm;
 
+  int armScreenWrite;
   uint32_t displayStartAddr, displayEndAddr;
   uint32_t displayWidth, displayHeight, displayDepth, displayPitch, pixelSize;
   uint32_t x0, y0, x1, y1;
@@ -236,6 +238,8 @@ static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
 
 static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
   arm_emu_t *arm;
+  UInt32 regSize;
+  RegFlagsType *regFlagsP;
   uc_err err;
 
   if ((arm = sys_calloc(1, sizeof(arm_emu_t))) != NULL) {
@@ -243,10 +247,19 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
 
       WinLegacyGetAddr(&arm->displayStartAddr, &arm->displayEndAddr);
 
+      if ((regFlagsP = pumpkin_reg_get(pumpkin_get_app_creator(), regFlagsID, &regSize)) != NULL) {
+        arm->armScreenWrite = regFlagsP->flags & regFlagARMScreenWrite;
+        MemPtrFree(regFlagsP);
+      }
+
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
       uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
-      uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_WRITE,    ucarmHookMemWrite,    arm, 1, 0);
+
+      if (arm->armScreenWrite) {
+        debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor");
+        uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_WRITE, ucarmHookMemWrite, arm, arm->displayStartAddr, arm->displayEndAddr);
+      }
 
       // map main memory
       err = uc_mem_map_ptr(arm->uc, 0, size, UC_PROT_ALL, buf);
@@ -302,30 +315,32 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   // will behave weirdly, causing the emulated ARM code to crash (don't know why...)
   uc_hook_add(arm->uc, &arm->trace1, UC_HOOK_CODE, ucarmHookCode, arm, 1, 0);
 
-  WinScreenGetAttribute(winScreenWidth,  &arm->displayWidth);
-  WinScreenGetAttribute(winScreenHeight, &arm->displayHeight);
-  WinScreenGetAttribute(winScreenDepth,  &arm->displayDepth);
-  switch (arm->displayDepth) {
-    case  8:
-      arm->pixelSize = 1;
-      break;
-    case 16:
-      arm->pixelSize = 2;
-      break;
+  if (arm->armScreenWrite) {
+    WinScreenGetAttribute(winScreenWidth,  &arm->displayWidth);
+    WinScreenGetAttribute(winScreenHeight, &arm->displayHeight);
+    WinScreenGetAttribute(winScreenDepth,  &arm->displayDepth);
+    switch (arm->displayDepth) {
+      case  8:
+        arm->pixelSize = 1;
+        break;
+      case 16:
+        arm->pixelSize = 2;
+        break;
+    }
+    arm->displayPitch = arm->displayWidth * arm->pixelSize;
+    arm->displayWrite = 0;
+    arm->x0 = arm->displayWidth;
+    arm->y0 = arm->displayHeight;
+    arm->x1 = 0;
+    arm->y1 = 0;
   }
-  arm->displayPitch = arm->displayWidth * arm->pixelSize;
-  arm->displayWrite = 0;
-  arm->x0 = arm->displayWidth;
-  arm->y0 = arm->displayHeight;
-  arm->x1 = 0;
-  arm->y1 = 0;
 
   pc = ucarmGetReg(arm, 15);
   err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
   if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start error: %s", uc_strerror(err));
 
-  if (arm->displayWrite && arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
-    debug(DEBUG_INFO, "ARM", "display was updated");
+  if (arm->armScreenWrite && arm->displayWrite && arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
+    debug(DEBUG_TRACE, "ARM", "display was updated");
     pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0, arm->y1 - arm->y0);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }

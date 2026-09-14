@@ -13,6 +13,7 @@ typedef struct RegMgrType RegMgrType;
 
 #define regFlagReset           1
 #define regFlagFastScreenWrite 2
+#define regFlagARMScreenWrite  4
 
 typedef struct {
   UInt16 version;
