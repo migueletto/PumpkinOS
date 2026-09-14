@@ -2059,8 +2059,8 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
 UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, UInt32 fg, UInt32 bg) {
   switch (depth) {
     case 1: break;
-    case 2: b = b ? 0x03 : 0x00; break;
-    case 4: b = b ? 0x0F : 0x00; break;
+    case 2:
+    case 4:
     case 8:
     case 16:
     case 24:
