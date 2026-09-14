@@ -193,6 +193,15 @@ void palmos_SndSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
+    case sysTrapSndStreamSetPan: {
+      // Err SndStreamSetPan(SndStreamRef channel, Int32 panposition)
+      uint32_t channel = ARG32;
+      uint32_t panPosition = ARG32;
+      Err err = SndStreamSetPan(channel, panPosition);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamSetPan(0x%08X, %d): %d", channel, panPosition, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
     case sysTrapSndStreamStart: {
       // Err SndStreamStart(SndStreamRef channel)
       uint32_t channel = ARG32;

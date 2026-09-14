@@ -643,6 +643,7 @@
     case sysTrapSndStreamCreateExtended:
     case sysTrapSndStreamDelete:
     case sysTrapSndStreamSetVolume:
+    case sysTrapSndStreamSetPan:
     case sysTrapSndStreamStart:
     case sysTrapSndStreamStop:
       palmos_SndSysTrap(sp, idx, trap);
