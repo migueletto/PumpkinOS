@@ -14,7 +14,6 @@
 
 typedef struct {
   MenuBarType *currentMenu;
-  UInt16 currentMenuRscID;
 } menu_module_t;
 
 int MenuInitModule(void) {
@@ -109,9 +108,6 @@ MenuBarType *MenuSetActiveMenu(MenuBarType *menuP) {
   debug(DEBUG_TRACE, "Menu", "MenuSetActiveMenu %p", menuP);
   MenuBarType *prev = module->currentMenu;
   module->currentMenu = menuP;
-  if (menuP == NULL) {
-    module->currentMenuRscID = 0;
-  }
 
   return prev;
 }
@@ -283,6 +279,7 @@ static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
 
 Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
   EventType ev;
+  FormType *frm;
   MenuPullDownType *pd, *prev;
   RectangleType rect;
   Boolean handled = false;
@@ -294,10 +291,9 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
     menuP = MenuGetActiveMenu();
   }
 
-  if (menuP) {
     switch (event->eType) {
       case penDownEvent:
-        if (menuP->attr.visible) {
+        if (menuP && menuP->attr.visible) {
           debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penDown menu is visible");
           for (i = 0; i < menuP->numMenus && !handled; i++) {
             if (RctPtInRectangle(event->screenX, event->screenY, &menuP->menus[i].titleBounds)) {
@@ -338,7 +334,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
         }
         break;
       case penUpEvent:
-        if (menuP->attr.visible) {
+        if (menuP && menuP->attr.visible) {
           debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp menu is visible");
           if (menuP->selectedMenu != -1) {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp selectedMenu %d", menuP->selectedMenu);
@@ -408,7 +404,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
       case keyDownEvent:
         if (event->data.keyDown.chr == vchrMenu) {
           debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown vchrMenu");
-          if (menuP->attr.visible) {
+          if (menuP && menuP->attr.visible) {
             pd = &menuP->menus[menuP->curMenu];
             if (!pd->hidden) {
               debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown hide pullDown %d", menuP->curMenu);
@@ -423,15 +419,24 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             menuP->attr.visible = 0;
           } else {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown show menu");
-            MenuDrawMenu(menuP);
-            menuP->attr.visible = 1;
+            if (menuP == NULL) {
+              frm = FrmGetActiveForm();
+              if (frm && frm->menuRscId) {
+                menuP = frm->mbar ? frm->mbar : MenuInit(frm->menuRscId);
+                frm->mbar = menuP;
+              }
+              MenuSetActiveMenu(menuP);
+            }
+            if (menuP) {
+              MenuDrawMenu(menuP);
+              menuP->attr.visible = 1;
+            }
           }
         }
         break;
       default:
         break;
     }
-  }
 
   return handled;
 }
@@ -498,8 +503,7 @@ void MenuEraseStatus(MenuBarType *menuP) {
 }
 
 void MenuSetActiveMenuRscID(UInt16 resourceId) {
-  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
-  module->currentMenuRscID = resourceId;
+  debug(DEBUG_ERROR, "Menu", "MenuSetActiveMenuRscID not implemented");
 }
 
 void MenuCmdBarDisplay(void) {

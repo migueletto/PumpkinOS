@@ -219,7 +219,6 @@ static Err FrmInitFormInternal(FormType *formP) {
   formP->selectedObject = -1;
   formP->activeList = -1;
   formP->activeField = -1;
-  formP->mbar = formP->menuRscId ? MenuInit(formP->menuRscId) : NULL;
   formP->diaPolicy = frmDIAPolicyStayOpen;
 
   p = xcalloc(1, sizeof(FormList));
@@ -290,8 +289,6 @@ void FrmSetActiveForm(FormType *formP) {
     wh = WinGetActiveWindow();
     WinSetActiveWindow(&module->currentForm->window);
     WinSetDrawWindow(&module->currentForm->window);
-    MenuSetActiveMenu(module->currentForm->mbar);
-    MenuSetActiveMenuRscID(module->currentForm->menuRscId);
 
     if (wh != WinGetActiveWindow()) {
       if (wh != NULL) {
@@ -2233,10 +2230,10 @@ void FrmSetMenu(FormType *formP, UInt16 menuRscID) {
     if (formP->mbar) {
       MenuDispose(formP->mbar);
     }
-    formP->mbar = MenuInit(menuRscID);
+    formP->menuRscId = menuRscID;
+    formP->mbar = NULL;
     if (formP == module->currentForm) {
-      MenuSetActiveMenu(formP->mbar);
-      MenuSetActiveMenuRscID(formP->menuRscId);
+      MenuSetActiveMenu(NULL);
     }
   }
 }
