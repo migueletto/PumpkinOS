@@ -135,6 +135,9 @@ extern "C" {
 #define PUMPKIN_FONT_STYLE_USRDEF1      4
 #define PUMPKIN_FONT_STYLE_USRDEF2      8
 
+#define TRAPS_BASE 0x4000000
+#define TRAPS_SIZE 0x4000  // 4096 traps, 4 bytes each
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
@@ -420,6 +423,9 @@ void pumpkin_save_bmp(char *dbname, UInt32 type, UInt16 id, char *filename);
 void pumpkin_save_surface(surface_t *surface, char *filename);
 
 int32_t pumpkin_event_timeout(int32_t t);
+
+uint32_t pumpkin_get_trap_address(uint16_t trap);
+int pumpkin_set_trap_address(uint16_t trap, uint32_t address);
 
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);

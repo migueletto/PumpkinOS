@@ -53,14 +53,6 @@
 #define TAG_APP     "App"
 #define TAG_NOTIF   "notif"
 
-#if defined(ANDROID)
-#define REGISTRY_DB   "/data/data/com.pit.pit/app_registry/"
-#elif defined(EMSCRIPTEN)
-#define REGISTRY_DB   "/vfs/app_registry/"
-#else
-#define REGISTRY_DB   "registry/"
-#endif
-
 #define VFS_CARD      "/app_card/"
 #define VFS_INSTALL   "/app_install/"
 
@@ -91,6 +83,9 @@
 #define BORDER_SIZE 4
 
 #define TASKBAR_HEIGHT 24
+
+#define sysFileTTraps 'trap'
+#define TRAPS_DB "TrapsAddresses"
 
 typedef struct {
   uint16_t refNum;
@@ -299,6 +294,7 @@ typedef struct {
   void *shader_data;
   int shader_inited;
   int enableSound;
+  uint32_t trapAddress[0x1000];
 } pumpkin_module_t;
 
 typedef union {
@@ -648,7 +644,12 @@ void *pumpkin_get_local_storage(local_storage_key_t key) {
 }
 
 int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_provider_t *ap, bt_provider_t *bt, gps_parse_line_f gps_parse_line) {
-  int fd;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  MemHandle h;
+  UInt16 at;
+  UInt32 *p;
+  int i, fd;
 
   sys_memset(&pumpkin_module, 0, sizeof(pumpkin_module_t));
 
@@ -700,6 +701,34 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   if (fd != -1) {
     sys_close(fd);
   }
+
+  for (i = 0; i < 0x1000; i++) {
+    pumpkin_module.trapAddress[i] = TRAPS_BASE + (i << 2);
+  }
+
+  if ((dbID = DmFindDatabase(0, TRAPS_DB)) == 0) {
+    if (DmCreateDatabase(0, TRAPS_DB, sysFileCSystem, sysFileTTraps, false) == errNone) {
+      if ((dbID = DmFindDatabase(0, TRAPS_DB)) != 0) {
+        if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
+          at = 0;
+          DmNewRecordEx(dbRef, &at, TRAPS_SIZE, pumpkin_module.trapAddress, 0, 0, false);
+          DmCloseDatabase(dbRef);
+        }
+      }
+    }
+  } else {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+      if ((h = DmGetRecord(dbRef, 0)) != NULL) {
+        if ((p = MemHandleLock(h)) != NULL) {
+          MemMove(pumpkin_module.trapAddress, p, TRAPS_SIZE);
+          MemHandleUnlock(h);
+        }
+        DmReleaseRecord(dbRef, 0, false);
+      }
+      DmCloseDatabase(dbRef);
+    }
+  }
+
 
   return 0;
 }
@@ -1406,6 +1435,10 @@ void pumpkin_taskbar_ui(int show) {
 }
 
 int pumpkin_global_finish(void) {
+  LocalID dbID;
+  DmOpenRef dbRef;
+  MemHandle h;
+  UInt32 *p;
   int i;
 
   pumpkin_unload_fonts();
@@ -1449,6 +1482,19 @@ int pumpkin_global_finish(void) {
   RegFinish(pumpkin_module.rm);
 
   logtrap_global_finish(&pumpkin_module.ltdef);
+
+  if ((dbID = DmFindDatabase(0, TRAPS_DB)) != 0) {
+    if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
+      if ((h = DmGetRecord(dbRef, 0)) != NULL) {
+        if ((p = MemHandleLock(h)) != NULL) {
+          MemMove(p, pumpkin_module.trapAddress, TRAPS_SIZE);
+          MemHandleUnlock(h);
+        } 
+        DmReleaseRecord(dbRef, 0, true);
+      } 
+      DmCloseDatabase(dbRef);
+    }
+  }
 
   SysUFinishModule();
   StoFinish();
@@ -6344,6 +6390,35 @@ int pumpkin_sound_enabled(void) {
   }
 
   return enabled;
+}
+
+uint32_t pumpkin_get_trap_address(uint16_t trap) {
+  uint32_t address = 0;
+
+  if (trap >= 0xA000 && trap < 0xB000) {
+    if (mutex_lock(mutex) == 0) {
+      address = pumpkin_module.trapAddress[trap - 0xA000];
+      mutex_unlock(mutex);
+      debug(DEBUG_INFO, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap, address);
+    }
+  }
+
+  return address;
+}
+
+int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
+  int r = -1;
+
+  if (trap >= 0xA000 && trap < 0xB000) {
+    if (mutex_lock(mutex) == 0) {
+      pumpkin_module.trapAddress[trap - 0xA000] = address;
+      mutex_unlock(mutex);
+      debug(DEBUG_INFO, PUMPKINOS, "set trap 0x%04X address 0x%08X", trap, address);
+      r = 0;
+    }
+  }
+
+  return r;
 }
 
 void pumpkin_set_lasterr(Err err) {

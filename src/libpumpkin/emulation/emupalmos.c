@@ -31,8 +31,6 @@
 #include "notif_serde.h"
 #include "emu_notif_serde.h"
 
-#define TRAPS_SIZE 0x40000
-
 struct emu_internal_state_t {
   int finish;
   char *panic;
@@ -312,13 +310,12 @@ uint8_t cpu_read_byte(uint32_t address) {
 
 uint16_t cpu_read_word(uint32_t address) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint32_t size = pumpkin_heap_size();
   uint8_t *ram;
   uint32_t value;
 
   if (state->read_word) return state->read_word(address);
 
-  if ((address & 1) == 0 && address >= size && address < (size + TRAPS_SIZE)) {
+  if ((address & 1) == 0 && address >= TRAPS_BASE && address < (TRAPS_BASE + TRAPS_SIZE)) {
     return 0x4E75; // simulated a RTS for direct call to trap addresses
   }
   if (address >= 0xFFFFF000) {
@@ -2063,15 +2060,15 @@ static int cpu_instr_callback(unsigned int pc) {
   }
 #endif
 
-  if ((pc & 1) == 0 && pc >= size && pc < (size + TRAPS_SIZE)) {
-    trap = (pc - size) >> 2;
+  if ((pc & 1) == 0 && pc >= TRAPS_BASE && pc < (TRAPS_BASE + TRAPS_SIZE)) {
+    trap = 0xA000 | ((pc - size) >> 2);
     if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
       if (logtrap_started(state->lt)) {
         debug(DEBUG_INFO, "logtrap", "simulating a direct call to trap %s (pc 0x%08X)", s, pc);
       }
       uint32_t a7 = m68k_get_reg(NULL, M68K_REG_A7);
       m68k_set_reg(M68K_REG_A7, a7+4);
-      palmos_systrap(0xA000 | trap);
+      palmos_systrap(trap);
       m68k_set_reg(M68K_REG_A7, a7);
       return 0;
     }

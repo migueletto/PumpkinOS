@@ -273,9 +273,11 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t trapNum = ARG16;
       uint32_t procP = ARG32;
       uint16_t selector;
-      emupalmos_trap_in(procP, trap, 1);
-      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
       Err res = sysErrParamErr;
+      if (trapNum > 0xA000 && trapNum < 0xB000) {
+        if (pumpkin_set_trap_address(trapNum, procP) == 0) res = errNone;
+      }
+      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
       debug(DEBUG_INFO, "EmuPalmOS", "SysSetTrapAddress(0x%04X [ %s ], 0x%08X): %d", trapNum, s ? s : "unknown", procP, res);
       m68k_set_reg(M68K_REG_D0, res);
     }
@@ -285,10 +287,10 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint16_t trapNum = ARG16;
       uint32_t a = 0;
       uint16_t selector;
-      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
-      if (s) {
-       a = pumpkin_heap_size() + (trapNum << 2);
+      if (trapNum > 0xA000 && trapNum < 0xB000) {
+        a = pumpkin_get_trap_address(trapNum);
       }
+      char *s = logtrap_trapname(state->lt, trap, &selector, 0);
       debug(DEBUG_INFO, "EmuPalmOS", "SysGetTrapAddress(0x%04X [ %s ]): 0x%08X", trapNum, s ? s : "unknown", a);
       m68k_set_reg(M68K_REG_A0, a);
     }
