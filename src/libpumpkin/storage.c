@@ -50,7 +50,6 @@ typedef struct storage_handle_t {
   uint16_t useCount;
   uint16_t lockCount;
   uint32_t size;
-  uint32_t dbID;
   union {
     struct {
       uint32_t uniqueID;
@@ -2161,7 +2160,6 @@ static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resI
         debug(DEBUG_TRACE, "STOR", "DmGetResourceEx resource %d: %s %d", i, st, h->d.res.id);
         if (h->d.res.type == type && h->d.res.id == resID) {
           debug(DEBUG_TRACE, "STOR", "DmGetResourceEx found resource %s %d inflated %d on \"%s\"", st, resID, (h->htype & STO_INFLATED) ? 1 : 0, db->name);
-          h->dbID = dbRef->dbID;
           found = 1;
           load = 0;
 
@@ -5622,26 +5620,4 @@ void DmSync(void) {
 
 Err DmSyncDatabase(DmOpenRef dbRef) {
   return errNone;
-}
-
-Err MemPtrRecoverData(void *p, LocalID *dbID, UInt32 *resType, UInt16 *resId) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  storage_handle_t *h;
-  Err err = dmErrInvalidParam;
-
-  if (sto) {
-    if (mutex_lock(sto->mutex) == 0) {
-      if ((h = MemPtrRecoverHandle(p)) != NULL) {
-        if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES && h->dbID != 0) {
-          *dbID = h->dbID;
-          *resType = h->d.res.type;
-          *resId = h->d.res.id;
-          err = errNone;
-        }
-      }
-      mutex_unlock(sto->mutex);
-    }
-  }
-
-  return err;
 }
