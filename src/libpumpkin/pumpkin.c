@@ -85,7 +85,7 @@
 #define TASKBAR_HEIGHT 24
 
 #define sysFileTTraps 'trap'
-#define TRAPS_DB "TrapsAddresses"
+#define TRAPS_DB "TrapsDB"
 
 typedef struct {
   uint16_t refNum;
@@ -168,7 +168,7 @@ typedef struct {
   void *table;
   void *local_storage[last_key];
   int logscr;
-  uint32_t trapAddress[0x1000];
+  uint8_t *trapCode[0x1000];
 } pumpkin_task_t;
 
 typedef struct {
@@ -294,7 +294,8 @@ typedef struct {
   void *shader_data;
   int shader_inited;
   int enableSound;
-  uint32_t trapAddress[0x1000];
+  uint32_t trapSize[0x1000];
+  uint8_t *trapCode[0x1000];
 } pumpkin_module_t;
 
 typedef union {
@@ -647,9 +648,9 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   LocalID dbID;
   DmOpenRef dbRef;
   MemHandle h;
-  UInt16 at;
-  UInt32 *p;
-  int i, fd;
+  UInt16 num, count, id;
+  UInt32 size, *p;
+  int fd;
 
   sys_memset(&pumpkin_module, 0, sizeof(pumpkin_module_t));
 
@@ -702,33 +703,30 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
     sys_close(fd);
   }
 
-  for (i = 0; i < 0x1000; i++) {
-    pumpkin_module.trapAddress[i] = TRAPS_BASE + (i << 2);
+  if ((dbID = DmFindDatabase(0, TRAPS_DB)) == 0) {
+    DmCreateDatabase(0, TRAPS_DB, sysFileCSystem, sysFileTTraps, true);
   }
 
-  if ((dbID = DmFindDatabase(0, TRAPS_DB)) == 0) {
-    if (DmCreateDatabase(0, TRAPS_DB, sysFileCSystem, sysFileTTraps, false) == errNone) {
-      if ((dbID = DmFindDatabase(0, TRAPS_DB)) != 0) {
-        if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-          at = 0;
-          DmNewRecordEx(dbRef, &at, TRAPS_SIZE, pumpkin_module.trapAddress, 0, 0, false);
-          DmCloseDatabase(dbRef);
-        }
-      }
-    }
-  } else {
+  if ((dbID = DmFindDatabase(0, TRAPS_DB)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
-      if ((h = DmGetRecord(dbRef, 0)) != NULL) {
-        if ((p = MemHandleLock(h)) != NULL) {
-          MemMove(pumpkin_module.trapAddress, p, TRAPS_SIZE);
-          MemHandleUnlock(h);
+      num = DmNumRecords(dbRef);
+      for (id = 0, count = 0; id < 0x1000 && count < num; id++) {
+        if ((h = DmGet1Resource('trap', id)) != NULL) {
+          if ((p = MemHandleLock(h)) != NULL) {
+            size = MemHandleSize(h);
+            if ((pumpkin_module.trapCode[id] = sys_malloc(size)) != NULL) {
+              sys_memcpy(pumpkin_module.trapCode[id], p, size);
+              pumpkin_module.trapSize[id] = size;
+            }
+            MemHandleUnlock(h);
+          }
+          DmReleaseResource(h);
+          count++;
         }
-        DmReleaseRecord(dbRef, 0, false);
       }
       DmCloseDatabase(dbRef);
     }
   }
-
 
   return 0;
 }
@@ -1437,8 +1435,7 @@ void pumpkin_taskbar_ui(int show) {
 int pumpkin_global_finish(void) {
   LocalID dbID;
   DmOpenRef dbRef;
-  MemHandle h;
-  UInt32 *p;
+  UInt16 num, index, id;
   int i;
 
   pumpkin_unload_fonts();
@@ -1485,13 +1482,18 @@ int pumpkin_global_finish(void) {
 
   if ((dbID = DmFindDatabase(0, TRAPS_DB)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-      if ((h = DmGetRecord(dbRef, 0)) != NULL) {
-        if ((p = MemHandleLock(h)) != NULL) {
-          MemMove(p, pumpkin_module.trapAddress, TRAPS_SIZE);
-          MemHandleUnlock(h);
-        } 
-        DmReleaseRecord(dbRef, 0, true);
-      } 
+      num = DmNumRecords(dbRef);
+      for (index = 0; index < num; index++) {
+        DmRemoveResource(dbRef, index);
+      }
+      for (id = 0; id < 0x1000; id++) {
+        if (pumpkin_module.trapCode[id]) {
+          DmNewResourceEx(dbRef, 'trap', id, pumpkin_module.trapSize[id], pumpkin_module.trapCode[id]);
+          sys_free(pumpkin_module.trapCode[id]);
+          pumpkin_module.trapCode[id] = NULL;
+          pumpkin_module.trapSize[id] = 0;
+        }
+      }
       DmCloseDatabase(dbRef);
     }
   }
@@ -2085,10 +2087,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
 
     pumpkin_init_midi();
     pumpkin_init_icon();
-  }
-
-  for (j = 0; j < 0x1000; j++) {
-    task->trapAddress[j] = TRAPS_BASE + (j << 2);
   }
 
   pumpkin_module.render = 1;
@@ -6347,18 +6345,28 @@ int pumpkin_sound_enabled(void) {
 
 uint32_t pumpkin_get_trap_address(uint16_t trap) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  uint32_t hackManager, address = 0;
+  uint32_t codeSize, address = 0;
+  uint8_t *ram;
 
   if (trap >= 0xA000 && trap < 0xB000) {
+    trap -= 0xA000;
     if (mutex_lock(mutex) == 0) {
-      //hackManager = pumpkin_get_id_option("hacks");
-      //if (pumpkin_get_app_creator() == hackManager) {
-        address = pumpkin_module.trapAddress[trap - 0xA000];
-      //} else {
-        //address = task->trapAddress[trap - 0xA000];
-      //}
+      ram = pumpkin_heap_base();
+      if (task->trapCode[trap] == NULL) {
+        if (pumpkin_module.trapCode[trap]) {
+          codeSize = pumpkin_module.trapSize[trap];
+          task->trapCode[trap] = MemPtrNew(codeSize);
+          MemMove(task->trapCode[trap], pumpkin_module.trapCode[trap], codeSize);
+          address = task->trapCode[trap] - ram;
+        } else {
+          // default virtual trap address
+          address = TRAPS_BASE + (trap << 2);
+        }
+      } else {
+        address = task->trapCode[trap] - ram;
+      }
       mutex_unlock(mutex);
-      debug(DEBUG_INFO, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap, address);
+      debug(DEBUG_INFO, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap + 0xA000, address);
     }
   }
 
@@ -6367,19 +6375,47 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
 
 int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  uint32_t hackManager;
+  uint32_t hackManager, heapSize, codeSize;
+  uint8_t *ram, *p;
   int r = -1;
 
-  if (trap >= 0xA000 && trap < 0xB000) {
+  if (trap >= 0xA000 && trap < 0xB000 && (address & 0x3) == 0) {
+    trap -= 0xA000;
     if (mutex_lock(mutex) == 0) {
-      //hackManager = pumpkin_get_id_option("hacks");
-      //if (pumpkin_get_app_creator() == hackManager) {
-        pumpkin_module.trapAddress[trap - 0xA000] = address;
-      //} else {
-        //task->trapAddress[trap - 0xA000] = address;
-      //}
+      hackManager = pumpkin_get_id_option("hacks");
+      if (pumpkin_get_app_creator() == hackManager) {
+        heapSize = pumpkin_heap_size();
+        if (address >= TRAPS_BASE && address < TRAPS_BASE + TRAPS_SIZE) {
+          // virtual trap address
+          if (task->trapCode[trap]) {
+            MemPtrFree(task->trapCode[trap]);
+            task->trapCode[trap] = NULL;
+          }
+          if (pumpkin_module.trapCode[trap]) {
+            sys_free(pumpkin_module.trapCode[trap]);
+            pumpkin_module.trapCode[trap] = NULL;
+            pumpkin_module.trapSize[trap] = 0;
+          }
+          debug(DEBUG_INFO, PUMPKINOS, "set trap 0x%04X virtual address 0x%08X", trap + 0xA000, address);
+        } else if (address < heapSize) {
+          if (task->trapCode[trap]) {
+            MemPtrFree(task->trapCode[trap]);
+            task->trapCode[trap] = NULL;
+          }
+          if (pumpkin_module.trapCode[trap]) {
+            sys_free(pumpkin_module.trapCode[trap]);
+            pumpkin_module.trapSize[trap] = 0;
+          }
+          ram = pumpkin_heap_base();
+          p = ram + address;
+          codeSize = MemPtrSize(p);
+          pumpkin_module.trapSize[trap] = codeSize;
+          pumpkin_module.trapCode[trap] = sys_malloc(codeSize);
+          sys_memcpy(pumpkin_module.trapCode[trap], p, codeSize);
+          debug(DEBUG_INFO, PUMPKINOS, "set trap 0x%04X real address 0x%08X", trap + 0xA000, address);
+        }
+      }
       mutex_unlock(mutex);
-      debug(DEBUG_INFO, PUMPKINOS, "set trap 0x%04X address 0x%08X", trap, address);
       r = 0;
     }
   }
