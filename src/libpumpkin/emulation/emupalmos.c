@@ -1938,6 +1938,22 @@ Err CallNotifyProc(UInt32 addr, SysNotifyParamType *notify, UInt32 detailsSize) 
   return err;
 }
 
+void CallSysKeyboardDialog(UInt32 addr, KeyboardType kbd) {
+  uint32_t a, argsSize;
+  uint8_t *p;
+
+  debug(DEBUG_TRACE, "EmuPalmOS", "CallSysKeyboardDialog addr 0x%08X kbd %d", addr, kbd);
+  argsSize = sizeof(uint16_t);
+
+  if ((p = pumpkin_heap_alloc(argsSize, "CallSysKeyboardDialog")) != NULL) {
+    uint8_t *ram = pumpkin_heap_base();
+    a = p - ram;
+    m68k_write_memory_8(a, kbd);
+    call68K_func(0, addr, a, argsSize);
+    pumpkin_heap_free(p, "CallSysKeyboardDialog");
+  }
+}
+
 #ifdef ARMEMU
 uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
@@ -2048,7 +2064,6 @@ uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t
 
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint32_t size = pumpkin_heap_size();
   uint16_t trap, selector;
   char buf[128], *s;
 
@@ -2061,7 +2076,7 @@ static int cpu_instr_callback(unsigned int pc) {
 #endif
 
   if ((pc & 1) == 0 && pc >= TRAPS_BASE && pc < (TRAPS_BASE + TRAPS_SIZE)) {
-    trap = 0xA000 | ((pc - size) >> 2);
+    trap = 0xA000 | ((pc - TRAPS_BASE) >> 2);
     if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
       if (logtrap_started(state->lt)) {
         debug(DEBUG_INFO, "logtrap", "simulating a direct call to trap %s (pc 0x%08X)", s, pc);

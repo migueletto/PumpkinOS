@@ -330,8 +330,6 @@ typedef enum {
 
 void pumpkin_dirty_region_mode(dirty_region_e d);
 
-void pumpkin_trace(uint16_t trap);
-
 AlertTemplateType *pumpkin_create_alert(void *h, uint8_t *p, uint32_t *dsize);
 MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize);
 FieldType *pumpkin_create_field(uint8_t *p, int *i);
@@ -618,6 +616,7 @@ Err CallSndFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 
 Err CallSndVFunc(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes);
 Err CallSndFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 nsamples);
 Err CallSndVFuncArm(UInt32 addr, UInt32 data, UInt32 channel, UInt32 buffer, UInt32 *nbytes);
+void CallSysKeyboardDialog(UInt32 addr, KeyboardType kbd);
 
 Err SndStreamCreateEx(
   SndStreamRef *channel,

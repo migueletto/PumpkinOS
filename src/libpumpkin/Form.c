@@ -1165,7 +1165,12 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
           break;
         case sysEditMenuKeyboardCmd:
           if (FldGetActiveField() != NULL) {
-            SysKeyboardDialog(kbdAlpha);
+            uint32_t trapAddress = pumpkin_get_trap_address(sysTrapSysKeyboardDialog);
+            if (trapAddress < TRAPS_BASE) {
+              CallSysKeyboardDialog(trapAddress, kbdAlpha);
+            } else {
+              SysKeyboardDialog(kbdAlpha);
+            }
             FrmDrawForm(formP);
             handled = true;
           }

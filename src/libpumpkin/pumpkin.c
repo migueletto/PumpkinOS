@@ -127,7 +127,6 @@ typedef struct {
   int nativeKeys;
   int lockable;
   int osversion;
-  int tracing;
   int m68k;
   char name[dmDBNameLength];
   uint16_t density, depth;
@@ -169,6 +168,7 @@ typedef struct {
   void *table;
   void *local_storage[last_key];
   int logscr;
+  uint32_t trapAddress[0x1000];
 } pumpkin_task_t;
 
 typedef struct {
@@ -1738,7 +1738,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
       }
       m68k = pumpkin_is_m68k();
       pumpkin_set_m68k(1);
-      //task->tracing = 1;
       if (opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine (opendb)", request->name, request->code);
         r = pumpkin_pilotmain(request->name, emupalmos_main, request->code, request->hasParam ? &request->param : NULL, request->flags);
@@ -1746,7 +1745,6 @@ static uint32_t pumpkin_launch_sub(launch_request_t *request, int opendb) {
         debug(DEBUG_INFO, PUMPKINOS, "calling emupalmos_main for \"%s\" with code %d as subroutine", request->name, request->code);
         r = emupalmos_main(request->code, request->hasParam ? &request->param : NULL, request->flags);
       }
-      //task->tracing = 0;
       debug(DEBUG_INFO, PUMPKINOS, "emupalmos_main \"%s\" returned %u", request->name, r);
       pumpkin_set_m68k(m68k);
     }
@@ -2087,6 +2085,10 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
 
     pumpkin_init_midi();
     pumpkin_init_icon();
+  }
+
+  for (j = 0; j < 0x1000; j++) {
+    task->trapAddress[j] = TRAPS_BASE + (j << 2);
   }
 
   pumpkin_module.render = 1;
@@ -5129,55 +5131,6 @@ UInt16 *SysLibGetDispatch68K(UInt16 refNum) {
   return dispatch;
 }
 
-void pumpkin_trace(uint16_t trap) {
-  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-
-  if (task && task->tracing) {
-    switch (trap) {
-      case sysTrapWinCopyRectangle:
-      case sysTrapWinDrawBitmap:
-      case sysTrapWinDrawChar:
-      case sysTrapWinDrawChars:
-      case sysTrapWinDrawGrayLine:
-      case sysTrapWinDrawGrayRectangleFrame:
-      case sysTrapWinDrawInvertedChars:
-      case sysTrapWinDrawLine:
-      case sysTrapWinDrawPixel:
-      case sysTrapWinDrawRectangle:
-      case sysTrapWinDrawRectangleFrame:
-      case sysTrapWinDrawTruncChars:
-      case sysTrapWinDrawWindowFrame:
-      case sysTrapWinEraseChars:
-      case sysTrapWinEraseLine:
-      case sysTrapWinErasePixel:
-      case sysTrapWinEraseRectangle:
-      case sysTrapWinEraseRectangleFrame:
-      case sysTrapWinEraseWindow:
-      case sysTrapWinFillLine:
-      case sysTrapWinFillRectangle:
-      case sysTrapWinInvertChars:
-      case sysTrapWinInvertLine:
-      case sysTrapWinInvertPixel:
-      case sysTrapWinInvertRectangle:
-      case sysTrapWinInvertRectangleFrame:
-      case sysTrapWinPaintBitmap:
-      case sysTrapWinPaintChar:
-      case sysTrapWinPaintChars:
-      case sysTrapWinPaintLine:
-      case sysTrapWinPaintLines:
-      case sysTrapWinPaintPixel:
-      case sysTrapWinPaintPixels:
-      case sysTrapWinPaintRectangle:
-      case sysTrapWinPaintRectangleFrame:
-      case sysTrapWinRestoreBits:
-      case sysTrapWinScrollRectangle:
-        debug(DEBUG_INFO, PUMPKINOS, "tracing 0x%04X", trap);
-        SysTaskDelay(40);
-        break;
-    }
-  }
-}
-
 void pumpkin_set_osversion(int version) {
   debug(DEBUG_INFO, PUMPKINOS, "setting global OS version=%d", version);
   pumpkin_module.osversion = version;
@@ -6393,11 +6346,17 @@ int pumpkin_sound_enabled(void) {
 }
 
 uint32_t pumpkin_get_trap_address(uint16_t trap) {
-  uint32_t address = 0;
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint32_t hackManager, address = 0;
 
   if (trap >= 0xA000 && trap < 0xB000) {
     if (mutex_lock(mutex) == 0) {
-      address = pumpkin_module.trapAddress[trap - 0xA000];
+      //hackManager = pumpkin_get_id_option("hacks");
+      //if (pumpkin_get_app_creator() == hackManager) {
+        address = pumpkin_module.trapAddress[trap - 0xA000];
+      //} else {
+        //address = task->trapAddress[trap - 0xA000];
+      //}
       mutex_unlock(mutex);
       debug(DEBUG_INFO, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap, address);
     }
@@ -6407,11 +6366,18 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
 }
 
 int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  uint32_t hackManager;
   int r = -1;
 
   if (trap >= 0xA000 && trap < 0xB000) {
     if (mutex_lock(mutex) == 0) {
-      pumpkin_module.trapAddress[trap - 0xA000] = address;
+      //hackManager = pumpkin_get_id_option("hacks");
+      //if (pumpkin_get_app_creator() == hackManager) {
+        pumpkin_module.trapAddress[trap - 0xA000] = address;
+      //} else {
+        //task->trapAddress[trap - 0xA000] = address;
+      //}
       mutex_unlock(mutex);
       debug(DEBUG_INFO, PUMPKINOS, "set trap 0x%04X address 0x%08X", trap, address);
       r = 0;
