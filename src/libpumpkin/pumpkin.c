@@ -22,7 +22,6 @@
 #include "syslibs.h"
 #include "logtrap.h"
 #include "emupalmosinc.h"
-#include "dbid.h"
 #include "RegistryMgr.h"
 #include "deploy.h"
 #include "language.h"
@@ -273,7 +272,6 @@ typedef struct {
   uint32_t nextTaskId;
   pumpkin_plugin_t *plugin[MAX_PLUGINS];
   int num_plugins;
-  dbid_t *db;
   RegMgrType *rm;
   notif_registration_t notif[MAX_NOTIF_REGISTER];
   int num_notif;
@@ -683,8 +681,6 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_module.rate = 44100;
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
-
-  pumpkin_module.db = dbid_init();
 
   pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, HEAP_ALIGN, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
@@ -1510,7 +1506,6 @@ int pumpkin_global_finish(void) {
   thread_key_delete(task_key);
   vfs_close_session(pumpkin_module.session);
   mutex_destroy(pumpkin_module.fs_mutex);
-  dbid_finish(pumpkin_module.db);
   mutex_destroy(mutex);
 
   return 0;
@@ -6426,37 +6421,6 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
   }
 
   return r;
-}
-
-uint32_t pumpkin_dbid_add(char *name, uint32_t id) {
-  if (mutex_lock(mutex) == 0) {
-    id = dbid_add(pumpkin_module.db, name, id);
-    mutex_unlock(mutex);
-  }
-
-  return id;
-}
-
-uint32_t pumpkin_dbid_get(char *name) {
-  uint32_t id = 0;
-
-  if (mutex_lock(mutex) == 0) {
-    id = dbid_get(pumpkin_module.db, name);
-    mutex_unlock(mutex);
-  }
-
-  return id;
-}
-
-int pumpkin_dbid_valid(uint32_t id) {
-  return dbid_valid(id);
-}
-
-void pumpkin_dbid_remove(char *name) {
-  if (mutex_lock(mutex) == 0) {
-    dbid_remove(pumpkin_module.db, name);
-    mutex_unlock(mutex);
-  }
 }
 
 void pumpkin_set_lasterr(Err err) {

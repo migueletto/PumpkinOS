@@ -70,7 +70,6 @@ typedef struct storage_handle_t {
 
 typedef struct storage_db_t {
   uint32_t magic;
-  uint32_t dbID;
   uint32_t ftype, readCount, writeCount, uniqueIDSeed;
   uint16_t mode, numRecs, protect;
 
@@ -371,17 +370,16 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
   char stype[8], screator[8];
   vfs_file_t *f;
-  int n, r = -1;
+  int n, w, r = -1;
 
   storage_name(sto, db->name, STO_FILE_HEADER, 0, 0, 0, 0, buf);
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
     pumpkin_id2s(db->type, stype);
     pumpkin_id2s(db->creator, screator);
-    db->dbID = pumpkin_dbid_get(db->name);
-    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\ndbID=0x%08X\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-      db->ftype, stype, screator, db->dbID, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      db->ftype, stype, screator, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
     n = sys_strlen(buf);
-    if (vfs_write(f, (uint8_t *)buf, n) == n) {
+    if ((w = vfs_write(f, (uint8_t *)buf, n)) == n) {
       r = 0;
     }
     vfs_close(f);
@@ -452,9 +450,6 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
         pumpkin_s2id(&db->creator, screator);
         continue;
       }
-      if (sys_sscanf(buf, "dbID=0x%08X", &db->dbID) == 1) {
-        continue;
-      }
       if (sys_sscanf(buf, "attributes=%u", &db->attributes) == 1) {
         continue;
       }
@@ -483,7 +478,6 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
     vfs_close(f);
 
     if (db->ftype && db->type && db->creator) {
-      pumpkin_dbid_add(db->name, db->dbID);
       r = 0;
     }
   }
@@ -1398,9 +1392,6 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
       db->crDate = TimGetSeconds();
       db->modDate = db->crDate;
       db->bckDate = db->crDate;
-      if (!existing) {
-        db->dbID = pumpkin_dbid_add(db->name, 0);
-      }
 
       if (StoWriteHeader(sto, db) == -1) {
         pumpkin_heap_free(db, "storage_db");
@@ -1964,8 +1955,6 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           dbDeleted.type = db->type;
           dbDeleted.attributes = db->attributes;
           StrNCopy(dbDeleted.dbName, db->name, dmDBNameLength-1);
-
-          pumpkin_dbid_remove(db->name);
 
           db->ftype = 0;
           db->readCount = 0;
