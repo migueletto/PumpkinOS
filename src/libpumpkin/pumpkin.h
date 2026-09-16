@@ -424,6 +424,7 @@ int32_t pumpkin_event_timeout(int32_t t);
 
 uint32_t pumpkin_dbid_add(char *name, uint32_t id);
 uint32_t pumpkin_dbid_get(char *name);
+int pumpkin_dbid_valid(uint32_t id);
 void pumpkin_dbid_remove(char *name);
 
 uint32_t pumpkin_get_trap_address(uint16_t trap);

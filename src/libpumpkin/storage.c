@@ -42,8 +42,6 @@
 #define HANDLE_MAGIC 'Hndl'
 #define DB_MAGIC     'dbId'
 
-static const char *watchName = "tempData";
-
 typedef struct storage_handle_t {
   uint32_t magic;
   uint16_t htype;
@@ -112,7 +110,6 @@ typedef struct {
   DmComparF *comparF;
   UInt32 comparF68K;
   Int16 other;
-  LocalID watchID;
   storage_db_t *tmpDb;
   UInt8 fontFamily;
   UInt8 fontStyle;
@@ -1173,9 +1170,6 @@ LocalID DmFindDatabase(UInt16 cardNo, const Char *nameP) {
     for (db = sto->list; db; db = db->next) {
       if (sys_strcmp(db->name, nameP) == 0) {
         dbID = (uint8_t *)db - sto->base;
-        if (dbID == sto->watchID) {
-          debug(DEBUG_INFO, "STOR", "WATCH DmFindDatabase(\"%s\"): 0x%08X", nameP, dbID);
-        }
         err = errNone;
         break;
       }
@@ -1379,11 +1373,6 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
         db->next = sto->list;
         sto->list = db;
         sto->num_storage++;
-
-        if (watchName && !StrCompare(watchName, nameP)) {
-          sto->watchID = (uint8_t *)db - sto->base;;
-          debug(DEBUG_INFO, "STOR", "WATCH DmCreateDatabase(\"%s\", 0x%08X, 0x%08X, %d)", nameP, creator, type, attr & dmHdrAttrResDB ? 1 : 0);
-        }
       }
 
       sys_strncpy(db->name, nameP, dmDBNameLength-1);
@@ -1698,9 +1687,6 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
       }
 
       if ((dbRef = pumpkin_heap_alloc(sizeof(DmOpenType), "dbRef")) != NULL) {
-        if (dbID == sto->watchID) {
-          debug(DEBUG_INFO, "STOR", "WATCH DmOpenDatabase(0x%08X, 0x%04X): %p", dbID, mode, dbRef);
-        }
         if (mode & dmModeWrite) {
           ok = StoLockForWriting(sto, db) == 0;
         } else if (mode & dmModeReadOnly) {
@@ -1803,9 +1789,6 @@ Err DmCloseDatabase(DmOpenRef dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
       if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        if (dbRef->dbID == sto->watchID) {
-          debug(DEBUG_INFO, "STOR", "WATCH DmCloseDatabase(%p)", dbRef);
-        }
         db = (storage_db_t *)(sto->base + dbRef->dbID);
         if (dbRef->mode & dmModeWrite) {
           debug(DEBUG_TRACE, "STOR", "DmCloseDatabase \"%s\" writeCount %d -> %d", db->name, db->writeCount, db->writeCount-1);
@@ -1948,10 +1931,6 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
 
   if (mutex_lock(sto->mutex) == 0) {
     if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
-      if (dbID == sto->watchID) {
-        debug(DEBUG_INFO, "STOR", "WATCH DmDeleteDatabase(0x%08X)", dbID);
-        sto->watchID = 0;
-      }
       db = (storage_db_t *) (sto->base + dbID);
       if (StoLockForWriting(sto, db) != 0) {
         debug(DEBUG_ERROR, "STOR", "DmDeleteDatabase database \"%s\" is open by another thread", db->name);
@@ -2168,9 +2147,6 @@ DmOpenRef DmOpenDatabaseByTypeCreator(UInt32 type, UInt32 creator, UInt16 mode) 
 
   err = DmGetNextDatabaseByTypeCreator(true, &stateInfo, type, creator, false, &cardNo, &dbID);
   if (err == errNone) {
-    if (dbID == sto->watchID) {
-      debug(DEBUG_INFO, "STOR", "WATCH DmOpenDatabaseByTypeCreator(0x%08X, 0x%08X, 0x%04X)", type, creator, mode);
-    }
     dbRef = DmOpenDatabase(cardNo, dbID, mode);
   }
 
@@ -3387,16 +3363,6 @@ Err DmRemoveRecord(DmOpenRef dbP, UInt16 index) {
 }
 
 MemHandle DmNewHandle(DmOpenRef dbP, UInt32 size) {
-  storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  DmOpenType *dbRef;
-
-  if (dbP) {
-    dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID == sto->watchID) {
-      debug(DEBUG_INFO, "STOR", "WATCH DmNewHandle(%p, %u)", dbRef, size);
-    }
-  }
-
   return MemHandleNew(size);
 }
 
@@ -3448,9 +3414,6 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
       if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        if (dbRef->dbID == sto->watchID) {
-          debug(DEBUG_INFO, "STOR", "WATCH DmNewRecord(%p, %p [%d], %u)", dbRef, atP, atP ? *atP : 0, size);
-        }
         db = (storage_db_t *)(sto->base + dbRef->dbID);
         debug(DEBUG_TRACE, "STOR", "DmNewRecordEx database \"%s\" at %d size %u", db->name, *atP, size);
         if (db->ftype == STO_TYPE_REC) {
@@ -5182,16 +5145,18 @@ LocalID MemHandleToLocalID(MemHandle h) {
 
   if (h) {
     handle = (storage_handle_t *)h;
-    switch (handle->htype & ~STO_INFLATED) {
-      case STO_TYPE_MEM:
-      case STO_TYPE_REC:
-      case STO_TYPE_RES:
-        id = (uint8_t *)handle - sto->base;
-        err = errNone;
-        break;
-      default:
-        debug(DEBUG_ERROR, "STOR", "MemHandleToLocalID %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
-        break;
+    if (handle->magic == HANDLE_MAGIC) {
+      switch (handle->htype & ~STO_INFLATED) {
+        case STO_TYPE_MEM:
+        case STO_TYPE_REC:
+        case STO_TYPE_RES:
+          id = (uint8_t *)handle - sto->base;
+          err = errNone;
+          break;
+        default:
+          debug(DEBUG_ERROR, "STOR", "MemHandleToLocalID %p unexpected handle type %d", handle, handle->htype & ~STO_INFLATED);
+          break;
+      }
     }
   }
 
@@ -5263,12 +5228,14 @@ MemPtr MemLocalIDToPtr(LocalID local, UInt16 cardNo) {
 
   if (local > 0 && local < sto->size) {
     h = (storage_handle_t *)(sto->base + local);
-    if (h->htype == (STO_TYPE_MEM | STO_INFLATED) && h->lockCount > 0) {
-      p = h->buf;
-      err = errNone;
-    } else if (h->htype == (STO_TYPE_RES | STO_INFLATED) && h->lockCount > 0) {
-      p = h->buf;
-      err = errNone;
+    if (h->magic == HANDLE_MAGIC) {
+      if (h->htype == (STO_TYPE_MEM | STO_INFLATED) && h->lockCount > 0) {
+        p = h->buf;
+        err = errNone;
+      } else if (h->htype == (STO_TYPE_RES | STO_INFLATED) && h->lockCount > 0) {
+        p = h->buf;
+        err = errNone;
+      }
     }
   }
 
@@ -5286,10 +5253,12 @@ MemPtr MemLocalIDToLockedPtr(LocalID local, UInt16 cardNo) {
 
   if (local < (sto->size - sizeof(storage_handle_t))) {
     h = (storage_handle_t *)(sto->base + local);
-    if ((h->htype == (STO_TYPE_MEM | STO_INFLATED) || h->htype == (STO_TYPE_REC | STO_INFLATED)) && h->lockCount < 14) {
-      h->lockCount++;
-      p = h->buf;
-      err = errNone;
+    if (h->magic == HANDLE_MAGIC) {
+      if ((h->htype == (STO_TYPE_MEM | STO_INFLATED) || h->htype == (STO_TYPE_REC | STO_INFLATED)) && h->lockCount < 14) {
+        h->lockCount++;
+        p = h->buf;
+        err = errNone;
+      }
     }
   }
 
@@ -5304,7 +5273,9 @@ MemHandle MemLocalIDToHandle(LocalID local) {
 
   if (local > 0 && local < sto->size) {
     h = (storage_handle_t *)(sto->base + local);
-    err = errNone;
+    if (h->magic == HANDLE_MAGIC) {
+      err = errNone;
+    }
   }
 
   StoCheckErr(err);

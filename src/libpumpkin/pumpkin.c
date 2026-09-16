@@ -6448,6 +6448,10 @@ uint32_t pumpkin_dbid_get(char *name) {
   return id;
 }
 
+int pumpkin_dbid_valid(uint32_t id) {
+  return dbid_valid(id);
+}
+
 void pumpkin_dbid_remove(char *name) {
   if (mutex_lock(mutex) == 0) {
     dbid_remove(pumpkin_module.db, name);
