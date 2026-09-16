@@ -1,8 +1,5 @@
 #include <PalmOS.h>
 
-#include "ColorTable.h"
-#include "kdtree.h"
-
 #include "sys.h"
 #include "thread.h"
 #include "pwindow.h"
@@ -12,6 +9,7 @@
 #include "pumpkin.h"
 #include "language.h"
 #include "WindowAccessor.h"
+#include "ColorTable.h"
 #include "SonyLib.h"
 #include "sys.h"
 #include "debug.h"
