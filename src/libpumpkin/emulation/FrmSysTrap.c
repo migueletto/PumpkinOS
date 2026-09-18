@@ -689,5 +689,16 @@ void palmos_FrmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_A0, a);
     }
     break;
+    case sysTrapFrmSetCategoryLabel: {
+      // void FrmSetCategoryLabel(const FormType *formP, UInt16 objIndex, Char *newLabel)
+      uint32_t formP = ARG32;
+      uint16_t objIndex = ARG16;
+      uint32_t newLabelP = ARG32;
+      FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
+      char *newLabel = (char *)emupalmos_trap_in(newLabelP, trap, 2);
+      FrmSetCategoryLabel(form, objIndex, newLabel);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmSetCategoryLabel(0x%08X, %d, \"%s\")", formP, objIndex, newLabel);
+    }
+    break;
   }
 }

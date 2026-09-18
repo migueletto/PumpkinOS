@@ -462,6 +462,7 @@
     case sysTrapFrmActiveState:
     case sysTrapFrmNewGsi:
     case sysTrapFrmRemoveObject:
+    case sysTrapFrmSetCategoryLabel:
       palmos_FrmSysTrap(sp, idx, trap);
       break;
     case sysTrapAbtShowAbout:
