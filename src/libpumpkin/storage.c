@@ -1772,6 +1772,8 @@ Err DmCloseDatabase(DmOpenRef dbP) {
   DmOpenType *dbRef;
   vfs_file_t *f;
   UInt32 i, size;
+  uint32_t handle;
+  uint8_t *ram;
   void *encoded;
   char st[8], buf[VFS_PATH];
   Err err = dmErrInvalidParam;
@@ -1883,14 +1885,34 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           db->mode = 0;
           StoWriteHeader(sto, db);
 
-/*
           if (db->elements) {
+            ram = pumpkin_heap_base();
+            for (i = 0; i < db->numRecs; i++) {
+              h = db->elements[i];
+              if (h->magic == HANDLE_MAGIC) {
+                if (h->lockCount == 0) {
+                  pumpkin_heap_free(h, "Handle");
+                } else {
+                  handle = (uint8_t *)h - ram;
+                  if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES) {
+                    pumpkin_id2s(h->d.res.type, st);
+                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X type '%s' id %u lockCount %d not zero",
+                      db->name, handle, st, h->d.res.id, h->lockCount);
+                  } else {
+                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X uniqueID 0x%08X lockCount %d not zero",
+                      db->name, handle, h->d.rec.uniqueID, h->lockCount);
+                  }
+                }
+              } else {
+                handle = (uint8_t *)h - ram;
+                debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X is invalid", db->name, handle);
+              }
+            }
             sys_free(db->elements);
             db->elements = NULL;
-            db->totalElements = 0;
-            db->numRecs = 0;
           }
-*/
+          db->totalElements = 0;
+          db->numRecs = 0;
         }
 
         if (dbRef->prev) {
