@@ -105,7 +105,6 @@ typedef struct {
   texture_t *texture;
   uint32_t taskId;
   int index, width, height, x, y;
-  int littleEndian;
   int enableSound;
   int heapSize;
   int heapAlign;
@@ -1582,8 +1581,8 @@ static int pumpkin_normal_launch(uint16_t cmd) {
 static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, launch_union_t *param, uint16_t flags) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   SysAppLaunchCmdSystemResetType reset;
-  RegFlagsType *regFlagsP, regFlags;
-  RegOsType regOS;
+  RegFlagsType *regRunFlagsP, regRunFlags;
+  RegOsType *regOSP, regOS;
   LocalID oldDbID, dbID;
   DmOpenRef dbRef;
   Boolean callNormal;
@@ -1601,22 +1600,25 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, la
 
         if (code == sysAppLaunchCmdNormalLaunch) {
           if (mutex_lock(mutex) == 0) {
-            if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
-              regFlags.flags = regFlagsP->flags;
-              MemPtrFree(regFlagsP);
+            if ((regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) == NULL) {
+              regRunFlags.flags = regRunFlagReset;
             } else {
-              regFlags.flags = regFlagReset;
+              regRunFlags.flags = regRunFlagsP->flags;
+              MemPtrFree(regRunFlagsP);
             }
 
-            if (pumpkin_reg_get(creator, regOsID, &regSize) == NULL) {
+            if ((regOSP = pumpkin_reg_get(creator, regOsID, &regSize)) == NULL) {
               regOS.version = pumpkin_get_default_osversion();
               pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
+            } else {
+              regOS.version = regOSP->version;
+              MemPtrFree(regOSP);
             }
             mutex_unlock(mutex);
 
-            if (regFlags.flags & regFlagReset) {
-              regFlags.flags &= ~regFlagReset;
-              pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
+            if (regRunFlags.flags & regRunFlagReset) {
+              regRunFlags.flags &= ~regRunFlagReset;
+              pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
               // Defer a sysAppLaunchCmdSystemReset for when the app is called for the first time.
               // It is not exactly a "reset", but it allows the app to initialize itself after being installed.
@@ -1881,7 +1883,7 @@ static void pumpkin_init_icon(void) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int littleEndian, int enableSound, int heapSize, int heapAlign, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int enableSound, int heapSize, int heapAlign, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
@@ -1890,6 +1892,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size;
+  Boolean littleEndian;
   char screator[8];
   char buf[32];
   uint16_t u16;
@@ -2025,9 +2028,12 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     task->osversion = pumpkin_module.osversion;
   }
 
+  littleEndian = false;
+
   if ((regDisplay = pumpkin_reg_get(creator, regDisplayID, &regSize)) != NULL) {
-    task->depth = regDisplay->depth <= pumpkin_module.depth ? regDisplay->depth : pumpkin_module.depth;
+    task->depth = (regDisplay->depth & 0x7FFF) <= pumpkin_module.depth ? (regDisplay->depth & 0x7FFF) : pumpkin_module.depth;
     task->density = regDisplay->density <= pumpkin_module.density ? regDisplay->density : pumpkin_module.density;
+    littleEndian = (regDisplay->depth & 0x8000) == 0x8000;
     MemPtrFree(regDisplay);
   } else {
     task->depth = pumpkin_module.depth;
@@ -2287,7 +2293,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2337,7 +2343,7 @@ static int pumpkin_launch_action(void *arg) {
   thread_set_name(name);
 
   if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height,
-        data->littleEndian, data->enableSound, data->heapSize, data->heapAlign, data->x, data->y) == 0) {
+        data->enableSound, data->heapSize, data->heapAlign, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -2439,9 +2445,8 @@ int pumpkin_launch(launch_request_t *request) {
   LocalID dbID;
   RegPositionType *regPos;
   RegDimensionType *regDim;
-  RegDisplayEndianType *regEnd;
-  RegSoundType *regSnd;
   RegHeapType *regHeap;
+  RegRunFlagsType *regRunFlags;
   UInt32 type, creator, regSize;
   launch_data_t *data;
   client_request_t creq;
@@ -2547,16 +2552,10 @@ int pumpkin_launch(launch_request_t *request) {
         data->height = pumpkin_module.height;
       }
 
-      if ((regEnd = pumpkin_reg_get(creator, regEndianID, &regSize)) != NULL) {
-        debug(DEBUG_INFO, PUMPKINOS, "using display %s endian from registry for %s", regEnd->littleEndian ? "little" : "big", request->name);
-        data->littleEndian = regEnd->littleEndian;
-        MemPtrFree(regEnd);
-      }
-
-      if ((regSnd = pumpkin_reg_get(creator, regSoundID, &regSize)) != NULL) {
-        debug(DEBUG_INFO, PUMPKINOS, "using sound %d from registry for %s", regSnd->enableSound, request->name);
-        data->enableSound = regSnd->enableSound;
-        MemPtrFree(regSnd);
+      if ((regRunFlags = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) != NULL) {
+        data->enableSound = (regRunFlags->flags & regRunFlagSound) == regRunFlagSound;
+        debug(DEBUG_INFO, PUMPKINOS, "using sound %d from registry for %s", data->enableSound, request->name);
+        MemPtrFree(regRunFlags);
       }
 
       if ((regHeap = pumpkin_reg_get(creator, regHeapID, &regSize)) != NULL) {

@@ -49,6 +49,7 @@ struct emu_internal_state_t {
   MemHandle hNative;
 
   Boolean fastScreenWrite;
+  Boolean lenientMemCheck;
   Boolean regionStarted;
   Coord firstY, lastY, firstX, lastX;
 
@@ -261,6 +262,7 @@ void emupalmos_monitor_address(uint32_t address, uint32_t size) {
 }
 
 int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
+  emu_state_t *state;
   char buf[256];
   int valid;
 
@@ -268,7 +270,10 @@ int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
 #ifdef HEAP_DEBUG
   if (valid) {
     valid = pumpkin_heap_debug_access(address, size, read);
-    if (!valid && read) return valid;
+    if (!valid) {
+      state = pumpkin_get_local_storage(emu_key);
+      if (state->istate->lenientMemCheck) return valid;
+    }
   }
 #endif
 
@@ -2132,6 +2137,7 @@ static emu_state_t *emupalmos_new(void) {
       creator = pumpkin_get_app_creator();
       if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
         state->istate->fastScreenWrite = regFlagsP->flags & regFlagFastScreenWrite;
+        state->istate->lenientMemCheck = regFlagsP->flags & regFlagLenientMemCheck;
         MemPtrFree(regFlagsP);
       }
 

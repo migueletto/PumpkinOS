@@ -27,16 +27,14 @@ void pumpkin_remove_locks(vfs_session_t *session, char *path) {
 }
 
 void pumpkin_registry_create(UInt32 creator) {
-  RegFlagsType *regFlagsP, regFlags;
+  RegFlagsType regFlags;
   RegOsType regOS;
   RegDimensionType regDim;
   RegPositionType regPos;
-  RegDisplayEndianType regEnd;
-  RegSoundType regSnd;
+  RegRunFlagsType regRunFlags;
   RegHeapType regHeap;
   DmOpenRef dbRef;
   MemHandle h;
-  UInt32 regSize;
   UInt16 width, height, heapSize, heapAlign;
   UInt8 *ptr;
   int swidth, sheight;
@@ -78,12 +76,8 @@ void pumpkin_registry_create(UInt32 creator) {
   if (swidth > 0 && width > swidth) width = swidth;
   if (sheight > 0 && height > sheight) height = sheight;
 
-  if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
-    MemPtrFree(regFlagsP);
-  } else {
-    regFlags.flags = regFlagReset;
-    pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
-  }
+  regFlags.flags = 0;
+  pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
 
   regOS.version = pumpkin_get_default_osversion();
   pumpkin_reg_set(creator, regOsID, &regOS, sizeof(RegOsType));
@@ -96,11 +90,8 @@ void pumpkin_registry_create(UInt32 creator) {
   regPos.y = (sheight - regDim.height) / 2;
   pumpkin_reg_set(creator, regPositionID, &regPos, sizeof(RegPositionType));
 
-  regEnd.littleEndian = 0;
-  pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
-
-  regSnd.enableSound = 0;
-  pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
+  regRunFlags.flags = regRunFlagReset;
+  pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
   regHeap.heapSize = heapSize;
   regHeap.heapAlign = heapAlign;

@@ -65,16 +65,15 @@ static Boolean eventHandler(EventType *event) {
 Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
-  RegDisplayEndianType regEnd, *regEndP;
   RegHeapType regHeap, *regHeapP;
-  RegSoundType regSnd, *regSndP;
+  RegRunFlagsType regRunFlags, *regRunFlagsP;
   RegFlagsType regFlags, *regFlagsP;
   ListType *lst;
   ControlType *ctl;
   UInt32 regSize;
-  UInt16 osversion, density, depth, littleEndian, heapSize, heapAlign, enableSound, index, id, num, i;
+  UInt16 osversion, density, depth, heapSize, heapAlign, index, id, num, i;
   char buf[16], *text;
-  Boolean fastScreenWrite, armScreenWrite, r = false;
+  Boolean littleEndian, enableSound, fastScreenWrite, armScreenWrite, lenientMemCheck, r = false;
 
   FrmSetTitle(frm, name);
 
@@ -83,21 +82,20 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   regDispP = pumpkin_reg_get(creator, regDisplayID, &regSize);
   density = regDispP ? regDispP->density : pumpkin_get_density();
-  depth = regDispP ? regDispP->depth : pumpkin_get_depth();
+  depth = regDispP ? (regDispP->depth & 0x7FFF) : pumpkin_get_depth();
+  littleEndian = regDispP ? ((regDispP->depth & 0x8000) == 0x8000) : false;
 
   regHeapP = pumpkin_reg_get(creator, regHeapID, &regSize);
   heapSize = regHeapP ? regHeapP->heapSize : 8;
   heapAlign = regHeapP ? regHeapP->heapAlign : 0;
 
-  regEndP = pumpkin_reg_get(creator, regEndianID, &regSize);
-  littleEndian = regEndP ? regEndP->littleEndian : 0;
-
-  regSndP = pumpkin_reg_get(creator, regSoundID, &regSize);
-  enableSound = regSndP ? regSndP->enableSound : 0;
+  regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize);
+  enableSound = regRunFlagsP ? (regRunFlagsP->flags & regRunFlagSound) == regRunFlagSound : 0;
 
   regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize);
   fastScreenWrite = regFlagsP ? regFlagsP->flags & regFlagFastScreenWrite : false;
   armScreenWrite  = regFlagsP ? regFlagsP->flags & regFlagARMScreenWrite  : false;
+  lenientMemCheck = regFlagsP ? regFlagsP->flags & regFlagLenientMemCheck : false;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -162,6 +160,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, armScreenWrite);
 
+  // set lenientMemCheck
+  index = FrmGetObjectIndex(frm, lenientMemCheckCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, lenientMemCheck);
+
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == okBtn) {
     // update OS version
@@ -185,19 +188,17 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
       ctl = FrmGetObjectPtr(frm, index);
       if (CtlGetValue(ctl)) break;
     }
-    regEnd.littleEndian = 0;
     switch (i) {
       case depth1Ctl:    regDisp.depth =  1; break;
       case depth2Ctl:    regDisp.depth =  2; break;
       case depth4Ctl:    regDisp.depth =  4; break;
       case depth8Ctl:    regDisp.depth =  8; break;
       case depth16Ctl:   regDisp.depth = 16; break;
-      case depth16leCtl: regDisp.depth = 16; regEnd.littleEndian = 1; break;
+      case depth16leCtl: regDisp.depth = 16 | 0x8000; break;
       default:           regDisp.depth = 16; break;
     }
 
     pumpkin_reg_set(creator, regDisplayID, &regDisp, sizeof(RegDisplayType));
-    pumpkin_reg_set(creator, regEndianID, &regEnd, sizeof(RegDisplayEndianType));
 
     // update heap size
     for (i = heap8Ctl; i <= heap64Ctl; i++) {
@@ -217,13 +218,19 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     pumpkin_reg_set(creator, regHeapID, &regHeap, sizeof(RegHeapType));
 
     // update sound
+    regRunFlags.flags = regRunFlagsP ? regRunFlagsP->flags : 0;
     index = FrmGetObjectIndex(frm, enableSoundCtl);
     ctl = FrmGetObjectPtr(frm, index);
-    regSnd.enableSound = CtlGetValue(ctl) ? 1 : 0; 
-    pumpkin_reg_set(creator, regSoundID, &regSnd, sizeof(RegSoundType));
+    if (CtlGetValue(ctl)) {
+      regRunFlags.flags |= regRunFlagSound;
+    } else {
+      regRunFlags.flags &= ~regRunFlagSound;
+    }
+    pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
-    // update fastScreenWrite and armScreenWrite
+    // update fastScreenWrite, armScreenWrite and lenientMemCheck
     regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
+
     index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
     ctl = FrmGetObjectPtr(frm, index);
     if (CtlGetValue(ctl)) {
@@ -231,6 +238,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     } else {
       regFlags.flags &= ~regFlagFastScreenWrite;
     }
+
     index = FrmGetObjectIndex(frm, armScreenWriteCtl);
     ctl = FrmGetObjectPtr(frm, index);
     if (CtlGetValue(ctl)) {
@@ -238,6 +246,15 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     } else {
       regFlags.flags &= ~regFlagARMScreenWrite;
     }
+
+    index = FrmGetObjectIndex(frm, lenientMemCheckCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    if (CtlGetValue(ctl)) {
+      regFlags.flags |= regFlagLenientMemCheck;
+    } else {
+      regFlags.flags &= ~regFlagLenientMemCheck;
+    }
+
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
 
     r = true;

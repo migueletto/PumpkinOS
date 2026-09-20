@@ -7,13 +7,16 @@ typedef struct RegMgrType RegMgrType;
 #define regDisplayID    5
 #define regFeatureID    6
 #define regNotifID      7
-#define regEndianID     8
-#define regSoundID      9
+// empty                8
+#define regRunFlagsID   9
 #define regHeapID       10
 
-#define regFlagReset           1
 #define regFlagFastScreenWrite 2
 #define regFlagARMScreenWrite  4
+#define regFlagLenientMemCheck 8
+
+#define regRunFlagReset        1
+#define regRunFlagSound        2
 
 typedef struct {
   UInt16 version;
@@ -51,12 +54,8 @@ typedef struct {
 } RegNotificationType;
 
 typedef struct {
-  UInt16 littleEndian;
-} RegDisplayEndianType;
-
-typedef struct {
-  UInt16 enableSound;
-} RegSoundType;
+  UInt16 flags;
+} RegRunFlagsType;
 
 typedef struct {
   UInt16 heapSize;
