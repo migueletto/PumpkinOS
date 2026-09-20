@@ -83,14 +83,13 @@ void palmos_DmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       DmSearchStateType stateInfo;
       UInt16 cardNo;
       LocalID dbID = 0;
+      sys_memset(&stateInfo, 0, sizeof(DmSearchStateType));
       if (stateInfoP && !newSearch) {
-        uint32_t info = m68k_read_memory_32(stateInfoP);
-        stateInfo.p = emupalmos_trap_in(info, trap, -1);
+        stateInfo.info[0] = m68k_read_memory_32(stateInfoP);
       }
       Err err = DmGetNextDatabaseByTypeCreator(newSearch, stateInfoP ? &stateInfo : NULL, type, creator, onlyLatestVers, cardNoP ? &cardNo : NULL, dbIDP ? &dbID : NULL);
       if (stateInfoP) {
-        uint32_t info = emupalmos_trap_out(stateInfo.p);
-        m68k_write_memory_32(stateInfoP, info);
+        m68k_write_memory_32(stateInfoP, stateInfo.info[0]);
       }
       if (cardNoP) m68k_write_memory_16(cardNoP, cardNo);
       if (dbIDP) m68k_write_memory_32(dbIDP, dbID);
