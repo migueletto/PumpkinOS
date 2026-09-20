@@ -268,7 +268,7 @@ int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
 #ifdef HEAP_DEBUG
   if (valid) {
     valid = pumpkin_heap_debug_access(address, size, read);
-    if (!valid) return valid;
+    if (!valid && read) return valid;
   }
 #endif
 
