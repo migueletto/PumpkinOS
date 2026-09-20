@@ -496,7 +496,8 @@ int thread_end(char *tag, int handle) {
 void thread_wait_all(void) {
   int i, n;
 
-  for (i = 0, n = -1; i < 30; i++) {
+  for (i = 0; i < 30; i++) {
+    n = -1;
     if (mutex_lock(mutex) == 0) {
       n = num_threads;
       mutex_unlock(mutex);
@@ -504,7 +505,6 @@ void thread_wait_all(void) {
     if (n <= 0) break;
     debug(DEBUG_INFO, "THREAD", "waiting for %d thread(s)", n);
     sys_usleep(500000);
-    n = -1;
   }
 
   if (n == 0) {
