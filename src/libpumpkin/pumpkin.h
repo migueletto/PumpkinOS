@@ -138,6 +138,8 @@ extern "C" {
 #define TRAPS_BASE 0x4000000
 #define TRAPS_SIZE 0x4000  // 4096 traps, 4 bytes each
 
+#define MAX_DBIDS 8192
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;
@@ -422,10 +424,9 @@ void pumpkin_save_surface(surface_t *surface, char *filename);
 
 int32_t pumpkin_event_timeout(int32_t t);
 
-uint32_t pumpkin_dbid_add(char *name, uint32_t id);
-uint32_t pumpkin_dbid_get(char *name);
-int pumpkin_dbid_valid(uint32_t id);
-void pumpkin_dbid_remove(char *name);
+int pumpkin_dbid_get(uint32_t dbid);
+int pumpkin_dbid_set(uint32_t dbid, int value, char *label);
+uint32_t pumpkin_dbid_new(char *label);
 
 uint32_t pumpkin_get_trap_address(uint16_t trap);
 int pumpkin_set_trap_address(uint16_t trap, uint32_t address);

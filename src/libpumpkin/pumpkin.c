@@ -296,6 +296,8 @@ typedef struct {
   int enableSound;
   uint32_t trapSize[0x1000];
   uint8_t *trapCode[0x1000];
+  uint32_t dbid_map[MAX_DBIDS / 8];
+  uint32_t dbid_last, dbid_num;
 } pumpkin_module_t;
 
 typedef union {
@@ -682,6 +684,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
 
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
+  pumpkin_module.dbid_last = MAX_DBIDS - 1;
   pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, HEAP_ALIGN, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   //pumpkin_module.dm = DataMgrInit("/app_data/");
@@ -6421,6 +6424,79 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
   }
 
   return r;
+}
+
+int pumpkin_dbid_get(uint32_t dbid) {
+  uint32_t index, bit, mask;
+  int r = 0;
+
+  if (dbid < MAX_DBIDS) {
+    index = dbid >> 5;
+    bit = dbid & 0x1F;
+    mask = 1 << bit;
+    r = (pumpkin_module.dbid_map[index] & mask) ? 1 : 0;
+  } else {
+    debug(DEBUG_ERROR, "DBID", "get invalid i=0x%08X", dbid);
+  }
+
+  return r;
+}
+
+int pumpkin_dbid_set(uint32_t dbid, int value, char *label) {
+  uint32_t index, bit, mask;
+  int r = -1;
+
+  if (dbid < MAX_DBIDS) {
+    index = dbid >> 5;
+    bit = dbid & 0x1F;
+    mask = 1 << bit;
+    if (value) {
+      if (!(pumpkin_module.dbid_map[index] & mask)) {
+        if (dbid > pumpkin_module.dbid_last) {
+          pumpkin_module.dbid_last = dbid;
+          debug(DEBUG_TRACE, "DBID", "set last=0x%08X", dbid);
+        }
+        pumpkin_module.dbid_map[index] |= mask;
+        pumpkin_module.dbid_num++;
+        debug(DEBUG_TRACE, "DBID", "set dbid=0x%08X index=%04u bit=%02u mask=0x%08X value=%d num=%u \"%s\"", dbid, index, bit, mask, value, pumpkin_module.dbid_num, label);
+      }
+    } else {
+      if ((pumpkin_module.dbid_map[index] & mask)) {
+        pumpkin_module.dbid_map[index] &= ~mask;
+        pumpkin_module.dbid_num--;
+        debug(DEBUG_TRACE, "DBID", "set dbid=0x%08X index=%04u bit=%02u mask=0x%08X value=%d num=%u \"%s\"", dbid, index, bit, mask, value, pumpkin_module.dbid_num, label);
+      }
+    }
+    r = 0;
+  } else {
+    debug(DEBUG_ERROR, "DBID", "set invalid i=0x%08X", dbid);
+  }
+
+  return r;
+}
+
+uint32_t pumpkin_dbid_new(char *label) {
+  uint32_t i, index, bit, mask, dbid = 0xFFFFFFFF;
+
+  if (pumpkin_module.dbid_num < MAX_DBIDS) {
+    for (i = 0; i < MAX_DBIDS; i++) {
+      dbid = pumpkin_module.dbid_last + i + 1;
+      if (dbid >= MAX_DBIDS) dbid -= MAX_DBIDS;
+      index = dbid >> 5;
+      bit = dbid & 0x1F;
+      mask = 1 << bit;
+      if (!(pumpkin_module.dbid_map[index] & mask)) {
+        pumpkin_module.dbid_last = dbid;
+        pumpkin_module.dbid_map[index] |= mask;
+        pumpkin_module.dbid_num++;
+        debug(DEBUG_TRACE, "DBID", "new last=0x%08X", dbid);
+        debug(DEBUG_TRACE, "DBID", "new dbid=0x%08X index=%04u bit=%02u mask=0x%08X value=%d num=%u \"%s\"", dbid, index, bit, mask, 1, pumpkin_module.dbid_num, label);
+        break;
+      }
+    }
+  }
+
+  return dbid;
 }
 
 void pumpkin_set_lasterr(Err err) {

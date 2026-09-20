@@ -764,11 +764,6 @@ Err VFSRemoveFSLib(UInt16 fsLibRefNum) {
   return_err(errNone);
 }
 
-Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *resHP) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSFileDBGetResource not implemented");
-  return_err(sysErrParamErr);
-}
-
 Err VFSExportDatabaseToFileEx(UInt16 volRefNum, const Char *pathNameP, UInt16 cardNo, LocalID dbID, VFSExportProcPtr exportProcP, void *userDataP, UInt32 exportProc68K, UInt32 userData68K) {
   // XXX not implemented
   return errNone;

@@ -42,6 +42,8 @@
 #define HANDLE_MAGIC 'Hndl'
 #define DB_MAGIC     'dbId'
 
+#define DBID_BASE 0x5000000
+
 typedef struct storage_handle_t {
   uint32_t magic;
   uint16_t htype;
@@ -70,6 +72,7 @@ typedef struct storage_handle_t {
 
 typedef struct storage_db_t {
   uint32_t magic;
+  uint32_t dbID;
   uint32_t ftype, readCount, writeCount, uniqueIDSeed;
   uint16_t mode, numRecs, protect;
 
@@ -80,7 +83,6 @@ typedef struct storage_db_t {
 
   storage_handle_t **elements;
   uint32_t totalElements;
-  struct storage_db_t *next;
 } storage_db_t;
 
 typedef struct DmOpenType {
@@ -101,7 +103,7 @@ typedef struct {
   vfs_session_t *session;
   uint32_t num_storage;
   char path[MAX_STORAGE_PATH];
-  storage_db_t *list;
+  storage_db_t *dbs[MAX_DBIDS];
   DmOpenType *dbRef;
   Err lastErr;
   MemHandle appInfoH;
@@ -152,6 +154,9 @@ static void *StoPtrRealloc(storage_handle_t *h, void *p, UInt32 size) {
   if (p) {
     sp = (storage_ptr_t *)((uint8_t *)p - OffsetOf(storage_ptr_t, buffer));
 
+    // XXX WinLauncher calls MemHandleResize (which calls StoPtrRealloc) assuming the original address will not change.
+    // This could happen in PalmOS, but it not guaranteed in PumpkinOS. The old address may become invalid and 
+    // the app will trigger an invalid read/write panic.
     if ((sp2 = pumpkin_heap_realloc(sp, sizeof(storage_ptr_t) + size, sto->heapLabel ? sto->heapLabel : "HandlePtr")) != NULL) {
       sp = sp2;
       sp->h = h;
@@ -376,8 +381,8 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
     pumpkin_id2s(db->type, stype);
     pumpkin_id2s(db->creator, screator);
-    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-      db->ftype, stype, screator, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\ndbID=0x%08X\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+      db->ftype, stype, screator, db->dbID, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
     n = sys_strlen(buf);
     if ((w = vfs_write(f, (uint8_t *)buf, n)) == n) {
       r = 0;
@@ -389,38 +394,6 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
 
   return r;
 }
-
-/*
-static int StoReadHeader(storage_t *sto, storage_db_t *db) {
-  char buf[VFS_PATH];
-  char stype[8], screator[8];
-  vfs_file_t *f;
-  int r = -1;
-
-  storage_name(sto, db->name, STO_FILE_HEADER, 0, 0, 0, 0, buf);
-  if ((f = StoVfsOpen(sto->session, buf, VFS_READ)) != NULL) {
-    sys_memset(buf, 0, sizeof(buf));
-    if (vfs_read(f, (uint8_t *)buf, sizeof(buf)-1) > 0) {
-      if (sys_sscanf(buf, "ftype=%u\ntype='%c%c%c%c'\ncreator='%c%c%c%c'\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-           &db->ftype, stype, stype+1, stype+2, stype+3, screator, screator+1, screator+2, screator+3,
-           &db->attributes, &db->uniqueIDSeed, &db->version, &db->crDate, &db->modDate, &db->bckDate, &db->modNum) == 16) {
-        stype[4] = 0;
-        pumpkin_s2id(&db->type, stype);
-        screator[4] = 0;
-        pumpkin_s2id(&db->creator, screator);
-        r = 0;
-      } else {
-        debug(DEBUG_ERROR, "STOR", "invalid header \"%s\"", buf);
-      }
-    }
-    vfs_close(f);
-  }
-
-  return r;
-}
-*/
-
-#define NUM_HEADERS 11
 
 static int StoReadHeader(storage_t *sto, storage_db_t *db) {
   char buf[VFS_PATH];
@@ -450,6 +423,9 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
         pumpkin_s2id(&db->creator, screator);
         continue;
       }
+      if (sys_sscanf(buf, "dbID=0x%08X", &db->dbID) == 1) {
+        continue;
+      }
       if (sys_sscanf(buf, "attributes=%u", &db->attributes) == 1) {
         continue;
       }
@@ -477,7 +453,8 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
     }
     vfs_close(f);
 
-    if (db->ftype && db->type && db->creator) {
+    if (db->ftype && db->type && db->creator && db->dbID >= DBID_BASE && db->dbID < DBID_BASE + MAX_DBIDS) {
+      pumpkin_dbid_set(db->dbID - DBID_BASE, 1, db->name);
       r = 0;
     }
   }
@@ -763,7 +740,6 @@ int StoInit(char *path, mutex_t *mutex) {
   vfs_dir_t *dir;
   vfs_ent_t *ent;
   storage_db_t *db;
-  LocalID dbID;
   int r = -1;
 
   if ((sto = sys_calloc(1, sizeof(storage_t))) != NULL) {
@@ -773,40 +749,41 @@ int StoInit(char *path, mutex_t *mutex) {
     sto->end = sto->base + sto->size;
     sys_strncpy(sto->path, path, MAX_STORAGE_PATH - 1);
     if ((sto->session = vfs_open_session()) != NULL) {
-      if ((dir = StoVfsOpendir(sto->session, sto->path)) != NULL) {
-        for (;;) {
-          ent = StoReadEnt(dir);
-          if (ent == NULL) break;
-          if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) == NULL) {
-            vfs_closedir(dir);
-            vfs_close_session(sto->session);
-            sys_free(sto);
-            sto = NULL;
-            break;
+      if (mutex_lock(sto->mutex) == 0) {
+        if ((dir = StoVfsOpendir(sto->session, sto->path)) != NULL) {
+          for (;;) {
+            ent = StoReadEnt(dir);
+            if (ent == NULL) break;
+            if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) == NULL) {
+              vfs_closedir(dir);
+              vfs_close_session(sto->session);
+              sys_free(sto);
+              sto = NULL;
+              break;
+            }
+            db->magic = DB_MAGIC;
+            StoUnescapeName(ent->name, db->name, dmDBNameLength);
+            if (StoReadHeader(sto, db) != 0) {
+              pumpkin_heap_free(db, "storage_db");
+              continue;
+            }
+            debug(DEBUG_TRACE, "STOR", "StoInit 0x%08X database \"%s\"", db->dbID, db->name);
+            sto->dbs[db->dbID - DBID_BASE] = db;
+            sto->num_storage++;
           }
-          db->magic = DB_MAGIC;
-          StoUnescapeName(ent->name, db->name, dmDBNameLength);
-          db->next = sto->list;
-          if (StoReadHeader(sto, db) != 0) {
-            pumpkin_heap_free(db, "storage_db");
-            continue;
+          vfs_closedir(dir);
+          if (sto) {
+            sto->fontSize = 12;
+            sto->fontFamily = PUMPKIN_FONT_FAMILY_SANS;
+            sto->fontStyle = PUMPKIN_FONT_STYLE_REGULAR;
+            pumpkin_set_local_storage(sto_key, sto);
+            r = 0;
           }
-          dbID = (uint8_t *)db - sto->base;
-          debug(DEBUG_TRACE, "STOR", "StoInit 0x%08X database \"%s\"", dbID, db->name);
-          sto->list = db;
-          sto->num_storage++;
+        } else {
+          vfs_close_session(sto->session);
+          sys_free(sto);
         }
-        vfs_closedir(dir);
-        if (sto) {
-          sto->fontSize = 12;
-          sto->fontFamily = PUMPKIN_FONT_FAMILY_SANS;
-          sto->fontStyle = PUMPKIN_FONT_STYLE_REGULAR;
-          pumpkin_set_local_storage(sto_key, sto);
-          r = 0;
-        }
-      } else {
-        vfs_close_session(sto->session);
-        sys_free(sto);
+        mutex_unlock(sto->mutex);
       }
     } else {
       sys_free(sto);
@@ -820,31 +797,30 @@ int StoRefresh(void) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   vfs_dir_t *dir;
   vfs_ent_t *ent;
-  storage_db_t *db, *old, *oldList;
-  LocalID dbID;
+  storage_db_t *db;
+  uint32_t i;
   char name[dmDBNameLength];
   int found, r = -1;
 
   if (sto) {
     if (mutex_lock(sto->mutex) == 0) {
       if ((dir = StoVfsOpendir(sto->session, sto->path)) != NULL) {
-        oldList = sto->list;
         for (;;) {
           ent = StoReadEnt(dir);
           if (ent == NULL) break;
           StoUnescapeName(ent->name, name, dmDBNameLength);
-          for (old = oldList, found = 0; old && !found; old = old->next) {
-            found = sys_strncmp(old->name, name, sys_strlen(name)) == 0;
+          for (i = 0; i < MAX_DBIDS && !found; i++) {
+            if (sto->dbs[i]) {
+              found = sys_strncmp(sto->dbs[i]->name, name, sys_strlen(name)) == 0;
+            }
           }
           if (!found) {
             if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) != NULL) {
               db->magic = DB_MAGIC;
               sys_strncpy(db->name, name, dmDBNameLength-1);
               if (StoReadHeader(sto, db) == 0) {
-                dbID = (uint8_t *)db - sto->base;
-                debug(DEBUG_INFO, "STOR", "StoRefresh 0x%08X database \"%s\"", dbID, db->name);
-                db->next = sto->list;
-                sto->list = db;
+                debug(DEBUG_INFO, "STOR", "StoRefresh 0x%08X database \"%s\"", db->dbID, db->name);
+                sto->dbs[db->dbID - DBID_BASE] = db;
                 sto->num_storage++;
               } else {
                 pumpkin_heap_free(db, "storage_db");
@@ -869,8 +845,8 @@ int StoFinish(void) {
 
   if (sto) {
     for (dbRef = sto->dbRef; dbRef; dbRef = dbRef->next) {
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID > DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         debug(DEBUG_ERROR, "STOR", "StoFinish database \"%s\" was left open", db->name);
         if (mutex_lock(sto->mutex) == 0) {
           if (StoGetFileLocks(sto, db, &read_locks, &write_locks) == 0) {
@@ -979,8 +955,8 @@ static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       switch (db->ftype) {
         case STO_TYPE_REC:
         case STO_TYPE_RES:
@@ -1031,27 +1007,32 @@ Err DmDatabaseInfo(UInt16 cardNo, LocalID dbID, Char *nameP,
   storage_db_t *db;
   Err err = dmErrInvalidParam;
 
-  if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
-    db = (storage_db_t *)(sto->base + dbID);
-    if (nameP) sys_strncpy(nameP, db->name, dmDBNameLength-1);
-    if (attributesP) *attributesP = db->attributes;
-    if (versionP) *versionP = db->version;
-    if (crDateP) *crDateP = db->crDate;
-    if (modDateP) *modDateP = db->modDate;
-    if (bckUpDateP) *bckUpDateP = db->bckDate;
-    if (modNumP) *modNumP = db->modNum;
-    if (typeP) *typeP = db->type;
-    if (creatorP) *creatorP = db->creator;
-    if (appInfoIDP) *appInfoIDP = db->appInfoID;
-    if (sortInfoIDP) *sortInfoIDP = db->sortInfoID;
-    err = errNone;
+  if (mutex_lock(sto->mutex) == 0) {
+    if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE] && pumpkin_dbid_get(dbID - DBID_BASE)) {
+      db = sto->dbs[dbID - DBID_BASE];
+      if (nameP) sys_strncpy(nameP, db->name, dmDBNameLength-1);
+      if (attributesP) *attributesP = db->attributes;
+      if (versionP) *versionP = db->version;
+      if (crDateP) *crDateP = db->crDate;
+      if (modDateP) *modDateP = db->modDate;
+      if (bckUpDateP) *bckUpDateP = db->bckDate;
+      if (modNumP) *modNumP = db->modNum;
+      if (typeP) *typeP = db->type;
+      if (creatorP) *creatorP = db->creator;
+      if (appInfoIDP) *appInfoIDP = db->appInfoID;
+      if (sortInfoIDP) *sortInfoIDP = db->sortInfoID;
+      err = errNone;
+    } else {
+      debug(DEBUG_ERROR, "STOR", "DmDatabaseInfo invalid dbID 0x%08X", dbID);
+    }
+    mutex_unlock(sto->mutex);
   }
 
   StoCheckErr(err);
   return err;
 }
 
-Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
+Err DmSetDatabaseInfo(UInt16 cardNo, LocalID dbID, const Char *nameP,
     UInt16 *attributesP, UInt16 *versionP, UInt32 *crDateP,
     UInt32 *modDateP, UInt32 *bckUpDateP,
     UInt32 *modNumP, LocalID *appInfoIDP,
@@ -1064,8 +1045,8 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
-    if (dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *) (sto->base + dbID);
+    if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE] && pumpkin_dbid_get(dbID - DBID_BASE)) {
+      db = sto->dbs[dbID - DBID_BASE];
       if (attributesP) db->attributes = *attributesP;
       if (versionP) db->version = *versionP;
       if (crDateP) db->crDate = *crDateP;
@@ -1096,6 +1077,8 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
           err = errNone;
         }
       }
+    } else {
+      debug(DEBUG_ERROR, "STOR", "DmSetDatabaseInfo invalid dbID 0x%08X", dbID);
     }
     mutex_unlock(sto->mutex);
   }
@@ -1107,23 +1090,24 @@ Err DmSetDatabaseInfo(UInt16 cardNo, LocalID  dbID, const Char *nameP,
 Err DmGetNextDatabaseByTypeCreator(Boolean newSearch, DmSearchStatePtr stateInfoP, UInt32 type, UInt32 creator, Boolean onlyLatestVers, UInt16 *cardNoP, LocalID *dbIDP) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
+  uint32_t i;
   Err err = dmErrCantFind;
 
   if (dbIDP) *dbIDP = 0;
 
   if (stateInfoP) {
     if (newSearch) {
-      stateInfoP->p = sto->list;
-    } else {
+      stateInfoP->info[0] = 0;
     }
-    for (db = (storage_db_t *)stateInfoP->p; db; db = db->next) {
-      if ((type != 0 && type != db->type) || (creator != 0 && creator != db->creator) || db->name[0] == 0) {
-        stateInfoP->p = db->next;
+    for (i = stateInfoP->info[0]; i < MAX_DBIDS; i++) {
+      db = sto->dbs[i];
+      if (!db || (type != 0 && type != db->type) || (creator != 0 && creator != db->creator) || db->name[0] == 0) {
+        stateInfoP->info[0] = i+1;
         continue;
       }
-      stateInfoP->p = db->next;
+      stateInfoP->info[0] = i+1;
       if (cardNoP) *cardNoP = 0;
-      if (dbIDP) *dbIDP = (uint8_t *)db - sto->base;
+      if (dbIDP) *dbIDP = DBID_BASE + i;
       err = errNone;
       break;
     }
@@ -1134,19 +1118,20 @@ Err DmGetNextDatabaseByTypeCreator(Boolean newSearch, DmSearchStatePtr stateInfo
 
 LocalID DmGetDatabase(UInt16 cardNo, UInt16 index) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  UInt16 i;
+  uint32_t i, j;
   storage_db_t *db;
   LocalID dbID = 0;
   Err err = dmErrCantFind;
 
-  for (i = 0, db = sto->list; db; db = db->next) {
-    if (db->name[0]) {
-      if (i == index) {
-        dbID = (uint8_t *)db - sto->base;
+  for (i = 0, j = 0; i < MAX_DBIDS; i++) {
+    db = sto->dbs[i];
+    if (db) {
+      if (j == index) {
+        dbID = DBID_BASE + i;
         err = errNone;
         break;
       }
-      i++;
+      j++;
     }
   }
 
@@ -1158,12 +1143,14 @@ LocalID DmFindDatabase(UInt16 cardNo, const Char *nameP) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   LocalID dbID = 0;
+  uint32_t i;
   Err err = dmErrCantFind;
 
   if (nameP) {
-    for (db = sto->list; db; db = db->next) {
-      if (sys_strcmp(db->name, nameP) == 0) {
-        dbID = (uint8_t *)db - sto->base;
+    for (i = 0; i < MAX_DBIDS; i++) {
+      db = sto->dbs[i];
+      if (db && sys_strcmp(db->name, nameP) == 0) {
+        dbID = DBID_BASE + i;
         err = errNone;
         break;
       }
@@ -1186,8 +1173,8 @@ static MemHandle DmQueryRecordEx(DmOpenRef dbP, UInt16 index, Boolean setBusy) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && index < db->numRecs && db->elements[index]) {
           h = db->elements[index];
           if (!(h->htype & STO_INFLATED)) {
@@ -1248,8 +1235,8 @@ Err DmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && index < db->numRecs && db->elements[index]) {
           h = db->elements[index];
           if (h->htype == (STO_TYPE_REC | STO_INFLATED)) {
@@ -1291,10 +1278,10 @@ Err DmDatabaseSize(UInt16 cardNo, LocalID dbID, UInt32 *numRecordsP, UInt32 *tot
   DmOpenRef dbRef;
   Err err = dmErrInvalidParam;
 
-  if (dbID < (sto->size - sizeof(storage_db_t))) {
+  if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE]) {
     // it is necessary to open the database, otherwise the records would not be mapped
     if ((dbRef = DmOpenDatabase(cardNo, dbID, dmModeReadOnly)) != NULL) {
-      db = (storage_db_t *) (sto->base + dbID);
+      db = sto->dbs[dbID - DBID_BASE];
       if (numRecordsP) *numRecordsP = db->numRecs;
       if (dataBytesP || totalBytesP) {
         for (i = 0, n = 0; i < db->numRecs; i++) {
@@ -1315,27 +1302,34 @@ Err DmDatabaseSize(UInt16 cardNo, LocalID dbID, UInt32 *numRecordsP, UInt32 *tot
 
 Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 attr, UInt32 uniqueIDSeed, Boolean overwrite) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
-  storage_db_t *db, *existing = NULL;
+  storage_db_t *db;
   SysNotifyParamType notify;
   SysNotifyDBCreatedType dbCreated;
   LocalID dbID = 0;
   vfs_file_t *f;
+  Boolean exists = false;
   char buf[VFS_PATH];
+  uint32_t i;
   Err err = dmErrInvalidParam;
 
   if (nameP) {
     if (mutex_lock(sto->mutex) == 0) {
-      for (db = sto->list; db; db = db->next) {
-        if (sys_strcmp(nameP, db->name) == 0) {
-          existing = db;
+      for (i = 0; i < MAX_DBIDS; i++) {
+        db = sto->dbs[i];
+        if (db && sys_strcmp(nameP, db->name) == 0) {
+          exists = true;
           break;
         }
       }
-      if (existing) {
+      if (exists) {
         if (overwrite) {
           debug(DEBUG_INFO, "STOR", "DmCreateDatabase overwriting database \"%s\"", nameP);
-          dbID = (uint8_t *)db - sto->base;
+          dbID = DBID_BASE + i;
           if ((err = DmDeleteDatabase(0, dbID)) != errNone) {
+            mutex_unlock(sto->mutex);
+            return err;
+          }
+          if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) == NULL) {
             mutex_unlock(sto->mutex);
             return err;
           }
@@ -1345,7 +1339,10 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
             mutex_unlock(sto->mutex);
             return err;
           }
-          db = existing;
+          pumpkin_dbid_set(i, 1, (char *)nameP);
+          db->magic = DB_MAGIC;
+          db->dbID = dbID;
+          sto->dbs[i] = db;
         } else {
           debug(DEBUG_ERROR, "STOR", "DmCreateDatabase database \"%s\" already exists", nameP);
           mutex_unlock(sto->mutex);
@@ -1357,15 +1354,21 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
           mutex_unlock(sto->mutex);
           return err;
         }
-        db->magic = DB_MAGIC;
         storage_name(sto, (char *)nameP, 0, 0, 0, 0, 0, buf);
         if (StoVfsMkdir(sto->session, buf) == -1) {
           pumpkin_heap_free(db, "storage_db");
           mutex_unlock(sto->mutex);
           return err;
         }
-        db->next = sto->list;
-        sto->list = db;
+        if ((i = pumpkin_dbid_new((char *)nameP)) == 0xFFFFFFFF) {
+          pumpkin_heap_free(db, "storage_db");
+          mutex_unlock(sto->mutex);
+          return err;
+        }
+        dbID = DBID_BASE + i;
+        db->magic = DB_MAGIC;
+        db->dbID = dbID;
+        sto->dbs[i] = db;
         sto->num_storage++;
       }
 
@@ -1385,6 +1388,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
           vfs_close(f);
         }
       }
+
       db->creator = creator;
       db->type = type;
       db->attributes = attr;
@@ -1395,7 +1399,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
 
       if (StoWriteHeader(sto, db) == -1) {
         pumpkin_heap_free(db, "storage_db");
-        if (existing == NULL) {
+        if (exists) {
           sto->num_storage--;
         }
       } else {
@@ -1408,7 +1412,7 @@ Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 at
 
   if (err == errNone) {
     MemSet(&dbCreated, sizeof(dbCreated), 0);
-    dbCreated.newDBID = 0; // dbID's are not advertised, since they are local to the task
+    dbCreated.newDBID = dbID;
     dbCreated.creator = creator;
     dbCreated.type = type;
     dbCreated.resDB = attr & dmHdrAttrResDB;
@@ -1648,8 +1652,8 @@ static DmOpenRef DmOpenDatabaseOverlay(UInt16 cardNo, LocalID dbID, UInt16 mode,
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
-    if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *) (sto->base + dbID);
+    if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE] && pumpkin_dbid_get(dbID - DBID_BASE)) {
+      db = sto->dbs[dbID - DBID_BASE];
 
       if (pumpkin_is_m68k() && db->type == 'DATA') {
         // In PumpkinOS, the database formats for Date Book and To Do List are incompatible with the
@@ -1781,8 +1785,8 @@ Err DmCloseDatabase(DmOpenRef dbP) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (dbRef->mode & dmModeWrite) {
           debug(DEBUG_TRACE, "STOR", "DmCloseDatabase \"%s\" writeCount %d -> %d", db->name, db->writeCount, db->writeCount-1);
           if (StoUnlockForWriting(sto, db) == 0) err = errNone;
@@ -1943,8 +1947,8 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
   Err err = dmErrInvalidParam;
 
   if (mutex_lock(sto->mutex) == 0) {
-    if (dbID && dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *) (sto->base + dbID);
+    if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE] && sto->dbs[dbID - DBID_BASE] && pumpkin_dbid_get(dbID - DBID_BASE)) {
+      db = sto->dbs[dbID - DBID_BASE];
       if (StoLockForWriting(sto, db) != 0) {
         debug(DEBUG_ERROR, "STOR", "DmDeleteDatabase database \"%s\" is open by another thread", db->name);
       } else {
@@ -1972,12 +1976,17 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           StoVfsUnlink(sto->session, buf);
 
           MemSet(&dbDeleted, sizeof(dbDeleted), 0);
-          dbDeleted.oldDBID = 0; // dbID's are not advertised, since they are local to the task
+          dbDeleted.oldDBID = dbID;
           dbDeleted.creator = db->creator;
           dbDeleted.type = db->type;
           dbDeleted.attributes = db->attributes;
           StrNCopy(dbDeleted.dbName, db->name, dmDBNameLength-1);
 
+          pumpkin_dbid_set(dbID - DBID_BASE, 0, db->name);
+          pumpkin_heap_free(db, "storage_db");
+          sto->dbs[dbID - DBID_BASE] = NULL;
+/*
+          db->dbID = 0;
           db->ftype = 0;
           db->readCount = 0;
           db->writeCount = 0;
@@ -1997,11 +2006,14 @@ Err DmDeleteDatabase(UInt16 cardNo, LocalID dbID) {
           db->sortInfoID = 0;
           db->f = NULL;
           sys_memset(db->name, 0, dmDBNameLength);
+*/
 
           sto->num_storage--;
           err = errNone;
         }
       }
+    } else {
+      debug(DEBUG_ERROR, "STOR", "DmDeleteDatabase invalid dbID 0x%08X", dbID);
     }
     mutex_unlock(sto->mutex);
   }
@@ -2030,21 +2042,26 @@ Err DmDatabaseProtect(UInt16 cardNo, LocalID dbID, Boolean protect) {
   storage_db_t *db;
   Err err = dmErrInvalidParam;
 
-  if (dbID < (sto->size - sizeof(storage_db_t))) {
-    db = (storage_db_t *)(sto->base + dbID);
-    if (protect) {
-      if (db->protect < 32) {
-        db->protect++;
-        err = errNone;
+  if (mutex_lock(sto->mutex) == 0) {
+    if (dbID >= DBID_BASE && dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbID - DBID_BASE] && pumpkin_dbid_get(dbID - DBID_BASE)) {
+      db = sto->dbs[dbID - DBID_BASE];
+      if (protect) {
+        if (db->protect < 32) {
+          db->protect++;
+          err = errNone;
+        }
+      } else {
+        if (db->protect > 0) {
+          db->protect--;
+          err = errNone;
+        } else {
+          err = dmErrDatabaseNotProtected;
+        }
       }
     } else {
-      if (db->protect > 0) {
-        db->protect--;
-        err = errNone;
-      } else {
-        err = dmErrDatabaseNotProtected;
-      }
+      debug(DEBUG_ERROR, "STOR", "DmDatabaseProtect invalid dbID 0x%08X", dbID);
     }
+    mutex_unlock(sto->mutex);
   }
 
   StoCheckErr(err);
@@ -2060,8 +2077,8 @@ UInt16 DmNumRecords(DmOpenRef dbP) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC || db->ftype == STO_TYPE_RES) {
         numRecs = db->numRecs;
         err = errNone;
@@ -2085,8 +2102,8 @@ Err DmRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueIDP, 
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (attrP) *attrP = 0;
       if (uniqueIDP) *uniqueIDP = 0;
       if (chunkIDP) *chunkIDP = 0;
@@ -2122,8 +2139,8 @@ Err DmSetRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueID
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && index < db->numRecs) {
           h = db->elements[index];
           storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, oldName);
@@ -2191,8 +2208,8 @@ DmOpenRef DmNextOpenResDatabase(DmOpenRef dbP) {
   dbRef = dbP ? (DmOpenType *)dbP : sto->dbRef;
   if (dbRef) {
     for (dbRef = dbRef->next; dbRef; dbRef = dbRef->next) {
-      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
-      db = (storage_db_t *) (sto->base + dbRef->dbID);
+      if (dbRef->dbID < DBID_BASE || dbRef->dbID >= DBID_BASE + MAX_DBIDS || !sto->dbs[dbRef->dbID - DBID_BASE]) continue;
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) break;
     }
   }
@@ -2219,8 +2236,8 @@ static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resI
     for (found = 0; dbRef && !found; dbRef = dbRef->next) {
       if (!searchedOverlay && dbRef->overlayDb) dbRef = dbRef->overlayDb;
       searchedOverlay = false;
-      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID < DBID_BASE || dbRef->dbID >= DBID_BASE + MAX_DBIDS  || !sto->dbs[dbRef->dbID - DBID_BASE]) continue;
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype != STO_TYPE_RES) continue;
 
       debug(DEBUG_TRACE, "STOR", "DmGetResourceEx checking database \"%s\" (%d resources)", db->name, db->numRecs);
@@ -2318,8 +2335,8 @@ void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32
     dbRef = sto->dbRef;
     for (found = 0; dbRef && !found; dbRef = dbRef->next) {
       if (dbRef->overlayDb) dbRef = dbRef->overlayDb;
-      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID < DBID_BASE || dbRef->dbID >= DBID_BASE + MAX_DBIDS || !sto->dbs[dbRef->dbID - DBID_BASE]) continue;
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype != STO_TYPE_RES) continue;
 
       debug(DEBUG_TRACE, "STOR", "DmExtractResource checking database \"%s\" (%d resources)", db->name, db->numRecs);
@@ -2382,8 +2399,8 @@ UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpen
     }
 
     for (dbRef = sto->dbRef, found = false; dbRef && !found; dbRef = dbRef->next) {
-      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID < DBID_BASE || dbRef->dbID >= DBID_BASE + MAX_DBIDS || !sto->dbs[dbRef->dbID - DBID_BASE]) continue;
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype != STO_TYPE_RES) continue;
 
       debug(DEBUG_TRACE, "STOR", "checking database \"%s\" (%d resources)", db->name, db->numRecs);
@@ -2460,8 +2477,8 @@ UInt16 DmSearchRecord(MemHandle recH, DmOpenRef *dbPP) {
     debug(DEBUG_TRACE, "STOR", "searching record handle %p", recH);
 
     for (dbRef = sto->dbRef, found = false; dbRef && !found; dbRef = dbRef->next) {
-      if (dbRef->dbID >= (sto->size - sizeof(storage_db_t))) continue;
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef->dbID < DBID_BASE || dbRef->dbID >= DBID_BASE + MAX_DBIDS || !sto->dbs[dbRef->dbID - DBID_BASE]) continue;
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype != STO_TYPE_REC) continue;
 
       debug(DEBUG_TRACE, "STOR", "checking database \"%s\" (%d resources)", db->name, db->numRecs);
@@ -2523,8 +2540,8 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
 
   if (mutex_lock(sto->mutex) == 0) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES && index < db->numRecs) {
         h = db->elements[index];
         if (!(h->htype & STO_INFLATED)) {
@@ -2671,8 +2688,8 @@ MemHandle DmResizeResource(MemHandle resourceH, UInt32 newSize) {
         switch (h->htype & ~STO_INFLATED) {
           case STO_TYPE_RES:
             if (DmSearchResource(0, 0, resourceH, (DmOpenRef *)&dbRef) != 0xffff) {
-              if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-                db = (storage_db_t *) (sto->base + dbRef->dbID);
+              if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+                db = sto->dbs[dbRef->dbID - DBID_BASE];
                 old = h->buf;
                 if ((newBuf = StoPtrNew(h, newSize, h->d.res.type, h->d.res.id)) != NULL) {
                   sys_memcpy(newBuf, old, newSize < h->size ? newSize : h->size);
@@ -2719,8 +2736,8 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_RES) {
           if ((h = pumpkin_heap_alloc(sizeof(storage_handle_t), "Handle")) != NULL) {
             h->magic = HANDLE_MAGIC;
@@ -2769,8 +2786,8 @@ Err DmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID r
 
   if (mutex_lock(sto->mutex) == 0) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) {
         h = (storage_handle_t *)newH;
         h->owner = 0;
@@ -2812,8 +2829,8 @@ Err DmRemoveResource(DmOpenRef dbP, UInt16 index) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_RES && db->numRecs > 0) {
           if (index >= db->numRecs) index = db->numRecs - 1;
           if (db->elements[index]->lockCount == 0) {
@@ -2850,8 +2867,8 @@ LocalID DmGetAppInfoID(DmOpenRef dbP) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       appInfo = db->appInfoID;
       err = errNone;
     }
@@ -2871,8 +2888,8 @@ UInt16 DmNumRecordsInCategory(DmOpenRef dbP, UInt16 category) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC) {
         for (i = 0; i < db->numRecs; i++) {
           h = db->elements[i];
@@ -2903,8 +2920,8 @@ MemHandle DmQueryNextInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 category) 
   if (dbP && indexP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC) {
           for (; *indexP < db->numRecs; (*indexP)++) {
             ha = db->elements[*indexP];
@@ -3040,8 +3057,8 @@ UInt16 DmFindSortPosition(DmOpenRef dbP, void *newRecord, SortRecordInfoPtr newR
   if (dbP && newRecord && compar) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC) {
           if (db->numRecs > 0) {
             appInfoH = db->appInfoID ? MemLocalIDToHandle(db->appInfoID) : NULL;
@@ -3078,8 +3095,8 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
 
   if (dbP && newRecord && compar) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC) {
         if (db->numRecs > 0) {
           pos = 0;
@@ -3131,8 +3148,8 @@ UInt16 DmPositionInCategory(DmOpenRef dbP, UInt16 index, UInt16 category) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC && index < db->numRecs) {
         for (i = 0; i < db->numRecs; i++) {
           h = db->elements[i];
@@ -3164,8 +3181,8 @@ MemHandle DmResizeRecord(DmOpenRef dbP, UInt16 index, UInt32 newSize) {
 
   if (dbP && newSize) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *) (sto->base + dbRef->dbID);
+    if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC && index < db->numRecs) {
         h = db->elements[index];
         if (h->htype & STO_INFLATED) {
@@ -3214,8 +3231,8 @@ Err DmMoveRecord(DmOpenRef dbP, UInt16 from, UInt16 to) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC) {
         err = errNone;
         if (db->numRecs > 1 && from < db->numRecs) {
@@ -3275,8 +3292,8 @@ Err DmDeleteRecord(DmOpenRef dbP, UInt16 index) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *) (sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && db->numRecs > 0 && index < db->numRecs) {
           if (db->elements[index]->lockCount == 0) {
 //debug(1, "XXX", "DmDeleteRecord index %d", index);
@@ -3341,8 +3358,8 @@ Err DmRemoveRecord(DmOpenRef dbP, UInt16 index) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *) (sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && db->numRecs > 0 && index < db->numRecs) {
           if (db->elements[index]->lockCount == 0) {
             h = db->elements[index];
@@ -3387,8 +3404,8 @@ Err DmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
 
   if (dbP && indexP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC) {
         err = dmErrUniqueIDNotFound;
         for (i = 0; i < db->numRecs; i++) {
@@ -3424,8 +3441,8 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
   if (dbP && atP && size > 0) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         debug(DEBUG_TRACE, "STOR", "DmNewRecordEx database \"%s\" at %d size %u", db->name, *atP, size);
         if (db->ftype == STO_TYPE_REC) {
           if (*atP >= db->numRecs) *atP = db->numRecs;
@@ -3508,8 +3525,8 @@ Err DmAttachRecord(DmOpenRef dbP, UInt16 *atP, MemHandle newH, MemHandle *oldHP)
   if (dbP && atP && newH) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC) {
 //debug(1, "XXX", "DmAttachRecord numRecs %d", db->numRecs);
           if (*atP > db->numRecs) *atP = db->numRecs;
@@ -3612,8 +3629,8 @@ Err DmDetachRecord(DmOpenRef dbP, UInt16 index, MemHandle *oldHP) {
   if (dbP && oldHP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && (dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_REC && index < db->numRecs) {
 //debug(1, "XXX", "DmDetachRecord numRecs %d", db->numRecs);
           if (db->elements[index]->lockCount == 0) {
@@ -3815,8 +3832,8 @@ Err DmResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *re
   Err err = dmErrResourceNotFound;
 
   dbRef = (DmOpenType *)dbP;
-  if (dbRef) {
-    db = (storage_db_t *)(sto->base + dbRef->dbID);
+  if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+    db = sto->dbs[dbRef->dbID - DBID_BASE];
     if (db->ftype == STO_TYPE_RES && index < db->numRecs) {
       h = db->elements[index];
       if (resTypeP) *resTypeP = h->d.res.type;
@@ -3843,8 +3860,8 @@ UInt16 DmNumResources(DmOpenRef dbP) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) {
         numRecs = db->numRecs;
         err = errNone;
@@ -3875,7 +3892,7 @@ void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad) {
 
       if ((h = DmGetResourceEx((DmOpenType *)dbP, resType, id, true, false)) != NULL) {
         dbRef = (DmOpenType *)dbP;
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         storage_name(sto, db->name, STO_FILE_ELEMENT, id, resType, 0, 0, buf);
         lib = StoVfsLoadlib(sto->session, buf, &first_load);
         *firstLoad = lib != NULL && first_load == 1;
@@ -3898,8 +3915,8 @@ UInt16 DmFindResource(DmOpenRef dbP, DmResType resType, DmResID resID, MemHandle
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) {
         if (resH) {
           // search by handle
@@ -3940,8 +3957,8 @@ UInt16 DmFindResourceType(DmOpenRef dbP, DmResType resType, UInt16 typeIndex) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) {
         for (i = 0, idx = 0; i < db->numRecs; i++) {
           h = db->elements[i];
@@ -3973,8 +3990,8 @@ UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex) {
 
   if (dbP) {
     dbRef = (DmOpenType *)dbP;
-    if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_RES) {
         for (i = 0, idx = 0; i < db->numRecs; i++) {
           h = db->elements[i];
@@ -4048,9 +4065,9 @@ Err DmSeekRecordInCategory(DmOpenRef dbP, UInt16 *indexP, UInt16 offset, Int16 d
   if (dbP && indexP) {
 //debug(1, "XXX", "seek begin offset=%d", offset);
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
-         debug(DEBUG_TRACE, "STOR", "DmSeekRecordInCategory n=%d i=%u o=%d d=%d c=%u", DmNumRecords(dbRef), *indexP, offset, direction, category);
+      if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
+        debug(DEBUG_TRACE, "STOR", "DmSeekRecordInCategory n=%d i=%u o=%d d=%d c=%u", DmNumRecords(dbRef), *indexP, offset, direction, category);
 //debug(1, "XXX", "seek numRecs=%d", db->numRecs);
         if (db->numRecs > 0) {
           if (*indexP == 0xFFFF) *indexP = db->numRecs-1;
@@ -4119,6 +4136,8 @@ Err DmResetRecordStates(DmOpenRef dbP) {
 static Boolean StoValidName(UInt8 *buf) {
   Int32 i;
 
+  if (buf[0] == 0) return false;
+
   for (i = 0; i < dmDBNameLength && buf[i]; i++) {
     if (buf[i] < 32) return false;
   }
@@ -4145,15 +4164,21 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
 
   char name[dmDBNameLength];
   UInt8 database[256];
-  UInt16 attr, version, numRecs;
-  UInt32 i, nread, creationDate, modificationDate, lastBackupDate, modificationNumber, appInfo, sortInfo, type, creator, uniqueIDSeed, pos, dummy32;
+  UInt16 validAttrs, attr, version, numRecs;
+  UInt32 i, nread, creationDate, modificationDate, lastBackupDate, modificationNumber, appInfo, sortInfo, type, creator, pos, dummy32;
   Err err;
 
   VFSFileTell(ref, &pos);
 
   if ((err = VFSFileRead(ref, sizeof(database), database, &nread)) == errNone) {
     VFSFileSeek(ref, vfsOriginBeginning, pos);
-    err = dmErrInvalidParam;
+    err = vfsErrBadData;
+
+    if (nread < 78) {
+      debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid header");
+      pumpkin_set_lasterr(err);
+      return err;
+    }
 
     if (!StoValidName(database)) {
       debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid name \"%.*s\"", dmDBNameLength, database);
@@ -4165,6 +4190,16 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
     i = 0;
     i += dmDBNameLength;
     i += get2b(&attr, database, i);
+
+    validAttrs = dmHdrAttrResDB | dmHdrAttrReadOnly | dmHdrAttrBackup | dmHdrAttrResetAfterInstall |
+                 dmHdrAttrCopyPrevention | dmHdrAttrStream | dmHdrAttrHidden;
+
+    if ((attr & ~validAttrs) != 0) {
+      debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid attributes 0x%04X", attr);
+      pumpkin_set_lasterr(err);
+      return err;
+    }
+
     i += get2b(&version, database, i);
     i += get4b(&creationDate, database, i);
     i += get4b(&modificationDate, database, i);
@@ -4186,7 +4221,7 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
       return err;
     }
     i += 4;
-    i += get4b(&uniqueIDSeed, database, i);
+    i += get4b(&dummy32, database, i);
     i += get4b(&dummy32, database, i);  // nextRecordListID
     i += get2b(&numRecs, database, i);  // numberOfRecords
 
@@ -4200,8 +4235,82 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
     if (sortInfoHP) *sortInfoHP = NULL; // XXX
     if (typeP) *typeP = type;
     if (creatorP) *creatorP = creator;
+    if (numRecordsP) *numRecordsP = numRecs;
 
     err = errNone;
+  }
+
+  pumpkin_set_lasterr(err);
+  return err;
+}
+
+Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *resHP) {
+  UInt32 size, pos, nread, resSize;
+  UInt16 validAttrs,attr;
+  LocalID dbID;
+  DmOpenRef dbRef;
+  MemHandle handleDb, handleMem;
+  char name[dmDBNameLength];
+  UInt8 *p, *ptrDb, *ptrMem;
+  Err err = sysErrParamErr;
+
+  if (ref && resHP) {
+    *resHP = NULL;
+    VFSFileSize(ref, &size);
+    err = dmErrNotResourceDB;
+
+    if (size > 78 && (p = MemPtrNew(size)) != NULL) {
+      VFSFileTell(ref, &pos);
+      VFSFileSeek(ref, vfsOriginBeginning, 0);
+      if ((err = VFSFileRead(ref, size, p, &nread)) == errNone && nread == size) {
+        get2b(&attr, p, dmDBNameLength);
+
+        validAttrs = dmHdrAttrResDB | dmHdrAttrReadOnly | dmHdrAttrBackup | dmHdrAttrResetAfterInstall |
+                     dmHdrAttrCopyPrevention | dmHdrAttrStream | dmHdrAttrHidden;
+
+        if ((attr & ~validAttrs) == 0) {
+          if (attr & dmHdrAttrResDB) {
+            MemSet(name, dmDBNameLength, 0);
+            StrNCopy(name, (char *)p, dmDBNameLength - 1);
+            if ((dbID = DmFindDatabase(0, name)) == 0) {
+              if ((err = DmCreateDatabaseFromImage(p)) == errNone) {
+                if ((dbID = DmFindDatabase(0, name)) != 0) {
+                  if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+                    if ((handleDb = DmGet1Resource(type, resID)) != NULL) {
+                      resSize = MemHandleSize(handleDb);
+                      if ((handleMem = MemHandleNew(resSize)) != NULL) {
+                        if ((ptrMem = MemHandleLock(handleMem)) != NULL) {
+                          if ((ptrDb = MemHandleLock(handleDb)) != NULL) {
+                            MemMove(ptrMem, ptrDb, resSize);
+                            MemHandleUnlock(handleDb);
+                            *resHP = handleMem;
+                            err = errNone;
+                          }
+                          MemHandleUnlock(handleMem);
+                        }
+                      }
+                      DmReleaseResource(handleDb);
+                    } else {
+                      err = dmErrResourceNotFound;
+                    }
+                    DmCloseDatabase(dbRef);
+                  }
+                  DmDeleteDatabase(0, dbID);
+                }
+              }
+            }
+          } else {
+            debug(DEBUG_ERROR, "STOR", "VFSFileDBGetResource not a resource database");
+            err = dmErrNotResourceDB;
+          }
+        } else {
+          debug(DEBUG_ERROR, "STOR", "VFSFileDBGetResource invalid attributes 0x%04X", attr);
+          err = dmErrNotResourceDB;
+        }
+      }
+      VFSFileSeek(ref, vfsOriginBeginning, pos);
+      MemPtrFree(p);
+    }
   }
 
   pumpkin_set_lasterr(err);
@@ -4261,8 +4370,8 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
     if (DmCreateDatabaseEx(name, creator, type, attr, uniqueIDSeed, true) == errNone) {
       if ((dbID = DmFindDatabase(0, name)) != 0) {
         DmSetDatabaseInfo(0, dbID, NULL, NULL, &version, &creationDate, &modificationDate, &lastBackupDate, NULL, NULL, NULL, NULL, NULL);
-        if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-          db = (storage_db_t *)(sto->base + dbID);
+        if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL && sto->dbs[dbRef->dbID - DBID_BASE]) {
+          db = sto->dbs[dbRef->dbID - DBID_BASE];
           if (numRecs > 0) {
             resTypes = MemPtrNew(numRecs * sizeof(UInt32));
             resIDs = MemPtrNew(numRecs * sizeof(UInt16));
@@ -5350,8 +5459,8 @@ Int32 StoFileSeek(DmOpenRef dbP, UInt32 offset, Int32 whence) {
   if (dbP) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_FILE && db->f) {
           r = vfs_seek(db->f, offset, whence);
           if (r != -1) err = errNone;
@@ -5375,8 +5484,8 @@ Int32 StoFileRead(DmOpenRef dbP, void *p, Int32 size) {
   if (dbP && p && size) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if (dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if (dbRef && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_FILE && db->f) {
           r = vfs_read(db->f, (uint8_t *)p, size);
           if (r != -1) err = errNone;
@@ -5400,8 +5509,8 @@ Int32 StoFileWrite(DmOpenRef dbP, void *p, Int32 size) {
   if (dbP && p && size) {
     if (mutex_lock(sto->mutex) == 0) {
       dbRef = (DmOpenType *)dbP;
-      if ((dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-        db = (storage_db_t *)(sto->base + dbRef->dbID);
+      if ((dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        db = sto->dbs[dbRef->dbID - DBID_BASE];
         if (db->ftype == STO_TYPE_FILE && db->f) {
           r = vfs_write(db->f, (uint8_t *)p, size);
           if (r != -1) err = errNone;
@@ -5503,8 +5612,8 @@ static Err StoSort(DmOpenRef dbP, DmComparF *comparF, UInt32 comparF68K, Int16 o
 
   if (dbP && (comparF || comparF68K)) {
     dbRef = (DmOpenType *)dbP;
-    if ((dbRef->mode & dmModeWrite) && dbRef->dbID < (sto->size - sizeof(storage_db_t))) {
-      db = (storage_db_t *)(sto->base + dbRef->dbID);
+    if ((dbRef->mode & dmModeWrite) && dbRef->dbID >= DBID_BASE && dbRef->dbID < DBID_BASE + MAX_DBIDS && sto->dbs[dbRef->dbID - DBID_BASE]) {
+      db = sto->dbs[dbRef->dbID - DBID_BASE];
       if (db->ftype == STO_TYPE_REC) {
         if (db->numRecs > 1) {
           for (i = 0, locked = false; i < db->numRecs && !locked; i++) {
@@ -5583,9 +5692,9 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
   SysDBListItemType *list, *p;
   UInt16 size, count, sizeofSysDBListItemType;
   UInt32 offset;
-  LocalID dbID;
   UInt8 *buf;
   char stype[8], screator[8];
+  uint32_t i;
   Boolean r;
 
   pumpkin_id2s(type, stype);
@@ -5599,8 +5708,9 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
   buf = (UInt8 *)list;
   offset = 0;
 
-  for (db = sto->list; db; db = db->next) {
-    if ((type != 0 && type != db->type) || (creator != 0 && creator != db->creator) || db->name[0] == 0) {
+  for (i = 0; i < MAX_DBIDS; i++) {
+    db = sto->dbs[i];
+    if (!db || (type != 0 && type != db->type) || (creator != 0 && creator != db->creator) || db->name[0] == 0) {
       continue;
     }
     if (count == size) {
@@ -5608,8 +5718,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
       list = sys_realloc(list, size * sizeofSysDBListItemType);
       buf = (UInt8 *)list;
     }
-    dbID = (uint8_t *)db - sto->base;
-    debug(DEBUG_INFO, "STOR", "found \"%s\" dbID 0x%08X", db->name, dbID);
+    debug(DEBUG_INFO, "STOR", "found \"%s\" dbID 0x%08X", db->name, db->dbID);
 
     if (m68k) {
       StrNCopy((char *)&buf[offset], db->name, dmDBNameLength-1);
@@ -5617,7 +5726,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
       offset += put4b(db->creator, buf, offset);
       offset += put4b(db->type, buf, offset);
       offset += put2b(db->version, buf, offset);
-      offset += put4b(dbID, buf, offset);
+      offset += put4b(db->dbID, buf, offset);
       offset += put2b(0, buf, offset);
       offset += put4b(0, buf, offset);
     } else {
@@ -5626,7 +5735,7 @@ static Boolean StoCreateDataBaseList(UInt32 type, UInt32 creator, UInt16 *dbCoun
       list[count].creator = db->creator;
       list[count].type = db->type;
       list[count].version = db->version;
-      list[count].dbID = dbID;
+      list[count].dbID = db->dbID;
       list[count].cardNo = 0;
       // XXX icon resource is not beeing returned
       list[count].iconP = NULL;
