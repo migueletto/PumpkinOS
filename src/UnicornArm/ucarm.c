@@ -194,12 +194,18 @@ static bool ucarmHookMemWrite(uc_engine *uc, uc_mem_type type, uint64_t address,
     offset = addr - arm->displayStartAddr;
     y = offset / arm->displayPitch;
     x = (offset % arm->displayPitch) / arm->pixelSize;
+
     if (x < arm->x0) arm->x0 = x;
     if (x > arm->x1) arm->x1 = x;
     if (y < arm->y0) arm->y0 = y;
     if (y > arm->y1) arm->y1 = y;
 
-    if (arm->displayWrite == 0) {
+    if (x == arm->displayWidth-1 && y == arm->displayHeight-1) {
+      pumpkin_screen_dirty(WinGetDisplayWindow(), 0, 0, arm->displayWidth, arm->displayHeight);
+      pumpkin_dirty_region_mode(dirtyRegionReset);
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
+      arm->displayWrite = 0;
+    } else if (arm->displayWrite == 0) {
       pumpkin_dirty_region_mode(dirtyRegionBegin);
       arm->displayWrite = 1;
     }
@@ -257,7 +263,7 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
 
       if (arm->armScreenWrite) {
-        debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor");
+        debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor from 0x%08X to 0x%08X", arm->displayStartAddr, arm->displayEndAddr);
         uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_WRITE, ucarmHookMemWrite, arm, arm->displayStartAddr, arm->displayEndAddr);
       }
 
@@ -340,8 +346,8 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start error: %s", uc_strerror(err));
 
   if (arm->armScreenWrite && arm->displayWrite && arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
-    debug(DEBUG_TRACE, "ARM", "display was updated");
-    pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0, arm->y1 - arm->y0);
+    debug(DEBUG_TRACE, "ARM", "display was updated %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
+    pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 
