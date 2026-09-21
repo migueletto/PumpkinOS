@@ -33,7 +33,7 @@ struct arm_emu_t {
   int armScreenWrite;
   uint32_t displayStartAddr, displayEndAddr;
   uint32_t displayWidth, displayHeight, displayDepth, displayPitch, pixelSize;
-  uint32_t x0, y0, x1, y1;
+  uint32_t x0, y0, x1, y1, lastY;
   int displayWrite;
 };
 
@@ -200,15 +200,27 @@ static bool ucarmHookMemWrite(uc_engine *uc, uc_mem_type type, uint64_t address,
     if (y < arm->y0) arm->y0 = y;
     if (y > arm->y1) arm->y1 = y;
 
-    if (x == arm->displayWidth-1 && y == arm->displayHeight-1) {
-      pumpkin_screen_dirty(WinGetDisplayWindow(), 0, 0, arm->displayWidth, arm->displayHeight);
-      pumpkin_dirty_region_mode(dirtyRegionReset);
-      pumpkin_dirty_region_mode(dirtyRegionEnd);
-      arm->displayWrite = 0;
-    } else if (arm->displayWrite == 0) {
+    if ((x == arm->displayWidth-1 && y == arm->displayHeight-1) ||
+        (y - arm->lastY > 1 || y < arm->lastY)) {
+      if (arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
+        pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
+        pumpkin_dirty_region_mode(dirtyRegionReset);
+        pumpkin_dirty_region_mode(dirtyRegionEnd);
+        arm->displayWrite = 0;
+        arm->x0 = arm->displayWidth;
+        arm->y0 = arm->displayHeight;
+        arm->x1 = 0;
+        arm->y1 = 0;
+        arm->lastY = y;
+        return true;
+      }
+    }
+
+    if (arm->displayWrite == 0) {
       pumpkin_dirty_region_mode(dirtyRegionBegin);
       arm->displayWrite = 1;
     }
+    arm->lastY = y;
   }
 
   return true;
