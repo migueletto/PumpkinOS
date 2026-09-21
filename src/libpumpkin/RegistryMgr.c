@@ -13,7 +13,7 @@ struct RegMgrType {
 };
 
 RegMgrType *RegInit(void) {
-  DmSearchStateType stateInfo;
+  DmSearchStateType stateInfo, appStateInfo;
   DmOpenRef reg_dbRef, dbRef;
   MemHandle h;
   Boolean newSearch;
@@ -50,9 +50,14 @@ RegMgrType *RegInit(void) {
               // import all resources from the database into RegistryDB
               for (index = 0, imported = 0; index < numRecs; index++) {
                 if (DmResourceInfo(dbRef, index, &resType, &resID, NULL) == errNone) {
+                  pumpkin_id2s(resType, stype);
+                  // if the app does not exist, ignore the registry entry
+                  if (DmGetNextDatabaseByTypeCreator(true, &appStateInfo, sysFileTApplication, resType, false, NULL, NULL) != errNone) {
+                    debug(DEBUG_INFO, "Registry", "ignoring registry '%s' %u", stype, resID);
+                    continue;
+                  }
                   if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
                     if ((r = MemHandleLock(h)) != NULL) {
-                      pumpkin_id2s(resType, stype);
                       debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", stype, resID);
                       DmNewResourceEx(reg_dbRef, resType, resID, MemHandleSize(h), r);
                       MemHandleUnlock(h);
@@ -62,7 +67,7 @@ RegMgrType *RegInit(void) {
                   }
                 }
               }
-              debug(DEBUG_INFO, "Registry", "imported %u registry entries from \"%s\"", imported, name);
+              debug(DEBUG_INFO, "Registry", "imported %u registry entries from database \"%s\"", imported, name);
               // close the database
               DmCloseDatabase(dbRef);
             }
