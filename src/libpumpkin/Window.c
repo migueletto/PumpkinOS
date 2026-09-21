@@ -804,6 +804,7 @@ void WinResetClip(void) {
 
 void WinGetClip(RectangleType *rP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  BitmapType *bmp;
   Coord x1, y1, x2, y2;
 
   if (module->drawWindow && rP) {
@@ -816,7 +817,8 @@ void WinGetClip(RectangleType *rP) {
     y1 = WinGetField(module->drawWindow, WindowFieldClippingBoundsY1);
     y2 = WinGetField(module->drawWindow, WindowFieldClippingBoundsY2);
 
-    if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+    bmp = (BitmapType *)WinGetField(module->drawWindow, WindowFieldBitmapP);
+    if (BmpGetDensity(bmp) == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
       x1 = x1 >> 1;
       y1 = y1 >> 1;
       x2 = x2 >> 1;
@@ -998,7 +1000,6 @@ static void WinCopyBit(BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord 
 }
 
 #define CLIP_OK(left,right,top,bottom,x,y) (((x) >= left && (x) <= right && (y) >= top && (y) <= bottom))
-//#define CLIPW_OK(wh,x,y) CLIP_OK(wh->clippingBounds.left,wh->clippingBounds.right,wh->clippingBounds.top,wh->clippingBounds.bottom,x,y)
 #define CLIPW_OK(wh,x,y) CLIP_OK(WinGetField(wh,WindowFieldClippingBoundsX1),WinGetField(wh,WindowFieldClippingBoundsX2),WinGetField(wh,WindowFieldClippingBoundsY1),WinGetField(wh,WindowFieldClippingBoundsY2),x,y)
 
 static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord y, UInt32 windowColor, UInt32 displayColor, WinDrawOperation mode) {
