@@ -1207,7 +1207,7 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
 static void FrmDeleteFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
 
-  debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d", formP->formId);
+  debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d (%p)", formP->formId, formP);
 
   if (formP == module->currentForm) {
     WinSetActiveWindow(NULL);
@@ -2190,10 +2190,8 @@ void FrmCloseAllForms(void) {
     xmemset(&event, 0, sizeof(EventType));
     event.eType = frmCloseEvent;
     event.data.frmClose.formID = p->formP->formId;
-    if (!FrmDispatchEventInternal(p->formP, &event)) {
-      FrmDeleteFormInternal(p->formP);
-      xfree(p);
-    }
+    FrmDispatchEventInternal(p->formP, &event);
+    xfree(p);
 
     p = q;
   }
