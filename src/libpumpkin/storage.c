@@ -5070,7 +5070,8 @@ UInt16 MemPtrHeapID(MemPtr p) {
 }
 
 Boolean MemPtrDataStorage(MemPtr p) {
-  return false;
+  //return false;
+  return true;
 }
 
 UInt16 MemPtrCardNo(MemPtr p) {
