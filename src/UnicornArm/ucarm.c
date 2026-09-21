@@ -201,7 +201,7 @@ static bool ucarmHookMemWrite(uc_engine *uc, uc_mem_type type, uint64_t address,
     if (y > arm->y1) arm->y1 = y;
 
     if ((x == arm->displayWidth-1 && y == arm->displayHeight-1) ||
-        (y - arm->lastY > 1 || y < arm->lastY)) {
+        ((y > arm->lastY && y - arm->lastY > 1) || y < arm->lastY)) {
       if (arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
         pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
         pumpkin_dirty_region_mode(dirtyRegionReset);
@@ -351,6 +351,7 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
     arm->y0 = arm->displayHeight;
     arm->x1 = 0;
     arm->y1 = 0;
+    arm->lastY = 0;
   }
 
   pc = ucarmGetReg(arm, 15);
