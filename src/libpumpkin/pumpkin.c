@@ -3460,8 +3460,7 @@ int pumpkin_sys_event(void) {
       if (pumpkin_module.render) {
         if (pumpkin_module.taskbar && pumpkin_module.taskbar_enabled) {
           taskbar_draw(pumpkin_module.taskbar);
-        } else {
-}
+        }
         if (pumpkin_module.wp->render) {
           pumpkin_module.wp->render(pumpkin_module.w);
         }
@@ -6368,7 +6367,7 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
         address = task->trapCode[trap] - ram;
       }
       mutex_unlock(mutex);
-      debug(DEBUG_INFO, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap + 0xA000, address);
+      debug(DEBUG_TRACE, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap + 0xA000, address);
     }
   }
 
