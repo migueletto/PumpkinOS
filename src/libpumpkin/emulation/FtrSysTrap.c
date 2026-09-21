@@ -31,9 +31,10 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t newPtrP = ARG32;
       emupalmos_trap_in(newPtrP, trap, 3);
       uint8_t *p = MemPtrNew(size);
+      uint32_t a = 0;
       Err err;
       if (p) {
-        uint32_t a = emupalmos_trap_out(p);
+        a = emupalmos_trap_out(p);
         if (newPtrP) m68k_write_memory_32(newPtrP, a);
         err = FtrSet(creator, featureNum, a);
       } else {
@@ -41,7 +42,7 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       }
       char screator[8];
       pumpkin_id2s(creator, screator);
-      debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrNew('%s', %d, %d, 0x%08X): %d", screator, featureNum, size, newPtrP, err);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrNew('%s', %d, %d, 0x%08X [0x%08X]): %d", screator, featureNum, size, newPtrP, a, err);
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
