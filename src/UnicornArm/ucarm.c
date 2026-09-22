@@ -397,7 +397,7 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start error: %s", uc_strerror(err));
 
   if (arm->armScreenWrite && arm->displayWrite && arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
-    debug(DEBUG_TRACE, "ARM", "display was updated %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
+    debug(DEBUG_INFO, "ARM", "display was updated %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
     pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
