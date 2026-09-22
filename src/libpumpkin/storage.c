@@ -183,7 +183,7 @@ static storage_handle_t *StoPtrRecoverHandle(void *p) {
           h = NULL;
         }
       } else {
-        debug(DEBUG_INFO, "STOR", "StoPtrRecoverHandle invalid handle %p for pointer %p", h, p);
+        debug(DEBUG_TRACE, "STOR", "StoPtrRecoverHandle invalid handle %p for pointer %p", h, p);
         h = NULL;
       }
     } else {
@@ -944,10 +944,12 @@ Err DmInit(void) {
   return errNone;
 }
 
-#define StoCheckErr(err) \
+#define StoCheckErrEx(err, log) \
   pumpkin_set_lasterr(err); \
   if (sto) sto->lastErr = err; \
-  if (err && err != dmErrResourceNotFound) debug(DEBUG_ERROR, "STOR", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err));
+  if (err && log) debug(DEBUG_ERROR, "STOR", "%s: error 0x%04X (%s)", __FUNCTION__, err, pumpkin_error_msg(err));
+
+#define StoCheckErr(err) StoCheckErrEx(err, 1)
 
 static storage_db_t *getdb(storage_t *sto, DmOpenRef dbP) {
   storage_db_t *db = NULL;
@@ -5030,7 +5032,7 @@ MemHandle MemPtrRecoverHandle(MemPtr p) {
     }
   }
 
-  StoCheckErr(err);
+  StoCheckErrEx(err, 0);
   return h;
 }
 
