@@ -69,3 +69,4 @@ void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size);
 void *RegGetById(RegMgrType *rm, UInt16 id, UInt32 *size);
 Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size);
 Err RegDelete(RegMgrType *rm, DmResType type);
+void RegImportDBs(void);

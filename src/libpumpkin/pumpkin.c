@@ -743,6 +743,7 @@ logtrap_def *logtrap_get_def(void) {
 void pumpkin_deploy_files(char *path) {
   if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
     pumpkin_deploy_files_session(pumpkin_module.session, path);
+    RegImportDBs();
     mutex_unlock(pumpkin_module.fs_mutex);
   }
 }
