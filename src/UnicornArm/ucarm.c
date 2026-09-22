@@ -14,6 +14,9 @@
 
 #define unicornArmPluginId 'ucAr'
 
+#define ARM_SYSCALL_BASE 0x04100000
+#define ARM_SYSCALL_SIZE 0x00210000
+
 static arm_plugin_t ucarm;
 
 struct arm_emu_t {
@@ -23,6 +26,7 @@ struct arm_emu_t {
   uc_hook trace3;
   uc_hook trace4;
   uc_hook trace5;
+  uc_hook trace6;
   uint32_t call68KAddr;
   call68KFunc_f f;
   uint8_t *buf;
@@ -246,6 +250,18 @@ static bool ucarmHookLowMem(uc_engine *uc, uc_mem_type type, uint64_t address, i
   return true;
 }
 
+static bool ucarmHookHighMem(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  uint32_t addr = (uint32_t)address;
+  char stype[64];
+  
+  if (addr < ARM_SYSCALL_BASE || addr >= ARM_SYSCALL_BASE + ARM_SYSCALL_SIZE) {
+    memAccessType(type, stype, sizeof(stype));
+    debug(DEBUG_INFO, "ARM", "%s access to %u byte(s) at high memory address 0x%08X", stype, size, addr);
+  }
+      
+  return true;
+}
+
 static bool ucarmHookInvalidInstruction(uc_engine *uc, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   char buf[256];
@@ -293,7 +309,8 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
       uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookInvalidMem,  arm, 1, 0);
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInvalidInstruction, arm, 1, 0);
-      uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookLowMem, arm, 0, 1024);
+      uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookLowMem, arm, 0, 1023);
+      uc_hook_add(arm->uc, &arm->trace6, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookHighMem, arm, size, 0xFFFFFFFF);
 
       if (arm->armScreenWrite) {
         debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor from 0x%08X to 0x%08X", arm->displayStartAddr, arm->displayEndAddr);
@@ -305,7 +322,7 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map_ptr error: %s", uc_strerror(err));
 
       // map virtual ARM syscall memory
-      err = uc_mem_map(arm->uc, 0x04100000, 0x00210000, UC_PROT_READ|UC_PROT_EXEC);
+      err = uc_mem_map(arm->uc, ARM_SYSCALL_BASE, ARM_SYSCALL_SIZE, UC_PROT_READ|UC_PROT_EXEC);
       if (err) debug(DEBUG_ERROR, "ARM", "uc_mem_map error: %s", uc_strerror(err));
 
       arm->buf = buf;
