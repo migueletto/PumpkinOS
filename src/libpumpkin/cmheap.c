@@ -64,7 +64,8 @@ heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, uint32_t 
     heap->size -= small_size;
     heap->small_num_alloc = small_size >> 11;
     heap->small_alloc = sys_calloc(heap->small_num_alloc, sizeof(uint32_t));
-    heap->small_alloc_size = SMALL_BLOCK; // block 0 is pre-allocated and is not usable
+    heap->small_alloc_size = 16 * SMALL_BLOCK; // blocks 0-15 are reserved and are not usable
+    heap->small_alloc[0] = 0x0000FFFF;
   } else {
     heap->small_start = heap->start;
   }
@@ -171,14 +172,8 @@ void *heap_alloc(heap_t *heap, sys_size_t size) {
     realsize = SMALL_BLOCK;
     for (i = 0; i < heap->small_num_alloc; i++) {
       if (heap->small_alloc[i] != 0xffffffff) {
-        if (i == 0) {
-          // start the search at block 1, because block 0 is reserved as not usable
-          j = 1;
-          mask = 2;
-        } else {
-          j = 0;
-          mask = 1;
-        }
+        j = 0;
+        mask = 1;
         for (; j < 32; j++) {
           if (!(heap->small_alloc[i] & mask)) {
             heap->small_alloc[i] |= mask;
