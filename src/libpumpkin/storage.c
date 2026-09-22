@@ -5405,12 +5405,12 @@ MemHandle MemLocalIDToHandle(LocalID local) {
 
 Err MemSemaphoreReserve(Boolean writeAccess) {
   // system use only
-  return dmErrInvalidParam;
+  return errNone;
 }
 
 Err MemSemaphoreRelease(Boolean writeAccess) {
   // system use only
-  return dmErrInvalidParam;
+  return errNone;
 }
 
 UInt16 MemDebugMode(void) {
