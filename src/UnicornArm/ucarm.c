@@ -22,6 +22,7 @@ struct arm_emu_t {
   uc_hook trace2;
   uc_hook trace3;
   uc_hook trace4;
+  uc_hook trace5;
   uint32_t call68KAddr;
   call68KFunc_f f;
   uint8_t *buf;
@@ -161,9 +162,8 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   }
 }
 
-static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
-  uint32_t addr = (uint32_t)address;
-  char stype[16], buf[256], *s;
+static char *memAccessType(uc_mem_type type, char *buf, uint32_t len) {
+  char stype[16], *s;
 
   switch (type) {
     case UC_MEM_READ:           s = "read";  break;
@@ -179,13 +179,23 @@ static bool ucarmHookMemInvalid(uc_engine *uc, uc_mem_type type, uint64_t addres
     default: StrNPrintF(stype, sizeof(stype)-1, "type %d", type); s = stype; break;
   }
 
-  StrNPrintF(buf, sizeof(buf)-1, "%s access to %u byte(s) at address 0x%08X", s, size, addr);
+  StrNCopy(buf, s, len-1);
+
+  return buf;
+}
+
+static bool ucarmHookInvalidMem(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  uint32_t addr = (uint32_t)address;
+  char stype[64], buf[256];
+
+  memAccessType(type, stype, sizeof(stype));
+  StrNPrintF(buf, sizeof(buf)-1, "%s access to %u byte(s) at address 0x%08X", stype, size, addr);
   ucarmPanic(uc, buf);
 
   return false;
 }
 
-static bool ucarmHookMemWrite(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   uint32_t addr = (uint32_t)address;
   uint32_t offset, x, y;
@@ -226,7 +236,17 @@ static bool ucarmHookMemWrite(uc_engine *uc, uc_mem_type type, uint64_t address,
   return true;
 }
 
-static bool ucarmHookInsnInvalid(uc_engine *uc, void *user_data) {
+static bool ucarmHookLowMem(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  uint32_t addr = (uint32_t)address;
+  char stype[64];
+
+  memAccessType(type, stype, sizeof(stype));
+  debug(DEBUG_INFO, "ARM", "%s access to %u byte(s) at low memory address 0x%08X", stype, size, addr);
+
+  return true;
+}
+
+static bool ucarmHookInvalidInstruction(uc_engine *uc, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   char buf[256];
   uint32_t pc;
@@ -271,12 +291,13 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       }
 
       uc_ctl_set_cpu_model(arm->uc, UC_CPU_ARM_PXA255);
-      uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookMemInvalid,  arm, 1, 0);
-      uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInsnInvalid, arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace2, UC_HOOK_MEM_INVALID,  ucarmHookInvalidMem,  arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInvalidInstruction, arm, 1, 0);
+      uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookLowMem, arm, 0, 1024);
 
       if (arm->armScreenWrite) {
         debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor from 0x%08X to 0x%08X", arm->displayStartAddr, arm->displayEndAddr);
-        uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_WRITE, ucarmHookMemWrite, arm, arm->displayStartAddr, arm->displayEndAddr);
+        uc_hook_add(arm->uc, &arm->trace5, UC_HOOK_MEM_WRITE, ucarmHookScreenMem, arm, arm->displayStartAddr, arm->displayEndAddr);
       }
 
       // map main memory
