@@ -252,7 +252,7 @@ static int sendKeyDown(UInt16 eType, UInt16 chr, UInt16 keyCode, UInt16 modifier
   return 1;
 }
 
-static int fillKeyEvent(int key, int mods, EventType *event) {
+static int fillKeyEvent(Boolean down, int key, int mods, EventType *event) {
   int native = pumpkin_get_native_keys();
 
   // keyDownEvent and keyUpEvent structures are the same.
@@ -329,7 +329,7 @@ static int fillKeyEvent(int key, int mods, EventType *event) {
       if (native) {
         event->data.keyDown.chr = vchrNativeHome;
         event->data.keyDown.modifiers |= commandKeyMask;
-      } else {
+      } else if (down) {
         debug(DEBUG_INFO, PALMOS_MODULE, "EvtPumpEvents keyDownEvent vchrLaunch");
         EvtEnqueueKey(vchrLaunch, 0, commandKeyMask);
         return 1;
@@ -428,23 +428,6 @@ int EvtPumpEvents(Int32 timeoutUs) {
       continue;
     }
 
-/*
-    if (ev == MSG_KEYDOWN || ev == MSG_KEYUP) {
-      switch (key) {
-        case WINDOW_KEY_SHIFT:
-        case WINDOW_KEY_CTRL:
-        case WINDOW_KEY_LALT:
-        case WINDOW_KEY_LEFT:
-        case WINDOW_KEY_RIGHT:
-        case WINDOW_KEY_F9:
-          break;
-        default:
-          continue;
-      }
-      break;
-    }
-*/
-
     if (ev == MSG_MOTION) {
       module->screenX = key;
       module->screenY = mods;
@@ -495,7 +478,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
           r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeSelect | navBitSelect, commandKeyMask);
           break;
         default:
-          if (fillKeyEvent(key, mods, &event)) {
+          if (fillKeyEvent(true, key, mods, &event)) {
             return 1;
           }
           if (event.data.keyDown.chr) {
@@ -531,7 +514,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
           r = sendKeyDown(keyDownEvent, vchrNavChange, navChangeSelect, commandKeyMask);
           break;
         default:
-          if (fillKeyEvent(key, mods, &event) == 0) {
+          if (fillKeyEvent(false, key, mods, &event) == 0) {
             if (event.data.keyUp.chr) {
               event.eType = keyUpEvent;
               if (mods & WINDOW_MOD_SHIFT) event.data.keyUp.modifiers |= shiftKeyMask;
@@ -546,11 +529,22 @@ int EvtPumpEvents(Int32 timeoutUs) {
        break;
 
     case MSG_BUTTON:
+      module->screenX = key;
+      module->screenY = mods;
+      adjustCoords(&module->screenX, &module->screenY);
+
       event.screenX = module->screenX;
       event.screenY = module->screenY;
 
       if ((buttons & 0x03)) {
         module->penDown = 1;
+
+        event.eType = penMoveEvent;
+        event.screenX = module->screenX;
+        event.screenY = module->screenY;
+        event.penDown = 0;
+        EvtAddEventToQueue(&event);
+
         event.eType = (buttons == 1) ? penDownEvent : penDownRightEvent;
         event.penDown = true;
         EvtAddEventToQueue(&event);

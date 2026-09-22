@@ -405,6 +405,8 @@ int pumpkin_get_default_osversion(void);
 int pumpkin_get_osversion(void);
 void pumpkin_set_m68k(int m68k);
 int pumpkin_is_m68k(void);
+void pumpkin_set_pace(int pace);
+int pumpkin_is_pace(void);
 
 pumpkin_httpd_t *pumpkin_httpd_create(UInt16 port, UInt16 scriptId, char *worker, char *root, void *data, Boolean (*idle)(void *data));
 int pumpkin_httpd_destroy(pumpkin_httpd_t *h);

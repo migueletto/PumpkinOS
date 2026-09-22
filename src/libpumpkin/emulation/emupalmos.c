@@ -2019,7 +2019,7 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
     if ((h = MemPtrRecoverHandle(ram + code)) != NULL) {
       state->istate->armp->armCodeRegion(state->arm, code, code + MemHandleSize(h));
     } else {
-      debug(DEBUG_INFO, "ARM", "arm code address 0x%08X is not a locked handle", code);
+      debug(DEBUG_TRACE, "ARM", "arm code address 0x%08X is not a locked handle", code);
     }
   }
 
@@ -2028,9 +2028,11 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
     debug_bytes(DEBUG_TRACE, "ARM", ram + userData, 32);
   }
 
+  pumpkin_set_pace(1);
   for (; !emupalmos_finished();) {
     if (state->istate->armp->armRun(state->arm, 1000, callAddr, call68K_func, retAddr)) break;
   }
+  pumpkin_set_pace(0);
 
   // retrieve R0 and then restore all ARM registers
   r = state->istate->armp->armGetReg(state->arm, 0);
