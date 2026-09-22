@@ -257,7 +257,8 @@ void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end) {
 void emupalmos_monitor_address(uint32_t address, uint32_t size) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   if (address >= state->istate->monitored_addr_begin && address < state->istate->monitored_addr_end) {
-    debug(DEBUG_INFO, "EmuPalmOS", "write %u bytes to monitored address 0x%08X", size, address);
+    debug(DEBUG_INFO, "EmuPalmOS", "write %u bytes to monitored address 0x%08X offset %u",
+      size, state->istate->monitored_addr_begin, address - state->istate->monitored_addr_begin);
   }
 }
 
@@ -2020,6 +2021,11 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
     } else {
       debug(DEBUG_INFO, "ARM", "arm code address 0x%08X is not a locked handle", code);
     }
+  }
+
+  if (userData) {
+    debug(DEBUG_TRACE, "ARM", "userData 0x%08X:", userData);
+    debug_bytes(DEBUG_TRACE, "ARM", ram + userData, 32);
   }
 
   for (; !emupalmos_finished();) {
