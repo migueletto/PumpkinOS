@@ -117,7 +117,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
           }
         }
       } else {
-        if (emupalmos_check_address(dstP, numBytes, 0) && emupalmos_check_address(sP, numBytes, 1)) {
+        if (emupalmos_check_address(dstP, numBytes, 0) && emupalmos_check_address_ex(sP, numBytes, 1, 1)) {
           err = MemMove(emupalmos_trap_in(dstP, trap, 0), emupalmos_trap_in(sP, trap, 1), numBytes);
         } else {
           err = dmErrInvalidParam;

@@ -262,7 +262,7 @@ void emupalmos_monitor_address(uint32_t address, uint32_t size) {
   }
 }
 
-int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
+int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int force_valid) {
   emu_state_t *state;
   char buf[256];
   int valid;
@@ -273,7 +273,7 @@ int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
     valid = pumpkin_heap_debug_access(address, size, read);
     if (!valid) {
       state = pumpkin_get_local_storage(emu_key);
-      if (state->istate->lenientMemCheck) return valid;
+      if (state->istate->lenientMemCheck) return force_valid ? true : valid;
     }
   }
 #endif
@@ -286,6 +286,10 @@ int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
   }
 
   return valid;
+}
+
+int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
+  return emupalmos_check_address_ex(address, size, read, 0);
 }
 
 uint8_t cpu_read_byte(uint32_t address) {
@@ -369,6 +373,9 @@ uint32_t cpu_read_long(uint32_t address) {
           break;
       }
     }
+  } else if (address == 0x216) {
+    // low memory address read by Subhunt. It is a PalmOS global variable containing ???
+    value = 0;
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);

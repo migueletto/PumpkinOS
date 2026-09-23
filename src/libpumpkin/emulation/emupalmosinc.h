@@ -13,6 +13,7 @@ void emupalmos_finish(int f);
 int emupalmos_finished(void);
 void emupalmos_panic(char *msg, int code);
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp);
+int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int force_valid);
 int emupalmos_check_address(uint32_t address, uint32_t size, int read);
 void emupalmos_disasm(int m68k, int arm);
 void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end);
