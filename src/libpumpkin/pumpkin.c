@@ -3643,14 +3643,14 @@ int pumpkin_sys_event(void) {
               x -= tx;
               y -= ty;
               if (x >= 0 && x < pumpkin_module.tasks[i].width && y >= 0 && y < pumpkin_module.tasks[i].height) {
-/*
-                // try not to flood the task with penMove events
-                if ((pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) &&
-                    (now - pumpkin_module.tasks[i].lastMotion) > 5000) {
-                  pumpkin_forward_msg(i, MSG_MOTION, x/mult, y/mult, 0);
-                  pumpkin_module.tasks[i].lastMotion = now;
+                if (pumpkin_module.buttonMask & 1) {
+                  // try not to flood the task with penMove events
+                  if ((pumpkin_module.tasks[i].penX != x || pumpkin_module.tasks[i].penY != y) &&
+                      (now - pumpkin_module.tasks[i].lastMotion) > 5000) {
+                    pumpkin_forward_msg(i, MSG_MOTION, x/mult, y/mult, 0);
+                    pumpkin_module.tasks[i].lastMotion = now;
+                  }
                 }
-*/
                 pumpkin_module.tasks[i].penX = x;
                 pumpkin_module.tasks[i].penY = y;
               }
