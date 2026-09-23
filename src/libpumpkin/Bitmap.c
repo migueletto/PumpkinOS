@@ -2219,7 +2219,7 @@ static UInt32 BmpConvertFrom32Bits(UInt32 b, UInt8 depth, ColorTableType *dstCol
 #define BmpSetBit1p(offset, mask, dataSize, b) \
   if (offset < dataSize) { \
     bits[offset] &= ~(mask); \
-    bits[offset] |= (b); \
+    bits[offset] |= ((b) & mask); \
   }
 
 #define BmpSetBit1(offset, mask, dataSize, b, dbl) \
