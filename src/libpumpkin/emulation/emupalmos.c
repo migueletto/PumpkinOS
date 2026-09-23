@@ -2403,6 +2403,8 @@ static uint8_t *getParamBlock(uint16_t launchCode, void *param, uint8_t *ram) {
         a = p - ram;
         debug(DEBUG_INFO, "EmuPalmOS", "alloc %u bytes for param block at %p (0x%08X)", paramBlockSize, p, a);
         encode_notify(a, param);
+      } else {
+        debug(DEBUG_ERROR, "EmuPalmOS", "paramBlockSize is zero, no param block will be allocated");
       }
       break;
     default:
