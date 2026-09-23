@@ -2190,8 +2190,11 @@ void FrmCloseAllForms(void) {
     xmemset(&event, 0, sizeof(EventType));
     event.eType = frmCloseEvent;
     event.data.frmClose.formID = p->formP->formId;
-    FrmDispatchEventInternal(p->formP, &event);
-    xfree(p);
+    if (!FrmDispatchEventInternal(p->formP, &event)) {
+      // An app (HandyShopper) may call FrmDeleteForm inside the frmCloseEvent handler,
+      // so we can not free(p) here
+      xfree(p);
+    }
 
     p = q;
   }
