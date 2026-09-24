@@ -3573,7 +3573,6 @@ static FormGadgetType *pumpkin_create_gadget(uint8_t *p, int *i) {
 
 static ScrollBarType *pumpkin_create_scrollbar(uint8_t *p, int *i) {
   ScrollBarType *c = NULL;
-  //uint16_t dummy16, attr, id, x, y, w, h, value, min, max, page;
   int32_t i0;
   uint16_t id, attr, x, y, w, h;
 
@@ -3585,34 +3584,10 @@ static ScrollBarType *pumpkin_create_scrollbar(uint8_t *p, int *i) {
   *i += get2b(&h, p, *i);
   *i += get2b(&id, p, *i);
   *i += get2b(&attr, p, *i);
-  //*i += get2b(&value, p, *i);
-  //*i += get2b(&min, p, *i);
-  //*i += get2b(&max, p, *i);
-  //*i += get2b(&page, p, *i);
-  //*i += get2b(&dummy16, p, *i);
-  //*i += get2b(&dummy16, p, *i);
-  debug(DEBUG_TRACE, "Form",  "scrollBar id %d at (%d,%d,%d,%d) usable %d", id, x, y, w, h, attr & 0x8000 ? 1 : 0);
+  debug(DEBUG_TRACE, "Form",  "scrollBar id %d at (%d,%d,%d,%d) attr 0x%04X usable %d", id, x, y, w, h, attr, attr & 0x8000 ? 1 : 0);
 
-  //if ((c = pumpkin_heap_alloc(sizeof(ScrollBarType), "ScrollBar")) != NULL)
   if ((c = pumpkin_heap_alloc(SCROLLBAR_STRUCT_SIZE, "ScrollBar")) != NULL) {
     sys_memcpy(c, p + i0, SCROLLBAR_STRUCT_SIZE);
-/*
-    c->bounds.topLeft.x = x;
-    c->bounds.topLeft.y = y;
-    c->bounds.extent.x = w;
-    c->bounds.extent.y = h;
-    c->id = id;
-    c->attr.usable       = (attr & 0x8000) ? 1 : 0;
-    c->attr.visible      = (attr & 0x4000) ? 1 : 0;
-    c->attr.hilighted    = (attr & 0x2000) ? 1 : 0;
-    c->attr.shown        = (attr & 0x1000) ? 1 : 0;
-    c->attr.activeRegion = (attr & 0x0F00) >> 8;
-    c->attr.reserved     = 0;
-    c->value = value;
-    c->minValue = min;
-    c->maxValue = max;
-    c->pageSize = page;
-*/
   }
 
   return c;
