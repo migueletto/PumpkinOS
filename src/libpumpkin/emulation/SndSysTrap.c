@@ -193,6 +193,17 @@ void palmos_SndSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
+    case sysTrapSndStreamGetVolume: {
+      // Err SndStreamGetVolume(SndStreamRef channel, Int32 *volume)
+      uint32_t channel = ARG32;
+      uint32_t volumeP = ARG32;
+      Int32 volume;
+      Err err = SndStreamGetVolume(channel, &volume);
+      if (volumeP) m68k_write_memory_32(volumeP, volume);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamGetVolume(0x%08X, 0x%08X [%d]): %d", channel, volumeP, volume, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
     case sysTrapSndStreamSetPan: {
       // Err SndStreamSetPan(SndStreamRef channel, Int32 panposition)
       uint32_t channel = ARG32;
