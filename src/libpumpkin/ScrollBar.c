@@ -145,13 +145,13 @@ void SclDrawScrollBar(ScrollBarType *bar) {
         rect.topLeft.y = bounds.topLeft.y + ROD_MARGIN;
         rect.extent.y  = bounds.extent.y - 2*ROD_MARGIN;
         WinEraseRectangle(&rect, 0);
-  
+
         rgb.r = rgb.g = rgb.b = 0;
         scrollFore = WinRGBToIndex(&rgb);
         oldf = WinSetForeColor(scrollFore);
-  
+
         // left arrow
-        x = bounds.topLeft.x+d; 
+        x = bounds.topLeft.x+d;
         vline(bounds.topLeft.y+3, bounds.topLeft.y+bounds.extent.y-4, x-4);
         vline(bounds.topLeft.y+2, bounds.topLeft.y+bounds.extent.y-3, x-3);
         vline(bounds.topLeft.y+1, bounds.topLeft.y+bounds.extent.y-2, x-2);
