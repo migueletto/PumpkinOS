@@ -342,6 +342,7 @@ UInt32 BmpV1GetSetField(BitmapType *bmp, BitmapV1Selector selector, BitmapFlagSe
           value = BmpGetSetCommonField(bmp, (BitmapSelector)selector, flagSelector, value, set);
           break;
         case BitmapV1FieldNextDepthOffset:
+        case BitmapV1FieldColorTable:
           if (set) {
             put2(value, (UInt8 *)bmp, selector);
           } else {
@@ -388,6 +389,7 @@ UInt32 BmpV2GetSetField(BitmapType *bmp, BitmapV2Selector selector, BitmapFlagSe
             break;
           case BitmapV2FieldNextDepthOffset:
           case BitmapV2FieldReserved:
+          case BitmapV2FieldColorTable:
             if (set) {
               put2(value, (UInt8 *)bmp, selector);
             } else {
@@ -454,6 +456,7 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             }
             break;
           case BitmapV3FieldDensity:
+          case BitmapV3FieldColorTable:
             if (set) {
               put2(value, (UInt8 *)bmp, selector);
             } else {
@@ -561,12 +564,12 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     if (hasColorTable) {
       switch (version) {
         case 1:
-          numEntries = BmpV1GetField(newBmp, BitmapV1FieldColorTable);
+          numEntries = BmpV1GetField((BitmapType *)bitmapP, BitmapV1FieldColorTable);
           colorTableSize = sizeof(UInt16) + numEntries * 4;
           bitmapColorTable = (UInt8 *)bitmapP + BitmapV1FieldColorTable;
           break;
         case 2:
-          numEntries = BmpV2GetField(newBmp, BitmapV2FieldColorTable);
+          numEntries = BmpV2GetField((BitmapType *)bitmapP, BitmapV2FieldColorTable);
           colorTableSize = sizeof(UInt16) + numEntries * 4;
           bitmapColorTable = (UInt8 *)bitmapP + BitmapV2FieldColorTable;
           break;
@@ -576,7 +579,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
             get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
             bitmapColorTable = addr ? ram + addr : NULL;
           } else {
-            numEntries = BmpV3GetField(newBmp, BitmapV3FieldColorTable);
+            numEntries = BmpV3GetField((BitmapType *)bitmapP, BitmapV3FieldColorTable);
             colorTableSize = sizeof(UInt16) + numEntries * 4;
             bitmapColorTable = (UInt8 *)bitmapP + BitmapV3FieldColorTable;
           }
