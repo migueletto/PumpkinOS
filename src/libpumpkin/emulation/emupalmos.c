@@ -2084,6 +2084,15 @@ uint32_t arm_native_call_sub(uint32_t code, uint32_t data, uint32_t p0, uint32_t
 }
 #endif
 
+// XXX used by trap 0xA7FF found in Palmkedex (see PceSysTrap.c)
+void fake_cpu_instr_callback(unsigned int pc) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
+  logtrap_def *def = logtrap_get_def();
+  if (def && state->lt) {
+    def->rethook(state->lt, pc);
+  }
+}
+
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint16_t trap, selector;

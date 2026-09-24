@@ -18,6 +18,7 @@
 #include "m68k/m68k.h"
 #include "m68k/m68kcpu.h"
 #include "emupalmos.h"
+#include "bytes.h"
 #include "debug.h"
 
 void palmos_PceSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
@@ -35,6 +36,29 @@ void palmos_PceSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_A0, res);
       m68k_set_reg(M68K_REG_D0, res);
 #endif
+    }
+    break;
+
+    // XXX this trap does not exist in PalmOS, but app Palmkedex calls it.
+    // It performs the equivalent of PceNativeCall(), but parameters are stored
+    // right after the trap instruction.
+    // Don't know why it is doing that, but here is the code to handle it.
+    case 0xA7FF: {
+      uint32_t nativeFuncP, userDataP, pc, addr;
+      uint8_t *ram = pumpkin_heap_base();
+      pc = m68k_get_reg(NULL, M68K_REG_PC);
+      get4b(&addr, ram, sp);
+      get4l(&nativeFuncP, ram, pc);
+      get4l(&userDataP, ram, pc + 4);
+      emupalmos_trap_in(nativeFuncP, trap, 0);
+      emupalmos_trap_in(userDataP, trap, 1);
+      UInt32 res = arm_native_call_pce(nativeFuncP, userDataP);
+      debug(DEBUG_TRACE, "EmuPalmOS", "A7FF(0x%08X, 0x%08X): %d", nativeFuncP, userDataP, res);
+      m68k_set_reg(M68K_REG_A0, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      m68k_set_reg(M68K_REG_SP, sp + 4);
+      m68k_set_reg(M68K_REG_PC, addr);
+      fake_cpu_instr_callback(pc);
     }
     break;
   }

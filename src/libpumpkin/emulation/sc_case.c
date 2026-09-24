@@ -1,4 +1,5 @@
 
+    case 0xA7FF:
     case sysTrapPceNativeCall:
       palmos_PceSysTrap(sp, idx, trap);
       break;
@@ -644,6 +645,7 @@
     case sysTrapSndStreamCreateExtended:
     case sysTrapSndStreamDelete:
     case sysTrapSndStreamSetVolume:
+    case sysTrapSndStreamGetVolume:
     case sysTrapSndStreamSetPan:
     case sysTrapSndStreamStart:
     case sysTrapSndStreamStop:

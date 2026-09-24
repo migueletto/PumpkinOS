@@ -98,7 +98,7 @@ uint32_t cpu_read_long(uint32_t address);
 void cpu_write_byte(uint32_t address, uint8_t value);
 void cpu_write_word(uint32_t address, uint16_t value);
 void cpu_write_long(uint32_t address, uint32_t value);
-//int cpu_instr_callback(int pc);
+void fake_cpu_instr_callback(unsigned int pc);
 
 void encode_string(uint32_t stringP, char *buf, uint32_t len);
 void decode_rgb(uint32_t rgbP, RGBColorType *rgb);
