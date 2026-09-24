@@ -26,7 +26,7 @@ static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
 
   objFrame = UIColorGetTableEntryIndex(UIObjectFrame);
   objFore = UIColorGetTableEntryIndex(UIObjectForeground);
-  objFill = UIColorGetTableEntryIndex(UIFormFill);
+  objFill = UIColorGetTableEntryIndex(UIObjectFill); // lists use UIObjectFill as background
   objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
   objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
 

@@ -168,9 +168,8 @@ void CtlDrawControl(ControlType *controlP) {
             }
             break;
           case pushButtonCtl:
-            if (controlP->attr.frame != noButtonFrame) {
-              WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
-            }
+            // XXX apparently pushButtons do not respect noButtonFrame (?)
+            WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
             break;
           case selectorTriggerCtl:
           case colorTriggerCtl:
@@ -249,7 +248,8 @@ void CtlEraseControl(ControlType *controlP) {
   if (controlP) {
     if (controlP->attr.visible) {
       debug(DEBUG_TRACE, "Control", "CtlEraseControl control %d style %d", controlP->id, controlP->style);
-      objFill = UIColorGetTableEntryIndex(UIObjectFill);
+      // when erasing the control, use UIFormFill
+      objFill = UIColorGetTableEntryIndex(UIFormFill);
       oldb = WinSetBackColor(objFill);
       oldf = WinSetForeColor(objFill);
 

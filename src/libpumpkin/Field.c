@@ -236,7 +236,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
     fieldBackHigh = fieldBack = 0;
 
     if (draw) {
-      fieldBack = UIColorGetTableEntryIndex(UIFieldBackground);
+      fieldBack = UIColorGetTableEntryIndex(fldP->attr.editable ? UIFieldBackground : UIFormFill);
       fieldLine = UIColorGetTableEntryIndex(UIFieldTextLines);
       fieldText = UIColorGetTableEntryIndex(UIFieldText);
       fieldBackHigh = UIColorGetTableEntryIndex(UIFieldTextHighlightBackground);
@@ -391,7 +391,7 @@ static void FldRenderField(FieldType *fldP, Boolean setPos, Boolean draw, UInt16
         debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
         row++;
         for (; row < bottom; row++) {
-          FldEraseToEol(fldP, x, y, th);
+          FldEraseToEol(fldP, 0, y, th);
           y += th;
           debug(DEBUG_TRACE, PALMOS_MODULE, "y %d -> %d", y, y + th);
         }

@@ -6,43 +6,43 @@
 #include "xalloc.h"
 
 /*
-    UIObjectFrame
-    UIObjectFill
-    UIObjectForeground
-    UIObjectSelectedFill
-    UIObjectSelectedForeground
+     0 UIObjectFrame
+     1 UIObjectFill
+     2 UIObjectForeground
+     3 UIObjectSelectedFill
+     4 UIObjectSelectedForeground
 
-    UIMenuFrame
-    UIMenuFill
-    UIMenuForeground
-    UIMenuSelectedFill
-    UIMenuSelectedForeground
+     5 UIMenuFrame
+     6 UIMenuFill
+     7 UIMenuForeground
+     8 UIMenuSelectedFill
+     9 UIMenuSelectedForeground
 
-    UIFieldBackground
-    UIFieldText
-    UIFieldTextLines
-    UIFieldCaret
-    UIFieldTextHighlightBackground
+    10 UIFieldBackground
+    11 UIFieldText
+    12 UIFieldTextLines
+    13 UIFieldCaret
+    14 UIFieldTextHighlightBackground
 
-    UIFieldTextHighlightForeground
-    UIFieldFepRawText
-    UIFieldFepRawBackground
-    UIFieldFepConvertedText
-    UIFieldFepConvertedBackground
+    15 UIFieldTextHighlightForeground
+    16 UIFieldFepRawText
+    17 UIFieldFepRawBackground
+    18 UIFieldFepConvertedText
+    19 UIFieldFepConvertedBackground
 
-    UIFieldFepUnderline
-    UIFormFrame
-    UIFormFill
-    UIDialogFrame
-    UIDialogFill
+    20 UIFieldFepUnderline
+    21 UIFormFrame
+    22 UIFormFill
+    23 UIDialogFrame
+    24 UIDialogFill
 
-    UIAlertFrame
-    UIAlertFill
-    UIOK
-    UICaution
-    UIWarning
+    25 UIAlertFrame
+    26 UIAlertFill
+    27 UIOK
+    28 UICaution
+    29 UIWarning
 
-    UIFieldFepConvertedUnderline
+    30 UIFieldFepConvertedUnderline
 */
 
 static const IndexedColorType table[UILastColorTableEntry] = {

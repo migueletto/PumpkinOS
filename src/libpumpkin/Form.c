@@ -503,7 +503,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
 void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FormObjectType obj;
-  IndexedColorType formTitle, formFrame, formFill, objFill, fieldText, oldb, oldt;
+  IndexedColorType formTitle, formFrame, formFill, fieldText, oldb, oldt;
   WinDrawOperation mode;
   RectangleType rect;
   Coord bw, bh;
@@ -523,7 +523,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     formTitle = UIColorGetTableEntryIndex(UIFormFill);
     formFill = UIColorGetTableEntryIndex(UIFormFill);
     formFrame = UIColorGetTableEntryIndex(UIFormFrame);
-    objFill = UIColorGetTableEntryIndex(UIObjectFill);
     fieldText = UIColorGetTableEntryIndex(UIFieldText);
 
     switch (formP->objects[objIndex].objectType) {
@@ -543,7 +542,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (setUsable) obj.label->attr.usable = 1;
         if (obj.label->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           old = FntSetFont(obj.label->fontID);
-          oldb = WinSetBackColor(objFill);
+          oldb = WinSetBackColor(formFill); // labels use formFill as background
           oldt = WinSetTextColor(fieldText);
           //max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
           max = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - obj.label->pos.x + 1;
@@ -2914,7 +2913,7 @@ FieldType *pumpkin_create_field(uint8_t *p, int *i) {
   *i += get2b(&dummy16, p, *i);
   *i += get1(&font, p, *i);
   *i += get1(&dummy8, p, *i);
-  debug(DEBUG_TRACE, "Form",  "field id %d max %d font %d at (%d,%d,%d,%d)", id, max, font, x, y, w, h);
+  debug(DEBUG_TRACE, "Form",  "field id %d max %d font %d at (%d,%d,%d,%d) editable %d", id, max, font, x, y, w, h, (attr & 0x2000) ? 1 : 0);
 
   if ((c = pumpkin_heap_alloc(sizeof(FieldType), "Field")) != NULL) {
     c->magic = FIELD_MAGIC;
