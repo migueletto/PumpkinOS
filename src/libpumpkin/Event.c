@@ -454,8 +454,6 @@ int EvtPumpEvents(Int32 timeoutUs) {
     wait = (timeoutUs < TIMEOUT) ? timeoutUs : TIMEOUT;
   }
 
-  //event->tapCount = ???; // XXX
-
   switch (ev) {
     case MSG_KEYDOWN:
       switch (key) {
@@ -546,6 +544,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
         EvtAddEventToQueue(&event);
 
         event.eType = (buttons == 1) ? penDownEvent : penDownRightEvent;
+        event.tapCount = 1;
         event.penDown = true;
         EvtAddEventToQueue(&event);
         r = 1;
