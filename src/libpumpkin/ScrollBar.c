@@ -7,11 +7,16 @@
 
 void SclGetScrollBar(const ScrollBarType *bar, Int16 *valueP, Int16 *minP, Int16 *maxP, Int16 *pageSizeP) {
   if (bar) {
-    if (valueP) *valueP = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldValue);
-    if (minP) *minP = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldMinValue);
-    if (maxP) *maxP = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldMaxValue);
-    if (pageSizeP) *pageSizeP = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldPageSize);
-    //debug(DEBUG_TRACE, "Scroll", "SclGetScrollBar value=%d, min=%d, max=%d, page=%d", bar->value, bar->minValue, bar->maxValue, bar->pageSize);
+    Int16 value    = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldValue);
+    Int16 min      = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldMinValue);
+    Int16 max      = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldMaxValue);
+    Int16 pageSize = FrmObjectGetField((void *)bar, frmScrollBarObj, FormScrollBarFieldPageSize);
+
+    if (valueP)    *valueP    = value;
+    if (minP)      *minP      = min;
+    if (maxP)      *maxP      = max;
+    if (pageSizeP) *pageSizeP = pageSize;
+    debug(DEBUG_TRACE, "Scroll", "SclGetScrollBar value=%d, min=%d, max=%d, page=%d", value, min, max, pageSize);
   }
 }
 
@@ -187,20 +192,18 @@ void SclDrawScrollBar(ScrollBarType *bar) {
   }
 }
 
-static void SclAddRepeatEvent(ScrollBarType *bar, UInt16 value) {
+static void SclAddRepeatEvent(ScrollBarType *bar, UInt16 value, UInt16 newValue) {
   UInt16 id;
-  Int16 currentValue;
   EventType event;
 
   id = FrmObjectGetField(bar, frmScrollBarObj, FormScrollBarFieldId);
-  currentValue = FrmObjectGetField(bar, frmScrollBarObj, FormScrollBarFieldValue);
-  debug(DEBUG_TRACE, "Scroll", "SclAddRepeatEvent value %d (%d)", value, currentValue);
+  debug(DEBUG_TRACE, "Scroll", "SclAddRepeatEvent value %d -> %d", value, newValue);
   MemSet(&event, sizeof(EventType), 0);
   event.eType = sclRepeatEvent;
   event.data.sclRepeat.scrollBarID = id;
   event.data.sclRepeat.pScrollBar = bar;
-  event.data.sclRepeat.value = currentValue; // XXX or value ?
-  event.data.sclRepeat.newValue = value;
+  event.data.sclRepeat.value = value;
+  event.data.sclRepeat.newValue = newValue;
   event.data.sclRepeat.time = TimGetTicks();
   EvtAddEventToQueue(&event);
 }
@@ -328,13 +331,15 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             // top arrow
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d top arrow", id);
             if (currentValue > minValue) {
-              SclAddRepeatEvent(bar, currentValue-1);
+              SclAddRepeatEvent(bar, currentValue, currentValue-1);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, currentValue-1);
             }
           } else if (y >= bounds.extent.y - d) {
             // bottom arrow
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d bottom arrow", id);
             if (currentValue < maxValue) {
-              SclAddRepeatEvent(bar, currentValue+1);
+              SclAddRepeatEvent(bar, currentValue, currentValue+1);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, currentValue+1);
             }
           } else {
             // rod
@@ -343,7 +348,8 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             if (value < minValue) value = minValue;
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d rod value %d (%d)", id, value, currentValue);
             if (value != currentValue) {
-              SclAddRepeatEvent(bar, value);
+              SclAddRepeatEvent(bar, currentValue, value);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, value);
             }
           }
         } else {
@@ -352,13 +358,15 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             // left arrow
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d left arrow", id);
             if (currentValue > minValue) {
-              SclAddRepeatEvent(bar, currentValue-1);
+              SclAddRepeatEvent(bar, currentValue, currentValue-1);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, currentValue-1);
             }
           } else if (x >= bounds.extent.x - d) {
             // right arrow
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d right arrow", id);
             if (currentValue < maxValue) {
-              SclAddRepeatEvent(bar, currentValue+1);
+              SclAddRepeatEvent(bar, currentValue, currentValue+1);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, currentValue+1);
             }
           } else {
             // rod
@@ -367,7 +375,8 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
             if (value < minValue) value = minValue;
             debug(DEBUG_TRACE, "Scroll", "SclHandleEvent scrollBar %d rod value %d (%d)", id, value, currentValue);
             if (value != currentValue) {
-              SclAddRepeatEvent(bar, value);
+              SclAddRepeatEvent(bar, currentValue, value);
+              FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, value);
             }
           }
         }
@@ -378,7 +387,7 @@ Boolean	SclHandleEvent(ScrollBarType *bar, const EventType *eventP) {
         debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent scrollBar %d value %d (%d)", id, eventP->data.sclRepeat.newValue, currentValue);
         if (eventP->data.sclRepeat.scrollBarID == id) {
           FrmObjectSetField(bar, frmScrollBarObj, FormScrollBarFieldValue, eventP->data.sclRepeat.newValue);
-          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent draw %d", currentValue);
+          debug(DEBUG_TRACE, "Scroll", "SclHandleEvent sclRepeatEvent draw %d", eventP->data.sclRepeat.newValue);
           SclDrawScrollBar(bar);
           handled = true;
         }
