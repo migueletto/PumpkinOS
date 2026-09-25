@@ -659,8 +659,8 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         // we will never see ctlSelectEvent and the control will remain highlighted.
         // There must be a better way to do this, though.
         if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
-          debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
           if (controlP->attr.on) {
+            debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
             controlP->attr.on = false;
             CtlDrawControl(controlP);
           }
