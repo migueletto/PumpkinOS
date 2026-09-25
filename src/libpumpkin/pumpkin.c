@@ -3570,7 +3570,7 @@ int pumpkin_sys_event(void) {
                 pumpkin_module.tasks[i].penX = tx;
                 pumpkin_module.tasks[i].penY = ty;
               }
-              pumpkin_forward_msg(i, MSG_BUTTON, tx/mult, ty/mult, arg1);
+              pumpkin_forward_msg(i, MSG_BUTTON, tx/mult, ty/mult, (arg1 & 0xFF) | ((arg2 & 0xFF) << 8));
             }
           }
         }

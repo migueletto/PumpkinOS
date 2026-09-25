@@ -371,7 +371,7 @@ int EvtPumpEvents(Int32 timeoutUs) {
   int32_t wait;
   uint64_t t0, t, dt;
   UInt32 ticks;
-  int ev, key, mods, buttons, forever, r = 0;
+  int ev, key, mods, b, buttons, clicks, forever, r = 0;
 
   t0 = sys_get_clock();
   MemSet(&event, sizeof(EventType), 0);
@@ -405,7 +405,9 @@ int EvtPumpEvents(Int32 timeoutUs) {
   for (ev = 0; !thread_must_end() && !pumpkin_must_finish();) {
     InsPtCheckBlink();
     n = sizeof(buf);
-    ev = pumpkin_event(&key, &mods, &buttons, buf, &n, wait);
+    ev = pumpkin_event(&key, &mods, &b, buf, &n, wait);
+    buttons = b & 0xFF;
+    clicks = (b >> 8) & 0xFF;
     if (ev == -1) {
       debug(DEBUG_ERROR, PALMOS_MODULE, "EvtPumpEvents pumpkin_event failed");
       return -1;
@@ -537,14 +539,16 @@ int EvtPumpEvents(Int32 timeoutUs) {
       if ((buttons & 0x03)) {
         module->penDown = 1;
 
+/*
         event.eType = penMoveEvent;
         event.screenX = module->screenX;
         event.screenY = module->screenY;
         event.penDown = 0;
         EvtAddEventToQueue(&event);
+*/
 
         event.eType = (buttons == 1) ? penDownEvent : penDownRightEvent;
-        event.tapCount = 1;
+        event.tapCount = clicks > 1 ? clicks : 1;
         event.penDown = true;
         EvtAddEventToQueue(&event);
         r = 1;
@@ -553,6 +557,8 @@ int EvtPumpEvents(Int32 timeoutUs) {
           module->penDown = 0;
           FrmTrackPenUp(module->screenX, module->screenY);
           event.eType = penUpEvent;
+          event.tapCount = 1;
+          event.penDown = false;
           // Display-relative start point of the stroke.
           event.data.penUp.start.x = event.screenX;
           event.data.penUp.start.y = event.screenY;
