@@ -42,6 +42,15 @@ typedef struct {
   UInt16 reserved;
 } SysModuleDescriptorType;
 
+/*
+     27 0x0A78 VFSFileOpen
+      1 0x0BD0 WinPaintChars
+      2 0x0BE4 WinPaintRectangle
+      2 0x0C34 WinSetDrawMode
+      2 0x0C40 WinSetForeColorRGB
+      1 0x0C50 WinSetTextColorRGB
+*/
+
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp) {
   uint8_t *ram = pumpkin_heap_base();
   char st[8], st2[8];
@@ -186,6 +195,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
+        case 0x2AC: {
+          //  void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown)
+          Int16 *pScreenX = r0 ? (Int16 *)(ram + r0) : NULL;
+          Int16 *pScreenY = r1 ? (Int16 *)(ram + r1) : NULL;
+          Boolean *pPenDown = r2 ? (Boolean *)(ram + r2) : NULL;
+          EvtGetPen(pScreenX, pScreenY, pPenDown);
+          debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetPen(0x%08X, 0x%08X, 0x%08X)", r0, r1, r2);
+          }
+          break;
         case 0x2FC: {
           // Err ExgDBRead(ExgDBReadProcPtr readProcP, ExgDBDeleteProcPtr deleteProcP, void *userDataP, LocalID *dbIDP, Boolean *needResetP, Boolean keepDates)
           LocalID *dbID = r3 ? (LocalID *)(ram + r3) : NULL;
@@ -224,6 +242,27 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = FntCharHeight();
           debug(DEBUG_TRACE, "ARM", "arm syscall FntCharHeight(): %d", r0);
           break;
+#if 0
+        case 0x3EC:
+          // Boolean PrgHandleEvent(ProgressPtr prgP, EventType *eventP)
+          if (r0 && r1) {
+            ProgressType *prg = r0 ? (ProgressType)(ram + r0) : NULL;
+            EventType event;
+            MemSet(&event, sizeof(EventType), 0);
+            uint8_t *p8 = (uint8_t *)(ram + r0);
+            uint16_t *p16 = (uint16_t *)(ram + r0);
+            uint32_t *p32 = (uint32_t *)(ram + r1);
+            event.eType = p32[0];
+            event.penDown = p8[4];
+            event.screenX = p16[6];
+            event.screenY = p16[7];
+            // XXX incomplete event decoding
+            r = PrgHandleEvent(prg, &event);
+            debug(DEBUG_TRACE, "ARM", "arm syscall PrgHandleEvent(0x%08X, 0x%08X [%d]): %d", r0, r1, event.eType, r);
+            r0 = r;
+          }
+          break;
+#endif
         case 0x3F0:
           // Int16 FntCharWidth(Char ch)
           r = FntCharWidth(r0);
@@ -257,6 +296,10 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           err = FtrUnregister(r0, r1);
           debug(DEBUG_TRACE, "ARM", "arm syscall FtrUnregister('%s', %u): %d", st, r1, err);
           r0 = err;
+          break;
+        case 0x48C:
+          // UInt32 KeyCurrentState(void)
+          r0 = KeyCurrentState();
           break;
         case 0x4B8: {
           // Err MemChunkFree(MemPtr chunkDataP)
