@@ -2312,6 +2312,7 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
+  UInt16 c1, c2, c3, c4;
   UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
@@ -2363,7 +2364,22 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       BmpSetBit2(offset, mask, dataSize, b << shift, dbl);
       break;
     case winInvertPixels:
-      debug(DEBUG_ERROR, "Bitmap", "winInvertPixels not supported for 2bpp");
+      WinGetInvertColors(&c1, &c2, &c3, &c4);
+      if (c1 == c2 && c3 == c4) {
+        BmpSetBit2(offset, mask, dataSize, b ^ mask, dbl);
+      } else {
+        old = (bits[offset] & mask) >> shift;
+        if (old == c1) {
+          BmpSetBit2(offset, mask, dataSize, c3 << shift, dbl);
+        } else if (old == c2) {
+          BmpSetBit2(offset, mask, dataSize, c4 << shift, dbl);
+        } else if (old == c3) {
+          BmpSetBit2(offset, mask, dataSize, c1 << shift, dbl);
+        } else if (old == c4) {
+          BmpSetBit2(offset, mask, dataSize, c2 << shift, dbl);
+        }
+      }
+      break; 
       break;
   }
 }
@@ -2385,6 +2401,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl) {
   UInt8 *bits, mask, old, fg, bg;
   UInt32 offset, shift, dataSize;
+  UInt16 c1, c2, c3, c4;
   UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
@@ -2436,7 +2453,21 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       BmpSetBit4(offset, mask, dataSize, b << shift, dbl);
       break;
     case winInvertPixels:
-      debug(DEBUG_ERROR, "Bitmap", "winInvertPixels not supported for 4bpp");
+      WinGetInvertColors(&c1, &c2, &c3, &c4);
+      if (c1 == c2 && c3 == c4) {
+        BmpSetBit4(offset, mask, dataSize, b ^ mask, dbl);
+      } else {
+        old = (bits[offset] & mask) >> shift;
+        if (old == c1) {
+          BmpSetBit4(offset, mask, dataSize, c3 << shift, dbl);
+        } else if (old == c2) {
+          BmpSetBit4(offset, mask, dataSize, c4 << shift, dbl);
+        } else if (old == c3) {
+          BmpSetBit4(offset, mask, dataSize, c1 << shift, dbl);
+        } else if (old == c4) {
+          BmpSetBit4(offset, mask, dataSize, c2 << shift, dbl);
+        }
+      }
       break;
   }
 }
