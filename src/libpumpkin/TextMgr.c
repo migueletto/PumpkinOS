@@ -63,8 +63,7 @@ UInt16 TxtCharSize(WChar inChar) {
 }
 
 Int16 TxtCharWidth(WChar inChar) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "TxtCharWidth not implemented");
-  return 0;
+  return FntWCharWidth(inChar);
 }
 
 UInt16 TxtGetPreviousChar(const Char *inText, UInt32 inOffset, WChar *outChar) {
