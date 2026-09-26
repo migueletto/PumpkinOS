@@ -28,6 +28,7 @@ typedef struct {
   WinHandle drawWindow;
   DrawStateType drawState;
   DrawStateType state[DrawStateStackSize];
+  UInt16 c1, c2, c3, c4;
   Boolean asciiText;
   UInt8 defaultColorTable1[2 +   2 * 4];
   UInt8 defaultColorTable2[2 +   4 * 4];
@@ -1229,8 +1230,8 @@ void WinErasePixel(Coord x, Coord y) {
   WinSetDrawMode(prev);
 }
 
-#define invertPrefix() \
-    WinDrawOperation prevMode = WinSetDrawMode(winInvert); \
+#define invertPrefix(mode) \
+    WinDrawOperation prevMode = WinSetDrawMode(mode); \
     UInt16 prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard); \
     Boolean isDouble = (prevCoordSys == kCoordinatesDouble) || (prevCoordSys == kCoordinatesNative && module->density == kDensityDouble); \
     RGBColorType back, white; \
@@ -1247,7 +1248,7 @@ void WinErasePixel(Coord x, Coord y) {
 
 void WinInvertPixel(Coord x, Coord y) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  invertPrefix();
+  invertPrefix(winInvert);
   if (!isDouble) x = WinScaleCoord(x, false);
   if (!isDouble) y = WinScaleCoord(y, false);
   WinPaintPixel(x, y);
@@ -1318,7 +1319,7 @@ void WinDrawGrayLine(Coord x1, Coord y1, Coord x2, Coord y2) {
 
 void WinInvertLine(Coord x1, Coord y1, Coord x2, Coord y2) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  invertPrefix();
+  invertPrefix(winInvert);
   if (!isDouble) x1 = WinScaleCoord(x1, false);
   if (!isDouble) y1 = WinScaleCoord(y1, false);
   if (!isDouble) x2 = WinScaleCoord(x2, true);
@@ -1490,7 +1491,7 @@ void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
   if (rP) {
     debug(DEBUG_TRACE, "Window", "WinInvertRectangle([%d, %d, %d, %d], %d)",
       rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, cornerDiam);
-    invertPrefix();
+    invertPrefix(winInvert);
     RectangleType rect;
     MemMove(&rect, rP, sizeof(RectangleType));
     if (!isDouble) WinScaleRectangle(&rect);
@@ -1623,7 +1624,7 @@ void WinEraseRectangleFrame(FrameType frame, const RectangleType *rP) {
 void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   if (rP) {
-    invertPrefix();
+    invertPrefix(winInvert);
     RectangleType rect;
     MemMove(&rect, rP, sizeof(RectangleType));
     if (!isDouble) WinScaleRectangle(&rect);
@@ -3658,9 +3659,51 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
   }
 }
 
-void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
+void WinSetInvertColors(Boolean set) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  IndexedColorType objFore, objFill, objSelFill, objSelFore, oldb, oldf;
+  RGBColorType rgb;
+  BitmapType *bmp;
+  WinHandle wh;
+
+  if (set) {
+    module->c1 = UIColorGetTableEntryIndex(UIObjectFill);
+    module->c2 = UIColorGetTableEntryIndex(UIObjectForeground);
+    module->c3 = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+    module->c4 = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+
+    wh = WinGetDrawWindow();
+    bmp = WinGetBitmap(wh);
+    if (BmpGetBitDepth(bmp) == 16) {
+      WinIndexToRGB(module->c1, &rgb);
+      module->c1 = rgb565(rgb.r, rgb.g, rgb.b);
+      WinIndexToRGB(module->c2, &rgb);
+      module->c2 = rgb565(rgb.r, rgb.g, rgb.b);
+      WinIndexToRGB(module->c3, &rgb);
+      module->c3 = rgb565(rgb.r, rgb.g, rgb.b);
+      WinIndexToRGB(module->c4, &rgb);
+      module->c4 = rgb565(rgb.r, rgb.g, rgb.b);
+    }
+
+  } else {
+    module->c1 = 0;
+    module->c2 = 0;
+    module->c3 = 0;
+    module->c4 = 0;
+  }
+}
+
+void WinGetInvertColors(UInt16 *c1, UInt16 *c2, UInt16 *c3, UInt16 *c4) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+
+  *c1 = module->c1;
+  *c2 = module->c2;
+  *c3 = module->c3;
+  *c4 = module->c4;
+}
+
+void WinInvertRect(RectangleType *rect, UInt16 corner) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  IndexedColorType oldb, oldf;
   RectangleType aux;
   WinDrawOperation prev;
   UInt16 coordSys;
@@ -3668,8 +3711,10 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
   // using double coordinates to preserve font shape
   MemMove(&aux, rect, sizeof(RectangleType));
   coordSys = WinSetCoordinateSystem(kCoordinatesDouble);
-  if (coordSys == kCoordinatesStandard) WinScaleRectangle(&aux);
-  corner = WinScaleCoord(corner, false);
+  if (coordSys == kCoordinatesStandard) {
+    WinScaleRectangle(&aux);
+    corner = WinScaleCoord(corner, false);
+  }
 
   switch (module->depth) {
     case 1:
@@ -3682,30 +3727,9 @@ void WinInvertRect(RectangleType *rect, UInt16 corner, Boolean isInverted) {
       break;
 
     default:
-      prev = WinSetDrawMode(winSwap);
-      objFill = UIColorGetTableEntryIndex(UIObjectFill);
-      objFore = UIColorGetTableEntryIndex(UIObjectForeground);
-      objSelFill = UIColorGetTableEntryIndex(UIObjectSelectedFill);
-      objSelFore = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
-
-      if (isInverted) {
-        oldb = WinSetBackColor(objFore);
-        oldf = WinSetForeColor(objSelFore);
-        WinPaintRectangle(&aux, corner);
-        WinSetBackColor(objFill);
-        WinSetForeColor(objSelFill);
-        WinPaintRectangle(&aux, corner);
-      } else {
-        oldb = WinSetBackColor(objFill);
-        oldf = WinSetForeColor(objSelFill);
-        WinPaintRectangle(&aux, corner);
-        WinSetBackColor(objFore);
-        WinSetForeColor(objSelFore);
-        WinPaintRectangle(&aux, corner);
-      }
-
-      WinSetBackColor(oldb);
-      WinSetForeColor(oldf);
+      prev = WinSetDrawMode(winInvertPixels);
+      WinPaintRectangle(&aux, corner);
+      WinSetDrawMode(prev);
       break;
   }
 

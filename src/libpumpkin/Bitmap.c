@@ -2289,6 +2289,9 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
         BmpSetBit1(offset, mask, dataSize, bg << shift, dbl);
       }
       break;
+    case winInvertPixels:
+      debug(DEBUG_ERROR, "Bitmap", "winInvertPixels not supported for 1bpp");
+      break;
   }
 }
 
@@ -2358,6 +2361,9 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       if (b == bg) b = fg;
       else if (b == fg) b = bg;
       BmpSetBit2(offset, mask, dataSize, b << shift, dbl);
+      break;
+    case winInvertPixels:
+      debug(DEBUG_ERROR, "Bitmap", "winInvertPixels not supported for 2bpp");
       break;
   }
 }
@@ -2429,6 +2435,9 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       else if (b == fg) b = bg;
       BmpSetBit4(offset, mask, dataSize, b << shift, dbl);
       break;
+    case winInvertPixels:
+      debug(DEBUG_ERROR, "Bitmap", "winInvertPixels not supported for 4bpp");
+      break;
   }
 }
 
@@ -2445,6 +2454,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   UInt8 *bits, old, r1, g1, b1, r2, g2, b2, fg, bg;
   UInt32 offset, dataSize;
+  UInt16 rgb, c1, c2, c3, c4;
   UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
@@ -2509,6 +2519,29 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
         BmpSetBit8(offset, dataSize, b, dbl);
       }
       break;
+    case winInvertPixels: // special mode for inverting buttons on color screens
+      old = bits[offset];
+      BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
+      WinGetInvertColors(&c1, &c2, &c3, &c4);
+      if (c1 == c2 && c3 == c4) {
+        r1 ^= 0xff;
+        g1 ^= 0xff;
+        b1 ^= 0xff;
+        b = BmpRGBToIndex(r1, g1, b1, colorTable);
+        BmpSetBit8(offset, dataSize, b, dbl);
+      } else {
+        rgb = rgb565(r1, g1, b1);
+        if (rgb == c1) {
+          BmpSetBit8(offset, dataSize, c3, dbl);
+        } else if (rgb == c2) {
+          BmpSetBit8(offset, dataSize, c4, dbl);
+        } else if (rgb == c3) {
+          BmpSetBit8(offset, dataSize, c1, dbl);
+        } else if (rgb == c4) {
+          BmpSetBit8(offset, dataSize, c2, dbl);
+        }
+      }
+      break;
   }
 }
 
@@ -2523,9 +2556,9 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
   }
 
 static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
-  RGBColorType rgb;
   UInt8 *bits;
   UInt16 rowBytes = 0, old, fg, bg;
+  UInt16 c1, c2, c3, c4;
   UInt32 offset, dataSize;
   Boolean le, leBits;
 
@@ -2556,13 +2589,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
       get2_16(&old, bits, offset);
-      rgb.r = r565(b);
-      rgb.g = g565(b);
-      rgb.b = b565(b);
-      rgb.r ^= r565(old);
-      rgb.g ^= g565(old);
-      rgb.b ^= b565(old);
-      b = rgb565(rgb.r, rgb.g, rgb.b);
+      b = b ^ old;
       BmpSetBit16(offset, dataSize, b, dbl);
       break;
     case winOverlay:      // write color-matched source pixel to the destination if the source pixel is not transparent. Transparent pixels are skipped.
@@ -2587,6 +2614,23 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
           BmpSetBit16(offset, dataSize, fg, dbl);
         } else if (old == fg) {
           BmpSetBit16(offset, dataSize, bg, dbl);
+        }
+      }
+      break;
+    case winInvertPixels: // special mode for inverting buttons on color screens
+      get2_16(&old, bits, offset);
+      WinGetInvertColors(&c1, &c2, &c3, &c4);
+      if (c1 == c2 && c3 == c4) {
+        BmpSetBit16(offset, dataSize, old ^ 0xffff, dbl);
+      } else {
+        if (old == c1) {
+          BmpSetBit16(offset, dataSize, c3, dbl);
+        } else if (old == c2) {
+          BmpSetBit16(offset, dataSize, c4, dbl);
+        } else if (old == c3) {
+          BmpSetBit16(offset, dataSize, c1, dbl);
+        } else if (old == c4) {
+          BmpSetBit16(offset, dataSize, c2, dbl);
         }
       }
       break;

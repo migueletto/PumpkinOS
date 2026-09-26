@@ -83,7 +83,8 @@ typedef enum WinDrawOperationTag
 	winInvert, 
 	winOverlay, 
 	winPaintInverse, 
-	winSwap
+	winSwap,
+	winInvertPixels
 } WinDrawOperation;
 
 

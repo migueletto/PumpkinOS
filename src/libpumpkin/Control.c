@@ -31,6 +31,45 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
   return ctlP;
 }
 
+static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
+  RectangleType bounds;
+
+  controlP = CtlCheckControl(controlP);
+  if (controlP) {
+    if (controlP->style == buttonCtl) {
+      MemMove(&bounds, &controlP->bounds, sizeof(RectangleType));
+      if (controlP->text && controlP->text[0]) {
+        WinSetInvertColors(true);
+      }
+
+      // invert area of the control
+      switch (controlP->attr.frame) {
+        case standardButtonFrame:
+        case boldButtonFrame:
+          WinInvertRect(&bounds, 3, isInverted);
+          break;
+        case noFrame:
+          WinInvertRect(&bounds, 0, isInverted);
+          break;
+      }
+      WinSetInvertColors(false);
+
+      // redraw the frame (if any)
+      switch (controlP->attr.frame) {
+        case standardButtonFrame:
+        case boldButtonFrame:
+          WinDrawRectangleFrame(roundFrame, &controlP->bounds);
+          break;
+        case rectangleButtonFrame:
+          WinDrawRectangleFrame(simpleFrame, &controlP->bounds);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+}
+
 void CtlDrawControl(ControlType *controlP) {
   MemHandle h;
   SliderControlType *sc;
@@ -587,6 +626,12 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
       if (controlP->attr.usable && controlP->attr.enabled) {
         if (RctPtInRectangle(pEvent->screenX, pEvent->screenY, &controlP->bounds)) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent penDown inside control %d", controlP->id);
+
+          if (controlP->style == buttonCtl) {
+            debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
+            CtlInvertControl(controlP, controlP->attr.on);
+          }
+
           MemSet(&event, sizeof(EventType), 0);
           event.screenX = pEvent->screenX;
           event.screenY = pEvent->screenY;
@@ -662,7 +707,11 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
           if (controlP->attr.on) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
             controlP->attr.on = false;
-            CtlDrawControl(controlP);
+            if (controlP->style == buttonCtl) {
+              CtlInvertControl(controlP, controlP->attr.on);
+            } else {
+              CtlDrawControl(controlP);
+            }
           }
         }
         handled = true;
@@ -686,9 +735,10 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         CtlUpdateCheckboxGroup(controlP, !controlP->attr.on);
       } else {
         if (!controlP->attr.on) {
-          debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
           controlP->attr.on = true;
-          CtlDrawControl(controlP);
+          if (controlP->style != buttonCtl) {
+            CtlDrawControl(controlP);
+          }
         }
       }
       handled = true;
@@ -723,7 +773,9 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (controlP->attr.visible) {
           debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlSelect draw control %d on 0", controlP->id);
           CtlSetSliderValues(controlP, NULL, NULL, NULL, &pEvent->data.ctlSelect.value);
-          CtlDrawControl(controlP);
+          if (controlP->style != buttonCtl) {
+            CtlDrawControl(controlP);
+          }
         }
       } else {
         handled = true;
@@ -752,11 +804,6 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
         if (controlP->style != pushButtonCtl && controlP->style != checkboxCtl) {
           if (controlP->attr.on) {
             controlP->attr.on = false;
-            if (controlP->style == buttonCtl && controlP->attr.visible) {
-              debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit invert control %d to 0", controlP->id);
-              CtlDrawControl(controlP);
-            }
-            //controlP->attr.on = false;
           } else {
             if (controlP->attr.visible) {
               debug(DEBUG_TRACE, "Control", "CtlHandleEvent ctlExit draw control %d on 0", controlP->id);
