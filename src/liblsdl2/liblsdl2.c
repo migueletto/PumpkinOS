@@ -405,65 +405,11 @@ static int map_button(libsdl_window_t *window, SDL_Event *ev) {
   return 0;
 }
 
-static int libsdl_getevent(SDL_Event *ev, int wait) {
-  uint32_t t0, t1;
-  SDL_Event ev2, ev3;
-  int has_ev;
-
-  has_ev = wait < 0 ? SDL_WaitEvent(ev) : SDL_WaitEventTimeout(ev, wait);
-
-  if (has_ev && ev->type == SDL_MOUSEBUTTONDOWN && ev->button.clicks == 1) {
-    debug(DEBUG_TRACE, "SDL", "sdl button down (%d), waiting for button up (%d)", ev->type, SDL_MOUSEBUTTONUP);
-    t0 = SDL_GetTicks();
-    SDL_WaitEvent(&ev2);
-    t1 = SDL_GetTicks();
-    debug(DEBUG_TRACE, "SDL", "sdl second event (%d) within %u ms", ev2.type, t1 - t0);
-    if (ev2.type == SDL_MOUSEBUTTONUP) {
-      debug(DEBUG_TRACE, "SDL", "sdl button up (%d), waiting for third event", ev2.type);
-      t0 = SDL_GetTicks();
-      if (SDL_WaitEventTimeout(&ev3, 100)) {
-        t1 = SDL_GetTicks();
-        debug(DEBUG_TRACE, "SDL", "sdl third event (%d) within %u ms", ev3.type, t1 - t0);
-        if (ev3.type == SDL_MOUSEBUTTONDOWN && ev3.button.clicks == 2) {
-          debug(DEBUG_TRACE, "SDL", "sdl second button down");
-          sys_memcpy(ev, &ev3, sizeof(SDL_Event));
-        } else {
-          debug(DEBUG_TRACE, "SDL", "sdl third event not button down or not double click (%d)", ev3.button.clicks);
-          SDL_PushEvent(&ev2);
-          SDL_PushEvent(&ev3);
-        }
-      } else {
-        t1 = SDL_GetTicks();
-        debug(DEBUG_TRACE, "SDL", "sdl no third event within %u ms", t1 - t0);
-        SDL_PushEvent(&ev2);
-      }
-    } else {
-      debug(DEBUG_TRACE, "SDL", "sdl second event not button up");
-      SDL_PushEvent(&ev2);
-    }
-  }
-
-  if (has_ev) {
-    if (ev->type != SDL_POLLSENTINEL) {
-      debug(DEBUG_TRACE, "SDL", "sdl event (%d)", ev->type);
-    }
-    if (ev->type == SDL_MOUSEBUTTONDOWN) {
-      if (ev->button.clicks > 2) {
-        ev->button.clicks = 1;
-      }
-    } else if (ev->type == SDL_MOUSEBUTTONUP) {
-      ev->button.clicks = 1;
-    }
-  }
-  return has_ev;
-}
-
 static int libsdl_event2(libsdl_window_t *window, int wait, int *arg1, int *arg2) {
   SDL_Event ev;
   int has_ev, r = 0;
 
   has_ev = wait < 0 ? SDL_WaitEvent(&ev) : SDL_WaitEventTimeout(&ev, wait);
-  //has_ev = libsdl_getevent(&ev, wait);
 
   if (has_ev) {
     switch (ev.type) {
