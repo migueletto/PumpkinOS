@@ -14,6 +14,4 @@ do
   fi
 done
 
-../../tools/prcbuild -v -f compat.prc -t regt -c psys -n compat *.dat
-
 exit 0

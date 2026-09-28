@@ -6,6 +6,8 @@
 #include "debug.h"
 
 #define REGISTRY_DB "RegistryDB"
+#define COMPAT_DB   "CompatDB"
+
 #define sysFileTRegistry 'regt'
 
 struct RegMgrType {
@@ -24,9 +26,7 @@ RegMgrType *RegInit(void) {
         DmCreateDatabase(0, REGISTRY_DB, sysFileCSystem, sysFileTRegistry, true);
         dbID = DmFindDatabase(0, REGISTRY_DB);
       }
-      if (dbID) {
-        RegImportDBs();
-      } else {
+      if (dbID == 0) {
         sys_free(rm);
         rm = NULL;
       }
@@ -39,26 +39,76 @@ RegMgrType *RegInit(void) {
   return rm;
 }
 
+void RegImport(RegMgrType *rm, UInt32 creator) {
+  DmOpenRef regDbReg, compatDbRef;
+  UInt16 imported, index, i;
+  LocalID regDbID, compatDbID;
+  DmResID resID;
+  MemHandle h;
+  char screator[8];
+  void *r;
+
+  if (rm && mutex_lock(rm->mutex) == 0) {
+    if ((regDbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
+      // open RegistryDB in write mode
+      if ((regDbReg = DmOpenDatabase(0, regDbID, dmModeWrite)) != NULL) {
+        if ((compatDbID = DmFindDatabase(0, COMPAT_DB)) != 0) {
+          // open CompatDB in read mode
+          if ((compatDbRef = DmOpenDatabase(0, compatDbID, dmModeReadOnly)) != NULL) {
+            pumpkin_id2s(creator, screator);
+            debug(DEBUG_INFO, "Registry", "searching registry entries for '%s'", screator);
+            // import resources from CompatDB into RegistryDB
+            for (i = 0, imported = 0; ; i++) {
+              if ((index = DmFindResourceType(compatDbRef, creator, i)) == 0xFFFF) break;
+              if (DmResourceInfo(compatDbRef, index, NULL, &resID, NULL) == errNone) {
+                if ((h = DmGetResourceIndex(compatDbRef, index)) != NULL) {
+                  if ((r = MemHandleLock(h)) != NULL) {
+                    debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", screator, resID);
+                    DmNewResourceEx(regDbReg, creator, resID, MemHandleSize(h), r);
+                    MemHandleUnlock(h);
+                    imported++;
+                  }
+                  DmReleaseResource(h);
+                }
+              }
+            }
+            // close CompatDB
+            DmCloseDatabase(compatDbRef);
+            if (imported) {
+              debug(DEBUG_INFO, "Registry", "imported %u registry entries for '%s'", imported, screator);
+            } else {
+              debug(DEBUG_INFO, "Registry", "no registry entries found for '%s'", screator);
+            }
+          }
+        }
+        // close RegistryDB
+        DmCloseDatabase(regDbReg);
+      }
+    }
+    mutex_unlock(rm->mutex);
+  }
+}
+
 void RegImportDBs(void) {
   DmSearchStateType stateInfo, appStateInfo;
-  DmOpenRef reg_dbRef, dbRef;
+  DmOpenRef regDbReg, dbRef;
   MemHandle h;
   Boolean newSearch;
   UInt16 cardNo, numRecs, imported, index;
-  LocalID reg_dbID, dbID;
+  LocalID regDbID, dbID;
   DmResType resType;
   DmResID resID;
   char name[dmDBNameLength], stype[8];
   void *r;
 
-  if ((reg_dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
+  if ((regDbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
     // open RegistryDB in write mode
-    if ((reg_dbRef = DmOpenDatabase(0, reg_dbID, dmModeWrite)) != NULL) {
+    if ((regDbReg = DmOpenDatabase(0, regDbID, dmModeWrite)) != NULL) {
       // search other registry databases (if any)
       for (newSearch = true;; newSearch = false) {
         if (DmGetNextDatabaseByTypeCreator(newSearch, &stateInfo, sysFileTRegistry, sysFileCSystem, false, &cardNo, &dbID) != errNone) break;
         // ignore database if it is RegistryDB
-        if (dbID == reg_dbID) continue;
+        if (dbID == regDbID) continue;
         if (DmDatabaseInfo(0, dbID, name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) != errNone) continue;
         // open the database in read mode
         if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
@@ -76,7 +126,7 @@ void RegImportDBs(void) {
               if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
                 if ((r = MemHandleLock(h)) != NULL) {
                   debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", stype, resID);
-                  DmNewResourceEx(reg_dbRef, resType, resID, MemHandleSize(h), r);
+                  DmNewResourceEx(regDbReg, resType, resID, MemHandleSize(h), r);
                   MemHandleUnlock(h);
                   imported++;
                 }
@@ -93,7 +143,7 @@ void RegImportDBs(void) {
         DmDeleteDatabase(0, dbID);
       }
       // close RegistryDB
-      DmCloseDatabase(reg_dbRef);
+      DmCloseDatabase(regDbReg);
     }
   }
 }
