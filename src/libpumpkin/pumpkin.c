@@ -744,7 +744,6 @@ logtrap_def *logtrap_get_def(void) {
 void pumpkin_deploy_files(char *path) {
   if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
     pumpkin_deploy_files_session(pumpkin_module.session, path);
-    RegImportDBs();
     mutex_unlock(pumpkin_module.fs_mutex);
   }
 }
@@ -1518,6 +1517,10 @@ int pumpkin_global_finish(void) {
   return 0;
 }
 
+void pumpkin_reg_import(DmResType type) {
+  RegImport(pumpkin_module.rm, type);
+}
+
 void *pumpkin_reg_get(DmResType type, UInt16 id, UInt32 *size) {
   return RegGet(pumpkin_module.rm, type, id, size);
 }
@@ -1606,7 +1609,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, la
         if (code == sysAppLaunchCmdNormalLaunch) {
           if (mutex_lock(mutex) == 0) {
             if ((regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) == NULL) {
-              regRunFlags.flags = regRunFlagReset;
+              regRunFlags.flags = regRunFlagFirstRun;
             } else {
               regRunFlags.flags = regRunFlagsP->flags;
               MemPtrFree(regRunFlagsP);
@@ -1621,8 +1624,8 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, la
             }
             mutex_unlock(mutex);
 
-            if (regRunFlags.flags & regRunFlagReset) {
-              regRunFlags.flags &= ~regRunFlagReset;
+            if (regRunFlags.flags & regRunFlagFirstRun) {
+              regRunFlags.flags &= ~regRunFlagFirstRun;
               pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
               // Defer a sysAppLaunchCmdSystemReset for when the app is called for the first time.
@@ -1892,12 +1895,13 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
+  RegFlagsType *regRunFlagsP, regRunFlags;
   RegDisplayType *regDisplay;
   RegOsType *regOS;
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size;
-  Boolean littleEndian;
+  Boolean firstRun, littleEndian;
   char screator[8];
   char buf[32];
   uint16_t u16;
@@ -2024,6 +2028,19 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
 
   language = PrefGetPreference(prefLanguage);
   task->lang = LanguageInit(language);
+
+  if ((regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) == NULL) {
+    regRunFlags.flags = regRunFlagFirstRun;
+    pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
+    firstRun = true;
+  } else {
+    firstRun = (regRunFlagsP->flags & regRunFlagFirstRun) == regRunFlagFirstRun;
+    MemPtrFree(regRunFlagsP);
+  }
+
+  if (firstRun) {
+    pumpkin_reg_import(creator);
+  }
 
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
     task->osversion = regOS->version;
@@ -4096,6 +4113,11 @@ UInt32 pumpkin_get_app_creator(void) {
   return task ? task->creator : 0;
 }
 
+char *pumpkin_get_app_name(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->name : "";
+}
+
 uint32_t pumpkin_get_param_size(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task ? task->paramBlockSize : 0;
@@ -4952,17 +4974,21 @@ void pumpkin_set_size(uint32_t creator, uint16_t width, uint16_t height) {
   pumpkin_reg_set(creator, regDimensionID, &regDim, sizeof(RegDimensionType));
 }
 
-void pumpkin_crash_log(UInt32 creator, int code, char *msg) {
-  char buf[256], st[8];
+void pumpkin_crash_log(int code, char *msg) {
+  uint32_t creator;
+  char *name, buf[256], st[8];
   int fd;
 
+  creator = pumpkin_get_app_creator();
+  name = pumpkin_get_app_name();
+
   pumpkin_id2s(creator, st);
-  debug(DEBUG_INFO, "CRASH", "%s;%d;%s", st, code, msg);
+  debug(DEBUG_INFO, "CRASH", "%s;%s;%d;%s", st, name, code, msg);
 
   if (mutex_lock(mutex) == 0) {
     if ((fd = sys_open(CRASH_LOG, SYS_WRITE)) != -1) {
       sys_seek(fd, 0, SYS_SEEK_END);
-      sys_snprintf(buf, sizeof(buf)-1, "%s;%d;%s\n", st, code, msg);
+      sys_snprintf(buf, sizeof(buf)-1, "%s;%s;%d;%s\n", st, name, code, msg);
       sys_write(fd, (uint8_t *)buf, sys_strlen(buf));
       sys_close(fd);
     }
