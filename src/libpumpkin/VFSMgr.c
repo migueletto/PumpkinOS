@@ -288,7 +288,11 @@ Err VFSFileRead(FileRef fileRef, UInt32 numBytes, void *bufP, UInt32 *numBytesRe
       nread = numBytes ? vfs_read(f, (uint8_t *)bufP, numBytes) : 0;
       if (nread >= 0) {
         if (numBytesReadP) *numBytesReadP = nread;
-        err = errNone;
+        if (VFSFileEOF(fileRef) == vfsErrFileEOF) {
+          err = vfsErrFileEOF;
+        } else {
+          err = errNone;
+        }
       }
     }
   }
