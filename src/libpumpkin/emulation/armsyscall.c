@@ -53,13 +53,14 @@ typedef struct {
 
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp) {
   uint8_t *ram = pumpkin_heap_base();
-  char st[8], st2[8];
+  char st[8], st2[8], buf[256];
   UInt32 value, r;
   Err err;
 
   switch (group) {
     case 1: // DAL
-      debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in DAL", function);
+      sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in DAL", function);
+      emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       r0 = 0;
       break;
     case 2: // BOOT
@@ -242,27 +243,14 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = FntCharHeight();
           debug(DEBUG_TRACE, "ARM", "arm syscall FntCharHeight(): %d", r0);
           break;
-#if 0
-        case 0x3EC:
-          // Boolean PrgHandleEvent(ProgressPtr prgP, EventType *eventP)
-          if (r0 && r1) {
-            ProgressType *prg = r0 ? (ProgressType)(ram + r0) : NULL;
-            EventType event;
-            MemSet(&event, sizeof(EventType), 0);
-            uint8_t *p8 = (uint8_t *)(ram + r0);
-            uint16_t *p16 = (uint16_t *)(ram + r0);
-            uint32_t *p32 = (uint32_t *)(ram + r1);
-            event.eType = p32[0];
-            event.penDown = p8[4];
-            event.screenX = p16[6];
-            event.screenY = p16[7];
-            // XXX incomplete event decoding
-            r = PrgHandleEvent(prg, &event);
-            debug(DEBUG_TRACE, "ARM", "arm syscall PrgHandleEvent(0x%08X, 0x%08X [%d]): %d", r0, r1, event.eType, r);
-            r0 = r;
+        case 0x3EC: {
+          // Int16 FntCharsWidth(Char const *chars, Int16 len)
+          char *chars = r0 ? (char *)(ram + r0) : NULL;
+          r = FntCharsWidth(chars, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall FntCharsWidth(0x%08X, %d): %d", r0, r1, r);
+          r0 = r;
           }
           break;
-#endif
         case 0x3F0:
           // Int16 FntCharWidth(Char ch)
           r = FntCharWidth(r0);
@@ -283,6 +271,18 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
             put4l(value, ram, r2);
           }
           break;
+        case 0x434: {
+          // Err FtrPtrNew(UInt32 creator, UInt16 featureNum, UInt32 size, void **newPtrP)
+          pumpkin_id2s(r0, st);
+          void *newPtr;
+          err = FtrPtrNew(r0, r1, r2, &newPtr);
+          if (err == 0 && r3) {
+            put4l((uint8_t *)newPtr - ram, ram, r3);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall FtrPtrNew('%s', %u, %u, 0x%08X): %d", st, r1, r2, r3, err);
+          r0 = err;
+          }
+          break;
         case 0x43C:
           // Err FtrSet(UInt32 creator, UInt16 featureNum, UInt32 newValue)
           pumpkin_id2s(r0, st);
@@ -300,6 +300,13 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x48C:
           // UInt32 KeyCurrentState(void)
           r0 = KeyCurrentState();
+          debug(DEBUG_TRACE, "ARM", "arm syscall KeyCurrentState(): 0x%08X", r0);
+          break;
+        case 0x494:
+          // UInt32 KeySetMask(UInt32 keyMask)
+          r =  KeySetMask(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall KeySetMask(0x%08X): 0x%08X", r0, r);
+          r0 = r;
           break;
         case 0x4B8: {
           // Err MemChunkFree(MemPtr chunkDataP)
@@ -401,6 +408,16 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           err = MemSet(dstP, r1, r2);
           debug(DEBUG_TRACE, "ARM", "arm syscall MemSet(0x%08X, %d, %u): %d", r0, r1, r2, err);
           r0 = err;
+          }
+          break;
+        case 0x778: {
+          // Char *StrCat(Char *dst, const Char *src)
+          char *s1 = r0 ? (char *)(ram + r0) : NULL;
+          char *s2 = r1 ? (char *)(ram + r1) : NULL;
+          char *s = StrCat(s1, s2);
+          r = s ? (uint8_t *)s - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrCat(0x%08X, 0x%08X): 0x%08X", r0, r1, r);
+          r0 = r;
           }
           break;
         case 0x780: {
@@ -586,20 +603,21 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
-        case 0x824: {
+        case 0x824:
           // #define SysEventGet(eventP, timeOut) EvtGetEvent((EventType *)eventP, timeOut)
-          EventType event;
-          EvtGetEvent(&event, r1);
-          debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetEvent(0x%08X [%d], %d)", r0, event.eType, r1);
           if (r0) {
-            uint8_t *p8 = (uint8_t *)(ram + r0);
-            uint16_t *p16 = (uint16_t *)(ram + r0);
-            uint32_t *p32 = (uint32_t *)(ram + r0);
-            p32[0] = event.eType;
-            p8[4]  = event.penDown;
-            p16[6] = event.screenX;
-            p16[7] = event.screenY;
-          }
+            EventType event;
+            EvtGetEvent(&event, r1);
+            debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetEvent(0x%08X [%d], %d)", r0, event.eType, r1);
+            uint8_t *p = (uint8_t  *)(ram + r0);
+            put4l(event.eType, p, 0);
+            put1(event.penDown, p, 4);
+            put4l(event.tapCount, p, 8);
+            put2l(event.screenX, p, 12);
+            put2l(event.screenY, p, 14);
+            // XXX encode rest of EventType structure
+          } else {
+            debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetEvent(0x%08X, %d)", r0, r1);
           }
           break;
         case 0x834: {
@@ -611,17 +629,25 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
-        case 0x84C: {
+        case 0x84C:
           // Boolean SysHandleEvent(EventPtr eventP)
           if (r0) {
             EventType event;
             MemSet(&event, sizeof(EventType), 0);
-            uint32_t *p32 = (uint32_t *)(ram + r0);
-            event.eType = p32[0];
+            uint8_t *p = (uint8_t  *)(ram + r0);
+            uint8_t u8;
+            uint32_t u32;
+            get4l(&u32, p, 0);
+            event.eType = u32; // XXX 32 -> 16 bits
+            get1(&event.penDown, p, 4);
+            get1(&u8, p, 8);
+            event.tapCount = u8;
+            get2l((uint16_t *)&event.screenX, p, 12);
+            get2l((uint16_t *)&event.screenY, p, 14);
+            // XXX decode rest of EventType structure
             r = SysHandleEvent(&event);
             debug(DEBUG_TRACE, "ARM", "arm syscall SysHandleEvent(0x%08X [%d]): %d", r0, event.eType, r);
             r0 = r;
-          }
           }
           break;
         case 0x87C: {
@@ -676,6 +702,11 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall SysTaskDelay(%d): %d", r0, r);
           r0 = r;
           break;
+        case 0x8F4:
+          // UInt16 SysTicksPerSecond(void)
+          r0 = SysTicksPerSecondMs(); // XXX is it ticks or ms ?
+          debug(DEBUG_TRACE, "ARM", "arm syscall SysTicksPerSecond(): %u", r0);
+          break;
         case 0x924:
           // UInt32 TimGetSeconds(void)
           r0 = TimGetSeconds();
@@ -686,6 +717,91 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           // in ARM syscall, TimGetTicks() returns milliseconds, not ticks
           r0 = TimGetTicksMs();
           debug(DEBUG_TRACE, "ARM", "arm syscall TimGetTicks(): %u", r0);
+          break;
+        case 0xA54: {
+          // Err VFSFileClose(FileRef fileRef)
+          uint32_t proxyP = r0;
+          FileRefProxy *proxy = (FileRefProxy *)(ram + proxyP);
+          r = vfsErrFileBadRef;
+          if (proxy && proxy->magic == FILEREF_MAGIC) {
+            r = VFSFileClose(proxy->ref);
+            proxy->magic = 0;
+            if (proxy) pumpkin_heap_free(proxy, "FileProxy");
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileClose(0x%08X): %d", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0xA78: {
+          // Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRef *fileRefP)
+          char *name = (char *)(ram + r1);
+          uint32_t fileRefP = r3;
+          FileRef fileRef = NULL;
+          r = VFSFileOpen(r0, name, r2, fileRefP ? &fileRef : NULL);
+          if (fileRefP) {
+            FileRefProxy *proxy = pumpkin_heap_alloc(sizeof(FileRefProxy), "FileProxy");
+            if (proxy) {
+              proxy->magic = FILEREF_MAGIC;
+              proxy->ref = fileRef;
+              put4l((uint8_t *)proxy - ram, ram, fileRefP);
+            }
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileOpen(%u, \"%s\", 0x%04X, 0x%08X): %d", r0, name, r2, r3, r);
+          r0 = r;
+          }
+          break;
+        case 0xA7C: {
+          // Err VFSFileRead(FileRef fileRef, UInt32 numBytes, void *bufP, UInt32 *numBytesReadP)
+          uint32_t proxyP = r0;
+          FileRefProxy *proxy = (FileRefProxy *)(ram + proxyP);
+          r = vfsErrFileBadRef;
+          if (proxy && proxy->magic == FILEREF_MAGIC) {
+            void *bufP = (void *)(ram + r2);
+            UInt32 *numBytesReadP = (UInt32 *)(ram + r3);
+            r = VFSFileRead(proxy->ref, r1, bufP, numBytesReadP);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileRead(0x%08X, %u, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, r);
+          r0 = r;
+          }
+          break;
+        case 0xA8C: {
+          // Err VFSFileSeek(FileRef fileRef, FileOrigin origin, Int32 offset)
+          uint32_t proxyP = r0;
+          FileRefProxy *proxy = (FileRefProxy *)(ram + proxyP);
+          r = vfsErrFileBadRef;
+          if (proxy && proxy->magic == FILEREF_MAGIC) {
+            r = VFSFileSeek(proxy->ref, r1, r2);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileSeek(0x%08X, %u, %d): %d", r0, r1, r2, r);
+          r0 = r;
+          }
+          break;
+        case 0xA9C: {
+          // Err VFSFileTell(FileRef fileRef, UInt32 *filePosP)
+          uint32_t proxyP = r0;
+          FileRefProxy *proxy = (FileRefProxy *)(ram + proxyP);
+          r = vfsErrFileBadRef;
+          if (proxy && proxy->magic == FILEREF_MAGIC) {
+            UInt32 *filePosP = r1 ? (UInt32 *)(ram + r1) : NULL;
+            r = VFSFileTell(proxy->ref, filePosP);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileTell(0x%08X, 0x%08X): %d", r0, r1, r);
+          r0 = r;
+          }
+          break;
+        case 0xAF4: {
+          // void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *srcRect, Coord dstX, Coord dstY, WinDrawOperation mode)
+          WinHandle srcWin = r0 ? (WinHandle)(ram + r0) : NULL;
+          WinHandle dstWin = r1 ? (WinHandle)(ram + r1) : NULL;
+          RectangleType *srcRect = r1 ? (RectangleType *)(ram + r2) : NULL;
+          Coord dstX = r3;
+          Coord dstY = *(int16_t *)(ram + sp);
+          WinDrawOperation mode = *(int8_t *)(ram + sp + 4);
+          WinCopyRectangle(srcWin, dstWin, srcRect, dstX, dstY, mode);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinCopyRectangle(0x%08X, 0x%08X, 0x%08X [%d,%d,%d,%d], %d, %d, %d)",
+            r0, r1, r2, srcRect ? srcRect->topLeft.x : 0, srcRect ? srcRect->topLeft.y : 0, srcRect ? srcRect->extent.x : 0, srcRect ? srcRect->extent.y : 0,
+            dstX, dstY, mode);
+          }
           break;
         case 0xAF8: {
           // WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error)
@@ -730,6 +846,28 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0xB74: {
+          // WinHandle WinGetDisplayWindow(void)
+          WinHandle wh = WinGetDisplayWindow();
+          r0 = wh ? (uint8_t *)wh - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetDisplayWindow(): 0x%08X", r0);
+          }
+          break;
+        case 0xBD0: {
+          // void WinPaintChars(const Char *chars, Int16 len, Coord x, Coord y)
+          char *chars = r0 ? (char *)(ram + r0) : NULL;
+          WinPaintChars(chars, r1, r2, r3);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinPaintChars(0x%08X, %d, %d, %d)", r0, r1, r2, r3);
+          }
+          break;
+        case 0xBE4: {
+          // void WinPaintRectangle(const RectangleType *rP, UInt16 cornerDiam)
+          RectangleType *rP  = r0 ? (RectangleType *)(ram + r0) : NULL;
+          WinPaintRectangle(rP, r1);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinPaintRectangle(0x%08X [%d,%d,%d,%d], %u)",
+            r0, rP ? rP->topLeft.x : 0, rP ? rP->topLeft.y : 0, rP ? rP->extent.x : 0, rP ? rP->extent.y : 0, r1);
+          }
+          break;
         case 0xBF0:
           // void WinPopDrawState(void)
           WinPopDrawState();
@@ -740,10 +878,28 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           WinPushDrawState();
           debug(DEBUG_TRACE, "ARM", "arm syscall WinPushDrawState()");
           break;
+        case 0xC14: {
+          // Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP)
+          UInt32 *widthP  = r1 ? (UInt32 *)(ram + r1) : NULL;
+          UInt32 *heightP = r2 ? (UInt32 *)(ram + r2) : NULL;
+          UInt32 *depthP  = r3 ? (UInt32 *)(ram + r3) : NULL;
+          uint32_t addr = *(uint32_t *)(ram + sp);
+          Boolean *enableColorP = addr ? (Boolean *)(ram + addr) : NULL;
+          r = WinScreenMode(r0, widthP, heightP, depthP, enableColorP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinScreenMode(%d, 0x%08X, 0x%08X, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, addr, r);
+          r0 = r;
+          }
+          break;
         case 0xC24:
           // IndexedColorType WinSetBackColor(IndexedColorType backColor)
           r = WinSetBackColor(r0);
           debug(DEBUG_TRACE, "ARM", "arm syscall WinSetBackColor(%d): %d", r0, r);
+          r0 = r;
+          break;
+        case 0xC34:
+          // WinDrawOperation WinSetDrawMode(WinDrawOperation newMode)
+          r = WinSetDrawMode(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinSetDrawMode(%d): %d", r0, r);
           r0 = r;
           break;
         case 0xC38: {
@@ -761,11 +917,31 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall WinSetForeColor(%d): %d", r0, r);
           r0 = r;
           break;
+        case 0xC40: {
+          // void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP)
+          RGBColorType *newRgb  = r0 ? (RGBColorType *)(ram + r0) : NULL;
+          RGBColorType *prevRgb = r1 ? (RGBColorType *)(ram + r1) : NULL;
+          WinSetForeColorRGB(newRgb, prevRgb);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinSetForeColorRGB(0x%08X [%d,%d,%d], 0x%08X [%d,%d,%d])",
+            r0, newRgb ? newRgb->r : 0, newRgb ? newRgb->r : 0, newRgb ? newRgb->r : 0,
+            r1, prevRgb ? prevRgb->r : 0, prevRgb ? prevRgb->r : 0, prevRgb ? prevRgb->r : 0);
+          }
+          break;
         case 0xC4C:
           // IndexedColorType WinSetTextColor(IndexedColorType backColor)
           r = WinSetTextColor(r0);
           debug(DEBUG_TRACE, "ARM", "arm syscall WinSetTextColor(%d): %d", r0, r);
           r0 = r;
+          break;
+        case 0xC50: {
+          // void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP)
+          RGBColorType *newRgb  = r0 ? (RGBColorType *)(ram + r0) : NULL;
+          RGBColorType *prevRgb = r1 ? (RGBColorType *)(ram + r1) : NULL;
+          WinSetTextColorRGB(newRgb, prevRgb);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinSetTextColorRGB(0x%08X [%d,%d,%d], 0x%08X [%d,%d,%d])",
+            r0, newRgb ? newRgb->r : 0, newRgb ? newRgb->r : 0, newRgb ? newRgb->r : 0,
+            r1, prevRgb ? prevRgb->r : 0, prevRgb ? prevRgb->r : 0, prevRgb ? prevRgb->r : 0);
+          }
           break;
         case 0xC68: {
           // BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const void *bitsP, const ColorTableType *colorTableP)
@@ -777,6 +953,25 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall BmpCreateBitmapV3(0x%08X, %u, 0x%08X, 0x%08X): 0x%08X", r0, r1, r2, r3, r);
           r0 = r;
           }
+          break;
+        case 0xC8C:
+          // UInt16 WinGetCoordinateSystem(void)
+          r0 = WinGetCoordinateSystem();
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetCoordinateSystem(): %u", r0);
+          break;
+        case 0xC90: {
+          // Err WinGetSupportedDensity(UInt16 *densityP)
+          UInt16 *densityP = r0 ? (UInt16 *)(ram + r0) : NULL;
+          r = WinGetSupportedDensity(densityP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetSupportedDensity(0x%08X): %d", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0xC98:
+          // UInt16 WinSetCoordinateSystem(UInt16 coordSys)
+          r = WinSetCoordinateSystem(r0);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinSetCoordinateSystem(%u): %u", r0, r);
+          r0 = r;
           break;
         case 0xD0C: {
           // Err SndStreamCreate(SndStreamRef *channel, SndStreamMode mode, UInt32 samplerate, SndSampleType type,
@@ -828,16 +1023,45 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           }
           break;
         default:
-          debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in BOOT", function);
+          sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in BOOT", function);
+          emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
           break;
       }
       break;
     case 3: // UI
-      debug(DEBUG_ERROR, "ARM", "unmapped arm syscall 0x%04X in UI", function);
+#if 0
+        case 0x3EC:
+          // Boolean PrgHandleEvent(ProgressPtr prgP, EventType *eventP)
+debug(1, "XXX", "PrgHandleEvent(0x%08X, 0x%08X)", r0, r1);
+          if (r0 && r1) {
+            ProgressType *prg = r0 ? (ProgressType *)(ram + r0) : NULL;
+            EventType event;
+            MemSet(&event, sizeof(EventType), 0);
+            uint8_t *p = (uint8_t  *)(ram + r0);
+            uint8_t u8;
+            uint32_t u32;
+            get4l(&u32, p, 0);
+            event.eType = u32; // XXX 32 -> 16 bits
+            get1(&event.penDown, p, 4);
+            get1(&u8, p, 8);
+            event.tapCount = u8;
+            get2l((uint16_t *)&event.screenX, p, 12);
+            get2l((uint16_t *)&event.screenY, p, 14);
+            // XXX decode ProgressType structure
+            // XXX decode rest of EventType structure
+            r = PrgHandleEvent(prg, &event);
+            debug(DEBUG_TRACE, "ARM", "arm syscall PrgHandleEvent(0x%08X, 0x%08X [%d]): %d", r0, r1, event.eType, r);
+            r0 = r;
+          }
+          break;
+#endif
+      sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in UI", function);
+      emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       r0 = 0;
       break;
     default:
-      debug(DEBUG_ERROR, "ARM", "invalid group %u", group);
+      sys_snprintf(buf, sizeof(buf)-1, "invalid group %u", group);
+      emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
       r0 = 0;
       break;
   }
