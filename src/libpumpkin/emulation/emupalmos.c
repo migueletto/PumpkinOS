@@ -172,15 +172,16 @@ int emupalmos_finished(void) {
 
 void emupalmos_panic(char *msg, int code) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  UInt32 creator;
 
   debug(DEBUG_ERROR, "EmuPalmOS", "panic: %s", msg);
-  state->istate->panic = sys_strdup(msg);
+  // do not overwrite a previous panic message
+  if (state->istate->panic == NULL) {
+    state->istate->panic = sys_strdup(msg);
+  }
   state->m68k_state.finish = 1;
   emupalmos_finish(1);
 
-  creator = pumpkin_get_app_creator();
-  pumpkin_crash_log(creator, code, msg);
+  pumpkin_crash_log(code, msg);
 
   WinSetDrawWindow(WinGetDisplayWindow());
   WinSetCoordinateSystem(kCoordinatesStandard);

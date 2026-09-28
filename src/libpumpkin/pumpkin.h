@@ -284,6 +284,7 @@ int pumpkin_kill(uint32_t tid);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
+char *pumpkin_get_app_name(void);
 uint32_t pumpkin_get_param_size(void);
 void *pumpkin_get_exception(void);
 void pumpkin_error_dialog(char *msg);
@@ -610,6 +611,7 @@ void SysQSort68k(void *baseP, UInt16 numOfElements, Int16 width, UInt32 comparF,
 Char **SysStringArray(UInt16 resID, UInt16 *numStrings);
 Int32 SysRandom32(Int32 newSeed);
 Err SysTaskDelayMs(Int32 delay);
+UInt16 SysTicksPerSecondMs(void);
 UInt32 TimGetTicksMs(void);
 
 Boolean CallPrgCallback(UInt32 addr, UInt32 data);
@@ -715,7 +717,7 @@ int CharAttrFinishModule(void);
 void *pumpkin_reg_get(DmResType type, UInt16 id, UInt32 *size);
 Err pumpkin_reg_set(DmResType type, UInt16 id, void *p, UInt32 size);
 
-void pumpkin_crash_log(UInt32 creator, int code, char *msg);
+void pumpkin_crash_log(int code, char *msg);
 void pumpkin_test_exception(int fatal);
 
 uint32_t pumpkin_script_main(uint16_t code, void *param, uint16_t flags);
