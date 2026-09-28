@@ -128,6 +128,11 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     ucarmSetReg(arm, 0, emupalmos_arm_syscall(group, function, r0, r1, r2, r3, sp));
     ucarmSetReg(arm, 14, lr);
     ucarmSetReg(arm, 15, lr); // return from subroutine
+
+    if (emupalmos_finished()) {
+      uc_emu_stop(uc);
+      ucarmSetReg(arm, 15, arm->returnAddr);
+    }
     return;
   }
 
