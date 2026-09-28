@@ -15,13 +15,6 @@
 #include "emupalmos.h"
 #include "debug.h"
     
-#define MAGIC 'Prxy'
-
-typedef struct {
-  UInt32 magic;
-  FileRef ref;
-} FileRefProxy;
-
 void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
   char buf[256];
     
@@ -38,7 +31,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       if (fileRefP) {
         FileRefProxy *proxy = pumpkin_heap_alloc(sizeof(FileRefProxy), "FileProxy");
         if (proxy) {
-          proxy->magic = MAGIC;
+          proxy->magic = FILEREF_MAGIC;
           proxy->ref = l_fileRefP;
           m68k_write_memory_32(fileRefP, emupalmos_trap_out(proxy));
         }
@@ -53,7 +46,7 @@ void palmos_filesystemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       uint32_t fileRef = ARG32;
       FileRefProxy *ll_fileRef = (FileRefProxy *)emupalmos_trap_sel_in(fileRef, sysTrapFileSystemDispatch, sel, 0);
       Err res = vfsErrFileBadRef;
-      if (ll_fileRef && ll_fileRef->magic == MAGIC) {
+      if (ll_fileRef && ll_fileRef->magic == FILEREF_MAGIC) {
         FileRef l_fileRef = ll_fileRef->ref;
         res = VFSFileClose(fileRef ? l_fileRef : 0);
         ll_fileRef->magic = 0;
