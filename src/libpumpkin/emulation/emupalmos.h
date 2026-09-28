@@ -50,6 +50,13 @@
 #define sysTrapPumpkinDebug            0xA473
 #define sysTrapPumpkinDebugBytes       0xA474
 
+#define FILEREF_MAGIC 'Prxy'
+
+typedef struct {
+  UInt32 magic;
+  FileRef ref;
+} FileRefProxy;
+
 typedef union {
   int32_t i;
   float f;
