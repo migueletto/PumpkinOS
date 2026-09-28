@@ -793,15 +793,21 @@ void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *p
 
   EvtPumpEvents(0);
   pumpkin_status(&x, &y, NULL, NULL, &buttonMask, NULL);
-  *pScreenX = x;
-  *pScreenY = y;
-  *pPenDown = (buttonMask & 3) ? true : false;
+  if (pScreenX) *pScreenX = x;
+  if (pScreenY) *pScreenY = y;
+  if (pPenDown) *pPenDown = (buttonMask & 3) ? true : false;
   if (pRight) *pRight = (buttonMask & 2) ? true : false;
 }
 
 void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
+  UInt16 old;
+
   EvtGetPenEx(pScreenX, pScreenY, pPenDown, NULL);
-  adjustCoords(pScreenX, pScreenY);
+  if (pScreenX && pScreenY) {
+    old = WinSetCoordinateSystem(kCoordinatesStandard);
+    adjustCoords(pScreenX, pScreenY);
+    WinSetCoordinateSystem(old);
+  }
 }
 
 Boolean EvtSetNullEventTick(UInt32 tick) {
