@@ -92,7 +92,7 @@ static void ucarmPanic(uc_engine *uc, char *msg) {
 static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   uint32_t addr = (uint32_t)address;
-  uint32_t r, r0, r1, r2, r3, r12, sp, lr;
+  uint32_t r, r0, r1, r2, r3, r4, sp, lr;
   size_t mode;
   char buf[256];
 
@@ -147,9 +147,9 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     r1 = ucarmGetReg(arm, 1);
     r2 = ucarmGetReg(arm, 2);
     r3 = ucarmGetReg(arm, 3);
-    r12 = ucarmGetReg(arm, 12);
+    r4 = ucarmGetReg(arm, 4);
     lr = ucarmGetReg(arm, 14);
-    sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X r12=%08X LR=%08X)", r0, r1, r2, r3, r12, lr);
+    sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X r4=%08X LR=%08X)", r0, r1, r2, r3, r4, lr);
 
     uc_query(arm->uc, UC_QUERY_MODE, &mode);
     if (mode == UC_MODE_THUMB) {
