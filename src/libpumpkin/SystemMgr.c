@@ -93,6 +93,10 @@ UInt16 SysTicksPerSecond(void) {
   return 100;
 }
 
+UInt16 SysTicksPerSecondMs(void) {
+  return 1000;
+}
+
 Err SysLaunchConsole(void) {
   debug(DEBUG_ERROR, PALMOS_MODULE, "SysLaunchConsole not implemented");
   return 0;
