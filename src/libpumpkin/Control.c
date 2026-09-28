@@ -31,7 +31,7 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
   return ctlP;
 }
 
-static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
+static void CtlInvertControl(ControlType *controlP) {
   RectangleType bounds;
 
   controlP = CtlCheckControl(controlP);
@@ -46,10 +46,10 @@ static void CtlInvertControl(ControlType *controlP, Boolean isInverted) {
       switch (controlP->attr.frame) {
         case standardButtonFrame:
         case boldButtonFrame:
-          WinInvertRect(&bounds, 3, isInverted);
+          WinInvertRect(&bounds, 3);
           break;
         case noFrame:
-          WinInvertRect(&bounds, 0, isInverted);
+          WinInvertRect(&bounds, 0);
           break;
       }
       WinSetInvertColors(false);
@@ -629,7 +629,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
 
           if (controlP->style == buttonCtl) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
-            CtlInvertControl(controlP, controlP->attr.on);
+            CtlInvertControl(controlP);
           }
 
           MemSet(&event, sizeof(EventType), 0);
@@ -708,7 +708,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
             controlP->attr.on = false;
             if (controlP->style == buttonCtl) {
-              CtlInvertControl(controlP, controlP->attr.on);
+              CtlInvertControl(controlP);
             } else {
               CtlDrawControl(controlP);
             }
