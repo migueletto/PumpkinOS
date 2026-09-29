@@ -771,6 +771,7 @@ Err SndStreamStart(SndStreamRef channel) {
   Err err = sndErrBadParam;
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStart(%d)", channel);
+  if (!pumpkin_sound_enabled()) return errNone;
 
   if (channel > 0 && module->ap && module->ap->start && pumpkin_sound_enabled() && (snd = ptr_lock(channel, TAG_SOUND)) != NULL) {
     if (snd->started) {
@@ -811,6 +812,8 @@ Err SndStreamStart(SndStreamRef channel) {
 Err SndStreamPause(SndStreamRef channel, Boolean pause) {
   Err err;
 
+  if (!pumpkin_sound_enabled()) return errNone;
+
   debug(DEBUG_TRACE, "Sound", "SndStreamPause(%d, %d)", channel, pause);
   if (pause) {
     err = SndStreamStop(channel);
@@ -825,6 +828,7 @@ Err SndStreamStop(SndStreamRef channel) {
   SndStreamType *snd;
   Err err = sndErrBadParam;
 
+  if (!pumpkin_sound_enabled()) return errNone;
   pumpkin_audio_check(0);
 
   debug(DEBUG_TRACE, "Sound", "SndStreamStop(%d)", channel);
