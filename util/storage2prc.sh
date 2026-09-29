@@ -7,7 +7,7 @@ if [ $# -ne 4 ]; then
   exit 0
 fi
 
-rm *.dat
+rm -f *.dat
 
 for res in *.*.*
 do
