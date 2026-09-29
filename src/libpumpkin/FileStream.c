@@ -59,7 +59,7 @@ FileHand FileOpen(UInt16 cardNo, const Char *nameP, UInt32 type, UInt32 creator,
         if (errP) *errP = fileErrTypeCreatorMismatch;
         return NULL;
       }
-      if (type != typef) {
+      if (type != 0 && type != typef) {
         pumpkin_id2s(type, s1);
         pumpkin_id2s(typef, s2);
         debug(DEBUG_ERROR, PALMOS_MODULE, "FileOpen(\"%s\"): parameter type '%s' does not match file type '%s'", nameP, s1, s2);
@@ -82,6 +82,7 @@ FileHand FileOpen(UInt16 cardNo, const Char *nameP, UInt32 type, UInt32 creator,
 
   if ((openMode & fileModeUpdate)) {
     if (!dbID) {
+      if (type == 0) type = (openMode & fileModeTemporary) ? sysFileTTemp : sysFileTFileStream;
       if (DmCreateDatabaseEx(nameP, creator, type, dmHdrAttrStream, 0, true) == errNone) {
         dbID = DmFindDatabase(cardNo, nameP);
       } else {
@@ -105,6 +106,7 @@ FileHand FileOpen(UInt16 cardNo, const Char *nameP, UInt32 type, UInt32 creator,
     if ((openMode & fileModeDontOverwrite) && exists) {
       if (errP) *errP = fileErrReplaceError;
     } else {
+      if (type == 0) type = (openMode & fileModeTemporary) ? sysFileTTemp : sysFileTFileStream;
       if (DmCreateDatabaseEx(nameP, creator, type, dmHdrAttrStream, 0, true) == errNone) {
         dbID = DmFindDatabase(cardNo, nameP);
         if (dbID) {
@@ -120,6 +122,7 @@ FileHand FileOpen(UInt16 cardNo, const Char *nameP, UInt32 type, UInt32 creator,
     }
   } else if ((openMode & fileModeAppend)) {
     if (!dbID) {
+      if (type == 0) type = (openMode & fileModeTemporary) ? sysFileTTemp : sysFileTFileStream;
       if (DmCreateDatabaseEx(nameP, creator, type, dmHdrAttrStream, 0, true) == errNone) {
         dbID = DmFindDatabase(cardNo, nameP);
       } else {
