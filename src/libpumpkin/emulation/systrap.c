@@ -178,6 +178,15 @@ uint32_t palmos_systrap(uint16_t trap) {
       uint32_t libCreator = ARG32;
       uint32_t refNumP = ARG32;
       emupalmos_trap_in(refNumP, trap, 2);
+      if (refNumP) {
+        uint16_t refNum = m68k_read_memory_16(refNumP);
+        if (refNum > BASE_SYSLIBS) {
+          if (SysLibLoad(libType, libCreator, &refNum) == errNone) {
+            m68k_set_reg(M68K_REG_D0, errNone);
+            break;
+          }
+        }
+      }
       pumpkin_id2s(libType, buf);
       pumpkin_id2s(libCreator, screator);
       debug(DEBUG_INFO, "EmuPalmOS", "SysLibLoad('%s', '%s', 0x%08X) native", buf, screator, refNumP);
