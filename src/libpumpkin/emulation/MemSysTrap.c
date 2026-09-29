@@ -77,7 +77,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
 
         debug(DEBUG_TRACE, "EmuPalmOS", "MemSet(0x%08X, %d, 0x%02X) inside screen", dstP, numBytes, value);
         if (!MemSetOrMoveDisplay(dstP, 0, numBytes, value, start, end, &err)) {
-          for (uint32_t i = 0; i < numBytes; i++) {
+          for (uint32_t i = 0; i < numBytes && !emupalmos_finished(); i++) {
             m68k_write_memory_8(dstP+i, value);
           }
         }
@@ -111,7 +111,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
 
         debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen", dstP, sP, numBytes);
         if (!MemSetOrMoveDisplay(dstP, sP, numBytes, 0, start, end, &err)) {
-          for (uint32_t i = 0; i < numBytes; i++) {
+          for (uint32_t i = 0; i < numBytes && !emupalmos_finished(); i++) {
             uint8_t value = m68k_read_memory_8(sP+i);
             m68k_write_memory_8(dstP+i, value);
           }

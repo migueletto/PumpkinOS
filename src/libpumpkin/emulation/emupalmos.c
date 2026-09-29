@@ -1604,7 +1604,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
       if (m68k_execute(m68k_state, 10000) == -1) break;
     }
     r = m68k_get_reg(NULL, wantA0 ? M68K_REG_A0 : M68K_REG_D0);
-    debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func function 0x%08X returned %d (0x%08X)", trapOrFunction, r, r);
+    debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func function 0x%08X returned %d (0x%08X) finished %d", trapOrFunction, r, r, emupalmos_finished());
 
     m68k_set_context(&old_cpu);
   }
