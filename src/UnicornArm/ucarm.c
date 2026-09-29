@@ -110,6 +110,11 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     lr = ucarmGetReg(arm, 14);
     debug(DEBUG_TRACE, "ARM", "ucarmHookCode return to 0x%08X", lr);
     ucarmSetReg(arm, 15, lr);
+
+    if (emupalmos_finished()) {
+      uc_emu_stop(uc);
+      ucarmSetReg(arm, 15, arm->returnAddr);
+    }
     return;
   }
 
