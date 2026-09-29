@@ -749,7 +749,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           break;
         case 0x8F4:
           // UInt16 SysTicksPerSecond(void)
-          r0 = SysTicksPerSecond(); // XXX is it ticks or ms ?
+          r0 = SysTicksPerSecondMs(); // XXX is it ticks or ms ?
           debug(DEBUG_TRACE, "ARM", "arm syscall SysTicksPerSecond(): %u", r0);
           break;
         case 0x924:
