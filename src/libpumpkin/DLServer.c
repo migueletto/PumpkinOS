@@ -27,10 +27,11 @@ Err DlkControl(DlkCtlEnum op, void *param1P, void *param2P) {
 }
 
 Err DlkGetSyncInfo(UInt32 *succSyncDateP, UInt32 *lastSyncDateP, DlkSyncStateType *syncStateP, Char *nameBufP, Char *logBufP, Int32 *logLenP) {
+  char *hotsyncID = pumpkin_get_string_option("hotsyncID");
   if (succSyncDateP) *succSyncDateP = 0;
   if (lastSyncDateP) *lastSyncDateP = 0;
   if (syncStateP) *syncStateP = dlkSyncStateNeverSynced;
-  if (nameBufP) StrNCopy(nameBufP, SYSTEM_NAME, dlkUserNameBufSize);
+  if (nameBufP) StrNCopy(nameBufP, hotsyncID ? hotsyncID : SYSTEM_NAME, dlkUserNameBufSize);
   if (logBufP) *logBufP = 0;
   if (logLenP) *logLenP = 0;
 
