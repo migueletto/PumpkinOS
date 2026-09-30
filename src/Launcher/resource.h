@@ -8,6 +8,7 @@
 #define EditImgForm     1008
 #define RegistryForm    1009
 #define AboutForm       1010
+#define EditBmpForm2    1011
 
 #define MainMenu           1001
 #define ReducedMainMenu    1002
@@ -47,6 +48,8 @@
 #define frmpropCtl  1028
 #define objpropCtl  1029
 #define surfaceGad  1030
+#define bmpHScl     1031
+#define bmpVScl     1032
 
 #define regPage1Ctl        1001
 #define regPage2Ctl        1002

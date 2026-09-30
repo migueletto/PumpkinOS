@@ -18,6 +18,8 @@
 
 #define MAX_BMPS 16
 
+#define CLOSEUP_SIZE 20
+
 typedef enum {
   dragMode,
   drawMode,
@@ -40,6 +42,11 @@ typedef struct {
   UInt8 color1, color2, color4, color8;
   RGBColorType rgb;
   Boolean down, drag, transpPixel;
+  UInt16 leftCol, lastLeftCol, topCol, lastTopCol;
+  RectangleType bmpRect;
+  RectangleType savedRect;
+  WinHandle wh;
+  Boolean saved;
 } bmp_edit_t;
 
 static const UInt8 gray1[2]  = {0xff, 0x00};
@@ -238,6 +245,92 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
   }
 
   WinSetForeColorRGB(&oldf, NULL);
+}
+
+static Boolean bitmapGadgetCallback2(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
+  FormType *frm;
+  ScrollBarType *scl;
+  BitmapType *bmp;
+  RectangleType rect;
+  RGBColorType rgb, oldf;
+  bmp_edit_t *data;
+  UInt8 version, depth;
+  UInt16 index, rowBytes, density, total, num;
+  Coord width, height, x, y;
+  char *s;
+
+  if (cmd == formGadgetDeleteCmd) {
+    return true;
+  }
+  
+  frm = FrmGetActiveForm();
+  index = FrmGetObjectIndex(frm, bitmapGad);
+  FrmGetObjectBounds(frm, index, &rect);
+  data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
+  bmp = data->bmps[data->index];
+
+  version = BmpGetVersion(bmp);
+  depth = BmpGetBitDepth(bmp);
+  density = BmpGetDensity(bmp);
+  BmpGetDimensions(bmp, &width, &height, &rowBytes);
+  if (density == kDensityDouble) {
+    width >>= 1;
+    height >>= 1;
+  }
+
+  switch (cmd) {
+    case formGadgetDrawCmd:
+      pumpkin_dirty_region_mode(dirtyRegionBegin);
+      WinEraseRectangle(&rect, 0);
+      if (width == 0 && height == 0 && rowBytes == 0 && depth == 0xFF && version == 1) {
+        s = "Empty bitmap slot";
+        WinDrawChars(s, StrLen(s), rect.topLeft.x, rect.topLeft.y);
+      } else {
+        x = rect.topLeft.x + ((width  <= rect.extent.x) ? (rect.extent.x - width)  / 2 : 0);
+        y = rect.topLeft.y + ((height <= rect.extent.y) ? (rect.extent.y - height) / 2 : 0);
+        WinSetClip(&rect);
+        WinPaintBitmapEx(bmp, x - data->leftCol, y - data->topCol, false, false);
+        WinResetClip();
+        RctSetRectangle(&data->bmpRect, x, y, width, height);
+        if (data->bmpRect.extent.x > rect.extent.x) {
+          data->bmpRect.extent.x = rect.extent.x;
+        }
+        if (data->bmpRect.extent.y > rect.extent.y) {
+          data->bmpRect.extent.y = rect.extent.y;
+        }
+        RctInsetRectangle(&data->bmpRect, -1);
+        rgb.r = rgb.g = rgb.b = 0xe0;
+        WinSetForeColorRGB(&rgb, &oldf);
+        WinPaintRectangleFrame(1, &data->bmpRect);
+        WinSetForeColorRGB(&oldf, NULL);
+      }
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
+      break;
+  }
+
+  index = FrmGetObjectIndex(frm, bmpHScl);
+  if (width > rect.extent.x) {
+    scl = (ScrollBarType *)FrmGetObjectPtr(frm, index);
+    total = width / 16;
+    num = rect.extent.x / 16;
+    SclSetScrollBar(scl, 0, 0, total - num, (total - num) >= num ? num - 1 : total - num);
+    FrmSetUsable(frm, index, true);
+  } else {
+    FrmSetUsable(frm, index, false);
+  }
+
+  index = FrmGetObjectIndex(frm, bmpVScl);
+  if (height > rect.extent.y) {
+    scl = (ScrollBarType *)FrmGetObjectPtr(frm, index);
+    total = height / 16;
+    num = rect.extent.y / 16;
+    SclSetScrollBar(scl, 0, 0, total - num, (total - num) >= num ? num - 1 : total - num);
+    FrmSetUsable(frm, index, true);
+  } else {
+    FrmSetUsable(frm, index, false);
+  }
+
+  return true;
 }
 
 static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
@@ -529,8 +622,6 @@ static Boolean toolsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   EventType *event;
   FormType *frm;
   ListType *lst;
-  //MemHandle h;
-  //BitmapType *bmp;
   RectangleType rect;
   RGBColorType rgb, oldf;
   PatternType oldp;
@@ -643,6 +734,152 @@ static void toolsListDraw(Int16 itemNum, RectangleType *bounds, Char **itemsText
   paintBitmap(id, bounds->topLeft.x, bounds->topLeft.y);
 }
 
+static Boolean eventHandler2(EventType *event) {
+  FormType *frm;
+  ControlType *ctl;
+  FormGadgetTypeInCallback *gad;
+  RectangleType bounds, rect, aux;
+  RGBColorType rgb, oldf;
+  bmp_edit_t *data;
+  UInt16 index, ctlIndex;
+  Boolean changed, handled = false;
+
+  switch (event->eType) {
+    case frmOpenEvent:
+      frm = FrmGetActiveForm();
+      index = FrmGetObjectIndex(frm, bitmapGad);
+      data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
+
+      index = FrmGetObjectIndex(frm, prevCtl);
+      FrmHideObject(frm, index);
+
+      if (data->numBmps == 1) {
+        index = FrmGetObjectIndex(frm, nextCtl);
+        FrmHideObject(frm, index);
+      }
+
+      FrmDrawForm(frm);
+      getLabel(data);
+      FrmSetTitle(frm, data->title);
+      break;
+
+    case ctlSelectEvent:
+      frm = FrmGetActiveForm();
+      index = FrmGetObjectIndex(frm, bitmapGad);
+      data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
+
+      switch (event->data.ctlSelect.controlID) {
+        case nextCtl:
+        case prevCtl:
+          changed = false;
+          if (event->data.ctlSelect.controlID == nextCtl) {
+            if (data->index < data->numBmps-1) {
+              changed = true;
+              data->index++;
+              ctlIndex = FrmGetObjectIndex(frm, nextCtl);
+              ctl = (ControlType *)FrmGetObjectPtr(frm, ctlIndex);
+              CtlSetValue(ctl, 0);
+              if (data->index == data->numBmps-1) {
+                FrmHideObject(frm, ctlIndex);
+              }
+              ctlIndex = FrmGetObjectIndex(frm, prevCtl);
+              ctl = (ControlType *)FrmGetObjectPtr(frm, ctlIndex);
+              FrmShowObject(frm, ctlIndex);
+              CtlSetValue(ctl, 0);
+            }
+          } else {
+            if (data->index > 0) {
+              changed = true;
+              data->index--;
+              ctlIndex = FrmGetObjectIndex(frm, prevCtl);
+              ctl = (ControlType *)FrmGetObjectPtr(frm, ctlIndex);
+              CtlSetValue(ctl, 0);
+              if (data->index == 0) {
+                ctlIndex = FrmGetObjectIndex(frm, prevCtl);
+                FrmHideObject(frm, ctlIndex);
+              }
+              ctlIndex = FrmGetObjectIndex(frm, nextCtl);
+              ctl = (ControlType *)FrmGetObjectPtr(frm, ctlIndex);
+              FrmShowObject(frm, ctlIndex);
+              CtlSetValue(ctl, 0);
+            }
+          }
+
+          if (changed) {
+            index = FrmGetObjectIndex(frm, bitmapGad);
+            gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(frm, index);
+            bitmapGadgetCallback2(gad, formGadgetDrawCmd, NULL);
+            getLabel(data);
+            FrmSetTitle(frm, data->title);
+          }
+          handled = true;
+          break;
+      }
+
+    case sclRepeatEvent:
+      frm = FrmGetActiveForm();
+      index = FrmGetObjectIndex(frm, bitmapGad);
+      data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
+
+      switch (event->data.sclRepeat.scrollBarID) {
+        case bmpHScl:
+          data->leftCol = event->data.sclRepeat.newValue * 16;
+          break;
+        case bmpVScl:
+          data->topCol = event->data.sclRepeat.newValue * 16;
+          break;
+      }
+
+      if (data->leftCol != data->lastLeftCol || data->topCol != data->lastTopCol) {
+        bitmapGadgetCallback2(gad, formGadgetDrawCmd, NULL);
+        data->lastLeftCol = data->leftCol;
+        data->lastTopCol = data->topCol;
+      }
+      break;
+
+    case penDownEvent:
+      frm = FrmGetActiveForm();
+      index = FrmGetObjectIndex(frm, bitmapGad);
+      data = (bmp_edit_t *)FrmGetGadgetData(frm, index);
+      MemMove(&rect, &data->bmpRect, sizeof(RectangleType));
+      FrmGetFormBounds(frm, &bounds);
+      if (RctPtInRectangle(event->screenX, event->screenY, &rect)) {
+        RctSetRectangle(&aux, event->screenX - CLOSEUP_SIZE/2, event->screenY - CLOSEUP_SIZE/2, CLOSEUP_SIZE, CLOSEUP_SIZE);
+        if (aux.topLeft.x < rect.topLeft.x) {
+          aux.topLeft.x = rect.topLeft.x;
+        } else if (aux.topLeft.x + CLOSEUP_SIZE >= rect.topLeft.x + rect.extent.x) {
+          aux.topLeft.x = rect.topLeft.x + rect.extent.x - CLOSEUP_SIZE;
+        }
+        if (aux.topLeft.y < rect.topLeft.y) {
+          aux.topLeft.y = rect.topLeft.y;
+        } else if (aux.topLeft.y + CLOSEUP_SIZE >= rect.topLeft.y + rect.extent.y) {
+          aux.topLeft.y = rect.topLeft.y + rect.extent.y - CLOSEUP_SIZE;
+        }
+        rgb.r = 0xff;
+        rgb.g = 0x80;
+        rgb.b = 0x00;
+        if (data->saved) {
+          RctSetRectangle(&rect, 0, 0, CLOSEUP_SIZE, CLOSEUP_SIZE);
+          WinCopyRectangle(data->wh, NULL, &rect, data->savedRect.topLeft.x, data->savedRect.topLeft.y, winPaint);
+        }
+        WinCopyRectangle(NULL, data->wh, &aux, 0, 0, winPaint);
+        MemMove(&data->savedRect, &aux, sizeof(RectangleType));
+        WinSetForeColorRGB(&rgb, &oldf);
+        RctInsetRectangle(&aux, 1); // inset 1, because WinPaintRectangleFrame() will inset -1
+        WinPaintRectangleFrame(1, &aux);
+        WinSetForeColorRGB(&oldf, NULL);
+        data->saved = true;
+        handled = true;
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return handled;
+}
+
 static Boolean eventHandler(EventType *event) {
   FormType *frm;
   FormGadgetTypeInCallback *gad;
@@ -667,14 +904,10 @@ static Boolean eventHandler(EventType *event) {
       depth = BmpGetBitDepth(data->bmps[data->index]);
 
       index = FrmGetObjectIndex(frm, prevCtl);
-      ctl = (ControlType *)FrmGetObjectPtr(frm, index);
-      ctl->attr.frame = noButtonFrame;
       FrmHideObject(frm, index);
 
-      index = FrmGetObjectIndex(frm, nextCtl);
-      ctl = (ControlType *)FrmGetObjectPtr(frm, index);
-      ctl->attr.frame = noButtonFrame;
       if (data->numBmps == 1) {
+        index = FrmGetObjectIndex(frm, nextCtl);
         FrmHideObject(frm, index);
       }
 
@@ -909,7 +1142,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
   bmp_edit_t data;
   BitmapType *bmp, *aux;
   BitmapCompressionType compression;
-  UInt16 index, density;
+  UInt16 index, density, error;
   Boolean r = false;
 
   if ((bmp = (BitmapType *)MemHandleLock(h)) != NULL) {
@@ -919,6 +1152,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     data.mode = dragMode;
     data.rgb.r = data.rgb.g = data.rgb.b = 0xff;
     data.prefix = title;
+    data.wh = WinCreateOffscreenWindow(CLOSEUP_SIZE, CLOSEUP_SIZE, nativeFormat, &error);
 
     for (aux = bmp; aux && data.numBmps < MAX_BMPS; aux = BmpGetNextBitmapAnyDensity(aux)) {
       while (BmpIsEmptySlot(aux)) {
@@ -941,9 +1175,10 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     }
 
     index = FrmGetObjectIndex(frm, bitmapGad);
-    FrmSetGadgetHandler(frm, index, bitmapGadgetCallback);
+    FrmSetGadgetHandler(frm, index, bitmapGadgetCallback2);
     FrmSetGadgetData(frm, index, &data);
 
+/*
     index = FrmGetObjectIndex(frm, paletteGad);
     FrmSetGadgetHandler(frm, index, paletteGadgetCallback);
     FrmSetGadgetData(frm, index, &data);
@@ -951,7 +1186,8 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     index = FrmGetObjectIndex(frm, toolsGad);
     FrmSetGadgetHandler(frm, index, toolsGadgetCallback);
     FrmSetGadgetData(frm, index, &data);
-    FrmSetEventHandler(frm, eventHandler);
+*/
+    FrmSetEventHandler(frm, eventHandler2);
     FrmDoDialog(frm);
 
     for (index = 0; index < data.numBmps; index++) {
@@ -959,6 +1195,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
         BmpDelete(data.bmps[index]);
       }
     }
+    WinDeleteWindow(data.wh, false);
 
     MemHandleUnlock(h);
     r = data.dirty;
