@@ -472,7 +472,7 @@ RGBColorType *WinGetPalette(UInt16 n);
 WinDrawOperation WinGetDrawMode(void);
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y);
 void WinSetAsciiText(Boolean asciiText);
-void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr);
+void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean best, Boolean checkAddr);
 char *WinGetDescr(WinHandle wh, char *buf, UInt16 size);
 UInt32 WinGetForeColorU(void);
 UInt32 WinGetBackColorU(void);

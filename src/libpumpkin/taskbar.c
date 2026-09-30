@@ -135,7 +135,7 @@ void taskbar_update(taskbar_t *tb) {
     if (tb->tasks[i].bmp) {
       if ((bmp = BmpGetBestBitmapEx(tb->tasks[i].bmp, tb->density, BmpGetBitDepth(tb->tasks[i].bmp), false)) != NULL) {
         y = tb->height > tb->tasks[i].bmpHeight ? (tb->height - tb->tasks[i].bmpHeight) / 2 : 0;
-        WinPaintBitmapEx(bmp, x, y, false);
+        WinPaintBitmapEx(bmp, x, y, true, false);
         x += 1;
         x += tb->tasks[i].bmpWidth;
       }
@@ -178,7 +178,7 @@ void taskbar_update(taskbar_t *tb) {
     if ((bmp = BmpGetBestBitmapEx(tb->widgets[i].bmp, tb->density, BmpGetBitDepth(tb->widgets[i].bmp), false)) != NULL) {
       x -= WIDGET_WIDTH;
       y = (tb->height - WIDGET_HEIGHT) / 2;
-      WinPaintBitmapEx(bmp, x, y, false);
+      WinPaintBitmapEx(bmp, x, y, true, false);
     }
   }
 

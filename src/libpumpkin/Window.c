@@ -2119,9 +2119,9 @@ void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *s
   WinBlitBitmap(WinGetBitmap(srcWin), dstWin, srcRect, dstX, dstY, mode, false);
 }
 
-void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
+void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean best, Boolean checkAddr) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *windowBitmap, *best;
+  BitmapType *windowBitmap, *bestBitmap;
   RectangleType rect;
   UInt16 bitmapDensity;
   uint8_t *bmp, *base, *end;
@@ -2144,9 +2144,10 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
     windowBitmap = WinGetBitmap(module->drawWindow);
 
     bitmapDensity = (module->drawState.scalingMode & kBitmapScalingOff) ? kDensityLow : BmpGetDensity(windowBitmap);
-    if ((best = BmpGetBestBitmapEx(bitmapP, bitmapDensity, BmpGetBitDepth(windowBitmap), checkAddr)) != NULL) {
-      BmpGetDimensions(best, &w, &h, NULL);
-      bitmapDensity = BmpGetDensity(best);
+    bestBitmap = best ? BmpGetBestBitmapEx(bitmapP, bitmapDensity, BmpGetBitDepth(windowBitmap), checkAddr) : bitmapP;
+    if (bestBitmap != NULL) {
+      BmpGetDimensions(bestBitmap, &w, &h, NULL);
+      bitmapDensity = BmpGetDensity(bestBitmap);
       if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
         w >>= 1;
         h >>= 1;
@@ -2154,15 +2155,15 @@ void WinPaintBitmapEx(BitmapPtr bitmapP, Coord x, Coord y, Boolean checkAddr) {
         w <<= 1;
         h <<= 1;
       }
-      debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %s %p %d,%d at %d,%d", BmpGetDescr(best, bmpBuf, sizeof(bmpBuf)), best, w, h, x, y);
+      debug(DEBUG_TRACE, "Window", "WinPaintBitmap best %s %p %d,%d at %d,%d", BmpGetDescr(bestBitmap, bmpBuf, sizeof(bmpBuf)), bestBitmap, w, h, x, y);
       RctSetRectangle(&rect, 0, 0, w, h);
-      WinBlitBitmap(best, module->drawWindow, &rect, x, y, module->drawState.transferMode, false);
+      WinBlitBitmap(bestBitmap, module->drawWindow, &rect, x, y, module->drawState.transferMode, false);
     }
   }
 }
 
 void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
-  WinPaintBitmapEx(bitmapP, x, y, true);
+  WinPaintBitmapEx(bitmapP, x, y, true, true);
 }
 
 void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
