@@ -42,12 +42,21 @@
     return_err(vfsErrVolumeBadRef); \
   }
 
+#define MAX_DEFDIR 256
+
+typedef struct {
+  char *type;
+  char *path;
+} vfs_defdir_t;
+
 typedef struct {
   vfs_session_t *session[NUM_VOLUMES];
   char volume[NUM_VOLUMES][MAX_CARD];
   char path[MAX_PATH];
   char path2[MAX_PATH];
   char tmpname[MAX_PATH];
+  vfs_defdir_t defaultDirectory[MAX_DEFDIR];
+  UInt32 numDefDir;
 } vfs_module_t;
 
 static void buildpath(vfs_module_t *module, UInt16 volRefNum, char *dst, char *src) {
@@ -149,9 +158,13 @@ int VFSAddVolume(char *volume) {
 
 int VFSFinishModule(void) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
-  int i;
+  UInt32 i;
 
   if (module) {
+    for (i = 0; i < MAX_DEFDIR; i++) {
+      if (module->defaultDirectory[i].type) MemPtrFree(module->defaultDirectory[i].type);
+      if (module->defaultDirectory[i].path) MemPtrFree(module->defaultDirectory[i].path);
+    }
     for (i = 0; i < NUM_VOLUMES; i++) {
       if (module->session[i]) vfs_close_session(module->session[i]);
     }
@@ -202,13 +215,32 @@ Err VFSFileOpen(UInt16 volRefNum, const Char *pathNameP, UInt16 openMode, FileRe
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   vfs_dir_t *d;
   vfs_file_t *f;
+  UInt16 bufLen;
+  Int32 len, i;
   int type, mode;
+  char buf[256], *fileTypeStr;
   Err err = vfsErrBadName;
 
   checkvol(module, volRefNum);
   if (fileRefP) *fileRefP = NULL;
 
   if (pathNameP && pathNameP[0] && fileRefP) {
+    if (pathNameP[0] != '/' && module->numDefDir > 0) {
+      len = StrLen(pathNameP);
+      for (i = len-1; i >= 0; i--) {
+        if (pathNameP[i] == '.') break;
+      }
+      if (i >= 0) {
+        fileTypeStr = (char *)&pathNameP[i];
+        bufLen = sizeof(buf);
+        if (VFSGetDefaultDirectory(volRefNum, fileTypeStr, buf, &bufLen) == errNone) {
+          StrNCat(buf, pathNameP, sizeof(buf) - 1);
+          debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileOpen %d default dir \"%s\" -> \"%s\"", volRefNum, pathNameP, buf);
+          pathNameP = buf;
+        }
+      }
+    }
+
     buildpath(module, volRefNum, module->path, (char *)pathNameP);
     debug(DEBUG_TRACE, PALMOS_MODULE, "VFSFileOpen %d \"%s\" -> \"%s\"", volRefNum, pathNameP, module->path);
 
@@ -607,40 +639,91 @@ Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType
 
 Err VFSGetDefaultDirectory(UInt16 volRefNum, const Char *fileTypeStr, Char *pathStr, UInt16 *bufLenP) {
   vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
+  UInt32 i, len;
   Err err = sysErrParamErr;
 
-  debug(DEBUG_ERROR, PALMOS_MODULE, "VFSGetDefaultDirectory \"%s\" not implemented", fileTypeStr);
   checkvol(module, volRefNum);
 
   if (fileTypeStr && pathStr && bufLenP) {
-    StrNCopy(pathStr, "/", *bufLenP);
-    *bufLenP = 1;
-    err = errNone;
+    for (i = 0; i < MAX_DEFDIR; i++) {
+      if (module->defaultDirectory[i].type && module->defaultDirectory[i].path && !StrCompare(module->defaultDirectory[i].type, fileTypeStr)) {
+        len = StrLen(module->defaultDirectory[i].path) + 1;
+        if (*bufLenP >= len) {
+          err = errNone;
+        } else {
+          len = *bufLenP;
+          err = vfsErrBufferOverflow;
+        }
+        MemMove(pathStr, module->defaultDirectory[i].path, len);
+        *bufLenP = len;
+        debug(DEBUG_INFO, PALMOS_MODULE, "VFSGetDefaultDirectory \"%s\" \"%s\"", fileTypeStr, pathStr);
+        break;
+      }
+    }
+    if (i == MAX_DEFDIR) {
+      err = vfsErrBadName;
+    }
   }
 
   return_err(err);
 }
 
 Err VFSRegisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType, const Char *pathStr) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char stype[8];
+  UInt32 i;
+  Err err = sysErrParamErr;
 
-  if (fileTypeStr && pathStr) {
-    pumpkin_id2s(mediaType, stype);
-    debug(DEBUG_ERROR, PALMOS_MODULE, "VFSRegisterDefaultDirectory \"%s\" '%s' \"%s\" not implemented", fileTypeStr, stype, pathStr);
+  if (fileTypeStr && pathStr && module->numDefDir < MAX_DEFDIR) {
+    for (i = 0; i < MAX_DEFDIR; i++) {
+      if (module->defaultDirectory[i].type && !StrCompare(module->defaultDirectory[i].type, fileTypeStr)) {
+        err = vfsErrFileAlreadyExists;
+        break;
+      }
+    }
+    if (err != vfsErrFileAlreadyExists) {
+      for (i = 0; i < MAX_DEFDIR; i++) {
+        if (module->defaultDirectory[i].type == NULL) {
+          module->defaultDirectory[i].type = StrDup(fileTypeStr);
+          module->defaultDirectory[i].path = StrDup(pathStr);
+          pumpkin_id2s(mediaType, stype);
+          debug(DEBUG_INFO, PALMOS_MODULE, "VFSRegisterDefaultDirectory \"%s\" '%s' \"%s\"", fileTypeStr, stype, pathStr);
+          module->numDefDir++;
+          err = errNone;
+          break;
+        }
+      }
+    }
   }
 
-  return_err(errNone);
+  return_err(err);
 }
 
 Err VFSUnregisterDefaultDirectory(const Char *fileTypeStr, UInt32 mediaType) {
+  vfs_module_t *module = (vfs_module_t *)pumpkin_get_local_storage(vfs_key);
   char stype[8];
+  UInt32 i;
+  Err err = sysErrParamErr;
 
   if (fileTypeStr) {
-    pumpkin_id2s(mediaType, stype);
-    debug(DEBUG_ERROR, PALMOS_MODULE, "VFSUnregisterDefaultDirectory \"%s\" '%s' not implemented", fileTypeStr, stype);
+    for (i = 0; i < MAX_DEFDIR; i++) {
+      if (module->defaultDirectory[i].type && !StrCompare(module->defaultDirectory[i].type, fileTypeStr)) {
+        MemPtrFree(module->defaultDirectory[i].type);
+        if (module->defaultDirectory[i].path) MemPtrFree(module->defaultDirectory[i].path);
+        module->defaultDirectory[i].type = NULL;
+        module->defaultDirectory[i].path = NULL;
+        pumpkin_id2s(mediaType, stype);
+        debug(DEBUG_INFO, PALMOS_MODULE, "VFSUnregisterDefaultDirectory \"%s\" '%s'", fileTypeStr, stype);
+        err = errNone;
+        break;
+      }
+    }
+    if (i == MAX_DEFDIR) {
+      err = vfsErrFileNotFound;
+    }
   }
 
-  return_err(errNone);
+  return_err(err);
 }
 
 Err VFSVolumeFormat(UInt8 flags, UInt16 fsLibRefNum, VFSAnyMountParamPtr vfsMountParamP) {
