@@ -539,17 +539,19 @@ char *BmpGetDescr(BitmapType *bitmapP, char *buf, UInt16 size) {
 
 BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const void *bitsP, const ColorTableType *colorTableP) {
   BitmapType *newBmp = NULL;
+  BitmapCompressionType compression;
   Coord width, height;
   UInt32 colorTableSize, newSize, index, entry, transparentValue, addr;
   UInt16 rowBytes, numEntries, i;
   UInt8 version, depth;
   UInt8 *ram, *bitmapColorTable;
-  Boolean le, hasColorTable, isDirectColor, indirectColorTable, hasTransparency;
+  Boolean le, compressed, hasColorTable, isDirectColor, indirectColorTable, hasTransparency, delete;
 
   if (bitmapP && bitsP) {
     bitmapP = BmpSkipEmptySlot((BitmapType *)bitmapP);
     version = BmpGetVersion(bitmapP);
     le = BmpLittleEndian(bitmapP);
+    compressed = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagCompressed);
     hasColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagHasColorTable);
     isDirectColor = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagDirectColor);
     indirectColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirectColorTable);
@@ -675,8 +677,30 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
         }
       }
 
-      // copy the pixels
-      MemMove((UInt8 *)newBmp + index, bitsP, rowBytes * height);
+      delete = false;
+      if (compressed) {
+        compression = BmpGetCompressionType(bitmapP);
+        BmpSetCommonFlag(newBmp, BitmapFlagCompressed, 0);
+        if (compression != BitmapCompressionTypeNone) {
+          BmpV3SetField(newBmp, BitmapV3FieldCompressionType, BitmapCompressionTypeNone);
+          if ((bitmapP = BmpDecompressBitmap((BitmapType *)bitmapP)) != NULL) {
+            bitsP = BmpGetBits((BitmapType *)bitmapP);
+            delete = true;
+          } else {
+            BmpDelete(newBmp);
+            newBmp = NULL;
+          }
+        }
+      }
+
+      if (newBmp) {
+        // copy the pixels
+        MemMove((UInt8 *)newBmp + index, bitsP, rowBytes * height);
+      }
+
+      if (delete) {
+        BmpDelete((BitmapType *)bitmapP);
+      }
     }
   }
 
