@@ -106,6 +106,8 @@ void CtlDrawControl(ControlType *controlP) {
       WinSetTextColor(objSelFore);
     }
 
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+
     // erase the control background
     switch (controlP->style) {
       case buttonCtl:
@@ -119,6 +121,12 @@ void CtlDrawControl(ControlType *controlP) {
             WinEraseRectangle(&controlP->bounds, 0);
             break;
         }
+        break;
+      case sliderCtl:
+      case feedbackSliderCtl:
+        objFill = UIColorGetTableEntryIndex(UIFormFill);
+        WinSetBackColor(objFill);
+        WinEraseRectangle(&controlP->bounds, 0);
         break;
       case pushButtonCtl:
       case selectorTriggerCtl:
@@ -189,7 +197,7 @@ void CtlDrawControl(ControlType *controlP) {
           }
         }
 
-	// draw the control frame (if any)
+        // draw the control frame (if any)
         WinSetForeColor(objFore);
         switch (controlP->style) {
           case buttonCtl:
@@ -220,6 +228,8 @@ void CtlDrawControl(ControlType *controlP) {
         break;
 
       case checkboxCtl:
+        objFill = UIColorGetTableEntryIndex(UIFormFill);
+        WinSetBackColor(objFill);
         old = FntSetFont(checkboxFont);
         WinDrawChar(controlP->attr.on ? 1 : 0, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y);
         if (controlP->text) {
@@ -232,6 +242,8 @@ void CtlDrawControl(ControlType *controlP) {
 
       case popupTriggerCtl:
         if (controlP->text) {
+          objFill = UIColorGetTableEntryIndex(UIFormFill);
+          WinSetBackColor(objFill);
           WinSetTextColor(objFore);
           WinEraseRectangle(&controlP->bounds, 0); // XXX it is not erasing all of it
           old = FntSetFont(controlP->font);
@@ -256,7 +268,17 @@ void CtlDrawControl(ControlType *controlP) {
         mode = WinSetDrawMode(winPaint);
         if ((h = DmGetResource(bitmapRsc, sc->backgroundID)) != NULL) {
           if ((bmp = MemHandleLock(h)) != NULL) {
-            WinPaintBitmap(bmp, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y);
+            WinSetClip(&controlP->bounds);
+            BmpGetDimensions(bmp, &bw, &bh, &rb);
+            if (bw <= controlP->bounds.extent.x) {
+              WinPaintBitmap(bmp, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y);
+            } else {
+              RctSetRectangle(&rect, 0, 0, controlP->bounds.extent.x - 16, bh);
+              WinBlitBitmap(bmp, WinGetDrawWindow(), &rect, controlP->bounds.topLeft.x, controlP->bounds.topLeft.y, winPaint, false);
+              RctSetRectangle(&rect, bw - 16, 0, 16, bh);
+              WinBlitBitmap(bmp, WinGetDrawWindow(), &rect, controlP->bounds.topLeft.x + controlP->bounds.extent.x - 16, controlP->bounds.topLeft.y, winPaint, false);
+            }
+            WinResetClip();
             MemHandleUnlock(h);
           }
           DmReleaseResource(h);
@@ -273,6 +295,8 @@ void CtlDrawControl(ControlType *controlP) {
         WinSetDrawMode(mode);
         break;
     }
+
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
 
     WinSetPatternType(oldPattern);                                                                                                                                                        
     WinSetBackColor(oldb);
