@@ -156,7 +156,7 @@ void LstEraseList(ListType *listP) {
 }
 
 Int16 LstGetSelection(const ListType *listP) {
-  return listP ? listP->currentItem : noListSelection;
+  return listP  && listP->numItems > 0 ? listP->currentItem : noListSelection;
 }
 
 Char *LstGetSelectionText(const ListType *listP, Int16 itemNum) {
