@@ -59,9 +59,18 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
 
   switch (group) {
     case 1: // DAL
-      sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in DAL", function);
-      emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
-      r0 = 0;
+      switch (function) {
+        case 0x204:
+          // HALOEMGetDeviceID ?
+          debug(DEBUG_ERROR, "ARM", "arm syscall HALOEMGetDeviceID undocumented");
+          r0 = 0;
+          break;
+        default:
+          sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in DAL", function);
+          emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
+          r0 = 0;
+          break;
+      }
       break;
     case 2: // BOOT
       switch (function) {
@@ -366,6 +375,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0x4C0: {
+          // Int16 MemCmp(const void *s1, const void *s2, Int32 numBytes)
+          void *s1 = r0 ? (void *)(ram + r0) : NULL;
+          void *s2 = r1 ? (void *)(ram + r1) : NULL;
+          r = MemCmp(s1, s2, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall MemCmp(0x%08X, 0x%08X, %d): %d", r0, r1, r2, r);
+          r0 = r;
+          }
+          break;
         case 0x4E4: {
           MemHandle h = r0 ? (MemHandle)(ram + r0) : NULL;
           uint8_t *p = MemHandleLock(h);
@@ -445,6 +463,14 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
+        case 0x770: {
+          // Int32 StrAToI(const Char *str)
+          char *str = r0 ? (char *)(ram + r0) : NULL;
+          r = StrAToI(str);
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrAToI(0x%08X): %d", r0, r);
+          r0 = r;
+          }
+          break;
         case 0x774: {
           // Int16 StrCaselessCompare(const Char *s1, const Char *s2)
           char *s1 = r0 ? (char *)(ram + r0) : NULL;
@@ -461,6 +487,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           char *s = StrCat(s1, s2);
           r = s ? (uint8_t *)s - ram : 0;
           debug(DEBUG_TRACE, "ARM", "arm syscall StrCat(0x%08X, 0x%08X): 0x%08X", r0, r1, r);
+          r0 = r;
+          }
+          break;
+        case 0x77C: {
+          // Char *StrChr(const Char *str, WChar chr)
+          char *str = r0 ? (char *)(ram + r0) : NULL;
+          char *s = StrChr(str, r1);
+          r = s ? (uint8_t *)s - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrChr(0x%08X, %d): 0x%08X", r0, r1, r);
           r0 = r;
           }
           break;
@@ -497,6 +532,16 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           void *src = r0 ? ram + r0 : NULL;
           r = StrLen(src);
           debug(DEBUG_TRACE, "ARM", "arm syscall StrLen(0x%08X): %u", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0x7B0: {
+          // Char *StrNCopy(Char *dst, const Char *src, Int16 n)
+          char *dst = r0 ? (char *)(ram + r0) : NULL;
+          char *src = r1 ? (char *)(ram + r1) : NULL;
+          char *s = StrNCopy(dst, src, r2);
+          r = s ? (uint8_t *)s - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall StrNCopy(0x%08X, 0x%08X, %d): 0x%08X", r0, r1, r2, r);
           r0 = r;
           }
           break;
@@ -844,6 +889,19 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0xA98: {
+          // Err VFSFileSize(FileRef fileRef, UInt32 *fileSizeP)
+          uint32_t proxyP = r0;
+          FileRefProxy *proxy = (FileRefProxy *)(ram + proxyP);
+          r = vfsErrFileBadRef;
+          if (proxy && proxy->magic == FILEREF_MAGIC) {
+            UInt32 *fileSizeP = r1 ? (UInt32 *)(ram + r1) : NULL;
+            r = VFSFileSize(proxy->ref, fileSizeP);
+          }
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileSize(0x%08X, 0x%08X): %d", r0, r1, r);
+          r0 = r;
+          }
+          break;
         case 0xA9C: {
           // Err VFSFileTell(FileRef fileRef, UInt32 *filePosP)
           uint32_t proxyP = r0;
@@ -868,6 +926,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
             r = VFSFileWrite(proxy->ref, r1, bufP, numBytesWrittenP);
           }
           debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileWrite(0x%08X, %u, 0x%08X, 0x%08X): %d", r0, r1, r2, r3, r);
+          r0 = r;
+          }
+          break;
+        case 0xACC: {
+          // Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP)
+          UInt16 *volRefNumP = r0 ? (UInt16 *)(ram + r0) : NULL;
+          UInt32 *volIteratorP = r1 ? (UInt32 *)(ram + r1) : NULL;
+          r = VFSVolumeEnumerate(volRefNumP, volIteratorP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSVolumeEnumerate(0x%08X, 0x%08X): %d", r0, r1, r);
           r0 = r;
           }
           break;
