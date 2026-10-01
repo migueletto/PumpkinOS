@@ -669,6 +669,7 @@ Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
       case vfsIteratorStart:
       case 0x80000000: // XXX WinLauncher passes volIterator = 0x80000000
         if (num == 0) {
+          *volRefNumP = vfsInvalidVolRef;
           *volIteratorP = vfsIteratorStop;
           err = expErrEnumerationEmpty;
         } else if (num == 1) {
@@ -682,11 +683,12 @@ Err VFSVolumeEnumerate(UInt16 *volRefNumP, UInt32 *volIteratorP) {
         }
         break;
       case vfsIteratorStop:
-        *volRefNumP = num;
+        *volRefNumP = vfsInvalidVolRef;
         err = sysErrParamErr;
         break;
       default:
         if (num <= 1 || *volIteratorP >= num) {
+          *volRefNumP = vfsInvalidVolRef;
           err = sysErrParamErr;
         } else if (*volIteratorP == num - 1) {
           *volRefNumP = num;
