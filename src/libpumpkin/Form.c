@@ -1284,15 +1284,19 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     WinSetDrawWindow(oldDraw);
   }
 
-  // erase form background
-  //MemMove(&aux, &formP->window.windowBounds, sizeof(RectangleType));
-  RctSetRectFromWin(&aux, &formP->window);
-  aux.topLeft.x = 0;
-  aux.topLeft.y = 0;
-  formFill = UIColorGetTableEntryIndex(UIFormFill);
-  old = WinSetBackColor(formFill);
-  WinEraseRectangle(&aux, 0);
-  WinSetBackColor(old);
+  if (FrmGetNumberOfObjects(formP) > 1) {
+    // erase form background
+    // XXX Knockdown Karate assumes that a FrmDrawForm() will not erase
+    // the background. Its form has only one object: the title.
+    // Maybe in such cases the form background can not be erased?
+    RctSetRectFromWin(&aux, &formP->window);
+    aux.topLeft.x = 0;
+    aux.topLeft.y = 0;
+    formFill = UIColorGetTableEntryIndex(UIFormFill);
+    old = WinSetBackColor(formFill);
+    WinEraseRectangle(&aux, 0);
+    WinSetBackColor(old);
+  }
 }
 
 void FrmDrawForm(FormType *formP) {
