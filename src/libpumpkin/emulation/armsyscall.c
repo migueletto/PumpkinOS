@@ -20,13 +20,11 @@
 #define READ16(a) (((uint16_t *)ram)[(a)>>1])
 #define READ32(a) (((uint32_t *)ram)[(a)>>2])
 
-#undef ARG8
 #undef ARG16
 #undef ARG32
 
-#define ARG8  0
-#define ARG16 0
-#define ARG32 0
+#define ARG16() getarg16(ram, &v_arg, r2, r3, sp)
+#define ARG32() getarg32(ram, &v_arg, r2, r3, sp)
 
 typedef struct {
   UInt32 dbType;
@@ -42,14 +40,53 @@ typedef struct {
   UInt16 reserved;
 } SysModuleDescriptorType;
 
-/*
-     27 0x0A78 VFSFileOpen
-      1 0x0BD0 WinPaintChars
-      2 0x0BE4 WinPaintRectangle
-      2 0x0C34 WinSetDrawMode
-      2 0x0C40 WinSetForeColorRGB
-      1 0x0C50 WinSetTextColorRGB
-*/
+static uint16_t getarg16(uint8_t *ram, uint32_t *i, uint32_t r2, uint32_t r3, uint32_t sp) {
+  uint16_t r = 0;
+
+  switch (*i) {
+    case 0:
+    case 1:
+      // does not happen
+      break;
+    case 2:
+      r = r2;
+      break;
+    case 3:
+      r = r3;
+      break;
+    default:
+      r = ((uint16_t *)ram)[(sp >> 1) + (*i) - 4];
+      break;
+  }
+
+  *i = *i + 1;
+
+  return r;
+}
+
+static uint32_t getarg32(uint8_t *ram, uint32_t *i, uint32_t r2, uint32_t r3, uint32_t sp) {
+  uint32_t r = 0;
+
+  switch (*i) {
+    case 0:
+    case 1:
+      // does not happen
+      break;
+    case 2:
+      r = r2;
+      break;
+    case 3:
+      r = r3;
+      break;
+    default:
+      r = ((uint32_t *)ram)[(sp >> 2) + (*i) - 4];
+      break;
+  }
+
+  *i = *i + 1;
+
+  return r;
+}
 
 uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t sp) {
   uint8_t *ram = pumpkin_heap_base();
@@ -61,8 +98,8 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
     case 1: // DAL
       switch (function) {
         case 0x204:
-          // HALOEMGetDeviceID ?
-          debug(DEBUG_ERROR, "ARM", "arm syscall HALOEMGetDeviceID undocumented");
+          // HALOEMGetDeviceID
+          debug(DEBUG_ERROR, "ARM", "undocumented arm syscall HALOEMGetDeviceID(0x%08X, 0x%08X, 0x%08X, 0x%08X)", r0, r1, r2, r3);
           r0 = 0;
           break;
         default:
@@ -232,9 +269,11 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           EvtGetPen(pScreenX, pScreenY, pPenDown);
           UInt32 density;
           WinScreenGetAttribute(winScreenDensity, &density);
+/*
           debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetPen(0x%08X [%d], 0x%08X [%d], 0x%08X [%d]) (coordSys=%d/%d density=%d)",
             r0, pScreenX ? *pScreenX : 0, r1, pScreenY ? *pScreenY : 0, r2, pPenDown ? *pPenDown : 0,
             WinGetCoordinateSystem(), WinGetRealCoordinateSystem(), density);
+*/
           }
           break;
         case 0x2CC:
@@ -344,7 +383,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
         case 0x48C:
           // UInt32 KeyCurrentState(void)
           r0 = KeyCurrentState();
-          debug(DEBUG_TRACE, "ARM", "arm syscall KeyCurrentState(): 0x%08X", r0);
+          //debug(DEBUG_TRACE, "ARM", "arm syscall KeyCurrentState(): 0x%08X", r0);
           break;
         case 0x494:
           // UInt32 KeySetMask(UInt32 keyMask)
@@ -455,6 +494,14 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
+        case 0x5A8:
+          // Err MemSemaphoreRelease(Boolean writeAccess)
+          r0 = errNone;
+          break;
+        case 0x5AC:
+          // Err MemSemaphoreReserve(Boolean writeAccess)
+          r0 = errNone;
+          break;
         case 0x5B0: {
           // Err MemSet(void *dstP, Int32 numBytes, UInt8 value)
           void *dstP = r0 ? ram + r0 : NULL;
@@ -560,7 +607,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
             if (vararg) {
               v_arg = r2;
             } else {
-              v_arg = 0;
+              v_arg = 2;
             }
             for (i = 0, p = s; f[i]; i++) {
               switch (t) {
@@ -602,10 +649,11 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
                         }
                       } else {
                         switch (sz) {
-                          case 1:  arg = ARG8;  break;
-                          case 2:  arg = ARG16; break;
-                          case 4:  arg = ARG32; break;
-                          default: arg = ARG16; break;
+                          case 1:  arg = ARG16() & 0xff; break;
+                          case 2:  arg = ARG16(); break;
+                          case 4:  arg = ARG32(); break;
+                          case 8:  arg = ARG32(); arg = ARG32(); break;
+                          default: arg = ARG16(); break;
                         }
                       }
                       fmt[j++] = f[i];
@@ -620,7 +668,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
                         arg = READ16(v_arg) & 0xff;
                         v_arg += 2;
                       } else {
-                        arg = ARG8;
+                        arg = ARG16() & 0xff;
                       }
                       fmt[j++] = f[i];
                       fmt[j] = 0;
@@ -633,7 +681,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
                         arg = READ32(v_arg);
                         v_arg += 4;
                       } else {
-                        arg = ARG32;
+                        arg = ARG32();
                       }
                       q = (char *)(ram + arg);
                       fmt[j++] = f[i];
@@ -651,7 +699,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
                         arglen = READ16(v_arg);
                         v_arg += 2;
                       } else {
-                        arglen = ARG16;
+                        arglen = ARG16();
                       }
                       break;
                     case '%':
@@ -692,6 +740,13 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall SysCurAppDatabaseV40(0x%08X, 0x%08X): %u", r0, r1, err);
           r0 = err;
           }
+          break;
+        case 0x81C:
+          // In PalmOS 6, SysEventAvail is an alias to EvtSysEventAvail
+          // Boolean EvtSysEventAvail(Boolean ignorePenUps)
+          r = EvtSysEventAvail(r0);
+          //debug(DEBUG_TRACE, "ARM", "arm syscall SysEventAvail(%d): %d", r0, r);
+          r0 = r;
           break;
         case 0x824:
           // #define SysEventGet(eventP, timeOut) EvtGetEvent((EventType *)eventP, timeOut)
@@ -806,7 +861,13 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           // UInt32 TimGetTicks(void)
           // in ARM syscall, TimGetTicks() returns milliseconds, not ticks
           r0 = TimGetTicksMs();
-          debug(DEBUG_TRACE, "ARM", "arm syscall TimGetTicks(): %u", r0);
+          //debug(DEBUG_TRACE, "ARM", "arm syscall TimGetTicks(): %u", r0);
+          break;
+        case 0x92C:
+          // void TimSecondsToDateTime(UInt32 seconds, DateTimeType *dateTimeP)
+          DateTimeType *dateTimeP = (DateTimeType *)(ram + r1);
+          TimSecondsToDateTime(r0, dateTimeP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall TimSecondsToDateTime(%u, 0x%08X)", r0, r1);
           break;
         case 0xA40: {
           // Err VFSDirEntryEnumerate(FileRef dirRef, UInt32 *dirEntryIteratorP, FileInfoType *infoP)
@@ -839,6 +900,22 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
             if (proxy) pumpkin_heap_free(proxy, "FileProxy");
           }
           debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileClose(0x%08X): %d", r0, r);
+          r0 = r;
+          }
+          break;
+        case 0xA58: {
+          // Err VFSFileCreate(UInt16 volRefNum, const Char *pathNameP)
+          char *name = (char *)(ram + r1);
+          r = VFSFileCreate(r0, name);
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileCreate(%u, \"%s\"): %d", r0, name, r);
+          r0 = r;
+          }
+          break;
+        case 0xA68: {
+          // Err VFSFileDelete(UInt16 volRefNum, const Char *pathNameP)
+          char *name = (char *)(ram + r1);
+          r = VFSFileDelete(r0, name);
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSFileDelete(%u, \"%s\"): %d", r0, name, r);
           r0 = r;
           }
           break;
@@ -938,6 +1015,23 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0xAD4: {
+          // Err VFSVolumeGetLabel(UInt16 volRefNum, Char *labelP, UInt16 bufLen)
+          char *labelP = r1 ? (char *)(ram + r1) : NULL;
+          r = VFSVolumeGetLabel(r0, labelP, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSVolumeGetLabel(%d, 0x%08X, %u): %d", r0, r1, r2, r);
+          r0 = r;
+          }
+          break;
+        case 0xAE4: {
+          // Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP)
+          UInt32 *volumeUsedP = r1 ? (UInt32 *)(ram + r1) : NULL;
+          UInt32 *volumeTotalP = r2 ? (UInt32 *)(ram + r2) : NULL;
+          r = VFSVolumeSize(r0, volumeUsedP, volumeTotalP);
+          debug(DEBUG_TRACE, "ARM", "arm syscall VFSVolumeSize(%d, 0x%08X, 0x%08X): %d", r0, r1, r2, r);
+          r0 = r;
+          }
+          break;
         case 0xAF4: {
           // void WinCopyRectangle(WinHandle srcWin, WinHandle dstWin, const RectangleType *srcRect, Coord dstX, Coord dstY, WinDrawOperation mode)
           WinHandle srcWin = r0 ? (WinHandle)(ram + r0) : NULL;
@@ -962,6 +1056,15 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0xAFC: {
+          // WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error)
+          UInt16 *error = r3 ? (UInt16 *)(ram + r3) : NULL;
+          WinHandle wh = WinCreateOffscreenWindow(r0, r1, r2, error);
+          r = wh ? (uint8_t *)wh - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinCreateOffscreenWindow(%d, %d, %d, 0x%08X): 0x%08X", r0, r1, r2, r3, r);
+          r0 = r;
+          }
+          break;
         case 0xB04: {
           // void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt)
           WinHandle wh = r0 ? (WinHandle)(ram + r0) : NULL;
@@ -981,6 +1084,11 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           WinDrawChars(chars, r1, r2, r3);
           }
           break;
+        case 0xB28:
+          // void WinDrawLine(Coord x1, Coord y1, Coord x2, Coord y2)
+          WinDrawLine(r0, r1, r2, r3);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinDrawLine(%d, %d, %d, %d)", r0, r1, r2, r3);
+          break;
         case 0xB58:
           // void WinEraseWindow(void)
           WinEraseWindow();
@@ -995,11 +1103,25 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = r;
           }
           break;
+        case 0xB70:
+          // void WinGetDisplayExtent(Coord *extentX, Coord *extentY)
+          Coord *extentX = r0 ? (Coord *)(ram + r0) : NULL;
+          Coord *extentY = r1 ? (Coord *)(ram + r1) : NULL;
+          WinGetDisplayExtent(extentX, extentY);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetDisplayExtent(0x%08X, 0x%08X)", r0, r1);
+          break;
         case 0xB74: {
           // WinHandle WinGetDisplayWindow(void)
           WinHandle wh = WinGetDisplayWindow();
           r0 = wh ? (uint8_t *)wh - ram : 0;
           debug(DEBUG_TRACE, "ARM", "arm syscall WinGetDisplayWindow(): 0x%08X", r0);
+          }
+          break;
+        case 0xB78: {
+          // WinHandle WinGetDrawWindow(void)
+          WinHandle wh = WinGetDrawWindow();
+          r0 = wh ? (uint8_t *)wh - ram : 0;
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetDrawWindow(): 0x%08X", r0);
           }
           break;
         case 0xBD0: {
