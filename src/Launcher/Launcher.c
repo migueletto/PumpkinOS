@@ -2327,7 +2327,7 @@ void showDynamicForm(const dynamic_form_item_t *items, char *title, void (*callb
           x = 65 - width - 4;
           FrmNewLabel(&formP, 2000+id, items[i].label, x, y, boldFont);
           x = 65;
-          width = FntCharWidth(items[i].type == numericItem ? '0' : 'w') * items[i].maxChars;
+          width = (FntCharWidth(items[i].type == numericItem ? '0' : 'w') + 1) * items[i].maxChars;
           if (x + width >= formW-4) width = formW - 4 - x;
           FldNewField((void **)&formP, 1000+id, x, y, width, height+2, stdFont, items[i].maxChars, true, true,
             true, false, leftAlign, false, false, items[i].type == numericItem);
