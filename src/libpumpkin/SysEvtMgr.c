@@ -57,7 +57,6 @@ UInt32 EvtKeyQueueSize(void) {
 }
 
 Err EvtFlushKeyQueue(void) {
-  debug(DEBUG_ERROR, "PALMOS", "EvtFlushKeyQueue not implemented");
   return errNone;
 }
 
