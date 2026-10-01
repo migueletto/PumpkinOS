@@ -4367,7 +4367,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
     i += get4b(&uniqueIDSeed, database, i);
     i += get4b(&dummy32, database, i);  // nextRecordListID
     i += get2b(&numRecs, database, i);  // numberOfRecords
-    debug(DEBUG_INFO, "STOR", "DmCreateDatabaseFromImage \"%s\" with %d recs", name, numRecs);
+    debug(DEBUG_INFO, "STOR", "DmCreateDatabaseFromImage \"%s\" with %d recs (nextList %u 0x%08X)", name, numRecs, dummy32, dummy32);
 
     if (DmCreateDatabaseEx(name, creator, type, attr, uniqueIDSeed, true) == errNone) {
       if ((dbID = DmFindDatabase(0, name)) != 0) {
@@ -4398,6 +4398,12 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
             } else {
               for (j = 0; j < numRecs; j++) {
                 i += get4b(&offsets[j], database, i);
+                if (j > 0 && offsets[j] < offsets[j-1]) {
+                  debug(DEBUG_ERROR, "STOR", "corrupted offset at record %d", j);
+                  DmCloseDatabase(dbRef);
+                  DmDeleteDatabase(0, dbID);
+                  return err;
+                }
                 i += get1(&dummy8, database, i);
                 attrs[j] = dummy8;
                 i += get1(&dummy8, database, i);
