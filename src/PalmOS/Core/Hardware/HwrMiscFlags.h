@@ -184,7 +184,7 @@
 #define hwrOEMCompanyIDQualcomm		'qcom'			// Devices made by Qualcomm
 #define hwrOEMCompanyIDTRG			'trgp'			// Devices made by TRG Products
 #define hwrOEMCompanyIDHandspring	'hspr'			// Devices made by Handspring
-#define hwrOEMCompanyIDSony			'sony'			// Devices made by Sony
+//#define hwrOEMCompanyIDSony			'sony'			// Devices made by Sony
 
 // Note that values for hwrOEMDeviceID (aka sysFtrNumOEMDeviceID) and
 // hwrOEMHALID (aka sysFtrNumOEMHALID) are OEM vendor-specific, and not

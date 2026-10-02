@@ -151,15 +151,18 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   regOsP = pumpkin_reg_get(creator, regOsID, &regSize);
   osversion = regOsP ? regOsP->version : pumpkin_get_default_osversion();
+  if (regOsP) MemPtrFree(regOsP);
 
   regDispP = pumpkin_reg_get(creator, regDisplayID, &regSize);
   density = regDispP ? regDispP->density : pumpkin_get_density();
   depth = regDispP ? (regDispP->depth & 0x7FFF) : pumpkin_get_depth();
   littleEndian = regDispP ? ((regDispP->depth & 0x8000) == 0x8000) : false;
+  if (regDispP) MemPtrFree(regDispP);
 
   regHeapP = pumpkin_reg_get(creator, regHeapID, &regSize);
   heapSize = regHeapP ? regHeapP->heapSize : 8;
   heapAlign = regHeapP ? regHeapP->heapAlign : 0;
+  if (regHeapP) MemPtrFree(regHeapP);
 
   regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize);
   enableSound = regRunFlagsP ? (regRunFlagsP->flags & regRunFlagSound) == regRunFlagSound : 0;
@@ -297,6 +300,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
     // update sound
     regRunFlags.flags = regRunFlagsP ? regRunFlagsP->flags : 0;
+    if (regRunFlagsP) MemPtrFree(regRunFlagsP);
     index = FrmGetObjectIndex(frm, enableSoundCtl);
     ctl = FrmGetObjectPtr(frm, index);
     if (CtlGetValue(ctl)) {
@@ -308,6 +312,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
     // update fastScreenWrite, armScreenWrite and lenientMemCheck
     regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
+    if (regFlagsP) MemPtrFree(regFlagsP);
 
     index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
     ctl = FrmGetObjectPtr(frm, index);

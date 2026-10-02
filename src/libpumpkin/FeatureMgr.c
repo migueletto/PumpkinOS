@@ -4,6 +4,9 @@
 #include <HsExtCommon.h>
 #include <INetMgr.h>
 
+#define NON_PORTABLE
+#include <HwrMiscFlags.h>
+
 #include "RegistryMgr.h"
 #include "bytes.h"
 #include "debug.h"
@@ -98,6 +101,7 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
   }
 
   osversion = pumpkin_get_osversion();
+  regFlags = pumpkin_reg_get(pumpkin_get_app_creator(), regFlagsID, &regSize);
 
   switch (creator) {
     case sysFileCSystem:
@@ -146,8 +150,12 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           break;
         case sysFtrNumOEMCompanyID:
           if (osversion >= 35) {
-            *valueP = pumpkin_get_id_option("companyID");
-            if (*valueP == 0) *valueP = 'Palm';
+            if (regFlags && regFlags->flags & regFlagHandspringExt) {
+              *valueP = hwrOEMCompanyIDHandspring;
+            } else {
+              *valueP = pumpkin_get_id_option("companyID");
+              if (*valueP == 0) *valueP = hwrOEMCompanyIDPalmDevices;
+            }
             err = errNone;
           }
           break;
@@ -354,7 +362,6 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
       }
       break;
     case hsFtrCreator:
-      regFlags = pumpkin_reg_get(pumpkin_get_app_creator(), regFlagsID, &regSize);
       if (regFlags && regFlags->flags & regFlagHandspringExt) {
         switch (featureNum) {
           case hsFtrIDVersion:
@@ -382,6 +389,8 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
       }
       break;
   }
+
+  if (regFlags) MemPtrFree(regFlags);
 
   return err;
 }
