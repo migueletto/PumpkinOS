@@ -180,7 +180,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       emupalmos_trap_in(refNumP, trap, 2);
       if (refNumP) {
         uint16_t refNum = m68k_read_memory_16(refNumP);
-        if (refNum > BASE_SYSLIBS) {
+        if (refNum > BASE_SYSLIBS && refNum < BASE_SYSLIBS+MAX_SYSLIBS) {
           if (SysLibLoad(libType, libCreator, &refNum) == errNone) {
             m68k_set_reg(M68K_REG_D0, errNone);
             break;
