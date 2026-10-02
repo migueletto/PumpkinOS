@@ -39,6 +39,7 @@ struct arm_emu_t {
   uint32_t displayStartAddr, displayEndAddr;
   uint32_t displayWidth, displayHeight, displayDepth, displayPitch, pixelSize;
   uint32_t x0, y0, x1, y1, lastY;
+  uint32_t count;
   int displayWrite;
 };
 
@@ -119,6 +120,10 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   }
 
   if (addr >= 0x04000000) {
+    if (arm->armScreenWrite) {
+      pumpkin_dirty_region_mode(dirtyRegionReset);
+    }
+
     // native ARM syscall emulation: the address identifies which syscall is being called,
     // no matter which instruction is contained in that address.
     uint32_t group, function;
@@ -225,7 +230,9 @@ static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address
     if (y > arm->y1) arm->y1 = y;
 
     if ((x == arm->displayWidth-1 && y == arm->displayHeight-1) ||
-        ((y > arm->lastY && y - arm->lastY > 1) || y < arm->lastY)) {
+        ((y > arm->lastY && y - arm->lastY > 1) || y < arm->lastY) ||
+        arm->count >= 1024) {
+
       if (arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
         pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
         pumpkin_dirty_region_mode(dirtyRegionReset);
@@ -236,6 +243,7 @@ static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address
         arm->x1 = 0;
         arm->y1 = 0;
         arm->lastY = y;
+        arm->count = 0;
         return true;
       }
     }
@@ -245,6 +253,7 @@ static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address
       arm->displayWrite = 1;
     }
     arm->lastY = y;
+    arm->count++;
   }
 
   return true;
