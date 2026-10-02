@@ -10,6 +10,7 @@
 #include "mutex.h"
 #include "storage.h"
 #include "pumpkin.h"
+#include "RegistryMgr.h"
 #include "syslibs.h"
 #include "bytes.h"
 #ifdef ARMEMU
@@ -51,7 +52,8 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
 }
 
 uint32_t palmos_systrap(uint16_t trap) {
-  uint32_t sp, trapAddress;
+  RegFlagsType *regFlags;
+  uint32_t sp, trapAddress, regSize;
   uint16_t idx, selector;
   char buf[256], screator[8];
   char *s;
@@ -114,15 +116,24 @@ uint32_t palmos_systrap(uint16_t trap) {
       palmos_lmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
     case sysTrapOEMDispatch:
-      selector = ARG16;
-      palmos_oemtrap(sp, idx, selector);
+      regFlags = pumpkin_reg_get(pumpkin_get_app_creator(), regFlagsID, &regSize);
+      if (regFlags && regFlags->flags & regFlagHandspringExt) {
+        selector = ARG16;
+        palmos_oemtrap(sp, idx, selector);
+        // it is necessary to remove the selector from the stack ourselves
+        m68k_set_reg(M68K_REG_SP, sp+2);
+      } else {
+        uint16_t selector;
+        sys_snprintf(buf, sizeof(buf)-1, "trap 0x%04X %s not mapped (handspringExt not set)",
+          trap, logtrap_trapname(state->lt, trap, &selector, 0));
+        emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
+      }
       break;
     case sysTrapNavSelector:
       selector = ARG16;
       palmos_navtrap(sp, idx, selector);
+      m68k_set_reg(M68K_REG_SP, sp+2);
       break;
-
-    //#include "switch.c"
 
     case sysTrapSysAppStartup: {
       // Err SysAppStartup(SysAppInfoPtr *appInfoPP, MemPtr *prevGlobalsP, MemPtr *globalsPtrP)

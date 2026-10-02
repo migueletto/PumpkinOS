@@ -84,10 +84,13 @@
 #define enableSoundCtl     2020
 #define fastScreenWriteLbl 2021
 #define fastScreenWriteCtl 2022
-#define armScreenWriteCtl  2023
-#define armScreenWriteLbl  2024
-#define lenientMemCheckCtl 2025
-#define lenientMemCheckLbl 2026
+#define armScreenWriteLbl  2023
+#define armScreenWriteCtl  2024
+#define lenientMemCheckLbl 2025
+#define lenientMemCheckCtl 2026
+
+#define handspringExtLbl   3001
+#define handspringExtCtl   3002
 
 #define moveBmp     52001
 #define drawBmp     52002

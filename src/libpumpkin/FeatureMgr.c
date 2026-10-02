@@ -77,19 +77,20 @@ Err FtrInit(void) {
 
 static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *ptr) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
-  UInt32 i;
+  UInt32 i, regSize;
   Int32 osversion;
   UInt8 *ram;
-  RegFeatureType *reg;
+  RegFeatureType *regFtr;
+  RegFlagsType *regFlags;
   char st[8];
   Err err = ftrErrNoSuchFeature;
 
   *valueP = 0;
   if (ptr) *ptr = false;
 
-  for (reg = module->reg, i = 0; i < module->regSize; reg++, i += sizeof(RegFeatureType)) {
-    if (creator == reg->creator && featureNum == reg->number) {
-      *valueP = reg->value;
+  for (regFtr = module->reg, i = 0; i < module->regSize; regFtr++, i += sizeof(RegFeatureType)) {
+    if (creator == regFtr->creator && featureNum == regFtr->number) {
+      *valueP = regFtr->value;
       pumpkin_id2s(creator, st);
       debug(DEBUG_INFO, "Feature", "FtrGet override featureNum %d for creator '%s': %u (0x%08X)", featureNum, st, *valueP, *valueP);
       err = errNone;
@@ -352,21 +353,22 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           break;
       }
       break;
-/*
     case hsFtrCreator:
-      switch (featureNum) {
-        case hsFtrIDVersion:
-          // 0xMMmfsHHh
-          *valueP = 0x10003000;
-          err = errNone;
-          break;
-        default:
-          debug(DEBUG_ERROR, "Feature", "FtrGet hsFtrCreator %d not defined", featureNum);
-          err = ftrErrNoSuchFeature;
-          break;
+      regFlags = pumpkin_reg_get(pumpkin_get_app_creator(), regFlagsID, &regSize);
+      if (regFlags && regFlags->flags & regFlagHandspringExt) {
+        switch (featureNum) {
+          case hsFtrIDVersion:
+            // 0xMMmfsHHh
+            *valueP = 0x10003000;
+            err = errNone;
+            break;
+          default:
+            debug(DEBUG_ERROR, "Feature", "FtrGet hsFtrCreator %d not defined", featureNum);
+            err = ftrErrNoSuchFeature;
+            break;
+        }
       }
       break;
-*/
     default:
       if (module->numFeatures > 0) {
         for (i = 0; i < module->numFeatures; i++) {
