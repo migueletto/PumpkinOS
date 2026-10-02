@@ -113,6 +113,10 @@ uint32_t palmos_systrap(uint16_t trap) {
     case sysTrapLmDispatch:
       palmos_lmtrap(sp, idx, m68k_get_reg(NULL, M68K_REG_D2));
       break;
+    case sysTrapOEMDispatch:
+      selector = ARG16;
+      palmos_oemtrap(sp, idx, selector);
+      break;
     case sysTrapNavSelector:
       selector = ARG16;
       palmos_navtrap(sp, idx, selector);
