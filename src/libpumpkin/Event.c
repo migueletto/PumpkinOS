@@ -800,13 +800,15 @@ void EvtGetPenEx(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown, Boolean *p
 }
 
 void EvtGetPen(Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
-  UInt16 old;
+  //UInt16 old;
 
   EvtGetPenEx(pScreenX, pScreenY, pPenDown, NULL);
   if (pScreenX && pScreenY) {
-    old = WinSetCoordinateSystem(kCoordinatesStandard);
+    // XXX setting coordinates to standard breaks Cubis
+    // but not setting to standard breaks Crimson Fields
+    //old = WinSetCoordinateSystem(kCoordinatesStandard);
     adjustCoords(pScreenX, pScreenY);
-    WinSetCoordinateSystem(old);
+    //WinSetCoordinateSystem(old);
   }
 }
 
