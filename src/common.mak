@@ -125,6 +125,7 @@ ifeq ($(REAL_OSNAME),GNU/Linux)
 CC=x86_64-w64-mingw32-gcc-win32
 CPP=x86_64-w64-mingw32-g++-win32
 WINDRES=x86_64-w64-mingw32-windres
+OSDEFS+=-DWIN32
 else
 CC=gcc
 CPP=g++
