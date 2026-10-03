@@ -3,18 +3,12 @@ PumpkinOS is a re-implementation of PalmOS that runs on modern architectures (x8
 It is not your average PalmOS emulator (it does NOT require a PalmOS ROM), but it can run m68K PalmOS applications.
 For a series of articles describing various aspects of PumpkinOS, look here: https://pmig96.wordpress.com/category/palmos/.
 
-![](/screenshots/pumpkin.png)
+![](/screenshots/pumpkinos.png)
 
 Launcher is the first application that runs when PumpkinOS starts. It shows a panel from which you can start other applications.
 Preferences will eventually contain all preference options for configuring PumpkinOS.
-Command is a command shell, still experimental.
-
-This release contains the four PIM applications found on PalmOS: AddressBook, MemoPad, ToDoList and DateBook. The source code for these applications
-were distributed in one or more PalmOS SDks and were adapted for correct compilation on PumpkinOS.
-Records created by AddressBook and MemoPad should be compatible with their PalmOS counterparts. Because of differences in
-word size en endianness, however, records created by ToDoList and DateBook are not compatible.
-These applications were tested just to the point where I could create and edit a few records. There are still some quirks, and some functions were not tested at all.
-The goal here is just to offer a view of what to expect from PumpkinOS in the future.
+Command is a command shell, still experimental. This release does not contain the four classic PIM applications from PalmOS.
+They can still be compiled from source.
 
 ## Licensing
 PumpkinOS is licensed under the GPL v3.
@@ -48,29 +42,12 @@ Go to the source directory of the PumpkinOS repository you have just cloned and 
 
 If everything goes well, you will have a pumpkin executable in the root directory, some dynamic libraries in the bin directory, and some PRC files in the vfs/app_install directory.
 
-The adventurous ones can also build PumpkinOS using Emscripten (details on how to install Emscripten are beyond the scope of this readme, however):
-
-    cd PumpkinOS/src
-    make OSNAME=Emscripten
-   
-This command will create a pumpkin.zip file inside the src/emscripten folder. This zip file contains everything you need to deploy PumpkinOS on a web server.
-If you have a standard apache2 web server on Linux, for example, you can create the folder /var/www/html/pumpkin and extrat the zip file there.
-Then point your browser to the URL /pumpkin/pumpkin.html on your local server and hopefully PumpkinOS will show up.
-Another option is to start a simple Python web server from within the Emscripten source directory and access the URL /pumpkin/pumpkin.html on port 8080.
-
-    cd PumpkinOS/src/emscripten
-    python3 -m http.server 8080
-
-This is still very experimental, and there are a few caveats: depending on the (lack) of integration between the OS, browser, and GPU,
-you may experience unexpected fallback to software rendering, high CPU usage and browser lockups.
-Running the browser in private mode will prevent the application to run. Accessing the application with HTTP (instead of HTTPS) on a non-localhost server will also cause it to not load.
-
 ## Running
 On 64-bits Windows, run pumpkin.bat. On Linux or WSL2, run pumpkin.sh. PumpkinOS will open on a new window.
 
 When you run PumpkinOS, all PRCs inside vfs/app_install will be removed and expanded into folders inside vfs/app_storage.
 Please keep in mind that everything is pretty much experimental at this stage, so expect a few issues here and there.
-After either a successful or an unsuccessful run, you will find a pumpkin.log file on the root directory.
+On debug compilations, after either a successful or an unsuccessful run you will find a pumpkin.log file on the root directory.
 If something goes wrong, look for lines marked with an "E" on the third column of this file.
 You can reach me for questions (and send me your log file if you wish).
 
