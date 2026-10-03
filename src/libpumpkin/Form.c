@@ -1284,11 +1284,12 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     WinSetDrawWindow(oldDraw);
   }
 
-  if (FrmGetNumberOfObjects(formP) > 1) {
+  if (FrmGetNumberOfObjects(formP) > 1 || FrmGetObjectType(formP, 0) != frmTitleObj) {
     // erase form background
-    // XXX Knockdown Karate assumes that a FrmDrawForm() will not erase
+    // XXX Knockdown Karate assumes that a FrmDrawForm() will NOT erase
     // the background. Its form has only one object: the title.
-    // Maybe in such cases the form background can not be erased?
+    // Agent-Z2 also has a form with just a single object, a form bitmap.
+    // It assumes that the form WILL be erased.
     RctSetRectFromWin(&aux, &formP->window);
     aux.topLeft.x = 0;
     aux.topLeft.y = 0;
