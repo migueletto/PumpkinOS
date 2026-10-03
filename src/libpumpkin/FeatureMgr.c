@@ -150,7 +150,7 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           break;
         case sysFtrNumOEMCompanyID:
           if (osversion >= 35) {
-            if (regFlags && regFlags->flags & regFlagHandspringExt) {
+            if (regFlags && (regFlags->flags & regFlagHandspringExt)) {
               *valueP = hwrOEMCompanyIDHandspring;
             } else {
               *valueP = pumpkin_get_id_option("companyID");
