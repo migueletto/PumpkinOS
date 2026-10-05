@@ -49,6 +49,8 @@ typedef struct {
   win_event_t events[MAX_EVENTS];
   int num_ev, ie, oe, down;
   int x, y, buttons;
+  int last_key;
+  uint64_t last_timestamp;
 } win_window_t;
 
 struct texture_t {
@@ -151,6 +153,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
   PAINTSTRUCT ps;
   HDC hdc;
   int code;
+  uint64_t timestamp;
 
   switch (uMsg) {
     case WM_DESTROY:
@@ -171,10 +174,16 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
       }
       if (code) {
         debug(DEBUG_TRACE, "Windows", "keyDown event");
-        ev.ev = WINDOW_KEYDOWN;
-        ev.arg1 = code;
-        ev.arg2 = 0;
-        putEvent(window, &ev);
+        // try to avoid multiple key press events when holding down a key
+        timestamp = sys_get_clock();
+        if (code != window->last_key || timestamp - window->last_timestamp > 200000) {
+          window->last_timestamp = timestamp;
+          window->last_key = code;
+          ev.ev = WINDOW_KEYDOWN;
+          ev.arg1 = code;
+          ev.arg2 = 0;
+          putEvent(window, &ev);
+        }
       }
       return 0;
 
