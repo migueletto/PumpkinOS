@@ -1895,13 +1895,12 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
-  RegFlagsType *regRunFlagsP, regRunFlags;
   RegDisplayType *regDisplay;
   RegOsType *regOS;
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size;
-  Boolean firstRun, littleEndian;
+  Boolean littleEndian;
   char screator[8];
   char buf[32];
   uint16_t u16;
@@ -2028,19 +2027,6 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
 
   language = PrefGetPreference(prefLanguage);
   task->lang = LanguageInit(language);
-
-  if ((regRunFlagsP = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) == NULL) {
-    regRunFlags.flags = regRunFlagFirstRun;
-    pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
-    firstRun = true;
-  } else {
-    firstRun = (regRunFlagsP->flags & regRunFlagFirstRun) == regRunFlagFirstRun;
-    MemPtrFree(regRunFlagsP);
-  }
-
-  if (firstRun) {
-    pumpkin_reg_import(creator);
-  }
 
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
     task->osversion = regOS->version;
@@ -2580,9 +2566,11 @@ int pumpkin_launch(launch_request_t *request) {
         MemPtrFree(regRunFlags);
       }
 
+      pumpkin_reg_import(creator);
+
       if ((regHeap = pumpkin_reg_get(creator, regHeapID, &regSize)) != NULL) {
         if (regHeap->heapSize) {
-          debug(DEBUG_INFO, PUMPKINOS, "using heap size %uMB (align %u) from registry for %s", regHeap->heapSize, regHeap->heapAlign, request->name);
+          debug(DEBUG_INFO, PUMPKINOS, "using heap size %u MB (align %u) from registry for %s", regHeap->heapSize, regHeap->heapAlign, request->name);
           data->heapSize = regHeap->heapSize;
           data->heapAlign = regHeap->heapAlign;
         }
