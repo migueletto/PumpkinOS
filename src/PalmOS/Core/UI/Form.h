@@ -347,6 +347,7 @@ typedef struct FormType
   uint32_t m68k_handler;
   UInt16 diaPolicy;
   void *rsrc;
+  char title[128];
 }
 #endif
 FormType;

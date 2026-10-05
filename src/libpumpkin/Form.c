@@ -1612,6 +1612,8 @@ make a copy. The value of newTitle must not be a pointer to a
 stack-based object
 */
 void FrmSetTitle(FormType *formP, Char *newTitle) {
+  char *ram;
+  uint32_t size;
   RectangleType old, rect;
   FormObjectType obj;
   UInt16 i, width, objIndex;
@@ -1621,7 +1623,17 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
         //formP->objects[i].object.title->text = newTitle;
-        FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)newTitle);
+        //FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)newTitle);
+
+        ram = pumpkin_heap_base();
+        size = pumpkin_heap_size();
+        if (newTitle >= ram && newTitle < ram + size) {
+          FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)newTitle);
+        } else {
+          StrNCopy(formP->title, newTitle, sizeof(formP->title) - 1);
+          FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)formP->title);
+        }
+
         if (formP->attr.visible) {
           obj = formP->objects[i].object;
           //MemMove(&old, &obj.title->rect, sizeof(RectangleType));
