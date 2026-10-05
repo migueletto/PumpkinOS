@@ -1977,7 +1977,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
         }
         WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
         t2 = sys_get_clock();
-        debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
+        debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
           (uint32_t)(t2 - t1),
           mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
           wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), blitDisplay);
@@ -2073,7 +2073,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
     }
     t2 = sys_get_clock();
-    debug(DEBUG_TRACE, "Window", "WinBlitBitmap slow %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) coord=%d dbl=%d cp=%d",
+    debug(DEBUG_TRACE, "Window", "WinBlitBitmap slow %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) coord=%d dbl=%d cp=%d",
       (uint32_t)(t2 - t1),
       mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
       wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), module->drawState.coordinateSystem, dblw, blitDisplay);
