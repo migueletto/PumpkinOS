@@ -51,10 +51,10 @@ void RegImport(RegMgrType *rm, UInt32 creator) {
   if (rm && mutex_lock(rm->mutex) == 0) {
     if ((regDbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
       // open RegistryDB in write mode
-      if ((regDbReg = DmOpenDatabase(0, regDbID, dmModeWrite)) != NULL) {
+      if ((regDbReg = DmOpenDatabaseEx(0, regDbID, dmModeWrite, false)) != NULL) {
         if ((compatDbID = DmFindDatabase(0, COMPAT_DB)) != 0) {
           // open CompatDB in read mode
-          if ((compatDbRef = DmOpenDatabase(0, compatDbID, dmModeReadOnly)) != NULL) {
+          if ((compatDbRef = DmOpenDatabaseEx(0, compatDbID, dmModeReadOnly, false)) != NULL) {
             pumpkin_id2s(creator, screator);
             debug(DEBUG_INFO, "Registry", "searching registry entries for '%s'", screator);
             // import resources from CompatDB into RegistryDB
@@ -164,7 +164,7 @@ void *RegGet(RegMgrType *rm, DmResType type, UInt16 id, UInt32 *size) {
 
   if (rm && size && mutex_lock(rm->mutex) == 0) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
-      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+      if ((dbRef = DmOpenDatabaseEx(0, dbID, dmModeReadOnly, false)) != NULL) {
         if ((index = DmFindResource(dbRef, type, id, NULL)) != 0xFFFF) {
           if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
             *size = MemHandleSize(h);
@@ -197,7 +197,7 @@ void *RegGetById(RegMgrType *rm, UInt16 id, UInt32 *size) {
 
   if (rm && mutex_lock(rm->mutex) == 0) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
-      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
+      if ((dbRef = DmOpenDatabaseEx(0, dbID, dmModeReadOnly, false)) != NULL) {
         allocSize = 65536;
         offset = 0;
         p = MemPtrNew(allocSize);
@@ -253,7 +253,7 @@ Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size) {
 
   if (rm && mutex_lock(rm->mutex) == 0) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
-      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadWrite)) != NULL) {
+      if ((dbRef = DmOpenDatabaseEx(0, dbID, dmModeReadWrite, false)) != NULL) {
         if ((index = DmFindResource(dbRef, type, id, NULL)) == 0xFFFF) {
           h = DmNewResourceEx(dbRef, type, id, size, p);
           index = DmFindResource(dbRef, 0, 0, h);
@@ -287,7 +287,7 @@ Err RegDelete(RegMgrType *rm, DmResType type) {
 
   if (rm && mutex_lock(rm->mutex) == 0) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
-      if ((dbRef = DmOpenDatabase(0, dbID, dmModeReadWrite)) != NULL) {
+      if ((dbRef = DmOpenDatabaseEx(0, dbID, dmModeReadWrite, false)) != NULL) {
         for (i = 0; ; i++) {
           if ((index = DmFindResourceType(dbRef, type, i)) == 0xFFFF) break;
           DmRemoveResource(dbRef, index);

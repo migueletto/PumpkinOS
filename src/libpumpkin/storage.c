@@ -1771,6 +1771,10 @@ DmOpenRef DmOpenDatabase(UInt16 cardNo, LocalID dbID, UInt16 mode) {
   return DmOpenDatabaseOverlay(cardNo, dbID, mode, true, true);
 }
 
+DmOpenRef DmOpenDatabaseEx(UInt16 cardNo, LocalID dbID, UInt16 mode, Boolean searchOverlay) {
+  return DmOpenDatabaseOverlay(cardNo, dbID, mode, true, searchOverlay);
+}
+
 Err DmCloseDatabase(DmOpenRef dbP) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;

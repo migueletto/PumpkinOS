@@ -444,6 +444,7 @@ void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32
 MemHandle MemLocalIDToHandle(LocalID local);
 void DmSync(void);
 Err DmSyncDatabase(DmOpenRef dbRef);
+DmOpenRef DmOpenDatabaseEx(UInt16 cardNo, LocalID dbID, UInt16 mode, Boolean searchOverlay);
 
 Char *StrDup(const Char *src);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
