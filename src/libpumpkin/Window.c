@@ -199,7 +199,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     WinSetField(module->displayWindow, WindowFieldClippingBoundsX1, 0);
     WinSetField(module->displayWindow, WindowFieldClippingBoundsX2, width - 1);
     WinSetField(module->displayWindow, WindowFieldClippingBoundsY1, 0);
-    WinSetField(module->displayWindow, WindowFieldClippingBoundsY2, height - 1); 
+    WinSetField(module->displayWindow, WindowFieldClippingBoundsY2, height - 1);
 
     //if (module->displayWindow->density == kDensityDouble)
     if (module->density == kDensityDouble) {
@@ -1636,7 +1636,7 @@ void WinInvertRectangleFrame(FrameType frame, const RectangleType *rP) {
 void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord dstX, Coord dstY) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *dstBmp;
-  UInt32 srcSize, dstSize, pixelSize, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
+  UInt32 srcSize, dstSize, pixelMul, pixelDiv, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
   AbsRectType absr;
   UInt16 depth, srcRowBytes, dstRowBytes;
@@ -1650,11 +1650,24 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
   dirtyRect = NULL;
 
   switch (depth) {
+    case  1:
+      pixelMul = 1;
+      pixelDiv = 8;
+      break;
+    case  2:
+      pixelMul = 1;
+      pixelDiv = 4;
+      break;
+    case  4:
+      pixelMul = 1;
+      pixelDiv = 2;
+      break;
     case  8:
     case 16:
     case 24:
     case 32:
-      pixelSize = depth >> 3;
+      pixelMul = depth >> 3;
+      pixelDiv = 1;
       break;
     default:
       // not supported
@@ -1707,10 +1720,14 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
 
       // check limits on dstRect
       if (dstRect.topLeft.x < 0) {
+        srcRect.topLeft.x -= dstRect.topLeft.x;
+        srcRect.extent.x += dstRect.topLeft.x;
         dstRect.extent.x += dstRect.topLeft.x;
         dstRect.topLeft.x = 0;
       }
       if (dstRect.topLeft.y < 0) {
+        srcRect.topLeft.y -= dstRect.topLeft.y;
+        srcRect.extent.y += dstRect.topLeft.y;
         dstRect.extent.y += dstRect.topLeft.y;
         dstRect.topLeft.y = 0;
       }
@@ -1737,7 +1754,7 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
         absr.top    = WinGetField(dst, WindowFieldClippingBoundsY1);
         absr.bottom = WinGetField(dst, WindowFieldClippingBoundsY2);
         RctAbsToRect(&absr, &clip);
-        
+
         RctGetIntersection(&dstRect, &clip, &intersection);
         // adjust srcRect
         dx = intersection.topLeft.x - dstRect.topLeft.x;
@@ -1766,7 +1783,7 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
             dstRect.topLeft.x == 0 && dstRect.extent.x == dstWidth) {
 
           // copy a full width rectangle (2nd best case)
-          srcLineSize = srcWidth * pixelSize;
+          srcLineSize = (srcWidth * pixelMul) / pixelDiv;
           srcOffset = srcRect.topLeft.y * srcLineSize;
           dstOffset = dstRect.topLeft.y * srcLineSize;
           srcBits += srcOffset;
@@ -1787,10 +1804,10 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
           if (srcRect.extent.x > 0 && srcRect.extent.y > 0) {
             srcLineSize = srcRowBytes;
             dstLineSize = dstRowBytes;
-            len = srcRect.extent.x * pixelSize;
+            len = (srcRect.extent.x * pixelMul) / pixelDiv;
             if (srcBmp == dstBmp && dstRect.topLeft.y > srcRect.topLeft.y) {
-              srcOffset = (srcRect.topLeft.y + srcRect.extent.y) * srcLineSize + srcRect.topLeft.x * pixelSize;
-              dstOffset = (dstRect.topLeft.y  + dstRect.extent.y)  * dstLineSize + dstRect.topLeft.x  * pixelSize;
+              srcOffset = (srcRect.topLeft.y + srcRect.extent.y) * srcLineSize + (srcRect.topLeft.x * pixelMul) / pixelDiv;
+              dstOffset = (dstRect.topLeft.y + dstRect.extent.y) * dstLineSize + (dstRect.topLeft.x * pixelMul) / pixelDiv;
               srcBits += srcOffset;
               dstBits += dstOffset;
               for (y = 0; y < srcRect.extent.y; y++) {
@@ -1799,8 +1816,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
                 MemMove(dstBits, srcBits, len);
               }
             } else {
-              srcOffset = srcRect.topLeft.y * srcLineSize + srcRect.topLeft.x * pixelSize;
-              dstOffset = dstRect.topLeft.y  * dstLineSize + dstRect.topLeft.x  * pixelSize;
+              srcOffset = srcRect.topLeft.y * srcLineSize + (srcRect.topLeft.x * pixelMul) / pixelDiv;
+              dstOffset = dstRect.topLeft.y * dstLineSize + (dstRect.topLeft.x * pixelMul) / pixelDiv;
               srcBits += srcOffset;
               dstBits += dstOffset;
               for (y = 0; y < srcRect.extent.y; y++) {
@@ -1858,7 +1875,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   Coord i, j, iw, id, remwx, remwy, remdx, remdy;
   Coord x1, y1, x2, y2, wx, wy, dx, dy, dx0, wx0, x0, y0;
   BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display, scaleBitmapOff;
+  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display, scaleBitmapOff, ok;
   char wbuf[64], bbuf[32];
 
   if (bitmapP && wh && rect) {
@@ -1943,22 +1960,31 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     if (bitmapEndianness == windowEndianness && bitmapDensity == windowDensity && bitmapDepth == windowDepth &&
         bitmapEndianness == displayEndianness && bitmapDensity == displayDensity && bitmapDepth == displayDepth &&
-        bitmapDepth >= 8 && !bitmapTransp && mode == winPaint && !text) {
+        !bitmapTransp && mode == winPaint && !text) {
 
-      // it is possible to use fast copy
-      t1 = sys_get_clock();
-      if (blitDisplay) {
-        WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
+      switch (bitmapDepth) {
+        case 1:  ok = (srcRect.topLeft.x & 7) == 0 && (srcRect.extent.x & 7) == 0 && (wx & 7) == 0 && (dx & 7) == 0; break;
+        case 2:  ok = (srcRect.topLeft.x & 3) == 0 && (srcRect.extent.x & 3) == 0 && (wx & 3) == 0 && (dx & 3) == 0; break;
+        case 4:  ok = (srcRect.topLeft.x & 1) == 0 && (srcRect.extent.x & 1) == 0 && (wx & 1) == 0 && (dx & 1) == 0; break;
+        default: ok = true; break;
       }
-      WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
-      t2 = sys_get_clock();
-      debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
-        (uint32_t)(t2 - t1),
-        mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
-        wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), blitDisplay);
 
-      if (delete) BmpDelete(bitmapP);
-      return;
+      if (ok) {
+        // it is possible to use fast copy
+        t1 = sys_get_clock();
+        if (blitDisplay) {
+          WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
+        }
+        WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
+        t2 = sys_get_clock();
+        debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %u mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
+          (uint32_t)(t2 - t1),
+          mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
+          wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), blitDisplay);
+
+        if (delete) BmpDelete(bitmapP);
+        return;
+      }
     }
 
     //x1 = wh->clippingBounds.left;
