@@ -15,6 +15,7 @@
     case sysTrapAttnListOpen:
     case sysTrapAttnIndicatorEnable:
     case sysTrapAttnIterate:
+    case sysTrapAttnGetCounts:
       palmos_AttnSysTrap(sp, idx, trap);
       break;
     case sysTrapDlkGetSyncInfo:

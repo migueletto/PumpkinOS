@@ -19,6 +19,8 @@ Boolean AttnForgetIt(UInt16 cardNo, LocalID dbID, UInt32 userData) {
 
 UInt16 AttnGetCounts(UInt16 cardNo, LocalID dbID, UInt16 *insistentCountP, UInt16 *subtleCountP) {
   debug(DEBUG_ERROR, "PALMOS", "AttnGetCounts not implemented");
+  if (insistentCountP) *insistentCountP = 0;
+  if (subtleCountP) *subtleCountP = 0;
   return 0;
 }
 
