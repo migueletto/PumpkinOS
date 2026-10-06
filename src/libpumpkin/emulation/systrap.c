@@ -702,6 +702,10 @@ uint32_t palmos_systrap(uint16_t trap) {
     default:
       if (trap > sysLibTrapName) {
         uint16_t refNum = ARG16;
+        if (refNum == 0xffff) {
+          m68k_set_reg(M68K_REG_D0, 0xffff);
+          break;
+        }
         if (refNum > BASE_SYSLIBS) {
           palmos_libtrap(refNum, trap);
           break;
