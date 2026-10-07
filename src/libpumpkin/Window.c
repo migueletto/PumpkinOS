@@ -80,46 +80,10 @@ static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
   }
 }
 
-int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
-  win_module_t *module;
-  BitmapType *bmp;
+ColorTableType *WinInitColors(Boolean ui) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
-  UInt16 i, entry;
-  UInt8 *ds;
-  char buf[64];
-  Err err;
-
-  if ((module = xcalloc(1, sizeof(win_module_t))) == NULL) {
-    return -1;
-  }
-
-  pumpkin_set_local_storage(win_key, module);
-
-  module->density = density;
-  module->width = width;
-  module->height = height;
-  module->depth = depth;
-  module->depth0 = depth;
-  module->legacyDepth = 1;
-  module->littleEndian = littleEndian;
-
-  module->drawState.pattern = blackPattern;
-  module->drawState.coordinateSystem = kCoordinatesStandard;
-
-  WinFillPalette(10001, module->defaultPalette1, 2);
-  WinFillPalette(10002, module->defaultPalette2, 4);
-  WinFillPalette(10004, module->defaultPalette4, 16);
-  WinFillPalette(10008, module->defaultPalette8, 256);
-
-  module->defaultColorTable1 = MemPtrNew(2 +   2 * 4);
-  module->defaultColorTable2 = MemPtrNew(2 +   4 * 4);
-  module->defaultColorTable4 = MemPtrNew(2 +  16 * 4);
-  module->defaultColorTable8 = MemPtrNew(2 + 256 * 4);
-
-  module->colorTable1 = (ColorTableType *)module->defaultColorTable1;
-  module->colorTable2 = (ColorTableType *)module->defaultColorTable2;
-  module->colorTable4 = (ColorTableType *)module->defaultColorTable4;
-  module->colorTable8 = (ColorTableType *)module->defaultColorTable8;
+  UInt32 entry, i;
 
   CtbSetNumEntries(module->colorTable1, 2);
   for (i = 0; i < 2; i++) {
@@ -138,7 +102,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     CtbSetEntry(module->colorTable8, i, (RGBColorType *)&module->defaultPalette8[i]);
   }
 
-  switch (depth) {
+  switch (module->depth0) {
     case 1:
       module->drawState.foreColor = 1; // black
       module->drawState.backColor = 0; // white
@@ -173,6 +137,58 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   CtbGetEntry(colorTable, module->drawState.backColor, &module->drawState.backColorRGB);
   CtbGetEntry(colorTable, module->drawState.textColor, &module->drawState.textColorRGB);
 
+  if (ui) {
+    for (entry = 0; entry < UILastColorTableEntry; entry++) {
+      UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+      UIColorSetTableEntry(entry, &module->uiColor[entry]);
+    }
+  }
+
+  return colorTable;
+}
+
+int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
+  win_module_t *module;
+  BitmapType *bmp;
+  ColorTableType *colorTable;
+  UInt16 entry;
+  UInt8 *ds;
+  char buf[64];
+  Err err;
+
+  if ((module = xcalloc(1, sizeof(win_module_t))) == NULL) {
+    return -1;
+  }
+
+  pumpkin_set_local_storage(win_key, module);
+
+  module->density = density;
+  module->width = width;
+  module->height = height;
+  module->depth = depth;
+  module->depth0 = depth;
+  module->legacyDepth = 1;
+  module->littleEndian = littleEndian;
+
+  module->drawState.pattern = blackPattern;
+  module->drawState.coordinateSystem = kCoordinatesStandard;
+
+  module->defaultColorTable1 = MemPtrNew(2 +   2 * 4);
+  module->defaultColorTable2 = MemPtrNew(2 +   4 * 4);
+  module->defaultColorTable4 = MemPtrNew(2 +  16 * 4);
+  module->defaultColorTable8 = MemPtrNew(2 + 256 * 4);
+
+  WinFillPalette(10001, module->defaultPalette1, 2);
+  WinFillPalette(10002, module->defaultPalette2, 4);
+  WinFillPalette(10004, module->defaultPalette4, 16);
+  WinFillPalette(10008, module->defaultPalette8, 256);
+
+  module->colorTable1 = (ColorTableType *)module->defaultColorTable1;
+  module->colorTable2 = (ColorTableType *)module->defaultColorTable2;
+  module->colorTable4 = (ColorTableType *)module->defaultColorTable4;
+  module->colorTable8 = (ColorTableType *)module->defaultColorTable8;
+
+  colorTable = WinInitColors(false);
   module->drawState.transferMode = winPaint;
 
   if (displayWindow) {
@@ -247,10 +263,12 @@ int WinFinishModule(Boolean deleteDisplay) {
   return 0;
 }
 
-RGBColorType *WinGetPalette(UInt16 n) {
+RGBColorType *WinGetPalette(UInt16 depth) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
 
-  switch (n) {
+  if (depth == 0) depth = module->depth;
+
+  switch (depth) {
     case 1:  return module->defaultPalette1; break;
     case 2:  return module->defaultPalette2; break;
     case 4:  return module->defaultPalette4; break;
@@ -584,7 +602,8 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY) {
   WinSetField(module->displayWindow, WindowFieldWindowBoundsW, module->width/2);
   WinSetField(module->displayWindow, WindowFieldWindowBoundsH, module->height/2);
   bitmapP = WinGetBitmap(module->displayWindow);
-  newBitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, BmpGetColortable(bitmapP), &err);
+  //newBitmapP = BmpCreate3(module->width, module->height, 0, module->density, module->depth, false, 0, BmpGetColortable(bitmapP), &err);
+  newBitmapP = BmpCreate3c(module->width, module->height, 0, module->density, module->depth, false, 0, true, BmpGetColortable(bitmapP), &err);
   if (bitmapP) {
     BmpSetLittleEndianBits(newBitmapP, module->littleEndian);
     debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
@@ -647,7 +666,8 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinScreenGetAttribute(winScreenDensity, &density);
     WinScreenMode(winScreenModeGetDefaults, NULL, NULL, &depth, NULL);
     old = (BitmapType *)WinGetField(winHandle, WindowFieldBitmapP);
-    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, BmpGetColortable(old), &err);
+    //bmp = BmpCreate3(width, height, 0, density, depth, false, 0, BmpGetColortable(old), &err);
+    bmp = BmpCreate3c(width, height, 0, density, depth, false, 0, true, BmpGetColortable(old), &err);
     if (bmp) {
       BmpSetLittleEndianBits(bmp, module->littleEndian);
       WinSetField(winHandle, WindowFieldBitmapP, (UIntPtr)bmp);
@@ -2098,7 +2118,16 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
   WinPaintBitmapEx(bitmapP, x, y, true, true);
 }
 
+static int xxx = 0;
+
 void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
+if (pumpkin_is_m68k()) {
+char filename[64];
+sys_sprintf(filename, "%05d.png", xxx++);
+debug(1, "XXX", "bitmap %s", filename);
+debug_bytes(1, "XXX", (uint8_t *)bitmapP, 24);
+pumpkin_save_bitmap(bitmapP, 0, 0, 0, 0, 0, filename);
+}
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   WinPaintBitmap(bitmapP, x, y);
   WinSetDrawMode(prev);
@@ -3148,7 +3177,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
   WinHandle wh;
   ColorTableType *colorTable;
   UInt16 i, index;
-  UInt16 numEntries;
+  UInt16 entry, numEntries;
   char buf[64];
   Err err = sysErrParamErr;
 
@@ -3215,6 +3244,10 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             //broadcastDisplayChange(module->depth, module->depth);
             pumpkin_dirty_region_mode(dirtyRegionReset);
             WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
+            for (entry = 0; entry < UILastColorTableEntry; entry++) {
+              UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+              UIColorSetTableEntry(entry, &module->uiColor[entry]);
+            }
             err = errNone;
           }
           break;
@@ -3251,6 +3284,10 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
           //broadcastDisplayChange(module->depth, module->depth);
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
+          for (entry = 0; entry < UILastColorTableEntry; entry++) {
+            UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+            UIColorSetTableEntry(entry, &module->uiColor[entry]);
+          }
           err = errNone;
           break;
       }
@@ -3394,7 +3431,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           }
 
           BmpDelete((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
-          bmp = BmpCreate3(module->width, module->height, 0, module->density, depth, false, 0, colorTable, &err);
+          bmp = BmpCreate3c(module->width, module->height, 0, module->density, depth, false, 0, true, colorTable, &err);
           WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)bmp);
           BmpSetLittleEndianBits(bmp, module->littleEndian);
           module->depth = depth;
@@ -3402,6 +3439,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
 
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
+            UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
             UIColorSetTableEntry(entry, &module->uiColor[entry]);
           }
         }

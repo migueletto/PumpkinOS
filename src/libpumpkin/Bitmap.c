@@ -859,7 +859,7 @@ BitmapType *BmpCreate3c(Coord width, Coord height, UInt16 rowBytes, UInt16 densi
   BmpSetCommonField(bitmapP, BitmapFieldRowBytes, rowBytes);
   BmpSetCommonFlag(bitmapP, BitmapFlagAll, 0);
   BmpSetCommonFlag(bitmapP, BitmapFlagHasColorTable, colorTableP != NULL);
-  BmpSetCommonFlag(bitmapP, BitmapFlagIndirectColorTable, indirectColorTable);
+  BmpSetCommonFlag(bitmapP, BitmapFlagIndirectColorTable, indirectColorTable && colorTableP != NULL);
   BmpSetCommonFlag(bitmapP, BitmapFlagHasTransparency, hasTransparency);
   BmpSetCommonField(bitmapP, BitmapFieldPixelSize, depth);
   BmpSetCommonField(bitmapP, BitmapFieldVersion, 3);
@@ -1707,7 +1707,6 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
   UInt16 numEntries;
   UInt32 d, dmin, imin;
   RGBColorType rgb;
-  Boolean found = false;
 
   dmin = 0xffffffff;
   imin = 0;
@@ -1718,12 +1717,8 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
 
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
       debug(DEBUG_TRACE, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
-      //return i;
-      imin = i;
-      found = true;
+      return i;
     }
-
-    if (found) continue;
 
     // Manhattan distance, not accurate but not too slow
     dr = (Int32)red - (Int32)rgb.r;
@@ -2047,11 +2042,13 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             for (i = 0; i < h; i++, offset += rowBytes) {
               for (j = 0; j < w; j++) {
                 b = bits[offset + j];
+                BmpIndexToRGB(b, &red, &green, &blue, colorTable);
                 if (!useTransp || !transp || b != transparentValue) {
-                  BmpIndexToRGB(b, &red, &green, &blue, colorTable);
                   c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
-                  BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
+                } else {
+                  c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0x00);
                 }
+                BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
               }
             }
             break;

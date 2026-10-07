@@ -183,10 +183,11 @@ void emupalmos_panic(char *msg, int code) {
 
   pumpkin_crash_log(code, msg);
 
-  WinSetDrawWindow(WinGetDisplayWindow());
   WinSetCoordinateSystem(kCoordinatesStandard);
-  WinPalette(winPaletteSetToDefault, 0, 0, NULL);
+  WinInitColors(true);
+  UIColorResetTable();
   WinScreenMode(winScreenModeSetToDefaults, NULL, NULL, NULL, NULL);
+  WinSetDrawWindow(WinGetDisplayWindow());
   WinEraseWindow();
 }
 

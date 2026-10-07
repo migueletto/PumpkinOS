@@ -5314,7 +5314,7 @@ void pumpkin_save_bitmap(BitmapType *bmp, UInt16 density, Coord wWidth, Coord wH
     }
     oldDensity = BmpGetDensity(bmp);
     BmpSetDensity(bmp, kDensityLow);
-    BmpDrawSurface(bmp, 0, 0, wWidth, wHeight, surface, 0, 0, false, false);
+    BmpDrawSurface(bmp, 0, 0, wWidth, wHeight, surface, 0, 0, true, false);
     BmpSetDensity(bmp, oldDensity);
 
     card = VFS_CARD;

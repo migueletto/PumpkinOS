@@ -450,6 +450,7 @@ Char *StrDup(const Char *src);
 Int16 StrNPrintF(Char *s, UInt16 size, const Char *formatStr, ...);
 Int16 StrVNPrintF(Char *s, UInt16 size, const Char *formatStr, sys_va_list arg);
 
+ColorTableType *WinInitColors(Boolean ui);
 void WinCopyWindow(WinHandle src, WinHandle dst, RectangleType *rect, Coord dstX, Coord dstY);
 void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect, Coord x, Coord y, WinDrawOperation mode, Boolean text);
 void WinSaveRectangle(WinHandle dstWin, const RectangleType *srcRect);
@@ -466,6 +467,7 @@ Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
+void UIColorResetTable(void);
 void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP);
 void *UIColorSaveTable(void);
 void UIColorRestoreTable(void *p);

@@ -87,6 +87,15 @@ int UicFinishModule(void) {
   return 0;
 }
 
+void UIColorResetTable(void) {
+  uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
+  int i;
+
+  for (i = 0; i < UILastColorTableEntry; i++) {
+    module->table[i] = table[i];
+  }
+}
+
 IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
   uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
 
@@ -102,9 +111,7 @@ void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgb
   RGBColorType *palette;
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
-    // always take color from 8bpp palette, regardless of current color depth
-    palette = WinGetPalette(8);
-
+    palette = WinGetPalette(0);
     rgbP->r = palette[module->table[which]].r;
     rgbP->g = palette[module->table[which]].g;
     rgbP->b = palette[module->table[which]].b;
