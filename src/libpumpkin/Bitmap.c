@@ -789,8 +789,11 @@ BitmapType *BmpCreate(Coord width, Coord height, UInt8 depth, ColorTableType *co
   return bitmapP;
 }
 
-BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error) {
+BitmapType *BmpCreate3c(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue,
+  Boolean indirectColorTable, ColorTableType *colorTableP, UInt16 *error) {
+
   BitmapType *bitmapP;
+  UInt8 *ram;
   UInt16 numEntries, v16, i;
   UInt32 newSize, index, v32;
 
@@ -834,7 +837,14 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
-    newSize += sizeof(UInt16) + numEntries * 4;
+  
+    if (colorTableP) {
+      if (indirectColorTable) {
+        newSize += sizeof(UInt32);
+      } else {
+        newSize += sizeof(UInt16) + numEntries * 4;
+      }
+    }
   }
 
   newSize += rowBytes * height;
@@ -849,6 +859,7 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
   BmpSetCommonField(bitmapP, BitmapFieldRowBytes, rowBytes);
   BmpSetCommonFlag(bitmapP, BitmapFlagAll, 0);
   BmpSetCommonFlag(bitmapP, BitmapFlagHasColorTable, colorTableP != NULL);
+  BmpSetCommonFlag(bitmapP, BitmapFlagIndirectColorTable, indirectColorTable);
   BmpSetCommonFlag(bitmapP, BitmapFlagHasTransparency, hasTransparency);
   BmpSetCommonField(bitmapP, BitmapFieldPixelSize, depth);
   BmpSetCommonField(bitmapP, BitmapFieldVersion, 3);
@@ -860,18 +871,28 @@ BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 densit
   BmpV3SetField(bitmapP, BitmapV3FieldTransparentValue, transparentValue);
 
   if (colorTableP) {
-    // direct color table: numEntries followed by entries
     index = BitmapV3HeaderSize;
-    index += put2b(numEntries, (UInt8 *)bitmapP, index);
-    for (i = 0; i < numEntries; i++) {
-      get4b(&v32, (UInt8 *)colorTableP, 2 + i * 4);
-      index += put4b(v32, (UInt8 *)bitmapP, index);
+    if (indirectColorTable) {
+      // indirect color table: pointer to color table
+      ram = pumpkin_heap_base();
+      index += put4b((UInt8 *)colorTableP - ram, (UInt8 *)bitmapP, index);
+    } else {
+      // direct color table: numEntries followed by entries
+      index += put2b(numEntries, (UInt8 *)bitmapP, index);
+      for (i = 0; i < numEntries; i++) {
+        get4b(&v32, (UInt8 *)colorTableP, 2 + i * 4);
+        index += put4b(v32, (UInt8 *)bitmapP, index);
+      }
     }
   }
 
   if (error) *error = errNone;
 
   return bitmapP;
+}
+
+BitmapType *BmpCreate3(Coord width, Coord height, UInt16 rowBytes, UInt16 density, UInt8 depth, Boolean hasTransparency, UInt32 transparentValue, ColorTableType *colorTableP, UInt16 *error) {
+  return BmpCreate3c(width, height, rowBytes, density, depth, hasTransparency, transparentValue, false, colorTableP, error);
 }
 
 static uint32_t BmpSurfaceGetPixel(void *data, int x, int y) {
@@ -1283,7 +1304,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
           get4(&addr, (UInt8 *)bitmapP, headerSize);
-          bits = addr ? pumpkin_heap_base() + addr : NULL;
+          bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
         }
@@ -1297,7 +1318,7 @@ void *BmpGetBits(BitmapType *bitmapP) {
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
           get4(&addr, (UInt8 *)bitmapP, headerSize);
-          bits = addr ? pumpkin_heap_base() + addr : NULL;
+          bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
         }
@@ -1329,7 +1350,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
         case 3:
           if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
             get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
-            colorTable = addr ? (ColorTableType *)(pumpkin_heap_base() + addr) : NULL;
+            colorTable = addr ? (ColorTableType *)((uint8_t *)pumpkin_heap_base() + addr) : NULL;
           } else {
             colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV3FieldColorTable);
           }
@@ -1686,6 +1707,7 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
   UInt16 numEntries;
   UInt32 d, dmin, imin;
   RGBColorType rgb;
+  Boolean found = false;
 
   dmin = 0xffffffff;
   imin = 0;
@@ -1696,8 +1718,13 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
 
     if (red == rgb.r && green == rgb.g && blue == rgb.b) {
       debug(DEBUG_TRACE, "Bitmap", "BmpRGBToIndex exact %d,%d,%d %d", red, green, blue, i);
-      return i;
+      //return i;
+      imin = i;
+      found = true;
     }
+
+    if (found) continue;
+
     // Manhattan distance, not accurate but not too slow
     dr = (Int32)red - (Int32)rgb.r;
     if (dr < 0) dr = -dr;

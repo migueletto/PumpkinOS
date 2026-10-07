@@ -156,7 +156,7 @@ void FrmGotoForm(UInt16 formId) {
 static Err FrmInitFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   ColorTableType *colorTable;
-  BitmapType *bmp;
+  BitmapType *dispBmp, *bmp;
   WinHandle wh;
   RectangleType rect;
   FormList *p;
@@ -197,18 +197,18 @@ static Err FrmInitFormInternal(FormType *formP) {
   WinAdjustCoords(&w, &h);
 
   wh = WinGetDisplayWindow();
-  littleEndian = BmpGetLittleEndianBits(WinGetBitmap(wh));
+  dispBmp = WinGetBitmap(wh);
+  littleEndian = BmpGetLittleEndianBits(dispBmp);
 
   WinScreenGetAttribute(winScreenDensity, &density);
   WinScreenMode(winScreenModeGet, NULL, NULL, &depth, NULL);
 
   // XXX how the colorTable should be initialized?
   //colorTable = WinGetColorTable(depth); // this causes palette problems in FreeGrid
-  colorTable = BmpGetColortable(WinGetBitmap(WinGetDisplayWindow())); // this causes palette problems in eReader and PalmVNC
+  colorTable = BmpGetColortable(dispBmp); // this causes palette problems in eReader and PalmVNC
 
-  //formP->window.bitmapP = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err);
-  //formP->window.density = density;
-  if ((bmp = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err)) == NULL) {
+  //if ((bmp = BmpCreate3(w, h, 0, density, depth, false, 0, colorTable, &err)) == NULL)
+  if ((bmp = BmpCreate3c(w, h, 0, density, depth, false, 0, true, colorTable, &err)) == NULL) {
     return err;
   }
   WinSetField(&formP->window, WindowFieldBitmapP, (UIntPtr)bmp);
