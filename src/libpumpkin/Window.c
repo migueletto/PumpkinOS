@@ -1635,10 +1635,14 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
       // check limits on srcRect
       if (srcRect.topLeft.x < 0) {
         srcRect.extent.x += srcRect.topLeft.x;
+        if (dstX < 0) dstX -= srcRect.topLeft.x;
+        else dstX += srcRect.topLeft.x;
         srcRect.topLeft.x = 0;
       }
       if (srcRect.topLeft.y < 0) {
         srcRect.extent.y += srcRect.topLeft.y;
+        if (dstY < 0) dstY -= srcRect.topLeft.y;
+        else dstY += srcRect.topLeft.y;
         srcRect.topLeft.y = 0;
       }
       if (srcRect.topLeft.x + srcRect.extent.x > srcWidth) {
