@@ -837,8 +837,13 @@ Err VFSVolumeSize(UInt16 volRefNum, UInt32 *volumeUsedP, UInt32 *volumeTotalP) {
   buildpath(module, volRefNum, module->path, "");
 
   if (vfs_statfs(module->session[volRefNum-1], module->path, &total, &free) == 0) {
-    if (volumeTotalP) *volumeTotalP = total; // XXX overflow 64 -> 32 bits
-    if (volumeUsedP) *volumeUsedP = total - free; // XXX overflow 64 -> 32 bits
+    // XXX vfs_statfs can return numbers bigger than a 32 bits unsigned integer.
+    // If this is the case, truncate to the maximun value. This is not ideal,
+    // but at least apps like Filez will not print garbage.
+    if (total > 0xfffffffful) total = 0xfffffffful;
+    if (free > 0xfffffffful) free = 0xfffffffful;
+    if (volumeTotalP) *volumeTotalP = total;
+    if (volumeUsedP) *volumeUsedP = total - free;
     err = errNone;
   }
 
