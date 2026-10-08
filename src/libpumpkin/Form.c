@@ -308,6 +308,10 @@ void FrmSetActiveForm(FormType *formP) {
       event.data.winEnter.enterWindow = WinGetActiveWindow();
       EvtAddEventToQueue(&event);
     }
+  } else {
+    wh = WinGetDisplayWindow();
+    WinSetActiveWindow(wh);
+    WinSetDrawWindow(wh);
   }
 }
 
@@ -1209,8 +1213,6 @@ static void FrmDeleteFormInternal(FormType *formP) {
   debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d (%p)", formP->formId, formP);
 
   if (formP == module->currentForm) {
-    WinSetActiveWindow(NULL);
-    WinSetDrawWindow(NULL);
     module->currentForm = NULL;
     MenuSetActiveMenu(NULL);
   }
@@ -1732,10 +1734,9 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
       MemSet(&event, sizeof(EventType), 0);
       event.eType = frmOpenEvent;
       event.data.frmOpen.formID = formP->formId;
-      if (!FrmDispatchEvent(&event)) {
-        if (!formP->attr.visible) {
-          FrmDrawForm(formP);
-        }
+      FrmDispatchEvent(&event);
+      if (!formP->attr.visible) {
+        FrmDrawForm(formP);
       }
     } else {
       if (!formP->attr.visible) {
