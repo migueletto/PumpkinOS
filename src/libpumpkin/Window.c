@@ -2118,16 +2118,7 @@ void WinPaintBitmap(BitmapPtr bitmapP, Coord x, Coord y) {
   WinPaintBitmapEx(bitmapP, x, y, true, true);
 }
 
-static int xxx = 0;
-
 void WinDrawBitmap(BitmapType *bitmapP, Coord x, Coord y) {
-if (pumpkin_is_m68k()) {
-char filename[64];
-sys_sprintf(filename, "%05d.png", xxx++);
-debug(1, "XXX", "bitmap %s", filename);
-debug_bytes(1, "XXX", (uint8_t *)bitmapP, 24);
-pumpkin_save_bitmap(bitmapP, 0, 0, 0, 0, 0, filename);
-}
   WinDrawOperation prev = WinSetDrawMode(winPaint);
   WinPaintBitmap(bitmapP, x, y);
   WinSetDrawMode(prev);
