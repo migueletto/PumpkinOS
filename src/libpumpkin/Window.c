@@ -3107,8 +3107,8 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         break;
     }
 
-    //bmp = BmpCreate3(width, height, 0, density, depth, false, 0, WinGetColorTable(0), &err);
-    bmp = BmpCreate3c(width, height, 0, density, depth, false, 0, true, WinGetColorTable(depth), &err);
+    // offscreen windows do not have color tables
+    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
 
     WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bmp);
     if (bmp) {
