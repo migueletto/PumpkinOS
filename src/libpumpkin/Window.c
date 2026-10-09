@@ -3230,7 +3230,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
               }
             } else {
               for (i = 0; i < paletteEntries; i++) {
-                if ((startIndex + i) < numEntries) {
+                if ((startIndex + i) >= 0 && (startIndex + i) < numEntries) {
                   debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
                   CtbSetEntry(colorTable, startIndex + i, &tableP[i]);
                 }
