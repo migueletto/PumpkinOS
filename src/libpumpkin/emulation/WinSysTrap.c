@@ -60,24 +60,16 @@ void palmos_WinSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       int16_t startIndex = ARG16;
       uint16_t paletteEntries = ARG16;
       uint32_t tableP = ARG32;
-      emupalmos_trap_in(tableP, trap, 3);
+      uint8_t *ram = pumpkin_heap_base();
       uint32_t i;
+      emupalmos_trap_in(tableP, trap, 3);
       RGBColorType table[256];
       MemSet(table, sizeof(table), 0);
       if (operation == winPaletteSet && tableP) {
-        if (startIndex == WinUseTableIndexes) {
-          for (i = 0; i < paletteEntries && i < 256; i++) {
-            uint32_t index = m68k_read_memory_8(tableP + i*4);
-            decode_rgb(tableP + i*4, &table[i]);
-            debug(DEBUG_TRACE, "EmuPalmOS", "palette %d: %u,%u,%u (i=%d)", index, table[i].r, table[i].g, table[i].b, i);
-          }
-        } else {
-          for (i = 0; i < paletteEntries && i < 256; i++) {
-            if (startIndex+i >= 0 && startIndex+i < 256) {
-              decode_rgb(tableP + i*4, &table[i]);
-              debug(DEBUG_TRACE, "EmuPalmOS", "palette %d: %u,%u,%u (start=%d, i=%d)", startIndex+i, table[i].r, table[i].g, table[i].b, startIndex, i);
-            }
-          }
+        debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette winPaletteSet %u entries", paletteEntries);
+        debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
+        for (i = 0; i < paletteEntries; i++) {
+          decode_rgb(tableP + i*4, &table[i]);
         }
       }
       Err err = WinPalette(operation, startIndex, paletteEntries, tableP ? table : NULL);
@@ -85,10 +77,10 @@ void palmos_WinSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
         for (i = 0; i < paletteEntries; i++) {
           encode_rgb(tableP + i*4, &table[i]);
         }
+        debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette winPaletteGet %u entries", paletteEntries);
+        debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
       }
       debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette(%d, %d, %d, 0x%08X): %d", operation, startIndex, paletteEntries, tableP, err);
-      WinHandle wh = WinGetDrawWindow();
-      debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette draw window 0x%08X", emupalmos_trap_out(wh));
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
