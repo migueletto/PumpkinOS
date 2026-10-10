@@ -8,7 +8,6 @@
 #define EditImgForm     1008
 #define RegistryForm    1009
 #define AboutForm       1010
-#define EditBmpForm2    1011
 
 #define MainMenu           1001
 #define ReducedMainMenu    1002

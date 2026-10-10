@@ -49,6 +49,7 @@ typedef struct {
   Boolean saved;
 } bmp_edit_t;
 
+#if 0
 static const UInt8 gray1[2]  = {0xff, 0x00};
 static const UInt8 gray2[4]  = {0xff, 0xaa, 0x55, 0x00};
 static const UInt8 gray4[16] = {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00};
@@ -149,7 +150,9 @@ static Boolean getBit(BitmapType *bmp, UInt32 x, UInt32 y, UInt32 *index, RGBCol
 
   return transp;
 }
+#endif
 
+#if 0
 static Boolean putBit(BitmapType *bmp, UInt32 x, UInt32 y, UInt16 value, Boolean transpPixel) {
   UInt8 version, depth;
   Boolean transp = false;
@@ -246,8 +249,9 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
 
   WinSetForeColorRGB(&oldf, NULL);
 }
+#endif
 
-static Boolean bitmapGadgetCallback2(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
+static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   FormType *frm;
   ScrollBarType *scl;
   BitmapType *bmp;
@@ -333,6 +337,7 @@ static Boolean bitmapGadgetCallback2(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   return true;
 }
 
+#if 0
 static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   FormType *frm;
   RectangleType rect, aux;
@@ -472,19 +477,6 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   return true;
 }
 
-static void paintBitmap(UInt16 id, Coord x, Coord y) {
-  MemHandle h;
-  BitmapType *bmp;
-
-  if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
-    if ((bmp = MemHandleLock(h)) != NULL) {
-      WinPaintBitmap(bmp, x, y);
-      MemHandleUnlock(h);
-    }
-    DmReleaseResource(h);
-  }
-}
-
 static Boolean paletteGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   EventType *event;
   FormType *frm;
@@ -618,6 +610,19 @@ static Boolean paletteGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   return true;
 }
 
+static void paintBitmap(UInt16 id, Coord x, Coord y) {
+  MemHandle h;
+  BitmapType *bmp;
+            
+  if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
+    if ((bmp = MemHandleLock(h)) != NULL) {
+      WinPaintBitmap(bmp, x, y);
+      MemHandleUnlock(h);
+    }     
+    DmReleaseResource(h);
+  }
+}
+
 static Boolean toolsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   EventType *event;
   FormType *frm;
@@ -679,6 +684,31 @@ static Boolean toolsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   return true;
 }
 
+static void paletteListDraw(Int16 itemNum, RectangleType *bounds, Char **itemsText) {
+  RGBColorType rgb, oldf;
+  UInt8 *gray;
+
+  gray = (UInt8 *)itemsText;
+  rgb.r = rgb.g = rgb.b = gray[itemNum];
+  WinSetForeColorRGB(&rgb, &oldf);
+  WinPaintRectangle(bounds, 0);
+  WinSetForeColorRGB(&oldf, NULL);
+}
+
+static void toolsListDraw(Int16 itemNum, RectangleType *bounds, Char **itemsText) {
+  UInt16 id;
+
+  switch (itemNum) {
+    case 0: id = moveBmp; break;
+    case 1: id = drawBmp; break;
+    case 2: id = pickBmp; break;
+    default: id = 0; break;
+  }
+
+  paintBitmap(id, bounds->topLeft.x, bounds->topLeft.y);
+}
+#endif
+
 static void getLabel(bmp_edit_t *data) {
   BitmapType *bmp;
   Coord width, height;
@@ -710,31 +740,7 @@ static void getLabel(bmp_edit_t *data) {
   }
 }
 
-static void paletteListDraw(Int16 itemNum, RectangleType *bounds, Char **itemsText) {
-  RGBColorType rgb, oldf;
-  UInt8 *gray;
-
-  gray = (UInt8 *)itemsText;
-  rgb.r = rgb.g = rgb.b = gray[itemNum];
-  WinSetForeColorRGB(&rgb, &oldf);
-  WinPaintRectangle(bounds, 0);
-  WinSetForeColorRGB(&oldf, NULL);
-}
-
-static void toolsListDraw(Int16 itemNum, RectangleType *bounds, Char **itemsText) {
-  UInt16 id;
-
-  switch (itemNum) {
-    case 0: id = moveBmp; break;
-    case 1: id = drawBmp; break;
-    case 2: id = pickBmp; break;
-    default: id = 0; break;
-  }
-
-  paintBitmap(id, bounds->topLeft.x, bounds->topLeft.y);
-}
-
-static Boolean eventHandler2(EventType *event) {
+static Boolean eventHandler(EventType *event) {
   FormType *frm;
   ControlType *ctl;
   FormGadgetTypeInCallback *gad;
@@ -808,7 +814,7 @@ static Boolean eventHandler2(EventType *event) {
           if (changed) {
             index = FrmGetObjectIndex(frm, bitmapGad);
             gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(frm, index);
-            bitmapGadgetCallback2(gad, formGadgetDrawCmd, NULL);
+            bitmapGadgetCallback(gad, formGadgetDrawCmd, NULL);
             getLabel(data);
             FrmSetTitle(frm, data->title);
           }
@@ -831,7 +837,7 @@ static Boolean eventHandler2(EventType *event) {
       }
 
       if (data->leftCol != data->lastLeftCol || data->topCol != data->lastTopCol) {
-        bitmapGadgetCallback2(gad, formGadgetDrawCmd, NULL);
+        bitmapGadgetCallback(gad, formGadgetDrawCmd, NULL);
         data->lastLeftCol = data->leftCol;
         data->lastTopCol = data->topCol;
       }
@@ -880,6 +886,7 @@ static Boolean eventHandler2(EventType *event) {
   return handled;
 }
 
+#if 0
 static Boolean eventHandler(EventType *event) {
   FormType *frm;
   FormGadgetTypeInCallback *gad;
@@ -1137,6 +1144,7 @@ static Boolean eventHandler(EventType *event) {
 
   return handled;
 }
+#endif
 
 Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
   bmp_edit_t data;
@@ -1175,7 +1183,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     }
 
     index = FrmGetObjectIndex(frm, bitmapGad);
-    FrmSetGadgetHandler(frm, index, bitmapGadgetCallback2);
+    FrmSetGadgetHandler(frm, index, bitmapGadgetCallback);
     FrmSetGadgetData(frm, index, &data);
 
 /*
@@ -1187,7 +1195,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
     FrmSetGadgetHandler(frm, index, toolsGadgetCallback);
     FrmSetGadgetData(frm, index, &data);
 */
-    FrmSetEventHandler(frm, eventHandler2);
+    FrmSetEventHandler(frm, eventHandler);
     FrmDoDialog(frm);
 
     for (index = 0; index < data.numBmps; index++) {

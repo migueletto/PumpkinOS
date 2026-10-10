@@ -1310,7 +1310,7 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
         case iconType:
         case bitmapRsc:
         case 'abmp':
-          formId = EditBmpForm2;
+          formId = EditBmpForm;
           editor = editBitmap;
           break;
         case strRsc:
