@@ -381,8 +381,13 @@ static int StoWriteHeader(storage_t *sto, storage_db_t *db) {
   if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
     pumpkin_id2s(db->type, stype);
     pumpkin_id2s(db->creator, screator);
-    sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\ndbID=0x%08X\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
-      db->ftype, stype, screator, db->dbID, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    if (stype[0] < 32 || stype[1] < 32 || stype[2] < 32 || stype[3] < 32) {
+      sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype=0x%08X\ncreator='%4s'\ndbID=0x%08X\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+        db->ftype, db->type, screator, db->dbID, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    } else {
+      sys_snprintf(buf, sizeof(buf)-1, "ftype=%u\ntype='%4s'\ncreator='%4s'\ndbID=0x%08X\nattributes=%u\nuniqueIDSeed=%u\nversion=%u\ncrDate=%u\nmodDate=%u\nbckDate=%u\nmodNum=%d\n",
+        db->ftype, stype, screator, db->dbID, db->attributes, db->uniqueIDSeed, db->version, db->crDate, db->modDate, db->bckDate, db->modNum);
+    }
     n = sys_strlen(buf);
     if ((w = vfs_write(f, (uint8_t *)buf, n)) == n) {
       r = 0;
@@ -416,6 +421,9 @@ static int StoReadHeader(storage_t *sto, storage_db_t *db) {
       if (sys_sscanf(buf, "type='%c%c%c%c'", stype, stype+1, stype+2, stype+3) == 4) {
         stype[4] = 0;
         pumpkin_s2id(&db->type, stype);
+        continue;
+      }
+      if (sys_sscanf(buf, "type=0x%08X", &db->type) == 1) {
         continue;
       }
       if (sys_sscanf(buf, "creator='%c%c%c%c'", screator, screator+1, screator+2, screator+3) == 4) {
@@ -4216,8 +4224,6 @@ Err VFSFileDBInfo(FileRef ref, Char *nameP,
     pumpkin_s2id(&type, (char *)&database[i]);
     if (!StoValidTypeCreator(&database[i])) {
       debug(DEBUG_ERROR, "STOR", "VFSFileDBInfo invalid type 0x%08X", type);
-      pumpkin_set_lasterr(err);
-      return err;
     }
     i += 4;
     pumpkin_s2id(&creator, (char *)&database[i]);
@@ -4358,8 +4364,8 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
     i += get4b(&sortInfo, database, i);
     pumpkin_s2id(&type, (char *)&database[i]);
     if (!StoValidTypeCreator(&database[i])) {
+      // XXX Rayman uses some really weird database types
       debug(DEBUG_ERROR, "STOR", "DmCreateDatabaseFromImage invalid type 0x%08X", type);
-      return err;
     }
     i += 4;
     pumpkin_s2id(&creator, (char *)&database[i]);
