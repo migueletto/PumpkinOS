@@ -10,6 +10,7 @@ typedef struct RegMgrType RegMgrType;
 // empty                8
 #define regRunFlagsID   9
 #define regHeapID       10
+#define lastRegID       10
 
 #define regFlagFastScreenWrite 0x02
 #define regFlagARMScreenWrite  0x04

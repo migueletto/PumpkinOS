@@ -41,11 +41,11 @@ RegMgrType *RegInit(void) {
 
 void RegImport(RegMgrType *rm, UInt32 creator) {
   DmOpenRef regDbReg, compatDbRef;
-  UInt16 imported, index, i;
+  UInt16 imported, index, nremove, i;
   LocalID regDbID, compatDbID;
-  DmResID resID;
+  DmResID resID, remove[lastRegID];
   MemHandle h;
-  char screator[8];
+  Char screator[8];
   void *r;
 
   if (rm && mutex_lock(rm->mutex) == 0) {
@@ -58,7 +58,7 @@ void RegImport(RegMgrType *rm, UInt32 creator) {
             pumpkin_id2s(creator, screator);
             debug(DEBUG_INFO, "Registry", "searching registry entries for '%s'", screator);
             // import resources from CompatDB into RegistryDB
-            for (i = 0, imported = 0; ; i++) {
+            for (i = 0, imported = 0, nremove = 0; ; i++) {
               if ((index = DmFindResourceType(compatDbRef, creator, i)) == 0xFFFF) break;
               if (DmResourceInfo(compatDbRef, index, NULL, &resID, NULL) == errNone) {
                 if ((h = DmGetResourceIndex(compatDbRef, index)) != NULL) {
@@ -66,6 +66,7 @@ void RegImport(RegMgrType *rm, UInt32 creator) {
                     debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", screator, resID);
                     DmNewResourceEx(regDbReg, creator, resID, MemHandleSize(h), r);
                     MemHandleUnlock(h);
+                    remove[nremove++] = resID;
                     imported++;
                   }
                   DmReleaseResource(h);
@@ -74,8 +75,18 @@ void RegImport(RegMgrType *rm, UInt32 creator) {
             }
             // close CompatDB
             DmCloseDatabase(compatDbRef);
+
             if (imported) {
               debug(DEBUG_INFO, "Registry", "imported %u registry entries for '%s'", imported, screator);
+              if ((compatDbRef = DmOpenDatabaseEx(0, compatDbID, dmModeWrite, false)) != NULL) {
+                for (i = 0; i < nremove; i++) {
+                  if ((index = DmFindResource(compatDbRef, creator, remove[i], NULL)) != 0xFFFF) {
+                    debug(DEBUG_INFO, "Registry", "removing imported registry '%s' %u", screator, remove[i]);
+                    DmRemoveResource(compatDbRef, index);
+                  }
+                }
+                DmCloseDatabase(compatDbRef);
+              }
             } else {
               debug(DEBUG_INFO, "Registry", "no registry entries found for '%s'", screator);
             }
