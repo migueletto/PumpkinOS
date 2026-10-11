@@ -30,6 +30,7 @@ typedef struct {
   char *prefix, title[MAX_TITLE];
   FormType *frm;
   BitmapType *bmps[MAX_BMPS];
+  BitmapType *orig[MAX_BMPS];
   Boolean delete[MAX_BMPS];
   MemHandle handle;
   int numBmps, index;
@@ -253,15 +254,18 @@ static void paintPixel(bmp_edit_t *data, int j, int i) {
 
 static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   FormType *frm;
-  ScrollBarType *scl;
+  //ScrollBarType *scl;
   BitmapType *bmp;
   RectangleType rect;
-  RGBColorType rgb, oldf;
+  RGBColorType rgb, oldc;
   bmp_edit_t *data;
   UInt8 version, depth;
-  UInt16 index, rowBytes, density, total, num;
-  Coord width, height, x, y;
-  char *s;
+  UInt16 index, rowBytes, density;
+  UInt32 scale;
+  Coord width, height, fh, x, y;
+  Coord newWidth, newHeight;
+  Boolean delete;
+  char buf[16], *s;
 
   if (cmd == formGadgetDeleteCmd) {
     return true;
@@ -277,6 +281,50 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
   depth = BmpGetBitDepth(bmp);
   density = BmpGetDensity(bmp);
   BmpGetDimensions(bmp, &width, &height, &rowBytes);
+  scale = 100;
+
+  delete = false;
+  if (width > 320) {
+    if (width > height) {
+      bmp = BmpScale(bmp, 320, 0);
+      scale = (320 * 100) / width;
+    } else {
+      bmp = BmpScale(bmp, 0, 320);
+      scale = (320 * 100) / height;
+    }
+    BmpGetDimensions(bmp, &width, &height, &rowBytes);
+    delete = true;
+  } else if (height > 320) {
+    if (height > width) {
+      bmp = BmpScale(bmp, 0, 320);
+      scale = (320 * 100) / height;
+    } else {
+      bmp = BmpScale(bmp, 320, 0);
+      scale = (320 * 100) / width;
+    }
+    BmpGetDimensions(bmp, &width, &height, &rowBytes);
+    delete = true;
+  } else if (width < 40 && height < 40) {
+    if (width > height) {
+      scale = 40 / width;
+      newWidth = width * scale;
+      newHeight = height * scale;
+      bmp = BmpScale(bmp, newWidth, newHeight);
+      scale *= 100;
+    } else {
+      scale = 40 / height;
+      newHeight = height * scale;
+      newWidth = width * scale;
+      bmp = BmpScale(bmp, newWidth, newHeight);
+      scale *= 100;
+    }
+    BmpGetDimensions(bmp, &width, &height, &rowBytes);
+    delete = true;
+  } else if (version < 3) {
+    bmp = (BitmapType *)BmpCreateBitmapV3(bmp, density, BmpGetBits(bmp), BmpGetColortable(bmp));
+    delete = true;
+  }
+
   if (density == kDensityDouble) {
     width >>= 1;
     height >>= 1;
@@ -290,10 +338,16 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
         s = "Empty bitmap slot";
         WinDrawChars(s, StrLen(s), rect.topLeft.x, rect.topLeft.y);
       } else {
+        if (density != kDensityDouble) {
+          BmpSetDensity(bmp, kDensityDouble);
+          width >>= 1;
+          height >>= 1;
+        }
         x = rect.topLeft.x + ((width  <= rect.extent.x) ? (rect.extent.x - width)  / 2 : 0);
         y = rect.topLeft.y + ((height <= rect.extent.y) ? (rect.extent.y - height) / 2 : 0);
         WinSetClip(&rect);
         WinPaintBitmapEx(bmp, x - data->leftCol, y - data->topCol, false, false);
+        BmpSetDensity(bmp, density);
         WinResetClip();
         RctSetRectangle(&data->bmpRect, x, y, width, height);
         if (data->bmpRect.extent.x > rect.extent.x) {
@@ -304,14 +358,23 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
         }
         RctInsetRectangle(&data->bmpRect, -1);
         rgb.r = rgb.g = rgb.b = 0xe0;
-        WinSetForeColorRGB(&rgb, &oldf);
+        WinSetForeColorRGB(&rgb, &oldc);
         WinPaintRectangleFrame(1, &data->bmpRect);
-        WinSetForeColorRGB(&oldf, NULL);
+        WinSetForeColorRGB(&oldc, NULL);
+
+        WinSetTextColorRGB(&rgb, &oldc);
+        if (scale != 100) {
+          StrNPrintF(buf, sizeof(buf)-1, "%u%%", scale);
+          fh = FntCharHeight();
+          WinPaintChars(buf, StrLen(buf), data->bmpRect.topLeft.x + data->bmpRect.extent.x + 4, data->bmpRect.topLeft.y + data->bmpRect.extent.y/2 - fh/2);
+        }
+        WinSetTextColorRGB(&oldc, NULL);
       }
       pumpkin_dirty_region_mode(dirtyRegionEnd);
       break;
   }
 
+/*
   index = FrmGetObjectIndex(frm, bmpHScl);
   if (width > rect.extent.x) {
     scl = (ScrollBarType *)FrmGetObjectPtr(frm, index);
@@ -332,6 +395,11 @@ static Boolean bitmapGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, v
     FrmSetUsable(frm, index, true);
   } else {
     FrmSetUsable(frm, index, false);
+  }
+*/
+
+  if (delete) {
+    BmpDelete(bmp);
   }
 
   return true;
@@ -715,7 +783,7 @@ static void getLabel(bmp_edit_t *data) {
   UInt8 version, depth;
   UInt16 density;
 
-  bmp = data->bmps[data->index];
+  bmp = data->orig[data->index];
   version = BmpGetVersion(bmp);
   depth = BmpGetBitDepth(bmp);
   BmpGetDimensions(bmp, &width, &height, NULL);
@@ -1170,6 +1238,7 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
       density = BmpGetDensity(aux);
       if (density != kDensityLow && density != kDensityDouble) continue;
 
+      data.orig[data.numBmps] = aux;
       compression = BmpGetCompressionType(aux);
       if (compression == BitmapCompressionTypeNone) {
         data.bmps[data.numBmps] = aux;

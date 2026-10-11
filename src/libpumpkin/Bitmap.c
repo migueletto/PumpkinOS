@@ -607,7 +607,7 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
       // density: if 0, the returned bitmap's density is set to the default value of kDensityLow
       if (density == 0) density = kDensityLow;
       depth = BmpGetBitDepth(bitmapP);
-    
+
       BmpSetCommonField(newBmp, BitmapFieldWidth, width);
       BmpSetCommonField(newBmp, BitmapFieldHeight, height);
       BmpSetCommonField(newBmp, BitmapFieldRowBytes, rowBytes);
@@ -837,7 +837,7 @@ BitmapType *BmpCreate3c(Coord width, Coord height, UInt16 rowBytes, UInt16 densi
       debug(DEBUG_ERROR, "Bitmap", "BmpCreate3 wrong colorTable numEntries %d for depth %d", v16, depth);
       return NULL;
     }
-  
+
     if (colorTableP) {
       if (indirectColorTable) {
         newSize += sizeof(UInt32);
@@ -2427,7 +2427,6 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
           BmpSetBit2(offset, mask, dataSize, c2 << shift, dbl);
         }
       }
-      break; 
       break;
   }
 }
@@ -3609,7 +3608,7 @@ void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh) {
   VFSFileCreate(1, buf);
   VFSFileOpen(1, buf, vfsModeWrite, &fileRef);
   VFSFilePrintF(fileRef, "fontType 36864\nascent 16\ndescent 0\n");
-  for (i = 1; i < 256; i++) {   
+  for (i = 1; i < 256; i++) {
     row = i / cols;
     col = i % cols;
     VFSFilePrintF(fileRef, "\nGLYPH %d\n", i);
@@ -3623,7 +3622,7 @@ void BmpExportFont(UInt16 id, UInt16 fw, UInt16 fh) {
       buf[k] = 0;
       VFSFilePrintF(fileRef, buf);
     }
-  } 
+  }
   VFSFileClose(fileRef);
   MemHandleUnlock(hbmp);
   DmReleaseResource(hbmp);
@@ -3712,4 +3711,116 @@ BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal) {
   }
 
   return flipped;
+}
+
+BitmapType *BmpScale(BitmapType *bitmapP, Coord newWidth, Coord newHeight) {
+  BitmapType *scaled = NULL;
+  UInt16 density, depth, error;
+  UInt32 transparentValue, len, color;
+  ColorTableType *colorTable;
+  RGBColorType rgb;
+  Boolean hasTransparency, indirect;
+  UInt32 *rbin, *gbin, *bbin, *count;
+  UInt32 i, j, k, x, y;
+  Coord width, height;
+  double fx, fy;
+
+  bitmapP = BmpSkipEmptySlot(bitmapP);
+
+  if (bitmapP && newWidth >= 0 && newHeight >= 0 && (newWidth > 0 || newHeight > 0)) {
+    BmpGetDimensions(bitmapP, &width, &height, NULL);
+    density = BmpGetDensity(bitmapP);
+    depth = BmpGetBitDepth(bitmapP);
+    hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
+    colorTable = BmpGetColortable(bitmapP);
+    indirect = colorTable ? BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable) : false;
+
+    if (newWidth == 0) {
+      newWidth = ((Int32)width * (Int32)newHeight) / (Int32)height;
+    } else if (newHeight == 0) {
+      newHeight = ((Int32)height * (Int32)newWidth) / (Int32)width;
+    }
+
+    scaled = BmpCreate3c(newWidth, newHeight, 0, density, depth, hasTransparency, transparentValue, indirect, colorTable, &error);
+    if (colorTable == NULL) colorTable = WinGetColorTable(depth);
+
+    if (newWidth <= width && newHeight <= height) {
+      // scale down
+      fx = (double)newWidth / (double)width;
+      fy = (double)newHeight / (double)height;
+      len = newWidth * newHeight;
+      rbin = sys_calloc(len, sizeof(UInt32));
+      gbin = sys_calloc(len, sizeof(UInt32));
+      bbin = sys_calloc(len, sizeof(UInt32));
+      count = sys_calloc(len, sizeof(UInt32));
+
+      for (i = 0; i < height; i++) {
+        for (j = 0; j < width; j++) {
+          x = (UInt32)(j * fx + 0.5f);
+          y = (UInt32)(i * fy + 0.5f);
+          k = y * newWidth + x;
+          if (k < len) {
+            if (depth < 8) {
+              rbin[k] += BmpGetPixel(bitmapP, j, i);
+            } else {
+              BmpGetPixelRGB(bitmapP, j, i, &rgb);
+              rbin[k] += rgb.r;
+              gbin[k] += rgb.g;
+              bbin[k] += rgb.b;
+            }
+            count[k]++;
+          }
+        }
+      }
+
+      for (i = 0, k = 0; i < newHeight; i++) {
+        for (j = 0; j < newWidth; j++, k++) {
+          if (count[k] == 0) {
+            rbin[k] = gbin[k] = bbin[k] = 0;
+            count[k] = 1;
+          }
+          switch (depth) {
+            case 1:
+            case 2:
+            case 4:
+              BmpSetPixel(scaled, j, i, rbin[k] / count[k]);
+              break;
+            case 8:
+              BmpSetPixel(scaled, j, i, BmpRGBToIndex(rbin[k] / count[k], gbin[k] / count[k], bbin[k] / count[k], colorTable));
+              break;
+            case 16:
+              BmpSetPixel(scaled, j, i, rgb565(rbin[k] / count[k], gbin[k] / count[k], bbin[k] / count[k]));
+              break;
+          }
+        }
+      }
+
+      sys_free(count);
+      sys_free(bbin);
+      sys_free(gbin);
+      sys_free(rbin);
+
+    } else if (newWidth >= width && newHeight >= height) {
+      // scale up
+      fx = (double)width  / (double)newWidth;
+      fy = (double)height / (double)newHeight;
+
+      for (i = 0; i < newHeight; i++) {
+        for (j = 0; j < newWidth; j++) {
+          x = (int)(j * fx);
+          y = (int)(i * fy);
+          if (x < width && y < height) {
+            color = BmpGetPixelValue(bitmapP, x, y);
+          } else {
+            color = 0;
+          }
+          BmpSetPixel(scaled, j, i, color);
+        }
+      }
+    } else {
+      debug(DEBUG_ERROR, "Bitmap", "invalid scale current=%u,%u new=%u,%u", width, height, newWidth, newHeight);
+    }
+  }
+
+  return scaled;
 }
