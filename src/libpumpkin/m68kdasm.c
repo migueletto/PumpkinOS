@@ -3366,7 +3366,7 @@ static void d68000_subx_mm_32(m68k_disassemble_t *dis)
 static void d68000_swap(m68k_disassemble_t *dis)
 {
   sprintf(dis->g_dasm_str, "swap    D%d", dis->g_cpu_ir&7);
-  USED_A(dis->g_cpu_ir&7);
+  USED_D(dis->g_cpu_ir&7);
 }
 
 static void d68000_tas(m68k_disassemble_t *dis)
