@@ -373,6 +373,18 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
         }
       }
       break;
+    case 'pace':
+      switch (featureNum) {
+        case 0:
+          *valueP = 0;
+           err = errNone;
+           break;
+        default:
+          debug(DEBUG_ERROR, "Feature", "FtrGet 'pace' %d not defined", featureNum);
+          err = ftrErrNoSuchFeature;
+          break;
+      }
+      break;
     default:
       if (module->numFeatures > 0) {
         for (i = 0; i < module->numFeatures; i++) {
