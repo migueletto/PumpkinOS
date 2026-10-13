@@ -2036,7 +2036,7 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
 
   if (userData) {
     debug(DEBUG_TRACE, "ARM", "userData 0x%08X:", userData);
-    debug_bytes(DEBUG_TRACE, "ARM", ram + userData, 32);
+    debug_bytes(DEBUG_TRACE, "ARM", ram + userData, 64);
   }
 
   pumpkin_set_pace(1);
