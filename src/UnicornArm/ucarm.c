@@ -34,6 +34,7 @@ struct arm_emu_t {
   uint32_t startAddr, endAddr, returnAddr;
   int invalidIns;
   int disasm;
+  uint32_t reg[16];
 
   int armScreenWrite;
   uint32_t displayStartAddr, displayEndAddr;
@@ -93,9 +94,9 @@ static void ucarmPanic(uc_engine *uc, char *msg) {
 static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
   arm_emu_t *arm = (arm_emu_t *)user_data;
   uint32_t addr = (uint32_t)address;
-  uint32_t r, r0, r1, r2, r3, r4, sp, lr;
+  uint32_t r, r0, r1, r2, r3, sp, lr, i, j;
   size_t mode;
-  char buf[256];
+  char buf[256], *s;
 
   if (addr == arm->call68KAddr) {
     r0 = ucarmGetReg(arm, 0);
@@ -153,13 +154,26 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
   }
 
   if (arm->disasm) {
-    r0 = ucarmGetReg(arm, 0);
-    r1 = ucarmGetReg(arm, 1);
-    r2 = ucarmGetReg(arm, 2);
-    r3 = ucarmGetReg(arm, 3);
-    r4 = ucarmGetReg(arm, 4);
-    lr = ucarmGetReg(arm, 14);
-    sys_snprintf(buf, sizeof(buf)-1, "(r0=%08X r1=%08X r2=%08X r3=%08X r4=%08X LR=%08X)", r0, r1, r2, r3, r4, lr);
+    buf[0] = 0;
+    s = buf;
+    for (i = 0, j = 0; i < 15; i++) {
+      r = ucarmGetReg(arm, i);
+      if (r != arm->reg[i]) {
+        if (j == 0) {
+          *s++ = '(';
+        } else {
+          *s++ = ' ';
+        }
+        sys_sprintf(s, "R%u=%08X", i, r);
+        s += (i < 10) ? 11 : 12;
+        j++;
+      }
+      arm->reg[i] = r;
+    }
+    if (j > 0) {
+      *s++ = ')';
+      *s++ = 0;
+    }
 
     uc_query(arm->uc, UC_QUERY_MODE, &mode);
     if (mode == UC_MODE_THUMB) {
@@ -168,12 +182,12 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
         debug(DEBUG_TRACE, "ARM", "%08X: (thumb 4 bytes) %08X %s", addr, instr, buf);
       } else {
         uint16_t instr = *(uint16_t *)(arm->buf + addr);
-        disasm(addr, instr, buf, 1);
+        disasm(arm->reg[15], addr, instr, buf, 1);
       }
     } else {
       if (size == 4) {
         uint32_t instr = *(uint32_t *)(arm->buf + addr);
-        disasm(addr, instr, buf, 0);
+        disasm(arm->reg[15], addr, instr, buf, 0);
       } else {
         debug(DEBUG_ERROR, "ARM", "%08X: (wrong size %u) %s", addr, size, buf);
       }
@@ -376,7 +390,7 @@ static void ucarmCodeRegion(arm_emu_t *arm, uint32_t startAddr, uint32_t endAddr
 }
 
 static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFunc_f f, uint32_t returnAddr) {
-  uint32_t pc;
+  uint32_t pc, i;
   uc_err err;
 
   arm->call68KAddr = call68KAddr;
@@ -411,7 +425,11 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
     arm->lastY = 0;
   }
 
+  for (i = 0; i < 16; i++) {
+    arm->reg[i] = 0;
+  }
   pc = ucarmGetReg(arm, 15);
+  arm->reg[15] = pc;
   err = uc_emu_start(arm->uc, pc, returnAddr, 0, 0);
   if (err) debug(DEBUG_ERROR, "ARM", "uc_emu_start error: %s", uc_strerror(err));
   pc = ucarmGetReg(arm, 15);
