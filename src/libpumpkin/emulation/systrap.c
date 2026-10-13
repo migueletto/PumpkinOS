@@ -321,7 +321,7 @@ uint32_t palmos_systrap(uint16_t trap) {
         a = pumpkin_get_trap_address(trapNum);
       }
       char *s = logtrap_trapname(state->lt, trapNum, &selector, 0);
-      debug(DEBUG_INFO, "EmuPalmOS", "SysGetTrapAddress(0x%04X [ %s ]): 0x%08X", trapNum, s ? s : "unknown", a);
+      debug(DEBUG_TRACE, "EmuPalmOS", "SysGetTrapAddress(0x%04X [ %s ]): 0x%08X", trapNum, s ? s : "unknown", a);
       m68k_set_reg(M68K_REG_A0, a);
     }
     break;
