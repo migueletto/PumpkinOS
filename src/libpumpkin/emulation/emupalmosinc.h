@@ -17,7 +17,7 @@ int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int fo
 int emupalmos_check_address(uint32_t address, uint32_t size, int read);
 void emupalmos_disasm(int m68k, int arm);
 void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end);
-void emupalmos_monitor_address(uint32_t address, uint32_t size);
+void emupalmos_monitor_address(uint32_t address, uint32_t size, uint32_t value);
 int emupalmos_fast_screen_write(void);
 
 void cpu_pulse_reset(void);

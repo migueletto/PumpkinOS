@@ -256,11 +256,11 @@ void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end) {
   debug(DEBUG_INFO, "EmuPalmOS", "monitoring address 0x%08X to 0x%08X", addr_begin, addr_end);
 }
 
-void emupalmos_monitor_address(uint32_t address, uint32_t size) {
+void emupalmos_monitor_address(uint32_t address, uint32_t size, uint32_t value) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   if (address >= state->istate->monitored_addr_begin && address < state->istate->monitored_addr_end) {
-    debug(DEBUG_INFO, "EmuPalmOS", "write %u bytes to monitored address 0x%08X offset %u",
-      size, state->istate->monitored_addr_begin, address - state->istate->monitored_addr_begin);
+    debug(DEBUG_INFO, "EmuPalmOS", "write %u bytes to monitored address 0x%08X offset %u value 0x%08X",
+      size, state->istate->monitored_addr_begin, address - state->istate->monitored_addr_begin, value);
   }
 }
 
@@ -495,7 +495,7 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
   } else {
     if (!emupalmos_check_address(address, 1, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1);
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
@@ -518,7 +518,7 @@ void cpu_write_word(uint32_t address, uint16_t value) {
   } else {
     if (!emupalmos_check_address(address, 2, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2);
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
@@ -541,7 +541,7 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   } else {
     if (!emupalmos_check_address(address, 4, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4);
+    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
