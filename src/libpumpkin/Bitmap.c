@@ -557,6 +557,11 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     indirectColorTable = BmpGetCommonFlag((BitmapType *)bitmapP, BitmapFlagIndirectColorTable);
     hasTransparency = BmpGetTransparentValue(bitmapP, &transparentValue);
 
+    if (compressed) {
+      compression = BmpGetCompressionType(bitmapP);
+      if (compression == BitmapCompressionTypeNone) compressed = false;
+    }
+
     newSize = BitmapV3HeaderSize;
     numEntries = 0;
     colorTableSize = 0;
@@ -600,7 +605,11 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
     }
 
     BmpGetDimensions(bitmapP, &width, &height, &rowBytes);
-    newSize += rowBytes * height;
+    if (compressed) {
+      newSize += rowBytes * height; // actual bits follow
+    } else {
+      newSize += 4; // address to bits follow
+    }
 
     StoHeapLabel("Bitmap");
     if ((newBmp = MemPtrNew(newSize)) != NULL) {
@@ -679,23 +688,27 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
 
       delete = false;
       if (compressed) {
-        compression = BmpGetCompressionType(bitmapP);
         BmpSetCommonFlag(newBmp, BitmapFlagCompressed, 0);
-        if (compression != BitmapCompressionTypeNone) {
-          BmpV3SetField(newBmp, BitmapV3FieldCompressionType, BitmapCompressionTypeNone);
-          if ((bitmapP = BmpDecompressBitmap((BitmapType *)bitmapP)) != NULL) {
-            bitsP = BmpGetBits((BitmapType *)bitmapP);
-            delete = true;
-          } else {
-            BmpDelete(newBmp);
-            newBmp = NULL;
-          }
+        BmpV3SetField(newBmp, BitmapV3FieldCompressionType, BitmapCompressionTypeNone);
+        if ((bitmapP = BmpDecompressBitmap((BitmapType *)bitmapP)) != NULL) {
+          bitsP = BmpGetBits((BitmapType *)bitmapP);
+          delete = true;
+        } else {
+          BmpDelete(newBmp);
+          newBmp = NULL;
         }
       }
 
       if (newBmp) {
-        // copy the pixels
-        MemMove((UInt8 *)newBmp + index, bitsP, rowBytes * height);
+        if (delete) {
+          // direct bitmap: copy the pixels
+          MemMove((UInt8 *)newBmp + index, bitsP, rowBytes * height);
+          BmpSetCommonFlag(newBmp, BitmapFlagIndirect, 0);
+        } else {
+          // indirect bitmap: copy the address
+          put4((UInt8 *)bitsP - ram, (UInt8 *)newBmp, index);
+          BmpSetCommonFlag(newBmp, BitmapFlagIndirect, 1);
+        }
       }
 
       if (delete) {
