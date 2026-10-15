@@ -669,6 +669,14 @@ uint32_t palmos_systrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "SysBatteryInfoV20(set=%d, warnThresholdP=0x%08X [%d], criticalThresholdP=0x%08X [%d], maxTicksP=0x%08X [%d], kindP=0x%08X, pluggedIn=0x%08X): %d", set, warnThresholdP, l_warnThresholdP, criticalThresholdP, l_criticalThresholdP, maxTicksP, l_maxTicksP, kindP, pluggedIn, res);
     }
     break;
+    case sysTrapSysFatalAlert: {
+      //  UInt16 SysFatalAlert(const Char *msg)
+      uint32_t msgP = ARG32;
+      char *msg = emupalmos_trap_in(msgP, trap, 0);
+      m68k_set_reg(M68K_REG_D0, 0);
+      emupalmos_panic(msg, EMUPALMOS_GENERIC_ERROR);
+    }
+    break;
 
     #include "sc_case.c"
 
