@@ -376,6 +376,7 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
     case 'pace':
       switch (featureNum) {
         case 0:
+          // Sky Force reads this feature
           *valueP = 0;
            err = errNone;
            break;
