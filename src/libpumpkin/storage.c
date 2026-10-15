@@ -817,17 +817,19 @@ int StoRefresh(void) {
           ent = StoReadEnt(dir);
           if (ent == NULL) break;
           StoUnescapeName(ent->name, name, dmDBNameLength);
-          for (i = 0; i < MAX_DBIDS && !found; i++) {
+          for (i = 0, found = 0; i < MAX_DBIDS && !found; i++) {
             if (sto->dbs[i]) {
               found = sys_strncmp(sto->dbs[i]->name, name, sys_strlen(name)) == 0;
             }
           }
-          if (!found) {
+          if (found) {
+            debug(DEBUG_INFO, "STOR", "StoRefresh found database \"%s\"", name);
+          } else {
             if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) != NULL) {
               db->magic = DB_MAGIC;
               sys_strncpy(db->name, name, dmDBNameLength-1);
               if (StoReadHeader(sto, db) == 0) {
-                debug(DEBUG_INFO, "STOR", "StoRefresh 0x%08X database \"%s\"", db->dbID, db->name);
+                debug(DEBUG_INFO, "STOR", "StoRefresh add dbID 0x%08X database \"%s\"", db->dbID, db->name);
                 sto->dbs[db->dbID - DBID_BASE] = db;
                 sto->num_storage++;
               } else {
@@ -835,7 +837,7 @@ int StoRefresh(void) {
               }
             }
           }
-        }
+								}
         vfs_closedir(dir);
       }
       mutex_unlock(sto->mutex);
