@@ -1576,6 +1576,8 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func function 0x%08X", trapOrFunction);
     sp = m68k_get_reg(NULL, M68K_REG_SP);
     sp -= argsSize;
+    debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func argsOnStack 0x%08X (%u bytes):", argsOnStackP, argsSize);
+    debug_bytes(DEBUG_TRACE, "EmuPalmOS", argsOnStack, argsSize);
     sys_memcpy(ram + sp, argsOnStack, argsSize);
 
     // return address: 0x00000000 so that m68k_execute aborts the loop
@@ -2565,6 +2567,33 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
 
       paramBlock = getParamBlock(launchCode, param, ram);
       paramBlockStart = paramBlock ? paramBlock - ram : 0;
+
+      /*
+      Fields of SysAppInfoType.
+      Currently only cmd, cmdPBP, launchFlags and codeH are filled in.
+
+      0x00 Int16       cmd;              // command code for app
+      0x02 MemPtr      cmdPBP;           // cmd ParamBlock
+      0x06 UInt16      launchFlags;      // launch flags
+
+      0x08 UInt32      taskID;           // AMX task ID of task that app runs in
+      0x0C MemHandle   codeH;            // handle of the main code segment
+      0x10 DmOpenRef   dbP;              // Application database access pointer of App
+      0x14 UInt8       *stackP;          // stack chunk for the App
+      0x18 UInt8       *globalsChunkP;   // globals chunk for the App
+
+      0x1C UInt16      memOwnerID;       // owner ID for Memory Manager chunks
+      0x1E MemPtr      dmAccessP;        // pointer to linked list of opened DB's
+      0x22 Err         dmLastErr;        // Last error from Data Manager
+      0x24 MemPtr      errExceptionP;    // ErrTry,Catch exception list
+
+      PalmOS v3.0 fields begin here
+      0x28 UInt8       *a5Ptr;           // A5 pointer for this app
+      0x2C UInt8       *stackEndP;       // stack chunk end for the App (last byte)
+      0x30 UInt8       *globalEndP;      // global chunk end for the App (last byte)
+      0x34 struct SysAppInfoType *rootP; // Points to the SysAppInfoType first allocated for this thread.
+      0x38 MemPtr      extraP;           // unused pointer for the App.
+      */
 
       hSysAppInfo = MemHandleNew(sizeof(SysAppInfoType));
       sysAppInfo = MemHandleLock(hSysAppInfo);
