@@ -4341,6 +4341,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   MemHandle appInfoH, sortInfoH;
   void *appInfoP, *sortInfoP;
   DmOpenType *dbRef;
+  FileHand f;
   LocalID dbID;
   Err err = dmErrInvalidParam;
 
@@ -4382,7 +4383,32 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
     if (DmCreateDatabaseEx(name, creator, type, attr, uniqueIDSeed, true) == errNone) {
       if ((dbID = DmFindDatabase(0, name)) != 0) {
         DmSetDatabaseInfo(0, dbID, NULL, NULL, &version, &creationDate, &modificationDate, &lastBackupDate, NULL, NULL, NULL, NULL, NULL);
-        if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL && sto->dbs[dbRef->dbID - DBID_BASE]) {
+        if (attr & dmHdrAttrStream) {
+          if ((f = FileOpen(0, name, type, creator, fileModeReadWrite, &err)) != NULL) {
+            if (numRecs > 0) {
+              offsets = MemPtrNew(numRecs * sizeof(UInt32));
+              for (j = 0; j < numRecs; j++) {
+                i += get4b(&offsets[j], database, i);
+                i += get1(&dummy8, database, i);
+                i += get1(&dummy8, database, i);
+                i += get1(&dummy8, database, i);
+                i += get1(&dummy8, database, i);
+                debug(DEBUG_TRACE, "STOR", "stream record %u offset %u", j, offsets[j]);
+              }
+              i = firstOffset = offsets[0];
+              for (j = 0; j < numRecs; j++) {
+                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
+                if (size > 8) {
+                  debug(DEBUG_TRACE, "STOR", "stream record %u data %u", j, size - 8);
+                  FileWrite(f, (UInt8 *)bufferP + offsets[j] + 8, 1, size - 8, &err);
+                }
+              }
+              MemPtrFree(offsets);
+            }
+            FileClose(f);
+            err = errNone;
+          }
+        } else if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL && sto->dbs[dbRef->dbID - DBID_BASE]) {
           db = sto->dbs[dbRef->dbID - DBID_BASE];
           if (numRecs > 0) {
             resTypes = MemPtrNew(numRecs * sizeof(UInt32));
