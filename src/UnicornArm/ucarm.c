@@ -27,6 +27,7 @@ struct arm_emu_t {
   uc_hook trace4;
   uc_hook trace5;
   uc_hook trace6;
+  uc_hook trace7;
   uint32_t call68KAddr;
   call68KFunc_f f;
   uint8_t *buf;
@@ -35,6 +36,7 @@ struct arm_emu_t {
   int invalidIns;
   int disasm;
   uint32_t reg[16];
+  uint32_t monitored;
 
   int armScreenWrite;
   uint32_t displayStartAddr, displayEndAddr;
@@ -103,7 +105,7 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     r1 = ucarmGetReg(arm, 1);
     r2 = ucarmGetReg(arm, 2);
     r3 = ucarmGetReg(arm, 3);
-    debug(DEBUG_TRACE, "ARM", "ucarmHookCode call68KAddr r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X ...", r0, r1, r2, r3);
+    debug(DEBUG_TRACE, "ARM", "ucarmHookCode call68KAddr 0x%08X r0=0x%08X r1=0x%08X r2=0x%08X r3=0x%08X ...", addr, r0, r1, r2, r3);
     r = arm->f(r0, r1, r2, r3);
     debug(DEBUG_TRACE, "ARM", "ucarmHookCode call68KAddr r0=0x%08X", r);
     ucarmSetReg(arm, 0, r);
@@ -178,8 +180,9 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     uc_query(arm->uc, UC_QUERY_MODE, &mode);
     if (mode == UC_MODE_THUMB) {
       if (size == 4) {
-        uint32_t instr = *(uint32_t *)(arm->buf + addr);
-        debug(DEBUG_TRACE, "ARM", "%08X: (thumb 4 bytes) %08X %s", addr, instr, buf);
+        uint32_t instr1 = *(uint16_t *)(arm->buf + addr);
+        uint32_t instr2 = *(uint16_t *)(arm->buf + addr + 2);
+        debug(DEBUG_TRACE, "ARM", "%08X: (thumb 4 bytes) %04X %04X %s", addr, instr1, instr2, buf);
       } else {
         uint16_t instr = *(uint16_t *)(arm->buf + addr);
         disasm(arm->reg[15], addr, instr, buf, 1);
@@ -273,6 +276,20 @@ static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address
   return true;
 }
 
+/*
+static bool ucarmHookTest(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
+  arm_emu_t *arm = (arm_emu_t *)user_data;
+  uint32_t addr = (uint32_t)address;
+  char stype[64];
+
+  memAccessType(type, stype, sizeof(stype));
+  debug(DEBUG_INFO, "ARM", "%s access to %u byte(s) at monitored memory address 0x%08X offset %u value 0x%08X",
+    stype, size, arm->monitored, addr - arm->monitored, (uint32_t)value);
+
+  return true;
+}
+*/
+
 static bool ucarmHookLowMem(uc_engine *uc, uc_mem_type type, uint64_t address, int size, int64_t value, void *user_data) {
   uint32_t addr = (uint32_t)address;
   char stype[64];
@@ -344,6 +361,10 @@ static arm_emu_t *ucarmInit(uint8_t *buf, uint32_t size) {
       uc_hook_add(arm->uc, &arm->trace3, UC_HOOK_INSN_INVALID, ucarmHookInvalidInstruction, arm, 1, 0);
       uc_hook_add(arm->uc, &arm->trace4, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookLowMem, arm, 0, 1023);
       uc_hook_add(arm->uc, &arm->trace6, UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE, ucarmHookHighMem, arm, size, 0xFFFFFFFF);
+
+      // this can be used to trace which ARM instruction writes to a specifica memory address range:
+      //arm->monitored = 0x00004BC8;
+      //uc_hook_add(arm->uc, &arm->trace7, UC_HOOK_MEM_WRITE, ucarmHookTest, arm, arm->monitored, arm->monitored + 19);
 
       if (arm->armScreenWrite) {
         debug(DEBUG_INFO, "ARM", "enabling ARM screen write monitor from 0x%08X to 0x%08X", arm->displayStartAddr, arm->displayEndAddr);
