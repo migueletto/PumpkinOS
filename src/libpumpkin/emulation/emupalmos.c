@@ -2819,7 +2819,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
           if (pumpkin_audio_check(-1)) {
             EvtPumpEvents(0);
           }
-          m68k_execute(&state->m68k_state, 10000);
+          if (m68k_execute(&state->m68k_state, 10000) == -1) break;
         }
         logtrap_deinstall(state);
       }
