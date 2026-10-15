@@ -56,8 +56,7 @@ FileHand FileOpen(UInt16 cardNo, const Char *nameP, UInt32 type, UInt32 creator,
         pumpkin_id2s(creator, s1);
         pumpkin_id2s(creatorf, s2);
         debug(DEBUG_ERROR, PALMOS_MODULE, "FileOpen(\"%s\"): parameter creator '%s' does not match file creator '%s'", nameP, s1, s2);
-        if (errP) *errP = fileErrTypeCreatorMismatch;
-        return NULL;
+        // XXX Daedalus3D uses a different creator,so we can not return error here.
       }
       if (type != 0 && type != typef) {
         pumpkin_id2s(type, s1);
@@ -186,7 +185,7 @@ Int32 FileReadLow(FileHand stream, void *baseP, Int32 offset, Boolean dataStoreB
   FileType *f;
   Int32 r = 0;
 
-  *errP = fileErrIOError;
+  if (errP) *errP = fileErrIOError;
 
   if (stream) {
     f = (FileType *)stream;
@@ -195,11 +194,11 @@ Int32 FileReadLow(FileHand stream, void *baseP, Int32 offset, Boolean dataStoreB
     r = StoFileRead(f->dbRef, baseP, objSize*numObj);
 
     if (r == -1) {
-      *errP = DmGetLastErr();
+      if (errP) *errP = DmGetLastErr();
       r = 0;
     } else {
       r = objSize ? r / objSize : 0;
-      *errP = errNone;
+      if (errP) *errP = errNone;
     }
   }
 
@@ -210,7 +209,7 @@ Int32 FileWrite(FileHand stream, const void *dataP, Int32 objSize, Int32 numObj,
   FileType *f;
   Int32 r = 0;
 
-  *errP = fileErrIOError;
+  if (errP) *errP = fileErrIOError;
 
   if (stream) {
     f = (FileType *)stream;
@@ -218,11 +217,11 @@ Int32 FileWrite(FileHand stream, const void *dataP, Int32 objSize, Int32 numObj,
     r = StoFileWrite(f->dbRef, (uint8_t *)dataP, objSize*numObj);
 
     if (r == -1) {
-      *errP = DmGetLastErr();
+      if (errP) *errP = DmGetLastErr();
       r = 0;
     } else {
       r = objSize ? r / objSize : 0;
-      *errP = errNone;
+      if (errP) *errP = errNone;
     }
   }
 
