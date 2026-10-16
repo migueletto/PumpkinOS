@@ -1890,7 +1890,7 @@ Err CallTableLoadData(UInt32 addr, TableType *tableP, Int16 row, Int16 column, B
     m68k_write_memory_32(a + sizeof(uint32_t) + 3*sizeof(int16_t) + 3*sizeof(uint32_t), (uint8_t *)fld - ram);
     err = call68K_func(0, addr, a, argsSize);
     get4b(&d, p, handleOffset);
-    *dataH = ram + d;
+    *dataH = d ? ram + d : NULL;
     get2b(&w, p, dOffset);
     *dataOffset = w;
     get2b(&w, p, dOffset + 2);
