@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -95,7 +96,7 @@ static Boolean DayGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   if (cmd == formGadgetDeleteCmd) return true;
 
   frm = FrmGetActiveForm();
-  index = FrmGetObjectIndex(frm, 10120); // gadget
+  index = FrmGetObjectIndex(frm, DateSelectorDayGadget);
   FrmGetObjectBounds(frm, index, &rect);
   data = FrmGetGadgetData(frm, index);
 
@@ -155,7 +156,7 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
     case ctlSelectEvent:
       id = eventP->data.ctlSelect.controlID;
       frm = FrmGetActiveForm();
-      index = FrmGetObjectIndex(frm, 10120);
+      index = FrmGetObjectIndex(frm, DateSelectorDayGadget);
       FrmGetObjectBounds(frm, index, &rect);
       data = FrmGetGadgetData(frm, index);
 
@@ -167,27 +168,27 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
         handled = true;
       } else {
         switch (id) {
-          case 10122: // this month
-          case 10121: // this week
+          case DateSelectorThisMonthButton:
+          case DateSelectorThisWeekButton:
             // XXX not implemented
             break;
-          case 10118: // today
+          case DateSelectorTodayButton:
             TimSecondsToDateTime(TimGetSeconds(), &data->date);
             // fall through
-          case 10103:
-          case 10104:
-          case 0:
-            if (id == 10103) data->date.year--;
-            else if (id == 10104) data->date.year++;
+          case DateSelectorPriorYearButton:
+          case DateSelectorNextYearButton:
+          case 0: // XXX why 0 ?
+            if (id == DateSelectorPriorYearButton) data->date.year--;
+            else if (id == DateSelectorNextYearButton) data->date.year++;
             ndays = DaysInMonth(data->date.month, data->date.year);
             if (data->date.day > ndays) data->date.day = ndays;
             StrPrintF(buf, "%d", data->date.year);
-            FrmCopyLabel(frm, 10102, buf);
-            index = FrmGetObjectIndex(frm, 10102);
+            FrmCopyLabel(frm, DateSelectorYearLabel, buf);
+            index = FrmGetObjectIndex(frm, DateSelectorYearLabel);
             FrmEraseObject(frm, index, false);
             FrmDrawObject(frm, index, false);
             drawGrid(&rect, &data->date);
-            handled = id != 0 && id != 10118;
+            handled = id != 0 && id != DateSelectorTodayButton;
             break;
           default:
             break;
@@ -199,7 +200,7 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
       // intercept the gadget event and call FrmHandleEvent directly
       frm = FrmGetActiveForm();
       FrmHandleEvent(frm, eventP);
-      index = FrmGetObjectIndex(frm, 10120);
+      index = FrmGetObjectIndex(frm, DateSelectorDayGadget);
       data = FrmGetGadgetData(frm, index);
       // check if a day was selected
       if (data->selected) {
@@ -207,7 +208,7 @@ static Boolean SelectDayHandleEvent(EventType *eventP) {
         // so that the dialog will be closed by FrmDoDialog.
         MemSet(&ev, sizeof(EventType), 0);
         ev.eType = ctlSelectEvent;
-        index = FrmGetObjectIndex(frm, 10118); // the control must be real control
+        index = FrmGetObjectIndex(frm, DateSelectorTodayButton); // the control must be real control
         ev.data.ctlSelect.pControl = FrmGetObjectPtr(frm, index);;
         ev.data.ctlSelect.controlID = 0;       // but the controlID is not
         EvtAddEventToQueue(&ev);
@@ -242,45 +243,35 @@ Boolean SelectDay(const SelectDayType selectDayBy, Int16 *month, Int16 *day, Int
   data.date.month = *month;
   data.date.day = *day;
 
-  frm = FrmInitForm(10100);
+  frm = FrmInitForm(DateSelectorForm);
   if (title) FrmSetTitle(frm, (char *)title);
-
-  // 10102: year label
-  // 10103: up repeatingButton
-  // 10104: down repeatingButton
-  // 1 .. 12: "Jan" .. "Dec" pushButton
-  // 10118: "Today" button
-  // 10119: "Cancel" button
-  // 10120: gadget
-  // 10121: "This week" button
-  // 10122: "This month" button
 
   // the method by which the user should choose the day
   switch (selectDayBy) {
     case selectDayByDay:   // d/m/y
-      index = FrmGetObjectIndex(frm, 10118);
+      index = FrmGetObjectIndex(frm, DateSelectorTodayButton);
       FrmSetUsable(frm, index, true);
       break;
     case selectDayByWeek:  // d/m/y with d as same day of the week
-      index = FrmGetObjectIndex(frm, 10121);
+      index = FrmGetObjectIndex(frm, DateSelectorThisWeekButton);
       FrmSetUsable(frm, index, true);
       break;
     case selectDayByMonth: // d/m/y with d as same day of the month
-      index = FrmGetObjectIndex(frm, 10122);
+      index = FrmGetObjectIndex(frm, DateSelectorThisMonthButton);
       FrmSetUsable(frm, index, true);
       break;
   }
 
   // set year label
   StrPrintF(buf, "%d", *year);
-  FrmCopyLabel(frm, 10102, buf);
+  FrmCopyLabel(frm, DateSelectorYearLabel, buf);
 
   // set month pushButton
   index = FrmGetObjectIndex(frm, *month);
   ctl = (ControlType *)FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, 1);
 
-  index = FrmGetObjectIndex(frm, 10120);
+  index = FrmGetObjectIndex(frm, DateSelectorDayGadget);
   FrmSetGadgetData(frm, index, &data);
   FrmSetGadgetHandler(frm, index, DayGridGadgetCallback);
   FrmSetEventHandler(frm, SelectDayHandleEvent);
@@ -288,7 +279,8 @@ Boolean SelectDay(const SelectDayType selectDayBy, Int16 *month, Int16 *day, Int
   previous = FrmGetActiveForm();
   button = FrmDoDialog(frm);
 
-  if (button == 10101 || button == 10118 || data.selected) { // "OK" or "Today" buttons
+  // XXX why 10101 ? there is no such button in the form
+  if (button == 10101 || button == DateSelectorTodayButton || data.selected) {
     *year = data.date.year;
     *month = data.date.month;
     *day = data.date.day;

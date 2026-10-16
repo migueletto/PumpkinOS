@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -55,9 +56,9 @@ static Boolean SelTimeZoneEventHandler(EventType *event) {
 
   switch (event->eType) {
     case lstSelectEvent:
-      if (event->data.lstSelect.listID == 13403) {
+      if (event->data.lstSelect.listID == TimeZoneDialogTimeZoneList) {
         newTimeZone = 0;
-        if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
+        if ((h = DmGetResource(wrdListRscType, TimeZoneGMTOffsetsList)) != NULL) {
           if ((tz = MemHandleLock(h)) != NULL) {
             if (event->data.lstSelect.selection < tz[0]) {
               newTimeZone = (Int16)tz[event->data.lstSelect.selection + 1];
@@ -73,14 +74,14 @@ static Boolean SelTimeZoneEventHandler(EventType *event) {
 
         TimSecondsToDateTime(t, &dateTime);
         TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, currentTime);
-        index = FrmGetObjectIndex(frm, 13401);
+        index = FrmGetObjectIndex(frm, TimeZoneDialogCurrentTimeField);
         fld = (FieldType *)FrmGetObjectPtr(frm, index);
         FldDelete(fld, 0, 100);
         FldInsert(fld, currentTime, StrLen(currentTime));
 
         TimSecondsToDateTime(t - prefs.timeZone * 60 + newTimeZone * 60, &dateTime);
         TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, newTime);
-        index = FrmGetObjectIndex(frm, 13402);
+        index = FrmGetObjectIndex(frm, TimeZoneDialogNewTimeField);
         fld = (FieldType *)FrmGetObjectPtr(frm, index);
         FldDelete(fld, 0, 100);
         FldInsert(fld, newTime, StrLen(newTime));
@@ -115,14 +116,14 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
   if (ioTimeZoneP == NULL || (ioLocaleInTimeZoneP == NULL && !anyLocale)) return false;
 
   debug(DEBUG_INFO, "DateTime", "SelectTimeZone timeZone=%d", *ioTimeZoneP);
-  frm = FrmInitForm(13400);
+  frm = FrmInitForm(TimeZoneDialogForm);
   if (titleP) FrmSetTitle(frm, (char *)titleP);
 
   choices = NULL;
   max = 0;
   tz = NULL;
 
-  index = FrmGetObjectIndex(frm, 13403);
+  index = FrmGetObjectIndex(frm, TimeZoneDialogTimeZoneList);
   if ((list = (ListType *)FrmGetObjectPtr(frm, index)) != NULL) {
     // DmGetResource('tSTR', 13419)  0x346B  string 0x5e 0x31 0x72 0x00    XXX what is this ?
 
@@ -137,7 +138,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     // 00 78 00 f0 00 00 fd e4 fe 98 fe d4 fd a8 fe 5c
     // fe 20 00 00 00 3c 01 a4 02 1c 01 e0 01 e0 fe 5c
 
-    if ((h = DmGetResource(wrdListRscType, 13400)) != NULL) {
+    if ((h = DmGetResource(wrdListRscType, TimeZoneGMTOffsetsList)) != NULL) {
       if ((tz = MemHandleLock(h)) != NULL) {
         max = tz[0];
         if (max > 0) {
@@ -165,7 +166,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     // 00 db 00 22 00 16 00 17 00 17 00 17 00 17 00 17
     // 00 17 00 0a 00 0e 00 19 00 19 00 19 00 1b 00 0f
 
-    if (tz && (h = DmGetResource(wrdListRscType, 13401)) != NULL) {
+    if (tz && (h = DmGetResource(wrdListRscType, TimeZoneCountriesList)) != NULL) {
       if ((country = MemHandleLock(h)) != NULL) {
         maxc = tz[0];
         if (maxc == max) {
@@ -182,7 +183,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
 
     // DmGetResource('tSTL', 13400)  0x3458  71 strings with timezone names, first = "Afghanistan", last = "Mexico (Mountain)"
 
-    if ((h = DmGetResource(strListRscType, 13400)) != NULL) {
+    if ((h = DmGetResource(strListRscType, TimeZoneNamesStringList)) != NULL) {
       if ((p = MemHandleLock(h)) != NULL) {
         i = 0;
         i += pumpkin_getstr(&prefix, p, 0);
@@ -216,11 +217,6 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     }
   }
 
-  // 13401: field
-  // 13402: field
-  // 13405: label "New time"
-  // 13407: label "Current time"
-
   if (showTimes) {
     PrefGetPreferences(&prefs);
     t = TimGetSeconds();
@@ -228,21 +224,21 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
     TimeToAscii(dateTime.hour, dateTime.minute, prefs.timeFormat, currentTime);
     StrCopy(newTime, currentTime);
 
-    index = FrmGetObjectIndex(frm, 13401);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogCurrentTimeField);
     fld = (FieldType *)FrmGetObjectPtr(frm, index);
     FldInsert(fld, currentTime, StrLen(currentTime));
-    index = FrmGetObjectIndex(frm, 13402);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogNewTimeField);
     fld = (FieldType *)FrmGetObjectPtr(frm, index);
     FldInsert(fld, newTime, StrLen(newTime));
 
   } else {
-    index = FrmGetObjectIndex(frm, 13401);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogCurrentTimeField);
     FrmSetUsable(frm, index, false);
-    index = FrmGetObjectIndex(frm, 13402);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogNewTimeField);
     FrmSetUsable(frm, index, false);
-    index = FrmGetObjectIndex(frm, 13405);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogNewTimeLabel);
     FrmSetUsable(frm, index, false);
-    index = FrmGetObjectIndex(frm, 13407);
+    index = FrmGetObjectIndex(frm, TimeZoneDialogCurrentTimeLabel);
     FrmSetUsable(frm, index, false);
 
     // XXX grow list to use space of hidden controls
@@ -251,7 +247,7 @@ Boolean SelectTimeZone(Int16 *ioTimeZoneP, LmLocaleType *ioLocaleInTimeZoneP, co
   previous = FrmGetActiveForm();
   FrmSetEventHandler(frm, SelTimeZoneEventHandler);
 
-  if (FrmDoDialog(frm) == 13412) { // "OK" button
+  if (FrmDoDialog(frm) == TimeZoneDialogOKButton) {
     if (list && choices) {
       i = LstGetSelection(list);
       *ioTimeZoneP = choices[i]->tz;

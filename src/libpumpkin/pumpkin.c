@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 #include <VFSMgr.h>
 
 #include "sys.h"
@@ -1871,7 +1872,7 @@ static void pumpkin_init_icon(void) {
   int density, depth, len;
 
   if (pumpkin_module.wp->icon) {
-    if ((h = DmGetResource(bitmapRsc, 10000)) != NULL) {
+    if ((h = DmGetResource(bitmapRsc, palmLogoBitmap)) != NULL) {
       if ((bmp = MemHandleLock(h)) != NULL) {
         bmp = BmpGetBestBitmap(bmp, pumpkin_module.density, pumpkin_module.depth);
         BmpGetDimensions(bmp, &width, &height, NULL);

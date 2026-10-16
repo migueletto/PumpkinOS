@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
   
 #include "sys.h"
 #include "pwindow.h"
@@ -35,12 +36,12 @@ privateRecordViewEnum SecSelectViewStatus(void) {
   char *s;
   privateRecordViewEnum secLevel;
 
-  if ((frm = FrmInitForm(13200)) != NULL) {
+  if ((frm = FrmInitForm(SecChangeViewForm)) != NULL) {
     previous = FrmGetActiveForm();
 
-    index = FrmGetObjectIndex(frm, 13202);
+    index = FrmGetObjectIndex(frm, SecChangeViewCurPrivacyPopTrigger);
     ctl = (ControlType *)FrmGetObjectPtr(frm, index);
-    index = FrmGetObjectIndex(frm, 13203);
+    index = FrmGetObjectIndex(frm, SecChangeViewCurPrivacyList);
     lst = (ListType *)FrmGetObjectPtr(frm, index);
 
     if (lst != NULL && ctl != NULL) {
@@ -67,7 +68,7 @@ privateRecordViewEnum SecSelectViewStatus(void) {
       }                                                                                                                                                                                     
 
 
-      if (FrmDoDialog(frm) == 13204) { // "OK" button
+      if (FrmDoDialog(frm) == SecChangeViewOkButton) {
         sel = LstGetSelection(lst);
         switch (sel) {
           case 0: secLevel = showPrivateRecords; break;

@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "debug.h"
 
@@ -18,14 +19,16 @@ UInt16 SysFatalAlert(const Char *msg) {
   pumpkin_dirty_region_mode(dirtyRegionReset);
   WinSetCoordinateSystem(kCoordinatesStandard);
 
-  if ((formP = FrmInitForm(10400)) != NULL) {
+  // XXX this is using HelpForm, but it should have its own form
+
+  if ((formP = FrmInitForm(HelpForm)) != NULL) {
     FrmSetTitle(formP, "Fatal Exception");
-    index = FrmGetObjectIndex(formP, 10404);
+    index = FrmGetObjectIndex(formP, HelpUpButton);
     FrmHideObject(formP, index);
-    index = FrmGetObjectIndex(formP, 10405);
+    index = FrmGetObjectIndex(formP, HelpDownButton);
     FrmHideObject(formP, index);
 
-    index = FrmGetObjectIndex(formP, 10402);
+    index = FrmGetObjectIndex(formP, HelpField);
     fldP = FrmGetObjectPtr(formP, index);
 
     if (fldP != NULL) {

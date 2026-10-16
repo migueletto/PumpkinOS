@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -225,7 +226,7 @@ static void drawLists(FormType *frm, TimeType *timeP) {
   UInt16 index;
   ListType *list;
 
-  index = FrmGetObjectIndex(frm, 10206);
+  index = FrmGetObjectIndex(frm, TimeSelectorHourList);
   list = FrmGetObjectPtr(frm, index);
   if (timeP->hours != 0xFF) {
     LstSetSelection(list, timeP->hours);
@@ -235,7 +236,7 @@ static void drawLists(FormType *frm, TimeType *timeP) {
   }
   LstDrawList(list);
 
-  index = FrmGetObjectIndex(frm, 10207);
+  index = FrmGetObjectIndex(frm, TimeSelectorMinuteList);
   list = FrmGetObjectPtr(frm, index);
   if (timeP->minutes != 0xFF) {
     LstSetSelection(list, timeP->minutes / 5);
@@ -274,33 +275,33 @@ static Boolean SelectTimeHandleEvent(EventType *eventP) {
   switch (eventP->eType) {
     case frmOpenEvent:
       FrmDrawForm(frm);
-      index = FrmGetObjectIndex(frm, 10212);
+      index = FrmGetObjectIndex(frm, TimeSelectorAllDayButton);
       FrmShowObject(frm, index);
       handled = true;
       break;
 
     case lstSelectEvent:
       switch (eventP->data.lstSelect.listID) {
-        case 10206:
+        case TimeSelectorHourList:
           if (module->startSelected) {
             // start time is selected
             module->startTime.hours = eventP->data.lstSelect.selection;
-            setTime(frm, 10204, &module->startTime, is24h, module->startBuf, true);
+            setTime(frm, TimeSelectorStartTimeButton, &module->startTime, is24h, module->startBuf, true);
           } else {
             // end time is selected
             module->endTime.hours = eventP->data.lstSelect.selection;
-            setTime(frm, 10205, &module->endTime, is24h, module->endBuf, true);
+            setTime(frm, TimeSelectorEndTimeButton, &module->endTime, is24h, module->endBuf, true);
           }
           break;
-        case 10207:
+        case TimeSelectorMinuteList:
           if (module->startSelected) {
             // start time is selected
             module->startTime.minutes = eventP->data.lstSelect.selection * 5;
-            setTime(frm, 10204, &module->startTime, is24h, module->startBuf, true);
+            setTime(frm, TimeSelectorStartTimeButton, &module->startTime, is24h, module->startBuf, true);
           } else {
             // end time is selected
             module->endTime.minutes = eventP->data.lstSelect.selection * 5;
-            setTime(frm, 10205, &module->endTime, is24h, module->endBuf, true);
+            setTime(frm, TimeSelectorEndTimeButton, &module->endTime, is24h, module->endBuf, true);
           }
           break;
       }
@@ -308,11 +309,11 @@ static Boolean SelectTimeHandleEvent(EventType *eventP) {
 
     case ctlSelectEvent:
       switch (eventP->data.ctlSelect.controlID) {
-        case 10204:
-          index = FrmGetObjectIndex(frm, 10204);
+        case TimeSelectorStartTimeButton:
+          index = FrmGetObjectIndex(frm, TimeSelectorStartTimeButton);
           ctl = FrmGetObjectPtr(frm, index);
           if (CtlGetValue(ctl)) {
-            index = FrmGetObjectIndex(frm, 10205);
+            index = FrmGetObjectIndex(frm, TimeSelectorEndTimeButton);
             ctl = FrmGetObjectPtr(frm, index);
             CtlSetValue(ctl, 0);
             drawLists(frm, &module->startTime);
@@ -320,11 +321,11 @@ static Boolean SelectTimeHandleEvent(EventType *eventP) {
           module->startSelected = true;
           //handled = true;
           break;
-        case 10205:
-          index = FrmGetObjectIndex(frm, 10205);
+        case TimeSelectorEndTimeButton:
+          index = FrmGetObjectIndex(frm, TimeSelectorEndTimeButton);
           ctl = FrmGetObjectPtr(frm, index);
           if (CtlGetValue(ctl)) {
-            index = FrmGetObjectIndex(frm, 10204);
+            index = FrmGetObjectIndex(frm, TimeSelectorStartTimeButton);
             ctl = FrmGetObjectPtr(frm, index);
             CtlSetValue(ctl, 0);
             drawLists(frm, &module->endTime);
@@ -332,13 +333,13 @@ static Boolean SelectTimeHandleEvent(EventType *eventP) {
           module->startSelected = false;
           //handled = true;
           break;
-        case 10210: // No Time
+        case TimeSelectorNoTimeButton:
           module->startTime.hours = 0xFF;
           module->startTime.minutes = 0xFF;
           module->endTime.hours = 0xFF;
           module->endTime.minutes = 0xFF;
           break;
-        case 10212: // All day
+        case TimeSelectorAllDayButton:
           module->startTime.hours = 8;
           module->startTime.minutes = 0;
           module->endTime.hours = module->endOfDay;
@@ -363,7 +364,7 @@ Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, co
 
   // XXX startOfDisplay is not being used
 
-  frm = FrmInitForm(10200);
+  frm = FrmInitForm(TimeSelectorForm);
   FrmSetTitle(frm, (char *)titleP);
 
   // control id 10204 font 1 style 1 attr 0xC100 text "12:00 pm  " at (10,30,50,13)
@@ -407,11 +408,11 @@ Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, co
   } else {
     module->startTime.hours = startTimeP->hours;
     module->startTime.minutes = (startTimeP->minutes / 5) * 5;
-    setTime(frm, 10204, &module->startTime, is24h, module->startBuf, module->startSelected);
+    setTime(frm, TimeSelectorStartTimeButton, &module->startTime, is24h, module->startBuf, module->startSelected);
 
     module->endTime.hours = endTimeP->hours;
     module->endTime.minutes = (endTimeP->minutes / 5) * 5;
-    setTime(frm, 10205, &module->endTime, is24h, module->endBuf, !module->startSelected);
+    setTime(frm, TimeSelectorEndTimeButton, &module->endTime, is24h, module->endBuf, !module->startSelected);
   }
 
   if (startOfDay < 0) startOfDay = 0;
@@ -421,7 +422,7 @@ Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, co
   else if (endOfDay > 23) endOfDay = 23;
   module->endOfDay = endOfDay;
 
-  index = FrmGetObjectIndex(frm, 10206);
+  index = FrmGetObjectIndex(frm, TimeSelectorHourList);
   list = FrmGetObjectPtr(frm, index);
   LstSetListChoices(list, choices, 24);
   LstSetTopItem(list, startOfDay);
@@ -435,7 +436,7 @@ Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, co
   if (untimed) {
     LstSetSelection(list, noListSelection);
   } else {
-    index = FrmGetObjectIndex(frm, 10207);
+    index = FrmGetObjectIndex(frm, TimeSelectorMinuteList);
     list = FrmGetObjectPtr(frm, index);
     LstSetSelection(list, module->startTime.minutes / 5);
     LstMakeItemVisible(list, module->startTime.minutes / 5);
@@ -445,9 +446,9 @@ Boolean SelectTime(TimeType *startTimeP, TimeType *endTimeP, Boolean untimed, co
   previous = FrmGetActiveForm();
 
   switch (FrmDoDialog(frm)) {
-    case 10208: // "OK" button
-    case 10210: // "No time" button
-    case 10212: // "All day" button
+    case TimeSelectorOKButton:
+    case TimeSelectorNoTimeButton:
+    case TimeSelectorAllDayButton:
       startTimeP->hours = module->startTime.hours;
       startTimeP->minutes = module->startTime.minutes;
       endTimeP->hours = module->endTime.hours;

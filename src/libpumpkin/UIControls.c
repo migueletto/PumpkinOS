@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "pumpkin.h"
 #include "debug.h"
@@ -103,7 +104,7 @@ static Boolean ColorGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd
   if (cmd == formGadgetDeleteCmd) return true;
 
   frm = FrmGetActiveForm();
-  index = FrmGetObjectIndex(frm, 13305); // color grid gadget
+  index = FrmGetObjectIndex(frm, ColorPickerChitBoundsGadget);
   FrmGetObjectBounds(frm, index, &rect);
 
   indexP = FrmGetGadgetData(frm, index);
@@ -133,9 +134,9 @@ static Boolean ColorGridGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd
               drawGrid(&rect, i);
               *indexP = i;
               WinIndexToRGB(i, &rgb);
-              setSliderColor(frm, 13306, 13313, rgb.r);
-              setSliderColor(frm, 13308, 13314, rgb.g);
-              setSliderColor(frm, 13310, 13315, rgb.b);
+              setSliderColor(frm, ColorPickerRedSlider,   ColorPickerRedValue,   rgb.r);
+              setSliderColor(frm, ColorPickerGreenSlider, ColorPickerGreenValue, rgb.g);
+              setSliderColor(frm, ColorPickerBlueSlider,  ColorPickerBlueValue,  rgb.b);
             }
           }
         }
@@ -163,15 +164,15 @@ static Boolean ColorGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
   if (cmd == formGadgetDeleteCmd) return true;
 
   frm = FrmGetActiveForm();
-  index = FrmGetObjectIndex(frm, 13312); // color gadget
+  index = FrmGetObjectIndex(frm, ColorPickerSampleColorGadget);
   FrmGetObjectBounds(frm, index, &rect);
 
   switch (cmd) {
     case formGadgetDrawCmd:
       rgb.index = 0;
-      rgb.r = getSliderColor(frm, 13306, NULL, 0);
-      rgb.g = getSliderColor(frm, 13308, NULL, 0);
-      rgb.b = getSliderColor(frm, 13310, NULL, 0);
+      rgb.r = getSliderColor(frm, ColorPickerRedSlider,   NULL, 0);
+      rgb.g = getSliderColor(frm, ColorPickerGreenSlider, NULL, 0);
+      rgb.b = getSliderColor(frm, ColorPickerBlueSlider,  NULL, 0);
       drawColorPanel(&rect, &rgb);
       break;
 
@@ -200,7 +201,7 @@ static void UIPickColorSetControls(FormType *frm, Boolean rgb, RGBColorType *rgb
   ListType *lst;
   UInt16 index, gridIndex, listIndex;
 
-  gridIndex = FrmGetObjectIndex(frm, 13305); // color grid gadget
+  gridIndex = FrmGetObjectIndex(frm, ColorPickerChitBoundsGadget);
   if (!rgb) {
     FrmSetGadgetHandler(frm, gridIndex, ColorGridGadgetCallback);
   }
@@ -212,9 +213,9 @@ static void UIPickColorSetControls(FormType *frm, Boolean rgb, RGBColorType *rgb
     showObject(frm, gridIndex, false);
   }
 
-  index = FrmGetObjectIndex(frm, 13303);     // popup trigger
+  index = FrmGetObjectIndex(frm, ColorPickerTypeTrigger);
   showObject(frm, index, list);
-  listIndex = FrmGetObjectIndex(frm, 13304); // list
+  listIndex = FrmGetObjectIndex(frm, ColorPickerTypePopupList);
   showObject(frm, listIndex, false);
 
   if (list) {
@@ -224,37 +225,37 @@ static void UIPickColorSetControls(FormType *frm, Boolean rgb, RGBColorType *rgb
     CtlSetLabel(ctl, LstGetSelectionText(lst, rgb ? 1 : 0));
   }
 
-  index = FrmGetObjectIndex(frm, 13306); // red slider
+  index = FrmGetObjectIndex(frm, ColorPickerRedSlider);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13308); // green slider
+  index = FrmGetObjectIndex(frm, ColorPickerGreenSlider);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13310); // blue slider
+  index = FrmGetObjectIndex(frm, ColorPickerBlueSlider);
   showObject(frm, index, rgb);
 
-  index = FrmGetObjectIndex(frm, 13307); // red label
+  index = FrmGetObjectIndex(frm, ColorPickerRedLabel);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13309); // green label
+  index = FrmGetObjectIndex(frm, ColorPickerGreenLabel);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13311); // blue label
+  index = FrmGetObjectIndex(frm, ColorPickerBlueLabel);
   showObject(frm, index, rgb);
 
   if (rgbP) {
-    setSliderColor(frm, 13306, 13313, rgbP->r);
-    setSliderColor(frm, 13308, 13314, rgbP->g);
-    setSliderColor(frm, 13310, 13315, rgbP->b);
+    setSliderColor(frm, ColorPickerRedSlider,   ColorPickerRedValue,   rgbP->r);
+    setSliderColor(frm, ColorPickerGreenSlider, ColorPickerGreenValue, rgbP->g);
+    setSliderColor(frm, ColorPickerBlueSlider,  ColorPickerBlueValue,  rgbP->b);
   }
 
-  index = FrmGetObjectIndex(frm, 13312); // color gadget
+  index = FrmGetObjectIndex(frm, ColorPickerSampleColorGadget);
   if (rgb) {
     FrmSetGadgetHandler(frm, index, ColorGadgetCallback);
   }
   showObject(frm, index, rgb);
 
-  index = FrmGetObjectIndex(frm, 13313); // red value label
+  index = FrmGetObjectIndex(frm, ColorPickerRedValue);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13314); // green value label
+  index = FrmGetObjectIndex(frm, ColorPickerGreenValue);
   showObject(frm, index, rgb);
-  index = FrmGetObjectIndex(frm, 13315); // blue value label
+  index = FrmGetObjectIndex(frm, ColorPickerBlueValue);
   showObject(frm, index, rgb);
 
   if (!rgb) {
@@ -279,23 +280,23 @@ static void ctlSelectHandlEvent(FormType *frm, UInt16 controlID) {
   char buf[8];
 
   switch (controlID) {
-    case 13306:
-    case 13308:
-    case 13310:
-      rgb.r = getSliderColor(frm, 13306, buf, sizeof(buf)-1);
-      updateLabel(frm, 13313, buf);
+    case ColorPickerRedSlider:
+    case ColorPickerGreenSlider:
+    case ColorPickerBlueSlider:
+      rgb.r = getSliderColor(frm, ColorPickerRedSlider, buf, sizeof(buf)-1);
+      updateLabel(frm, ColorPickerRedValue, buf);
 
-      rgb.g = getSliderColor(frm, 13308, buf, sizeof(buf)-1);
-      updateLabel(frm, 13314, buf);
+      rgb.g = getSliderColor(frm, ColorPickerGreenSlider, buf, sizeof(buf)-1);
+      updateLabel(frm, ColorPickerGreenValue, buf);
 
-      rgb.b = getSliderColor(frm, 13310, buf, sizeof(buf)-1);
-      updateLabel(frm, 13315, buf);
+      rgb.b = getSliderColor(frm, ColorPickerBlueSlider, buf, sizeof(buf)-1);
+      updateLabel(frm, ColorPickerBlueValue, buf);
 
-      index = FrmGetObjectIndex(frm, 13312); // color panel gadget
+      index = FrmGetObjectIndex(frm, ColorPickerSampleColorGadget);
       FrmGetObjectBounds(frm, index, &rect);
       drawColorPanel(&rect, &rgb);
     
-      index = FrmGetObjectIndex(frm, 13305); // color grid gadget
+      index = FrmGetObjectIndex(frm, ColorPickerChitBoundsGadget);
       indexP = (IndexedColorType *)FrmGetGadgetData(frm, index);
       if (indexP) *indexP = WinRGBToIndex(&rgb);
   }
@@ -312,7 +313,7 @@ static Boolean PickColorHandleEvent(EventType *eventP) {
       handled = true;
       break;
     case popSelectEvent:
-      if (eventP->data.popSelect.listID == 13304) {
+      if (eventP->data.popSelect.listID == ColorPickerTypePopupList) {
         frm = FrmGetActiveForm();
         switch (eventP->data.popSelect.selection) {
           case 0: // palette
@@ -346,7 +347,7 @@ Boolean UIPickColor(IndexedColorType *indexP, RGBColorType *rgbP, UIPickColorSta
 
   debug(DEBUG_INFO, PALMOS_MODULE, "UIPickColor start %d title \"%s\"", start, titleP ? titleP : "");
 
-  frm = FrmInitForm(13300);
+  frm = FrmInitForm(ColorPickerForm);
   FrmSetTitle(frm, (char *)titleP);
   FrmSetEventHandler(frm, PickColorHandleEvent);
 
@@ -392,7 +393,7 @@ Boolean UIPickColor(IndexedColorType *indexP, RGBColorType *rgbP, UIPickColorSta
   }
 
   previous = FrmGetActiveForm();
-  if (FrmDoDialog(frm) == 13301) { // "OK" button
+  if (FrmDoDialog(frm) == ColorPickerOKButton) {
     // Palm OS 3.5 supports a maximum of 256 colors. The number of
     // possible RGB colors greatly exceeds this amount. For this reason,
     // the chosen RGB may not have an exact match. If this is the case, the
@@ -402,9 +403,9 @@ Boolean UIPickColor(IndexedColorType *indexP, RGBColorType *rgbP, UIPickColorSta
     // fit in the RGB space is used if the palette contains colors.
 
     if (rgbP) {
-      rgbP->r = getSliderColor(frm, 13306, NULL, 0);
-      rgbP->g = getSliderColor(frm, 13308, NULL, 0);
-      rgbP->b = getSliderColor(frm, 13310, NULL, 0);
+      rgbP->r = getSliderColor(frm, ColorPickerRedSlider,   NULL, 0);
+      rgbP->g = getSliderColor(frm, ColorPickerGreenSlider, NULL, 0);
+      rgbP->b = getSliderColor(frm, ColorPickerBlueSlider,  NULL, 0);
     }
 
     r = true;
@@ -420,10 +421,10 @@ void UIContrastAdjust(void) {
   FormType *frm, *previous;
 
   debug(DEBUG_ERROR, PALMOS_MODULE, "UIContrastAdjust not implemented");
-  frm = FrmInitForm(13100);
+  frm = FrmInitForm(SysContrastAdjustForm);
 
   previous = FrmGetActiveForm();
-  if (FrmDoDialog(frm) == 13101) { // "OK" button
+  if (FrmDoDialog(frm) == SysLevelAdjustDoneButton) {
   }
   FrmDeleteForm(frm);
   FrmSetActiveForm(previous);
@@ -433,10 +434,10 @@ void UIBrightnessAdjust(void) {
   FormType *frm, *previous;
 
   debug(DEBUG_ERROR, PALMOS_MODULE, "UIBrightnessAdjust not implemented");
-  frm = FrmInitForm(13150);
+  frm = FrmInitForm(SysBrightnessAdjustForm);
 
   previous = FrmGetActiveForm();
-  if (FrmDoDialog(frm) == 13111) { // "OK" button
+  if (FrmDoDialog(frm) == SysLevelAdjustDoneButton) {
   }
   FrmDeleteForm(frm);
   FrmSetActiveForm(previous);
