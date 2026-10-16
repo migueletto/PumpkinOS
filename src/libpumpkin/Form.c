@@ -1,4 +1,5 @@
 #include <PalmOS.h>
+#include <UIResourcesPrv.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -1818,12 +1819,7 @@ UInt16 FrmDoDialog(FormType *formP) {
   Char      *message;
   Char      *button[8];
 */
-/*
-  10004: information
-  10005: question mark
-  10006: warning
-  10007: stop
-*/
+
 static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char *entry, Int16 entryLen, FormCheckResponseFuncPtr callback) {
   FormType *formP;
   FieldType *fld;
@@ -1841,10 +1837,10 @@ static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char 
   if (alert && msg) {
     debug(DEBUG_TRACE, "Form", "Alert %d \"%s\"", id, msg);
     switch (alert->alertType) {
-      case informationAlert:  bitmapID = 10004; break;
-      case confirmationAlert: bitmapID = 10005; break;
-      case warningAlert:      bitmapID = 10006; break;
-      case errorAlert:        bitmapID = 10007; break;
+      case informationAlert:  bitmapID = InformationAlertBitmap; break;
+      case confirmationAlert: bitmapID = ConfirmationAlertBitmap; break;
+      case warningAlert:      bitmapID = WarningAlertBitmap; break;
+      case errorAlert:        bitmapID = ErrorAlertBitmap; break;
       default: bitmapID = 0; break;
     }
 
@@ -2029,7 +2025,7 @@ static void frmHelpControls(FormType *formP, FieldType *fldP) {
   ControlType *ctl;
   UInt16 index;
 
-  index = FrmGetObjectIndex(formP, 10404);
+  index = FrmGetObjectIndex(formP, HelpUpButton);
   ctl = FrmGetObjectPtr(formP, index);
   if (!FldScrollable(fldP, winUp)) {
     CtlSetLabel(ctl, "\x03"); // up arrow, grayed out
@@ -2037,7 +2033,7 @@ static void frmHelpControls(FormType *formP, FieldType *fldP) {
     CtlSetLabel(ctl, "\x01"); // up arrow, normal
   }
 
-  index = FrmGetObjectIndex(formP, 10405);
+  index = FrmGetObjectIndex(formP, HelpDownButton);
   ctl = FrmGetObjectPtr(formP, index);
   if (!FldScrollable(fldP, winDown)) {
     CtlSetLabel(ctl, "\x04"); // down arrow, grayed out
@@ -2052,7 +2048,7 @@ static void frmHelpPage(Boolean up) {
   UInt16 index, n;
 
   formP = FrmGetActiveForm();
-  index = FrmGetObjectIndex(formP, 10402);
+  index = FrmGetObjectIndex(formP, HelpField);
   fldP = (FieldType *)FrmGetObjectPtr(formP, index);
   n = FldGetVisibleLines(fldP);
   // increment is n-1 so that the last line appears at the top
@@ -2068,11 +2064,11 @@ static Boolean frmHelpEventHandler(EventType *eventP) {
     case ctlSelectEvent:
     case ctlRepeatEvent:
       switch (eventP->data.ctlSelect.controlID) {
-        case 10404: // up arrow
+        case HelpUpButton:
           frmHelpPage(true);
           handled = true;
           break;
-        case 10405: // down arrow
+        case HelpDownButton:
           frmHelpPage(false);
           handled = true;
           break;
@@ -2094,8 +2090,8 @@ void FrmHelp(UInt16 helpMsgId) {
   UInt16 index;
 
   if ((h = DmGetResource(strRsc, helpMsgId)) != NULL) {
-    if ((formP = FrmInitForm(10400)) != NULL) {
-      if ((index = FrmGetObjectIndex(formP, 10402)) != frmInvalidObjectId) {
+    if ((formP = FrmInitForm(HelpForm)) != NULL) {
+      if ((index = FrmGetObjectIndex(formP, HelpField)) != frmInvalidObjectId) {
         if (formP->objects[index].objectType == frmFieldObj) {
           fldP = formP->objects[index].object.field;
 
@@ -3076,8 +3072,8 @@ ControlType *pumpkin_create_control(uint8_t *p, int *i) {
       sc->bounds.extent.y = h;
       sc->thumbID = bitmapId;
       sc->backgroundID = selBitmapId;
-      if (sc->thumbID == 0) sc->thumbID = 13350;
-      if (sc->backgroundID == 0) sc->backgroundID = 13351;
+      if (sc->thumbID == 0) sc->thumbID = SliderDefaultThumbBitmap;
+      if (sc->backgroundID == 0) sc->backgroundID = SliderDefaultBackgroundBitmap;
       CtlDecodeAttr(attr, &sc->attr);
       sc->style = style;
       sc->minValue = minValue;
@@ -3322,7 +3318,9 @@ static TableType *pumpkin_create_table(uint8_t *p, int *i) {
     c->attr.editing      = (attr & 0x2000) ? 1 : 0;
     c->attr.selected     = (attr & 0x1000) ? 1 : 0;
     c->attr.hasScrollBar = (attr & 0x0800) ? 1 : 0;
-    c->attr.usable       = (attr & 0x0400) ? 1 : 0;
+    // XXX tables are usable be default
+    //c->attr.usable       = (attr & 0x0400) ? 1 : 0;
+    c->attr.usable       = 1;
     c->attr.reserved     = 0;
     debug(DEBUG_TRACE, "Form", "table attr 0x%04X (visible=%d, editable=%d, usable=%d)", attr, c->attr.visible, c->attr.editable, c->attr.usable);
     c->numColumns = cols;
