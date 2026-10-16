@@ -823,7 +823,7 @@ int StoRefresh(void) {
             }
           }
           if (found) {
-            debug(DEBUG_INFO, "STOR", "StoRefresh found database \"%s\"", name);
+            debug(DEBUG_TRACE, "STOR", "StoRefresh found database \"%s\"", name);
           } else {
             if ((db = pumpkin_heap_alloc(sizeof(storage_db_t), "storage_db")) != NULL) {
               db->magic = DB_MAGIC;
