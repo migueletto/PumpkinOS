@@ -332,7 +332,7 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       Int32 res;
       res = (a.f < b.f);
       m68k_set_reg(M68K_REG_D0, res);
-      debug(DEBUG_TRACE, "FlpEm", "_d_flt(%f, %f): %d", a.f, b.f, res);
+      debug(DEBUG_TRACE, "FlpEm", "_f_flt(%f, %f): %d", a.f, b.f, res);
     }
       break;
     case sysFloatEm_f_fle: {
@@ -344,7 +344,7 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       Int32 res;
       res = (a.f <= b.f);
       m68k_set_reg(M68K_REG_D0, res);
-      debug(DEBUG_TRACE, "FlpEm", "_d_fle(%f, %f): %d", a.f, b.f, res);
+      debug(DEBUG_TRACE, "FlpEm", "_f_fle(%f, %f): %d", a.f, b.f, res);
     }
       break;
     case sysFloatEm_f_fgt: {
@@ -356,7 +356,29 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       Int32 res;
       res = (a.f > b.f);
       m68k_set_reg(M68K_REG_D0, res);
-      debug(DEBUG_TRACE, "FlpEm", "_d_fgt(%f, %f): %d", a.f, b.f, res);
+      debug(DEBUG_TRACE, "FlpEm", "_f_fgt(%f, %f): %d", a.f, b.f, res);
+    }
+      break;
+    case sysFloatEm_f_fge: {
+      // Int32 _f_fge(FlpFloat, FlpFloat)
+      flp_float_t a;
+      a.i = ARG32;
+      flp_float_t b;
+      b.i = ARG32;
+      Int32 res;
+      res = (a.f >= b.f);
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "FlpEm", "_f_fge(%f, %f): %d", a.f, b.f, res);
+    }
+      break;
+    case sysFloatEm_f_neg: {
+      // FlpFloat _f_neg(FlpFloat)
+      flp_float_t a;
+      a.i = ARG32;
+      flp_float_t f;
+      f.f = -a.f;
+      debug(DEBUG_TRACE, "FlpEm", "_f_neg(%f): %f", a.f, f.f);
+      m68k_set_reg(M68K_REG_D0, f.i);
     }
       break;
     default:
