@@ -3604,18 +3604,30 @@ void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* 
   }
 }
 
-void WinSetInvertColors(Boolean set) {
+void WinSetInvertColors(Int16 c1, Int16 c2, Int16 c3, Int16 c4) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   RGBColorType rgb;
   BitmapType *bmp;
   WinHandle wh;
+  Boolean convert;
 
-  if (set) {
-    module->c1 = UIColorGetTableEntryIndex(UIObjectFill);
-    module->c2 = UIColorGetTableEntryIndex(UIObjectForeground);
-    module->c3 = UIColorGetTableEntryIndex(UIObjectSelectedFill);
-    module->c4 = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+  if (c1 == 0 && c2 == 0 && c3 == 0 && c4 == 0) {
+   convert = false;
+  } else if (c1 == -1) {
+   c1 = UIColorGetTableEntryIndex(UIObjectFill);
+   c2 = UIColorGetTableEntryIndex(UIObjectForeground);
+   c3 = UIColorGetTableEntryIndex(UIObjectSelectedFill);
+   c4 = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+   convert = true;
+  } else {
+   convert = true;
+  }
+  module->c1 = c1;
+  module->c2 = c2;
+  module->c3 = c3;
+  module->c4 = c4;
 
+  if (convert) {
     wh = WinGetDrawWindow();
     bmp = WinGetBitmap(wh);
     if (BmpGetBitDepth(bmp) == 16) {
@@ -3628,12 +3640,6 @@ void WinSetInvertColors(Boolean set) {
       WinIndexToRGB(module->c4, &rgb);
       module->c4 = rgb565(rgb.r, rgb.g, rgb.b);
     }
-
-  } else {
-    module->c1 = 0;
-    module->c2 = 0;
-    module->c3 = 0;
-    module->c4 = 0;
   }
 }
 

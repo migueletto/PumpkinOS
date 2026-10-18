@@ -39,7 +39,7 @@ static void CtlInvertControl(ControlType *controlP) {
     if (controlP->style == buttonCtl) {
       MemMove(&bounds, &controlP->bounds, sizeof(RectangleType));
       if (controlP->text && controlP->text[0]) {
-        WinSetInvertColors(true);
+        WinSetInvertColors(-1, -1, -1, -1);
       }
 
       // invert area of the control
@@ -52,7 +52,7 @@ static void CtlInvertControl(ControlType *controlP) {
           WinInvertRect(&bounds, 0);
           break;
       }
-      WinSetInvertColors(false);
+      WinSetInvertColors(0, 0, 0, 0);
 
       // redraw the frame (if any)
       switch (controlP->attr.frame) {
