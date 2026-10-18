@@ -71,6 +71,16 @@ Err GPDReadInstant(UInt16 uRefNum, UInt8 *resultP) {
   return err;
 }
 
-Err GPDReadInstantKCSformat(UInt16 uRefNum, UInt32 *result, UInt32 keyMap) {
-  return errNone;
+Err GPDReadInstantKCSformat(UInt16 uRefNum, UInt32 *resultP, UInt32 keyMap) {
+  uint32_t keyMask;
+  Err err = GPDErrParam;
+
+  if (resultP) {
+    pumpkin_status(NULL, NULL, &keyMask, NULL, NULL, NULL);
+    // XXX keyMap is not used
+    *resultP = keyMask;
+    err = errNone;
+  }
+
+  return err;
 }
