@@ -447,7 +447,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
               item->intValue = !item->intValue;
               TblMarkRowInvalid(tableP, row);
               TblRedrawTable(tableP);
-              FldSetActiveField(NULL);
+              FldSetActiveField(NULL, false);
               tableP->attr.editing = false;
 //debug(1, "XXX", "table %d TblHandleEvent penUp checkbox editing=false", tableP->id);
               break;
@@ -464,7 +464,7 @@ Boolean TblHandleEvent(TableType *tableP, EventType *eventP) {
               FldHandleEvent(&tableP->currentField, &event);
               break;
             default:
-              FldSetActiveField(NULL);
+              FldSetActiveField(NULL, false);
               tableP->attr.editing = false;
 //debug(1, "XXX", "table %d TblHandleEvent penUp other editing=false", tableP->id);
               break;
@@ -1009,7 +1009,7 @@ void TblGrabFocus(TableType *tableP, Int16 row, Int16 column) {
 
         tableP->currentField.formP = FrmGetActiveForm();
         FldDrawField(&tableP->currentField);
-        FldSetActiveField(&tableP->currentField);
+        FldSetActiveField(&tableP->currentField, false);
 //debug(1, "XXX", "table %d TblGrabFocus editing=true", tableP->id);
         tableP->attr.editing = true;
       default:

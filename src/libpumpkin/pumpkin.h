@@ -480,7 +480,7 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size);
 UInt32 WinGetForeColorU(void);
 UInt32 WinGetBackColorU(void);
 ColorTableType *WinGetColorTable(Int16 depth);
-void WinSetInvertColors(Boolean set);
+void WinSetInvertColors(Int16 c1, Int16 c2, Int16 c3, Int16 c4);
 void WinGetInvertColors(UInt16 *c1, UInt16 *c2, UInt16 *c3, UInt16 *c4);
 
 int PrefInitModule(void);
@@ -573,7 +573,7 @@ void CtlUpdateGroup(ControlType *controlP, Boolean value);
 void CtlUpdateCheckboxGroup(ControlType *controlP, Boolean value);
 void CtlDirectAccessHack(ControlType *controlP);
 FieldType *FldGetActiveField(void);
-void FldSetActiveField(FieldType *fldP);
+void FldSetActiveField(FieldType *fldP, Boolean justSet);
 void FldBlinkCursor(void);
 void FldReplaceText(FieldType *fldP, char *s, Boolean focus);
 IndexedColorType WinGetForeColor(void);

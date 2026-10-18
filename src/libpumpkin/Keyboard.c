@@ -361,7 +361,7 @@ static Boolean SysKeyboardHandleEvent(EventType *eventP) {
     case frmOpenEvent:
       FrmDrawForm(formP);
       FldSetInsPtPosition(kbdFldP, module->pos);
-      FldSetActiveField(kbdFldP);
+      FldSetActiveField(kbdFldP, false);
       handled = true;
       break;
     case penDownEvent:
@@ -509,7 +509,7 @@ void SysKeyboardDialog(KeyboardType kbd) {
                   FldSetTextHandle(kbdFldP, NULL);
                 }
                 FldSetInsPtPosition(fldP, module->pos);
-                FldSetActiveField(fldP);
+                FldSetActiveField(fldP, false);
               }
               FrmDeleteForm(kbdFormP);
               FrmSetActiveForm(previous);

@@ -57,7 +57,6 @@ static void nop(Err err);
 */
 
 typedef struct {
-  FieldType *activeField;
   UInt16 penDownOffset;
   UInt16 penDownX, penDownY;
   FieldType auxField;
@@ -106,36 +105,6 @@ int FldFinishModule(void) {
   }
 
   return 0;
-}
-
-FieldType *FldGetActiveField(void) {
-  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
-
-  return module->activeField;
-}
-
-void FldSetActiveField(FieldType *fldP) {
-  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
-
-  InsPtEnable(false);
-
-  if (fldP) {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "FldSetActiveField field %d", fldP->id);
-  } else {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "FldSetActiveField field NULL");
-  }
-
-  if (module->activeField) {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "FldSetActiveField release current focus");
-    FldReleaseFocus(module->activeField);
-  }
-
-  module->activeField = fldP;
-
-  if (module->activeField) {
-    debug(DEBUG_TRACE, PALMOS_MODULE, "FldSetActiveField grab new focus");
-    FldGrabFocus(module->activeField);
-  }
 }
 
 static UInt16 FldNextWord(FieldType *fldP, UInt16 i, UInt16 *width, char *word, UInt16 max) {
@@ -751,8 +720,8 @@ Boolean FldHandleEvent(FieldType *fldP, EventType *eventP) {
 
       case fldEnterEvent:
         debug(DEBUG_TRACE, PALMOS_MODULE, "FldHandleEvent fldEnter field %d", fldP->id);
-        FldSetActiveField(NULL);
-        FldSetActiveField(fldP);
+        FldSetActiveField(NULL, false);
+        FldSetActiveField(fldP, false);
         module->penDownX = eventP->screenX - fldP->rect.topLeft.x;
         module->penDownY = eventP->screenY - fldP->rect.topLeft.y;
         FldGrabFocusEx(fldP, true);
@@ -976,8 +945,6 @@ void FldSetUsable(FieldType *fldP, Boolean usable) {
 }
 
 void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) {
-  fld_module_t *module = (fld_module_t *)pumpkin_get_local_storage(fld_key);
-
   IN;
   if (fldP) {
     debug(DEBUG_TRACE, "Field", "FldSetSelection start=%d end=%d", startPosition, endPosition);
@@ -985,7 +952,7 @@ void FldSetSelection(FieldType *fldP, UInt16 startPosition, UInt16 endPosition) 
       fldP->selFirstPos = startPosition;
       fldP->selLastPos = endPosition;
       FldRecalculateField(fldP, true);
-      module->activeField = fldP;
+      FldSetActiveField(fldP, true);
       debug(DEBUG_TRACE, "Field", "FldSetSelection ok");
     }
   }
