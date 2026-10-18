@@ -1252,11 +1252,10 @@ Err DmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
         if (db->ftype == STO_TYPE_REC && index < db->numRecs && db->elements[index]) {
           h = db->elements[index];
           if (h->htype == (STO_TYPE_REC | STO_INFLATED)) {
-            h->htype &= ~STO_INFLATED;
             if (h->useCount) {
               h->useCount--;
             } else {
-              debug(DEBUG_ERROR, "STOR", "DmReleaseRecord database \"%s\" index %d useCount < 0", db->name, index);
+              debug(DEBUG_TRACE, "STOR", "DmReleaseRecord database \"%s\" index %d useCount < 0", db->name, index);
             }
             if (dirty || (h->d.rec.attr & dmRecAttrDirty)) {
               storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
@@ -1267,8 +1266,6 @@ Err DmReleaseRecord(DmOpenRef dbP, UInt16 index, Boolean dirty) {
               }
               h->d.rec.attr &= ~dmRecAttrDirty;
             }
-            if (h->buf) StoPtrFree(h->buf);
-            h->buf = NULL;
             h->d.rec.attr &= ~dmRecAttrBusy;
           }
           err = errNone;
@@ -1817,21 +1814,31 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           switch (db->ftype) {
             case STO_TYPE_REC:
               debug(DEBUG_TRACE, "STOR", "DmCloseDatabase \"%s\" flush %d records", db->name, db->numRecs);
-              if (dbRef->mode & dmModeWrite) {
-                for (i = 0; i < db->numRecs; i++) {
-                  h = db->elements[i];
-                  if ((h->htype & STO_INFLATED) && h->d.rec.attr & dmRecAttrDirty) {
-                    debug(DEBUG_TRACE, "STOR", "DmCloseDatabase writing dirty record %d", i);
-                    storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
-                    if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
-                      vfs_write(f, h->buf, h->size);
-                      vfs_close(f);
+              for (i = 0; i < db->numRecs; i++) {
+                h = db->elements[i];
+                if ((h->htype & STO_INFLATED)) {
+                  if (h->d.rec.attr & dmRecAttrDirty) {
+                    if (dbRef->mode & dmModeWrite) {
+                      debug(DEBUG_TRACE, "STOR", "DmCloseDatabase writing dirty record %d", i);
+                      storage_name(sto, db->name, STO_FILE_ELEMENT, 0, 0, h->d.rec.attr & ATTR_MASK, h->d.rec.uniqueID, buf);
+                      if ((f = StoVfsOpen(sto->session, buf, VFS_WRITE | VFS_TRUNC)) != NULL) {
+                        vfs_write(f, h->buf, h->size);
+                        vfs_close(f);
+                      }
+                      h->d.rec.attr &= ~dmRecAttrDirty;
+                    } else {
+                      debug(DEBUG_ERROR, "STOR", "DmCloseDatabase dirty record %d but database is read only", i);
                     }
-                    h->d.rec.attr &= ~dmRecAttrDirty;
+                  }
+                  if (h->lockCount == 0) {
+                    StoPtrFree(h->buf);
+                    h->buf = NULL;
+                  } else {
+                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" record %d could not be deflated (use=%d lock=%d)", db->name, i, h->useCount, h->lockCount);
                   }
                 }
-                StoWriteIndex(sto, db);
               }
+              StoWriteIndex(sto, db);
               break;
             case STO_TYPE_RES:
               debug(DEBUG_TRACE, "STOR", "DmCloseDatabase \"%s\" flush %d resources", db->name, db->numRecs);
@@ -2646,7 +2653,7 @@ Err DmReleaseResource(MemHandle resourceH) {
           if (h->useCount) {
             h->useCount--;
           } else {
-            debug(DEBUG_ERROR, "STOR", "DmReleaseResource '%s' %d useCount < 0", st, h->d.res.id);
+            debug(DEBUG_TRACE, "STOR", "DmReleaseResource '%s' %d useCount < 0", st, h->d.res.id);
           }
           if (h->useCount == 0) {
             if (h->d.res.type != 'BikL') {
