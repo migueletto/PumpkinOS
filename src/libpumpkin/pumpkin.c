@@ -1968,7 +1968,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.tasks[i].new_height = height;
   pumpkin_module.tasks[i].handle = thread_get_handle();
   pumpkin_module.tasks[i].texture = texture;
-  pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFF;
+  pumpkin_module.tasks[i].eventKeyMask = 0xFFFFFFFF;
   sys_strncpy(pumpkin_module.tasks[i].name, name, dmDBNameLength-1);
   pumpkin_module.tasks[i].num_notifs = 0;
   pumpkin_module.tasks[i].lockable = 0;
