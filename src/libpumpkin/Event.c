@@ -18,6 +18,7 @@
 typedef struct {
   EventType events[MAX_EVENTS];
   EventType aux[MAX_EVENTS];
+  UInt32 ids[MAX_EVENTS];
   int numEvents;
   int idxIn;
   int idxOut;
@@ -161,42 +162,47 @@ void EvtAddEventToQueue(const EventType *event) {
 
   if (module->numEvents < MAX_EVENTS) {
     module->numEvents++;
+    module->ids[module->idxIn] = 0;
     xmemcpy(&module->events[module->idxIn++], event, sizeof(EventType));
     EvtPrintEvent("Put", (EventType *)event);
     if (module->idxIn == MAX_EVENTS) module->idxIn = 0;
   } else {
-    debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddEventToQueue event queue overflow");
+    debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddEventToQueue event %s queue overflow", EvtGetEventName(event->eType));
   }
 }
 
 void EvtAddUniqueEventToQueue(const EventType *eventP, UInt32 id, Boolean inPlace) {
   evt_module_t *module = (evt_module_t *)pumpkin_get_local_storage(evt_key);
-  char *name;
-  int i, j;
+  Int32 i, j, k;
 
   if (eventP) {
-    if (id != 0) {
-      if (eventP->eType >= firstUserEvent) {
-        debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddUniqueEventToQueue %d (userEvent %d): id %d (0x%08X) ignored", eventP->eType, eventP->eType - firstUserEvent, id, id);
-      } else {
-        name = EvtGetEventName(eventP->eType);
-        if (!name) name = "";
-        debug(DEBUG_ERROR, PALMOS_MODULE, "EvtAddUniqueEventToQueue %d (%s): id %d (0x%08X) ignored", eventP->eType, name, id, id);
-      }
-    }
-
-    for (i = 0; i < module->numEvents; i++) {
-      j = (module->idxOut + i) % MAX_EVENTS;
-      if (module->events[j].eType == eventP->eType) {
-        if (inPlace) {
-          xmemcpy(&module->events[j], eventP, sizeof(EventType));
+    if (inPlace) {
+      for (i = 0; i < module->numEvents; i++) {
+        j = (module->idxOut + i) % MAX_EVENTS;
+        if (module->events[j].eType == eventP->eType && (id == 0 || id == module->ids[j])) {
+          // found an event with same type and id (or id is 0), replace it with new event
+          MemMove(&module->events[j], eventP, sizeof(EventType));
           break;
-        } else {
-          module->events[j].eType = nilEvent; // XXX not correct, event should be deleted
         }
       }
-    }
-    if (i == module->numEvents) {
+      if (i == module->numEvents) {
+        // did not find an event, add the new event to the queue
+        EvtAddEventToQueue(eventP);
+      }
+    } else {
+      // remove events that match type and id (if id is not 0)
+      for (i = 0, k = 0; i < module->numEvents; i++) {
+        j = (module->idxOut + i) % MAX_EVENTS;
+        if (!(module->events[j].eType == eventP->eType && (id == 0 || id == module->ids[j]))) {
+          MemMove(&module->aux[k++], &module->events[j], sizeof(EventType));
+        }
+      }
+      MemMove(&module->events[0], &module->aux[0], k*sizeof(EventType));
+      module->numEvents = k;
+      module->idxOut = 0;
+      module->idxIn = k;
+
+      // add the new event to the queue
       EvtAddEventToQueue(eventP);
     }
   }
