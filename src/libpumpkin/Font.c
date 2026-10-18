@@ -460,8 +460,24 @@ void FntWordWrapReverseNLines(Char const *const chars, UInt16 maxWidth, UInt16 *
 // Gets the values needed to update a scroll bar based on a specified
 // string and the position within the string.
 
-void FntGetScrollValues(Char const *chars, UInt16 width, UInt16 scrollPos, UInt16 *linesP, UInt16 *topLine) {
-  debug(DEBUG_ERROR, "Font", "FntGetScrollValues not implemented");
+void FntGetScrollValues(Char const *chars, UInt16 width, UInt16 scrollPos, UInt16 *linesP, UInt16 *topLineP) {
+  UInt16 length = 0;
+  UInt16 lines = 0;
+  UInt16 topLine = 0;
+
+  if (chars && chars[0]) {
+    do {
+      length += FntWordWrap(&chars[length], width);
+      lines++;
+      if (length <= scrollPos) topLine = lines;
+    } while (chars[length]);
+
+    // If the text end with a linefeed add one to the height.
+    if (length && chars[length-1] == linefeedChr) lines++;
+  }
+
+  *topLineP = topLine;
+  *linesP = lines;
 }
 
 FontType *pumpkin_create_font(void *h, uint8_t *p, uint32_t size, uint32_t *dsize) {
