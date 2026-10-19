@@ -1879,15 +1879,24 @@ Err BmpGetPixelRGB(BitmapType *bitmapP, Coord x, Coord y, RGBColorType *rgbP) {
     switch (BmpGetBitDepth(bitmapP)) {
       case  1:
         b = BmpGetPixelValue(bitmapP, x, y);
-        rgbP->r = rgbP->g = rgbP->b = gray1values[b];
+        //rgbP->r = rgbP->g = rgbP->b = gray1values[b];
+        colorTable = BmpGetColortable(bitmapP);
+        if (colorTable == NULL) colorTable = WinGetColorTable(1);
+        BmpIndexToRGB(b, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
         break;
       case  2:
         b = BmpGetPixelValue(bitmapP, x, y);
-        rgbP->r = rgbP->g = rgbP->b = gray2values[b];
+        //rgbP->r = rgbP->g = rgbP->b = gray2values[b];
+        colorTable = BmpGetColortable(bitmapP);
+        if (colorTable == NULL) colorTable = WinGetColorTable(2);
+        BmpIndexToRGB(b, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
         break;
       case  4:
         b = BmpGetPixelValue(bitmapP, x, y);
-        rgbP->r = rgbP->g = rgbP->b = gray4values[b];
+        //rgbP->r = rgbP->g = rgbP->b = gray4values[b];
+        colorTable = BmpGetColortable(bitmapP);
+        if (colorTable == NULL) colorTable = WinGetColorTable(4);
+        BmpIndexToRGB(b, &rgbP->r, &rgbP->g, &rgbP->b, colorTable);
         break;
       case  8:
         b = BmpGetPixelValue(bitmapP, x, y);
@@ -2426,7 +2435,7 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winInvertPixels:
       WinGetInvertColors(&c1, &c2, &c3, &c4);
-      if (c1 == c2 && c3 == c4) {
+      if (c1 == c3 && c2 == c4) {
         BmpSetBit2(offset, mask, dataSize, b ^ mask, dbl);
       } else {
         old = (bits[offset] & mask) >> shift;
@@ -2514,7 +2523,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winInvertPixels:
       WinGetInvertColors(&c1, &c2, &c3, &c4);
-      if (c1 == c2 && c3 == c4) {
+      if (c1 == c3 && c2 == c4) {
         BmpSetBit4(offset, mask, dataSize, b ^ mask, dbl);
       } else {
         old = (bits[offset] & mask) >> shift;
@@ -2614,7 +2623,7 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       old = bits[offset];
       BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
       WinGetInvertColors(&c1, &c2, &c3, &c4);
-      if (c1 == c2 && c3 == c4) {
+      if (c1 == c3 && c2 == c4) {
         r1 ^= 0xff;
         g1 ^= 0xff;
         b1 ^= 0xff;
@@ -2711,7 +2720,7 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
     case winInvertPixels: // special mode for inverting buttons on color screens
       get2_16(&old, bits, offset);
       WinGetInvertColors(&c1, &c2, &c3, &c4);
-      if (c1 == c2 && c3 == c4) {
+      if (c1 == c3 && c2 == c4) {
         BmpSetBit16(offset, dataSize, old ^ 0xffff, dbl);
       } else {
         if (old == c1) {
