@@ -38,6 +38,7 @@ static void CtlInvertControl(ControlType *controlP) {
   if (controlP) {
     if (controlP->style == buttonCtl) {
       MemMove(&bounds, &controlP->bounds, sizeof(RectangleType));
+      // XXX Lemmings: "pause" button is rendered incorrectly if this test is made
       if (controlP->text && controlP->text[0]) {
         WinSetInvertColors(-1, -1, -1, -1);
       }
@@ -112,14 +113,16 @@ void CtlDrawControl(ControlType *controlP) {
     switch (controlP->style) {
       case buttonCtl:
       case repeatingButtonCtl:
-        switch (controlP->attr.frame) {
-          case standardButtonFrame:
-          case boldButtonFrame:
-            WinEraseRectangle(&controlP->bounds, 3);
-            break;
-          case noFrame:
-            WinEraseRectangle(&controlP->bounds, 0);
-            break;
+        if (controlP->text && controlP->text[0]) {
+          switch (controlP->attr.frame) {
+            case standardButtonFrame:
+            case boldButtonFrame:
+              WinEraseRectangle(&controlP->bounds, 3);
+              break;
+            case noFrame:
+              WinEraseRectangle(&controlP->bounds, 0);
+              break;
+          }
         }
         break;
       case sliderCtl:
