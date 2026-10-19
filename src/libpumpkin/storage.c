@@ -35,8 +35,7 @@
 
 #define ATTR_MASK (dmRecAttrDelete | dmRecAttrSecret | dmRecAttrCategoryMask)
 
-// fake attribute to indicate if a handle belongs to a database
-// or if it is "loose" in the heap
+// fake attribute to indicate if a handle was manually added to a database
 #define dmRecAttached 0x8000
 
 #define HANDLE_MAGIC 'Hndl'
@@ -875,49 +874,6 @@ int StoFinish(void) {
   return r;
 }
 
-void StoHeapWalk(uint32_t *p, uint32_t size, uint32_t task) {
-  storage_handle_t *h = (storage_handle_t *)p;
-  char st[8];
-
-  if (h && size >= sizeof(storage_handle_t) && h->magic == HANDLE_MAGIC) {
-    if (h->owner == task) {
-      h->owner = 0;
-
-      switch (h->htype & ~STO_INFLATED) {
-        case STO_TYPE_MEM:
-          debug(DEBUG_INFO, "STOR", "leak mem handle %p size %5u inflated %d use %d lock %d",
-            p, h->size, h->htype & STO_INFLATED ? 1 : 0, h->useCount, h->lockCount);
-          // free the handle regardless of useCount and lockCount
-          MemHandleFree((MemHandle)h);
-          break;
-        case STO_TYPE_REC:
-          debug(DEBUG_INFO, "STOR", "leak rec handle %p size %5u inflated %d use %d lock %d attached %d",
-            p, h->size, h->htype & STO_INFLATED ? 1 : 0, h->useCount, h->lockCount, (h->d.rec.attr & dmRecAttached) ? 1 : 0);
-          // free the handle regardless of useCount and lockCount, but only if dmRecAttached is not set
-          if (!(h->d.rec.attr & dmRecAttached)) {
-            MemHandleFree((MemHandle)h);
-          }
-          break;
-        case STO_TYPE_RES:
-          pumpkin_id2s(h->d.res.type, st);
-          debug(DEBUG_INFO, "STOR", "leak res handle %p size %5u inflated %d use %d lock %d  attached %d decoded %d type %s id %d buf %p",
-            p, h->size, h->htype & STO_INFLATED ? 1 : 0, h->useCount, h->lockCount, (h->d.res.attr & dmRecAttached) ? 1 : 0, h->d.res.decoded ? 1 : 0, st, h->d.res.id, h->buf);
-          // free the handle regardless of useCount and lockCount, but only if dmRecAttached is not set
-          if (!(h->d.res.attr & dmRecAttached)) {
-            MemHandleFree((MemHandle)h);
-          }
-          break;
-        default:
-          debug(DEBUG_ERROR, "STOR", "leak type %d handle %p size %5u inflated %d use %d lock %d",
-            h->htype & ~STO_INFLATED, p, h->size, h->htype & STO_INFLATED ? 1 : 0, h->useCount, h->lockCount);
-          break;
-      }
-    }
-  } else if (task == 0) {
-    debug(DEBUG_INFO, "STOR", "leak %p %u (%u)", p, size, (uint32_t)sizeof(storage_handle_t));
-  }
-}
-
 void StoHeapLabel(char *label) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
 
@@ -1475,7 +1431,6 @@ static storage_handle_t *StoAddRec(storage_t *sto, storage_db_t *db, uint32_t un
     h->size = size;
     h->d.rec.uniqueID = uniqueID;
     h->d.rec.attr = attr;
-    h->d.rec.attr |= dmRecAttached;
     if (StoAddDatabaseHandle(sto, db, h) == -1) {
       pumpkin_heap_free(h, "Handle");
       h = NULL;
@@ -1495,7 +1450,6 @@ static storage_handle_t *StoAddRes(storage_t *sto, storage_db_t *db, uint32_t ty
     h->size = size;
     h->d.res.id = id;
     h->d.res.type = type;
-    h->d.res.attr |= dmRecAttached;
     if (StoAddDatabaseHandle(sto, db, h) == -1) {
       pumpkin_heap_free(h, "Handle");
       h = NULL;
@@ -1884,10 +1838,17 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                       h->d.res.decoded = NULL;
                       debug(DEBUG_TRACE, "STOR", "DmCloseDatabase destructor called");
                     }
-                    debug(DEBUG_TRACE, "STOR", "DmCloseDatabase deflating resource %s %d ", st, h->d.res.id);
-                    StoPtrFree(h->buf);
-                    h->buf = NULL;
-                    h->htype &= ~STO_INFLATED;
+
+                    if (h->d.res.attr & dmRecAttached) {
+                      debug(DEBUG_INFO, "STOR", "DmCloseDatabase dettaching resource %s %d %p", st, h->d.res.id, h->buf);
+                      h->htype = STO_TYPE_MEM | STO_INFLATED;
+                    } else {
+                      debug(DEBUG_TRACE, "STOR", "DmCloseDatabase deflating resource %s %d ", st, h->d.res.id);
+                      StoPtrFree(h->buf);
+                      h->buf = NULL;
+                      h->htype &= ~STO_INFLATED;
+                    }
+
                   } else {
                     debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" resource %s %d could not be deflated (use=%d lock=%d)", db->name, st, h->d.res.id, h->useCount, h->lockCount);
                   }
@@ -1918,7 +1879,9 @@ Err DmCloseDatabase(DmOpenRef dbP) {
               h = db->elements[i];
               if (h->magic == HANDLE_MAGIC) {
                 if (h->lockCount == 0) {
-                  pumpkin_heap_free(h, "Handle");
+                  if (!(h->htype & STO_TYPE_MEM)) {
+                    pumpkin_heap_free(h, "Handle");
+                  }
                 } else {
                   handle = (uint8_t *)h - ram;
                   if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES) {
@@ -2665,10 +2628,16 @@ Err DmReleaseResource(MemHandle resourceH) {
                   h->d.res.decoded = NULL;
                   debug(DEBUG_TRACE, "STOR", "DmReleaseResource destructor called");
                 }
-                debug(DEBUG_TRACE, "STOR", "DmReleaseResource free buf '%s' %d %p", st, h->d.res.id, h->buf);
-                StoPtrFree(h->buf);
-                h->buf = NULL;
-                h->htype &= ~STO_INFLATED;
+   
+                if (h->d.res.attr & dmRecAttached) {
+                  debug(DEBUG_INFO, "STOR", "DmReleaseResource preserving attached resource '%s' %d %p", st, h->d.res.id, h->buf);
+                } else {
+                  debug(DEBUG_TRACE, "STOR", "DmReleaseResource free buf '%s' %d %p", st, h->d.res.id, h->buf);
+                  StoPtrFree(h->buf);
+                  h->buf = NULL;
+                  h->htype &= ~STO_INFLATED;
+                }
+
               } else {
                 debug(DEBUG_ERROR, "STOR", "DmReleaseResource resource is locked (%d)", h->lockCount);
               }
@@ -2767,6 +2736,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
             h->htype = STO_TYPE_RES | STO_INFLATED;
             h->owner = pumpkin_get_current();
             h->d.res.attr |= dmRecAttrDirty;
+            h->d.res.attr |= dmRecAttached;
             h->d.res.type = resType;
             h->d.res.id = resID;
             h->size = size;
@@ -3479,6 +3449,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
             } else {
               h->d.rec.uniqueID = db->uniqueIDSeed++;
               h->d.rec.attr = dmRecAttrDirty | dmRecAttrBusy;
+              h->d.rec.attr |= dmRecAttached;
             }
             h->buf = StoPtrNew(h, size, 0, 0);
             h->size = size;
