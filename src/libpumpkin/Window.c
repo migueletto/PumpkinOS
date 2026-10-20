@@ -8,6 +8,7 @@
 #include "bytes.h"
 #include "pumpkin.h"
 #include "language.h"
+#include "BitmapAccessor.h"
 #include "WindowAccessor.h"
 #include "ColorTable.h"
 #include "SonyLib.h"
@@ -196,7 +197,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   } else {
     module->displayWindow = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window");
-    WinSetFlag(module->displayWindow, WindowFlagFreeBitmap, true);
+    WinSetFlag(module->displayWindow, WindowFlagFreeBitmap, false);
     bmp = BmpCreate3c(width, height, 0, module->density, module->depth, false, 0, true, colorTable, &err);
     WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)bmp);
     BmpSetLittleEndianBits(bmp, module->littleEndian);
@@ -320,11 +321,16 @@ static void pointFrom(win_module_t *module, UInt16 density, Coord *x, Coord *y) 
 
 ColorTableType *WinGetColorTable(Int16 depth) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  ColorTableType *colorTable;
 
-  if (depth == 0) depth = module->depth;
+  if (depth == -1) {
+    colorTable = BmpGetColortable(WinGetBitmap(module->displayWindow));
+    if (colorTable) return colorTable;
+  }
+
+  if (depth <= 0) depth = module->depth;
 
   switch (depth) {
-    case -1: return BmpGetColortable((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
     case  1: return module->colorTable1;
     case  2: return module->colorTable2;
     case  4: return module->colorTable4;
@@ -356,6 +362,7 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
   return buf;
 }
 
+#if 0
 WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt8 *ds;
@@ -379,7 +386,32 @@ WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean 
 
   return wh;
 }
+#endif
 
+WinHandle WinCreateWindow(const RectangleType *boundsP, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
+  WinHandle newWinHandle;
+
+  if (error) *error = errNone;
+
+  if ((newWinHandle = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) == NULL) {
+    *error = sysErrNoFreeResource;
+    return NULL;
+  }
+
+  RctSetWinFromRect(boundsP, newWinHandle);
+
+  WinSetFlag(newWinHandle, WindowFlagModal, modal);
+  WinSetFlag(newWinHandle, WindowFlagFocusable, focusable);
+  WinSetField(newWinHandle, WindowFieldFrameType, frame);
+
+  WinInitializeWindow(newWinHandle);
+
+  //WinAddWindow(newWinHandle);
+
+  return newWinHandle;
+}
+
+#if 0
 WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh = NULL;
@@ -416,7 +448,64 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
 
   return wh;
 }
+#endif
 
+WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  WinHandle savedDrawWinH;
+  WinHandle newWinHandle;
+  Coord width, height;
+  UInt16 density;
+  Boolean indirect, compressed, forScreen;
+
+  if (!bitmapP) {
+    if (error) *error = sysErrParamErr;
+    return NULL;
+  }
+
+  indirect = BmpGetCommonFlag(bitmapP, BitmapFlagIndirect);
+  compressed = BmpGetCommonFlag(bitmapP, BitmapFlagCompressed);
+  forScreen = BmpGetCommonFlag(bitmapP, BitmapFlagForScreen);
+  density = BmpGetDensity(bitmapP);
+  BmpGetDimensions(bitmapP, &width, &height, NULL);
+  if (density == kDensityDouble) {
+    width >>= 1;
+    height >>= 1;
+  }
+
+  if (!width || !height || indirect || compressed || forScreen) {
+    if (error) *error = sysErrParamErr;
+    return NULL;
+  }
+
+  if ((newWinHandle = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) == NULL) {
+    if (error) *error = sysErrNoFreeResource;
+    return NULL;
+  }
+
+  WinSetFlag(newWinHandle, WindowFlagFormat, 1);
+  WinSetFlag(newWinHandle, WindowFlagOffscreen, 1);
+  WinSetFlag(newWinHandle, WindowFlagFreeBitmap, 0);
+
+  WinSetField(newWinHandle, WindowFieldWindowBoundsW, width);
+  WinSetField(newWinHandle, WindowFieldWindowBoundsH, height);
+  WinSetField(newWinHandle, WindowFieldBitmapP, (UIntPtr)bitmapP);
+  WinSetField(newWinHandle, WindowFieldDrawStateP, (UIntPtr)&module->drawState);
+
+  //WinAddWindow(newWinHandle);
+
+  savedDrawWinH = WinSetDrawWindow(newWinHandle);
+  WinResetClip();
+  WinSetDrawWindow(savedDrawWinH);
+
+  WinDirectAccessHack(newWinHandle, width, height);
+
+  if (error) *error = errNone;
+
+  return newWinHandle;
+}
+
+#if 0
 void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
@@ -441,10 +530,68 @@ void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
     pumpkin_heap_free(winHandle, "Window");
   }
 }
+#endif
+
+void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  WinHandle  savedDrawWinH;
+  BitmapType *bmp;
+  RectangleType frameRect;
+
+  if (winHandle == module->displayWindow) {
+    debug(DEBUG_ERROR, "Window", "can not delete the display window");
+    return;
+  }
+
+  if (winHandle == module->drawWindow) {
+    WinSetDrawWindow(module->displayWindow);
+  }
+
+  if (winHandle == module->activeWindow) {
+    //ExitWindowID = winH;
+    module->activeWindow = 0;
+  }
+
+  // If the eraseIt parameter is true and the window is on screen, erase
+  // the window and its frame.
+  if (!WinGetFlag(winHandle, WindowFlagOffscreen) && eraseIt) {
+    WinGetWindowFrameRect(winHandle, &frameRect);
+    savedDrawWinH = WinSetDrawWindow(module->displayWindow);
+    WinEraseRectangle(&frameRect, 0);
+    WinSetDrawWindow(savedDrawWinH);
+  }
+
+  //WinRemoveWindow(winH);
+
+  // free the bitmapP if allocated dynamically by WinCreateOffscreenWindow
+  bmp = WinGetBitmap(winHandle);
+  if (bmp && WinGetFlag(winHandle, WindowFlagFreeBitmap)) {
+    BmpDelete(bmp);
+  }
+
+  pumpkin_heap_free(winHandle, "Window");
+}
 
 void WinInitializeWindow(WinHandle winHandle) {
-  // system use only
-  debug(DEBUG_ERROR, "Window", "WinInitializeWindow not implemented");
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  WinHandle savedDrawWindow;
+
+  // We set the bitmapP pointer to be the same as the display window's
+  // bitmapP pointer which is the screen driver's bitmap. Since the
+  // screen driver's bitmap has the forDriver flag set, it won't get
+  // disposed of by WinDeleteWindow.
+
+  if (WinGetFlag(winHandle, WindowFlagOffscreen)) {
+    debug(DEBUG_ERROR, "Window", "WinInitializeWindow is internal only");
+    return;
+  }
+
+  WinSetField(winHandle, WindowFieldBitmapP, WinGetField(module->displayWindow, WindowFieldBitmapP));
+  WinSetField(winHandle, WindowFieldDrawStateP, WinGetField(module->displayWindow, WindowFieldDrawStateP));
+
+  savedDrawWindow = WinSetDrawWindow(winHandle);
+  WinResetClip();
+  WinSetDrawWindow(savedDrawWindow);
 }
 
 void WinAddWindow(WinHandle winHandle) {
@@ -490,7 +637,7 @@ WinHandle WinGetActiveWindow(void) {
 
 WinHandle WinGetDisplayWindow(void) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  return module->displayWindow;
+  return module ? module->displayWindow : NULL;
 }
 
 WinHandle WinGetFirstWindow(void) {
@@ -3064,6 +3211,7 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
   }
 }
 
+#if 0
 WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   UInt16 density, depth;
@@ -3147,6 +3295,58 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
   if (error) *error = err;
 
   return wh;
+}
+#endif
+
+WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
+  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  BitmapType *displayBitmap, *newBitmap;
+  WinHandle winHandle;
+  UInt32 transparentValue;
+  UInt16 density, depth;
+
+  switch (format) {
+    case screenFormat:
+      density = kDensityLow;
+      break;
+    case genericFormat:
+      density = kDensityLow;
+      break;
+    case nativeFormat:
+      density = module->density;
+      if (density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+        width <<= 1;
+        height <<= 1;
+      }
+      break;
+    default:
+      debug(DEBUG_ERROR, "Window", "invalid format %d for WinCreateOffscreenWindow", format);
+      if (error) *error = sysErrParamErr;
+      return NULL;
+  }
+
+  displayBitmap = WinGetBitmap(module->displayWindow);
+  depth = BmpGetBitDepth(displayBitmap);
+  if ((newBitmap = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, error)) == NULL) {
+    return NULL;
+  }
+
+  BmpSetLittleEndianBits(newBitmap, module->littleEndian);
+  if (BmpGetTransparentValue(displayBitmap, &transparentValue)) {
+    BmpSetTransparentValue(newBitmap, transparentValue);
+  }
+
+  if ((winHandle = WinCreateBitmapWindow(newBitmap, error)) == NULL) {
+    BmpDelete(newBitmap);
+    if (error) *error = sysErrNoFreeResource;
+    return NULL;
+  }
+
+  WinSetFlag(winHandle, WindowFlagFormat, format);
+  WinSetFlag(winHandle, WindowFlagFreeBitmap, 1);
+  if (error) *error = errNone;
+
+  return winHandle;
 }
 
 /*

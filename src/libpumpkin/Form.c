@@ -199,28 +199,21 @@ static Err FrmInitFormInternal(FormType *formP) {
   Boolean littleEndian;
   Err err = errNone;
 
-  //if (formP->window.windowFlags.modal)
   if (WinGetFlag(&formP->window, WindowFlagModal)) {
-    //if (formP->window.windowBounds.topLeft.x >= 2)
     if ((Coord)WinGetField(&formP->window, WindowFieldWindowBoundsX) >= 2) {
       xmargin = 2;
     } else {
-      //xmargin = formP->window.windowBounds.topLeft.x;
       xmargin = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsX);
     }
-    //if (formP->window.windowBounds.topLeft.y >= 2)
     if ((Coord)WinGetField(&formP->window, WindowFieldWindowBoundsY) >= 2) {
       ymargin = 2;
     } else {
-      //ymargin = formP->window.windowBounds.topLeft.y;
       ymargin = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsY);
     }
   } else {
     xmargin = ymargin = 0;
   }
 
-  //w = width = formP->window.windowBounds.extent.x;
-  //h = height = formP->window.windowBounds.extent.y;
   w = width  = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW);
   h = height = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH);
   if (w == 0 || h == 0) {
@@ -228,6 +221,7 @@ static Err FrmInitFormInternal(FormType *formP) {
     return sysErrParamErr;
   }
   formP->bitsBehindForm = WinCreateOffscreenWindow(width + 2*xmargin, height + 2*ymargin, nativeFormat, &err);
+#if 0
   WinAdjustCoords(&w, &h);
 
   wh = WinGetDisplayWindow();
@@ -250,8 +244,8 @@ static Err FrmInitFormInternal(FormType *formP) {
 
   RctSetRectangle(&rect, 0, 0, width, height);
   WinSetClipingBounds(&formP->window, &rect);
-
-  //WinDirectAccessHack(&formP->window, 0, 0, width, height);
+#endif
+  WinInitializeWindow(FrmGetWindowHandle(formP));
 
   formP->selectedObject = -1;
   formP->activeList = -1;
@@ -266,6 +260,7 @@ static Err FrmInitFormInternal(FormType *formP) {
     module->list = p;
   } else {
     p->next = module->list;
+
     module->list = p;
   }
 
@@ -967,7 +962,6 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
       // If the pen is within the bounds of the help icon, it is tracked until it is lifted, and if it’s still within the help
       // icon bounds, the help dialog is displayed.
 
-      //if (formP->window.windowFlags.modal && formP->helpRscId)
       if (WinGetFlag(&formP->window, WindowFlagModal) && formP->helpRscId) {
         if (RctPtInRectangle(eventP->screenX, eventP->screenY, &formP->helpRect)) {
           FrmHelp(formP->helpRscId);
@@ -1243,6 +1237,7 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
 
 static void FrmDeleteFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
+  BitmapType *bmp;
 
   debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d (%p)", formP->formId, formP);
 
@@ -1251,12 +1246,10 @@ static void FrmDeleteFormInternal(FormType *formP) {
     MenuSetActiveMenu(NULL);
   }
 
-  //if (formP->window.bitmapP)
-  if (WinGetField(&formP->window, WindowFieldBitmapP)) {
-    //debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal BmpDelete %p", formP->window.bitmapP);
-    debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal BmpDelete %p", (BitmapType *)WinGetField(&formP->window, WindowFieldBitmapP));
-    //BmpDelete(formP->window.bitmapP);
-    BmpDelete((BitmapType *)WinGetField(&formP->window, WindowFieldBitmapP));
+  bmp = WinGetBitmap(&formP->window);
+  if (bmp && WinGetFlag(&formP->window, WindowFlagFreeBitmap)) {
+    debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal BmpDelete %p", bmp);
+    BmpDelete(bmp);
   }
 
   if (formP->bitsBehindForm) {
