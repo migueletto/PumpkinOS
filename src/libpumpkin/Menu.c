@@ -79,10 +79,6 @@ MenuBarType *MenuInit(UInt16 resourceId) {
       h = pd->bounds.extent.y;
       if (w && h) {
         pd->menuWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
-        //pd->menuWin->windowBounds.topLeft.x = pd->bounds.topLeft.x;
-        //pd->menuWin->windowBounds.topLeft.y = pd->bounds.topLeft.y;
-        WinSetField(pd->menuWin, WindowFieldWindowBoundsX, pd->bounds.topLeft.x);
-        WinSetField(pd->menuWin, WindowFieldWindowBoundsY, pd->bounds.topLeft.y);
         pd->bitsBehind = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
       }
       pd->hidden = 1;
@@ -162,7 +158,6 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
     WinSetBackColor(mFill);
     WinSetTextColor(mFore);
   }
-  //RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, menu->barWin->windowBounds.extent.y-2);
   RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, WinGetField(menu->barWin, WindowFieldWindowBoundsH) - 2);
   WinEraseRectangle(&rect, 0);
   WinDrawChars(pd->title, sys_strlen(pd->title), pd->titleBounds.topLeft.x+3, pd->titleBounds.topLeft.y+1);
@@ -174,13 +169,11 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
 }
 
 static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inverted) {
-  WinHandle oldw, oldd;
+  WinHandle oldd;
   RectangleType rect;
   char cmd[8];
   int mFrame, mTitle, mFill, mFore, old, oldb, oldt, px, y;
 
-  oldw = WinGetActiveWindow();
-  WinSetActiveWindow(pd->menuWin);
   oldd = WinSetDrawWindow(pd->menuWin);
 
   cmd[0] = 22;
@@ -188,7 +181,7 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
   cmd[3] = 0;
   old = FntSetFont(boldFont);
   px = FntCharsWidth(cmd, 2) - 1;
-  y = item->localBounds.topLeft.y;
+  y = item->bounds.topLeft.y;
 
   mFrame = UIColorGetTableEntryIndex(UIFormFrame);
   mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
@@ -203,14 +196,13 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
     oldt = WinSetTextColor(mFore);
   }
 
-  //RctSetRectangle(&rect, 1, 1, pd->menuWin->windowBounds.extent.x - 2, pd->menuWin->windowBounds.extent.y - 2);
   RctSetRectangle(&rect, 1, 1, WinGetField(pd->menuWin, WindowFieldWindowBoundsW) - 2, WinGetField(pd->menuWin, WindowFieldWindowBoundsH) - 2);
   WinSetClip(&rect);
-  WinEraseRectangle(&item->localBounds, 0);
+  WinEraseRectangle(&item->bounds, 0);
   WinDrawChars(item->itemStr, sys_strlen(item->itemStr), 2, y);
   if (item->command) {
     cmd[1] = item->command;
-    WinDrawChars(cmd, 2, item->localBounds.extent.x - px, y);
+    WinDrawChars(cmd, 2, item->bounds.extent.x - px, y);
   }
   WinResetClip();
 
@@ -218,19 +210,15 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
   WinSetDrawWindow(oldd);
-  WinSetActiveWindow(oldw);
 }
 
 static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
   RectangleType rect;
   MenuItemType *item;
-  WinHandle oldw;
   IndexedColorType mFrame, mFill, mFore, oldf, oldb, oldt;
   FontID old;
   int j, y;
 
-  oldw = WinGetActiveWindow();
-  WinSetActiveWindow(pd->menuWin);
   WinSetDrawWindow(pd->menuWin);
 
   // save pulldown box
@@ -258,8 +246,7 @@ static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
         WinDrawGrayLine(1, y+2, pd->bounds.extent.x-2, y+2);
         y += 4;
       } else {
-        RctSetRectangle(&item->localBounds, 1, y, pd->bounds.extent.x-2, FntCharHeight());
-        RctSetRectangle(&item->bounds, pd->bounds.topLeft.x+1, pd->bounds.topLeft.y+y, pd->bounds.extent.x-2, FntCharHeight());
+        RctSetRectangle(&item->bounds, 1, y, pd->bounds.extent.x-2, FntCharHeight());
         menu_draw_item(pd, item, false);
         y += FntCharHeight();
       }
@@ -270,7 +257,9 @@ static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
   WinSetForeColor(oldf);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
-  WinSetActiveWindow(oldw);
+
+  RctSetRectangle(&rect, 0, 0, pd->bounds.extent.x, pd->bounds.extent.y);
+  WinCopyRectangle(pd->menuWin, WinGetDisplayWindow(), &rect, pd->bounds.topLeft.x, pd->bounds.topLeft.y, winPaint);
 }
 
 static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
@@ -308,7 +297,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               if (RctPtInRectangle(event->screenX, event->screenY, &pd->bounds)) {
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penDown inside pullDown %d", menuP->curMenu);
                 for (j = 0; j < pd->numItems && !handled; j++) {
-                  if (RctPtInRectangle(event->screenX, event->screenY, &pd->items[j].bounds)) {
+                  if (RctPtInRectangle(event->screenX - pd->bounds.topLeft.x, event->screenY - pd->bounds.topLeft.y, &pd->items[j].bounds)) {
                     debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penDown inside item %d", j);
                     pd->selectedItem = j;
                     menu_draw_item(pd, &pd->items[j], true);
@@ -324,7 +313,6 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               }
               WinSetActiveWindow(menuP->savedActiveWin);
               WinSetDrawWindow(menuP->savedActiveWin);
-              //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
               RctSetRectFromWin(&rect, menuP->barWin);
               WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
@@ -375,14 +363,13 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             pd = &menuP->menus[menuP->curMenu];
             if (pd->selectedItem != -1) {
               debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp current pullDown %d item %d", menuP->curMenu, pd->selectedItem);
-              if (RctPtInRectangle(event->screenX, event->screenY, &pd->items[pd->selectedItem].bounds)) {
+              if (RctPtInRectangle(event->screenX - pd->bounds.topLeft.x, event->screenY - pd->bounds.topLeft.y, &pd->items[pd->selectedItem].bounds)) {
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent penUp current pullDown %d inside item %d", menuP->curMenu, pd->selectedItem);
                 menu_draw_item(pd, &pd->items[pd->selectedItem], false);
                 menu_hide_pd(menuP, pd);
                 pd->hidden = 0;
                 WinSetActiveWindow(menuP->savedActiveWin);
                 WinSetDrawWindow(menuP->savedActiveWin);
-                //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
                 RctSetRectFromWin(&rect, menuP->barWin);
                 WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
