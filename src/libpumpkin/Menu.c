@@ -10,7 +10,6 @@
 #include "storage.h"
 #include "WindowAccessor.h"
 #include "debug.h"
-#include "xalloc.h"
 
 typedef struct {
   MenuBarType *currentMenu;
@@ -19,7 +18,7 @@ typedef struct {
 int MenuInitModule(void) {
   menu_module_t *module;
 
-  if ((module = xcalloc(1, sizeof(menu_module_t))) == NULL) {
+  if ((module = sys_calloc(1, sizeof(menu_module_t))) == NULL) {
     return -1;
   }
 
@@ -46,7 +45,7 @@ int MenuFinishModule(void) {
   menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
 
   if (module) {
-    xfree(module);
+    sys_free(module);
   }
 
   return 0;
@@ -136,11 +135,8 @@ void MenuDispose(MenuBarType *menuP) {
 static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   RectangleType rect;
   IndexedColorType mFrame, mFill, mTitle, mFore, oldb, oldt;
-  WinHandle oldw;
   FontID old;
 
-  oldw = WinGetActiveWindow();
-  WinSetActiveWindow(menu->barWin);
   WinSetDrawWindow(menu->barWin);
 
   mFrame = UIColorGetTableEntryIndex(UIFormFrame);
@@ -165,7 +161,6 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   FntSetFont(old);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
-  WinSetActiveWindow(oldw);
 }
 
 static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inverted) {
@@ -257,6 +252,9 @@ static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
   WinSetForeColor(oldf);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
+
+  RctSetRectFromWin(&rect, menu->barWin);
+  WinCopyRectangle(menu->barWin, WinGetDisplayWindow(), &rect, rect.topLeft.x, rect.topLeft.y, winPaint);
 
   RctSetRectangle(&rect, 0, 0, pd->bounds.extent.x, pd->bounds.extent.y);
   WinCopyRectangle(pd->menuWin, WinGetDisplayWindow(), &rect, pd->bounds.topLeft.x, pd->bounds.topLeft.y, winPaint);
@@ -400,7 +398,6 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown hide menu");
             WinSetActiveWindow(menuP->savedActiveWin);
             WinSetDrawWindow(menuP->savedActiveWin);
-            //WinRestoreRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
             RctSetRectFromWin(&rect, menuP->barWin);
             WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
@@ -436,13 +433,9 @@ void MenuDrawMenu(MenuBarType *menuP) {
 
   if (!menuP) return;
 
-  pumpkin_dirty_region_mode(dirtyRegionBegin);
-
   debug(DEBUG_TRACE, "Menu", "MenuDrawMenu");
-  menuP->savedActiveWin = WinGetActiveWindow();
 
   // save menu box
-  //WinSaveRectangle(menuP->bitsBehind, &menuP->barWin->windowBounds);
   RctSetRectFromWin(&rect, menuP->barWin);
   WinSaveRectangle(menuP->bitsBehind, &rect);
 
@@ -451,15 +444,12 @@ void MenuDrawMenu(MenuBarType *menuP) {
   oldb = WinSetBackColor(mFill);
 
   WinSetDrawWindow(menuP->barWin);
-  WinSetActiveWindow(menuP->barWin);
 
   WinSetBackColor(mFrame);
-  //WinEraseRectangle(&menuP->barWin->windowBounds, 0);
   RctSetRectFromWin(&rect, menuP->barWin);
   WinEraseRectangle(&rect, 0);
 
   WinSetBackColor(mFill);
-  //RctSetRectangle(&rect, 1, 1, menuP->barWin->windowBounds.extent.x-2, menuP->barWin->windowBounds.extent.y-2);
   RctSetRectFromWin(&rect, menuP->barWin);
   rect.topLeft.x = 1;
   rect.topLeft.y = 1;
@@ -472,6 +462,9 @@ void MenuDrawMenu(MenuBarType *menuP) {
     menu_show_pd_title(menuP, pd, i);
   }
 
+  RctSetRectFromWin(&rect, menuP->barWin);
+  WinCopyRectangle(menuP->barWin, WinGetDisplayWindow(), &rect, rect.topLeft.x, rect.topLeft.y, winPaint);
+
   for (i = 0; i < menuP->numMenus; i++) {
     pd = &menuP->menus[i];
     if (!pd->hidden) {
@@ -480,9 +473,6 @@ void MenuDrawMenu(MenuBarType *menuP) {
   }
 
   WinSetBackColor(oldb);
-  WinSetActiveWindow(menuP->barWin);
-
-  pumpkin_dirty_region_mode(dirtyRegionEnd);
 }
 
 void MenuEraseStatus(MenuBarType *menuP) {
@@ -539,16 +529,12 @@ Err MenuAddItem(UInt16 positionId, UInt16 id, Char cmd, const Char *textP) {
               // fill in new item
               mbar->menus[i].items[j+1].id = id;
               mbar->menus[i].items[j+1].command = cmd;
-              mbar->menus[i].items[j+1].itemStr = xstrdup(textP);
+              mbar->menus[i].items[j+1].itemStr = sys_strdup(textP);
 
               // adjust window size
               mbar->menus[i].bounds.extent.y += FntCharHeight();
               WinDeleteWindow(mbar->menus[i].menuWin, false);
               mbar->menus[i].menuWin = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
-              //mbar->menus[i].menuWin->windowBounds.topLeft.x = mbar->menus[i].bounds.topLeft.x;
-              //mbar->menus[i].menuWin->windowBounds.topLeft.y = mbar->menus[i].bounds.topLeft.y;
-              WinSetField(mbar->menus[i].menuWin, WindowFieldWindowBoundsX, mbar->menus[i].bounds.topLeft.x);
-              WinSetField(mbar->menus[i].menuWin, WindowFieldWindowBoundsY, mbar->menus[i].bounds.topLeft.y);
               mbar->menus[i].bitsBehind = WinCreateOffscreenWindow(mbar->menus[i].bounds.extent.x, mbar->menus[i].bounds.extent.y, nativeFormat, &err);
 
               stop = true;
@@ -668,7 +654,7 @@ MenuBarType *pumpkin_create_menu(void *h, uint8_t *p, uint32_t *dsize) {
           menuText[l] = 0;
         }
         debug(DEBUG_TRACE, "Form", "item %d.%d text \"%s\"", j, k, menuText);
-        mbar->menus[j].items[k].itemStr = menuText;
+        mbar->menus[j].items[k].itemStr = sys_strdup(menuText);
       }
     }
   }
@@ -685,10 +671,9 @@ void pumpkin_destroy_menu(void *p) {
   if (mbar) {
     if (mbar->menus) {
       for (j = 0; j < mbar->numMenus; j++) {
-        //if (mbar->menus[j].title) xfree(mbar->menus[j].title); // XXX
         if (mbar->menus[j].items) {
           for (k = 0; k < mbar->menus[j].numItems; k++) {
-            //if (mbar->menus[j].items[k].itemStr) xfree(mbar->menus[j].items[k].itemStr); // XXX
+            if (mbar->menus[j].items[k].itemStr) sys_free(mbar->menus[j].items[k].itemStr);
           }
           pumpkin_heap_free(mbar->menus[j].items, "MenuItem");
         }

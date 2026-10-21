@@ -4470,6 +4470,7 @@ void pumpkin_screen_dirty(WinHandle wh, int x, int y, int w, int h) {
 
     if ((screen = ptr_lock(task->screen_ptr, TAG_SCREEN))) {
       WinGetPosition(wh, &sx, &sy);
+sx = sy = 0;
       if (pumpkin_module.density == kDensityDouble) {
         sx <<= 1;
         sy <<= 1;

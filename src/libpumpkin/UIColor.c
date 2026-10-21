@@ -106,12 +106,12 @@ IndexedColorType UIColorGetTableEntryIndex(UIColorTableEntries which) {
   return 0;
 }
 
-void UIColorGetDefaultTableEntryRGB(UIColorTableEntries which, RGBColorType *rgbP) {
+void UIColorGetDefaultTableEntryRGB(UInt16 depth, UIColorTableEntries which, RGBColorType *rgbP) {
   uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
   RGBColorType *palette;
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
-    palette = WinGetPalette(0);
+    palette = WinGetPalette(depth);
     rgbP->r = palette[module->table[which]].r;
     rgbP->g = palette[module->table[which]].g;
     rgbP->b = palette[module->table[which]].b;
@@ -135,7 +135,7 @@ Err UIColorSetTableEntry(UIColorTableEntries which, const RGBColorType *rgbP) {
 
   if (which >= UIObjectFrame && which < UILastColorTableEntry && rgbP) {
     module->table[which] = WinRGBToIndex(rgbP);
-    debug(DEBUG_TRACE, "Window", "UIColorSetTableEntry entry %d RGB(%02X,%02X,%02X) -> %d", which, rgbP->r, rgbP->g, rgbP->b, module->table[which]);
+    debug(DEBUG_TRACE, "Window", "UIColorSetTableEntry entry %2d RGB(%02X,%02X,%02X) -> %d", which, rgbP->r, rgbP->g, rgbP->b, module->table[which]);
   }
 
   return 0;

@@ -140,7 +140,7 @@ ColorTableType *WinInitColors(Boolean ui) {
 
   if (ui) {
     for (entry = 0; entry < UILastColorTableEntry; entry++) {
-      UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+      UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
       UIColorSetTableEntry(entry, &module->uiColor[entry]);
     }
   }
@@ -221,7 +221,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   }
 
   for (entry = 0; entry < UILastColorTableEntry; entry++) {
-    UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+    UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
     UIColorSetTableEntry(entry, &module->uiColor[entry]);
   }
 
@@ -456,26 +456,28 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinHandle newWinHandle;
   Coord width, height;
   UInt16 density;
-  Boolean indirect, compressed, forScreen;
+  Boolean compressed, forScreen;
 
   if (!bitmapP) {
     if (error) *error = sysErrParamErr;
     return NULL;
   }
 
-  indirect = BmpGetCommonFlag(bitmapP, BitmapFlagIndirect);
   compressed = BmpGetCommonFlag(bitmapP, BitmapFlagCompressed);
   forScreen = BmpGetCommonFlag(bitmapP, BitmapFlagForScreen);
-  density = BmpGetDensity(bitmapP);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
+
+  if (width <= 0 || height <= 0 || compressed || forScreen) {
+    debug(DEBUG_ERROR, "Window", "WinCreateBitmapWindow invalid bitmap width=%d height=%d compressed=%d forScreen=%d",
+      width, height, compressed, forScreen);
+    if (error) *error = sysErrParamErr;
+    return NULL;
+  }
+
+  density = BmpGetDensity(bitmapP);
   if (density == kDensityDouble) {
     width >>= 1;
     height >>= 1;
-  }
-
-  if (!width || !height || indirect || compressed || forScreen) {
-    if (error) *error = sysErrParamErr;
-    return NULL;
   }
 
   if ((newWinHandle = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) == NULL) {
@@ -612,6 +614,9 @@ void WinMoveWindowAddr(WindowType *oldLocationP, WindowType *newLocationP) {
 void WinSetActiveWindow(WinHandle winHandle) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   module->activeWindow = winHandle;
+  if (WinGetFlag(winHandle, WindowFlagOffscreen)) {
+    debug(DEBUG_ERROR, "Window", "WinSetActiveWindow on offscreen window %p", winHandle);
+  }
 }
 
 WinHandle WinSetDrawWindow(WinHandle winHandle) {
@@ -1095,9 +1100,23 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
 
     if (CLIPW_OK(wh, cx, cy)) {
       display = wh == module->displayWindow || bmp == WinGetBitmap(module->displayWindow);
-      dbl = BmpGetDensity(bmp) == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
-      WinPutBit(windowColor, wh, cx, cy, mode, dbl, wh == module->activeWindow || display);
+      density = BmpGetDensity(bmp);
+      dbl = density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
 
+      if (WinGetFlag(wh, WindowFlagOffscreen)) {
+        x0 = y0 = 0;
+      } else {
+        x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
+        y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
+        if (density == kDensityDouble) {
+          x0 <<= 1;
+          y0 <<= 1;
+        }
+      }
+
+      WinPutBit(windowColor, wh, x0 + cx, y0 + cy, mode, dbl, wh == module->activeWindow || display);
+
+/*
       if (wh == module->activeWindow && !display) {
         cx = x;
         cy = y;
@@ -1113,6 +1132,7 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
         dbl = density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
         WinPutBit(displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl, false);
       }
+*/
     }
   } else {
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
@@ -2045,10 +2065,12 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       if (ok) {
         // it is possible to use fast copy
         t1 = sys_get_clock();
+/*
         if (blitDisplay) {
           WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
         }
-        WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
+*/
+        WinCopyBitmap(bitmapP, wh, &srcRect, x0 + wx, x0 + wy);
         t2 = sys_get_clock();
         debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
           (uint32_t)(t2 - t1),
@@ -2108,15 +2130,18 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     t1 = sys_get_clock();
     display = wh == module->displayWindow || WinGetField(wh, WindowFieldBitmapP) == WinGetField(module->displayWindow, WindowFieldBitmapP);
+
     for (i = 0; i < srcRect.extent.y; i++) {
       wx = wx0;
       dx = dx0;
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
-          WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, wx, wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || display);
+          WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, x0 + wx, y0 + wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || display);
+/*
           if (blitDisplay) {
             WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd, false);
           }
+*/
         }
         switch (iw) {
           case 0: wx += remwx; remwx = 1-remwx; break;
@@ -2527,6 +2552,7 @@ IndexedColorType WinGetForeColor(void) {
   return module->drawState.foreColor;
 }
 
+#if 0
 #define setColors(prefix, module, color) { \
   uint16_t c; \
   module->prefix##Color565 = rgb565(module->drawState.prefix##ColorRGB.r, module->drawState.prefix##ColorRGB.g, module->drawState.prefix##ColorRGB.b); \
@@ -2549,6 +2575,7 @@ IndexedColorType WinGetForeColor(void) {
       break; \
   } \
 }
+#endif
 
 IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
@@ -2563,9 +2590,9 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
 
   if (foreColor >= 0 && foreColor < numEntries) {
     CtbGetEntry(colorTable, foreColor, &module->drawState.foreColorRGB);
-    setColors(fore, module, foreColor);
+    //setColors(fore, module, foreColor);
+    module->drawState.foreColor = foreColor;
     module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
-//debug(1, "XXX", "WinSetForeColor %d 0x%04X %d,%d,%d", module->foreColor, module->foreColor565, module->foreColorRGB.r, module->foreColorRGB.g, module->foreColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetForeColor invalid color %d for depth %d (max %d)", foreColor, module->depth, numEntries-1);
   }
@@ -2591,7 +2618,8 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
 
   if (backColor >= 0 && backColor < numEntries) {
     CtbGetEntry(colorTable, backColor, &module->drawState.backColorRGB);
-    setColors(back, module, backColor);
+    //setColors(back, module, backColor);
+    module->drawState.backColor = backColor;
     module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetBackColor invalid color %d for depth %d (max %d)", backColor, module->depth, numEntries-1);
@@ -2613,7 +2641,9 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
 
   if (textColor >= 0 && textColor < numEntries) {
     CtbGetEntry(colorTable, textColor, &module->drawState.textColorRGB);
-    setColors(text, module, textColor);
+    //setColors(text, module, textColor);
+    module->drawState.textColor = textColor;
+    module->textColor565 = rgb565(module->drawState.textColorRGB.r, module->drawState.textColorRGB.g, module->drawState.textColorRGB.b);
   } else {
     debug(DEBUG_ERROR, "Window", "WinSetTextColor invalid color %d for depth %d (max %d)", textColor, module->depth, numEntries-1);
   }
@@ -2637,7 +2667,9 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.foreColorRGB.g = newRgbP->g;
     module->drawState.foreColorRGB.b = newRgbP->b;
 
-    setColors(fore, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.foreColorRGB) : 0);
+    //setColors(fore, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.foreColorRGB) : 0);
+    module->drawState.foreColor = WinRGBToIndex(&module->drawState.foreColorRGB);
+    module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
   }
 }
 
@@ -2657,7 +2689,9 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.backColorRGB.g = newRgbP->g;
     module->drawState.backColorRGB.b = newRgbP->b;
 
-    setColors(back, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.backColorRGB) : 0);
+    //setColors(back, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.backColorRGB) : 0);
+    module->drawState.backColor = WinRGBToIndex(&module->drawState.backColorRGB);
+    module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
   }
 }
 
@@ -2677,7 +2711,9 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.textColorRGB.g = newRgbP->g;
     module->drawState.textColorRGB.b = newRgbP->b;
 
-    setColors(text, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.textColorRGB) : 0);
+    //setColors(text, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.textColorRGB) : 0);
+    module->drawState.textColor = WinRGBToIndex(&module->drawState.textColorRGB);
+    module->textColor565 = rgb565(module->drawState.textColorRGB.r, module->drawState.textColorRGB.g, module->drawState.textColorRGB.b);
   }
 }
 
@@ -3361,9 +3397,10 @@ static void broadcastDisplayChange(UInt32 oldDepth, UInt32 newDepth) {
 Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColorType *tableP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   WinHandle wh;
+  BitmapType *bmp;
   ColorTableType *colorTable;
   UInt16 i, index;
-  UInt16 entry, numEntries;
+  UInt16 depth, entry, numEntries;
   char buf[64];
   Err err = sysErrParamErr;
 
@@ -3373,114 +3410,113 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
     debug(DEBUG_TRACE, "Window", "WinPalette drawWindow   %s", WinGetDescr(wh, buf, sizeof(buf)));
     debug(DEBUG_TRACE, "Window", "WinPalette displayWidow %s", WinGetDescr(WinGetDisplayWindow(), buf, sizeof(buf)));
     debug(DEBUG_TRACE, "Window", "WinPalette activeWidow  %s", WinGetDescr(WinGetActiveWindow(), buf, sizeof(buf)));
-    colorTable = BmpGetColortable(WinGetBitmap(wh));
+
+    bmp = WinGetBitmap(wh);
+    depth = BmpGetBitDepth(bmp);
+    colorTable = BmpGetColortable(bmp);
     if (colorTable == NULL) {
       debug(DEBUG_ERROR, "Window", "WinPalette drawWindow colorTable is NULL");
       return winErrPalette;
     }
 
-    if (colorTable) {
-      numEntries = CtbGetNumEntries(colorTable);
+    numEntries = CtbGetNumEntries(colorTable);
 
-      switch (operation) {
-        case winPaletteGet:
-          if (tableP) {
-            if (startIndex == WinUseTableIndexes) {
-              for (i = 0; i < paletteEntries; i++) {
-                index = tableP[i].index;
-                if (index < numEntries) {
-                  CtbGetEntry(colorTable, index, &tableP[i]);
-                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
-                }
-              }
-            } else {
-              for (i = 0; i < paletteEntries; i++) {
-                if ((startIndex + i) < numEntries) {
-                  CtbGetEntry(colorTable, startIndex + i, &tableP[i]);
-                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
-                }
+    switch (operation) {
+      case winPaletteGet:
+        if (tableP) {
+          if (startIndex == WinUseTableIndexes) {
+            for (i = 0; i < paletteEntries; i++) {
+              index = tableP[i].index;
+              if (index < numEntries) {
+                CtbGetEntry(colorTable, index, &tableP[i]);
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %3d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
               }
             }
-            err = errNone;
+          } else {
+            for (i = 0; i < paletteEntries; i++) {
+              if ((startIndex + i) < numEntries) {
+                CtbGetEntry(colorTable, startIndex + i, &tableP[i]);
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteGet %3d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
+              }
+            }
           }
-          break;
+          err = errNone;
+        }
+        break;
 
-        // During a set operation, this function broadcasts the
-        // sysNotifyDisplayChangeEvent to notify any interested
-        // observer that the color palette has changed.
+      // During a set operation, this function broadcasts the
+      // sysNotifyDisplayChangeEvent to notify any interested
+      // observer that the color palette has changed.
 
-        case winPaletteSet:
-          if (tableP && module->depth0 >= 8) {
-            if (startIndex == WinUseTableIndexes) {
-              for (i = 0; i < paletteEntries; i++) {
-                index = tableP[i].index;
-                if (index < numEntries) {
-                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
-                  CtbSetEntry(colorTable, index, &tableP[i]);
-                }
-              }
-            } else {
-              for (i = 0; i < paletteEntries; i++) {
-                if ((startIndex + i) >= 0 && (startIndex + i) < numEntries) {
-                  debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
-                  CtbSetEntry(colorTable, startIndex + i, &tableP[i]);
-                }
+      case winPaletteSet:
+        if (tableP) {
+          if (startIndex == WinUseTableIndexes) {
+            for (i = 0; i < paletteEntries; i++) {
+              index = tableP[i].index;
+              if (index < numEntries) {
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %3d = (%02X,%02X,%02X)", index, tableP[i].r, tableP[i].g, tableP[i].b);
+                CtbSetEntry(colorTable, index, &tableP[i]);
               }
             }
-            //broadcastDisplayChange(module->depth, module->depth);
-            pumpkin_dirty_region_mode(dirtyRegionReset);
-            WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
-            for (entry = 0; entry < UILastColorTableEntry; entry++) {
-              UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
-              UIColorSetTableEntry(entry, &module->uiColor[entry]);
+          } else {
+            for (i = 0; i < paletteEntries; i++) {
+              if ((startIndex + i) >= 0 && (startIndex + i) < numEntries) {
+                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSet %3d = (%02X,%02X,%02X)", startIndex + i, tableP[i].r, tableP[i].g, tableP[i].b);
+                CtbSetEntry(colorTable, startIndex + i, &tableP[i]);
+              }
             }
-            err = errNone;
-          }
-          break;
-
-        case winPaletteSetToDefault:
-          switch (module->depth) {
-            case 1:
-              CtbSetNumEntries(colorTable, 2);
-              for (i = 0; i < 2; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette1[i]);
-              }
-              break;
-            case 2:
-              CtbSetNumEntries(colorTable, 4);
-              for (i = 0; i < 4; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette2[i]);
-              }
-              break;
-            case 4:
-              CtbSetNumEntries(colorTable, 16);
-              for (i = 0; i < 16; i++) {
-                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette4[i]);
-              }
-              break;
-            default:
-              CtbSetNumEntries(colorTable, 256);
-              for (i = 0; i < 256; i++) {
-                debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSetToDefault %d = (%02X,%02X,%02X)", i,
-                  module->defaultPalette8[i].r, module->defaultPalette8[i].g, module->defaultPalette8[i].b);
-                CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette8[i]);
-              }
-              break;
           }
           //broadcastDisplayChange(module->depth, module->depth);
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
-            UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+            UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
             UIColorSetTableEntry(entry, &module->uiColor[entry]);
           }
           err = errNone;
-          break;
+        }
+        break;
+
+      case winPaletteSetToDefault:
+        switch (depth) {
+          case 1:
+            CtbSetNumEntries(colorTable, 2);
+            for (i = 0; i < 2; i++) {
+              CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette1[i]);
+            }
+            break;
+          case 2:
+            CtbSetNumEntries(colorTable, 4);
+            for (i = 0; i < 4; i++) {
+              CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette2[i]);
+            }
+            break;
+          case 4:
+            CtbSetNumEntries(colorTable, 16);
+            for (i = 0; i < 16; i++) {
+              CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette4[i]);
+            }
+            break;
+          default:
+            CtbSetNumEntries(colorTable, 256);
+            for (i = 0; i < 256; i++) {
+              debug(DEBUG_TRACE, "Window", "WinPalette winPaletteSetToDefault %3d = (%02X,%02X,%02X)", i,
+                module->defaultPalette8[i].r, module->defaultPalette8[i].g, module->defaultPalette8[i].b);
+              CtbSetEntry(colorTable, i, (RGBColorType *)&module->defaultPalette8[i]);
+            }
+            break;
+        }
+
+        //broadcastDisplayChange(depth, depth);
+        pumpkin_dirty_region_mode(dirtyRegionReset);
+        WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
+        for (entry = 0; entry < UILastColorTableEntry; entry++) {
+          UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
+          UIColorSetTableEntry(entry, &module->uiColor[entry]);
+        }
+        err = errNone;
+        break;
       }
-    } else {
-      debug(DEBUG_ERROR, "Window", "WinPalette drawWidoww colorTable is NULL");
-      err = winErrPalette;
-    }
   }
 
   return err;
@@ -3625,7 +3661,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
 
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
-            UIColorGetDefaultTableEntryRGB(entry, &module->uiColor[entry]);
+            UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
             UIColorSetTableEntry(entry, &module->uiColor[entry]);
           }
         }

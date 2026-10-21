@@ -125,16 +125,12 @@ static void FrmCenterForm(FormType *formP) {
   FormObjectType obj;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  //formP->window.windowBounds.topLeft.x = (swidth  - formP->window.windowBounds.extent.x) / 2;
-  //formP->window.windowBounds.topLeft.y = (sheight - formP->window.windowBounds.extent.y) / 2;
   WinSetField(&formP->window, WindowFieldWindowBoundsX, (swidth  - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW)) / 2);
   WinSetField(&formP->window, WindowFieldWindowBoundsY, (sheight - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH)) / 2);
 
   for (index = 0; index < formP->numObjects; index++) {
     if (formP->objects[index].objectType == frmListObj) {
       obj = formP->objects[index].object;
-      //obj.list->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + obj.list->bounds.topLeft.x; // absolute screen coordinate
-      //obj.list->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + obj.list->bounds.topLeft.y; // absolute screen coordinate
       WinSetField(obj.list->popupWin, WindowFieldWindowBoundsX, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsX) + obj.list->bounds.topLeft.x);
       WinSetField(obj.list->popupWin, WindowFieldWindowBoundsY, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsY) + obj.list->bounds.topLeft.y);
     }
@@ -291,13 +287,11 @@ FormType *FrmInitForm(UInt16 rscID) {
   if (rsrc) {
     formP = pumpkin_create_form(rsrc, size);
     MemMove(formP->rsrch, rsrc, size < FORM_STRUCT_SIZE ? size : FORM_STRUCT_SIZE);
-    //debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, formP->window.windowFlags.modal);
     debug(DEBUG_TRACE, "Form", "FrmInitForm %d (modal %d)", rscID, WinGetFlag(&formP->window, WindowFlagModal));
     if (FrmInitFormInternal(formP) != errNone) {
       pumpkin_destroy_form(formP);
       formP = NULL;
     } else {
-      //if (formP->window.windowFlags.modal && module->centerDialogs)
       if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
         FrmCenterForm(formP);
       }
@@ -429,7 +423,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
       case frmTitleObj:
         if (formP->attr.visible) {
-          //MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
           RctSetRectFromAddr(&rect, obj.title, 0);
           erase = true;
         }
@@ -440,7 +433,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (obj.label->attr.visible) {
           if (obj.label->text) {
             old = FntSetFont(obj.label->fontID);
-            //max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
             max = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - obj.label->pos.x + 1;
             RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*5);
             WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
@@ -502,14 +494,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         break;
 
       case frmScrollBarObj:
-/*
-        if (setUsable) obj.scrollBar->attr.usable = 0;
-        if (obj.scrollBar->attr.visible) {
-          MemMove(&rect, &obj.scrollBar->bounds, sizeof(RectangleType));
-          obj.scrollBar->attr.visible = 0;
-          erase = true;
-        }
-*/
         if (setUsable) FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, 0);
         if (FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible)) {
           RctSetRectFromAddr(&rect, obj.scrollBar, FormScrollBarFieldRectX);
@@ -577,7 +561,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           old = FntSetFont(obj.label->fontID);
           oldb = WinSetBackColor(formFill); // labels use formFill as background
           oldt = WinSetTextColor(fieldText);
-          //max = formP->window.windowBounds.extent.x - obj.label->pos.x + 1;
           max = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - obj.label->pos.x + 1;
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*12);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
@@ -649,14 +632,12 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           old = FntSetFont(boldFont);
           oldb = WinSetBackColor(formFrame);
           oldt = WinSetTextColor(formTitle);
-          //tw = obj.title->text ? FntCharsWidth(obj.title->text, sys_strlen(obj.title->text)) : 4;
           text = (char *)FrmObjectGetField(obj.title, frmTitleObj, FormTitleFieldText);
           tw = text ? FntCharsWidth(text, sys_strlen(text)) : 4;
           th = FntCharHeight();
           if (WinGetFlag(&formP->window, WindowFlagModal)) {
             RctSetRectangle(&rect, 0, 0, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW), th+1);
             WinEraseRectangle(&rect, 0);
-            //MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
             RctSetAddrFromRect(&rect, obj.title, 0);
             x = (Coord)(WinGetField(&formP->window, WindowFieldWindowBoundsW) - tw) / 2;
             y = 0;
@@ -672,15 +653,12 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
             RctSetRectangle(&rect, 0, 0, tw+4, th+4);
             WinEraseRectangle(&rect, 1);
-            //MemMove(&obj.title->rect, &rect, sizeof(RectangleType));
             RctSetAddrFromRect(&rect, obj.title, 0);
             RctSetRectangle(&rect, 0, th+2, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW), 2);
             WinEraseRectangle(&rect, 0);
           }
-          //if (obj.title->text)
           if (text) {
             WinDrawOperation prev = WinSetDrawMode(winOverlay);
-            //WinPaintChars(obj.title->text, sys_strlen(obj.title->text), x, y);
             WinPaintChars(text, sys_strlen(text), x, y);
             WinSetDrawMode(prev);
           }
@@ -715,12 +693,6 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         FntSetFont(old);
         break;
       case frmScrollBarObj:
-/*
-        if (setUsable) obj.scrollBar->attr.usable = 1;
-        if (obj.scrollBar->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
-          SclDrawScrollBar(obj.scrollBar);
-        }
-*/
         if (setUsable) FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, 1);
         if (FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable) && (formP->attr.drawing || formP->attr.visible)) {
           SclDrawScrollBar(obj.scrollBar);
@@ -748,7 +720,6 @@ void FrmSetUsable(FormType *formP, UInt16 objIndex, Boolean usable) {
       case frmListObj:      obj.list->attr.usable      = usable; break;
       case frmTableObj:     obj.table->attr.usable     = usable; break;
       case frmGadgetObj:    obj.gadget->attr.usable    = usable; break;
-      //case frmScrollBarObj: obj.scrollBar->attr.usable = usable; break;
       case frmScrollBarObj:
         FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable, usable);
         break;
@@ -771,7 +742,6 @@ Boolean FrmGetUsable(FormType *formP, UInt16 objIndex) {
       case frmListObj:      usable = obj.list->attr.usable;      break;
       case frmTableObj:     usable = obj.table->attr.usable;     break;
       case frmGadgetObj:    usable = obj.gadget->attr.usable;    break;
-      //case frmScrollBarObj: usable = obj.scrollBar->attr.usable; break;
       case frmScrollBarObj:
         usable = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable);
         break;
@@ -796,7 +766,6 @@ void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible) {
       case frmGadgetObj:    obj.gadget->attr.visible    = visible; break;
       case frmLabelObj:     obj.label->attr.visible     = visible; break;
       case frmBitmapObj:    obj.bitmap->attr.visible     = visible; break;
-      //case frmScrollBarObj: obj.scrollBar->attr.visible = visible; break;
       case frmScrollBarObj:
         FrmObjectSetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, visible);
         break;
@@ -820,7 +789,6 @@ Boolean FrmGetVisible(FormType *formP, UInt16 objIndex) {
       case frmGadgetObj:    visible = obj.gadget->attr.visible;    break;
       case frmLabelObj:     visible = obj.label->attr.visible;     break;
       case frmBitmapObj:    visible = obj.bitmap->attr.visible;    break;
-      //case frmScrollBarObj: visible = obj.scrollBar->attr.visible; break;
       case frmScrollBarObj:
         visible = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible);
         break;
@@ -895,7 +863,6 @@ Boolean FrmTrackPenUp(UInt32 x, UInt32 y) {
         handled = LstHandleEvent(obj.list, &event);
         break;
       case frmTitleObj:
-        //RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
         RctSetRectFromAddr(&rect, obj.title, 0);
         if (RctPtInRectangle(x, y, &rect)) {
           event.eType = frmTitleSelectEvent;
@@ -1018,11 +985,9 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
             break;
           case frmTitleObj:
             if (formP->activeList != -1) break;
-            //RctSetRectangle(&rect, obj.title->rect.topLeft.x, obj.title->rect.topLeft.y, obj.title->rect.extent.x, obj.title->rect.extent.y);
             RctSetRectFromAddr(&rect, obj.title, 0);
             if (RctPtInRectangle(eventP->screenX, eventP->screenY, &rect)) {
               FrmReleaseFocus(formP);
-              //FldSetActiveField(NULL, false);
               formP->selectedObject = i;
               xmemset(&event, 0, sizeof(EventType));
               event.eType = frmTitleEnterEvent;
@@ -1296,7 +1261,6 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
   WinHandle oldDraw, oldActive;
 
   // draw dialog border
-  //if (formP->window.windowFlags.modal) {
   if (WinGetFlag(&formP->window, WindowFlagModal)) {
     oldActive = WinGetActiveWindow();
     oldDraw = WinSetDrawWindow(wh);
@@ -1389,9 +1353,7 @@ void FrmEraseForm(FormType *formP) {
 
   if (formP) {
     debug(DEBUG_TRACE, "Form", "FrmEraseForm %d", formP->formId);
-    //MemMove(&rect, &formP->window.windowBounds, sizeof(RectangleType));
     RctSetRectFromWin(&rect, &formP->window);
-    //if (formP->window.windowFlags.modal)
     if (WinGetFlag(&formP->window, WindowFlagModal)) {
       rect.topLeft.x -= 2;
       rect.topLeft.y -= 2;
@@ -1458,18 +1420,14 @@ void FrmSetFocus(FormType *formP, UInt16 fieldIndex) {
 //Return the visual bounds of the form; the region returned includes the form’s frame.
 void FrmGetFormBounds(const FormType *formP, RectangleType *rP) {
   if (formP && rP) {
-    //MemMove(rP, &formP->window.windowBounds, sizeof(RectangleType));
     RctSetRectFromWin(rP, (WindowType *)&formP->window);
 
     // if the form is modal, take into account the form's frame
-    //if (formP->window.windowFlags.modal)
     if (WinGetFlag((WindowType *)&formP->window, WindowFlagModal)) {
-      //if (formP->window.windowBounds.topLeft.x >= 2)
       if ((Coord)WinGetField((WindowType *)&formP->window, WindowFieldWindowBoundsX) >= 2) {
         rP->topLeft.x -= 2;
         rP->extent.x += 4;
       }
-      //if (formP->window.windowBounds.topLeft.y >= 2)
       if ((Coord)WinGetField((WindowType *)&formP->window, WindowFieldWindowBoundsY) >= 2) {
         rP->topLeft.y -= 2;
         rP->extent.y += 4;
@@ -1484,8 +1442,6 @@ void FrmSetFormBounds(const FormType *formP, RectangleType *rP) {
   RectangleType rect;
 
   if (formP && rP) {
-    //MemMove((RectangleType *)&formP->window.windowBounds, rP, sizeof(RectangleType));
-    //WinUnscaleRectangle((RectangleType *)&formP->window.windowBounds);
     RctSetRectFromWin(&rect, (WinHandle)&formP->window);
     WinUnscaleRectangle(&rect);
     RctSetWinFromRect(&rect, (WinHandle)&formP->window);
@@ -1626,7 +1582,6 @@ const Char *FrmGetTitle(const FormType *formP) {
   if (formP) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
-        //return formP->objects[i].object.title->text;
         return (char *)FrmObjectGetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText);
       }
     }
@@ -1651,9 +1606,6 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
-        //formP->objects[i].object.title->text = newTitle;
-        //FrmObjectSetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText, (UIntPtr)newTitle);
-
         ram = pumpkin_heap_base();
         size = pumpkin_heap_size();
         if (newTitle >= ram && newTitle < ram + size) {
@@ -1665,13 +1617,11 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
 
         if (formP->attr.visible) {
           obj = formP->objects[i].object;
-          //MemMove(&old, &obj.title->rect, sizeof(RectangleType));
           RctSetRectFromAddr(&old, obj.title, 0);
 
           // draw new title
           objIndex = FrmGetObjectIndexFromPtr(formP, formP->objects[i].object.title);
           FrmDrawObject(formP, objIndex, false);
-          //MemMove(&rect, &obj.title->rect, sizeof(RectangleType));
           RctSetRectFromAddr(&rect, obj.title, 0);
 
           // if new title is shorter than old title
@@ -1701,7 +1651,6 @@ void FrmCopyTitle(FormType *formP, const Char *newTitle) {
         if (formP->attr.visible) {
           FrmEraseObject(formP, objIndex, false);
         }
-        //StrCopy(formP->objects[i].object.title->text, newTitle);
         StrCopy((char *)FrmObjectGetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText), newTitle);
         if (formP->attr.visible) {
           FrmDrawObject(formP, objIndex, false);
@@ -1711,33 +1660,6 @@ void FrmCopyTitle(FormType *formP, const Char *newTitle) {
     }
   }
 }
-
-/*
-boot forms:
-10000: Edit Categories (big)
-10100: Go To Date
-10200: Set Time (big)
-10300: Keyboard
-10400: Tips
-10500: Find (small)
-10600: Find (big)
-10900: Edit Memo ???
-10950: Edit Memo ???
-11000: About Palm
-11100: Edit Categories (small)
-11200: Graffiti
-11500: blank
-11600: Exchance Progress
-11700: Exchange
-11900: Select Font
-12100: Set Time (small)
-13100: Adjust Contrast
-13150: Adjust Brightness
-13200: Change Security
-13300: Pick Color
-13400: Set Time Zone
-13500: Attention
-*/
 
 static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID, FormCheckResponseFuncPtr callback) {
   FormType *previous;
@@ -1835,16 +1757,6 @@ UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout) {
 UInt16 FrmDoDialog(FormType *formP) {
   return FrmDoDialogEx(formP, evtWaitForever);
 }
-
-/*
-  UInt16    alertType;
-  UInt16    helpRscID;
-  UInt16    numButtons;
-  UInt16    defaultButton;
-  Char      *title;
-  Char      *message;
-  Char      *button[8];
-*/
 
 static UInt16 FrmShowAlert(UInt16 id, AlertTemplateType *alert, char *msg, char *entry, Int16 entryLen, FormCheckResponseFuncPtr callback) {
   FormType *formP;
@@ -2264,7 +2176,6 @@ Boolean FrmPointInTitle(const FormType *formP, Coord x, Coord y) {
   if (formP) {
     for (index = 0; index < formP->numObjects; index++) {
       if (formP->objects[index].objectType == frmTitleObj) {
-        //r = RctPtInRectangle(x, y, &formP->objects[index].object.title->rect);
         RctSetRectFromAddr(&rect, formP->objects[index].object.title, 0);
         r = RctPtInRectangle(x, y, &rect);
         break;
@@ -2533,10 +2444,6 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
         MemMove(&formP->objects[objIndex].object.list->bounds, bounds, sizeof(RectangleType));
         WinDeleteWindow(formP->objects[objIndex].object.list->popupWin, true);
         formP->objects[objIndex].object.list->popupWin = WinCreateOffscreenWindow(bounds->extent.x, bounds->extent.y, nativeFormat, &err);
-        //formP->objects[objIndex].object.list->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + bounds->topLeft.x;
-        //formP->objects[objIndex].object.list->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + bounds->topLeft.y;
-        WinSetField(formP->objects[objIndex].object.list->popupWin, WindowFieldWindowBoundsX, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsX) + bounds->topLeft.x);
-        WinSetField(formP->objects[objIndex].object.list->popupWin, WindowFieldWindowBoundsY, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsY) + bounds->topLeft.y);
 
         /*
         XXX this code was commented out because it was causing problems in PalmFiction.
@@ -2558,13 +2465,11 @@ void FrmSetObjectBounds(FormType *formP, UInt16 objIndex, const RectangleType *b
         formP->objects[objIndex].object.bitmap->pos.y = bounds->topLeft.y;
         break;
       case frmScrollBarObj:
-        //MemMove(&formP->objects[objIndex].object.scrollBar->bounds, bounds, sizeof(RectangleType));
         RctSetAddrFromRect(bounds, formP->objects[objIndex].object.scrollBar, FormScrollBarFieldRectX);
         break;
       case frmTitleObj:
         debug(DEBUG_TRACE, "Form", "FrmSetObjectBounds title (%d,%d,%d,%d)",
           bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
-        //MemMove(&formP->objects[objIndex].object.title->rect, bounds, sizeof(RectangleType));
         RctSetAddrFromRect(bounds, formP->objects[objIndex].object.title, 0);
         break;
       case frmGraffitiStateObj:
@@ -2631,11 +2536,9 @@ void FrmGetObjectBounds(const FormType *formP, UInt16 objIndex, RectangleType *r
         }
         break;
       case frmScrollBarObj:
-        //MemMove(rP, &formP->objects[objIndex].object.scrollBar->bounds, sizeof(RectangleType));
         RctSetRectFromAddr(rP, formP->objects[objIndex].object.scrollBar, FormScrollBarFieldRectX);
         break;
       case frmTitleObj:
-        //MemMove(rP, &formP->objects[objIndex].object.title->rect, sizeof(RectangleType));
         RctSetRectFromAddr(rP, formP->objects[objIndex].object.title, 0);
         break;
       case frmGraffitiStateObj:
@@ -2740,7 +2643,6 @@ void FrmAddObject(FormType *formP, FormObjectKind objectKind, UInt16 id, void *o
       formP->objects[objIndex].objectType = objectKind;
       formP->objects[objIndex].id = id;
       formP->objects[objIndex].object.ptr = obj;
-      //formP->objects[objIndex].object.field->formP = formP;
     }
   }
 }
@@ -2769,15 +2671,9 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
     formP->numObjects = 0;
     formP->diaPolicy = frmDIAPolicyStayOpen;
 
-    //formP->window.windowFlags.modal = modal;
-    //formP->window.windowFlags.enabled = true;
     WinSetFlag(&formP->window, WindowFlagModal, modal);
     WinSetFlag(&formP->window, WindowFlagEnabled, true);
 
-    //formP->window.windowBounds.topLeft.x = x;
-    //formP->window.windowBounds.topLeft.y = y;
-    //formP->window.windowBounds.extent.x = width;
-    //formP->window.windowBounds.extent.y = height;
     WinSetField(&formP->window, WindowFieldWindowBoundsX, x);
     WinSetField(&formP->window, WindowFieldWindowBoundsY, y);
     WinSetField(&formP->window, WindowFieldWindowBoundsW, width);
@@ -2785,17 +2681,13 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
 
     FrmInitFormInternal(formP);
 
-    //if (formP->window.windowFlags.modal && module->centerDialogs)
     if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
       FrmCenterForm(formP);
     }
 
     if (titleStrP) {
-      //if ((title = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL)
       if ((title = pumpkin_heap_alloc(FORM_TITLE_STRUCT_SIZE, "Title")) != NULL) {
         len = StrLen(titleStrP);
-        //title->text = MemPtrNew(len + 1);
-        //StrNCopy(title->text, titleStrP, len);
         text = MemPtrNew(len + 1);
         StrNCopy(text, titleStrP, len);
         FrmObjectSetField(title, frmTitleObj, FormTitleFieldText, (UIntPtr)text);
@@ -3201,20 +3093,6 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
     FntSetFont(old);
     if (h == 0) h = th;
 
-/*
-    if (w > form->window.windowBounds.extent.x) {
-      w = form->window.windowBounds.extent.x;
-    }
-    if (h > form->window.windowBounds.extent.y) {
-      h = form->window.windowBounds.extent.y;
-    }
-    if (x + w > form->window.windowBounds.extent.x) {
-      x = form->window.windowBounds.extent.x - w;
-    }
-    if (y + h > form->window.windowBounds.extent.y) {
-      y = form->window.windowBounds.extent.y - h;
-    }
-*/
     if (w > (Coord)WinGetField(&form->window, WindowFieldWindowBoundsW)) {
       w = (Coord)WinGetField(&form->window, WindowFieldWindowBoundsW);
     }
@@ -3250,18 +3128,12 @@ static ListType *pumpkin_create_list(uint8_t *p, int *i, FormType *form, uint32_
     debug(DEBUG_TRACE, "Form", "list id %d numItems %d visibleItems %d usable %d", c->id, c->numItems, c->visibleItems, c->attr.usable);
 
     c->popupWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
-    //c->popupWin->windowFlags.modal = 1;
     WinSetFlag(c->popupWin, WindowFlagModal, 1);
-    //c->popupWin->windowBounds.topLeft.x = form->window.windowBounds.topLeft.x + c->bounds.topLeft.x; // absolute screen coordinate
-    //c->popupWin->windowBounds.topLeft.y = form->window.windowBounds.topLeft.y + c->bounds.topLeft.y; // absolute screen coordinate
-    WinSetField(c->popupWin, WindowFieldWindowBoundsX, (Coord)WinGetField(&form->window, WindowFieldWindowBoundsX) + c->bounds.topLeft.x); // absolute screen coordinate
-    WinSetField(c->popupWin, WindowFieldWindowBoundsY, (Coord)WinGetField(&form->window, WindowFieldWindowBoundsY) + c->bounds.topLeft.y); // absolute screen coordinate
 
     if (!c->attr.usable) {
       c->bitsBehind = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
     }
     debug(DEBUG_TRACE, "Form", "list popupwin %d,%d,%d,%d",
-      //c->popupWin->windowBounds.topLeft.x, c->popupWin->windowBounds.topLeft.y, c->popupWin->windowBounds.extent.x, c->popupWin->windowBounds.extent.y);
       (Coord)WinGetField(c->popupWin, WindowFieldWindowBoundsX), (Coord)WinGetField(c->popupWin, WindowFieldWindowBoundsY),
       (Coord)WinGetField(c->popupWin, WindowFieldWindowBoundsW), (Coord)WinGetField(c->popupWin, WindowFieldWindowBoundsH));
 
@@ -3483,44 +3355,6 @@ static FormLabelType *pumpkin_create_label(uint8_t *p, int *i) {
   return c;
 }
 
-#if 0
-static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
-  FormTitleType *c = NULL;
-  RectangleType rect;
-  uint16_t x, y, w, h, len;
-  uint32_t dummy32;
-  char *title, *text;
-    
-  // szRCFORMTITLE "w4,p"
-  *i += get2b(&x, p, *i);
-  *i += get2b(&y, p, *i);
-  *i += get2b(&w, p, *i);
-  *i += get2b(&h, p, *i);
-  *i += get4b(&dummy32, p, *i);
-  *i += pumpkin_getstr(&title, p, *i);
-  len = sys_strlen(title);
-  debug(DEBUG_TRACE, "Form",  "title \"%s\" at (%d,%d,%d,%d)", title, x, y, w, h);
-  *i += palign(2, *i);
-
-  //if ((c = pumpkin_heap_alloc(sizeof(FormTitleType), "Title")) != NULL)
-  if ((c = pumpkin_heap_alloc(FORM_TITLE_STRUCT_SIZE, "Title")) != NULL) { 
-    //c->rect.topLeft.x = x;
-    //c->rect.topLeft.y = y;
-    //c->rect.extent.x = w;
-    //c->rect.extent.y = h;
-    RctSetRectangle(&rect, x, y, w, h);
-    RctSetAddrFromRect(&rect, c, 0);
-    //c->text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
-    //xmemcpy(c->text, title, len);
-    text = MemPtrNew(len + 1); // MemoPad calls MemPtrFree(oldTitle), so this must use MemPtrNew()
-    StrNCopy(text, title, len);
-    FrmObjectSetField(c, frmTitleObj, FormTitleFieldText, (UIntPtr)text);
-  } 
-  
-  return c;
-}
-#endif
-
 static FormTitleType *pumpkin_create_title(uint8_t *p, int *i) {
   FormTitleType *c;
   uint16_t x, y, w, h, len;
@@ -3661,14 +3495,10 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
   FormType *form;
   ControlType *control;
   SliderControlType *slider;
-  //RectangleType rect;
   uint8_t dummy8, objectType;
   uint16_t dummy16, formId, defaultButton, helpRscId, menuRscId, numObjects;
-  //uint16_t displayWidthV20, displayHeightV20, wx, wy, ww, wh, x0, x1, y0, y1, frameType;
   uint32_t dummy32, listSize, *offset;
-  //uint16_t flags;
   uint32_t attr;
-  //WindowFlagsType windowFlags;
   FormAttrType formAttr;
   int i, j;
 
@@ -3676,51 +3506,9 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     form->rsrc = p;
 
     // szRCWindowBA16 "w,w,zl,zuzuuuzuzuuzuzu8,w4,zw4,zl,u8zu3uu2u2,zl,zl"
-/*
-    i = 0;
-    i += get2b(&displayWidthV20, p, i);
-    i += get2b(&displayHeightV20, p, i);
-    i += get4b(&dummy32, p, i);
-    i += get2b(&flags, p, i);
-    i += get2b(&wx, p, i);
-    i += get2b(&wy, p, i);
-    i += get2b(&ww, p, i);
-    i += get2b(&wh, p, i);
-    i += get2b(&y0, p, i);
-    i += get2b(&x0, p, i);
-    i += get2b(&x1, p, i);
-    i += get2b(&y1, p, i);
-    i += get4b(&dummy32, p, i);
-    i += get2b(&frameType, p, i);
-    i += get4b(&dummy32, p, i);
-    i += get4b(&dummy32, p, i);
-
-    windowFlags.format     = (flags & 0x8000) ? 1 : 0;
-    windowFlags.offscreen  = (flags & 0x4000) ? 1 : 0;
-    windowFlags.modal      = (flags & 0x2000) ? 1 : 0;
-    windowFlags.focusable  = (flags & 0x1000) ? 1 : 0;
-    windowFlags.enabled    = (flags & 0x0800) ? 1 : 0;
-    windowFlags.visible    = (flags & 0x0400) ? 1 : 0;
-    windowFlags.dialog     = (flags & 0x0200) ? 1 : 0;
-    windowFlags.freeBitmap = (flags & 0x0100) ? 1 : 0;
-    windowFlags.reserved   = 0;
-
-    form->window.displayWidthV20 = displayWidthV20;
-    form->window.displayHeightV20 = displayHeightV20;
-    form->window.windowFlags = windowFlags;
-    form->window.windowBounds.topLeft.x = wx;
-    form->window.windowBounds.topLeft.y = wy;
-    form->window.windowBounds.extent.x = ww;
-    form->window.windowBounds.extent.y = wh;
-*/
     MemMove(&form->window, p, WINDOW_STRUCT_SIZE);
     i = WINDOW_STRUCT_SIZE;
 
-    //RctSetRectangle(&rect, x0, y0, x1-x0+1, y1-y0+1);
-    //WinSetClipingBounds(form->wh, &rect);
-
-    //form->window.frameType.word = frameType;
-    //debug(DEBUG_TRACE, "Form", "form window bounds (%d,%d,%d,%d)", wx, wy, ww, wh);
     debug(DEBUG_TRACE, "Form", "form window bounds (%d,%d,%d,%d)",
       (Coord)WinGetField(&form->window, WindowFieldWindowBoundsX), (Coord)WinGetField(&form->window, WindowFieldWindowBoundsY),
       (Coord)WinGetField(&form->window, WindowFieldWindowBoundsW), (Coord)WinGetField(&form->window, WindowFieldWindowBoundsH));
@@ -3758,7 +3546,6 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     formAttr.reserved2          = 0;
 
     debug(DEBUG_TRACE, "Form", "form id %d attr usable %d save %d", formId, formAttr.usable, formAttr.saveBehind);
-    //debug(DEBUG_TRACE, "Form", "form id %d wflags dialog %d modal %d", formId, windowFlags.dialog, windowFlags.modal);
     debug(DEBUG_TRACE, "Form", "form id %d wflags dialog %d modal %d", formId, WinGetFlag(&form->window, WindowFlagDialog), WinGetFlag(&form->window, WindowFlagModal));
     debug(DEBUG_TRACE, "Form", "form id %d defbtn %d, help %d, menu %d", formId, defaultButton, helpRscId, menuRscId);
 

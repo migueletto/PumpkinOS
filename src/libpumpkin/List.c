@@ -12,7 +12,7 @@
 #include "xalloc.h"
 
 static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
-  WinHandle oldw, oldd;
+  WinHandle oldd;
   RectangleType rect;
   IndexedColorType objFrame, objFore, objFill, objSelFore, objSelFill, oldf, oldb, oldt;
   FontID old;
@@ -20,8 +20,6 @@ static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
   uint32_t w, *aux32;
   char *s;
 
-  oldw = WinGetActiveWindow();
-  WinSetActiveWindow(listP->popupWin);
   oldd = WinSetDrawWindow(listP->popupWin);
 
   objFrame = UIColorGetTableEntryIndex(UIObjectFrame);
@@ -91,28 +89,25 @@ static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
   WinSetForeColor(oldf);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
-  WinSetActiveWindow(oldw);
   WinSetDrawWindow(oldd);
+
+  RctSetRectangle(&rect, 0, 0, listP->bounds.extent.x, listP->bounds.extent.y);
+  WinCopyRectangle(listP->popupWin, WinGetDisplayWindow(), &rect, listP->bounds.topLeft.x, listP->bounds.topLeft.y, winPaint);
 }
 
 void LstDrawList(ListType *listP) {
-  WinHandle oldw, oldd;
-  RectangleType rect;
+  WinHandle oldd;
   IndexedColorType objFrame, oldf;
   int i, w, h;
 
   if (listP->bitsBehind && !listP->attr.poppedUp) return;
 
-  oldw = WinGetActiveWindow();
-  WinSetActiveWindow(listP->popupWin);
   oldd = WinSetDrawWindow(listP->popupWin);
 
   // save the area behing the list
   if (!listP->attr.visible && listP->bitsBehind) {
     debug(DEBUG_TRACE, "List", "LstDrawList WinSaveRectangle");
-    //WinSaveRectangle(listP->bitsBehind, &listP->popupWin->windowBounds);
-    RctSetRectFromWin(&rect, listP->popupWin);
-    WinSaveRectangle(listP->bitsBehind, &rect);
+    WinSaveRectangle(listP->bitsBehind, &listP->bounds);
   }
 
   // draw items
@@ -132,24 +127,19 @@ void LstDrawList(ListType *listP) {
   WinDrawLine(0,   0,   0,   h-1);
   WinDrawLine(w-1, 0,   w-1, h-1);
   WinSetForeColor(oldf);
-  WinSetActiveWindow(oldw);
   WinSetDrawWindow(oldd);
 
   listP->attr.visible = 1;
 }
 
 void LstEraseList(ListType *listP) {
-  RectangleType rect;
-
   if (listP->bitsBehind && !listP->attr.poppedUp) return;
 
   if (listP->attr.visible) {
     debug(DEBUG_TRACE, "List", "LstEraseList list %d", listP->id);
     if (listP->bitsBehind) {
       debug(DEBUG_TRACE, "List", "LstEraseList WinRestoreRectangle");
-      //WinRestoreRectangle(listP->bitsBehind, &listP->popupWin->windowBounds);
-      RctSetRectFromWin(&rect, listP->popupWin);
-      WinRestoreRectangle(listP->bitsBehind, &rect);
+      WinRestoreRectangle(listP->bitsBehind, &listP->bounds);
     }
     listP->attr.visible = 0;
   }
@@ -178,31 +168,18 @@ Char *LstGetSelectionText(const ListType *listP, Int16 itemNum) {
 
 Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
   EventType event;
-  RectangleType rect, upArrow, downArrow;
+  RectangleType upArrow, downArrow;
   FormType *frm;
   FontID old;
   UInt16 h, dy, index;
   Boolean insideUpArrow, insideDownArrow;
   Boolean handled = false;
 
-  rect.extent.x = listP->bounds.extent.x;
-  rect.extent.y = listP->bounds.extent.y;
-
-  if (listP->bitsBehind) {
-    // list is a popup, pen events are relative to the list window
-    rect.topLeft.x = 0;
-    rect.topLeft.y = 0;
-  } else {
-    // list is not a popup, pen events are relative to the form window
-    rect.topLeft.x = listP->bounds.topLeft.x;
-    rect.topLeft.y = listP->bounds.topLeft.y;
-  }
-
   old = FntSetFont(listP->font);
   dy = FntCharHeight();
   FntSetFont(old);
-  RctSetRectangle(&upArrow, rect.topLeft.x + rect.extent.x - 10, rect.topLeft.y + 1, 10, dy);
-  RctSetRectangle(&downArrow, rect.topLeft.x + rect.extent.x - 10, rect.topLeft.y + 1 + (listP->visibleItems - 1) * dy, 10, dy);
+  RctSetRectangle(&upArrow, listP->bounds.topLeft.x + listP->bounds.extent.x - 10, listP->bounds.topLeft.y + 1, 10, dy);
+  RctSetRectangle(&downArrow, listP->bounds.topLeft.x + listP->bounds.extent.x - 10, listP->bounds.topLeft.y + 1 + (listP->visibleItems - 1) * dy, 10, dy);
   insideUpArrow = listP->topItem > 0 && RctPtInRectangle(eventP->screenX, eventP->screenY, &upArrow);
   insideDownArrow = (listP->topItem + listP->visibleItems) < listP->numItems && RctPtInRectangle(eventP->screenX, eventP->screenY, &downArrow);
 
@@ -210,7 +187,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
     case penDownEvent:
       if (listP->attr.visible) {
         debug(DEBUG_TRACE, "List", "LstHandleEvent penDown list is visible");
-        if (RctPtInRectangle(eventP->screenX, eventP->screenY, &rect)) {
+        if (RctPtInRectangle(eventP->screenX, eventP->screenY, &listP->bounds)) {
           debug(DEBUG_TRACE, "List", "LstHandleEvent penDown inside list %d", listP->id);
           MemSet(&event, sizeof(EventType), 0);
           event.eType = lstEnterEvent;
@@ -224,13 +201,13 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
             if (listP->currentItem != noListSelection) {
               LstDrawItem(listP, listP->currentItem - listP->topItem, false);
             }
-            h = rect.extent.y / listP->visibleItems;
-            LstDrawItem(listP, (eventP->screenY - rect.topLeft.y) / h, true);
+            h = listP->bounds.extent.y / listP->visibleItems;
+            LstDrawItem(listP, (eventP->screenY - listP->bounds.topLeft.y) / h, true);
           }
 
         } else {
           if (listP->bitsBehind) {
-            debug(DEBUG_TRACE, "List", "LstHandleEvent penDown outside list %d (%d,%d) (%d,%d,%d,%d)", listP->id, eventP->screenX, eventP->screenY, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
+            debug(DEBUG_TRACE, "List", "LstHandleEvent penDown outside list %d (%d,%d) (%d,%d,%d,%d)", listP->id, eventP->screenX, eventP->screenY, listP->bounds.topLeft.x, listP->bounds.topLeft.y, listP->bounds.extent.x, listP->bounds.extent.y);
             MemSet(&event, sizeof(EventType), 0);
             event.eType = lstExitEvent;
             event.data.lstExit.listID = listP->id;
@@ -265,8 +242,8 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
         }
 
         if (!handled) {
-          if (RctPtInRectangle(eventP->screenX, eventP->screenY, &rect)) {
-            h = rect.extent.y / listP->visibleItems;
+          if (RctPtInRectangle(eventP->screenX, eventP->screenY, &listP->bounds)) {
+            h = listP->bounds.extent.y / listP->visibleItems;
 
             if (listP->controlID) {
               frm = (FormType *)listP->formP;
@@ -275,7 +252,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
               event.eType = popSelectEvent;
               event.data.popSelect.listID = listP->id;
               event.data.popSelect.listP = listP;
-              event.data.popSelect.selection = listP->topItem + (eventP->screenY - rect.topLeft.y) / h;
+              event.data.popSelect.selection = listP->topItem + (eventP->screenY - listP->bounds.topLeft.y) / h;
               event.data.popSelect.priorSelection = listP->currentItem;
               event.data.popSelect.controlID = listP->controlID;
               event.data.popSelect.controlP = FrmGetObjectPtr(frm, index);
@@ -289,7 +266,7 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
               event.eType = lstSelectEvent;
               event.data.lstSelect.listID = listP->id;
               event.data.lstSelect.pList = listP;
-              event.data.lstSelect.selection = listP->topItem + (eventP->screenY - rect.topLeft.y) / h;
+              event.data.lstSelect.selection = listP->topItem + (eventP->screenY - listP->bounds.topLeft.y) / h;
               EvtAddEventToQueue(&event);
               listP->currentItem = event.data.lstSelect.selection;
               if (listP->currentItem >= listP->numItems) {
@@ -367,14 +344,11 @@ static void LstAdjust(ListType *listP) {
     FntSetFont(old);
 
     w = listP->bounds.extent.x;
-    //if (w > formP->window.windowBounds.extent.x) w = formP->window.windowBounds.extent.x;
     if (w > WinGetField(&formP->window, WindowFieldWindowBoundsW)) w = WinGetField(&formP->window, WindowFieldWindowBoundsW);
 
     if (listP->bitsBehind) {
       h = listP->visibleItems * th + 2;
       debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d h=%d", listP->id, listP->visibleItems, h);
-      //fh = 160;
-      //fh = formP->window.windowBounds.extent.y;
       fh = WinGetField(&formP->window, WindowFieldWindowBoundsH);
       if (h > fh) {
         listP->visibleItems = (fh - 2) / th;
@@ -385,25 +359,17 @@ static void LstAdjust(ListType *listP) {
       h = listP->bounds.extent.y;
       debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d h=%d (static)", listP->id, listP->visibleItems, h);
     }
-    //if (h > formP->window.windowBounds.extent.y) h = formP->window.windowBounds.extent.y;
     if (h > WinGetField(&formP->window, WindowFieldWindowBoundsH)) h = WinGetField(&formP->window, WindowFieldWindowBoundsH);
     if (h == 0) h = th;
-    //debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d h=%d extent=%d", listP->id, listP->visibleItems, h, formP->window.windowBounds.extent.y);
     debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d h=%d extent=%d", listP->id, listP->visibleItems, h, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH));
 
-    //if (listP->bounds.topLeft.x + w > formP->window.windowBounds.extent.x)
     if (listP->bounds.topLeft.x + w > WinGetField(&formP->window, WindowFieldWindowBoundsW)) {
-      //listP->bounds.topLeft.x = formP->window.windowBounds.extent.x - w;
       listP->bounds.topLeft.x = WinGetField(&formP->window, WindowFieldWindowBoundsW) - w;
     }
-    //debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d y=%d h=%d fh=%d (before)", listP->id, listP->visibleItems, listP->bounds.topLeft.y, h, formP->window.windowBounds.extent.y);
     debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d y=%d h=%d fh=%d (before)",
       listP->id, listP->visibleItems, listP->bounds.topLeft.y, h, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH));
-    //if (listP->bounds.topLeft.y + h > formP->window.windowBounds.extent.y)
     if (listP->bounds.topLeft.y + h > WinGetField(&formP->window, WindowFieldWindowBoundsH)) {
-      //listP->bounds.topLeft.y = formP->window.windowBounds.extent.y - h;
       listP->bounds.topLeft.y = WinGetField(&formP->window, WindowFieldWindowBoundsH) - h;
-      //debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d y=%d h=%d fh=%d (after)", listP->id, listP->visibleItems, listP->bounds.topLeft.y, h, formP->window.windowBounds.extent.y);
       debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d y=%d h=%d fh=%d (after)",
         listP->id, listP->visibleItems, listP->bounds.topLeft.y, h, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH));
     }
@@ -416,13 +382,7 @@ static void LstAdjust(ListType *listP) {
       WinDeleteWindow(listP->popupWin, false);
     }
     listP->popupWin = WinCreateOffscreenWindow(w, h, nativeFormat, &err);
-    //listP->popupWin->windowFlags.modal = 1;
     WinSetFlag(listP->popupWin, WindowFlagModal, 1);
-    //listP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + listP->bounds.topLeft.x;
-    //listP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + listP->bounds.topLeft.y;
-    WinSetField(listP->popupWin, WindowFieldWindowBoundsX, WinGetField(&formP->window, WindowFieldWindowBoundsX) + listP->bounds.topLeft.x);
-    WinSetField(listP->popupWin, WindowFieldWindowBoundsY, WinGetField(&formP->window, WindowFieldWindowBoundsY) + listP->bounds.topLeft.y);
-    //debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d py=%d", listP->id, listP->visibleItems, listP->popupWin->windowBounds.topLeft.y);
     debug(DEBUG_TRACE, "List", "LstAdjust %d visible=%d py=%d", listP->id, listP->visibleItems, (Coord)WinGetField(listP->popupWin, WindowFieldWindowBoundsY));
 
     if (listP->bitsBehind) {
@@ -446,14 +406,6 @@ void LstSetPosition(ListType *listP, Coord x, Coord y) {
   if (listP && x >= 0 && y >= 0) {
     formP = (FormType *)listP->formP;
 
-/*
-    if (x + listP->bounds.extent.x > formP->window.windowBounds.extent.x) {
-      x = formP->window.windowBounds.extent.x - listP->bounds.extent.x;
-    }
-    if (y + listP->bounds.extent.y > formP->window.windowBounds.extent.y) {
-      y = formP->window.windowBounds.extent.y - listP->bounds.extent.y;
-    }
-*/
     if (x + listP->bounds.extent.x > WinGetField(&formP->window, WindowFieldWindowBoundsW)) {
       x = WinGetField(&formP->window, WindowFieldWindowBoundsW) - listP->bounds.extent.x;
     }
@@ -463,10 +415,6 @@ void LstSetPosition(ListType *listP, Coord x, Coord y) {
 
     listP->bounds.topLeft.x = x;
     listP->bounds.topLeft.y = y;
-    //listP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + listP->bounds.topLeft.x;
-    //listP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + listP->bounds.topLeft.y;
-    WinSetField(listP->popupWin, WindowFieldWindowBoundsX, WinGetField(&formP->window, WindowFieldWindowBoundsW) + listP->bounds.topLeft.x);
-    WinSetField(listP->popupWin, WindowFieldWindowBoundsY, WinGetField(&formP->window, WindowFieldWindowBoundsH) + listP->bounds.topLeft.y);
   }
 }
 
@@ -550,7 +498,7 @@ Int16 LstGetNumberOfItems(const ListType *listP) {
 Int16 LstPopupList(ListType *listP) {
   FormType *frm;
   EventType event;
-  WinHandle prevActive, prevDraw;
+  WinHandle prevDraw;
   Boolean stop, entered, handled;
   Err err;
   UInt16 index;
@@ -560,8 +508,6 @@ Int16 LstPopupList(ListType *listP) {
   if (listP) {
     listP->attr.poppedUp = 1;
     LstDrawList(listP);
-    prevActive = WinGetActiveWindow();
-    WinSetActiveWindow(listP->popupWin);
     prevDraw = WinSetDrawWindow(listP->popupWin);
 
     frm = (FormType *)listP->formP;
@@ -638,7 +584,6 @@ Int16 LstPopupList(ListType *listP) {
         }
         listP->attr.poppedUp = 0;
         frm->activeList = -1;
-        WinSetActiveWindow(prevActive);
         WinSetDrawWindow(prevDraw);
       }
 
@@ -694,20 +639,6 @@ ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, 
 
     if (formP) {
       if ((lstP = pumpkin_heap_alloc(sizeof(ListType), "List")) != NULL) {
-/*
-        if (width > formP->window.windowBounds.extent.x) {
-          width = formP->window.windowBounds.extent.x;
-        }
-        if (height > formP->window.windowBounds.extent.y) {
-          height = formP->window.windowBounds.extent.y;
-        }
-        if (x + width > formP->window.windowBounds.extent.x) {
-          x = formP->window.windowBounds.extent.x - width;
-        }
-        if (y + height > formP->window.windowBounds.extent.y) {
-          y = formP->window.windowBounds.extent.y - height;
-        }
-*/
         if (width > WinGetField(&formP->window, WindowFieldWindowBoundsW)) {
           width = WinGetField(&formP->window, WindowFieldWindowBoundsW);
         }
@@ -742,12 +673,7 @@ ListType *LstNewListEx(void **formPP, UInt16 id, Coord x, Coord y, Coord width, 
 
         lstP->popupWin = WinCreateOffscreenWindow(width, height, nativeFormat, &err);
         if (err == errNone) {
-          //lstP->popupWin->windowFlags.modal = 1;
           WinSetFlag(lstP->popupWin, WindowFlagModal, 1);
-          //lstP->popupWin->windowBounds.topLeft.x = formP->window.windowBounds.topLeft.x + lstP->bounds.topLeft.x; // absolute screen coordinate
-          //lstP->popupWin->windowBounds.topLeft.y = formP->window.windowBounds.topLeft.y + lstP->bounds.topLeft.y; // absolute screen coordinate
-          WinSetField(lstP->popupWin, WindowFieldWindowBoundsX, WinGetField(&formP->window, WindowFieldWindowBoundsX) + lstP->bounds.topLeft.x); // absolute screen coordinate
-          WinSetField(lstP->popupWin, WindowFieldWindowBoundsY, WinGetField(&formP->window, WindowFieldWindowBoundsY) + lstP->bounds.topLeft.y); // absolute screen coordinate
 
           if (!lstP->attr.usable) {
             lstP->bitsBehind = WinCreateOffscreenWindow(width, height, nativeFormat, &err);

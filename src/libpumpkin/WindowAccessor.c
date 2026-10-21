@@ -12,10 +12,20 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
 
   if (wh) {
     switch (selector) {
-      case WindowFieldDisplayWidthV20:
-      case WindowFieldDisplayHeightV20:
       case WindowFieldWindowBoundsX:
       case WindowFieldWindowBoundsY:
+        if (set) {
+          if (WinGetFlag(wh, WindowFlagOffscreen)) {
+            debug(DEBUG_ERROR, "Window", "set coordinates of offscreen window %p", wh);
+          }
+          put2b(value, (UInt8 *)wh, selector);
+        } else {
+          get2b(&v16, (UInt8 *)wh, selector);
+          value = v16;
+        }
+        break;
+      case WindowFieldDisplayWidthV20:
+      case WindowFieldDisplayHeightV20:
       case WindowFieldWindowBoundsW:
       case WindowFieldWindowBoundsH:
       case WindowFieldClippingBoundsX1:
