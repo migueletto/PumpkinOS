@@ -32,10 +32,10 @@ typedef struct {
   DrawStateType state[DrawStateStackSize];
   UInt16 c1, c2, c3, c4;
   Boolean asciiText;
-  UInt8 *defaultColorTable1;
-  UInt8 *defaultColorTable2;
-  UInt8 *defaultColorTable4;
-  UInt8 *defaultColorTable8;
+  ColorTableType *defaultColorTable1;
+  ColorTableType *defaultColorTable2;
+  ColorTableType *defaultColorTable4;
+  ColorTableType *defaultColorTable8;
   ColorTableType *colorTable1;
   ColorTableType *colorTable2;
   ColorTableType *colorTable4;
@@ -44,7 +44,6 @@ typedef struct {
   RGBColorType defaultPalette2[4];
   RGBColorType defaultPalette4[16];
   RGBColorType defaultPalette8[256];
-  RGBColorType uiColor[UILastColorTableEntry];
   UInt8 legacyDepth;
   Boolean littleEndian;
   int numPush;
@@ -85,6 +84,7 @@ static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
 ColorTableType *WinInitColors(Boolean ui) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
+  RGBColorType rgb;
   UInt32 entry, i;
 
   CtbSetNumEntries(module->colorTable1, 2);
@@ -141,8 +141,8 @@ ColorTableType *WinInitColors(Boolean ui) {
 
   if (ui) {
     for (entry = 0; entry < UILastColorTableEntry; entry++) {
-      UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
-      UIColorSetTableEntry(entry, &module->uiColor[entry]);
+      UIColorGetDefaultTableEntryRGB(0, entry, &rgb);
+      UIColorSetTableEntry(entry, &rgb);
     }
   }
 
@@ -153,6 +153,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   win_module_t *module;
   BitmapType *bmp;
   ColorTableType *colorTable;
+  RGBColorType rgb;
   UInt16 entry;
   UInt8 *ds;
   char buf[64];
@@ -224,8 +225,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   }
 
   for (entry = 0; entry < UILastColorTableEntry; entry++) {
-    UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
-    UIColorSetTableEntry(entry, &module->uiColor[entry]);
+    UIColorGetDefaultTableEntryRGB(0, entry, &rgb);
+    UIColorSetTableEntry(entry, &rgb);
   }
 
   module->activeWindow = module->displayWindow;
@@ -3383,8 +3384,9 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
   WinHandle wh;
   BitmapType *bmp;
   ColorTableType *colorTable;
+  RGBColorType rgb;
   UInt16 i, index;
-  UInt16 depth, numEntries;
+  UInt16 depth, entry, numEntries;
   char buf[64];
   Err err = sysErrParamErr;
 
@@ -3451,7 +3453,12 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             }
           }
 
-          UIColorResetTable(depth);
+          //UIColorResetTable(depth);
+          for (entry = 0; entry < UILastColorTableEntry; entry++) {
+            UIColorGetDefaultTableEntryRGB(depth, entry, &rgb);
+            UIColorSetTableEntry(entry, &rgb);
+          }
+
           //broadcastDisplayChange(module->depth, module->depth);
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
@@ -3489,7 +3496,12 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             break;
         }
 
-        UIColorResetTable(depth);
+        //UIColorResetTable(depth);
+        for (entry = 0; entry < UILastColorTableEntry; entry++) {
+          UIColorGetDefaultTableEntryRGB(depth, entry, &rgb);
+          UIColorSetTableEntry(entry, &rgb);
+        }
+
         //broadcastDisplayChange(depth, depth);
         pumpkin_dirty_region_mode(dirtyRegionReset);
         WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
@@ -3583,16 +3595,20 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
         width = module->maxWidth;
         height = module->maxHeight;
       } else {
+        // XXX Elite calls HRWinScreenMode with 160x160, which calls WinScreenMode.
+        // If pointTo is not called, bitmap dimensions will be incorrect.
+        // XXX Lemmings calls HRWinScreenMode with 320x320.
+        // XXX PalmVNC, PalmFiction and Elements call WinScreenMode with 320x320.
         depth = depthP ? *depthP : module->depth;
         if (widthP) {
           width = *widthP;
-          //pointTo(module, module->density, &width, NULL);
+          pointTo(module, module->density, &width, NULL);
         } else {
           width = module->width;
         }
         if (heightP) {
           height = *heightP;
-          //pointTo(module, module->density, NULL, &height);
+          pointTo(module, module->density, NULL, &height);
         } else {
           height = module->height;
         }
