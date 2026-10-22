@@ -333,7 +333,7 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
     le = BmpLittleEndian(bmp);
 
     if (version == 3) {
-        switch (selector) {
+      switch (selector) {
           case BitmapV3FieldWidth:
           case BitmapV3FieldHeight:
           case BitmapV3FieldRowBytes:
@@ -363,13 +363,6 @@ UInt32 BmpV3GetSetField(BitmapType *bmp, BitmapV3Selector selector, BitmapFlagSe
             }
             break;
           case BitmapV3FieldTransparentValue:
-            if (set) {
-              put4(value, (UInt8 *)bmp, selector);
-            } else {
-              get4(&v32, (UInt8 *)bmp, selector);
-              value = v32;
-            }
-            break;
           case BitmapV3FieldNextBitmapOffset:
             if (set) {
               put4(value, (UInt8 *)bmp, selector);
@@ -1043,6 +1036,18 @@ Err BmpDelete(BitmapType *bitmapP) {
   }
 
   return errNone;
+}
+
+void BmpSetDimensions(BitmapType *bitmapP, Coord width, Coord height) {
+  BitmapType *bmp;
+
+  if (bitmapP) {
+    bmp = BmpSkipEmptySlot(bitmapP);
+    BmpSetCommonField(bmp, BitmapFieldWidth, width);
+    BmpSetCommonField(bmp, BitmapFieldHeight, height);
+    // force recalculation of rowBytes
+    BmpSetBitDepth(bmp, BmpGetBitDepth(bmp));
+  }
 }
 
 void BmpGetDimensions(const BitmapType *bitmapP, Coord *widthP, Coord *heightP, UInt16 *rowBytesP) {

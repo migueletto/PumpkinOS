@@ -467,7 +467,7 @@ Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
 void WinGetPosition(WinHandle winH, Coord *x, Coord *y);
-void UIColorResetTable(void);
+void UIColorResetTable(UInt16 depth);
 void UIColorGetDefaultTableEntryRGB(UInt16 depth, UIColorTableEntries which, RGBColorType *rgbP);
 void *UIColorSaveTable(void);
 void UIColorRestoreTable(void *p);
@@ -506,6 +506,7 @@ void SysFatalAlertFinish(void);
 
 Boolean BmpIsEmptySlot(BitmapType *bitmapP);
 BitmapType *BmpSkipEmptySlot(BitmapType *bitmapP);
+void BmpSetDimensions(BitmapType *bitmapP, Coord width, Coord height);
 Boolean BmpLittleEndian(const BitmapType *bitmapP);
 Boolean BmpGetLittleEndianBits(const BitmapType *bitmapP);
 void BmpSetLittleEndianBits(const BitmapType *bitmapP, Boolean le);

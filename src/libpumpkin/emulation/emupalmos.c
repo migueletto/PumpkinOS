@@ -185,7 +185,6 @@ void emupalmos_panic(char *msg, int code) {
 
   WinSetCoordinateSystem(kCoordinatesStandard);
   WinInitColors(true);
-  UIColorResetTable();
   WinScreenMode(winScreenModeSetToDefaults, NULL, NULL, NULL, NULL);
   WinSetDrawWindow(WinGetDisplayWindow());
   WinEraseWindow();

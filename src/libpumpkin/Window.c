@@ -23,7 +23,8 @@ typedef struct {
   UInt16 backColor565;
   UInt16 textColor565;
   Boolean swapColors;
-  UInt16 density, width, height, depth, depth0;
+  UInt16 density, width, height, depth;
+  UInt16 maxWidth, maxHeight,  maxDepth;
   WinHandle displayWindow;
   WinHandle activeWindow;
   WinHandle drawWindow;
@@ -103,7 +104,7 @@ ColorTableType *WinInitColors(Boolean ui) {
     CtbSetEntry(module->colorTable8, i, (RGBColorType *)&module->defaultPalette8[i]);
   }
 
-  switch (module->depth0) {
+  switch (module->maxDepth) {
     case 1:
       module->drawState.foreColor = 1; // black
       module->drawState.backColor = 0; // white
@@ -167,7 +168,9 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   module->width = width;
   module->height = height;
   module->depth = depth;
-  module->depth0 = depth;
+  module->maxWidth = width;
+  module->maxHeight = height;
+  module->maxDepth = depth;
   module->legacyDepth = 1;
   module->littleEndian = littleEndian;
 
@@ -240,7 +243,7 @@ void *WinReinitModule(void *module) {
     pumpkin_set_local_storage(win_key, module);
   } else {
     old = (win_module_t *)pumpkin_get_local_storage(win_key);
-    WinInitModule(old->density, old->width, old->height, old->depth0, old->littleEndian, NULL);
+    WinInitModule(old->density, old->width, old->height, old->maxDepth, old->littleEndian, NULL);
   }
 
   return old;
@@ -745,30 +748,11 @@ void WinRestoreBits(WinHandle winHandle, Coord destX, Coord destY) {
 }
 
 void WinSetDisplayExtent(Coord extentX, Coord extentY) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *bitmapP, *newBitmapP;
-  ColorTableType *colorTable;
-  UInt16 density, depth;
-  Err err;
+  UInt32 width, height;
 
-  pointFrom(module, module->density, &extentX, &extentY);
-  module->width = extentX;
-  module->height = extentY;
-
-  WinSetField(module->displayWindow, WindowFieldWindowBoundsW, module->width/2);
-  WinSetField(module->displayWindow, WindowFieldWindowBoundsH, module->height/2);
-  bitmapP = WinGetBitmap(module->displayWindow);
-  density = BmpGetDensity(bitmapP);
-  depth = BmpGetBitDepth(bitmapP);
-  colorTable = BmpGetColortable(bitmapP);
-  newBitmapP = BmpCreate3c(module->width, module->height, 0, density, depth, false, 0, true, colorTable, &err);
-  if (bitmapP) {
-    BmpSetLittleEndianBits(newBitmapP, module->littleEndian);
-    debug(DEBUG_TRACE, "Window", "WinSetDisplayExtent BmpDelete %p", bitmapP);
-    BmpDelete(bitmapP);
-  }
-  WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)newBitmapP);
-  WinDirectAccessHack(module->displayWindow, module->width/2, module->height/2);
+  width = extentX;
+  height = extentY;
+  WinScreenMode(winScreenModeSet, &width, &height, NULL, NULL);
 }
 
 void WinGetDisplayExtent(Coord *extentX, Coord *extentY) {
@@ -3274,7 +3258,7 @@ WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType f
         // PalmOS 5.4 on ARM: with nativeFormat, the window bitmap is LITTLE endian
         // PumpkinOS on x86 : with nativeFormat, the window bitmap is BIG endian
         density = module->density;
-        depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->depth0" here
+        depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->maxDepth" here
         if (density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
           width <<= 1;
           height <<= 1;
@@ -3466,6 +3450,8 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
               }
             }
           }
+
+          UIColorResetTable(depth);
           //broadcastDisplayChange(module->depth, module->depth);
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
@@ -3503,6 +3489,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             break;
         }
 
+        UIColorResetTable(depth);
         //broadcastDisplayChange(depth, depth);
         pumpkin_dirty_region_mode(dirtyRegionReset);
         WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
@@ -3567,11 +3554,11 @@ void WinPopDrawState(void) {
 
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  WinHandle old;
   BitmapType *bmp;
   ColorTableType *colorTable = NULL;
   Coord width, height;
-  UInt16 depth, entry;
+  UInt16 depth;
+  UInt8 *ram;
   Err err = sysErrParamErr;
 
   switch (operation) {
@@ -3579,10 +3566,10 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
     case winScreenModeGet:
       // For backward compatibility, when operation is winScreenModeGet or winScreenModeGetDefaults,
       // a single-density width or height is returned, even if the handheld has a double-density display.
-      width = module->width;
-      height = module->height;
+      width = operation == winScreenModeGet ? module->width : module->maxWidth;
+      height = operation == winScreenModeGet ? module->height : module->maxHeight;
       pointFrom(module, module->density, &width, &height);
-      if (depthP) *depthP = operation == winScreenModeGet ? module->depth : module->depth0;
+      if (depthP) *depthP = operation == winScreenModeGet ? module->depth : module->maxDepth;
       if (widthP) *widthP = width;
       if (heightP) *heightP = height;
       if (enableColorP) *enableColorP = true;
@@ -3592,12 +3579,28 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
     case winScreenModeSetToDefaults:
     case winScreenModeSet:
       if (operation == winScreenModeSetToDefaults) {
-        depth = module->depth0;
+        depth = module->maxDepth;
+        width = module->maxWidth;
+        height = module->maxHeight;
       } else {
         depth = depthP ? *depthP : module->depth;
+        if (widthP) {
+          width = *widthP;
+          //pointTo(module, module->density, &width, NULL);
+        } else {
+          width = module->width;
+        }
+        if (heightP) {
+          height = *heightP;
+          //pointTo(module, module->density, NULL, &height);
+        } else {
+          height = module->height;
+        }
       }
 
-      if (depth != module->depth && depth <= module->depth0) {
+      if (depth <= module->maxDepth && width <= module->maxWidth && height <= module->maxHeight &&
+         (depth != module->depth || width != module->width || height != module->height)) {
+
         switch (depth) {
           case 1:
             module->drawState.foreColor = 1; // black
@@ -3637,6 +3640,8 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
         }
 
         if (err == errNone) {
+          bmp = WinGetBitmap(module->displayWindow);
+
           CtbGetEntry(colorTable, module->drawState.foreColor, &module->drawState.foreColorRGB);
           CtbGetEntry(colorTable, module->drawState.backColor, &module->drawState.backColorRGB);
           CtbGetEntry(colorTable, module->drawState.textColor, &module->drawState.textColorRGB);
@@ -3645,23 +3650,28 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
             module->legacyDepth = depth;
           }
 
-          BmpDelete((BitmapType *)WinGetField(module->displayWindow, WindowFieldBitmapP));
-          bmp = BmpCreate3c(module->width, module->height, 0, module->density, depth, false, 0, true, colorTable, &err);
-          WinSetField(module->displayWindow, WindowFieldBitmapP, (UIntPtr)bmp);
-          BmpSetLittleEndianBits(bmp, module->littleEndian);
+          module->width = width;
+          module->height = height;
           module->depth = depth;
+
+          BmpSetDimensions(bmp, width, height);
+          BmpSetBitDepth(bmp, depth);
+          pointFrom(module, module->density, &width, &height);
+          WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
+          WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
+          WinDirectAccessHack(module->displayWindow, width, height);
+          ram = pumpkin_heap_base();
+          put4b((UInt8 *)colorTable - ram, (UInt8 *)bmp, BitmapV3FieldColorTable);
+
+          UIColorResetTable(depth);
+          WinEraseWindow();
+
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
-
-          old = WinSetDrawWindow(module->displayWindow);
-          for (entry = 0; entry < UILastColorTableEntry; entry++) {
-            UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
-            UIColorSetTableEntry(entry, &module->uiColor[entry]);
-          }
-          WinSetDrawWindow(old);
         }
       } else {
-        debug(DEBUG_TRACE, "Window", "WinScreenMode winScreenModeSet keeping same depth %d", depth);
+        debug(DEBUG_TRACE, "Window", "WinScreenMode winScreenModeSet keeping same settings depth %d %d %d width %d %d %d height %d %d %d",
+          depth, module->depth, module->maxDepth, width, module->width, module->maxWidth, height, module->height, module->maxHeight);
         err = errNone;
       }
       break;
@@ -3670,10 +3680,10 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       // The position representing a particular bit depth corresponds to the value 2^(bitDepth-1)
       if (depthP) {
         *depthP  = 1 << ( 1 - 1);
-        if (module->depth0 >= 2)  *depthP |= 1 << ( 2 - 1); // 0x0002
-        if (module->depth0 >= 4)  *depthP |= 1 << ( 4 - 1); // 0x0008
-        if (module->depth0 >= 8)  *depthP |= 1 << ( 8 - 1); // 0x0080
-        if (module->depth0 >= 16) *depthP |= 1 << (16 - 1); // 0x8000
+        if (module->maxDepth >=  2) *depthP |= 1 << ( 2 - 1); // 0x0002
+        if (module->maxDepth >=  4) *depthP |= 1 << ( 4 - 1); // 0x0008
+        if (module->maxDepth >=  8) *depthP |= 1 << ( 8 - 1); // 0x0080
+        if (module->maxDepth >= 16) *depthP |= 1 << (16 - 1); // 0x8000
         err = errNone;
       }
       break;

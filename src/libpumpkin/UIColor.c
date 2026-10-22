@@ -80,14 +80,14 @@ typedef struct {
 
 int UicInitModule(void) {
   uic_module_t *module;
-  int i;
+  int which;
 
   if ((module = xcalloc(1, sizeof(uic_module_t))) == NULL) {
     return -1;
   }
 
-  for (i = 0; i < UILastColorTableEntry; i++) {
-    module->table[i] = table8[i];
+  for (which = 0; which < UILastColorTableEntry; which++) {
+    module->table[which] = table8[which];
   }
 
   pumpkin_set_local_storage(uic_key, module);
@@ -105,12 +105,18 @@ int UicFinishModule(void) {
   return 0;
 }
 
-void UIColorResetTable(void) {
+void UIColorResetTable(UInt16 depth) {
   uic_module_t *module = (uic_module_t *)pumpkin_get_local_storage(uic_key);
-  int i;
+  int which;
 
-  for (i = 0; i < UILastColorTableEntry; i++) {
-    module->table[i] = table8[i];
+  for (which = 0; which < UILastColorTableEntry; which++) {
+    switch (depth) {
+      case 1:  module->table[which] = table1[which]; break;
+      case 2:  module->table[which] = table2[which]; break;
+      case 4:  module->table[which] = table4[which]; break;
+      case 8:  module->table[which] = table8[which]; break;
+      default: module->table[which] = table8[which]; break;
+    }
   }
 }
 
