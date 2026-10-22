@@ -3400,7 +3400,7 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
   BitmapType *bmp;
   ColorTableType *colorTable;
   UInt16 i, index;
-  UInt16 depth, entry, numEntries;
+  UInt16 depth, numEntries;
   char buf[64];
   Err err = sysErrParamErr;
 
@@ -3469,10 +3469,6 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
           //broadcastDisplayChange(module->depth, module->depth);
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
-          for (entry = 0; entry < UILastColorTableEntry; entry++) {
-            UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
-            UIColorSetTableEntry(entry, &module->uiColor[entry]);
-          }
           err = errNone;
         }
         break;
@@ -3510,10 +3506,6 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
         //broadcastDisplayChange(depth, depth);
         pumpkin_dirty_region_mode(dirtyRegionReset);
         WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
-        for (entry = 0; entry < UILastColorTableEntry; entry++) {
-          UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
-          UIColorSetTableEntry(entry, &module->uiColor[entry]);
-        }
         err = errNone;
         break;
       }
