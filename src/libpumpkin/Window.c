@@ -3575,6 +3575,7 @@ void WinPopDrawState(void) {
 
 Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heightP, UInt32 *depthP, Boolean *enableColorP) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
+  WinHandle old;
   BitmapType *bmp;
   ColorTableType *colorTable = NULL;
   Coord width, height;
@@ -3660,10 +3661,12 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           pumpkin_dirty_region_mode(dirtyRegionReset);
           WinDirtyRegion(module->displayWindow, 0, 0, module->width-1, module->height-1);
 
+          old = WinSetDrawWindow(module->displayWindow);
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
-            UIColorGetDefaultTableEntryRGB(0, entry, &module->uiColor[entry]);
+            UIColorGetDefaultTableEntryRGB(depth, entry, &module->uiColor[entry]);
             UIColorSetTableEntry(entry, &module->uiColor[entry]);
           }
+          WinSetDrawWindow(old);
         }
       } else {
         debug(DEBUG_TRACE, "Window", "WinScreenMode winScreenModeSet keeping same depth %d", depth);
