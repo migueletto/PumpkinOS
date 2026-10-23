@@ -57,6 +57,18 @@ UInt32 KeyCurrentState(void) {
 
   pumpkin_status(NULL, NULL, &keyMask, NULL, NULL, NULL);
 
+  // map left/righ keys to keyBitNumRockerLeft/keyBitNumRockerRight
+  // in addition to keyBitLeft/keyBitRight.
+  // App Jack BBQ assumes these bits are set when calling
+  // KeyCurrentState.
+
+  if (keyMask & keyBitLeft) {
+    keyMask |= 1 << keyBitNumRockerLeft;
+  }
+  if (keyMask & keyBitRight) {
+    keyMask |= 1 << keyBitNumRockerRight;
+  }
+
   return keyMask;
 }
 
