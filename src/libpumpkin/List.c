@@ -93,19 +93,26 @@ static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
 }
 
 void LstDrawList(ListType *listP) {
-  WinHandle oldd;
+  FormType *frm;
+  WinHandle wh, oldd;
   RectangleType rect;
   IndexedColorType objFrame, oldf;
+  Coord x0, y0;
   int i, w, h;
 
   if (listP->bitsBehind && !listP->attr.poppedUp) return;
 
   oldd = WinSetDrawWindow(listP->popupWin);
+  frm = FrmGetActiveForm();
+  wh = FrmGetWindowHandle(frm);
+  x0 = WinGetField(wh, WindowFieldWindowBoundsX);
+  y0 = WinGetField(wh, WindowFieldWindowBoundsY);
 
   // save the area behing the list
   if (!listP->attr.visible && listP->bitsBehind) {
     debug(DEBUG_TRACE, "List", "LstDrawList WinSaveRectangle");
-    WinSaveRectangle(listP->bitsBehind, &listP->bounds);
+    RctSetRectangle(&rect, x0 + listP->bounds.topLeft.x, y0 + listP->bounds.topLeft.y, listP->bounds.extent.x, listP->bounds.extent.y);
+    WinSaveRectangle(listP->bitsBehind, &rect);
   }
 
   // draw items
@@ -130,17 +137,27 @@ void LstDrawList(ListType *listP) {
   listP->attr.visible = 1;
 
   RctSetRectangle(&rect, 0, 0, listP->bounds.extent.x, listP->bounds.extent.y);
-  WinCopyRectangle(listP->popupWin, WinGetDisplayWindow(), &rect, listP->bounds.topLeft.x, listP->bounds.topLeft.y, winPaint);
+  WinCopyRectangle(listP->popupWin, WinGetDisplayWindow(), &rect, x0 + listP->bounds.topLeft.x, y0 + listP->bounds.topLeft.y, winPaint);
 }
 
 void LstEraseList(ListType *listP) {
+  RectangleType rect;
+  FormType *frm;
+  WinHandle wh;
+  Coord x0, y0;
+
   if (listP->bitsBehind && !listP->attr.poppedUp) return;
 
   if (listP->attr.visible) {
     debug(DEBUG_TRACE, "List", "LstEraseList list %d", listP->id);
     if (listP->bitsBehind) {
       debug(DEBUG_TRACE, "List", "LstEraseList WinRestoreRectangle");
-      WinRestoreRectangle(listP->bitsBehind, &listP->bounds);
+      frm = FrmGetActiveForm();
+      wh = FrmGetWindowHandle(frm);
+      x0 = WinGetField(wh, WindowFieldWindowBoundsX);
+      y0 = WinGetField(wh, WindowFieldWindowBoundsY);
+      RctSetRectangle(&rect, x0 + listP->bounds.topLeft.x, y0 + listP->bounds.topLeft.y, listP->bounds.extent.x, listP->bounds.extent.y);
+      WinRestoreRectangle(listP->bitsBehind, &rect);
     }
     listP->attr.visible = 0;
   }
