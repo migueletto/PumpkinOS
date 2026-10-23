@@ -791,19 +791,21 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
   Coord width, height;
   UInt16 prevCoordSys;
 
-  if (winHandle && rP && (rP->extent.x  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW) || rP->extent.y  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH) ||
-                          rP->topLeft.x != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsX) || rP->topLeft.y != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsY))) {
+  if (winHandle && rP &&
+      (rP->extent.x  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW) || rP->extent.y  != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH) ||
+       rP->topLeft.x != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsX) || rP->topLeft.y != (Coord)WinGetField(winHandle, WindowFieldWindowBoundsY))) {
+
     MemMove(&rect, rP, sizeof(RectangleType));
     WinUnscaleRectangle(&rect);
     r = &rect;
     RctSetWinFromRect(r, winHandle);
+    WinDirectAccessHack(winHandle, (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW), (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH));
     width = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW);
     height = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH);
     prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
     width = WinScaleCoord(width, false);
     height = WinScaleCoord(height, false);
     WinSetCoordinateSystem(prevCoordSys);
-    WinDirectAccessHack(winHandle, (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW), (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH));
     RctSetRectangle(&rect, 0, 0, width, height);
     WinSetClipingBounds(winHandle, &rect);
   }
@@ -1081,11 +1083,11 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
     cx = x;
     cy = y;
     bmp = WinGetBitmap(wh);
-    pointTo(module, BmpGetDensity(bmp), &cx, &cy);
+    density = BmpGetDensity(bmp);
+    pointTo(module, density, &cx, &cy);
 
     if (CLIPW_OK(wh, cx, cy)) {
       display = wh == module->displayWindow || bmp == WinGetBitmap(module->displayWindow);
-      density = BmpGetDensity(bmp);
       dbl = density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
 
       if (WinGetFlag(wh, WindowFlagOffscreen)) {
@@ -1093,7 +1095,8 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
       } else {
         x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
         y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
-        if (density == kDensityDouble) {
+        if (density == kDensityDouble ||
+           (module->drawState.coordinateSystem == kCoordinatesNative && module->density == kDensityDouble)) {
           x0 <<= 1;
           y0 <<= 1;
         }
