@@ -309,8 +309,6 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               if (!pd->hidden) {
                 menu_hide_pd(menuP, pd);
               }
-              WinSetActiveWindow(menuP->savedActiveWin);
-              WinSetDrawWindow(menuP->savedActiveWin);
               RctSetRectFromWin(&rect, menuP->barWin);
               WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
@@ -366,8 +364,6 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 menu_draw_item(pd, &pd->items[pd->selectedItem], false);
                 menu_hide_pd(menuP, pd);
                 pd->hidden = 0;
-                WinSetActiveWindow(menuP->savedActiveWin);
-                WinSetDrawWindow(menuP->savedActiveWin);
                 RctSetRectFromWin(&rect, menuP->barWin);
                 WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
@@ -396,8 +392,6 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               menu_hide_pd(menuP, pd);
             }
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown hide menu");
-            WinSetActiveWindow(menuP->savedActiveWin);
-            WinSetDrawWindow(menuP->savedActiveWin);
             RctSetRectFromWin(&rect, menuP->barWin);
             WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
