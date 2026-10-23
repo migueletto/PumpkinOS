@@ -3576,11 +3576,12 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
   switch (operation) {
     case winScreenModeGetDefaults:
     case winScreenModeGet:
-      // For backward compatibility, when operation is winScreenModeGet or winScreenModeGetDefaults,
-      // a single-density width or height is returned, even if the handheld has a double-density display.
       width = operation == winScreenModeGet ? module->width : module->maxWidth;
       height = operation == winScreenModeGet ? module->height : module->maxHeight;
-      pointFrom(module, module->density, &width, &height);
+      if (module->density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+        width >>= 1;
+        height >>= 1;
+      }
       if (depthP) *depthP = operation == winScreenModeGet ? module->depth : module->maxDepth;
       if (widthP) *widthP = width;
       if (heightP) *heightP = height;
@@ -3595,23 +3596,17 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
         width = module->maxWidth;
         height = module->maxHeight;
       } else {
-        // XXX Elite calls HRWinScreenMode with 160x160, which calls WinScreenMode.
-        // If pointTo is not called, bitmap dimensions will be incorrect.
-        // XXX Lemmings calls HRWinScreenMode with 320x320.
-        // XXX PalmVNC, PalmFiction and Elements call WinScreenMode with 320x320.
         depth = depthP ? *depthP : module->depth;
-        if (widthP) {
-          width = *widthP;
-          pointTo(module, module->density, &width, NULL);
-        } else {
-          width = module->width;
-        }
-        if (heightP) {
-          height = *heightP;
-          pointTo(module, module->density, NULL, &height);
-        } else {
-          height = module->height;
-        }
+        width = widthP ? *widthP : module->width;
+        height = heightP ? *heightP : module->height;
+      }
+
+      // XXX Elite calls HRWinScreenMode with 160x160, which calls WinScreenMode.
+      // XXX Lemmings calls HRWinScreenMode with 320x320.
+      // XXX PalmVNC, PalmFiction and Elements call WinScreenMode with 320x320.
+      if (module->density == kDensityDouble) {
+        if (width == 160) width <<= 1;
+        if (height == 160) height <<= 1;
       }
 
       if (depth <= module->maxDepth && width <= module->maxWidth && height <= module->maxHeight &&
