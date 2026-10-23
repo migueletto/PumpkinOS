@@ -57,6 +57,7 @@
 #define VFS_CARD      "/app_card/"
 #define VFS_INSTALL   "/app_install/"
 
+#define MAIN_HEAP_SIZE (128*1024*1024)
 #define HEAP_SIZE (8*1024*1024)
 #define SMALL_HEAP_SIZE (128*1024)
 #if defined(FILC)
@@ -689,7 +690,7 @@ int pumpkin_global_init(script_engine_t *engine, window_provider_t *wp, audio_pr
   pumpkin_remove_locks(pumpkin_module.session, APP_STORAGE);
 
   pumpkin_module.dbid_last = MAX_DBIDS - 1;
-  pumpkin_module.heap = heap_init(NULL, HEAP_SIZE*8, SMALL_HEAP_SIZE, HEAP_ALIGN, wp);
+  pumpkin_module.heap = heap_init(NULL, MAIN_HEAP_SIZE, SMALL_HEAP_SIZE, HEAP_ALIGN, wp);
   StoInit(APP_STORAGE, pumpkin_module.fs_mutex);
   //pumpkin_module.dm = DataMgrInit("/app_data/");
   //DataMgrInitModule(pumpkin_module.dm);
