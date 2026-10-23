@@ -133,11 +133,12 @@ void MenuDispose(MenuBarType *menuP) {
 }
 
 static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
+  WinHandle oldd;
   RectangleType rect;
   IndexedColorType mFrame, mFill, mTitle, mFore, oldb, oldt;
   FontID old;
 
-  WinSetDrawWindow(menu->barWin);
+  oldd = WinSetDrawWindow(menu->barWin);
 
   mFrame = UIColorGetTableEntryIndex(UIFormFrame);
   mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
@@ -161,6 +162,8 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   FntSetFont(old);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
+
+  WinSetDrawWindow(oldd);
 }
 
 static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inverted) {
@@ -208,13 +211,14 @@ static void menu_draw_item(MenuPullDownType *pd, MenuItemType *item, Boolean inv
 }
 
 static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
+  WinHandle oldd;
   RectangleType rect;
   MenuItemType *item;
   IndexedColorType mFrame, mFill, mFore, oldf, oldb, oldt;
   FontID old;
   int j, y;
 
-  WinSetDrawWindow(pd->menuWin);
+  oldd = WinSetDrawWindow(pd->menuWin);
 
   // save pulldown box
   WinSaveRectangle(pd->bitsBehind, &pd->bounds);
@@ -252,6 +256,7 @@ static void menu_show_pd(MenuBarType *menu, MenuPullDownType *pd) {
   WinSetForeColor(oldf);
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
+  WinSetDrawWindow(oldd);
 
   RctSetRectFromWin(&rect, menu->barWin);
   WinCopyRectangle(menu->barWin, WinGetDisplayWindow(), &rect, rect.topLeft.x, rect.topLeft.y, winPaint);
@@ -420,6 +425,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
 }
 
 void MenuDrawMenu(MenuBarType *menuP) {
+  WinHandle oldd;
   RectangleType rect;
   MenuPullDownType *pd;
   IndexedColorType mFrame, mFill, oldb;
@@ -437,7 +443,7 @@ void MenuDrawMenu(MenuBarType *menuP) {
   mFill = UIColorGetTableEntryIndex(UIMenuFill);
   oldb = WinSetBackColor(mFill);
 
-  WinSetDrawWindow(menuP->barWin);
+  oldd = WinSetDrawWindow(menuP->barWin);
 
   WinSetBackColor(mFrame);
   RctSetRectFromWin(&rect, menuP->barWin);
@@ -467,6 +473,7 @@ void MenuDrawMenu(MenuBarType *menuP) {
   }
 
   WinSetBackColor(oldb);
+  WinSetDrawWindow(oldd);
 }
 
 void MenuEraseStatus(MenuBarType *menuP) {
