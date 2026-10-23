@@ -90,13 +90,11 @@ static void LstDrawItem(ListType *listP, Int16 i, Boolean selected) {
   WinSetBackColor(oldb);
   WinSetTextColor(oldt);
   WinSetDrawWindow(oldd);
-
-  RctSetRectangle(&rect, 0, 0, listP->bounds.extent.x, listP->bounds.extent.y);
-  WinCopyRectangle(listP->popupWin, WinGetDisplayWindow(), &rect, listP->bounds.topLeft.x, listP->bounds.topLeft.y, winPaint);
 }
 
 void LstDrawList(ListType *listP) {
   WinHandle oldd;
+  RectangleType rect;
   IndexedColorType objFrame, oldf;
   int i, w, h;
 
@@ -130,6 +128,9 @@ void LstDrawList(ListType *listP) {
   WinSetDrawWindow(oldd);
 
   listP->attr.visible = 1;
+
+  RctSetRectangle(&rect, 0, 0, listP->bounds.extent.x, listP->bounds.extent.y);
+  WinCopyRectangle(listP->popupWin, WinGetDisplayWindow(), &rect, listP->bounds.topLeft.x, listP->bounds.topLeft.y, winPaint);
 }
 
 void LstEraseList(ListType *listP) {
