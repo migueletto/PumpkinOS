@@ -15,7 +15,7 @@ void StoCheckDateBookToDo(void);
 MemHandle MemLocalIDToHandle(LocalID local);
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 void *DmResourceLoadLib(DmOpenRef dbP, DmResType resType, Boolean *firstLoad);
-MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p);
+MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p, Boolean attach);
 Err DmSetDirty(MemHandle handle);
 Err DmCreateDatabaseEx(const Char *nameP, UInt32 creator, UInt32 type, UInt16 attr, UInt32 uniqueIDSeed, Boolean overwrite);
 UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordInfo, UInt32 compar, Int16 other);

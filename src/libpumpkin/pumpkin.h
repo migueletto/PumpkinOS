@@ -279,7 +279,7 @@ int pumpkin_dia_get_taskbar_dimension(int *width, int *height);
 
 int pumpkin_launcher(char *name, int width, int height);
 int pumpkin_launch(launch_request_t *request);
-int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, void *data), void *data);
+int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *data), void *data);
 int pumpkin_kill(uint32_t tid);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
@@ -437,7 +437,7 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address);
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
-MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr);
+MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr, Boolean attach);
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);
 UInt16 DmFindResourceID(DmOpenRef dbP, UInt16 resID, UInt16 idIndex);
 void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32 *size);

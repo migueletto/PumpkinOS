@@ -2719,7 +2719,7 @@ MemHandle DmResizeResource(MemHandle resourceH, UInt32 newSize) {
   return resourceH;
 }
 
-MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p) {
+MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size, void *p, Boolean attach) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   DmOpenType *dbRef;
@@ -2739,7 +2739,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
             h->htype = STO_TYPE_RES | STO_INFLATED;
             h->owner = pumpkin_get_current();
             h->d.res.attr |= dmRecAttrDirty;
-            h->d.res.attr |= dmRecAttached;
+            if (attach) h->d.res.attr |= dmRecAttached;
             h->d.res.type = resType;
             h->d.res.id = resID;
             h->size = size;
@@ -2767,7 +2767,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
 }
 
 MemHandle DmNewResource(DmOpenRef dbP, DmResType resType, DmResID resID, UInt32 size) {
-  return DmNewResourceEx(dbP, resType, resID, size, NULL);
+  return DmNewResourceEx(dbP, resType, resID, size, NULL, true);
 }
 
 Err DmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID resID) {
@@ -3423,7 +3423,7 @@ Err DmFindRecordByID(DmOpenRef dbP, UInt32 uniqueID, UInt16 *indexP) {
   return err;
 }
 
-MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr) {
+MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr, Boolean attach) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   storage_handle_t *h = NULL;
@@ -3452,7 +3452,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
             } else {
               h->d.rec.uniqueID = db->uniqueIDSeed++;
               h->d.rec.attr = dmRecAttrDirty | dmRecAttrBusy;
-              h->d.rec.attr |= dmRecAttached;
+              if (attach) h->d.rec.attr |= dmRecAttached;
             }
             h->buf = StoPtrNew(h, size, 0, 0);
             h->size = size;
@@ -3498,7 +3498,7 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
 }
 
 MemHandle DmNewRecord(DmOpenRef dbP, UInt16 *atP, UInt32 size) {
-  return DmNewRecordEx(dbP, atP, size, NULL, 0, 0, false);
+  return DmNewRecordEx(dbP, atP, size, NULL, 0, 0, false, true);
 }
 
 // Attach an existing chunk ID handle to a database as a record.
@@ -4411,7 +4411,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
                 pumpkin_id2s(resTypes[j], st);
                 debug(DEBUG_INFO, "STOR", "DmCreateDatabaseFromImage res %d type '%s' id %d size %u", j, st, resIDs[j], size);
-                DmNewResourceEx(dbRef, resTypes[j], resIDs[j], size, &database[offsets[j]]);
+                DmNewResourceEx(dbRef, resTypes[j], resIDs[j], size, &database[offsets[j]], false);
               }
               err = errNone;
             } else {
@@ -4436,7 +4436,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
               for (j = 0; j < numRecs; j++) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
                 index = dmMaxRecordIndex;
-                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], uniqueIDs[j] != 0);
+                DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], uniqueIDs[j] != 0, false);
               }
               if (StoWriteIndex(sto, db) == 0) {
                 err = errNone;

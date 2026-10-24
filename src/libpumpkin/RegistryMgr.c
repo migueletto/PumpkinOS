@@ -64,7 +64,7 @@ void RegImport(RegMgrType *rm, UInt32 creator) {
                 if ((h = DmGetResourceIndex(compatDbRef, index)) != NULL) {
                   if ((r = MemHandleLock(h)) != NULL) {
                     debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", screator, resID);
-                    DmNewResourceEx(regDbReg, creator, resID, MemHandleSize(h), r);
+                    DmNewResourceEx(regDbReg, creator, resID, MemHandleSize(h), r, false);
                     MemHandleUnlock(h);
                     remove[nremove++] = resID;
                     imported++;
@@ -137,7 +137,7 @@ void RegImportDBs(void) {
               if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
                 if ((r = MemHandleLock(h)) != NULL) {
                   debug(DEBUG_INFO, "Registry", "importing registry '%s' %u", stype, resID);
-                  DmNewResourceEx(regDbReg, resType, resID, MemHandleSize(h), r);
+                  DmNewResourceEx(regDbReg, resType, resID, MemHandleSize(h), r, false);
                   MemHandleUnlock(h);
                   imported++;
                 }
@@ -266,7 +266,7 @@ Err RegSet(RegMgrType *rm, DmResType type, UInt16 id, void *p, UInt32 size) {
     if ((dbID = DmFindDatabase(0, REGISTRY_DB)) != 0) {
       if ((dbRef = DmOpenDatabaseEx(0, dbID, dmModeReadWrite, false)) != NULL) {
         if ((index = DmFindResource(dbRef, type, id, NULL)) == 0xFFFF) {
-          h = DmNewResourceEx(dbRef, type, id, size, p);
+          h = DmNewResourceEx(dbRef, type, id, size, p, false);
           index = DmFindResource(dbRef, 0, 0, h);
         }
         if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
