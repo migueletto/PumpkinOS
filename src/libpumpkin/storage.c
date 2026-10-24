@@ -1879,8 +1879,11 @@ Err DmCloseDatabase(DmOpenRef dbP) {
               h = db->elements[i];
               if (h->magic == HANDLE_MAGIC) {
                 if (h->lockCount == 0) {
-                  if (!(h->htype & STO_TYPE_MEM)) {
+                  if ((h->htype & ~STO_INFLATED) != STO_TYPE_MEM) {
                     pumpkin_heap_free(h, "Handle");
+                  } else {
+                    handle = (uint8_t *)h - ram;
+                    debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X STO_TYPE_MEM not freed", db->name, handle);
                   }
                 } else {
                   handle = (uint8_t *)h - ram;
