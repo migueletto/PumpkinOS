@@ -923,13 +923,24 @@ static void launcherScanFiles(launcher_data_t *data) {
   debug(DEBUG_INFO, "Launcher", "found %d files", data->numItems);
 }
 
-static int ps_callback(int i, uint32_t id, char *name, int m68k, void *_data) {
+static int ps_callback(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *_data) {
   launcher_data_t *data = (launcher_data_t *)_data;
+  uint32_t sizeMB, usage;
+  char buf[64];
 
   if (data->numItems < MAX_ITEMS) {
     StrNCopy(data->item[data->numItems].name, name, dmDBNameLength-1);
     data->item[data->numItems].id = id;
     data->item[data->numItems].m68k = m68k;
+    if (heapSize) {
+      sizeMB = (heapSize + 1024 * 1024 - 1) / (1024 * 1024);
+      usage = (heapUsed * 100) / heapSize;
+    } else {
+      sizeMB = 0;
+      usage = 0;
+    }
+    StrNPrintF(buf, sizeof(buf)-1, "%2uMB (%02u%%)", sizeMB, usage);
+    data->item[data->numItems].info = sys_strdup(buf);
     data->numItems++;
   }
 
@@ -1251,6 +1262,8 @@ static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y
   x = printColumn(data, item, "ID", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
   x = spaceColumn(data, x, y, 10);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? (item->m68k ? m68kBmp : pumpkinBmp) : 0, x, y, 28 * FntCharWidth('a'), inverted);
+  x = spaceColumn(data, x, y, 10);
+  x = printColumn(data, item, "Heap", item ? item->info : NULL, x, y, 12 * FntCharWidth('0'), true, inverted);
   lastColumn(data, x, y);
 }
 

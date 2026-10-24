@@ -8,6 +8,7 @@ heap_t *heap_get(void);
 void heap_finish(heap_t *heap);
 void *heap_base(heap_t *heap);
 uint32_t heap_size(heap_t *heap);
+void heap_usage(heap_t *heap, uint32_t *used, uint32_t *size);
 void heap_dump(heap_t *heap);
 void *heap_alloc(heap_t *heap, sys_size_t size);
 void *heap_realloc(heap_t *heap, void *p, sys_size_t size);

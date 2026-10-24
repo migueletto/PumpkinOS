@@ -102,6 +102,13 @@ uint32_t heap_size(heap_t *heap) {
   return heap->small_size + heap->size;
 }
 
+void heap_usage(heap_t *heap, uint32_t *used, uint32_t *size) {
+  if (heap) {
+    if (used) *used = heap->state.allocSize;
+    if (size) *size = heap->state.heapSize;
+  }
+}
+
 #if defined(HEAP_DEBUG)
 static void heap_debug_set(heap_t *heap, uint8_t *address, uint32_t size) {
   uint32_t i, index, offset;

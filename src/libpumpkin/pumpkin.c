@@ -57,7 +57,7 @@
 #define VFS_CARD      "/app_card/"
 #define VFS_INSTALL   "/app_install/"
 
-#define MAIN_HEAP_SIZE (128*1024*1024)
+#define MAIN_HEAP_SIZE (64*1024*1024)
 #define HEAP_SIZE (8*1024*1024)
 #define SMALL_HEAP_SIZE (128*1024)
 #if defined(FILC)
@@ -155,6 +155,7 @@ typedef struct {
   Boolean evtTimeoutWarning;
   Err lastErr;
   heap_t *heap;
+  uint32_t heapUsed, heapSize;
   int num_notifs;
   SysNotifyParamType notify[MAX_NOTIF_QUEUE]; // for SysNotifyBroadcastDeferred
   int enableSound;
@@ -1496,7 +1497,7 @@ int pumpkin_global_finish(void) {
       }
       for (id = 0; id < 0x1000; id++) {
         if (pumpkin_module.trapCode[id]) {
-          DmNewResourceEx(dbRef, 'trap', id, pumpkin_module.trapSize[id], pumpkin_module.trapCode[id]);
+          DmNewResourceEx(dbRef, 'trap', id, pumpkin_module.trapSize[id], pumpkin_module.trapCode[id], false);
           sys_free(pumpkin_module.trapCode[id]);
           pumpkin_module.trapCode[id] = NULL;
           pumpkin_module.trapSize[id] = 0;
@@ -1542,14 +1543,20 @@ static void task_destructor(void *p) {
   }
 }
 
-int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, void *data), void *data) {
+int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *data), void *data) {
+  uint32_t used, size;
   int i, r = -1;
 
   if (ps_callback) {
     if (mutex_lock(mutex) == 0) {
-      for (i = 0; i < MAX_TASKS; i++) {
-        if (pumpkin_module.tasks[i].active) {
-          if (ps_callback(i, pumpkin_module.tasks[i].taskId, pumpkin_module.tasks[i].name, pumpkin_module.tasks[i].m68k, data) != 0) break;
+      heap_usage(pumpkin_module.heap, &used, &size);
+      if (ps_callback(0, 0, "MAIN", 0, used, size, data) == 0) {
+        for (i = 0; i < MAX_TASKS; i++) {
+          if (pumpkin_module.tasks[i].active) {
+            if (ps_callback(i+1, pumpkin_module.tasks[i].taskId, pumpkin_module.tasks[i].name, pumpkin_module.tasks[i].m68k,
+               pumpkin_module.tasks[i].heapUsed, pumpkin_module.tasks[i].heapSize, data) != 0)
+              break;
+          }
         }
       }
       mutex_unlock(mutex);
@@ -1849,7 +1856,7 @@ static void pumpkin_init_midi(void) {
           if ((p = MemHandleLock(h)) != NULL) {
             size = MemHandleSize(h);
             at = 0xFFFF;
-            DmNewRecordEx(dbRef, &at, size, p, 0, 0, false);
+            DmNewRecordEx(dbRef, &at, size, p, 0, 0, false, false);
             debug(DEBUG_INFO, PUMPKINOS, "adding MIDI sound %u at %u", id, at);
             MemHandleUnlock(h);
           }
@@ -3342,12 +3349,12 @@ static void save_screen_callback(void *context, void *screen, int size) {
 
   if ((dbID = DmFindDatabase(0, SCREEN_DB)) != 0) {
     if ((dbRef = DmOpenDatabase(0, dbID, dmModeWrite)) != NULL) {
-      DmNewResourceEx(dbRef, scr->creator, 1, size, screen);
+      DmNewResourceEx(dbRef, scr->creator, 1, size, screen, false);
       if (name) {
-        DmNewResourceEx(dbRef, scr->creator, 2, StrLen(name), name);
+        DmNewResourceEx(dbRef, scr->creator, 2, StrLen(name), name, false);
       }
       if (version) {
-        DmNewResourceEx(dbRef, scr->creator, 3, StrLen(version), version);
+        DmNewResourceEx(dbRef, scr->creator, 3, StrLen(version), version, false);
       }
       DmCloseDatabase(dbRef);
     }       
@@ -3920,8 +3927,16 @@ static int pumpkin_event_multi_thread(int *key, int *mods, int *buttons, uint8_t
   unsigned char *buf;
   unsigned int len;
   uint32_t *arg, reply;
+  uint32_t used, size;
   char snotify[8];
   int r, client, ev = 0;
+
+  heap_usage(task->heap, &used, &size);
+  if (mutex_lock(mutex) == 0) {
+    pumpkin_module.tasks[task->task_index].heapUsed = used;
+    pumpkin_module.tasks[task->task_index].heapSize = size;
+    mutex_unlock(mutex);
+  }
 
   pumpkin_alarm_check();
 
@@ -5221,7 +5236,7 @@ void pumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boo
   if (mutex_lock(mutex) == 0) {
     if ((dbRef = PrefOpenPreferenceDB(saved)) != NULL) {
       if ((index = DmFindResource(dbRef, creator, id, NULL)) == 0xFFFF) {
-        h = DmNewResourceEx(dbRef, creator, id, size, p);
+        h = DmNewResourceEx(dbRef, creator, id, size, p, false);
         index = DmFindResource(dbRef, 0, 0, h);
       }
       if ((h = DmGetResourceIndex(dbRef, index)) != NULL) {
