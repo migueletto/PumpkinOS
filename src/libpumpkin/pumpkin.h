@@ -544,6 +544,7 @@ BitmapType *BmpFlip(BitmapType *bitmapP, Boolean vertical, Boolean horizontal);
 BitmapType *BmpScale(BitmapType *bitmapP, Coord newWidth, Coord newHeight);
 char *BmpGetDescr(BitmapType *bitmapP, char *buf, UInt16 size);
 
+FormType *FrmInitFormEx(UInt16 rscID, MemHandle h);
 Boolean FrmGetCenterDialogs(void);
 void FrmCenterDialogs(Boolean center);
 Boolean FrmTrackPenUp(UInt32 x, UInt32 y);

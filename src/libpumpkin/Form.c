@@ -122,17 +122,26 @@ static const char *FrmObjectTypeName(UInt16 type) {
 static void FrmCenterForm(FormType *formP) {
   UInt32 swidth, sheight;
   UInt16 index;
+  Coord x1, y1, x2, y2, dx, dy;
   FormObjectType obj;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  WinSetField(&formP->window, WindowFieldWindowBoundsX, (swidth  - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW)) / 2);
-  WinSetField(&formP->window, WindowFieldWindowBoundsY, (sheight - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH)) / 2);
+  x1 = WinGetField(&formP->window, WindowFieldWindowBoundsX);
+  x2 = (swidth  - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW)) / 2;
+  y1 = WinGetField(&formP->window, WindowFieldWindowBoundsY);
+  y2 = (sheight - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH)) / 2;
+  WinSetField(&formP->window, WindowFieldWindowBoundsX, x2);
+  WinSetField(&formP->window, WindowFieldWindowBoundsY, y2);
+  dx = x2 - x1;
+  dy = y2 - y1;
 
   for (index = 0; index < formP->numObjects; index++) {
     if (formP->objects[index].objectType == frmListObj) {
       obj = formP->objects[index].object;
-      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsX, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsX) + obj.list->bounds.topLeft.x);
-      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsY, (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsY) + obj.list->bounds.topLeft.y);
+      x1 = WinGetField(obj.list->popupWin, WindowFieldWindowBoundsX);
+      y1 = WinGetField(obj.list->popupWin, WindowFieldWindowBoundsY);
+      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsX, x1 + dx);
+      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsY, y1 + dy);
     }
   }
 }
@@ -263,25 +272,30 @@ static Err FrmInitFormInternal(FormType *formP) {
   return err;
 }
 
-FormType *FrmInitForm(UInt16 rscID) {
+FormType *FrmInitFormEx(UInt16 rscID, MemHandle h) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
   FormType *formP = NULL;
-  MemHandle h;
   UInt16 size = 0;
+  Boolean release = true;
   char buf[64];
   void *p, *rsrc = NULL;
 
   // Forms live in the heap but are not chunks.
   // You can not use MemPtrRecoverHandle with a form pointer.
 
-  if ((h = DmGetResource(formRscType, rscID)) != NULL) {
+  if (h == NULL) {
+    h = DmGetResource(formRscType, rscID);
+    release = false;
+  }
+
+  if (h != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       size = MemHandleSize(h);
       rsrc = pumpkin_heap_alloc(size, "FormRsrc");
       MemMove(rsrc, p, size);
       MemHandleUnlock(h);
     }
-    DmReleaseResource(h);
+    if (release) DmReleaseResource(h);
   }
 
   if (rsrc) {
@@ -292,7 +306,7 @@ FormType *FrmInitForm(UInt16 rscID) {
       pumpkin_destroy_form(formP);
       formP = NULL;
     } else {
-      if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
+      if (module->centerDialogs) {
         FrmCenterForm(formP);
       }
       debug(DEBUG_TRACE, "Window", "FrmInitForm window %s", WinGetDescr(&formP->window, buf, sizeof(buf)));
@@ -300,6 +314,10 @@ FormType *FrmInitForm(UInt16 rscID) {
   }
 
   return formP;
+}
+
+FormType *FrmInitForm(UInt16 rscID) {
+  return FrmInitFormEx(rscID, NULL);
 }
 
 // Set the active form. All input (key and pen) is directed to the active form and all drawing occurs there.

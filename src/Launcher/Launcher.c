@@ -1341,11 +1341,12 @@ static void editResource(launcher_data_t *data, launcher_item_t *item) {
 
       dbID = pumpkin_get_app_localid();
       if ((myDbRef = DmOpenDatabase(0, dbID, dmModeReadOnly)) != NULL) {
-        if ((frm = FrmInitForm(formId)) != NULL) {
+        frm = FrmInitForm(formId);
+        DmCloseDatabase(myDbRef);
+        if (frm) {
           editor(frm, title, h);
           FrmDeleteForm(frm);
         }
-        DmCloseDatabase(myDbRef);
       }
 
       DmReleaseResource(h);

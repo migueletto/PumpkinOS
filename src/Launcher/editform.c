@@ -26,8 +26,7 @@ typedef struct {
 } form_edit_t;
 
 static const RGBColorType white  = { 0, 0xff, 0xff, 0xff };
-static const RGBColorType gray1  = { 0, 0xd0, 0xd0, 0xd0 };
-static const RGBColorType gray2  = { 0, 0xf0, 0xf0, 0xf0 };
+static const RGBColorType gray   = { 0, 0xd0, 0xd0, 0xd0 };
 static const RGBColorType red    = { 0, 0xff, 0x80, 0x80 };
 static const RGBColorType purple = { 0, 0x80, 0x00, 0x80 };
 
@@ -144,69 +143,54 @@ static const dynamic_form_item_t grfPropertiesItems[] = {
 };
 
 static void drawForm(FormType *current, form_edit_t *data) {
-  FormType *frm;
-  RectangleType rect, rect2;
+  FormType *frm, *formP;
   RGBColorType oldFormFrame;
-  IndexedColorType back, oldb;
-  WinHandle olda, oldd;
-  UInt16 objIndex, index, state, x0, y0, i, j;
+  RectangleType rect, rect2;
+  UInt16 objIndex, index, state, x0, y0;
 
   if (data->formP) {
+    formP = FrmInitFormEx(0, data->handle);
     frm = FrmGetActiveForm();
-    RctSetRectFromWin(&rect, &data->formP->window);
+    RctSetRectFromWin(&rect, &formP->window);
     RctSetRectFromWin(&rect2, &frm->window);
     x0 = rect.topLeft.x - rect2.topLeft.x;
     y0 = rect.topLeft.y - rect2.topLeft.y;
 
     UIColorGetTableEntryRGB(UIFormFrame, &oldFormFrame);
     UIColorSetTableEntry(UIFormFrame, &purple);
-
-    FrmGetFormBounds(data->formP, &rect);
-    rect.topLeft.x = x0;
-    rect.topLeft.y = y0;
-    back = WinRGBToIndex(&gray2);
-    oldb = WinSetBackColor(back);
-    RctInsetRectangle(&rect, -2);
-    WinEraseRectangle(&rect, 0);
-    RctInsetRectangle(&rect, 1);
-    WinSetBackColor(oldb);
-
-    for (i = 0; i < rect.extent.y; i += 4) {
-      for (j = 0; j < rect.extent.x; j += 4) {
-        WinPaintPixel(x0 + j, y0 + i);
-      }
-    }
-
-    oldd = WinSetDrawWindow(&data->formP->window);
-    olda = WinGetActiveWindow();
-    WinSetActiveWindow(&data->formP->window);
+    FrmSetActiveForm(formP);
+    FrmDrawForm(formP);
+    FrmSetActiveForm(frm);
 
     state = KbdGrfGetState();
     KbdGrfSetState(GRAFFITI_SHIFT);
-    data->formP->attr.visible = 1;
-    for (objIndex = 0; objIndex < data->formP->numObjects; objIndex++) {
-      FrmDrawObject(data->formP, objIndex, false);
-
-      if (FrmGetObjectType(data->formP, objIndex) == frmPopupObj) {
-        for (index = 0; index < data->formP->numObjects; index++) {
-          if (FrmGetObjectType(data->formP, index) == frmListObj) {
-            if (data->formP->objects[index].object.list->id == data->formP->objects[objIndex].object.popup->listID) {
-              FrmGetObjectBounds(data->formP, index, &data->bounds[objIndex]);
+    formP->attr.visible = 1;
+    for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
+      if (FrmGetObjectType(formP, objIndex) == frmPopupObj) {
+        for (index = 0; index < formP->numObjects; index++) {
+          if (FrmGetObjectType(formP, index) == frmListObj) {
+            if (formP->objects[index].object.list->id == formP->objects[objIndex].object.popup->listID) {
+              FrmGetObjectBounds(formP, index, &data->bounds[objIndex]);
               break;
             }
           }
         }
       } else {
-        FrmGetObjectBounds(data->formP, objIndex, &data->bounds[objIndex]);
+        FrmGetObjectBounds(formP, objIndex, &data->bounds[objIndex]);
       }
-      RctInsetRectangle(&data->bounds[objIndex], -1);
     }
     KbdGrfSetState(state);
 
-    WinSetActiveWindow(olda);
-    WinSetDrawWindow(oldd);
+    if (!WinGetFlag(&formP->window, WindowFlagModal)) {
+      RctSetRectFromWin(&rect, &formP->window);
+      rect.topLeft.x = x0;
+      rect.topLeft.y = y0;
+      RctInsetRectangle(&rect, 1);
+      WinSetForeColorRGB(&gray, NULL);
+      WinPaintRectangleFrame(1, &rect);
+    }
 
-    if (data->selected >= 0 && data->selected < data->formP->numObjects) {
+    if (data->selected >= 0 && data->selected < formP->numObjects) {
       WinSetForeColorRGB(&red, NULL);
       RctCopyRectangle(&data->bounds[data->selected], &rect);
       rect.topLeft.x += x0;
@@ -214,6 +198,7 @@ static void drawForm(FormType *current, form_edit_t *data) {
       WinPaintRectangleFrame(1, &rect);
     }
 
+    FrmDeleteForm(formP);
     UIColorSetTableEntry(UIFormFrame, &oldFormFrame);
   }
 }
@@ -242,7 +227,7 @@ static Boolean formGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, voi
 
   switch (cmd) {
     case formGadgetDrawCmd:
-      WinSetForeColorRGB(&gray1, &oldf);
+      WinSetForeColorRGB(&gray, &oldf);
       drawForm(frm, data);
       WinSetForeColorRGB(&oldf, NULL);
       break;
@@ -996,6 +981,7 @@ Boolean editForm(FormType *frm, char *title, MemHandle h) {
       WinSetField(&data.formP->window, WindowFieldClippingBoundsX2, width - 1);
       WinSetField(&data.formP->window, WindowFieldClippingBoundsY1, 0);
       WinSetField(&data.formP->window, WindowFieldClippingBoundsY2, height - 1);
+      WinSetFlag(&data.formP->window, WindowFlagOffscreen, 1);
       data.topLeft.x = WinGetField(&data.formP->window, WindowFieldWindowBoundsX);
       data.topLeft.y = WinGetField(&data.formP->window, WindowFieldWindowBoundsY);
       data.bounds = sys_calloc(data.formP->numObjects, sizeof(RectangleType));
