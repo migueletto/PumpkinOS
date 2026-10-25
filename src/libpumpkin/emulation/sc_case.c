@@ -41,6 +41,7 @@
       palmos_FileSysTrap(sp, idx, trap);
       break;
     case sysTrapFtrPtrNew:
+    case sysTrapFtrPtrResize:
     case sysTrapFtrPtrFree:
     case sysTrapFtrUnregister:
     case sysTrapFtrGet:

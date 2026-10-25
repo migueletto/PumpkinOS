@@ -68,6 +68,7 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t size = ARG32;
       uint32_t newPtrP = ARG32;
       emupalmos_trap_in(newPtrP, trap, 3);
+/*
       uint8_t *p = MemPtrNew(size);
       uint32_t a = 0;
       Err err;
@@ -78,9 +79,36 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       } else {
         err = memErrNotEnoughSpace;
       }
+*/
+      void *newPtr;
+      Err err = FtrPtrNew(creator, featureNum, size, &newPtr);
+      uint32_t a = 0;
+      if (newPtr) {
+        a = emupalmos_trap_out(newPtr);
+        if (newPtrP) m68k_write_memory_32(newPtrP, a);
+      }
       char screator[8];
       pumpkin_id2s(creator, screator);
       debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrNew('%s', %d, %d, 0x%08X [0x%08X]): %d", screator, featureNum, size, newPtrP, a, err);
+      m68k_set_reg(M68K_REG_D0, err);
+    }
+    break;
+    case sysTrapFtrPtrResize: {
+      // Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPtrP)
+      uint32_t creator = ARG32;
+      uint16_t featureNum = ARG16;
+      uint32_t newSize = ARG32;
+      uint32_t newPtrP = ARG32;
+      void *newPtr;
+      Err err = FtrPtrResize(creator, featureNum, newSize, &newPtr);
+      uint32_t a = 0;
+      if (newPtr) {
+        a = emupalmos_trap_out(newPtr);
+        if (newPtrP) m68k_write_memory_32(newPtrP, a);
+      }
+      char screator[8];
+      pumpkin_id2s(creator, screator);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrResize('%s', %d, %d, 0x%08X [0x%08X]): %d", screator, featureNum, newSize, newPtrP, a, err);
       m68k_set_reg(M68K_REG_D0, err);
     }
     break;
@@ -88,12 +116,15 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       // Err FtrPtrFree(UInt32 creator, UInt16 featureNum)
       uint32_t creator = ARG32;
       uint16_t featureNum = ARG16;
+/*
       uint32_t a;
       Err err = FtrGet(creator, featureNum, &a);
       if (err == errNone && a) {
         uint8_t *p = emupalmos_trap_in(a, trap, -1);
         MemPtrFree(p);
       }
+*/
+      Err err = FtrPtrFree(creator, featureNum);
       char screator[8];
       pumpkin_id2s(creator, screator);
       debug(DEBUG_TRACE, "EmuPalmOS", "FtrPtrFree('%s', %d): %d", screator, featureNum, err);
@@ -108,6 +139,7 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       char screator[8];
       pumpkin_id2s(creator, screator);
       debug(DEBUG_TRACE, "EmuPalmOS", "FtrUnregister('%s', %d): %d", screator, featureNum, err);
+      m68k_set_reg(M68K_REG_D0, err);
     }
     break;
     case sysTrapFtrGet: {
