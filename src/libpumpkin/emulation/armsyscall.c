@@ -269,11 +269,9 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           EvtGetPen(pScreenX, pScreenY, pPenDown);
           UInt32 density;
           WinScreenGetAttribute(winScreenDensity, &density);
-/*
           debug(DEBUG_TRACE, "ARM", "arm syscall EvtGetPen(0x%08X [%d], 0x%08X [%d], 0x%08X [%d]) (coordSys=%d/%d density=%d)",
             r0, pScreenX ? *pScreenX : 0, r1, pScreenY ? *pScreenY : 0, r2, pPenDown ? *pPenDown : 0,
             WinGetCoordinateSystem(), WinGetRealCoordinateSystem(), density);
-*/
           }
           break;
         case 0x2CC:
