@@ -382,6 +382,14 @@ void pumpkin_test_exception(int fatal) {
   debug(DEBUG_ERROR, PUMPKINOS, "pumpkin_test_exception should not be here!");
 }
 
+void pumpkin_heap_margin(uint32_t margin) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+
+  if (task) {
+    heap_margin(task->heap, margin);
+  }
+}
+
 #define ptr2offset(p) ((p) ? (uint32_t)((uint8_t *)(p) - ram) : 0)
 
 void *pumpkin_heap_alloc(uint32_t size, char *tag) {

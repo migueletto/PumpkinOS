@@ -221,6 +221,7 @@ void pumpkin_app_crashed(void);
 
 void *pumpkin_heap_base(void);
 uint32_t pumpkin_heap_size(void);
+void pumpkin_heap_margin(uint32_t margin);
 void *pumpkin_heap_alloc(uint32_t size, char *tag);
 void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag);
 void pumpkin_heap_free(void *p, char *tag);

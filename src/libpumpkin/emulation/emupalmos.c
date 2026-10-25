@@ -183,6 +183,7 @@ void emupalmos_panic(char *msg, int code) {
 
   pumpkin_crash_log(code, msg);
 
+  pumpkin_heap_margin(0);
   WinSetCoordinateSystem(kCoordinatesStandard);
   WinInitColors(true);
   WinScreenMode(winScreenModeSetToDefaults, NULL, NULL, NULL, NULL);

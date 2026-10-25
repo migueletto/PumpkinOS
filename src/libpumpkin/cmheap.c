@@ -4,7 +4,7 @@
 #include "debug.h"
 
 #define SMALL_BLOCK 64
-#define HEAP_MARGIN 16*1024
+#define HEAP_MARGIN 256*1024
 
 struct heap_t {
   uint8_t *memory;
@@ -16,6 +16,7 @@ struct heap_t {
   uint32_t small_num_alloc;
   uint32_t *small_alloc;
   uint32_t small_alloc_size;
+  uint32_t margin;
   HEAP_INFO_t state;
   int free;
 #if defined(HEAP_DEBUG)
@@ -33,6 +34,7 @@ heap_t *heap_init(uint8_t *memory, uint32_t size, uint32_t small_size, uint32_t 
   if ((heap = sys_calloc(1, sizeof(heap_t))) == NULL) {
     return NULL;
   }
+  heap->margin = HEAP_MARGIN;
 
   heap->free = 1;
   if (memory) {
@@ -106,6 +108,12 @@ void heap_usage(heap_t *heap, uint32_t *used, uint32_t *size) {
   if (heap) {
     if (used) *used = heap->state.allocSize;
     if (size) *size = heap->state.heapSize;
+  }
+}
+
+void heap_margin(heap_t *heap, uint32_t margin) {
+  if (heap) {
+    heap->margin = margin;
   }
 }
 
@@ -198,7 +206,7 @@ void *heap_alloc(heap_t *heap, sys_size_t size) {
     }
   } 
 
-  if (heap->state.heapSize - heap->state.allocSize < HEAP_MARGIN) {
+  if (heap->state.heapSize - heap->state.allocSize < heap->margin) {
     heap_exhausted_error();
     return NULL;
   }
