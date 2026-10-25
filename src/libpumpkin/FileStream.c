@@ -191,7 +191,7 @@ Int32 FileReadLow(FileHand stream, void *baseP, Int32 offset, Boolean dataStoreB
     f = (FileType *)stream;
 
     // XXX ignores offset e dataStoreBased
-    r = StoFileRead(f->dbRef, baseP, objSize*numObj);
+    r = numObj ? StoFileRead(f->dbRef, baseP, objSize*numObj) : 0;
 
     if (r == -1) {
       if (errP) *errP = DmGetLastErr();
