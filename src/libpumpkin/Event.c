@@ -223,7 +223,9 @@ static void adjustCoords(Coord *x, Coord *y) {
        }
        break;
      case kDensityDouble:
-       switch (WinGetRealCoordinateSystem()) {
+       if (WinGetCoordinateSystem() == kCoordinatesNative) {
+         *x /= 2; *y /= 2;
+       } else switch (WinGetRealCoordinateSystem()) {
          case kCoordinatesStandard:  *x /= 2; *y /= 2; break;
          case kCoordinatesQuadruple: *x *= 2; *y *= 2; break;
        }
