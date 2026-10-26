@@ -5,7 +5,9 @@ BASE_MODULES=pilrc prcbuild libpit lua libpumpkin libos BOOT Launcher Preference
 
 ifeq ($(OSNAME),GNU/Linux)
 
-ifneq ($(wildcard /usr/include/SDL2/SDL.h),)
+ifneq ($(wildcard /usr/include/SDL3/SDL.h),)
+WINDOW_MODULE=liblsdl3
+else ifneq ($(wildcard /usr/include/SDL2/SDL.h),)
 WINDOW_MODULE=liblsdl2
 else ifneq ($(wildcard /usr/include/wayland-client.h),)
 WINDOW_MODULE=libwwayland
@@ -13,7 +15,7 @@ else ifneq ($(wildcard /usr/include/xcb/xcb_ewmh.h),)
 WINDOW_MODULE=libwxcb
 else
 ERROR=make_error
-ERROR_MSG=Could not find SDL2, Wayland or XCB development headers
+ERROR_MSG=Could not find SDL3, SDL2, Wayland or XCB development headers
 endif
 
 ifneq ($(UNICORN),)

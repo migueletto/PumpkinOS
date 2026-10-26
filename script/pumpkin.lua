@@ -7,9 +7,10 @@ end
 pit.cleanup(cleanup_callback)
 
 abgr = false
+lib = pit.loadlib("liblsdl3")
 
-if custom_load then
-  lib = custom_load()
+if not lib then
+  lib = pit.loadlib("liblsdl2")
 end
 
 if not lib and pit.getenv("WAYLAND_DISPLAY") then
@@ -17,39 +18,13 @@ if not lib and pit.getenv("WAYLAND_DISPLAY") then
   if lib then pit.loadlib("libaalsa") end
 end
 
-if not lib then
-  lib = pit.loadlib("libray")
-  if lib then
-    pit.loadlib("libaalsa")
-    abgr = true
-  end
-end
-
 if not lib and pit.getenv("DISPLAY") then
   lib = pit.loadlib("libwxcb")
   if lib then pit.loadlib("libaalsa") end
 end
 
-if not lib then
-  lib = pit.loadlib("liblsdl3")
-end
-
-if not lib then
-  lib = pit.loadlib("liblsdl2")
-end
-
-if not lib then
-  lib = pit.loadlib("libfb")
-  if lib then
-    lib.setup(0, 1, 0)
-    lib.cursor(true)
-  end
-end
-
-if not lib then
-  lib = pit.loadlib("libwnull")
-  lib.accept(true, 7000)
-  --lib.connect("127.0.0.1", 7000)
+if not lib and custom_load then
+  lib = custom_load()
 end
 
 if not lib then
@@ -75,5 +50,6 @@ pumpkin.start {
   abgr     = abgr,
   fullrefresh = fullrefresh,
   depth    = 16,
-  hdepth   = lib.hdepth
+  hdepth   = lib.hdepth,
+  logtrap  = "Aced"
 }
