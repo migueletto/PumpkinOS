@@ -1233,7 +1233,7 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           // Err WinGetSupportedDensity(UInt16 *densityP)
           UInt16 *densityP = r0 ? (UInt16 *)(ram + r0) : NULL;
           r = WinGetSupportedDensity(densityP);
-          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetSupportedDensity(0x%08X): %d", r0, r);
+          debug(DEBUG_TRACE, "ARM", "arm syscall WinGetSupportedDensity(0x%08X [%u]): %d", r0, densityP ? *densityP : 0, r);
           r0 = r;
           }
           break;
