@@ -11,6 +11,8 @@ SOURCE=liblsdl2.c
 OPENGL_FLAGS=-DSDL_OPENGL
 OPENGL_LIBS=-lGL
 
+ifeq ($(SDL2),)
+
 ifeq ($(OSNAME),Kernel)
 STATIC=1
 else ifeq ($(OSNAME),Emscripten)
@@ -22,6 +24,13 @@ LIBS=-lSDL2 -lversion -limm32 -lgdi32 -lsetupapi -lwinmm -lole32 -loleaut32 $(MI
 else
 CUSTOMFLAGS=$(MIXER_FLAGS) $(OPENGL_FLAGS)
 LIBS=-lSDL2 $(MIXER_LIBS) $(OPENGL_LIBS)
+endif
+
+else
+
+CUSTOMFLAGS=$(MIXER_FLAGS) $(OPENGL_FLAGS) -I$(SDL2)/include
+LIBS=-L$(SDL2)/build -lSDL2 $(MIXER_LIBS)
+
 endif
 
 include ../lib.mak
