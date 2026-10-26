@@ -3833,7 +3833,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
 
 // Get the current status of the pen using a window’s active coordinate system.
 
-void EvtGetPenNative(WinHandle winH, Int16* pScreenX, Int16* pScreenY, Boolean* pPenDown) {
+void EvtGetPenNative(WinHandle winH, Int16 *pScreenX, Int16 *pScreenY, Boolean *pPenDown) {
   WinHandle old;
   BitmapType *bitmapP;
   UInt16 coordSys, density;
