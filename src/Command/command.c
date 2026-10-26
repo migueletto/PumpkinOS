@@ -1444,7 +1444,7 @@ static int command_script_launch(int pe, void *data) {
   return 0;
 }
 
-static int ps_callback(int i, uint32_t id, char *name, int m68k, void *idata) {
+static int ps_callback(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *idata) {
   char tid[8], stype[8], screator[8];
   UInt32 type, creator;
   LocalID dbID;
