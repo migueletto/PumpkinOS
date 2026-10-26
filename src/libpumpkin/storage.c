@@ -4701,6 +4701,11 @@ Err MemHandleFree(MemHandle hh) {
 
   if (hh) {
     h = (storage_handle_t *)hh;
+    if (h->magic != HANDLE_MAGIC) {
+      debug(DEBUG_INFO, "STOR", "MemHandleFree %p trying to free a non handle", h);
+      h = MemPtrRecoverHandle(h);
+    }
+
     switch (h->htype & ~STO_INFLATED) {
       case STO_TYPE_MEM:
         if (h->buf) {
