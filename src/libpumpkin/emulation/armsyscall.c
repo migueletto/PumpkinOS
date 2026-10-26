@@ -337,12 +337,20 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           debug(DEBUG_TRACE, "ARM", "arm syscall FntSetFont(%d): %d", r0, r);
           r0 = r;
           break;
-        case 0x424:
+        case 0x424: {
+          // Err FtrGet(UInt32 creator, UInt16 featureNum, UInt32 *valueP)
+          r = FtrGet(r0, r1, &value);
           pumpkin_id2s(r0, st);
-          debug(DEBUG_TRACE, "ARM", "arm syscall FtrGet('%s', %u, 0x%08X)", st, r1, r2);
-          r0 = FtrGet(r0, r1, &value);
-          if (r0 == 0 && r2) {
+          char *name;
+          if (r0 == sysFileCSystem && (name = FtrPsysName(r1)) != NULL) {
+            debug(DEBUG_TRACE, "ARM", "arm syscall FtrGet('%s', %s, 0x%08X [0x%08X]): %d", st, name, r2, value, r);
+          } else {
+            debug(DEBUG_TRACE, "ARM", "arm syscall FtrGet('%s', %u, 0x%08X [0x%08X]): %d", st, r1, r2, value, r);
+          }
+          if (r == 0 && r2) {
             put4l(value, ram, r2);
+          }
+          r0 = r;
           }
           break;
         case 0x430:

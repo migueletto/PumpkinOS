@@ -78,6 +78,44 @@ Err FtrInit(void) {
   return errNone;
 }
 
+char *FtrPsysName(UInt32 num) {
+  char *s = NULL;
+
+  switch (num) {
+    case  1: s = "sysFtrNumROMVersion"; break;
+    case  2: s = "sysFtrNumProcessorID"; break;
+    case  3: s = "sysFtrNumBacklight"; break;
+    case  4: s = "sysFtrNumEncryption"; break;
+    case  5: s = "sysFtrNumCountry"; break;
+    case  6: s = "sysFtrNumLanguage"; break;
+    case  7: s = "sysFtrNumDisplayDepth"; break;
+    case  8: s = "sysFtrNumHwrMiscFlags"; break;
+    case  9: s = "sysFtrNumHwrMiscFlagsExt"; break;
+    case 10: s = "sysFtrNumIntlMgr"; break;
+    case 11: s = "sysFtrNumEncoding"; break;
+    case 12: s = "sysFtrDefaultFont"; break;
+    case 13: s = "sysFtrDefaultBoldFont"; break;
+    case 14: s = "sysFtrNumGremlinsSupportGlobals"; break;
+    case 15: s = "sysFtrNumVendor"; break;
+    case 16: s = "sysFtrNumCharEncodingFlags"; break;
+    case 17: s = "sysFtrNumNotifyMgrVersion"; break;
+    case 18: s = "sysFtrNumOEMROMVersion"; break;
+    case 19: s = "sysFtrNumErrorCheckLevel"; break;
+    case 20: s = "sysFtrNumOEMCompanyID"; break;
+    case 21: s = "sysFtrNumOEMDeviceID"; break;
+    case 22: s = "sysFtrNumOEMHALID"; break;
+    case 23: s = "sysFtrNumDefaultCompression"; break;
+    case 24: s = "sysFtrNumWinVersion"; break;
+    case 25: s = "sysFtrNumAccessorTrapPresent"; break;
+    case 26: s = "sysFtrNumInputAreaFlags"; break;
+    case 27: s = "sysFtrNumUIHardwareFlags"; break;
+    case 31: s = "sysFtrNumDmAutoBackup"; break;
+    case 32: s = "sysFtrNumFiveWayNavVersion"; break;
+  }
+
+  return s;
+}
+
 static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *ptr) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
   UInt32 i, regSize;

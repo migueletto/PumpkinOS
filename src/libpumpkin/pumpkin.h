@@ -672,6 +672,7 @@ int VFSAddVolume(char *volume);
 void AbtShowAboutEx(UInt32 creator, UInt16 formID, char *descr);
 void AbtShowAboutPumpkin(UInt32 creator);
 
+char *FtrPsysName(UInt32 num);
 Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP);
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow);
