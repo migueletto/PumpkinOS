@@ -213,16 +213,6 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
           event.data.lstEnter.pList = listP;
           EvtAddEventToQueue(&event);
           handled = true;
-
-          if (!insideUpArrow && !insideDownArrow) {
-            // has to be done here otherwise it would not be visible on time
-            if (listP->currentItem != noListSelection) {
-              LstDrawItem(listP, listP->currentItem - listP->topItem, false);
-            }
-            h = listP->bounds.extent.y / listP->visibleItems;
-            LstDrawItem(listP, (eventP->screenY - listP->bounds.topLeft.y) / h, true);
-          }
-
         } else {
           if (listP->bitsBehind) {
             debug(DEBUG_TRACE, "List", "LstHandleEvent penDown outside list %d (%d,%d) (%d,%d,%d,%d)", listP->id, eventP->screenX, eventP->screenY, listP->bounds.topLeft.x, listP->bounds.topLeft.y, listP->bounds.extent.x, listP->bounds.extent.y);
@@ -291,6 +281,8 @@ Boolean LstHandleEvent(ListType *listP, const EventType *eventP) {
                 listP->currentItem = listP->numItems ? listP->numItems-1 : 0;
               }
               debug(DEBUG_TRACE, "List", "LstHandleEvent penUp listSelect %d", listP->currentItem);
+              // instead of redrawing the whole List, we could redraw only the previous item and new selected item
+              LstDrawList(listP);
               handled = true;
             }
 
