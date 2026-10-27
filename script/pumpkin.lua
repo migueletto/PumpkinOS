@@ -50,6 +50,5 @@ pumpkin.start {
   abgr     = abgr,
   fullrefresh = fullrefresh,
   depth    = 16,
-  hdepth   = lib.hdepth,
-  logtrap  = "Aced"
+  hdepth   = lib.hdepth
 }
