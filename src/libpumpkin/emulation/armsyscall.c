@@ -1300,6 +1300,14 @@ uint32_t emupalmos_arm_syscall(uint32_t group, uint32_t function, uint32_t r0, u
           r0 = err;
           }
           break;
+        case 0xD30: {
+          // Err SndPlayResource(SndPtr sndP, Int32 volume, UInt32 flags)
+          SndPtr snd = r0 ? (SndPtr)(ram + r0) : NULL;
+          err = SndPlayResource(snd, r1, r2);
+          debug(DEBUG_TRACE, "ARM", "arm syscall SndPlayResource(0x%08X, %d, 0x%08X): %d", r0, r1, r2, err);
+          r0 = err;
+          }
+          break;
         default:
           sys_snprintf(buf, sizeof(buf)-1, "unmapped arm syscall 0x%04X in BOOT", function);
           emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
