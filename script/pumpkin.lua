@@ -6,11 +6,17 @@ end
 
 pit.cleanup(cleanup_callback)
 
+fullrefresh = false
 abgr = false
+
 lib = pit.loadlib("liblsdl3")
 
 if not lib then
   lib = pit.loadlib("liblsdl2")
+end
+
+if lib and pit.osname() == "Windows" then
+  fullrefresh = true
 end
 
 if not lib and pit.getenv("WAYLAND_DISPLAY") then
@@ -33,8 +39,7 @@ if not lib then
   return
 end
 
-fullrefresh = false
-if pit.osname() == "Windows" or pit.osname() == "Haiku" then
+if pit.osname() == "Haiku" then
   fullrefresh = true
 end
 
