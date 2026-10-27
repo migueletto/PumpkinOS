@@ -34,7 +34,7 @@ if not lib then
 end
 
 fullrefresh = false
-if pit.getenv("BE_HOST_CPU") then
+if pit.osname() == "Windows" or pit.osname() == "Haiku" then
   fullrefresh = true
 end
 
