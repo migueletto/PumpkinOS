@@ -26,7 +26,7 @@ $(info Using custom SDL3 at $(SDL3))
 
 ifeq ($(OSNAME),Msys)
 # on Windows with SDL3 mingw package in $(SDL3)
-CUSTOMFLAGS=$(MIXER_FLAGS) $(OPENGL_FLAGS) -I$(SDL3)/include
+CUSTOMFLAGS=$(MIXER_FLAGS) -I$(SDL3)/x86_64-w64-mingw32/include
 LIBS=-L$(SDL3)/x86_64-w64-mingw32/bin -lSDL3 $(MIXER_LIBS)
 else
 # on Linux with SDL3 compiled from source in $(SDL3)
