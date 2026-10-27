@@ -1063,7 +1063,10 @@ static void WinPutBit(UInt32 b, WinHandle wh, Coord x, Coord y, WinDrawOperation
 }
 
 static void WinCopyBit(BitmapType *src, Coord sx, Coord sy, WinHandle wh, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text, UInt32 tc, UInt32 bc, Boolean update) {
-  BmpCopyBit(src, sx, sy, WinGetBitmap(wh), dx, dy, mode, dbl, text, tc, bc);
+  BitmapType *bmp;
+
+  bmp = WinGetBitmap(wh);
+  BmpCopyBit(src, sx, sy, bmp, dx, dy, mode, dbl, text, tc, bc);
   if (update) {
     int i = dbl ? 1 : 0;
     WinDirtyRegion(wh, dx, dy, dx+i, dy+i);
@@ -1719,17 +1722,20 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
   UInt32 srcSize, dstSize, pixelMul, pixelDiv, srcLineSize, dstLineSize, srcOffset, dstOffset, len;
   RectangleType srcRect, dstRect, aux, clip, intersection, *dirtyRect;
   AbsRectType absr;
-  UInt16 depth, srcRowBytes, dstRowBytes;
+  UInt16 srcDepth, srcRowBytes, srcDensity, dstDepth, dstRowBytes, dstDensity;
   Boolean clipping, display;
   Coord srcWidth, srcHeight, dstWidth, dstHeight, dx, dy, y;
   UInt8 *srcBits, *dstBits;
 
   MemMove(&srcRect, rect, sizeof(RectangleType));
   dstBmp = WinGetBitmap(dst);
-  depth = BmpGetBitDepth(srcBmp);
+  srcDensity = BmpGetDensity(srcBmp);
+  dstDensity = BmpGetDensity(dstBmp);
+  srcDepth = BmpGetBitDepth(srcBmp);
+  dstDepth = BmpGetBitDepth(dstBmp);
   dirtyRect = NULL;
 
-  switch (depth) {
+  switch (srcDepth) {
     case  1:
       pixelMul = 1;
       pixelDiv = 8;
@@ -1746,16 +1752,16 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
     case 16:
     case 24:
     case 32:
-      pixelMul = depth >> 3;
+      pixelMul = srcDepth >> 3;
       pixelDiv = 1;
       break;
     default:
       // not supported
-      debug(DEBUG_ERROR, "Window", "WinCopyBitmap invalid depth %u", depth);
+      debug(DEBUG_ERROR, "Window", "WinCopyBitmap invalid depth %u", srcDepth);
       return;
   }
 
-  if (BmpGetDensity(srcBmp) == BmpGetDensity(dstBmp) && depth == BmpGetBitDepth(dstBmp)) {
+  if (srcDensity == dstDensity && srcDepth == dstDepth) {
     BmpGetSizes(srcBmp, &srcSize, NULL);
     BmpGetSizes(dstBmp, &dstSize, NULL);
     srcBits = BmpGetBits(srcBmp);
@@ -1861,6 +1867,11 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
         dirtyRect = &dstRect;
         Coord x0 = (Coord)WinGetField(dst, WindowFieldWindowBoundsX);
         Coord y0 = (Coord)WinGetField(dst, WindowFieldWindowBoundsY);
+        if (dstDensity == kDensityDouble ||
+           (module->drawState.coordinateSystem == kCoordinatesNative && module->density == kDensityDouble)) {
+          x0 <<= 1;
+          y0 <<= 1;
+        }
 
         if (srcWidth == dstWidth &&
             srcRect.topLeft.x == 0 && srcRect.extent.x == srcWidth &&
@@ -1894,8 +1905,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
             dstLineSize = dstRowBytes;
             len = (srcRect.extent.x * pixelMul) / pixelDiv;
             if (srcBmp == dstBmp && dstRect.topLeft.y > srcRect.topLeft.y) {
-              dstRect.topLeft.x += x0; // XXX
-              dstRect.topLeft.y += y0; // XXX
+              dstRect.topLeft.x += x0;
+              dstRect.topLeft.y += y0;
               srcOffset = (srcRect.topLeft.y + srcRect.extent.y) * srcLineSize + (srcRect.topLeft.x * pixelMul) / pixelDiv;
               dstOffset = (dstRect.topLeft.y + dstRect.extent.y) * dstLineSize + (dstRect.topLeft.x * pixelMul) / pixelDiv;
               srcBits += srcOffset;
@@ -1906,8 +1917,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
                 MemMove(dstBits, srcBits, len);
               }
             } else {
-              dstRect.topLeft.x += x0; // XXX
-              dstRect.topLeft.y += y0; // XXX
+              dstRect.topLeft.x += x0;
+              dstRect.topLeft.y += y0;
               srcOffset = srcRect.topLeft.y * srcLineSize + (srcRect.topLeft.x * pixelMul) / pixelDiv;
               dstOffset = dstRect.topLeft.y * dstLineSize + (dstRect.topLeft.x * pixelMul) / pixelDiv;
               srcBits += srcOffset;
