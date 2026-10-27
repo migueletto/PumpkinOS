@@ -41,14 +41,32 @@ void palmos_flptrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       debug(DEBUG_TRACE, "EmuPalmOS", "FlpAToF(\"%s\"): %f", s ? s : "", d.d);
     }
       break;
-    //case sysFloatCorrectedAdd:
+    case sysFloatCorrectedAdd: {
       // FlpDouble FlpCorrectedAdd(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
       // void FlpBufferCorrectedAdd(FlpDouble *result, FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
-    //  break;
-    //case sysFloatCorrectedSub:
+      uint32_t resP = ARG32;
+      ARG_DOUBLE(a);
+      ARG_DOUBLE(b);
+      int16_t howAccurate = ARG16;
+      flp_double_t d;
+      d.d = FlpCorrectedAdd(a.d, b.d, howAccurate);
+      RES_DOUBLE(d, resP);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FlpCorrectedAdd(%f, %f): %f", a.d, b.d, d.d);
+      }
+      break;
+    case sysFloatCorrectedSub: {
       // FlpDouble FlpCorrectedSub(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
       // void FlpBufferCorrectedSub(FlpDouble *result, FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
-    //  break;
+      uint32_t resP = ARG32;
+      ARG_DOUBLE(a);
+      ARG_DOUBLE(b);
+      int16_t howAccurate = ARG16;
+      flp_double_t d;
+      d.d = FlpCorrectedSub(a.d, b.d, howAccurate);
+      RES_DOUBLE(d, resP);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FlpCorrectedSub(%f, %f): %f", a.d, b.d, d.d);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "FlpDispatch selector %d not mapped", sel);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

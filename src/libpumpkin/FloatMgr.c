@@ -23,17 +23,13 @@ FlpDouble FlpAToF(const Char *s) {
 }
 
 FlpDouble FlpCorrectedAdd(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate) {
-  FlpDouble f;
-  debug(DEBUG_ERROR, "PALMOS", "FlpCorrectedAdd not implemented");
-  MemSet(&f, sizeof(f), 0);
-  return f;
+  // XXX howAccurate ignored
+  return firstOperand + secondOperand;
 }
 
 FlpDouble FlpCorrectedSub(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate) {
-  FlpDouble f;
-  debug(DEBUG_ERROR, "PALMOS", "FlpCorrectedSub not implemented");
-  MemSet(&f, sizeof(f), 0);
-  return f;
+  // XXX howAccurate ignored
+  return firstOperand - secondOperand;
 }
 
 void FlpBufferAToF(FlpDouble *result, const Char *s) {
