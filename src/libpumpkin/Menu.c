@@ -13,6 +13,7 @@
 
 typedef struct {
   MenuBarType *currentMenu;
+  WinHandle prevActiveWindow;
 } menu_module_t;
 
 int MenuInitModule(void) {
@@ -276,23 +277,28 @@ static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
 }
 
 static void sendWinExitEvent(MenuBarType *menuP) {
+  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
   EventType ev;
 
+  module->prevActiveWindow = WinGetActiveWindow();
   MemSet(&ev, sizeof(EventType), 0);
   ev.eType = winExitEvent;
   ev.data.winExit.exitWindow = WinGetActiveWindow();
   ev.data.winExit.enterWindow = menuP->barWin;
   EvtAddEventToQueue(&ev);
+  WinSetActiveWindow(menuP->barWin);
 }
 
 static void sendWinEnterEvent(MenuBarType *menuP) {
+  menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
   EventType ev;
 
   MemSet(&ev, sizeof(EventType), 0);
   ev.eType = winEnterEvent;
   ev.data.winEnter.exitWindow = menuP->barWin;
-  ev.data.winEnter.enterWindow = WinGetActiveWindow();
+  ev.data.winEnter.enterWindow = module->prevActiveWindow;
   EvtAddEventToQueue(&ev);
+  WinSetActiveWindow(module->prevActiveWindow);
 }
 
 Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
