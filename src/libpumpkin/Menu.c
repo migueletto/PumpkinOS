@@ -269,6 +269,26 @@ static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
   WinRestoreRectangle(pd->bitsBehind, &pd->bounds);
 }
 
+static void sendWinExitEvent(MenuBarType *menuP) {
+  EventType ev;
+
+  MemSet(&ev, sizeof(EventType), 0);
+  ev.eType = winExitEvent;
+  ev.data.winExit.exitWindow = WinGetActiveWindow();
+  ev.data.winExit.enterWindow = menuP->barWin;
+  EvtAddEventToQueue(&ev);
+}
+
+static void sendWinEnterEvent(MenuBarType *menuP) {
+  EventType ev;
+
+  MemSet(&ev, sizeof(EventType), 0);
+  ev.eType = winEnterEvent;
+  ev.data.winEnter.exitWindow = menuP->barWin;
+  ev.data.winEnter.enterWindow = WinGetActiveWindow();
+  EvtAddEventToQueue(&ev);
+}
+
 Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
   EventType ev;
   FormType *frm;
@@ -317,6 +337,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               RctSetRectFromWin(&rect, menuP->barWin);
               WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
+              sendWinEnterEvent(menuP);
               handled = true;
             }
           }
@@ -372,6 +393,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 RctSetRectFromWin(&rect, menuP->barWin);
                 WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
+                sendWinEnterEvent(menuP);
 
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent menuEvent item %d", pd->items[pd->selectedItem].id);
                 MemSet(&ev, sizeof(EventType), 0);
@@ -400,6 +422,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             RctSetRectFromWin(&rect, menuP->barWin);
             WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
+            sendWinEnterEvent(menuP);
           } else {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown show menu");
             if (menuP == NULL) {
@@ -413,6 +436,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             if (menuP) {
               MenuDrawMenu(menuP);
               menuP->attr.visible = 1;
+              sendWinExitEvent(menuP);
             }
           }
         }
