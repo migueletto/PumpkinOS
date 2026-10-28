@@ -808,7 +808,7 @@ int pumpkin_get_spawner(void) {
   return pumpkin_module.spawner;
 }
 
-static int drop_get_name(char *src, char *dst, int max) {
+static int drop_get_name(char *src, char *dst, int max, int level, char *dstdir) {
   int len, i;
 
   if (!src) return -1;
@@ -822,56 +822,132 @@ static int drop_get_name(char *src, char *dst, int max) {
 
   for (;;) {
     if (i == 0) break;
-    if (src[i] == FILE_SEP) break;
+    if (src[i] == FILE_SEP) level--;
+    if (level == 0) break;
     i--;
   }
 
   if (src[i] != FILE_SEP) return -1;
 
-  sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, &VFS_INSTALL[1], &src[i+1]);
+  sys_snprintf(dst, max, "%s%s%s", pumpkin_module.mount, dstdir, &src[i+1]);
+  for (i = 0; dst[i]; i++) {
+    if (dst[i] < 32 || dst[i] > 126) return -1;
+    // always convert from '\' to '/', regardless of what FILE_SEP is
+    if (dst[i] == '\\') dst[i] = '/';
+  }
+
   return 0;
+}
+
+static int copy_file(char *src, char *dst) {
+  int nr, nw, rfd, wfd;
+  uint8_t *buf;
+  int r = -1;
+
+  if ((rfd = sys_open(src, SYS_READ)) != -1) {
+    // overwrite destination file
+    if ((wfd = sys_create(dst, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
+      if ((buf = (uint8_t *)sys_malloc(65536)) != NULL) {
+        for (;;) {
+          nr = sys_read(rfd, buf, 65536);
+          if (nr <= 0) break;
+          nw = sys_write(wfd, buf, nr);
+          if (nw != nr) {
+            nr = -1;
+            break;
+          }
+        }
+        r = (nr == 0) ? 0 : -1;
+        sys_free(buf);
+      }
+      sys_close(wfd);
+    }
+    sys_close(rfd);
+  }
+
+  return r;
+}
+
+static void drop_copy(char *file, int level) {
+  sys_dir_t *dir;
+  sys_stat_t st;
+  char name[256], *d, *e;
+  int len;
+
+  if (sys_stat(file, &st) == 0) {
+    if (st.mode & SYS_IFREG) {
+      if (drop_get_name(file, name, sizeof(name)-1, level, &VFS_CARD[1]) == 0) {
+        debug(DEBUG_INFO, PUMPKINOS, "writing \"%s\"", name);
+        if (copy_file(file, name) != 0) {
+          debug(DEBUG_ERROR, PUMPKINOS, "copy \"%s\" failed", file);
+        }
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "invalid name \"%s\"", file);
+      }
+    } else if (st.mode & SYS_IFDIR) {
+      if (drop_get_name(file, name, sizeof(name)-1, level, &VFS_CARD[1]) == 0) {
+        sys_mkdir(name); // do not fail if directory exists
+        len = sys_strlen(file);
+        if ((d = sys_calloc(len+2, 1)) != NULL) {
+          sys_strncpy(d, file, len);
+          d[len] = FILE_SEP;
+          d[len+1] = 0;
+          if ((dir = sys_opendir(d)) != NULL) {
+            for (;;) {
+              if (sys_readdir(dir, name, sizeof(name)-1) != 0) break;
+              if (!sys_strcmp(name, ".")) continue;
+              if (!sys_strcmp(name, "..")) continue;
+              if ((e = sys_calloc(len + 1 + sys_strlen(name) + 1, 1)) != NULL) {
+                sys_strcpy(e, d);
+                sys_strcat(e, name);
+                debug(DEBUG_INFO, PUMPKINOS, "copying \"%s\"", e);
+                // recurse into subdirectory
+                drop_copy(e, level+1);
+                sys_free(e);
+              }
+            }
+            sys_closedir(dir);
+          }
+          sys_free(d);
+        }
+      } else {
+        debug(DEBUG_ERROR, PUMPKINOS, "invalid name \"%s\"", file);
+      }
+    }
+  }
 }
 
 static void drop_deploy(char *file, void *data) {
   client_request_t creq;
-  uint8_t *buf;
+  sys_stat_t st;
   char name[256];
-  int nr, nw, rfd, wfd = 0;
-  int r = 0;
 
-  debug(DEBUG_INFO, PUMPKINOS, "reading \"%s\"", file);
-  if (pumpkin_module.mount && drop_get_name(file, name, sizeof(name)-1) == 0) {
-    debug(DEBUG_INFO, PUMPKINOS, "writing \"%s\"", name);
-    if ((rfd = sys_open(file, SYS_READ)) != -1) {
-      if ((wfd = sys_create(name, SYS_WRITE | SYS_TRUNC, 0644)) != -1) {
-        if ((buf = (uint8_t *)sys_malloc(65536)) != NULL) {
-          for (;;) {
-            nr = sys_read(rfd, buf, 65536);
-            if (nr <= 0) break;
-            nw = sys_write(wfd, buf, nr);
-            if (nw != nr) {
-              nr = -1;
-              break;
-            }
+  if (pumpkin_module.mount) {
+    if (sys_stat(file, &st) == 0) {
+      if (st.mode & SYS_IFREG) {
+        // dropped file is a regular file: copy it to vfs/app_install and send MSG_DEPLOY
+        // so that the file is deployed (this will fail if the file is not a PRC or a PDB)
+        debug(DEBUG_INFO, PUMPKINOS, "received file \"%s\"", file);
+        if (drop_get_name(file, name, sizeof(name)-1, 1, &VFS_INSTALL[1]) == 0) {
+          debug(DEBUG_INFO, PUMPKINOS, "writing \"%s\"", name);
+          if (copy_file(file, name) == 0) {
+            debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
+            sys_memset(&creq, 0, sizeof(client_request_t));
+            creq.type = MSG_DEPLOY;
+            thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
+          } else {
+            debug(DEBUG_ERROR, PUMPKINOS, "deploy \"%s\" failed", file);
           }
-          r = (nr == 0);
-          sys_free(buf);
-        }
-        sys_close(wfd);
-      }
-      sys_close(rfd);
-    }
-  } else {
-    debug(DEBUG_ERROR, PUMPKINOS, "invalid name \"%s\"", file);
-  }
 
-  if (r) {
-    debug(DEBUG_TRACE, PUMPKINOS, "send MSG_DEPLOY");
-    sys_memset(&creq, 0, sizeof(client_request_t));
-    creq.type = MSG_DEPLOY;
-    thread_client_write(pumpkin_get_spawner(), (uint8_t *)&creq, sizeof(client_request_t));
-  } else {
-    debug(DEBUG_ERROR, PUMPKINOS, "deploy \"%s\" failed", file);
+        } else {
+          debug(DEBUG_ERROR, PUMPKINOS, "invalid name \"%s\"", file);
+        }
+      } else if (st.mode & SYS_IFDIR) {
+        // dropped file is a directory: recursively copy the directory to vfs/app_card
+        debug(DEBUG_INFO, PUMPKINOS, "received directory \"%s\"", file);
+        drop_copy(file, 1);
+      }
+    }
   }
 }
 
