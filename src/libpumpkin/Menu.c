@@ -139,9 +139,14 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   FontID old;
 
   oldd = WinSetDrawWindow(menu->barWin);
-
-  mFrame = UIColorGetTableEntryIndex(UIFormFrame);
-  mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+  
+  if (BmpGetBitDepth(WinGetBitmap(menu->barWin)) < 8) {
+    mFrame = UIColorGetTableEntryIndex(UIMenuFrame);
+    mTitle = UIColorGetTableEntryIndex(UIMenuSelectedForeground);
+  } else {
+    mFrame = UIColorGetTableEntryIndex(UIFormFrame);
+    mTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+  }
   mFill = UIColorGetTableEntryIndex(UIMenuFill);
   mFore = UIColorGetTableEntryIndex(UIMenuForeground);
   oldb = WinSetBackColor(mFill);
@@ -157,6 +162,7 @@ static void menu_show_pd_title(MenuBarType *menu, MenuPullDownType *pd, int i) {
   }
   RctSetRectangle(&rect, pd->titleBounds.topLeft.x, 1, 3+FntCharsWidth(pd->title, sys_strlen(pd->title))+3, WinGetField(menu->barWin, WindowFieldWindowBoundsH) - 2);
   WinEraseRectangle(&rect, 0);
+  debug(DEBUG_TRACE, "Menu", "menu show title %d \"%s\"", i, pd->title);
   WinDrawChars(pd->title, sys_strlen(pd->title), pd->titleBounds.topLeft.x+3, pd->titleBounds.topLeft.y+1);
 
   FntSetFont(old);
