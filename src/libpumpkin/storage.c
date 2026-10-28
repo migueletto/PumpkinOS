@@ -2742,6 +2742,7 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
             if (attach) h->d.res.attr |= dmRecAttached;
             h->d.res.type = resType;
             h->d.res.id = resID;
+            h->d.res.writable = 1;
             h->size = size;
             h->buf = StoPtrNew(h, h->size, resType, resID);
             h->useCount = 1;
@@ -4783,6 +4784,7 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
           }
           handle->lockCount++;
           if (pumpkin_is_m68k() && handle->d.res.writable) {
+            debug(DEBUG_INFO, "STOR", "lock will return original resource because db is writable");
             decoded = false;
           }
           p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
