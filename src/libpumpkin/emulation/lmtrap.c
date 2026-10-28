@@ -57,6 +57,8 @@ void palmos_lmtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
             encode_locale(valueP, (LmLocaleType *)buf);
             break;
           case lmChoiceCountryName:
+          case lmChoiceCurrencySymbol:
+          case lmChoiceUniqueCurrencySymbol:
             len = sizeof(buf);
             if (len > size) len = size;
             encode_string(valueP, (char *)buf, len);
@@ -71,6 +73,9 @@ void palmos_lmtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
             break;
           case lmChoiceTimeZone:
             m68k_write_memory_16(valueP, *(UInt16 *)buf);
+            break;
+          default:
+            debug(DEBUG_ERROR, "EmuPalmOS", "LmGetLocaleSetting %u not encoded", choice);
             break;
         }
       }
