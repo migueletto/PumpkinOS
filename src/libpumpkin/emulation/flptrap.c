@@ -29,6 +29,16 @@ void palmos_flptrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //    case sysFloatFToA:
     //      // Err FlpFToA(FlpDouble a, Char *s)
     //      break;
+    case sysFloatFToA: {
+      // Err FlpFToA(FlpDouble a, Char *s)
+      ARG_DOUBLE(a);
+      uint32_t sP = ARG32;
+      char *s = emupalmos_trap_sel_in(sP, sysTrapFlpDispatch, sel, 1);
+      Err err = FlpFToA(a.d, s);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FlpFToA(%f, \"%s\"): %d", a.d, s ? s : "", err);
+      m68k_set_reg(M68K_REG_D0, err);
+      }
+      break;
     case sysFloatAToF: {
       // FlpDouble FlpAToF(const Char *s)
       // void FlpBufferAToF(FlpDouble *result, const Char *s)
@@ -39,7 +49,7 @@ void palmos_flptrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       d.d = sys_atof(s);
       RES_DOUBLE(d, resP);
       debug(DEBUG_TRACE, "EmuPalmOS", "FlpAToF(\"%s\"): %f", s ? s : "", d.d);
-    }
+      }
       break;
     case sysFloatCorrectedAdd: {
       // FlpDouble FlpCorrectedAdd(FlpDouble firstOperand, FlpDouble secondOperand, Int16 howAccurate)
