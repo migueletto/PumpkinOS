@@ -2232,7 +2232,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   if (task->lang) LanguageFinish(task->lang);
 
-  if (pumpkin_module.wm) {
+  if (pumpkin_module.wm && pumpkin_module.mode == 0) {
     if (creator) {
       if (wman_xy(pumpkin_module.wm, pumpkin_module.tasks[task->task_index].taskId, &x, &y) == 0) {
         regPos.x = x;
