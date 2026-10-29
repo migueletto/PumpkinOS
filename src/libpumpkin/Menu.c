@@ -276,29 +276,37 @@ static void menu_hide_pd(MenuBarType *menu, MenuPullDownType *pd) {
   WinRestoreRectangle(pd->bitsBehind, &pd->bounds);
 }
 
-static void sendWinExitEvent(MenuBarType *menuP) {
+static void openMenuEvents(MenuBarType *menuP) {
   menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
   EventType ev;
 
   module->prevActiveWindow = WinGetActiveWindow();
+  WinSetActiveWindow(menuP->barWin);
+
   MemSet(&ev, sizeof(EventType), 0);
   ev.eType = winExitEvent;
-  ev.data.winExit.exitWindow = WinGetActiveWindow();
+  ev.data.winExit.exitWindow = module->prevActiveWindow;
   ev.data.winExit.enterWindow = menuP->barWin;
   EvtAddEventToQueue(&ev);
-  WinSetActiveWindow(menuP->barWin);
+
+  ev.eType = winEnterEvent;
+  EvtAddEventToQueue(&ev);
 }
 
-static void sendWinEnterEvent(MenuBarType *menuP) {
+static void closeMenuEvents(MenuBarType *menuP) {
   menu_module_t *module = (menu_module_t *)pumpkin_get_local_storage(menu_key);
   EventType ev;
 
-  MemSet(&ev, sizeof(EventType), 0);
-  ev.eType = winEnterEvent;
-  ev.data.winEnter.exitWindow = menuP->barWin;
-  ev.data.winEnter.enterWindow = module->prevActiveWindow;
-  EvtAddEventToQueue(&ev);
   WinSetActiveWindow(module->prevActiveWindow);
+
+  MemSet(&ev, sizeof(EventType), 0);
+  ev.eType = winExitEvent;
+  ev.data.winExit.exitWindow = menuP->barWin;
+  ev.data.winExit.enterWindow = module->prevActiveWindow;
+  EvtAddEventToQueue(&ev);
+
+  ev.eType = winEnterEvent;
+  EvtAddEventToQueue(&ev);
 }
 
 Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
@@ -349,7 +357,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               RctSetRectFromWin(&rect, menuP->barWin);
               WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
-              sendWinEnterEvent(menuP);
+              closeMenuEvents(menuP);
               MenuSetActiveMenu(NULL);
               handled = true;
             }
@@ -406,7 +414,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 RctSetRectFromWin(&rect, menuP->barWin);
                 WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
-                sendWinEnterEvent(menuP);
+                closeMenuEvents(menuP);
                 MenuSetActiveMenu(NULL);
 
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent menuEvent item %d", pd->items[pd->selectedItem].id);
@@ -436,7 +444,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             RctSetRectFromWin(&rect, menuP->barWin);
             WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
-            sendWinEnterEvent(menuP);
+            closeMenuEvents(menuP);
             MenuSetActiveMenu(NULL);
           } else {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown show menu");
@@ -451,7 +459,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             if (menuP) {
               MenuDrawMenu(menuP);
               menuP->attr.visible = 1;
-              sendWinExitEvent(menuP);
+              openMenuEvents(menuP);
             }
           }
         }
