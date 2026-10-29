@@ -455,7 +455,35 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
         break;
     }
 
-    if (!down) {
+    if (down) {
+      switch (i) {
+        case ICON_HARD1:
+          pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_F1, 0, 0);
+          pumpkin_set_key(WINDOW_KEY_F1);
+          break;
+        case ICON_HARD2:
+          pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_F2, 0, 0);
+          pumpkin_set_key(WINDOW_KEY_F2);
+          break;
+        case ICON_UPDOWN:
+          if (y < dia->height - dia->button_height / 2) {
+            pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_UP, 0, 0);
+            pumpkin_set_key(WINDOW_KEY_UP);
+          } else {
+            pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_DOWN, 0, 0);
+            pumpkin_set_key(WINDOW_KEY_DOWN);
+          }
+          break;
+        case ICON_HARD3:
+          pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_F3, 0, 0);
+          pumpkin_set_key(WINDOW_KEY_F3);
+          break;
+        case ICON_HARD4:
+          pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_F4, 0, 0);
+          pumpkin_set_key(WINDOW_KEY_F4);
+          break;
+      }
+    } else {
       if (dia->sel != -1) {
         dia_invert_key(dia, dia->sel);
         dia->sel = -1;
@@ -463,23 +491,29 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
 
       switch (i) {
         case ICON_HARD1:
-          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F1, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_F1, 0, 0);
+          pumpkin_reset_key(WINDOW_KEY_F1);
           break;
         case ICON_HARD2:
-          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F2, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_F2, 0, 0);
+          pumpkin_reset_key(WINDOW_KEY_F2);
           break;
         case ICON_UPDOWN:
           if (y < dia->height - dia->button_height / 2) {
-            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_UP, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_UP, 0, 0);
+            pumpkin_reset_key(WINDOW_KEY_UP);
           } else {
-            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_DOWN, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_DOWN, 0, 0);
+            pumpkin_reset_key(WINDOW_KEY_DOWN);
           }
           break;
         case ICON_HARD3:
-          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F3, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_F3, 0, 0);
+          pumpkin_reset_key(WINDOW_KEY_F3);
           break;
         case ICON_HARD4:
-          pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F4, 0, 0);
+          pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_F4, 0, 0);
+          pumpkin_reset_key(WINDOW_KEY_F4);
           break;
       }
     }
@@ -499,7 +533,20 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
         break;
     }
 
-    if (!down) {
+    if (down) {
+      switch (i) {
+        case ICON_HOME:
+          if (current_task >= 0) {
+            pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_HOME, 0, 0);
+          }
+          break;
+        case ICON_MENU:
+          if (current_task >= 0) {
+            pumpkin_forward_msg(current_task, MSG_KEYUP, WINDOW_KEY_F5, 0, 0);
+          }
+          break;
+      }
+    } else {
       if (dia->sel != -1) {
         dia_invert_key(dia, dia->sel);
         dia->sel = -1;
@@ -508,12 +555,12 @@ int dia_clicked(dia_t *dia, int current_task, int x, int y, int down) {
       switch (i) {
         case ICON_HOME:
           if (current_task >= 0) {
-            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_HOME, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_HOME, 0, 0);
           }
           break;
         case ICON_MENU:
           if (current_task >= 0) {
-            pumpkin_forward_msg(current_task, MSG_KEY, WINDOW_KEY_F5, 0, 0);
+            pumpkin_forward_msg(current_task, MSG_KEYDOWN, WINDOW_KEY_F5, 0, 0);
           }
           break;
         case ICON_FIND:

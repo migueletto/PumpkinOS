@@ -259,6 +259,8 @@ int pumpkin_get_encoding(void);
 int pumpkin_get_current(void);
 void pumpkin_set_fullrefresh(int fullrefresh);
 void pumpkin_set_taskbar(int enabled);
+void pumpkin_set_key(int key);
+int pumpkin_reset_key(int key);
 
 void pumpkin_set_obj(int pe, script_ref_t obj);
 int pumpkin_get_boolean_option(char *name);

@@ -2082,7 +2082,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   task->enableSound = enableSound;
   sys_strncpy(task->name, name, dmDBNameLength-1);
 
-  if (task->creator == pumpkin_get_id_option("logscr")) {
+  if (task->creator && task->creator == pumpkin_get_id_option("logscr")) {
     sys_snprintf(buf, sizeof(buf)-1, "%08X.scr", creator);
     if ((task->logscr = sys_create(buf, SYS_WRITE, 0644)) != -1) {
       debug(DEBUG_INFO, "logscr", "writing logscr to \"%s\"", buf);
@@ -3303,7 +3303,7 @@ int pumpkin_must_finish(void) {
   return r;
 }
 
-static void pumpkin_set_key(int key) {
+void pumpkin_set_key(int key) {
   switch (key) {
     case WINDOW_KEY_DOWN:  pumpkin_module.keyMask |= keyBitPageDown;   break;
     case WINDOW_KEY_UP:    pumpkin_module.keyMask |= keyBitPageUp;     break;
@@ -3327,7 +3327,7 @@ static void pumpkin_set_key(int key) {
   }
 }
 
-static int pumpkin_reset_key(int key) {
+int pumpkin_reset_key(int key) {
   switch (key) {
     case WINDOW_KEY_DOWN:  pumpkin_module.keyMask &= ~keyBitPageDown; break;
     case WINDOW_KEY_UP:    pumpkin_module.keyMask &= ~keyBitPageUp;   break;
@@ -3915,7 +3915,7 @@ static int pumpkin_event_single_app(int *key, int *mods, int *buttons, uint8_t *
               *key = pumpkin_reset_key(arg1);
               *mods = pumpkin_module.modMask;
               *buttons = 0;
-              ev = MSG_KEY;
+              ev = MSG_KEYUP;
             } else {
               *key = arg1;
               *mods = 0;
