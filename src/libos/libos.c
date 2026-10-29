@@ -214,7 +214,7 @@ static int libos_action(void *arg) {
     }
     pumpkin_set_window(data->w, data->width, height, data->height);
     if (data->wp->title) {
-      data->wp->title(data->w, data->mode == 0 ? PUMPKINOS : data->launcher);
+      data->wp->title(data->w, PUMPKINOS);
     }
   }
 
@@ -379,6 +379,8 @@ static int libos_start(int pe) {
 
     if (data->mode < 0 || data->mode > 2) {
       data->mode = 0;
+    } else if (data->mode == 0 && data->dia) {
+      data->mode = 1;
     }
 
     if (data->mode == 0) {
@@ -386,10 +388,10 @@ static int libos_start(int pe) {
     }
 
     if (data->mode != 0) {
-      if (data->width == 0) {
+      if (data->dia || data->width == 0) {
         data->width = data->density == kDensityDouble ?  APP_SCREEN_WIDTH : APP_SCREEN_WIDTH / 2;
       }
-      if (data->height == 0) {
+      if (data->dia || data->height == 0) {
         data->height = data->dia ? (data->width * 3 ) / 2 + BUTTONS_HEIGHT : data->width;
       }
     }
