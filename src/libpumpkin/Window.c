@@ -619,7 +619,7 @@ void WinSetActiveWindow(WinHandle winHandle) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   module->activeWindow = winHandle;
   if (WinGetFlag(winHandle, WindowFlagOffscreen)) {
-    debug(DEBUG_ERROR, "Window", "WinSetActiveWindow on offscreen window %p", winHandle);
+    debug(DEBUG_INFO, "Window", "WinSetActiveWindow on offscreen window %p", winHandle);
   }
 }
 
