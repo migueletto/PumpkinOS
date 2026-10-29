@@ -350,6 +350,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               WinRestoreRectangle(menuP->bitsBehind, &rect);
               menuP->attr.visible = 0;
               sendWinEnterEvent(menuP);
+              MenuSetActiveMenu(NULL);
               handled = true;
             }
           }
@@ -406,6 +407,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
                 WinRestoreRectangle(menuP->bitsBehind, &rect);
                 menuP->attr.visible = 0;
                 sendWinEnterEvent(menuP);
+                MenuSetActiveMenu(NULL);
 
                 debug(DEBUG_TRACE, "Menu", "MenuHandleEvent menuEvent item %d", pd->items[pd->selectedItem].id);
                 MemSet(&ev, sizeof(EventType), 0);
@@ -435,6 +437,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
             WinRestoreRectangle(menuP->bitsBehind, &rect);
             menuP->attr.visible = 0;
             sendWinEnterEvent(menuP);
+            MenuSetActiveMenu(NULL);
           } else {
             debug(DEBUG_TRACE, "Menu", "MenuHandleEvent keyDown show menu");
             if (menuP == NULL) {
