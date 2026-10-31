@@ -623,6 +623,23 @@ void palmos_FrmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
     }
     break;
+    case sysTrapFrmNewLabel: {
+      // FormLabelType *FrmNewLabel(FormType **formPP, UInt16 id, const Char *textP, Coord x, Coord y, FontID font)
+      uint32_t formPP = ARG32;
+      uint16_t id = ARG16;
+      uint32_t textP = ARG32;
+      uint16_t x = ARG16;
+      uint16_t y = ARG16;
+      uint8_t font = ARG8;
+      uint32_t formP = formPP ? m68k_read_memory_32(formPP) : 0;
+      FormType *form = (FormType *)emupalmos_trap_in(formP, trap, 0);
+      char *text = (char *)emupalmos_trap_in(textP, trap, 2);
+      FormLabelType *label = FrmNewLabel(&form, id, text, x, y, font);
+      uint32_t a = emupalmos_trap_out(label);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FrmNewLabel(0x%08X, %u, 0x%08X, %d, %d, %u): 0x%08X", formPP, id, textP, x, y, a, font);
+      m68k_set_reg(M68K_REG_A0, a);
+    }
+    break;
     case sysTrapFrmNewBitmap: {
       // FormBitmapType *FrmNewBitmap(FormType **formPP, UInt16 ID, UInt16 rscID, Coord x, Coord y)
       uint32_t formPP = ARG32;
