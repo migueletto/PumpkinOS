@@ -4,6 +4,7 @@
       palmos_PceSysTrap(sp, idx, trap);
       break;
     case sysTrapHwrGetROMToken:
+    case sysTrapHwrDelay:
       palmos_HwrSysTrap(sp, idx, trap);
       break;
     case sysTrapHostControl:
@@ -460,6 +461,7 @@
     case sysTrapFrmCustomAlert:
     case sysTrapFrmCustomResponseAlert:
     case sysTrapFrmAlert:
+    case sysTrapFrmNewLabel:
     case sysTrapFrmNewBitmap:
     case sysTrapFrmNewGadget:
     case sysTrapFrmActiveState:

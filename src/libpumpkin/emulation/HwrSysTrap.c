@@ -40,5 +40,7 @@ void palmos_HwrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HwrGetROMToken(cardNo=%d, token=%d, dataP=0x%08X, sizeP=0x%08X): %d", cardNo, token, dataP, sizeP, res);
     }
     break;
+    case sysTrapHwrDelay:
+    break;
   }
 }
