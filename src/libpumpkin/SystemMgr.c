@@ -257,6 +257,9 @@ Err SysGetROMToken(UInt16 cardNo, UInt32 token, UInt8 **dataP, UInt16 *sizeP) {
     *dataP = (UInt8 *)module->serialNumber;
     *sizeP = StrLen(module->serialNumber);
     err = errNone;
+  } else {
+    *dataP = NULL;
+    *sizeP = 0;
   }
 
   return err;
