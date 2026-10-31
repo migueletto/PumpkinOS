@@ -12,18 +12,26 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
 
   if (ctlP) {
     if (ctlP->magic != CONTROL_MAGIC) {
-      if ((formP = FrmGetActiveForm()) != NULL) {
+      if ((formP = FrmGetActiveForm()) != NULL && formP->magic == FORM_MAGIC) {
         p = (uint8_t *)ctlP;
         get2b(&id, p, 0);
         if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
           ram = (uint8_t *)pumpkin_heap_base();
           debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", (uint32_t)((uint8_t *)ctlP - ram), ctlP);
+          debug_bytes(DEBUG_INFO, "Control", p, 64);
           i = 0;
           if ((ctlP = pumpkin_create_control(p, &i)) != NULL) {
+            ctlP->formP = formP;
             ctlP->raw = true; // mark this Control as 'raw'
             FrmAddObject(formP, frmFieldObj, id, ctlP);
           }
+        } else {
+          debug(DEBUG_ERROR, "Control", "CtlCheckControl existing form object");
+          ctlP->formP = formP;
         }
+      } else {
+        debug(DEBUG_ERROR, "Control", "CtlCheckControl no active form");
+        ctlP = NULL;
       }
     }
   }
@@ -508,6 +516,8 @@ void CtlSetLabel(ControlType *controlP, const Char *newLabel) {
   FormLabelType *labelP;
   Boolean visible;
   UInt16 oldWidth, newWidth, middle, right;
+
+  controlP = CtlCheckControl(controlP);
 
   if (controlP && newLabel) {
     // Many apps use CtlSetLabel to set the label of a FormLabelType, which is not correct.

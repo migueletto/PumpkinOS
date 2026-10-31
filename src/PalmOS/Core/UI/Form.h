@@ -324,6 +324,7 @@ typedef Boolean FormEventHandlerType (EventType *eventP);
 typedef FormEventHandlerType *FormEventHandlerPtr;
 
 #define FORM_STRUCT_SIZE 28
+#define FORM_MAGIC 'Form'
 
 typedef struct FormType
 #ifdef ALLOW_ACCESS_TO_INTERNALS_OF_FORMS	// These fields will not be available in the next OS release!
@@ -341,6 +342,7 @@ typedef struct FormType
 	UInt16						numObjects;
 	FormObjListType *			objects;
 
+  UInt32 magic;
   int selectedObject, activeList, activeField;
   RectangleType helpRect;
   MenuBarType *mbar;

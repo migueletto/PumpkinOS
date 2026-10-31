@@ -421,7 +421,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FontID old;
   Coord width, height;
   UInt16 totalLines, max;
-  Boolean handled, erase = false;
+  Boolean dialog, handled, erase = false;
 
   if (formP && objIndex < formP->numObjects) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
@@ -526,7 +526,8 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     }
 
     if (erase) {
-      formFill = UIColorGetTableEntryIndex(UIFormFill);
+      dialog = WinGetFlag(&formP->window, WindowFlagModal);
+      formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
       oldb = WinSetBackColor(formFill);
       WinEraseRectangle(&rect, 0);
       WinSetBackColor(oldb);
@@ -547,17 +548,19 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FontID old;
   UInt16 totalLines, max, graffitiState;
   Int16 x, y, tw, th;
+  Boolean dialog;
   char *text;
 
   if (formP && objIndex < formP->numObjects) {
     pumpkin_dirty_region_mode(dirtyRegionBegin);
+    dialog = WinGetFlag(&formP->window, WindowFlagModal);
 
     obj = formP->objects[objIndex].object;
     //XXX when UIObjectSelectedForeground, ChemTable draws the title text in black in the elements list form
     //formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
-    formTitle = UIColorGetTableEntryIndex(UIFormFill);
-    formFill = UIColorGetTableEntryIndex(UIFormFill);
-    formFrame = UIColorGetTableEntryIndex(UIFormFrame);
+    formTitle = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+    formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+    formFrame = UIColorGetTableEntryIndex(dialog ? UIDialogFrame : UIFormFrame);
     fieldText = UIColorGetTableEntryIndex(UIFieldText);
 
     switch (formP->objects[objIndex].objectType) {
@@ -585,7 +588,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           rect.extent.y = FntCharHeight()*totalLines;
           obj.label->extent.x = max;
           obj.label->extent.y = rect.extent.y;
+          WinDrawOperation prev = WinSetDrawMode(winOverlay);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
+          WinSetDrawMode(prev);
           WinSetBackColor(oldb);
           WinSetTextColor(oldt);
           FntSetFont(old);
@@ -760,6 +765,7 @@ Boolean FrmGetUsable(FormType *formP, UInt16 objIndex) {
       case frmListObj:      usable = obj.list->attr.usable;      break;
       case frmTableObj:     usable = obj.table->attr.usable;     break;
       case frmGadgetObj:    usable = obj.gadget->attr.usable;    break;
+      case frmBitmapObj:    usable = true; break;
       case frmScrollBarObj:
         usable = FrmObjectGetFlag(obj.scrollBar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagUsable);
         break;
@@ -856,7 +862,7 @@ Boolean FrmTrackPenUp(UInt32 x, UInt32 y) {
   Boolean handled = false;
 
   formP = FrmGetActiveForm();
-  if (formP && formP->selectedObject != -1) {
+  if (formP && formP->magic == FORM_MAGIC && formP->selectedObject != -1) {
     obj = formP->objects[formP->selectedObject].object;
 
     MemSet(&event, sizeof(EventType), 0);
@@ -1220,9 +1226,20 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
 
 static void FrmDeleteFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
+  WinHandle wh;
   BitmapType *bmp;
 
   debug(DEBUG_TRACE, "Form", "FrmDeleteFormInternal form %d (%p)", formP->formId, formP);
+
+  wh = FrmGetWindowHandle(formP);
+
+  if (WinGetActiveWindow() == wh) {
+    WinSetActiveWindow(NULL);
+  }
+
+  if (WinGetDrawWindow() == wh) {
+    WinSetDrawWindow(NULL);
+  }
 
   if (formP == module->currentForm) {
     module->currentForm = NULL;
@@ -1277,13 +1294,15 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
   IndexedColorType formFill, formFrame, old;
   PatternType oldPattern;
   WinHandle oldDraw, oldActive;
+  Boolean dialog = false;
 
   // draw dialog border
   if (WinGetFlag(&formP->window, WindowFlagModal)) {
     oldActive = WinGetActiveWindow();
     oldDraw = WinSetDrawWindow(wh);
     WinSetActiveWindow(wh);
-    formFrame = UIColorGetTableEntryIndex(UIFormFrame);
+    //formFrame = UIColorGetTableEntryIndex(UIFormFrame);
+    formFrame = UIColorGetTableEntryIndex(UIDialogFrame);
     old = WinSetForeColor(formFrame);
     oldPattern = WinGetPatternType();
     WinSetPatternType(blackPattern);
@@ -1293,22 +1312,19 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     WinSetForeColor(old);
     WinSetActiveWindow(oldActive);
     WinSetDrawWindow(oldDraw);
+    dialog = true;
   }
 
-  if (FrmGetNumberOfObjects(formP) > 1 || FrmGetObjectType(formP, 0) != frmTitleObj) {
-    // erase form background
-    // XXX Knockdown Karate assumes that a FrmDrawForm() will NOT erase
-    // the background. Its form has only one object: the title.
-    // Agent-Z2 also has a form with just a single object, a form bitmap.
-    // It assumes that the form WILL be erased.
-    RctSetRectFromWin(&aux, &formP->window);
-    aux.topLeft.x = 0;
-    aux.topLeft.y = 0;
-    formFill = UIColorGetTableEntryIndex(UIFormFill);
-    old = WinSetBackColor(formFill);
-    WinEraseRectangle(&aux, 0);
-    WinSetBackColor(old);
-  }
+  // erase form background
+  // XXX in Knockdown Karate the form is erased with the wrong color?
+
+  RctSetRectFromWin(&aux, &formP->window);
+  aux.topLeft.x = 0;
+  aux.topLeft.y = 0;
+  formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+  old = WinSetBackColor(formFill);
+  WinEraseRectangle(&aux, 0);
+  WinSetBackColor(old);
 }
 
 void FrmDrawForm(FormType *formP) {
@@ -1319,7 +1335,7 @@ void FrmDrawForm(FormType *formP) {
   UInt16 objIndex;
   Int16 margin;
 
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     debug(DEBUG_TRACE, "Form", "FrmDrawForm %d", formP->formId);
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
@@ -1369,7 +1385,7 @@ void FrmDrawForm(FormType *formP) {
 void FrmEraseForm(FormType *formP) {
   RectangleType rect;
 
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     debug(DEBUG_TRACE, "Form", "FrmEraseForm %d", formP->formId);
     RctSetRectFromWin(&rect, &formP->window);
     if (WinGetFlag(&formP->window, WindowFlagModal)) {
@@ -1495,13 +1511,13 @@ FormType *FrmGetFirstForm(void) {
 }
 
 UInt16 FrmGetNumberOfObjects(const FormType *formP) {
-  return formP ? formP->numObjects : 0;
+  return formP && formP->magic == FORM_MAGIC ? formP->numObjects : 0;
 }
 
 UInt16 FrmGetObjectIndex(const FormType *formP, UInt16 objID) {
   UInt16 index = frmInvalidObjectId;
 
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     for (index = 0; index < formP->numObjects; index++) {
       if (formP->objects[index].id == objID) break;
     }
@@ -1514,7 +1530,7 @@ UInt16 FrmGetObjectIndex(const FormType *formP, UInt16 objID) {
 UInt16 FrmGetObjectIndexFromPtr(const FormType *formP, void *objP) {
   UInt16 index = frmInvalidObjectId;
 
-  if (formP && objP) {
+  if (formP && formP->magic == FORM_MAGIC && objP) {
     for (index = 0; index < formP->numObjects; index++) {
       if (formP->objects[index].object.ptr == objP) break;
     }
@@ -1527,7 +1543,7 @@ UInt16 FrmGetObjectIndexFromPtr(const FormType *formP, void *objP) {
 UInt16 FrmGetObjectId(const FormType *formP, UInt16 objIndex) {
   UInt16 id = frmInvalidObjectId;
   
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     if (objIndex < formP->numObjects) {
       id = formP->objects[objIndex].id;
     }
@@ -1539,7 +1555,7 @@ UInt16 FrmGetObjectId(const FormType *formP, UInt16 objIndex) {
 FormObjectKind FrmGetObjectType(const FormType *formP, UInt16 objIndex) {
   FormObjectKind kind = 0;
 
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     kind = formP->objects[objIndex].objectType;
   }
 
@@ -1550,7 +1566,7 @@ void *FrmGetObjectPtr(const FormType *formP, UInt16 objIndex) {
   FormObjectType obj;
   void *p = NULL;
 
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     obj = formP->objects[objIndex].object;
     p = obj.ptr;
   }
@@ -1559,20 +1575,20 @@ void *FrmGetObjectPtr(const FormType *formP, UInt16 objIndex) {
 }
 
 void FrmSetObjectPtr(const FormType *formP, UInt16 objIndex, void *p) {
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     formP->objects[objIndex].object.ptr = p;
   }
 }
 
 void FrmHideObject(FormType *formP, UInt16 objIndex) {
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     debug(DEBUG_TRACE, "Form", "FrmHideObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
     FrmEraseObject(formP, objIndex, true);
   }
 }
 
 void FrmShowObject(FormType *formP, UInt16 objIndex) {
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     debug(DEBUG_TRACE, "Form", "FrmShowObject form %d object %d %s", formP->formId, objIndex, FrmObjectTypeName(formP->objects[objIndex].objectType));
     if (formP->objects[objIndex].objectType == frmListObj && formP->objects[objIndex].object.list->bitsBehind) {
       // XXX apparently it is possible to pop up a list with FrmShowObject
@@ -1585,7 +1601,7 @@ void FrmShowObject(FormType *formP, UInt16 objIndex) {
 Int16 FrmGetControlValue(const FormType *formP, UInt16 objIndex) {
   Int16 value = 0;
 
-  if (formP && objIndex < formP->numObjects) {
+  if (formP && formP->magic == FORM_MAGIC && objIndex < formP->numObjects) {
     if (formP->objects[objIndex].objectType == frmControlObj) {
       value = CtlGetValue(formP->objects[objIndex].object.control);
     }
@@ -1597,7 +1613,7 @@ Int16 FrmGetControlValue(const FormType *formP, UInt16 objIndex) {
 const Char *FrmGetTitle(const FormType *formP) {
   int i;
 
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         return (char *)FrmObjectGetField(formP->objects[i].object.title, frmTitleObj, FormTitleFieldText);
@@ -1620,7 +1636,7 @@ void FrmSetTitle(FormType *formP, Char *newTitle) {
   FormObjectType obj;
   UInt16 i, width, objIndex;
 
-  if (formP && newTitle) {
+  if (formP && formP->magic == FORM_MAGIC && newTitle) {
     for (i = 0; i < formP->numObjects; i++) {
       if (formP->objects[i].objectType == frmTitleObj) {
         debug(DEBUG_TRACE, "Form", "FrmSetTitle %d \"%s\"", formP->formId, newTitle);
@@ -1690,7 +1706,7 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
 
   buttonID = 0;
 
-  if (formP) {
+  if (formP && formP->magic == FORM_MAGIC) {
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
 
@@ -2679,6 +2695,7 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
   int len;
 
   if ((formP = pumpkin_heap_alloc(sizeof(FormType), "Form")) != NULL) {
+    formP->magic = FORM_MAGIC;
     formP->formId = formID;
     formP->attr.usable = true;
     formP->attr.enabled = true;
@@ -2983,6 +3000,11 @@ ControlType *pumpkin_create_control(uint8_t *p, int *i) {
   *i += get2b(&selBitmapId, p, *i);
   *i += get2b(&attr, p, *i);
   *i += get1(&style, p, *i);
+
+  if (textPtr > pumpkin_heap_size()) {
+    debug(DEBUG_ERROR, "Form", "pumpkin_create_control invalid textPtr 0x%08X", textPtr);
+    textPtr = 0;
+  }
 
   if (style == sliderCtl || style == feedbackSliderCtl) {
     *i += get1(&dummy8, p, *i);
@@ -3521,6 +3543,7 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
   int i, j;
 
   if ((form = pumpkin_heap_alloc(sizeof(FormType), "Form")) != NULL) {
+    form->magic = FORM_MAGIC;
     form->rsrc = p;
 
     // szRCWindowBA16 "w,w,zl,zuzuuuzuzuuzuzu8,w4,zw4,zl,u8zu3uu2u2,zl,zl"
