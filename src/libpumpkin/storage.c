@@ -4599,6 +4599,7 @@ static void StoDecodeResource(storage_handle_t *res, Boolean decoded) {
       case 'pFNT': // XXX SmallBasic defines a v1 font resource with type 'pFNT'
       case '_Fnt': // XXX HandyShop2 defines a v1 font resource with type '_Fnt'
       case 'font': // XXX TealPaint  defines a v2 font resource with type 'font'
+      case 'Font': // XXX Runes      defines a v2 font resource with type 'Font'
         get2b(&ftype, res->buf, 0);
         if (ftype == 0x9000) {
           debug(DEBUG_TRACE, "STOR", "decoding font v1 resource %s %d", st, res->d.res.id);
