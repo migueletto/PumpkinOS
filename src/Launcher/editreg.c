@@ -136,7 +136,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   UInt16 page, osversion, density, depth, heapSize, heapAlign, index, id, num, i;
   char buf[16], *text;
   Boolean littleEndian, enableSound, fastScreenWrite, armScreenWrite, lenientMemCheck;
-  Boolean handspringExt, r = false;
+  Boolean handspringExt, acceptAnyEvent, r = false;
 
   FrmSetTitle(frm, name);
 
@@ -171,7 +171,8 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   fastScreenWrite = regFlagsP ? regFlagsP->flags & regFlagFastScreenWrite : false;
   armScreenWrite  = regFlagsP ? regFlagsP->flags & regFlagARMScreenWrite  : false;
   lenientMemCheck = regFlagsP ? regFlagsP->flags & regFlagLenientMemCheck : false;
-  handspringExt   = regFlagsP ? regFlagsP->flags & regFlagHandspringExt : false;
+  handspringExt   = regFlagsP ? regFlagsP->flags & regFlagHandspringExt   : false;
+  acceptAnyEvent  = regFlagsP ? regFlagsP->flags & regFlagAcceptAnyEvent  : false;
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -246,6 +247,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, handspringExt);
 
+  // set acceptAnyEvent
+  index = FrmGetObjectIndex(frm, acceptAnyEventCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, acceptAnyEvent);
+
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == regOkBtn) {
     // update OS version
@@ -310,7 +316,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     }
     pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
-    // update fastScreenWrite, armScreenWrite and lenientMemCheck
+    // update fastScreenWrite, armScreenWrite, lenientMemCheck and acceptAnyEvent
     regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
     if (regFlagsP) MemPtrFree(regFlagsP);
 
@@ -344,6 +350,14 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
       regFlags.flags |= regFlagHandspringExt;
     } else {
       regFlags.flags &= ~regFlagHandspringExt;
+    }
+
+    index = FrmGetObjectIndex(frm, acceptAnyEventCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    if (CtlGetValue(ctl)) {
+      regFlags.flags |= regFlagAcceptAnyEvent;
+    } else {
+      regFlags.flags &= ~regFlagAcceptAnyEvent;
     }
 
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));

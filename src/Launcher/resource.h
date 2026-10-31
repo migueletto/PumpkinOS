@@ -90,6 +90,8 @@
 
 #define handspringExtLbl   3001
 #define handspringExtCtl   3002
+#define acceptAnyEventLbl  3003
+#define acceptAnyEventCtl  3004
 
 #define moveBmp     52001
 #define drawBmp     52002
