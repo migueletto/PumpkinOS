@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 
 #include "FormAccessor.h"
+#include "WindowAccessor.h"
 #include "debug.h"
 
 #define ROD_MARGIN 2
@@ -74,7 +75,7 @@ void SclDrawScrollBar(ScrollBarType *bar) {
   RGBColorType rgb;
   Int16 value, minValue, maxValue, pageSize;
   UInt16 numPages, w, h, x, y, d;
-  Boolean vertical;
+  Boolean dialog, vertical;
 
   if (bar) {
     RctSetRectFromAddr(&bounds, bar, FormScrollBarFieldRectX);
@@ -87,7 +88,9 @@ void SclDrawScrollBar(ScrollBarType *bar) {
 
     debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d bounds=(%d,%d,%d,%d)",
       minValue, value, maxValue, bounds.topLeft.x, bounds.topLeft.y, bounds.extent.x, bounds.extent.y);
-    formFill = UIColorGetTableEntryIndex(UIFormFill);
+    dialog = WinGetFlag(FrmGetWindowHandle(FrmGetActiveForm()), WindowFlagModal);
+    formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+
     oldb = WinSetBackColor(formFill);
     FrmObjectSetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 0);
 
