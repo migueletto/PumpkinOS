@@ -83,18 +83,25 @@ Boolean BmpLittleEndian(const BitmapType *bitmapP) {
 #define put2_16(a,p,i) { if (le || leBits) put2l(a, p, i); else put2b(a, p, i); }
 
 UInt32 BmpGetSetCommonField(BitmapType *bmp, BitmapSelector selector, BitmapFlagSelector flagSelector, UInt32 value, Boolean set) {
-  UInt8 *b, v8, version;
+  UInt8 *b, v8, version, depth;
   UInt16 v16;
   Boolean le;
 
   if (bmp) {
     bmp = BmpSkipEmptySlot(bmp);
-    //version = BmpGetVersion(bmp);
-    //le = BmpLittleEndian(bmp);
-    // avoid calling BmpSkipEmptySlot again
     b = (UInt8 *)bmp;
-    version = b[9] & 0x7F;
-    le = b[9] & 0x80;
+    version = b[BitmapFieldVersion] & 0x7F;
+    le = b[BitmapFieldVersion] & 0x80;
+
+    // XXX 3D Star Fighter Pilot creates a in-memory Bitmap,
+    // sets its pixel size to 8 but keeps its version at 0.
+    // the resulting bitmap is not legal, since version 0 bitmaps
+    // do not have a pixel size field, so we fix this here by
+    // pretending its version is 2 instead.
+    depth = b[BitmapFieldPixelSize];
+    if (version == 0 && depth > 1) {
+      version = 2;
+    }
 
     switch (version) {
       case 0:
@@ -1372,11 +1379,11 @@ UInt16 BmpColortableSize(const BitmapType *bitmapP) {
 }
 
 UInt8 BmpGetBitDepth(const BitmapType *bitmapP) {
-  UInt8 version, depth = 0;
+  UInt8 depth = 0;
 
   if (bitmapP) {
-    version = BmpGetVersion((BitmapType *)bitmapP);
-    depth = version == 0 ? 1 : BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldPixelSize);
+    // XXX return the pixel size field regardless of the version
+    depth = BmpGetCommonField((BitmapType *)bitmapP, BitmapFieldPixelSize);
   }
 
   return depth;
