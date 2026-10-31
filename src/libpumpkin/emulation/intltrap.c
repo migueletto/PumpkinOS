@@ -139,6 +139,24 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case intlTxtCaselessCompare: {
+      // Int16 TxtCaselessCompare(const Char *s1, UInt16 s1Len, UInt16 *s1MatchLen, const Char *s2, UInt16 s2Len, UInt16 *s2MatchLen)
+      uint32_t s1P = ARG32;
+      uint16_t s1Len = ARG16;
+      uint32_t s1MatchLenP = ARG32;
+      uint32_t s2P = ARG32;
+      uint16_t s2Len = ARG16;
+      uint32_t s2MatchLenP = ARG32;
+      char *s1 = emupalmos_trap_sel_in(s1P, sysTrapIntlDispatch, sel, 0);
+      char *s2 = emupalmos_trap_sel_in(s2P, sysTrapIntlDispatch, sel, 3);
+      UInt16 s1MatchLen, s2MatchLen;
+      Int16 res = TxtCaselessCompare(s1, s1Len, &s1MatchLen, s2, s2Len, &s2MatchLen);
+      if (s1MatchLenP) m68k_write_memory_16(s1MatchLenP, s1MatchLen);
+      if (s2MatchLenP) m68k_write_memory_16(s2MatchLenP, s2MatchLen);
+      debug(DEBUG_TRACE, "EmuPalmOS", "TxtCaselessCompare(0x%08X, %d, 0x%08X, 0x%08X, %d, 0x%08X): %d", s1P, s1Len, s1MatchLenP, s2P, s2Len, s2MatchLenP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case intlTxtCharBounds: {
       // WChar TxtCharBounds(const Char *inText, UInt32 inOffset, UInt32 *outStart, UInt32 *outEnd)
       uint32_t inTextP = ARG32;
@@ -175,7 +193,6 @@ void palmos_intltrap(uint32_t sp, uint16_t idx, uint32_t sel) {
     //case intlTxtEncodingName:
     //case intlTxtMaxEncoding:
     //case intlTxtTransliterate:
-    //case intlTxtCaselessCompare:
     //case intlTxtGetTruncationOffset:
     //case intlIntlGetRoutineAddress:
     //case intlIntlHandleEvent:
