@@ -3800,7 +3800,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
           if (!isLineBreak(c)) span--;
         }
         if ((y + th) <= bounds->extent.y) {
-          if (draw) WinDrawChars(&text[start], span, bounds->topLeft.x, bounds->topLeft.y + y);
+          if (draw) WinPaintChars(&text[start], span, bounds->topLeft.x, bounds->topLeft.y + y);
           width = FntCharsWidth(&text[start], span);
           if (maxWidth && width > *maxWidth) *maxWidth = width;
           drawn++;
@@ -3823,7 +3823,7 @@ void WinDrawCharBox(Char *text, UInt16 len, FontID font, RectangleType *bounds, 
     debug(DEBUG_TRACE, "Window", "WinDrawCharBox: end loop len=%d i=%d start=%d", len, i, start);
     if (i > start) {
       if ((y + th) <= bounds->extent.y) {
-        if (draw) WinDrawChars(&text[start], i - start, bounds->topLeft.x, bounds->topLeft.y + y);
+        if (draw) WinPaintChars(&text[start], i - start, bounds->topLeft.x, bounds->topLeft.y + y);
         width = FntCharsWidth(&text[start], i - start);
         if (maxWidth && width > *maxWidth) *maxWidth = width;
         drawn++;
