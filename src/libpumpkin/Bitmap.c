@@ -1227,10 +1227,12 @@ void *BmpGetBits(BitmapType *bitmapP) {
         break;
       case 3:
         headerSize = BitmapV3HeaderSize;
-        if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
-          headerSize += 4;
-        } else {
-          headerSize += BmpColortableSize(bitmapP);
+        if (BmpGetCommonFlag(bitmapP, BitmapFlagHasColorTable)) {
+          if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
+            headerSize += 4;
+          } else {
+            headerSize += BmpColortableSize(bitmapP);
+          }
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
           get4(&addr, (UInt8 *)bitmapP, headerSize);
@@ -1266,7 +1268,7 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
         case 3:
           if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
             get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
-            colorTable = addr ? (ColorTableType *)((uint8_t *)pumpkin_heap_base() + addr) : NULL;
+            colorTable = addr && addr < pumpkin_heap_size() ? (ColorTableType *)((uint8_t *)pumpkin_heap_base() + addr) : NULL;
           } else {
             colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV3FieldColorTable);
           }
