@@ -587,7 +587,7 @@ uint32_t palmos_systrap(uint16_t trap) {
       }
       Err res = sysErrParamErr;
       if (r == 0) {
-        res = SysAppLaunch(cardNo, dbID, launchFlags, cmd, cmdPBP ? &param : NULL, resultP ? &l_resultP : NULL);
+        res = SysAppLaunch(cardNo, dbID, launchFlags, cmd, cmdPBP ? &param : NULL, &l_resultP);
       } else {
         debug(DEBUG_TRACE, "EmuPalmOS", "SysAppLaunch invalid param type %d", cmd);
       }
