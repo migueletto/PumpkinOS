@@ -116,16 +116,20 @@ void palmos_FtrSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       Err err = FtrGet(creator, featureNum, &value);
       int osversion = pumpkin_get_osversion();
     
-      if (creator == sysFileCSystem && featureNum == sysFtrNumProcessorID && err == errNone && osversion >= 50) {
+      if (creator == sysFileCSystem && featureNum == sysFtrNumProcessorID && err == errNone) {
+        if (osversion >= 50) {
 #ifdef ARMEMU
-        // If the processor is 68K, Cubis writes directly to the display bitmap. It works ONLY if the display is 8bpp.
-        //value = sysFtrNumProcessorEZ;
+          // If the processor is 68K, Cubis writes directly to the display bitmap. It works ONLY if the display is 8bpp.
+          //value = sysFtrNumProcessorEZ;
     
-        // If the processor is ARM, Cubis does not write directly to the display bitmap. It works both on 8pp and 16bpp. No hooks are necessary.
-        value = sysFtrNumProcessorARM720T;
+          // If the processor is ARM, Cubis does not write directly to the display bitmap. It works both on 8pp and 16bpp. No hooks are necessary.
+          value = sysFtrNumProcessorARM720T;
 #else
-        value = sysFtrNumProcessorEZ;
+          value = sysFtrNumProcessorEZ;
 #endif
+        } else {
+          value = sysFtrNumProcessorEZ;
+        }
       }
     
       char *name;
