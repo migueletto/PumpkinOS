@@ -50,6 +50,7 @@ struct emu_internal_state_t {
 
   Boolean fastScreenWrite;
   Boolean lenientMemCheck;
+  Boolean acceptAnyEvent;
   Boolean regionStarted;
   Coord firstY, lastY, firstX, lastX;
 
@@ -634,6 +635,7 @@ void encode_appinfo(uint32_t appInfoP, AppInfoType *appInfo) {
 }
 
 void decode_event(uint32_t eventP, EventType *event) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a, i;
   char buf[256];
@@ -853,7 +855,7 @@ void decode_event(uint32_t eventP, EventType *event) {
         inetEvent->data.inetSockStatusChange.context = m68k_read_memory_32(eventP + 12);
         inetEvent->data.inetSockStatusChange.status = m68k_read_memory_16(eventP + 16);
         inetEvent->data.inetSockStatusChange.sockErr = m68k_read_memory_16(eventP + 18);
-      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
+      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256) && !state->istate->acceptAnyEvent) {
         sys_snprintf(buf, sizeof(buf)-1, "decode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
@@ -880,6 +882,7 @@ void encode_gadget(uint32_t gadgetP, FormGadgetType *gadget) {
 }
 
 void encode_event(uint32_t eventP, EventType *event) {
+  emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint8_t *ram = pumpkin_heap_base();
   uint32_t a, i;
   char buf[256];
@@ -1084,7 +1087,7 @@ void encode_event(uint32_t eventP, EventType *event) {
         m68k_write_memory_32(eventP +  12, inetEvent->data.inetSockStatusChange.context);
         m68k_write_memory_16(eventP +  16, inetEvent->data.inetSockStatusChange.status);
         m68k_write_memory_16(eventP +  18, inetEvent->data.inetSockStatusChange.sockErr);
-      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256)) {
+      } else if (event->eType < firstUserEvent && !(event->eType >= firstWebLibEvent && event->eType < firstWebLibEvent + 256) && !state->istate->acceptAnyEvent) {
         sys_snprintf(buf, sizeof(buf)-1, "encode event %s (%d) incomplete", EvtGetEventName(event->eType), event->eType);
         emupalmos_panic(buf, EMUPALMOS_UNDECODED_EVENT);
       } else {
@@ -2170,6 +2173,7 @@ static emu_state_t *emupalmos_new(void) {
       if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
         state->istate->fastScreenWrite = regFlagsP->flags & regFlagFastScreenWrite;
         state->istate->lenientMemCheck = regFlagsP->flags & regFlagLenientMemCheck;
+        state->istate->acceptAnyEvent = regFlagsP->flags & regFlagAcceptAnyEvent;
         MemPtrFree(regFlagsP);
       }
 
