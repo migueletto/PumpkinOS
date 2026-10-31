@@ -256,6 +256,20 @@ void HRWinEraseChars(UInt16 refNum, const Char *chars, Int16 len, Coord x, Coord
 }
 
 void HRWinEraseLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinEraseLine(x1, y1, x2, y2);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinEraseLine(x1, y1, x2, y2); 
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  } 
 }
 
 void HRWinErasePixel(UInt16 refNum, Coord x, Coord y) {
@@ -548,7 +562,16 @@ HRFontID HRFntGetFont(UInt16 refNum) {
 }
 
 HRFontID HRFntSetFont(UInt16 refNum, HRFontID font) {
-  return 0;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  HRFontID old = 0;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    old = FntSetFont(font); // XXX
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return old;
 }
 
 HRFontID HRFontSelect(UInt16 refNum, HRFontID font) {

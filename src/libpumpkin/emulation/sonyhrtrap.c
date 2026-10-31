@@ -147,6 +147,17 @@ void palmos_sonyhrtrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinFillLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
       }
       break;
+    case HRTrapWinEraseLine: {
+      //void HRWinEraseLine(UInt16 refNum, Coord x1, Coord y1, Coord x2, Coord y2)
+      uint16_t refNum = ARG16;
+      int16_t x1 = ARG16;
+      int16_t y1 = ARG16;
+      int16_t x2 = ARG16;
+      int16_t y2 = ARG16;
+      HRWinEraseLine(refNum, x1, y1, x2, y2);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinEraseLine(%u, x1=%d, y1=%d, x2=%d, y2=%d)", refNum, x1, y1, x2, y2);
+      }
+      break;
     case HRTrapWinDrawPixel: {
       //void HRWinDrawPixel(UInt16 refNum, Coord x, Coord y)
       uint16_t refNum = ARG16;
@@ -389,6 +400,15 @@ void palmos_sonyhrtrap(uint16_t trap) {
       char *chars = emupalmos_trap_in(charsP, trap, 1);
       UInt16 r = HRFntWordWrap(refNum, chars, maxWidth);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRFntWordWrap(%u, chars=0x%08X [%s], maxWidth=%u): %u", refNum, charsP, chars, maxWidth, r);
+      m68k_set_reg(M68K_REG_D0, r);
+      }
+      break;
+    case HRTrapFntSetFont: {
+      // HRFontID HRFntSetFont(UInt16 refNum, HRFontID font)
+      uint16_t refNum = ARG16;
+      uint8_t font = ARG8;
+      HRFontID r = HRFntSetFont(refNum, font);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRFntSetFont(%u, font=%u): %u", refNum, font, r);
       m68k_set_reg(M68K_REG_D0, r);
       }
       break;
