@@ -1653,10 +1653,9 @@ int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint
 }
 
 int pumpkin_kill(uint32_t tid) {
-  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   int i, r = -1;
 
-  if (task->taskId == 1) {
+  if (tid > 1 && !pumpkin_is_m68k()) {
     if (mutex_lock(mutex) == 0) {
       for (i = 0; i < MAX_TASKS; i++) {
         if (pumpkin_module.tasks[i].active && tid == pumpkin_module.tasks[i].taskId) {
