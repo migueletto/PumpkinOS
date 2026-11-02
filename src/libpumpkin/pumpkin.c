@@ -119,6 +119,7 @@ typedef struct {
   int removed;
   int paused;
   int reserved;
+  int finish;
   int screen_ptr;
   int dx, dy;
   int width, height;
@@ -1652,13 +1653,34 @@ int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint
 }
 
 int pumpkin_kill(uint32_t tid) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   int i, r = -1;
+
+  if (task->taskId == 1) {
+    if (mutex_lock(mutex) == 0) {
+      for (i = 0; i < MAX_TASKS; i++) {
+        if (pumpkin_module.tasks[i].active && tid == pumpkin_module.tasks[i].taskId) {
+          pumpkin_module.tasks[i].finish = 1;
+          thread_end(TAG_APP, pumpkin_module.tasks[i].handle);
+          r = 0;
+          break;
+        }
+      }
+      mutex_unlock(mutex);
+    }
+  }
+
+  return r;
+}
+
+int pumpkin_killed(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  int i, r = 0;
 
   if (mutex_lock(mutex) == 0) {
     for (i = 0; i < MAX_TASKS; i++) {
-      if (pumpkin_module.tasks[i].active && tid == pumpkin_module.tasks[i].taskId) {
-        thread_end(TAG_APP, pumpkin_module.tasks[i].handle);
-        r = 0;
+      if (pumpkin_module.tasks[i].active && pumpkin_module.tasks[i].taskId == task->taskId) {
+        r = pumpkin_module.tasks[i].finish;
         break;
       }
     }

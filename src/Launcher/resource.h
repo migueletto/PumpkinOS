@@ -13,6 +13,7 @@
 #define ReducedMainMenu    1002
 #define AppListMenu        1003
 #define ReducedAppListMenu 1004
+#define TaskMenu           1005
 
 #define ErrorAlert     1001
 #define InfoAlert      1002
@@ -123,5 +124,6 @@
 #define runCmd     10
 #define delCmd     11
 #define forkCmd    12
+#define killCmd    13
 
 #define fakeMonoFont 128

@@ -168,7 +168,7 @@ void emupalmos_finish(int f) {
 
 int emupalmos_finished(void) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  return state->istate->finish || state->istate->panic;
+  return state->m68k_state.finish || state->istate->finish || state->istate->panic;
 }
 
 void emupalmos_panic(char *msg, int code) {
@@ -179,7 +179,6 @@ void emupalmos_panic(char *msg, int code) {
   if (state->istate->panic == NULL) {
     state->istate->panic = sys_strdup(msg);
   }
-  state->m68k_state.finish = 1;
   emupalmos_finish(1);
 
   pumpkin_crash_log(code, msg);
@@ -1605,7 +1604,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     m68k_set_instr_hook2_callback(cpu_instr_callback2);
 
     m68k_state = m68k_get_state();
-    for (; !emupalmos_finished() && !thread_must_end();) {
+    for (; !emupalmos_finished() && !thread_must_end() && !pumpkin_killed();) {
       if (pumpkin_audio_check(-1)) {
         EvtPumpEvents(0);
       }
@@ -2848,7 +2847,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         creator = pumpkin_get_app_creator();
         logtrap_install(state, creator);
         emupalmos_finish(0);
-        for (; !emupalmos_finished() && !thread_must_end();) {
+        for (; !emupalmos_finished() && !thread_must_end() && !pumpkin_killed();) {
           if (pumpkin_audio_check(-1)) {
             EvtPumpEvents(0);
           }

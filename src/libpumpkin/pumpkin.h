@@ -284,6 +284,7 @@ int pumpkin_launcher(char *name, int width, int height);
 int pumpkin_launch(launch_request_t *request);
 int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *data), void *data);
 int pumpkin_kill(uint32_t tid);
+int pumpkin_killed(void);
 uint32_t pumpkin_get_taskid(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);

@@ -121,6 +121,7 @@ typedef struct {
   Boolean useTaskbar, appCrashed, appQuit;
   Boolean armPluginWarning;
   Int16 lastTopItem;
+  IndexedColorType black, mainColor, m68kColor, nativeColor;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -956,6 +957,7 @@ static void launcherScanTasks(launcher_data_t *data) {
   data->cellHeight = FntCharHeight() + 2;
   data->cellWidth = data->gadRect.extent.x;
   FntSetFont(old);
+  data->prev = -1;
 
   data->numItems = 0;
   pumpkin_ps(ps_callback, data);
@@ -1126,10 +1128,13 @@ static int printColumn(launcher_data_t *data, launcher_item_t *item, char *label
 static void paintBitmap(UInt16 id, Coord x, Coord y) {
   BitmapType *bmp;
   MemHandle h;
+  UInt16 old;
 
   if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
     if ((bmp = MemHandleLock(h)) != NULL) {
+      old = WinSetDrawMode(winOverlay);
       WinPaintBitmap(bmp, x, y);
+      WinSetDrawMode(old);
       MemHandleUnlock(h);
     }
     DmReleaseResource(h);
@@ -1145,11 +1150,10 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
 
   if (item) {
     FntSetFont(stdFont);
-    RctSetRectangle(&rect, x, y, 11, data->cellHeight);
-    WinEraseRectangle(&rect, 0);
-    setBackColor(WHITE);
+    if (bmpId == 0xffff) setBackColor(WHITE);
     RctSetRectangle(&rect, x, y, data->cellHeight, data->cellHeight);
     WinEraseRectangle(&rect, 0);
+    setBackColor(inverted ? BLACK : WHITE);
     if (bmpId == 0xffff) {
       if (item->iconWh) {
         RctSetRectangle(&rect, 0, 0, data->cellHeight, data->cellHeight);
@@ -1158,11 +1162,6 @@ static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *la
       }
     } else if (bmpId > 0) {
       paintBitmap(bmpId, x, y);
-    }
-    if (inverted) {
-      setBackColor(BLACK);
-    } else {
-      setBackColor(WHITE);
     }
     RctSetRectangle(&rect, x+11, y, 4, data->cellHeight);
     WinEraseRectangle(&rect, 0);
@@ -1256,12 +1255,24 @@ static void printFile(launcher_data_t *data, launcher_item_t *item, int x, int y
 
 static void printTask(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
   char buf[32];
+  IndexedColorType old;
 
   firstColumn(data, x, y, inverted);
   if (item) StrNPrintF(buf, sizeof(buf)-1, "%u", item->id);
   x = printColumn(data, item, "ID", item ? buf : NULL, x, y, 5 * FntCharWidth('0'), true, inverted);
   x = spaceColumn(data, x, y, 10);
-  x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? (item->m68k ? m68kBmp : pumpkinBmp) : 0, x, y, 28 * FntCharWidth('a'), inverted);
+  //x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? (item->m68k ? m68kBmp : pumpkinBmp) : 0, x, y, 28 * FntCharWidth('a'), inverted);
+  if (item == NULL) {
+    old = WinSetForeColor(data->black);
+  } else if (item->id == 0) {
+    old = WinSetForeColor(data->mainColor);
+  } else if (item->m68k) {
+    old = WinSetForeColor(data->m68kColor);
+  } else {
+    old = WinSetForeColor(data->nativeColor);
+  }
+  x = printBmpColumn(data, item, "Name", item ? item->name : NULL, item ? pumpkinBmp : 0, x, y, 28 * FntCharWidth('a'), inverted);
+  WinSetForeColor(old);
   x = spaceColumn(data, x, y, 10);
   x = printColumn(data, item, "Heap", item ? item->info : NULL, x, y, 12 * FntCharWidth('0'), true, inverted);
   lastColumn(data, x, y);
@@ -1825,9 +1836,15 @@ static Boolean ItemsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, vo
               x = gad->rect.topLeft.x + col * iw;
               y = gad->rect.topLeft.y + 2 + row * ih;
               if (event->eType == frmGadgetEnterEvent) {
-                printTask(data, &data->item[i], x, y, true);
-              } else {
-                printTask(data, &data->item[i], x, y, false);
+                if (i != data->prev) {
+                  if (data->prev >= 0) {
+                    printTask(data, &data->item[data->prev], data->prevX, data->prevY, false);
+                  }
+                  printTask(data, &data->item[i], x, y, true);
+                  data->prev = i;
+                  data->prevX = x;
+                  data->prevY = y;
+                }
               }
             }
           }
@@ -2535,14 +2552,16 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
       break;
     case taskCmd:
       if (pumpkin_get_mode() == 0) {
-        data->mode = launcher_task;
-        data->sort = 0;
-        data->dir = 0;
         frm = FrmGetActiveForm();
+        if (data->mode != launcher_task) {
+          data->mode = launcher_task;
+          data->sort = 0;
+          data->dir = 0;
+        }
         launcherScan(data);
         refresh(frm, data);
         UpdateStatus(frm, data, true);
-        FrmSetMenu(frm, pumpkin_get_mode() == 0 ? MainMenu : ReducedMainMenu);
+        FrmSetMenu(frm, TaskMenu);
       }
       break;
     case runCmd:
@@ -2574,6 +2593,13 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
           editRegistry(frm, data->item[data->prev].creator, data->item[data->prev].name);
           FrmDeleteForm(frm);
         }
+      }
+      break;
+    case killCmd:
+      if (data->mode == launcher_task && data->prev >= 0 && data->item[data->prev].creator != AppID && data->item[data->prev].m68k) {
+        pumpkin_kill(data->item[data->prev].id);
+      } else {
+        FrmCustomAlert(ErrorAlert, "This task can not be killed.", "", "");
       }
       break;
     case forkCmd:
@@ -3146,6 +3172,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 {
   launcher_data_t *data;
   FormType *formP;
+  RGBColorType rgb;
   UInt32 value;
 
   switch (cmd) {
@@ -3215,6 +3242,18 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   data->lastMinute = -1;
   data->mode = launcher_app;
   data->filterId = 0xffffffff;
+
+  rgb.index = 0;
+  rgb.r = rgb.g = rgb.b = 0;
+  data->black = WinRGBToIndex(&rgb);
+  rgb.r = rgb.g = rgb.b = 128;
+  data->mainColor = WinRGBToIndex(&rgb);
+  rgb.g = rgb.b = 0;
+  rgb.r = 255;
+  data->m68kColor = WinRGBToIndex(&rgb);
+  rgb.r = rgb.b = 0;
+  rgb.g = 128;
+  data->nativeColor = WinRGBToIndex(&rgb);
 
   FntLoadFont(fontExtRscType, fakeFnt, fakeMonoFont);
 
