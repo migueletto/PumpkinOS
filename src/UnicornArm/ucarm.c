@@ -37,6 +37,7 @@ struct arm_emu_t {
   int disasm;
   uint32_t reg[16];
   uint32_t monitored;
+  uint32_t killCheck;
 
   int armScreenWrite;
   uint32_t displayStartAddr, displayEndAddr;
@@ -115,10 +116,11 @@ static void ucarmHookCode(uc_engine *uc, uint64_t address, uint32_t size, void *
     debug(DEBUG_TRACE, "ARM", "ucarmHookCode return to 0x%08X", lr);
     ucarmSetReg(arm, 15, lr);
 
-    if (emupalmos_finished()) {
+    if (emupalmos_finished() || ((arm->killCheck & 0x10) && pumpkin_killed())) {
       uc_emu_stop(uc);
       ucarmSetReg(arm, 15, arm->returnAddr);
     }
+    arm->killCheck++;
     return;
   }
 
