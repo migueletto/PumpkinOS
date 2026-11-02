@@ -1448,26 +1448,28 @@ static int ps_callback(int i, uint32_t id, char *name, int m68k, uint32_t heapUs
   char tid[8], stype[8], screator[8];
   UInt32 type, creator;
   LocalID dbID;
-  Int16 r = -1;
 
   dbID = DmFindDatabase(0, name);
   if (dbID && DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &type, &creator) == errNone) {
-    sys_snprintf(tid, sizeof(tid)-1, "%3u", id);
-    command_puts(idata, tid);
-    command_putc(idata, ' ');
     pumpkin_id2s(type, stype);
-    command_puts(idata, stype);
-    command_putc(idata, ' ');
     pumpkin_id2s(creator, screator);
-    command_puts(idata, screator);
-    command_puts(idata, "    ");
-    command_puts(idata, name);
-    command_putc(idata, '\r');
-    command_putc(idata, '\n');
-    r = 0;
+  } else {
+    StrCopy(stype, "    ");
+    StrCopy(screator, "    ");
   }
 
-  return r;
+  sys_snprintf(tid, sizeof(tid)-1, "%3u", id);
+  command_puts(idata, tid);
+  command_putc(idata, ' ');
+  command_puts(idata, stype);
+  command_putc(idata, ' ');
+  command_puts(idata, screator);
+  command_puts(idata, "    ");
+  command_puts(idata, name);
+  command_putc(idata, '\r');
+  command_putc(idata, '\n');
+
+  return 0;
 }
 
 static int command_script_ps(int pe, void *data) {
