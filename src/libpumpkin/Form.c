@@ -121,29 +121,13 @@ static const char *FrmObjectTypeName(UInt16 type) {
 
 static void FrmCenterForm(FormType *formP) {
   UInt32 swidth, sheight;
-  UInt16 index;
-  Coord x1, y1, x2, y2, dx, dy;
-  FormObjectType obj;
+  Coord x, y;
 
   WinScreenMode(winScreenModeGet, &swidth, &sheight, NULL, NULL);
-  x1 = WinGetField(&formP->window, WindowFieldWindowBoundsX);
-  x2 = (swidth  - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW)) / 2;
-  y1 = WinGetField(&formP->window, WindowFieldWindowBoundsY);
-  y2 = (sheight - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH)) / 2;
-  WinSetField(&formP->window, WindowFieldWindowBoundsX, x2);
-  WinSetField(&formP->window, WindowFieldWindowBoundsY, y2);
-  dx = x2 - x1;
-  dy = y2 - y1;
-
-  for (index = 0; index < formP->numObjects; index++) {
-    if (formP->objects[index].objectType == frmListObj) {
-      obj = formP->objects[index].object;
-      x1 = WinGetField(obj.list->popupWin, WindowFieldWindowBoundsX);
-      y1 = WinGetField(obj.list->popupWin, WindowFieldWindowBoundsY);
-      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsX, x1 + dx);
-      WinSetField(obj.list->popupWin, WindowFieldWindowBoundsY, y1 + dy);
-    }
-  }
+  x = (swidth  - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW)) / 2;
+  y = (sheight - (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsH)) / 2;
+  WinSetField(&formP->window, WindowFieldWindowBoundsX, x);
+  WinSetField(&formP->window, WindowFieldWindowBoundsY, y);
 }
 
 Boolean FrmGetCenterDialogs(void) {
