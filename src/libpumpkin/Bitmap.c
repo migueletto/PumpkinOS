@@ -2466,7 +2466,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
 static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
   UInt8 *bits, old, r1, g1, b1, r2, g2, b2, fg, bg;
   UInt32 offset, dataSize;
-  UInt16 rgb, c1, c2, c3, c4;
+  UInt16 c1, c2, c3, c4;
   UInt16 rowBytes = 0;
 
   BmpGetDimensions(dst, NULL, NULL, &rowBytes);
@@ -2533,23 +2533,22 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       break;
     case winInvertPixels: // special mode for inverting buttons on color screens
       old = bits[offset];
-      BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
       WinGetInvertColors(&c1, &c2, &c3, &c4);
       if (c1 == c3 && c2 == c4) {
+        BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
         r1 ^= 0xff;
         g1 ^= 0xff;
         b1 ^= 0xff;
         b = BmpRGBToIndex(r1, g1, b1, colorTable);
         BmpSetBit8(offset, dataSize, b, dbl);
       } else {
-        rgb = rgb565(r1, g1, b1);
-        if (rgb == c1) {
+        if (old == c1) {
           BmpSetBit8(offset, dataSize, c3, dbl);
-        } else if (rgb == c2) {
+        } else if (old == c2) {
           BmpSetBit8(offset, dataSize, c4, dbl);
-        } else if (rgb == c3) {
+        } else if (old == c3) {
           BmpSetBit8(offset, dataSize, c1, dbl);
-        } else if (rgb == c4) {
+        } else if (old == c4) {
           BmpSetBit8(offset, dataSize, c2, dbl);
         }
       }

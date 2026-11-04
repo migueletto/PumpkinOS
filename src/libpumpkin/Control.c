@@ -39,7 +39,7 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
   return ctlP;
 }
 
-static void CtlInvertControl(ControlType *controlP) {
+static void CtlInvertControl(ControlType *controlP, Boolean selected) {
   RectangleType bounds;
 
   controlP = CtlCheckControl(controlP);
@@ -48,7 +48,11 @@ static void CtlInvertControl(ControlType *controlP) {
       MemMove(&bounds, &controlP->bounds, sizeof(RectangleType));
       // XXX Lemmings: "pause" button is rendered incorrectly if this test is made
       if (controlP->text && controlP->text[0]) {
-        WinSetInvertColors(-1, -1, -1, -1);
+        if (selected) {
+          WinSetInvertColors(-1, -1, -1, -1);
+        } else {
+          WinSetInvertColors(-2, -2, -2, -2);
+        }
       }
 
       // invert area of the control
@@ -666,7 +670,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
 
           if (controlP->style == buttonCtl) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 1", controlP->id);
-            CtlInvertControl(controlP);
+            CtlInvertControl(controlP, true);
           }
 
           MemSet(&event, sizeof(EventType), 0);
@@ -745,7 +749,7 @@ Boolean CtlHandleEvent(ControlType *controlP, EventType *pEvent) {
             debug(DEBUG_TRACE, "Control", "CtlHandleEvent inverting control %d to 0", controlP->id);
             controlP->attr.on = false;
             if (controlP->style == buttonCtl) {
-              CtlInvertControl(controlP);
+              CtlInvertControl(controlP, false);
             } else {
               CtlDrawControl(controlP);
             }
