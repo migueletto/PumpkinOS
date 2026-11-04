@@ -2158,7 +2158,9 @@ static void UpdateStatus(FormPtr frm, launcher_data_t *data, Boolean title) {
   t = TimGetSeconds();
   TimSecondsToDateTime(t, &dt);
   if (dt.minute != data->lastMinute) {
-    update = true;
+    if (MenuGetActiveMenu() == NULL) {
+      update = true;
+    }
     data->lastMinute = dt.minute;
   }
 
@@ -2807,6 +2809,7 @@ static Boolean MainFormHandleEvent(EventPtr event) {
         data->topItem = data->numItems-1;
       }
       if (data->topItem != data->lastTopItem) {
+        data->prev = -1;
         gad = (FormGadgetTypeInCallback *)FrmGetObjectPtr(frm, gadIndex);
         ItemsGadgetCallback(gad, formGadgetDrawCmd, NULL);
         data->lastTopItem = data->topItem;
