@@ -3871,6 +3871,7 @@ void WinSetInvertColors(Int16 c1, Int16 c2, Int16 c3, Int16 c4) {
    c2 = UIColorGetTableEntryIndex(UIObjectForeground);
    c3 = UIColorGetTableEntryIndex(UIObjectSelectedFill);
    c4 = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
+   convert = true;
   } else if (c1 == -2) {
    c3 = UIColorGetTableEntryIndex(UIObjectFill);
    c4 = UIColorGetTableEntryIndex(UIObjectForeground);
