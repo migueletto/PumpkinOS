@@ -1973,11 +1973,11 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   BitmapType *windowBitmap, *displayBitmap;
   RectangleType srcRect;
   UInt16 windowDensity, bitmapDensity, displayDensity, bitmapDepth, windowDepth, displayDepth;
-  UInt32 tcw, bcw, tcd, bcd, transparentValue, t1, t2;
+  UInt32 tcw, bcw, transparentValue, t1, t2;
   Coord i, j, iw, id, remwx, remwy, remdx, remdy;
   Coord x1, y1, x2, y2, wx, wy, dx, dy, dx0, wx0, x0, y0;
   BitmapCompressionType compression;
-  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, blitDisplay, delete, dblw, dbld, hlfw, hlfd, display, scaleBitmapOff, ok;
+  Boolean windowEndianness, bitmapEndianness, displayEndianness, bitmapTransp, delete, dblw, dbld, hlfw, hlfd, display, scaleBitmapOff, ok;
   char wbuf[64], bbuf[32];
 
   if (bitmapP && wh && rect) {
@@ -1990,7 +1990,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     displayDepth = BmpGetBitDepth(displayBitmap);
     displayDensity = BmpGetDensity(displayBitmap);
     displayEndianness = BmpGetLittleEndianBits(displayBitmap);
-    blitDisplay = wh == module->activeWindow && wh != module->displayWindow;
 
     scaleBitmapOff = (module->drawState.scalingMode & kBitmapScalingOff) != 0;
 
@@ -2074,17 +2073,12 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       if (ok) {
         // it is possible to use fast copy
         t1 = sys_get_clock();
-/*
-        if (blitDisplay) {
-          WinCopyBitmap(bitmapP, module->displayWindow, &srcRect, x0 + dx, y0 + dy);
-        }
-*/
         WinCopyBitmap(bitmapP, wh, &srcRect, wx, wy);
         t2 = sys_get_clock();
-        debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) cp=%d",
+        debug(DEBUG_TRACE, "Window", "WinBlitBitmap fast %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s)",
           (uint32_t)(t2 - t1),
           mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
-          wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), blitDisplay);
+          wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)));
 
         if (delete) BmpDelete(bitmapP);
         return;
@@ -2127,13 +2121,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
 
     if (text) {
       tcw = windowDepth  == 16 ? module->textColor565 : module->drawState.textColor;
-      tcd = displayDepth == 16 ? module->textColor565 : module->drawState.textColor;
     } else {
       tcw = windowDepth  == 16 ? module->foreColor565 : module->drawState.foreColor;
-      tcd = displayDepth == 16 ? module->foreColor565 : module->drawState.foreColor;
     }
     bcw = windowDepth  == 16 ? module->backColor565 : module->drawState.backColor;
-    bcd = displayDepth == 16 ? module->backColor565 : module->drawState.backColor;
 
     pumpkin_dirty_region_mode(dirtyRegionBegin);
 
@@ -2146,11 +2137,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       for (j = 0; j < srcRect.extent.x; j++) {
         if (CLIP_OK(x1, x2, y1, y2, wx, wy)) {
           WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, wh, x0 + wx, y0 + wy, mode, dblw, text, tcw, bcw, wh == module->activeWindow || display);
-/*
-          if (blitDisplay) {
-            WinCopyBit(bitmapP, srcRect.topLeft.x + j, srcRect.topLeft.y + i, module->displayWindow, x0 + dx, y0 + dy, mode, dbld, text, tcd, bcd, false);
-          }
-*/
         }
         switch (iw) {
           case 0: wx += remwx; remwx = 1-remwx; break;
@@ -2175,10 +2161,10 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       }
     }
     t2 = sys_get_clock();
-    debug(DEBUG_TRACE, "Window", "WinBlitBitmap slow %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) coord=%d dbl=%d cp=%d",
+    debug(DEBUG_TRACE, "Window", "WinBlitBitmap slow %uus mode=%d bmp=(%d,%d,%d,%d %s txt=%d) win=(%d,%d %s) coord=%d dbl=%d",
       (uint32_t)(t2 - t1),
       mode, srcRect.topLeft.x, srcRect.topLeft.y, srcRect.extent.x, srcRect.extent.y, BmpGetDescr(bitmapP, bbuf, sizeof(bbuf)), text,
-      wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), module->drawState.coordinateSystem, dblw, blitDisplay);
+      wx, wy, WinGetDescr(wh, wbuf, sizeof(wbuf)), module->drawState.coordinateSystem, dblw);
 
     pumpkin_dirty_region_mode(dirtyRegionEnd);
     if (delete) BmpDelete(bitmapP);
