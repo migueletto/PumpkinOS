@@ -252,7 +252,9 @@ static int command_getchar(void *data) {
     if (MenuHandleEvent(NULL, &event, &err)) continue;
     if (event.eType == appStopEvent) break;
     if (event.eType == nilEvent) {
-      pterm_cursor_blink(idata->t);
+      if (!MenuGetActiveMenu()) {
+        pterm_cursor_blink(idata->t);
+      }
       continue;
     }
     if (event.eType == keyDownEvent && !(event.data.keyDown.modifiers & commandKeyMask)) {
@@ -731,7 +733,9 @@ static Boolean MainFormHandleEvent(EventType *event) {
       break;
 
     case nilEvent:
-      pterm_cursor_blink(idata->t);
+      if (!MenuGetActiveMenu()) {
+        pterm_cursor_blink(idata->t);
+      }
       handled = true;
       break;
 

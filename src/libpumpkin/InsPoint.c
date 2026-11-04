@@ -147,7 +147,9 @@ void InsPtCheckBlink(void) {
     if ((t - module->lastBlink) >= module->tps / 2) {
       module->on = !module->on;
 //debug(1, "XXX", "InsPtCheckBlink %d", module->on);
-      drawCursor(module->on);
+      if (!MenuGetActiveMenu()) {
+        drawCursor(module->on);
+      }
       module->lastBlink = t;
     }
   }

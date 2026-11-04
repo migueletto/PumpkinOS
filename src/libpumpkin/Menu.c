@@ -460,6 +460,7 @@ Boolean MenuHandleEvent(MenuBarType *menuP, EventType *event, UInt16 *error) {
               MenuDrawMenu(menuP);
               menuP->attr.visible = 1;
               openMenuEvents(menuP);
+              handled = true;
             }
           }
         }
