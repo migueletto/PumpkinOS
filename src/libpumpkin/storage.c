@@ -2279,8 +2279,10 @@ static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resI
     }
 
     if (!found) {
-      pumpkin_id2s(type, st);
-      debug(DEBUG_INFO, "STOR", "DmGetResourceEx resource %s %d not found", st, resID);
+      if (type != omOverlayRscType) {
+        pumpkin_id2s(type, st);
+        debug(DEBUG_INFO, "STOR", "DmGetResourceEx resource %s %d not found", st, resID);
+      }
       err = errNone;
       h = NULL;
     }
