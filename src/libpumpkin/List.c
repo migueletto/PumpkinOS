@@ -517,6 +517,7 @@ Int16 LstPopupList(ListType *listP) {
   debug(DEBUG_TRACE, "List", "LstPopupList begin");
   if (listP) {
     listP->attr.poppedUp = 1;
+    LstMakeItemVisible(listP, LstGetSelection(listP));
     LstDrawList(listP);
     prevDraw = WinSetDrawWindow(listP->popupWin);
 
