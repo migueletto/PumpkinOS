@@ -4,6 +4,11 @@
 #include "resource.h"
 #include "debug.h"
 
+typedef struct {
+  UInt16 index;
+  char name[kMaxCountryNameLen+1];
+} country_t;
+
 static UInt16 parseVersion(char *text) {
   int major, minor;
   UInt16 version = 0;
@@ -124,14 +129,25 @@ static Boolean eventHandler(EventType *event) {
   return handled;
 }
 
+static Int32 compareCountry(void *e1, void *e2, void *otherP) {
+  country_t *c1 = (country_t *)e1;
+  country_t *c2 = (country_t *)e2;
+
+  return StrCompare(c1->name, c2->name);
+}
+
 Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
   RegHeapType regHeap, *regHeapP;
   RegRunFlagsType regRunFlags, *regRunFlagsP;
   RegFlagsType regFlags, *regFlagsP;
+  RegLocaleType regLocale, *regLocaleP;
   ListType *lst;
   ControlType *ctl;
+  UInt16 numLocales, locale;
+  country_t *countries;
+  char **countryNames;
   UInt32 regSize;
   UInt16 page, osversion, density, depth, heapSize, heapAlign, index, id, num, i;
   char buf[16], *text;
@@ -140,7 +156,6 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
   FrmSetTitle(frm, name);
 
-  // set 1st page
   index = FrmGetObjectIndex(frm, regPage1Ctl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, 1);
@@ -173,6 +188,10 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   lenientMemCheck = regFlagsP ? regFlagsP->flags & regFlagLenientMemCheck : false;
   handspringExt   = regFlagsP ? regFlagsP->flags & regFlagHandspringExt   : false;
   acceptAnyEvent  = regFlagsP ? regFlagsP->flags & regFlagAcceptAnyEvent  : false;
+
+  regLocaleP = pumpkin_reg_get(creator, regLocaleID, &regSize);
+  locale = regLocaleP ? regLocaleP->locale : 0xffff;
+  if (regLocaleP) MemPtrFree(regLocaleP);
 
   // set OS version
   index = FrmGetObjectIndex(frm, osList);
@@ -251,6 +270,41 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   index = FrmGetObjectIndex(frm, acceptAnyEventCtl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, acceptAnyEvent);
+
+  // set locale
+  numLocales = LmGetNumLocales();
+  countryNames = MemPtrNew((numLocales + 1) * sizeof(char *));
+  countries = MemPtrNew((numLocales + 1) *  sizeof(country_t));
+
+  countries[0].index = 0xffff;
+  StrCopy(countries[0].name, "(default)");
+  for (i = 0; i < numLocales; i++) {
+    countries[i+1].index = i;
+    LmGetLocaleSetting(i, lmChoiceCountryName, countries[i+1].name, kMaxCountryNameLen+1);
+  }
+  SysQSortP(&countries[1], numLocales, sizeof(country_t), compareCountry, NULL);
+
+  for (i = 0; i < numLocales + 1; i++) {
+    countryNames[i] = countries[i].name;
+  }
+
+  if (locale == 0xffff) {
+    i = 0;
+  } else {
+    for (i = 1; i <= numLocales; i++) {
+      if (locale == countries[i].index) break;
+    }
+    if (i > numLocales) i = 0;
+  }
+
+  index = FrmGetObjectIndex(frm, localeCtl);
+  ctl = (ControlType *)FrmGetObjectPtr(frm, index);
+  CtlSetLabel(ctl, countryNames[i]);
+
+  index = FrmGetObjectIndex(frm, localeLst);
+  lst = (ListType *)FrmGetObjectPtr(frm, index);
+  LstSetListChoices(lst, countryNames, numLocales+1);
+  LstSetSelection(lst, i);
 
   FrmSetEventHandler(frm, eventHandler);
   if (FrmDoDialog(frm) == regOkBtn) {
@@ -362,8 +416,18 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
 
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
 
+    // update locale
+    index = FrmGetObjectIndex(frm, localeLst);
+    lst = FrmGetObjectPtr(frm, index);
+    i = LstGetSelection(lst);
+    regLocale.locale = countries[i].index;
+    pumpkin_reg_set(creator, regLocaleID, &regLocale, sizeof(RegLocaleType));
+
     r = true;
   }
+
+  MemPtrFree(countryNames);
+  MemPtrFree(countries);
 
   return r;
 }
