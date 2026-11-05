@@ -286,6 +286,7 @@ int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint
 int pumpkin_kill(uint32_t tid);
 int pumpkin_killed(void);
 uint32_t pumpkin_get_taskid(void);
+uint16_t pumpkin_get_app_locale(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
 char *pumpkin_get_app_name(void);

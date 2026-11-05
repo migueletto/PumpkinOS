@@ -145,6 +145,7 @@ typedef struct {
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   uint32_t paramBlockSize;
   DmOpenRef bootRef;
+  uint16_t locale;
   language_t *lang;
   ErrJumpBuf jmpbuf;
   char *serial[MAX_SERIAL];
@@ -2149,6 +2150,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     }
   }
   task->lang = LanguageInit(language);
+  task->locale = localeIndex;
 
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
     task->osversion = regOS->version;
@@ -4233,6 +4235,11 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
 uint32_t pumpkin_get_taskid(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task->taskId;
+}
+
+uint16_t pumpkin_get_app_locale(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->locale : 0xffff;
 }
 
 LocalID pumpkin_get_app_localid(void) {

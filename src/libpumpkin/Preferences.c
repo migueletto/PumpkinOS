@@ -297,17 +297,85 @@ void PrefSetPreferences(SystemPreferencesPtr p) {
 }
 
 UInt32 PrefGetPreference(SystemPreferencesChoice choice) {
+  LmLocaleType locale;
+  DateFormatType dateFormat;
+  TimeFormatType timeFormat;
+  NumberFormatType numberFormat;
+  UInt8 weekStartDay;
+  Int16 tz;
+  UInt16 localeIndex;
   UInt32 value = 0;
+  Boolean set = false;
 
   if (mutex_lock(mutex) == 0) {
-  switch (choice) {
-    case prefVersion: value = prefs.version; break;
+
+  if ((localeIndex = pumpkin_get_app_locale()) != 0xffff) {
+    // if the application is running under a custom locale, different from the system locale,
+    // we must return fixed values for a few preferences that are dependent of the locale.
+    switch (choice) {
+      case prefCountry:
+        value = localeIndex;
+        set = true;
+        break;
+      case prefDateFormat:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceDateFormat, &dateFormat, sizeof(DateFormatType)) == errNone) {
+          value = dateFormat;
+          set = true;
+        }
+        break;
+      case prefTimeFormat:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceTimeFormat, &timeFormat, sizeof(TimeFormatType)) == errNone) {
+          value = timeFormat;
+          set = true;
+        }
+        break;
+      case prefLongDateFormat:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceLongDateFormat, &dateFormat, sizeof(DateFormatType)) == errNone) {
+          value = dateFormat;
+          set = true;
+        }
+        break;
+      case prefWeekStartDay:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceWeekStartDay, &weekStartDay, sizeof(UInt8)) == errNone) {
+          value = weekStartDay;
+          set = true;
+        }
+        break;
+      case prefNumberFormat:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceNumberFormat, &numberFormat, sizeof(NumberFormatType)) == errNone) {
+          value = numberFormat;
+          set = true;
+        }
+        break;
+      case prefTimeZone:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceTimeZone, &tz, sizeof(Int16)) == errNone) {
+          value = tz;
+          set = true;
+        }
+        break;
+      case prefLanguage:
+        if (LmGetLocaleSetting(localeIndex, lmChoiceLocale, &locale, sizeof(LmLocaleType)) == errNone) {
+          value = locale.language;
+          set = true;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (!set) switch (choice) {
+    // these preferences are locale dependent and may have been set above
     case prefCountry: value = prefs.country; break;
     case prefDateFormat: value = prefs.dateFormat; break;
+    case prefTimeFormat: value = prefs.timeFormat; break;
     case prefLongDateFormat: value = prefs.longDateFormat; break;
     case prefWeekStartDay: value = prefs.weekStartDay; break;
-    case prefTimeFormat: value = prefs.timeFormat; break;
     case prefNumberFormat: value = prefs.numberFormat; break;
+    case prefTimeZone: value = prefs.timeZone; break;
+    case prefLanguage: value = prefs.language; break;
+
+    case prefVersion: value = prefs.version; break;
     case prefAutoOffDuration: value = prefs.autoOffDuration; break;
     case prefSysSoundLevelV20: value = prefs.sysSoundLevelV20; break;
     case prefGameSoundLevelV20: value = prefs.gameSoundLevelV20; break;
@@ -352,12 +420,10 @@ UInt32 PrefGetPreference(SystemPreferencesChoice choice) {
       }
       break;
     case prefAutoOffDurationSecs: value = prefs.autoOffDurationSecs; break;
-    case prefTimeZone: value = prefs.timeZone; break;
     case prefDaylightSavingAdjustment: value = prefs.daylightSavingAdjustment; break;
     case prefAutoLockType: value = prefs.autoLockType; break;
     case prefAutoLockTime: value = prefs.autoLockTime; break;
     case prefAutoLockTimeFlag: value = prefs.autoLockTimeFlag; break;
-    case prefLanguage: value = prefs.language; break;
     case prefLocale: value = 0; break; // XXX
     case prefTimeZoneCountry: value = prefs.timeZoneCountry; break;
     case prefAttentionFlags: value = prefs.attentionFlags; break;
