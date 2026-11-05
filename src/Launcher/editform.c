@@ -144,7 +144,7 @@ static const dynamic_form_item_t grfPropertiesItems[] = {
 
 static void drawForm(FormType *current, form_edit_t *data) {
   FormType *frm, *formP;
-  RGBColorType oldFormFrame;
+  RGBColorType oldFormFrame, oldDialogFrame;
   RectangleType rect, rect2;
   UInt16 objIndex, index, state, x0, y0;
 
@@ -157,7 +157,9 @@ static void drawForm(FormType *current, form_edit_t *data) {
     y0 = rect.topLeft.y - rect2.topLeft.y;
 
     UIColorGetTableEntryRGB(UIFormFrame, &oldFormFrame);
+    UIColorGetTableEntryRGB(UIDialogFrame, &oldDialogFrame);
     UIColorSetTableEntry(UIFormFrame, &purple);
+    UIColorSetTableEntry(UIDialogFrame, &purple);
     FrmSetActiveForm(formP);
     FrmDrawForm(formP);
     FrmSetActiveForm(frm);
@@ -200,6 +202,7 @@ static void drawForm(FormType *current, form_edit_t *data) {
 
     FrmDeleteForm(formP);
     UIColorSetTableEntry(UIFormFrame, &oldFormFrame);
+    UIColorSetTableEntry(UIDialogFrame, &oldDialogFrame);
   }
 }
 
