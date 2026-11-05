@@ -382,6 +382,10 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
     obj = formP->objects[objIndex].object;
 
+    dialog = WinGetFlag(&formP->window, WindowFlagModal);
+    formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+    oldb = WinSetBackColor(formFill);
+
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
         if (setUsable) obj.field->attr.usable = false;
@@ -411,6 +415,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
             RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
             FntSetFont(old);
             obj.label->attr.visible = 0;
+            WinSetBackColor(oldb);
             erase = true;
           }
         }
@@ -437,7 +442,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           handled = false;
           if (obj.gadget->handler || obj.gadget->m68k_handler) {
             formFill = UIColorGetTableEntryIndex(UIFormFill);
-            oldb = WinSetBackColor(formFill);
             WinPushDrawState();
             if (obj.gadget->m68k_handler) {
               handled = CallGadgetHandler(obj.gadget->m68k_handler, (FormGadgetTypeInCallback *)obj.gadget, formGadgetEraseCmd, NULL);
@@ -445,7 +449,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
               handled = obj.gadget->handler((FormGadgetTypeInCallback *)obj.gadget, formGadgetEraseCmd, NULL);
             }
             WinPopDrawState();
-            WinSetBackColor(oldb);
             obj.gadget->attr.visible = 0;
           }
           if (!handled) {
@@ -480,9 +483,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     }
 
     if (erase) {
-      dialog = WinGetFlag(&formP->window, WindowFlagModal);
-      formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
-      oldb = WinSetBackColor(formFill);
       WinEraseRectangle(&rect, 0);
       WinSetBackColor(oldb);
     }
@@ -493,7 +493,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
 void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FormObjectType obj;
-  IndexedColorType formTitle, formFrame, formFill, fieldText, oldb, oldt;
+  IndexedColorType formTitle, formFrame, formFill, oldb, oldt;
   WinDrawOperation mode;
   RectangleType rect;
   Coord bw, bh;
@@ -510,12 +510,9 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     dialog = WinGetFlag(&formP->window, WindowFlagModal);
 
     obj = formP->objects[objIndex].object;
-    //XXX when UIObjectSelectedForeground, ChemTable draws the title text in black in the elements list form
-    //formTitle = UIColorGetTableEntryIndex(UIObjectSelectedForeground);
     formTitle = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
     formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
     formFrame = UIColorGetTableEntryIndex(dialog ? UIDialogFrame : UIFormFrame);
-    fieldText = UIColorGetTableEntryIndex(UIFieldText);
 
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
@@ -534,19 +531,15 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
         if (setUsable) obj.label->attr.usable = 1;
         if (obj.label->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
           old = FntSetFont(obj.label->fontID);
-          oldb = WinSetBackColor(formFill); // labels use formFill as background
-          oldt = WinSetTextColor(fieldText);
           max = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - obj.label->pos.x + 1;
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*12);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, false, &totalLines, NULL, &max, NULL, 0);
-          rect.extent.y = FntCharHeight()*totalLines;
+          RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*totalLines);
           obj.label->extent.x = max;
           obj.label->extent.y = rect.extent.y;
-          WinDrawOperation prev = WinSetDrawMode(winOverlay);
+          WinDrawOperation prev = WinSetDrawMode(winPaint);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
           WinSetDrawMode(prev);
-          WinSetBackColor(oldb);
-          WinSetTextColor(oldt);
           FntSetFont(old);
           obj.label->attr.visible = 1;
         }
@@ -2295,14 +2288,19 @@ void FrmCopyLabel(FormType *formP, UInt16 labelID, const Char *newLabel) {
   FormLabelType *label;
   ControlType *control;
   UInt16 index;
+  Boolean visible;
 
   if (formP && newLabel) {
     if ((index = FrmGetObjectIndex(formP, labelID)) != frmInvalidObjectId) {
       if (formP->objects[index].objectType == frmLabelObj) {
         label = formP->objects[index].object.label;
         if (label->text) {
+          visible = label->attr.visible;
+          if (formP == FrmGetActiveForm() && formP->attr.usable && formP->attr.visible && label->attr.usable && visible) {
+            FrmEraseObject(formP, index, false);
+          }
           StrNCopy(label->text, newLabel, label->len);
-          if (formP->attr.usable && label->attr.usable && label->attr.visible) {
+          if (formP == FrmGetActiveForm() && formP->attr.usable && formP->attr.visible && label->attr.usable && visible) {
             FrmDrawObject(formP, index, false);
           }
         }
