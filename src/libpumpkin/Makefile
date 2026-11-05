@@ -5,7 +5,7 @@ CRDATE := $(shell date +%s)
 
 GIT := $(shell which git)
 ifneq ($(GIT),)
-ifneq ($(wildcard $(ROOT)/.git/HEAD),)
+ifneq ($(wildcard $(PUMPKINOS)/.git/HEAD),)
 GIT_COMMIT_ID := -DGIT_COMMIT_ID=\"$(shell $(GIT) rev-parse --short HEAD)\"
 GIT_CHANGED := $(shell $(GIT) status --porcelain)
 ifneq ($(GIT_CHANGED),)
@@ -94,7 +94,7 @@ emulation/systrap.o: emulation/systrap.c emulation/sc_case.c
 endif
 
 ifneq ($(GIT_COMMIT_ID),)
-build.o: build.c $(ROOT)/.git/HEAD $(ROOT)/.git/index
+build.o: build.c $(PUMPKINOS)/.git/HEAD $(PUMPKINOS)/.git/index
 	@echo Compiling $<
 	@$(CC) $(CFLAGS) -c -o $@ $<
 endif
