@@ -493,7 +493,7 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
 
 void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
   FormObjectType obj;
-  IndexedColorType formTitle, formFrame, formFill, oldb, oldt;
+  IndexedColorType formTitle, formFrame, formFill, labelText, oldb, oldt;
   WinDrawOperation mode;
   RectangleType rect;
   Coord bw, bh;
@@ -513,6 +513,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
     formTitle = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
     formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
     formFrame = UIColorGetTableEntryIndex(dialog ? UIDialogFrame : UIFormFrame);
+    labelText = UIColorGetTableEntryIndex(UIFieldText);
 
     switch (formP->objects[objIndex].objectType) {
       case frmFieldObj:
@@ -530,6 +531,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
       case frmLabelObj:
         if (setUsable) obj.label->attr.usable = 1;
         if (obj.label->attr.usable && (formP->attr.drawing || formP->attr.visible)) {
+          oldt = WinSetTextColor(labelText);
           old = FntSetFont(obj.label->fontID);
           max = (Coord)WinGetField(&formP->window, WindowFieldWindowBoundsW) - obj.label->pos.x + 1;
           RctSetRectangle(&rect, obj.label->pos.x, obj.label->pos.y, max, FntCharHeight()*12);
@@ -540,6 +542,7 @@ void FrmDrawObject(FormType *formP, UInt16 objIndex, Boolean setUsable) {
           WinDrawOperation prev = WinSetDrawMode(winPaint);
           WinDrawCharBox(obj.label->text, StrLen(obj.label->text), obj.label->fontID, &rect, true, NULL, NULL, NULL, NULL, 0);
           WinSetDrawMode(prev);
+          WinSetTextColor(oldt);
           FntSetFont(old);
           obj.label->attr.visible = 1;
         }
