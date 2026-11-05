@@ -2673,22 +2673,7 @@ int pumpkin_launch(launch_request_t *request) {
           debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry for %s", data->x, data->y, request->name);
           MemPtrFree(regPos);
         }
-/*
-        if ((regDim = pumpkin_reg_get(creator, regDimensionID, &regSize)) != NULL) {
-          data->width = regDim->width;
-          data->height = regDim->height;
-          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry for %s", data->width, data->height, request->name);
-          MemPtrFree(regDim);
-        }
-*/
       }
-
-/*
-      if (data->width == 0 || data->height == 0) {
-        data->width = pumpkin_module.width;
-        data->height = pumpkin_module.height;
-      }
-*/
 
       if ((regRunFlags = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) != NULL) {
         data->enableSound = (regRunFlags->flags & regRunFlagSound) == regRunFlagSound;
