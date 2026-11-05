@@ -153,8 +153,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
   win_module_t *module;
   BitmapType *bmp;
   ColorTableType *colorTable;
-  RGBColorType rgb;
-  UInt16 entry;
   UInt8 *ds;
   char buf[64];
   Err err;
@@ -224,10 +222,7 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   }
 
-  for (entry = 0; entry < UILastColorTableEntry; entry++) {
-    UIColorGetDefaultTableEntryRGB(0, entry, &rgb);
-    UIColorSetTableEntry(entry, &rgb);
-  }
+  UIColorResetTable(depth);
 
   module->activeWindow = module->displayWindow;
   module->drawWindow = module->displayWindow;
