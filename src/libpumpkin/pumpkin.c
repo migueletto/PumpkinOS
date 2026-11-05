@@ -110,6 +110,7 @@ typedef struct {
   int enableSound;
   int heapSize;
   int heapAlign;
+  uint16_t locale;
   UInt32 creator;
 } launch_data_t;
 
@@ -2005,7 +2006,7 @@ static void pumpkin_init_icon(void) {
   }
 }
 
-static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int enableSound, int heapSize, int heapAlign, int x, int y) {
+static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32_t creator, char *name, int width, int height, int enableSound, int heapSize, int heapAlign, uint16_t localeIndex, int x, int y) {
   pumpkin_task_t *task;
   task_screen_t *screen;
   PumpkinPreferencesType prefs;
@@ -2015,6 +2016,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   UInt32 language, regSize;
   UInt16 size;
   Boolean littleEndian;
+  LmLocaleType locale;
   char screator[8];
   char buf[32];
   uint16_t u16;
@@ -2140,6 +2142,12 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.tasks[i].bootRef = DmOpenDatabase(0, dbID, dmModeReadOnly);
 
   language = PrefGetPreference(prefLanguage);
+  if (localeIndex != 0xffff) {
+    if (LmGetLocaleSetting(localeIndex, lmChoiceLocale, &locale, sizeof(LmLocaleType)) == errNone) {
+      language = locale.language;
+      debug(DEBUG_INFO, PUMPKINOS, "overriding locale=%d language=%d for \"%s\"", localeIndex, language, name);
+    }
+  }
   task->lang = LanguageInit(language);
 
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
@@ -2415,7 +2423,7 @@ int pumpkin_launcher(char *name, int width, int height) {
 
   texture = pumpkin_module.wp->create_texture(pumpkin_module.w, width, height);
 
-  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0) == 0) {
+  if (pumpkin_local_init(0, 0, texture, 0, name, width, height, 0, 0, 0, 0, 0, 0) == 0) {
     dbID = DmFindDatabase(0, name);
     DmDatabaseInfo(0, dbID, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &creator);
 
@@ -2465,7 +2473,7 @@ static int pumpkin_launch_action(void *arg) {
   thread_set_name(name);
 
   if (pumpkin_local_init(data->index, data->taskId, data->texture, data->creator, data->request.name, data->width, data->height,
-        data->enableSound, data->heapSize, data->heapAlign, data->x, data->y) == 0) {
+        data->enableSound, data->heapSize, data->heapAlign, data->locale, data->x, data->y) == 0) {
     task = (pumpkin_task_t *)thread_get(task_key);
     if (ErrSetJump(task->jmpbuf) != 0) {
       debug(DEBUG_ERROR, PUMPKINOS, "ErrSetJump not zero");
@@ -2568,6 +2576,7 @@ int pumpkin_launch(launch_request_t *request) {
   RegPositionType *regPos;
   RegDimensionType *regDim;
   RegHeapType *regHeap;
+  RegLocaleType *regLocale;
   RegRunFlagsType *regRunFlags;
   UInt32 type, creator, regSize;
   launch_data_t *data;
@@ -2664,7 +2673,32 @@ int pumpkin_launch(launch_request_t *request) {
           debug(DEBUG_INFO, PUMPKINOS, "using position %d,%d from registry for %s", data->x, data->y, request->name);
           MemPtrFree(regPos);
         }
+/*
+        if ((regDim = pumpkin_reg_get(creator, regDimensionID, &regSize)) != NULL) {
+          data->width = regDim->width;
+          data->height = regDim->height;
+          debug(DEBUG_INFO, PUMPKINOS, "using size %dx%d from registry for %s", data->width, data->height, request->name);
+          MemPtrFree(regDim);
+        }
+*/
+      }
 
+/*
+      if (data->width == 0 || data->height == 0) {
+        data->width = pumpkin_module.width;
+        data->height = pumpkin_module.height;
+      }
+*/
+
+      if ((regRunFlags = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) != NULL) {
+        data->enableSound = (regRunFlags->flags & regRunFlagSound) == regRunFlagSound;
+        debug(DEBUG_INFO, PUMPKINOS, "using sound %d from registry for %s", data->enableSound, request->name);
+        MemPtrFree(regRunFlags);
+      }
+
+      pumpkin_reg_import(creator);
+
+      if (pumpkin_module.mode == 0) {
         if ((regDim = pumpkin_reg_get(creator, regDimensionID, &regSize)) != NULL) {
           data->width = regDim->width;
           data->height = regDim->height;
@@ -2678,14 +2712,6 @@ int pumpkin_launch(launch_request_t *request) {
         data->height = pumpkin_module.height;
       }
 
-      if ((regRunFlags = pumpkin_reg_get(creator, regRunFlagsID, &regSize)) != NULL) {
-        data->enableSound = (regRunFlags->flags & regRunFlagSound) == regRunFlagSound;
-        debug(DEBUG_INFO, PUMPKINOS, "using sound %d from registry for %s", data->enableSound, request->name);
-        MemPtrFree(regRunFlags);
-      }
-
-      pumpkin_reg_import(creator);
-
       if ((regHeap = pumpkin_reg_get(creator, regHeapID, &regSize)) != NULL) {
         if (regHeap->heapSize) {
           debug(DEBUG_INFO, PUMPKINOS, "using heap size %u MB (align %u) from registry for %s", regHeap->heapSize, regHeap->heapAlign, request->name);
@@ -2693,6 +2719,13 @@ int pumpkin_launch(launch_request_t *request) {
           data->heapAlign = regHeap->heapAlign;
         }
         MemPtrFree(regHeap);
+      }
+
+      if ((regLocale = pumpkin_reg_get(creator, regLocaleID, &regSize)) != NULL) {
+        data->locale = regLocale->locale;
+        MemPtrFree(regLocale);
+      } else {
+        data->locale = 0xffff;
       }
 
       data->index = index;

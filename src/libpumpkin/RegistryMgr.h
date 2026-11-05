@@ -10,7 +10,8 @@ typedef struct RegMgrType RegMgrType;
 // empty                8
 #define regRunFlagsID   9
 #define regHeapID       10
-#define lastRegID       10
+#define regLocaleID     11
+#define lastRegID       11
 
 #define regFlagFastScreenWrite 0x02
 #define regFlagARMScreenWrite  0x04
@@ -64,6 +65,10 @@ typedef struct {
   UInt16 heapSize;
   UInt16 heapAlign;
 } RegHeapType;
+
+typedef struct {
+  UInt16 locale;
+} RegLocaleType;
 
 RegMgrType *RegInit(void);
 void RegFinish(RegMgrType *rm);
