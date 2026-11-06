@@ -710,6 +710,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinUnscaleRectangle(&rect);
     r = &rect;
     RctSetWinFromRect(r, winHandle);
+    WinDirectAccessHack(winHandle);
     width = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW);
     height = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH);
     prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
@@ -718,7 +719,6 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinSetCoordinateSystem(prevCoordSys);
     RctSetRectangle(&rect, 0, 0, width, height);
     WinSetClipingBounds(winHandle, &rect);
-    WinDirectAccessHack(winHandle);
   }
 }
 
@@ -3423,6 +3423,7 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           pointFrom(module, module->density, &width, &height);
           WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
           WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
+          WinDirectAccessHack(module->displayWindow);
           ram = pumpkin_heap_base();
           put4b((UInt8 *)colorTable - ram, (UInt8 *)bmp, BitmapV3FieldColorTable);
 
