@@ -20,6 +20,8 @@
 #include "storage.h"
 #include "DDm.h"
 #include "pumpkin.h"
+#include "language.h"
+#include "RegistryMgr.h"
 #include "WindowAccessor.h"
 #include "FormAccessor.h"
 #include "tos.h"
@@ -66,6 +68,7 @@ typedef struct {
   UInt16 id, index;
   UInt16 numRecs;
   UInt16 width, height;
+  UInt16 localeIndex;
   Boolean rsrc, dir, m68k, uptodate;
   char name[MAX_NAME];
   char *info;
@@ -122,6 +125,8 @@ typedef struct {
   Boolean armPluginWarning;
   Int16 lastTopItem;
   IndexedColorType black, mainColor, m68kColor, nativeColor;
+  UInt16 numLang;
+  language_t **lang;
 } launcher_data_t;
 
 static const dynamic_form_item_t dbFilterItems[] = {
@@ -420,7 +425,7 @@ static void launcherResetItems(launcher_data_t *data) {
 static void launcherScanApps(launcher_data_t *data) {
   DmSearchStateType stateInfo;
   Boolean newSearch;
-  UInt32 type, creator;
+  UInt32 type, creator, regSize;
   UInt16 cardNo, attr;
   LocalID appInfoID;
   Coord bw, bh;
@@ -430,6 +435,7 @@ static void launcherScanApps(launcher_data_t *data) {
   BitmapType *iconBmp;
   WinHandle old;
   UInt8 *appInfo;
+  RegLocaleType *regLocale;
   char *s;
   int i;
 
@@ -448,6 +454,8 @@ static void launcherScanApps(launcher_data_t *data) {
         data->item[i].type = type;
         data->item[i].creator = creator;
         data->item[i].rsrc = true;
+        data->item[i].localeIndex = 0xffff;
+
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           if ((nameRes = DmGet1Resource(ainRsc, 1000)) != NULL) {
             if ((s = MemHandleLock(nameRes)) != NULL) {
@@ -486,6 +494,12 @@ static void launcherScanApps(launcher_data_t *data) {
             }
             DmReleaseResource(iconRes);
           }
+
+          if ((regLocale = pumpkin_reg_get(creator, regLocaleID, &regSize)) != NULL) {
+            data->item[i].localeIndex = regLocale->locale;
+            MemPtrFree(regLocale);
+          }
+
           i++;
           DmCloseDatabase(dbRef);
         }
@@ -494,6 +508,7 @@ static void launcherScanApps(launcher_data_t *data) {
         data->item[i].type = type;
         data->item[i].creator = creator;
         data->item[i].rsrc = false;
+        data->item[i].localeIndex = 0xffff;
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           appInfoID = DmGetAppInfoID(dbRef);
           if ((appInfoH = MemLocalIDToHandle(appInfoID)) != NULL) {
@@ -557,7 +572,7 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
   DmSearchStateType stateInfo;
   Boolean newSearch;
   UInt16 cardNo, attr;
-  UInt32 creator;
+  UInt32 creator, regSize;
   Coord bw, bh;
   DmOpenRef dbRef;
   MemHandle nameRes, iconRes;
@@ -565,6 +580,7 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
   BitmapType *iconBmp;
   WinHandle oldw;
   FontID old;
+  RegLocaleType *regLocale;
   char *s;
   int i;
 
@@ -586,6 +602,8 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
         data->item[i].type = sysFileTApplication;
         data->item[i].creator = creator;
         data->item[i].rsrc = true;
+        data->item[i].localeIndex = 0xffff;
+
         if ((dbRef = DmOpenDatabase(cardNo, data->item[i].dbID, dmModeReadOnly)) != NULL) {
           if ((nameRes = DmGet1Resource(ainRsc, 1000)) != NULL) {
             if ((s = MemHandleLock(nameRes)) != NULL) {
@@ -611,6 +629,12 @@ static void launcherScanAppsSmall(launcher_data_t *data) {
             }
             DmReleaseResource(iconRes);
           }
+
+          if ((regLocale = pumpkin_reg_get(creator, regLocaleID, &regSize)) != NULL) {
+            data->item[i].localeIndex = regLocale->locale;
+            MemPtrFree(regLocale);
+          }
+
           i++;
           DmCloseDatabase(dbRef);
         }
@@ -1068,6 +1092,17 @@ static void printApp(launcher_data_t *data, launcher_item_t *item, int x, int y,
   RectangleType rect;
   int len, nameWidth;
   char buf[dmDBNameLength];
+  LmLocaleType locale;
+  language_t *old;
+
+  if (item->localeIndex != 0xffff && item->localeIndex < data->numLang) {
+    if (data->lang[item->localeIndex] == NULL) {
+      if (LmGetLocaleSetting(item->localeIndex, lmChoiceLocale, &locale, sizeof(LmLocaleType)) == errNone) {
+        debug(DEBUG_TRACE, "Launcher", "initializing language %d", locale.language);
+        data->lang[item->localeIndex] = LanguageInit(locale.language);
+      }
+    }
+  }
 
   RctSetRectangle(&rect, x, y, data->cellWidth, data->cellHeight);
   setBackColor(inverted ? BLACK : WHITE);
@@ -1080,10 +1115,17 @@ static void printApp(launcher_data_t *data, launcher_item_t *item, int x, int y,
     WinCopyRectangle(inverted && item->invIconWh ? item->invIconWh : item->iconWh, WinGetDisplayWindow(), &rect, x, y, winPaint);
   }
 
+  old = NULL;
+  if (item->localeIndex != 0xffff && data->lang[item->localeIndex]) {
+    old = LanguageSelect(data->lang[item->localeIndex]);
+  }
+
   len = adjustName(buf, dmDBNameLength, item->name, &nameWidth, data->cellWidth-2);
   setTextColor(inverted ? WHITE : BLACK);
   WinPaintChars(buf, len, x + (data->cellWidth - nameWidth) / 2, y + data->cellHeight - FntCharHeight() - 4);
   setTextColor(BLACK);
+
+  LanguageSelect(old);
 }
 
 static void firstColumn(launcher_data_t *data, int x, int y, Boolean inverted) {
@@ -1205,9 +1247,25 @@ static void lastColumn(launcher_data_t *data, int x, int y) {
 }
 
 static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
+  LmLocaleType locale;
+  language_t *old;
   char buf[32];
 
   updateCounts(item);
+
+  if (item && item->localeIndex != 0xffff && item->localeIndex < data->numLang) {
+    if (data->lang[item->localeIndex] == NULL) {
+      if (LmGetLocaleSetting(item->localeIndex, lmChoiceLocale, &locale, sizeof(LmLocaleType)) == errNone) {
+        debug(DEBUG_TRACE, "Launcher", "initializing language %d", locale.language);
+        data->lang[item->localeIndex] = LanguageInit(locale.language);
+      }
+    }
+  }
+
+  old = NULL;
+  if (item && item->localeIndex != 0xffff && data->lang[item->localeIndex]) {
+    old = LanguageSelect(data->lang[item->localeIndex]);
+  }
 
   firstColumn(data, x, y, inverted);
   x = printBmpColumn(data, item, "Name", item ? item->name : NULL, 0xffff, x, y, 28 * FntCharWidth('a'), inverted);
@@ -1217,6 +1275,8 @@ static void printAppSmall(launcher_data_t *data, launcher_item_t *item, int x, i
     x = printColumn(data, item, "Size", item ? buf : NULL, x, y, 10 * FntCharWidth('0'), true, inverted);
   }
   lastColumn(data, x, y);
+
+  LanguageSelect(old);
 }
 
 static void printDatabase(launcher_data_t *data, launcher_item_t *item, int x, int y, Boolean inverted) {
@@ -2592,7 +2652,7 @@ static void MenuEvent(UInt16 id, launcher_data_t *data) {
     case registryCmd:
       if (data->mode == launcher_app_small && data->prev >= 0 && data->item[data->prev].creator != AppID) {
         if ((frm = FrmInitForm(RegistryForm)) != NULL) {
-          editRegistry(frm, data->item[data->prev].creator, data->item[data->prev].name);
+          editRegistry(frm, data->item[data->prev].creator);
           FrmDeleteForm(frm);
         }
       }
@@ -3260,6 +3320,9 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
 
   FntLoadFont(fontExtRscType, fakeFnt, fakeMonoFont);
 
+  data->numLang = LmGetNumLocales();
+  data->lang = MemPtrNew(data->numLang * sizeof(language_t));
+
   StrCopy(data->path, "/");
 
   SysNotifyRegister(0, pumpkin_get_app_localid(), sysNotifySyncFinishEvent,   LauncherNotificationHandler, sysNotifyNormalPriority, data);
@@ -3286,6 +3349,8 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   formP = FrmGetActiveForm();
   formP->mbar = NULL;
   FrmCloseAllForms();
+
+  MemPtrFree(data->lang);
 
   if (data->useTaskbar) {
     removeWidgets(data);

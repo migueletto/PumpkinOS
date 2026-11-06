@@ -39,4 +39,13 @@ do
   fi
 done
 
+for r in $registry/*.11
+do
+  loc=`hexdump -v -C $r | awk 'NR==1 {print $2 $3}'`
+  if [[ "$loc" != "ffff" ]]; then
+    echo "loc" $loc $r
+    cp $r $compat
+  fi
+done
+
 exit 0

@@ -136,7 +136,7 @@ static Int32 compareCountry(void *e1, void *e2, void *otherP) {
   return StrCompare(c1->name, c2->name);
 }
 
-Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
+Boolean editRegistry(FormType *frm, UInt32 creator) {
   RegOsType regOS, *regOsP;
   RegDisplayType regDisp, *regDispP;
   RegHeapType regHeap, *regHeapP;
@@ -145,7 +145,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   RegLocaleType regLocale, *regLocaleP;
   ListType *lst;
   ControlType *ctl;
-  UInt16 numLocales, locale;
+  UInt16 numLocales, localeIndex;
   country_t *countries;
   char **countryNames;
   UInt32 regSize;
@@ -153,8 +153,6 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   char buf[16], *text;
   Boolean littleEndian, enableSound, fastScreenWrite, armScreenWrite, lenientMemCheck;
   Boolean handspringExt, acceptAnyEvent, r = false;
-
-  FrmSetTitle(frm, name);
 
   index = FrmGetObjectIndex(frm, regPage1Ctl);
   ctl = FrmGetObjectPtr(frm, index);
@@ -190,7 +188,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
   acceptAnyEvent  = regFlagsP ? regFlagsP->flags & regFlagAcceptAnyEvent  : false;
 
   regLocaleP = pumpkin_reg_get(creator, regLocaleID, &regSize);
-  locale = regLocaleP ? regLocaleP->locale : 0xffff;
+  localeIndex = regLocaleP ? regLocaleP->locale : 0xffff;
   if (regLocaleP) MemPtrFree(regLocaleP);
 
   // set OS version
@@ -288,11 +286,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator, char *name) {
     countryNames[i] = countries[i].name;
   }
 
-  if (locale == 0xffff) {
+  if (localeIndex == 0xffff) {
     i = 0;
   } else {
     for (i = 1; i <= numLocales; i++) {
-      if (locale == countries[i].index) break;
+      if (localeIndex == countries[i].index) break;
     }
     if (i > numLocales) i = 0;
   }
