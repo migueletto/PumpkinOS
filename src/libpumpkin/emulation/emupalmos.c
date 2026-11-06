@@ -2855,7 +2855,6 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         creator = pumpkin_get_app_creator();
         logtrap_install(state, creator);
         emupalmos_finish(0);
-emupalmos_monitor_set(0x0013C70C, 0x0013C70C + 54227);
         for (; !emupalmos_finished() && !thread_must_end() && !pumpkin_killed();) {
           if (pumpkin_audio_check(-1)) {
             EvtPumpEvents(0);
