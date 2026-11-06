@@ -1266,15 +1266,21 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
   }
 
   // erase form background
-  // XXX in Knockdown Karate the form is erased with the wrong color?
+  // XXX these conditions are used on PalmOS < 5
+  // XXX is solves the problem in Knockdown Karate
+  if ((formP->attr.saveBehind && !formP->attr.visible) ||
+      formP->formId == CustomAlertDialog ||
+      //UIColorGetIndex(UIFormFill) != 0 ||
+      WinGetFlag(&formP->window, WindowFlagModal)) {
 
-  RctSetRectFromWin(&aux, &formP->window);
-  aux.topLeft.x = 0;
-  aux.topLeft.y = 0;
-  formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
-  old = WinSetBackColor(formFill);
-  WinEraseRectangle(&aux, 0);
-  WinSetBackColor(old);
+    RctSetRectFromWin(&aux, &formP->window);
+    aux.topLeft.x = 0;
+    aux.topLeft.y = 0;
+    formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
+    old = WinSetBackColor(formFill);
+    WinEraseRectangle(&aux, 0);
+    WinSetBackColor(old);
+  }
 }
 
 void FrmDrawForm(FormType *formP) {
