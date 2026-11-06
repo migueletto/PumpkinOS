@@ -143,18 +143,15 @@ ColorTableType *WinInitColors(Boolean ui) {
 static void WinDirectAccessHack(WinHandle wh) {
   BitmapType *bmp;
   UInt16 width, height;
-  UInt32 addr;
   uint8_t *bits;
 
   bmp = WinGetBitmap(wh);
   bits = bmp ? BmpGetBits(bmp) : NULL;
-  addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
-
   width = WinGetField(wh, WindowFieldWindowBoundsW);
   height = WinGetField(wh, WindowFieldWindowBoundsH);
   WinSetField(wh, WindowFieldDisplayWidthV20, width);
   WinSetField(wh, WindowFieldDisplayHeightV20, height);
-  WinSetField(wh, WindowFieldDisplayAddrV20, addr);
+  WinSetField(wh, WindowFieldDisplayAddrV20, (UIntPtr)bits);
 }
 
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
@@ -223,11 +220,10 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     }
     WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
     WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
-    WinDirectAccessHack(module->displayWindow);
-
     ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
     encode_drawState(ds, &module->drawState);
     WinSetField(module->displayWindow, WindowFieldDrawStateP, (UIntPtr)ds);
+    WinDirectAccessHack(module->displayWindow);
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   }
 
@@ -436,13 +432,14 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinSetField(newWinHandle, WindowFieldWindowBoundsH, height);
   WinSetField(newWinHandle, WindowFieldBitmapP, (UIntPtr)bitmapP);
   WinSetField(newWinHandle, WindowFieldDrawStateP, (UIntPtr)&module->drawState);
-  WinDirectAccessHack(newWinHandle);
 
   //WinAddWindow(newWinHandle);
 
   savedDrawWinH = WinSetDrawWindow(newWinHandle);
   WinResetClip();
   WinSetDrawWindow(savedDrawWinH);
+
+  WinDirectAccessHack(newWinHandle);
 
   if (error) *error = errNone;
 

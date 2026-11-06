@@ -40,6 +40,7 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
           value = v16;
         }
         break;
+      case WindowFieldDisplayAddrV20:
       case WindowFieldBitmapP:
       case WindowFieldDrawStateP:
         ram = pumpkin_heap_base();
