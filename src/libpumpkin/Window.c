@@ -418,7 +418,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
   addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
   WinSetField(newWinHandle, WindowFieldDisplayWidthV20, width);
-  WinSetField(newWinHandle, WindowFieldDisplayHeightV20, width);
+  WinSetField(newWinHandle, WindowFieldDisplayHeightV20, height);
   WinSetField(newWinHandle, WindowFieldDisplayAddrV20, addr);
 
   WinSetField(newWinHandle, WindowFieldWindowBoundsW, width);
