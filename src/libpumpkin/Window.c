@@ -380,7 +380,9 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinHandle newWinHandle;
   Coord width, height;
   UInt16 density;
+  UInt32 addr;
   Boolean compressed, forScreen;
+  uint8_t *bits;
 
   if (!bitmapP) {
     if (error) *error = sysErrParamErr;
@@ -412,6 +414,12 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinSetFlag(newWinHandle, WindowFlagFormat, 1);
   WinSetFlag(newWinHandle, WindowFlagOffscreen, 1);
   WinSetFlag(newWinHandle, WindowFlagFreeBitmap, 0);
+
+  bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
+  addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
+  WinSetField(newWinHandle, WindowFieldDisplayWidthV20, width);
+  WinSetField(newWinHandle, WindowFieldDisplayHeightV20, width);
+  WinSetField(newWinHandle, WindowFieldDisplayAddrV20, addr);
 
   WinSetField(newWinHandle, WindowFieldWindowBoundsW, width);
   WinSetField(newWinHandle, WindowFieldWindowBoundsH, height);
