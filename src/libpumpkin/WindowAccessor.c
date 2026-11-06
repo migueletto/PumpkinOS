@@ -65,7 +65,7 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
           }
           put2b(v16, (UInt8 *)wh, selector);
         } else {
-          switch (flagSelector) {
+          if (flagSelector != WindowFlagAll) switch (flagSelector) {
             case WindowFlagFormat:     value = (v16 & 0x8000) ? 1 : 0; break;
             case WindowFlagOffscreen:  value = (v16 & 0x4000) ? 1 : 0; break;
             case WindowFlagModal:      value = (v16 & 0x2000) ? 1 : 0; break;
@@ -74,6 +74,8 @@ UIntPtr WinGetSetField(WinHandle wh, WindowSelector selector, WindowFlagSelector
             case WindowFlagVisible:    value = (v16 & 0x0400) ? 1 : 0; break;
             case WindowFlagDialog:     value = (v16 & 0x0200) ? 1 : 0; break;
             case WindowFlagFreeBitmap: value = (v16 & 0x0100) ? 1 : 0; break;
+          } else {
+            value = v16;
           }
         }
         break;

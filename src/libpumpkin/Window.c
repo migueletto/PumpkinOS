@@ -55,15 +55,6 @@ typedef struct {
   UInt16 coordSys;
 } win_surface_t;
 
-static void WinDirectAccessHack(WinHandle wh, uint16_t width, uint16_t height) {
-  BitmapType *bitmapP = WinGetBitmap(wh);
-  uint8_t *bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
-  uint32_t addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
-  put2b(width,  (uint8_t *)wh,  0); // displayWidthV20
-  put2b(height, (uint8_t *)wh,  2); // displayHeightV20
-  put4b(addr,   (uint8_t *)wh,  4); // displayAddrV20
-}
-
 static void WinFillPalette(DmResType id, RGBColorType *rgb, UInt16 n) {
   ColorTableType *colorTableP;
   MemHandle h;
@@ -218,7 +209,6 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
     encode_drawState(ds, &module->drawState);
     WinSetField(module->displayWindow, WindowFieldDrawStateP, (UIntPtr)ds);
-    WinDirectAccessHack(module->displayWindow, width, height);
     debug(DEBUG_TRACE, "Window", "WinInitModule display %s", WinGetDescr(module->displayWindow, buf, sizeof(buf)));
   }
 
@@ -361,32 +351,6 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
   return buf;
 }
 
-#if 0
-WinHandle WinCreateWindow(const RectangleType *bounds, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  UInt8 *ds;
-  WinHandle wh;
-
-  debug(DEBUG_TRACE, "Window", "WinCreateWindow frame %d modal %d focusable %d bounds (%d,%d,%d,%d)",
-    frame, modal, focusable, bounds->topLeft.x, bounds->topLeft.y, bounds->extent.x, bounds->extent.y);
-
-  // uses the bitmap and drawing state of the current draw window
-  // windows created by this routine draw to the display
-  if ((wh = WinCreateBitmapWindow(WinGetBitmap(WinGetDisplayWindow()), error)) != NULL) {
-    WinSetField(wh, WindowFieldWindowBoundsX, bounds->topLeft.x);
-    WinSetField(wh, WindowFieldWindowBoundsY, bounds->topLeft.y);
-    WinSetField(wh, WindowFieldFrameType, frame);
-    WinSetFlag(wh, WindowFlagModal, modal);
-    WinSetFlag(wh, WindowFlagFocusable, focusable);
-    ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
-    encode_drawState(ds, &module->drawState);
-    WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
-  }
-
-  return wh;
-}
-#endif
-
 WinHandle WinCreateWindow(const RectangleType *boundsP, FrameType frame, Boolean modal, Boolean focusable, UInt16 *error) {
   WinHandle newWinHandle;
 
@@ -409,45 +373,6 @@ WinHandle WinCreateWindow(const RectangleType *boundsP, FrameType frame, Boolean
 
   return newWinHandle;
 }
-
-#if 0
-WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  WinHandle wh = NULL;
-  Coord width, height;
-  UInt8 *ds;
-  char buf[64];
-  Err err = sysErrNoFreeResource;
-
-  if (bitmapP) {
-    BmpGetDimensions(bitmapP, &width, &height, NULL);
-
-    if ((wh = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) != NULL) {
-      WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bitmapP);
-      WinSetFlag(wh, WindowFlagFreeBitmap, false);
-      WinSetField(wh, WindowFieldClippingBoundsX1, 0);
-      WinSetField(wh, WindowFieldClippingBoundsX2, width - 1);
-      WinSetField(wh, WindowFieldClippingBoundsY1, 0);
-      WinSetField(wh, WindowFieldClippingBoundsY2, height - 1);
-      if (BmpGetDensity(bitmapP) == kDensityDouble) {
-        width >>= 1;
-        height >>= 1;
-      }
-      ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
-      encode_drawState(ds, &module->drawState);
-      WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
-      RctSetWinFromValues(wh, 0, 0, width, height);
-      WinDirectAccessHack(wh, width, height);
-      debug(DEBUG_TRACE, "Window", "WinCreateBitmapWindow %s", WinGetDescr(wh, buf, sizeof(buf)));
-      err = errNone;
-    }
-  }
-
-  if (error) *error = err;
-
-  return wh;
-}
-#endif
 
 WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
@@ -499,39 +424,10 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinResetClip();
   WinSetDrawWindow(savedDrawWinH);
 
-  WinDirectAccessHack(newWinHandle, width, height);
-
   if (error) *error = errNone;
 
   return newWinHandle;
 }
-
-#if 0
-void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  BitmapType *bitmapP;
-  uint8_t *p;
-  char buf[64];
-
-  if (winHandle) {
-    debug(DEBUG_TRACE, "Window", "WinDeleteWindow %s", WinGetDescr(winHandle, buf, sizeof(buf)));
-    if (module->drawWindow == winHandle) {
-      module->drawWindow = module->displayWindow;
-    }
-    if (module->activeWindow == winHandle) {
-      module->activeWindow = module->displayWindow;
-    }
-    bitmapP = WinGetBitmap(winHandle);
-    if (bitmapP && WinGetFlag(winHandle, WindowFlagFreeBitmap)) {
-      debug(DEBUG_TRACE, "Window", "WinDeleteWindow BmpDelete %p", bitmapP);
-      BmpDelete(bitmapP);
-    }
-    p = (uint8_t *)WinGetField(winHandle, WindowFieldDrawStateP);
-    if (p) pumpkin_heap_free(p, "DrawState");
-    pumpkin_heap_free(winHandle, "Window");
-  }
-}
-#endif
 
 void WinDeleteWindow(WinHandle winHandle, Boolean eraseIt) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
@@ -794,7 +690,6 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinUnscaleRectangle(&rect);
     r = &rect;
     RctSetWinFromRect(r, winHandle);
-    WinDirectAccessHack(winHandle, (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW), (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH));
     width = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsW);
     height = (Coord)WinGetField(winHandle, WindowFieldWindowBoundsH);
     prevCoordSys = WinSetCoordinateSystem(module->density == kDensityDouble ? kCoordinatesDouble : kCoordinatesStandard);
@@ -2166,26 +2061,6 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
   }
 }
 
-#if 0
-      if (bitmapDensity == windowDensity && windowDepth == 1 && bitmapDepth > 1 && dither && mode == winPaint && !text) {
-        debug(DEBUG_TRACE, "Window", "WinBlitBitmap dithering %d bpp bitmap", bitmapDepth);
-        surface_t *src = BmpCreateSurfaceBitmap(best);
-        surface_t *dst = BmpCreateSurfaceBitmap(windowBitmap);
-        dstX = x;
-        dstY = y;
-        if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-          dstX <<= 1;
-          dstY <<= 1;
-        }
-        surface_dither(dst, dstX, dstY, src, rect->topLeft.x, rect->topLeft.y, rect->extent.x, rect->extent.y, 1);
-        surface_destroy(dst);
-        surface_destroy(src);
-        if (delete) BmpDelete(best);
-        pumpkin_screen_dirty(wh, dstX, dstY, rect->extent.x, rect->extent.y);
-        return;
-      }
-#endif
-
 void WinConvertToDisplay(WinHandle wh, Coord *x, Coord *y) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   Coord x0, y0;
@@ -2542,31 +2417,6 @@ IndexedColorType WinGetForeColor(void) {
   return module->drawState.foreColor;
 }
 
-#if 0
-#define setColors(prefix, module, color) { \
-  uint16_t c; \
-  module->prefix##Color565 = rgb565(module->drawState.prefix##ColorRGB.r, module->drawState.prefix##ColorRGB.g, module->drawState.prefix##ColorRGB.b); \
-  switch (module->depth) { \
-    case 1: \
-      module->drawState.prefix##Color = (module->drawState.prefix##ColorRGB.r > 127 && module->drawState.prefix##ColorRGB.g > 127 && module->drawState.prefix##ColorRGB.b > 127) ? 0 : 1; \
-      break; \
-    case 2: \
-      c = (module->drawState.prefix##ColorRGB.r + module->drawState.prefix##ColorRGB.g + module->drawState.prefix##ColorRGB.b) / 3; \
-      c /= 85; \
-      module->drawState.prefix##Color = 3 - c; \
-      break; \
-    case 4: \
-      c = (module->drawState.prefix##ColorRGB.r + module->drawState.prefix##ColorRGB.g + module->drawState.prefix##ColorRGB.b) / 3; \
-      c /= 17; \
-      module->drawState.prefix##Color = 15 - c; \
-      break; \
-    default: \
-      module->drawState.prefix##Color = color; \
-      break; \
-  } \
-}
-#endif
-
 IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   ColorTableType *colorTable;
@@ -2580,7 +2430,6 @@ IndexedColorType WinSetForeColor(IndexedColorType foreColor) {
 
   if (foreColor >= 0 && foreColor < numEntries) {
     CtbGetEntry(colorTable, foreColor, &module->drawState.foreColorRGB);
-    //setColors(fore, module, foreColor);
     module->drawState.foreColor = foreColor;
     module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
   } else {
@@ -2608,7 +2457,6 @@ IndexedColorType WinSetBackColor(IndexedColorType backColor) {
 
   if (backColor >= 0 && backColor < numEntries) {
     CtbGetEntry(colorTable, backColor, &module->drawState.backColorRGB);
-    //setColors(back, module, backColor);
     module->drawState.backColor = backColor;
     module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
   } else {
@@ -2631,7 +2479,6 @@ IndexedColorType WinSetTextColor(IndexedColorType textColor) {
 
   if (textColor >= 0 && textColor < numEntries) {
     CtbGetEntry(colorTable, textColor, &module->drawState.textColorRGB);
-    //setColors(text, module, textColor);
     module->drawState.textColor = textColor;
     module->textColor565 = rgb565(module->drawState.textColorRGB.r, module->drawState.textColorRGB.g, module->drawState.textColorRGB.b);
   } else {
@@ -2657,7 +2504,6 @@ void WinSetForeColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.foreColorRGB.g = newRgbP->g;
     module->drawState.foreColorRGB.b = newRgbP->b;
 
-    //setColors(fore, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.foreColorRGB) : 0);
     module->drawState.foreColor = WinRGBToIndex(&module->drawState.foreColorRGB);
     module->foreColor565 = rgb565(module->drawState.foreColorRGB.r, module->drawState.foreColorRGB.g, module->drawState.foreColorRGB.b);
   }
@@ -2679,7 +2525,6 @@ void WinSetBackColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.backColorRGB.g = newRgbP->g;
     module->drawState.backColorRGB.b = newRgbP->b;
 
-    //setColors(back, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.backColorRGB) : 0);
     module->drawState.backColor = WinRGBToIndex(&module->drawState.backColorRGB);
     module->backColor565 = rgb565(module->drawState.backColorRGB.r, module->drawState.backColorRGB.g, module->drawState.backColorRGB.b);
   }
@@ -2701,7 +2546,6 @@ void WinSetTextColorRGB(const RGBColorType* newRgbP, RGBColorType* prevRgbP) {
     module->drawState.textColorRGB.g = newRgbP->g;
     module->drawState.textColorRGB.b = newRgbP->b;
 
-    //setColors(text, module, module->depth >= 8 ? WinRGBToIndex(&module->drawState.textColorRGB) : 0);
     module->drawState.textColor = WinRGBToIndex(&module->drawState.textColorRGB);
     module->textColor565 = rgb565(module->drawState.textColorRGB.r, module->drawState.textColorRGB.g, module->drawState.textColorRGB.b);
   }
@@ -3228,93 +3072,6 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
   }
 }
 
-#if 0
-WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  UInt16 density, depth;
-  BitmapType *bmp;
-  RectangleType rect;
-  WinHandle wh = NULL;
-  UInt8 *ds;
-  char buf[64];
-  Err err = sysErrNoFreeResource;
-
-  if ((wh = pumpkin_heap_alloc(WINDOW_STRUCT_SIZE, "Window")) != NULL) {
-    RctSetWinFromValues(wh, 0, 0, width, height);
-
-    switch (format) {
-      case screenFormat:
-        // The window's bitmap is allocated using the hardware screen's depth, but for backward compatibility the bitmap associated with the
-        // offscreen window is always low density, and the window always uses a coordinate system that directly maps offscreen pixels to coordinates.
-        density = kDensityLow;
-        depth = pumpkin_get_osversion() == 10 ? 1 : module->depth;
-        debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (screenFormat)");
-        break;
-      case genericFormat:
-        // Like screenFormat, except that genericFormat offscreen windows do not accept pen input.
-        WinSetFlag(wh, WindowFlagFormat, true);
-        density = kDensityLow;
-        depth = module->depth;
-        debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow creating low density window (genericFormat)");
-        break;
-      case nativeFormat:
-      default:
-        // Reflects the actual hardware screen format in all ways, including screen depth, density, and pixel format.
-        // When using this format, the width and height arguments must be specified using the active coordinate system.
-        // PalmOS 5.4 on ARM: with nativeFormat, the window bitmap is LITTLE endian
-        // PumpkinOS on x86 : with nativeFormat, the window bitmap is BIG endian
-        density = module->density;
-        depth = module->depth; // XXX BikeOrDie does not work when using "depth = module->maxDepth" here
-        if (density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-          width <<= 1;
-          height <<= 1;
-        }
-        break;
-    }
-
-    // offscreen windows do not have color tables
-    bmp = BmpCreate3(width, height, 0, density, depth, false, 0, NULL, &err);
-
-    WinSetField(wh, WindowFieldBitmapP, (UIntPtr)bmp);
-    if (bmp) {
-      debug(DEBUG_TRACE, "Window", "WinCreateOffscreenWindow %s format %d", WinGetDescr(wh, buf, sizeof(buf)), format);
-      BmpSetLittleEndianBits(bmp, module->littleEndian);
-      ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
-      encode_drawState(ds, &module->drawState);
-      WinSetField(wh, WindowFieldDrawStateP, (UIntPtr)ds);
-      WinSetFlag(wh, WindowFlagOffscreen, true);
-      WinSetFlag(wh, WindowFlagFreeBitmap, true);
-      err = errNone;
-
-      // fill window bitmap with white color
-      IndexedColorType old = WinSetForeColor(0x00);
-      WinHandle p = WinSetDrawWindow(wh);
-      RctSetRectFromWin(&rect, wh);
-      WinDrawRectangle(&rect, 0);
-      WinSetDrawWindow(p);
-      WinSetForeColor(old);
-
-      WinSetField(wh, WindowFieldClippingBoundsX1, 0);
-      WinSetField(wh, WindowFieldClippingBoundsX2, width - 1);
-      WinSetField(wh, WindowFieldClippingBoundsY1, 0);
-      WinSetField(wh, WindowFieldClippingBoundsY2, height - 1);
-      if (density == kDensityDouble) {
-        width >>= 1;
-        height >>= 1;
-      }
-      WinDirectAccessHack(wh, width, height);
-    } else {
-      pumpkin_heap_free(wh, "Window");
-      wh = NULL;
-    }
-  }
-
-  if (error) *error = err;
-
-  return wh;
-}
-#endif
-
 WinHandle WinCreateOffscreenWindow(Coord width, Coord height, WindowFormatType format, UInt16 *error) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *displayBitmap, *newBitmap;
@@ -3675,7 +3432,6 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           pointFrom(module, module->density, &width, &height);
           WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
           WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
-          WinDirectAccessHack(module->displayWindow, width, height);
           ram = pumpkin_heap_base();
           put4b((UInt8 *)colorTable - ram, (UInt8 *)bmp, BitmapV3FieldColorTable);
 

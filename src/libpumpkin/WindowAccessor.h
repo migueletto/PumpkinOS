@@ -9,6 +9,8 @@ typedef enum {
   WindowFlagFreeBitmap
 } WindowFlagSelector;
 
+#define WindowFlagAll 0xFFFF
+
 typedef enum {
   WindowFieldDisplayWidthV20 = 0,
   WindowFieldDisplayHeightV20 = 2,
