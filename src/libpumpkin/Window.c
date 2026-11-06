@@ -996,24 +996,6 @@ static void WinPutBitDisplay(win_module_t *module, WinHandle wh, Coord x, Coord 
       }
 
       WinPutBit(windowColor, wh, x0 + cx, y0 + cy, mode, dbl, wh == module->activeWindow || display);
-
-/*
-      if (wh == module->activeWindow && !display) {
-        cx = x;
-        cy = y;
-        bmp = WinGetBitmap(module->displayWindow);
-        density = BmpGetDensity(bmp);
-        pointTo(module, density, &cx, &cy);
-        x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
-        y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
-        if (density == kDensityDouble) {
-          x0 <<= 1;
-          y0 <<= 1;
-        }
-        dbl = density == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard;
-        WinPutBit(displayColor, module->displayWindow, x0 + cx, y0 + cy, mode, dbl, false);
-      }
-*/
     }
   } else {
     debug(DEBUG_ERROR, "Window", "WinPutBitDisplay null wh");
@@ -2175,7 +2157,6 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
   int32_t index;
 
   if (module->drawWindow && chars && len > 0) {
-//debug(1, "XXX", "WinDrawCharsC(\"%.*s\", %d, %d)", len, chars, x, y);
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
@@ -2190,12 +2171,10 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
 
     if (FntGetVersion(f) == 1) {
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
-//debug(1, "XXX", "WinDrawCharsC font v1 density %d", density);
 
       switch (density) {
         case kDensityLow:
           if (module->drawState.coordinateSystem == kCoordinatesDouble) {
-//debug(1, "XXX", "WinDrawCharsC window density low font density low coord double x:%d->%d, y:%d->%d", x, x>>1, y, y>>1);
             x >>= 1;
             y >>= 1;
           }
@@ -2227,7 +2206,6 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
       density = BmpGetDensity(WinGetBitmap(module->drawWindow));
       prev = module->drawState.coordinateSystem;
       mult = 0;
-//debug(1, "XXX", "WinDrawCharsC font v2 density %d", density);
 
       switch (density) {
         case kDensityLow:
@@ -2235,12 +2213,10 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
             index = 0; // low density font
             mult = 1;
             if (module->drawState.coordinateSystem == kCoordinatesDouble) {
-//debug(1, "XXX", "WinDrawCharsC window density low font density low coord double x:%d->%d, y:%d->%d", x, x>>1, y, y>>1);
               x >>= 1;
               y >>= 1;
             }
             WinSetCoordinateSystem(kCoordinatesStandard);
-//debug(1, "XXX", "WinDrawCharsC set coord standard");
           } else {
             index = -1;
           }
@@ -2256,12 +2232,10 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
           if (index >= 0) {
             mult = 2;
             if (module->drawState.coordinateSystem == kCoordinatesStandard) {
-//debug(1, "XXX", "WinDrawCharsC window density double font density double coord standard x:%d->%d, y:%d->%d", x, x<<1, y, y<<1);
               x <<= 1;
               y <<= 1;
             }
             WinSetCoordinateSystem(kCoordinatesDouble);
-//debug(1, "XXX", "WinDrawCharsC set coord double");
           }
           break;
         default:
@@ -2715,7 +2689,6 @@ UInt16 WinSetCoordinateSystem(UInt16 coordSys) {
          debug(DEBUG_ERROR, "Window", "WinSetCoordinateSystem %d unsupported", coordSys);
          break;
     }
-//debug(1, "XXX", "WinSetCoordinateSystem new=%d (%d), prev=%d", module->drawState.coordinateSystem, coordSys, prev);
   }
 
   return prev;
@@ -3048,7 +3021,6 @@ void WinScrollRectangle(const RectangleType *rP, WinDirectionType direction, Coo
   if (module->drawWindow && rP && vacatedP && distance > 0) {
       switch (direction) {
         case winUp:
-//debug(1, "XXX", "WinScrollRectangle %p (%d,%d,%d,%d) %d", module->drawWindow, rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, distance);
           RctSetRectangle(&rect, rP->topLeft.x, rP->topLeft.y + distance, rP->extent.x, rP->extent.y - distance);
           if (rect.extent.y > 0) WinCopyRectangle(module->drawWindow, module->drawWindow, &rect, rP->topLeft.x, rP->topLeft.y, winPaint);
           RctSetRectangle(vacatedP, rP->topLeft.x, rP->topLeft.y + rP->extent.y - distance, rP->extent.x, distance);
@@ -3215,7 +3187,6 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             }
           }
 
-          //UIColorResetTable(depth);
           for (entry = 0; entry < UILastColorTableEntry; entry++) {
             UIColorGetDefaultTableEntryRGB(depth, entry, &rgb);
             UIColorSetTableEntry(entry, &rgb);
@@ -3258,7 +3229,6 @@ Err WinPalette(UInt8 operation, Int16 startIndex, UInt16 paletteEntries, RGBColo
             break;
         }
 
-        //UIColorResetTable(depth);
         for (entry = 0; entry < UILastColorTableEntry; entry++) {
           UIColorGetDefaultTableEntryRGB(depth, entry, &rgb);
           UIColorSetTableEntry(entry, &rgb);
@@ -3477,12 +3447,7 @@ Err WinSetConstraintsSize(WinHandle winH, Coord minH, Coord prefH, Coord maxH, C
   Err err = sysErrParamErr;
 
   if (winH) {
-    //winH->minH = minH;
-    //winH->prefH = prefH;
-    //winH->maxH = maxH;
-    //winH->minW = minW;
-    //winH->prefW = prefW;
-    //winH->maxW = maxW;
+    // XXX not implemented
     err = errNone;
   }
 
