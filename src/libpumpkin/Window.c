@@ -140,6 +140,23 @@ ColorTableType *WinInitColors(Boolean ui) {
   return colorTable;
 }
 
+static void WinDirectAccessHack(WinHandle wh) {
+  BitmapType *bmp;
+  UInt16 width, height;
+  UInt32 addr;
+  uint8_t *bits;
+
+  bmp = WinGetBitmap(wh);
+  bits = bmp ? BmpGetBits(bmp) : NULL;
+  addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
+
+  width = WinGetField(wh, WindowFieldWindowBoundsW);
+  height = WinGetField(wh, WindowFieldWindowBoundsH);
+  WinSetField(wh, WindowFieldDisplayWidthV20, width);
+  WinSetField(wh, WindowFieldDisplayHeightV20, height);
+  WinSetField(wh, WindowFieldDisplayAddrV20, addr);
+}
+
 int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boolean littleEndian, WinHandle displayWindow) {
   win_module_t *module;
   BitmapType *bmp;
@@ -206,6 +223,8 @@ int WinInitModule(UInt16 density, UInt16 width, UInt16 height, UInt16 depth, Boo
     }
     WinSetField(module->displayWindow, WindowFieldWindowBoundsW, width);
     WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
+    WinDirectAccessHack(module->displayWindow);
+
     ds = pumpkin_heap_alloc(DrawStateSize, "DrawState");
     encode_drawState(ds, &module->drawState);
     WinSetField(module->displayWindow, WindowFieldDrawStateP, (UIntPtr)ds);
@@ -380,9 +399,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinHandle newWinHandle;
   Coord width, height;
   UInt16 density;
-  UInt32 addr;
   Boolean compressed, forScreen;
-  uint8_t *bits;
 
   if (!bitmapP) {
     if (error) *error = sysErrParamErr;
@@ -415,16 +432,11 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   WinSetFlag(newWinHandle, WindowFlagOffscreen, 1);
   WinSetFlag(newWinHandle, WindowFlagFreeBitmap, 0);
 
-  bits = bitmapP ? BmpGetBits(bitmapP) : NULL;
-  addr = bits ? bits - (uint8_t *)pumpkin_heap_base() : 0;
-  WinSetField(newWinHandle, WindowFieldDisplayWidthV20, width);
-  WinSetField(newWinHandle, WindowFieldDisplayHeightV20, height);
-  WinSetField(newWinHandle, WindowFieldDisplayAddrV20, addr);
-
   WinSetField(newWinHandle, WindowFieldWindowBoundsW, width);
   WinSetField(newWinHandle, WindowFieldWindowBoundsH, height);
   WinSetField(newWinHandle, WindowFieldBitmapP, (UIntPtr)bitmapP);
   WinSetField(newWinHandle, WindowFieldDrawStateP, (UIntPtr)&module->drawState);
+  WinDirectAccessHack(newWinHandle);
 
   //WinAddWindow(newWinHandle);
 
@@ -706,6 +718,7 @@ void WinSetBounds(WinHandle winHandle, const RectangleType *rP) {
     WinSetCoordinateSystem(prevCoordSys);
     RctSetRectangle(&rect, 0, 0, width, height);
     WinSetClipingBounds(winHandle, &rect);
+    WinDirectAccessHack(winHandle);
   }
 }
 
