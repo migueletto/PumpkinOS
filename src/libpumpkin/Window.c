@@ -16,8 +16,6 @@
 #include "debug.h"
 #include "xalloc.h"
 
-#define LEGACY_SCREEN_SIZE 160 * 160
-
 typedef struct {
   UInt16 foreColor565;
   UInt16 backColor565;
@@ -2178,7 +2176,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
-    v10 = (font == stdFont || font == boldFont) && pumpkin_get_osversion() == 10 && !LanguageGet();
+    v10 = (font == stdFont || font == boldFont) && pumpkin_os1_charset() && !LanguageGet();
 
     if (f == NULL) {
       debug(DEBUG_ERROR, "Window", "WinDrawCharsC: FntGetFontPtr returned NULL !");
@@ -3705,6 +3703,7 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
   BitmapType *bitmapP;
   UInt32 len;
+  UInt8 *ram, *bits;
 
   if (!module) {
     *startAddr = 0;
@@ -3713,20 +3712,10 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   }
 
   bitmapP = WinGetBitmap(module->displayWindow);
-
-  if (pumpkin_get_osversion() <= 30) {
-    len = LEGACY_SCREEN_SIZE;
-    switch (module->legacyDepth) {
-      case  1: len /= 8; break;
-      case  2: len /= 4; break;
-      case  4: len /= 2; break;
-      case 16: len *= 2; break;
-    }
-  } else {
-    BmpGetSizes(bitmapP, &len, NULL);
-  }
-
-  *startAddr = (uint8_t *)BmpGetBits(bitmapP) - (uint8_t *)pumpkin_heap_base();
+  BmpGetSizes(bitmapP, &len, NULL);
+  ram = (UInt8 *)pumpkin_heap_base();
+  bits = (UInt8 *)BmpGetBits(bitmapP);
+  *startAddr = bits - ram;
   *endAddr = *startAddr + len;
 }
 

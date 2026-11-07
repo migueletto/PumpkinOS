@@ -312,14 +312,8 @@ uint8_t cpu_read_byte(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 1, 1)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 1);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
-      value = WinLegacyRead(address - state->istate->screenStart);
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  byte 0x%08X = 0x%02X", address, value);
-    } else {
-      ram = pumpkin_heap_base();
-      value = READ_BYTE(ram, address);
-    }
+    ram = pumpkin_heap_base();
+    value = READ_BYTE(ram, address);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 0);
   }
 
@@ -345,16 +339,8 @@ uint16_t cpu_read_word(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 2, 1)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
-      value = WinLegacyRead(address - state->istate->screenStart);
-      value <<= 8;
-      value |= WinLegacyRead(address - state->istate->screenStart + 1);
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  word 0x%08X = 0x%04X", address, value);
-    } else {
-      ram = pumpkin_heap_base();
-      value = READ_WORD(ram, address);
-    }
+    ram = pumpkin_heap_base();
+    value = READ_WORD(ram, address);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 0);
   }
 
@@ -363,7 +349,7 @@ uint16_t cpu_read_word(uint32_t address) {
 
 uint32_t cpu_read_long(uint32_t address) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  uint32_t b, value = 0;
+  uint32_t value = 0;
   uint8_t *ram;
 
   if (state->read_long) return state->read_long(address);
@@ -388,22 +374,8 @@ uint32_t cpu_read_long(uint32_t address) {
   } else {
     if (!emupalmos_check_address(address, 4, 1)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
-      value = WinLegacyRead(address - state->istate->screenStart);
-      value <<= 24;
-      b = WinLegacyRead(address - state->istate->screenStart + 1);
-      b <<= 16;
-      value |= b;
-      b = WinLegacyRead(address - state->istate->screenStart + 2);
-      b <<= 8;
-      value |= b;
-      value |= WinLegacyRead(address - state->istate->screenStart + 3);
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen read  long 0x%08X = 0x%08X", address, value);
-    } else {
-      ram = pumpkin_heap_base();
-      value = READ_LONG(ram, address);
-    }
+    ram = pumpkin_heap_base();
+    value = READ_LONG(ram, address);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 0);
   }
 
@@ -415,81 +387,186 @@ int emupalmos_fast_screen_write(void) {
   return state->istate->fastScreenWrite;
 }
 
-static void write_screen(emu_state_t *state, uint32_t address, uint32_t value, uint32_t size) {
-  WinHandle wh = NULL;
-  BitmapType *bmp = NULL;
-  Coord width, height, x1, x2, y;
-  UInt32 pixelSize, offset, depth = 0;
-  uint8_t *ram;
-
-  if (state->istate->fastScreenWrite) {
-    wh = WinGetDisplayWindow();
-    bmp = WinGetBitmap(wh);
-    depth = BmpGetBitDepth(bmp);
-  }
-
-  if (depth == 8 || depth == 16) {
-    ram = pumpkin_heap_base();
-    switch (size) {
-      case 1: WRITE_BYTE(ram, address, value); break;
-      case 2: WRITE_WORD(ram, address, value); break;
-      case 4: WRITE_LONG(ram, address, value); break;
-    }
-
-    BmpGetDimensions(bmp, &width, &height, NULL);
-    pixelSize = depth / 8;
-    offset = (address - state->istate->screenStart) / pixelSize;
-    x1 = offset % width;
-    x2 = x1 + size - 1;
-    y = offset / width;
-
-    if (!state->istate->regionStarted) {
-      state->istate->firstX = x1;
-      state->istate->lastX  = x2;
-      state->istate->firstY = y;
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write %d bytes dirtyRegionBegin", size);
-      pumpkin_dirty_region_mode(dirtyRegionEnd);
-      pumpkin_dirty_region_mode(dirtyRegionBegin);
-      state->istate->regionStarted = true;
-    } else if (x2 == width-1 && y == height-1) {
-      // writing to the last pixel on the screen: end the current update region and begins another region
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write %d bytes dirtyRegionEnd", size);
-      pumpkin_screen_dirty(wh, 0, 0, width-1, height-1);
-      pumpkin_dirty_region_mode(dirtyRegionEnd);
-      state->istate->regionStarted = false;
-    } else if (y - state->istate->lastY > 1 || y < state->istate->lastY) {
-      // skipping a row or writing to a previous row: end the current update region and begins another region
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write %d bytes dirtyRegionEnd", size);
-      pumpkin_screen_dirty(wh, state->istate->firstX, state->istate->firstY, state->istate->lastX, state->istate->lastY);
-      pumpkin_dirty_region_mode(dirtyRegionEnd);
-      state->istate->firstX = x1;
-      state->istate->lastX  = x2;
-      state->istate->firstY = y;
-      pumpkin_dirty_region_mode(dirtyRegionBegin);
-      state->istate->regionStarted = true;
-    } else {
-      if (x1 < state->istate->firstX) state->istate->firstX = x1;
-      if (x2 > state->istate->lastX)  state->istate->lastX  = x2;
-    }
-    state->istate->lastY = y;
-
+static void write_screen_dirty(emu_state_t *state, WinHandle wh, uint16_t width, uint16_t height, uint16_t y, uint16_t x1, uint16_t x2) {
+  if (!state->istate->regionStarted) {
+    state->istate->firstX = x1;
+    state->istate->lastX  = x2;
+    state->istate->firstY = y;
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionBegin");
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+    state->istate->regionStarted = true;
+  } else if (x2 == width-1 && y == height-1) {
+    // writing to the last pixel on the screen: end the current update region and begins another region
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd");
+    pumpkin_screen_dirty(wh, 0, 0, width-1, height-1);
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
+    state->istate->regionStarted = false;
+  } else if (y - state->istate->lastY > 1 || y < state->istate->lastY) {
+    // skipping a row or writing to a previous row: end the current update region and begins another region
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd");
+    pumpkin_screen_dirty(wh, state->istate->firstX, state->istate->firstY, state->istate->lastX, state->istate->lastY);
+    pumpkin_dirty_region_mode(dirtyRegionEnd);
+    state->istate->firstX = x1;
+    state->istate->lastX  = x2;
+    state->istate->firstY = y;
+    pumpkin_dirty_region_mode(dirtyRegionBegin);
+    state->istate->regionStarted = true;
   } else {
-    switch (size) {
-      case 1:
-        WinLegacyWrite(address - state->istate->screenStart, value);
-        break;
-      case 2:
-        WinLegacyWrite(address - state->istate->screenStart,     (value >> 8) & 0xff);
-        WinLegacyWrite(address - state->istate->screenStart + 1,  value       & 0xff);
-        break;
-      case 4:
-        WinLegacyWrite(address - state->istate->screenStart,     (value >> 24) & 0xff);
-        WinLegacyWrite(address - state->istate->screenStart + 1, (value >> 16) & 0xff);
-        WinLegacyWrite(address - state->istate->screenStart + 2, (value >>  8) & 0xff);
-        WinLegacyWrite(address - state->istate->screenStart + 3,  value        & 0xff);
-        break;
-    }
+    if (x1 < state->istate->firstX) state->istate->firstX = x1;
+    if (x2 > state->istate->lastX)  state->istate->lastX  = x2;
   }
+  state->istate->lastY = y;
+}
+
+static void screen_write8(emu_state_t *state, uint32_t address, uint8_t value) {
+  WinHandle wh;
+  BitmapType *bmp;
+  Coord width, height, x1, x2, y;
+  UInt32 depth, offset;
+
+  wh = WinGetDisplayWindow();
+  bmp = WinGetBitmap(wh);
+  depth = BmpGetBitDepth(bmp);
+  BmpGetDimensions(bmp, &width, &height, NULL);
+
+  switch (depth) {
+    case  1:
+      offset = (address - state->istate->screenStart) * 8;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 7;
+      break;
+    case  2:
+      offset = (address - state->istate->screenStart) * 4;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 3;
+      break;
+    case  4:
+      offset = (address - state->istate->screenStart) * 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 1;
+      break;
+    case  8:
+      offset = address - state->istate->screenStart;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1;
+      break;
+    case 16:
+      offset = (address - state->istate->screenStart) / 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1;
+      break;
+    default:
+      y = x1 = x2 = 0;
+      break;
+  }
+
+  write_screen_dirty(state, wh, width, height, y, x1, x2);
+}
+
+static void screen_write16(emu_state_t *state, uint32_t address, uint16_t value) {
+  WinHandle wh;
+  BitmapType *bmp;
+  Coord width, height, x1, x2, y;
+  UInt32 depth, offset;
+
+  wh = WinGetDisplayWindow();
+  bmp = WinGetBitmap(wh);
+  depth = BmpGetBitDepth(bmp);
+  BmpGetDimensions(bmp, &width, &height, NULL);
+
+  switch (depth) {
+    case  1:
+      offset = (address - state->istate->screenStart) * 8;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 15;
+      break;
+    case  2:
+      offset = (address - state->istate->screenStart) * 4;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 7;
+      break;
+    case  4:
+      offset = (address - state->istate->screenStart) * 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 3;
+      break;
+    case  8:
+      offset = (address - state->istate->screenStart);
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 1;
+      break;
+    case 16:
+      offset = (address - state->istate->screenStart) / 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1;
+      break;
+    default:
+      y = x1 = x2 = 0;
+      break;
+  }
+
+  write_screen_dirty(state, wh, width, height, y, x1, x2);
+}
+
+static void screen_write32(emu_state_t *state, uint32_t address, uint32_t value) {
+  WinHandle wh;
+  BitmapType *bmp;
+  Coord width, height, x1, x2, y;
+  UInt32 depth, offset;
+
+  wh = WinGetDisplayWindow();
+  bmp = WinGetBitmap(wh);
+  depth = BmpGetBitDepth(bmp);
+  BmpGetDimensions(bmp, &width, &height, NULL);
+
+  switch (depth) {
+    case  1:
+      offset = (address - state->istate->screenStart) * 8;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 31;
+      break;
+    case  2:
+      offset = (address - state->istate->screenStart) * 4;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 15;
+      break;
+    case  4:
+      offset = (address - state->istate->screenStart) * 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 7;
+      break;
+    case  8:
+      offset = (address - state->istate->screenStart);
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 3;
+      break;
+    case 16:
+      offset = (address - state->istate->screenStart) / 2;
+      y = offset / width;
+      x1 = offset % width;
+      x2 = x1 + 1;
+      break;
+    default:
+      y = x1 = x2 = 0;
+      break;
+  }
+
+  write_screen_dirty(state, wh, width, height, y, x1, x2);
 }
 
 void cpu_write_byte(uint32_t address, uint8_t value) {
@@ -504,13 +581,12 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
     if (!emupalmos_check_address(address, 1, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 1);
+    ram = pumpkin_heap_base();
+    WRITE_BYTE(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
-      write_screen(state, address, value, 1);
-    } else {
-      ram = pumpkin_heap_base();
-      WRITE_BYTE(ram, address, value);
+      screen_write8(state, address, value);
     }
   }
 }
@@ -527,13 +603,12 @@ void cpu_write_word(uint32_t address, uint16_t value) {
     if (!emupalmos_check_address(address, 2, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 1);
+    ram = pumpkin_heap_base();
+    WRITE_WORD(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
-      write_screen(state, address, value, 2);
-    } else {
-      ram = pumpkin_heap_base();
-      WRITE_WORD(ram, address, value);
+      screen_write16(state, address, value);
     }
   }
 }
@@ -550,13 +625,12 @@ void cpu_write_long(uint32_t address, uint32_t value) {
     if (!emupalmos_check_address(address, 4, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 1);
+    ram = pumpkin_heap_base();
+    WRITE_LONG(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
     if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
       debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
-      write_screen(state, address, value, 4);
-    } else {
-      ram = pumpkin_heap_base();
-      WRITE_LONG(ram, address, value);
+      screen_write32(state, address, value);
     }
   }
 }

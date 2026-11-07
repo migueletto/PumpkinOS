@@ -28,7 +28,7 @@ static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes
   Boolean moved = false;
 
   if (dstP >= start && dstP < end) {
-    if (emupalmos_fast_screen_write()) {
+    //if (emupalmos_fast_screen_write()) {
       wh = WinGetDisplayWindow();
       bmp = WinGetBitmap(wh);
       depth = BmpGetBitDepth(bmp);
@@ -54,7 +54,7 @@ static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes
         pumpkin_dirty_region_mode(dirtyRegionEnd);
         moved = true;
       }
-    }
+    //}
   }
 
   return moved;
