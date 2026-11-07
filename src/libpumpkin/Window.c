@@ -3819,6 +3819,17 @@ UInt8 WinLegacyRead(UInt32 offset) {
     BmpGetDimensions(bitmapP, &width, &height, NULL);
 
     switch (realDepth) {
+      case 2:
+        cols = width / 4;
+        x = (offset % cols) * 4;
+        y = offset / cols;
+        value = 0;
+        for (i = 0; i < 8; i += 2, x++) {
+          c = WinLegacyGetPixel(module, bitmapP, NULL, false, density, realDepth, realDepth, x, y);
+          value <<= 2;
+          value |= c;
+        }
+        break;
       case 8:
         cols = width;
         x = offset % cols;
@@ -3932,6 +3943,16 @@ void WinLegacyWrite(UInt32 offset, UInt8 value) {
     BmpGetDimensions(bitmapP, &width, NULL, NULL);
 
     switch (realDepth) {
+      case 2:
+        cols = width / 4;
+        x = (offset % cols) * 4 + 3;
+        y = offset / cols;
+        b = value;
+        for (i = 0; i < 8; i += 2, x--) {
+          WinLegacyDrawPixel(module, realDepth, b & 0x03, x, y);
+          b >>= 2;
+        }
+        break;
       case 8:
         cols = width;
         x = offset % cols;
