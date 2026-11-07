@@ -147,6 +147,7 @@ typedef struct {
   DmOpenRef bootRef;
   uint16_t locale;
   language_t *lang;
+  int os1Charset;
   ErrJumpBuf jmpbuf;
   char *serial[MAX_SERIAL];
   syslib_t syslibs[BASE_SYSLIBS];
@@ -2013,6 +2014,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   PumpkinPreferencesType prefs;
   RegDisplayType *regDisplay;
   RegOsType *regOS;
+  RegFlagsType *regFlags;
   LocalID dbID;
   UInt32 language, regSize;
   UInt16 size;
@@ -2151,6 +2153,11 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   }
   task->lang = LanguageInit(language);
   task->locale = localeIndex;
+
+  if ((regFlags = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
+    task->os1Charset = regFlags->flags & regFlagOS1Charset;
+    MemPtrFree(regFlags);
+  }
 
   if ((regOS = pumpkin_reg_get(creator, regOsID, &regSize)) != NULL) {
     task->osversion = regOS->version;
@@ -5355,6 +5362,11 @@ void pumpkin_set_pace(int pace) {
 int pumpkin_is_pace(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task ? task->pace : 0;
+}
+
+int pumpkin_os1_charset(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->os1Charset : 0;
 }
 
 void pumpkin_set_preference(UInt32 creator, UInt16 id, void *p, UInt16 size, Boolean saved) {

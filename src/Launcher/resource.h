@@ -93,9 +93,11 @@
 #define handspringExtCtl   3002
 #define acceptAnyEventLbl  3003
 #define acceptAnyEventCtl  3004
-#define localeLbl          3005
-#define localeCtl          3006
-#define localeLst          3007
+#define os1CharsetLbl      3005
+#define os1CharsetCtl      3006
+#define localeLbl          3007
+#define localeCtl          3008
+#define localeLst          3009
 
 #define moveBmp     52001
 #define drawBmp     52002

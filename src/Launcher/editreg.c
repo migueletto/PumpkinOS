@@ -152,7 +152,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   UInt16 page, osversion, density, depth, heapSize, heapAlign, index, id, num, i;
   char buf[16], *text;
   Boolean littleEndian, enableSound, fastScreenWrite, armScreenWrite, lenientMemCheck;
-  Boolean handspringExt, acceptAnyEvent, r = false;
+  Boolean handspringExt, acceptAnyEvent, os1Charset, r = false;
 
   index = FrmGetObjectIndex(frm, regPage1Ctl);
   ctl = FrmGetObjectPtr(frm, index);
@@ -186,6 +186,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   lenientMemCheck = regFlagsP ? regFlagsP->flags & regFlagLenientMemCheck : false;
   handspringExt   = regFlagsP ? regFlagsP->flags & regFlagHandspringExt   : false;
   acceptAnyEvent  = regFlagsP ? regFlagsP->flags & regFlagAcceptAnyEvent  : false;
+  os1Charset      = regFlagsP ? regFlagsP->flags & regFlagOS1Charset      : false;
 
   regLocaleP = pumpkin_reg_get(creator, regLocaleID, &regSize);
   localeIndex = regLocaleP ? regLocaleP->locale : 0xffff;
@@ -268,6 +269,11 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   index = FrmGetObjectIndex(frm, acceptAnyEventCtl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, acceptAnyEvent);
+
+  // set os1Charset
+  index = FrmGetObjectIndex(frm, os1CharsetCtl);
+  ctl = FrmGetObjectPtr(frm, index);
+  CtlSetValue(ctl, os1Charset);
 
   // set locale
   numLocales = LmGetNumLocales();
@@ -368,7 +374,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
     }
     pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
-    // update fastScreenWrite, armScreenWrite, lenientMemCheck and acceptAnyEvent
+    // update fastScreenWrite, armScreenWrite, lenientMemCheck, acceptAnyEvent and os1Charset
     regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
     if (regFlagsP) MemPtrFree(regFlagsP);
 
@@ -410,6 +416,14 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
       regFlags.flags |= regFlagAcceptAnyEvent;
     } else {
       regFlags.flags &= ~regFlagAcceptAnyEvent;
+    }
+
+    index = FrmGetObjectIndex(frm, os1CharsetCtl);
+    ctl = FrmGetObjectPtr(frm, index);
+    if (CtlGetValue(ctl)) {
+      regFlags.flags |= regFlagOS1Charset;
+    } else {
+      regFlags.flags &= ~regFlagOS1Charset;
     }
 
     pumpkin_reg_set(creator, regFlagsID, &regFlags, sizeof(RegFlagsType));
