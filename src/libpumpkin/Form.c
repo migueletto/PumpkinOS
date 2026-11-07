@@ -1164,6 +1164,7 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
         module->currentForm = NULL;
         MenuSetActiveMenu(NULL);
       }
+      FrmEraseForm(formP);
       FrmDeleteForm(formP);
       handled = true;
       break;
@@ -1251,7 +1252,6 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     oldActive = WinGetActiveWindow();
     oldDraw = WinSetDrawWindow(wh);
     WinSetActiveWindow(wh);
-    //formFrame = UIColorGetTableEntryIndex(UIFormFrame);
     formFrame = UIColorGetTableEntryIndex(UIDialogFrame);
     old = WinSetForeColor(formFrame);
     oldPattern = WinGetPatternType();
@@ -1271,6 +1271,7 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
   if ((formP->attr.saveBehind && !formP->attr.visible) ||
       formP->formId == CustomAlertDialog ||
       //UIColorGetIndex(UIFormFill) != 0 ||
+      UIColorGetTableEntryIndex(UIFormFill) != 0 ||
       WinGetFlag(&formP->window, WindowFlagModal)) {
 
     RctSetRectFromWin(&aux, &formP->window);
@@ -1280,6 +1281,9 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     old = WinSetBackColor(formFill);
     WinEraseRectangle(&aux, 0);
     WinSetBackColor(old);
+  } else {
+    debug(DEBUG_TRACE, "Form", "form %d will NOT be erased saveBehind=%d visible=%d UIFormFill=%d modal=%d",
+     formP->formId, formP->attr.saveBehind, formP->attr.visible, UIColorGetTableEntryIndex(UIFormFill), WinGetFlag(&formP->window, WindowFlagModal));
   }
 }
 
