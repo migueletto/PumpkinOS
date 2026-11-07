@@ -1348,13 +1348,19 @@ void FrmEraseForm(FormType *formP) {
   if (formP && formP->magic == FORM_MAGIC) {
     debug(DEBUG_TRACE, "Form", "FrmEraseForm %d", formP->formId);
     RctSetRectFromWin(&rect, &formP->window);
-    if (WinGetFlag(&formP->window, WindowFlagModal)) {
-      rect.topLeft.x -= 2;
-      rect.topLeft.y -= 2;
-      rect.extent.x += 4;
-      rect.extent.y += 4;
+    if (formP->attr.saveBehind && formP->bitsBehindForm) {
+      if (WinGetFlag(&formP->window, WindowFlagModal)) {
+        rect.topLeft.x -= 2;
+        rect.topLeft.y -= 2;
+        rect.extent.x += 4;
+        rect.extent.y += 4;
+      }
+      debug(DEBUG_INFO, "Form", "FrmEraseForm: restoring behind");
+      WinRestoreRectangle(formP->bitsBehindForm, &rect);
+    } else {
+      debug(DEBUG_INFO, "Form", "FrmEraseForm: erasing form (%d %d)", formP->attr.saveBehind, formP->bitsBehindForm != NULL);
+      WinEraseRectangle(&rect, 0);
     }
-    WinRestoreRectangle(formP->bitsBehindForm, &rect);
 
     formP->attr.visible = 0;
   }
@@ -1670,8 +1676,8 @@ static UInt16 FrmDoDialogResponse(FormType *formP, Int32 timeout, UInt16 fieldID
     previous = FrmGetActiveForm();
     FrmSetActiveForm(formP);
 
-    // "Subhunt" draws the form and then calls FrmDoDialog().
-    // So, if the form is already visible, do not call FrmDrawForm() again here.
+    // force saveBehing=true, so that the previous form can be restored
+    formP->attr.saveBehind = true;
 
     if (formP->handler || formP->m68k_handler) {
       MemSet(&event, sizeof(EventType), 0);
