@@ -19,6 +19,7 @@ typedef struct RegMgrType RegMgrType;
 #define regFlagHandspringExt   0x10
 #define regFlagAcceptAnyEvent  0x20
 #define regFlagOS1Charset      0x40
+#define regFlagUseAfterRelease 0x80
 
 #define regRunFlagFirstRun     0x01
 #define regRunFlagSound        0x02

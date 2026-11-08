@@ -8,6 +8,7 @@
 #include "bytes.h"
 #include "pumpkin.h"
 #include "language.h"
+#include "RegistryMgr.h"
 #include "BitmapAccessor.h"
 #include "WindowAccessor.h"
 #include "ColorTable.h"
@@ -2176,7 +2177,7 @@ static void WinDrawCharsC(uint8_t *chars, Int16 len, Coord x, Coord y, int max) 
     f = FntGetFontPtr();
     font = FntGetFont();
     // As of PalmOS 3.1 the Euro sign is 0x80, and numeric space was moved from 0x80 to 0x19
-    v10 = (font == stdFont || font == boldFont) && pumpkin_os1_charset() && !LanguageGet();
+    v10 = (font == stdFont || font == boldFont) && (pumpkin_get_flags() & regFlagOS1Charset) && !LanguageGet();
 
     if (f == NULL) {
       debug(DEBUG_ERROR, "Window", "WinDrawCharsC: FntGetFontPtr returned NULL !");

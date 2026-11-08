@@ -9,6 +9,7 @@
 #include "bytes.h"
 #include "util.h"
 #include "pumpkin.h"
+#include "RegistryMgr.h"
 #include "ssfn_font.h"
 #include "DDm.h"
 #include "debug.h"
@@ -2636,7 +2637,7 @@ Err DmReleaseResource(MemHandle resourceH) {
    
                 if (h->d.res.attr & dmRecAttached) {
                   debug(DEBUG_INFO, "STOR", "DmReleaseResource preserving attached resource '%s' %d %p", st, h->d.res.id, h->buf);
-                } else {
+                } else if (!(pumpkin_get_flags() & regFlagUseAfterRelease)) {
                   debug(DEBUG_TRACE, "STOR", "DmReleaseResource free buf '%s' %d %p", st, h->d.res.id, h->buf);
                   StoPtrFree(h->buf);
                   h->buf = NULL;

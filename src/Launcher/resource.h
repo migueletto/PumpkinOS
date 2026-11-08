@@ -95,9 +95,11 @@
 #define acceptAnyEventCtl  3004
 #define os1CharsetLbl      3005
 #define os1CharsetCtl      3006
-#define localeLbl          3007
-#define localeCtl          3008
-#define localeLst          3009
+#define useAfterReleaseLbl 3007
+#define useAfterReleaseCtl 3008
+#define localeLbl          3009
+#define localeCtl          3010
+#define localeLst          3011
 
 #define moveBmp     52001
 #define drawBmp     52002
