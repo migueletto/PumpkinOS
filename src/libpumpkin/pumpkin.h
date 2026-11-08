@@ -467,8 +467,6 @@ void WinSetDisplayExtent(Coord extentX, Coord extentY);
 void WinAdjustCoords(Coord *x, Coord *y);
 void WinAdjustCoordsInv(Coord *x, Coord *y);
 void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr);
-UInt8 WinLegacyRead(UInt32 offset);
-void WinLegacyWrite(UInt32 offset, UInt8 value);
 Int16 WinGetBorderRect(WinHandle wh, RectangleType *rect);
 UInt16 WinGetRealCoordinateSystem(void);
 surface_t *WinCreateSurface(WinHandle wh, RectangleType *rect);
