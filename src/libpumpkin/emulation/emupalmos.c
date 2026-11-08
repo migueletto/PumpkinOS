@@ -248,6 +248,7 @@ uint32_t emupalmos_trap_out(void *address) {
   return addr - ram;
 }
 
+#if !defined(MUTE_MONITOR)
 void emupalmos_monitor_set(uint32_t addr_begin, uint32_t addr_end) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   state->istate->monitored_addr_begin = addr_begin;
@@ -267,6 +268,7 @@ void emupalmos_monitor_address(uint32_t address, uint32_t size, uint32_t value, 
     }
   }
 }
+#endif
 
 int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int force_valid) {
   emu_state_t *state;
@@ -309,11 +311,13 @@ uint8_t cpu_read_byte(uint32_t address) {
     debug(DEBUG_INFO, "EmuPalmOS", "read 8 bits from register 0x%08X", address);
     value = 0;
   } else {
-    if (!emupalmos_check_address(address, 1, 1)) return 0;
+    if (!emupalmos_check_address_ex(address, 1, 1, 0)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 1);
     ram = pumpkin_heap_base();
     value = READ_BYTE(ram, address);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 0);
+#endif
   }
 
   return value;
@@ -336,11 +340,13 @@ uint16_t cpu_read_word(uint32_t address) {
     // low memory address read by Clipper. It is a PalmOS global variable containing the refNum of NetLib.
     value = NetLibRefNum;
   } else {
-    if (!emupalmos_check_address(address, 2, 1)) return 0;
+    if (!emupalmos_check_address_ex(address, 2, 1, 0)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
     ram = pumpkin_heap_base();
     value = READ_WORD(ram, address);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 0);
+#endif
   }
 
   return value;
@@ -371,11 +377,13 @@ uint32_t cpu_read_long(uint32_t address) {
     // low memory address read by Subhunt. It is a PalmOS global variable containing ???
     value = 0;
   } else {
-    if (!emupalmos_check_address(address, 4, 1)) return 0;
+    if (!emupalmos_check_address_ex(address, 4, 1, 0)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);
     ram = pumpkin_heap_base();
     value = READ_LONG(ram, address);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 0);
+#endif
   }
 
   return value;
@@ -572,9 +580,11 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
   } else {
-    if (!emupalmos_check_address(address, 1, 0)) return;
+    if (!emupalmos_check_address_ex(address, 1, 0, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 1);
+#endif
     ram = pumpkin_heap_base();
     WRITE_BYTE(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
@@ -594,9 +604,11 @@ void cpu_write_word(uint32_t address, uint16_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
   } else {
-    if (!emupalmos_check_address(address, 2, 0)) return;
+    if (!emupalmos_check_address_ex(address, 2, 0, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 1);
+#endif
     ram = pumpkin_heap_base();
     WRITE_WORD(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
@@ -616,9 +628,11 @@ void cpu_write_long(uint32_t address, uint32_t value) {
   if (address >= 0xFFFFF000) {
     debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
   } else {
-    if (!emupalmos_check_address(address, 4, 0)) return;
+    if (!emupalmos_check_address_ex(address, 4, 0, 0)) return;
     debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
+#if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 1);
+#endif
     ram = pumpkin_heap_base();
     WRITE_LONG(ram, address, value);
     WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
