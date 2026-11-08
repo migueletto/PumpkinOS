@@ -48,7 +48,6 @@ struct emu_internal_state_t {
   uint32_t monitored_addr_end;
   MemHandle hNative;
 
-  Boolean fastScreenWrite;
   Boolean lenientMemCheck;
   Boolean acceptAnyEvent;
   Boolean regionStarted;
@@ -380,11 +379,6 @@ uint32_t cpu_read_long(uint32_t address) {
   }
 
   return value;
-}
-
-int emupalmos_fast_screen_write(void) {
-  emu_state_t *state = pumpkin_get_local_storage(emu_key);
-  return state->istate->fastScreenWrite;
 }
 
 static void write_screen_dirty(emu_state_t *state, WinHandle wh, uint16_t width, uint16_t height, uint16_t y, uint16_t x1, uint16_t x2) {
@@ -2252,7 +2246,6 @@ static emu_state_t *emupalmos_new(void) {
     if ((state->istate = sys_calloc(1, sizeof(emu_internal_state_t))) != NULL) {
       creator = pumpkin_get_app_creator();
       if ((regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize)) != NULL) {
-        state->istate->fastScreenWrite = regFlagsP->flags & regFlagFastScreenWrite;
         state->istate->lenientMemCheck = regFlagsP->flags & regFlagLenientMemCheck;
         state->istate->acceptAnyEvent = regFlagsP->flags & regFlagAcceptAnyEvent;
         MemPtrFree(regFlagsP);

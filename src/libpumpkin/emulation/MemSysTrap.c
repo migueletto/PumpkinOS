@@ -28,33 +28,31 @@ static Boolean MemSetOrMoveDisplay(uint32_t dstP, uint32_t sP, uint32_t numBytes
   Boolean moved = false;
 
   if (dstP >= start && dstP < end) {
-    //if (emupalmos_fast_screen_write()) {
-      wh = WinGetDisplayWindow();
-      bmp = WinGetBitmap(wh);
-      depth = BmpGetBitDepth(bmp);
+    wh = WinGetDisplayWindow();
+    bmp = WinGetBitmap(wh);
+    depth = BmpGetBitDepth(bmp);
 
-      if (depth == 8 || depth == 16) {
-        if (sP) {
-          *err = MemMove(emupalmos_trap_in(dstP, sysTrapMemMove, 0), emupalmos_trap_in(sP, sysTrapMemMove, 1), numBytes);
-        } else {
-          *err = MemSet(emupalmos_trap_in(dstP, sysTrapMemSet, 0), numBytes, value);
-        }
-
-        BmpGetDimensions(bmp, &width, &height, NULL);
-        pixelSize = depth / 8;
-        numPixels = numBytes / pixelSize;
-        offset = (dstP - start) / pixelSize;
-        x1 = offset % width;
-        y1 = offset / width;
-        x2 = (offset + numPixels - 1) % width;
-        y2 = (offset + numPixels - 1) / width;
-        debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove screen x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
-        pumpkin_dirty_region_mode(dirtyRegionBegin);
-        pumpkin_screen_dirty(wh, x1, y1, x2, y2);
-        pumpkin_dirty_region_mode(dirtyRegionEnd);
-        moved = true;
+    if (depth == 8 || depth == 16) {
+      if (sP) {
+        *err = MemMove(emupalmos_trap_in(dstP, sysTrapMemMove, 0), emupalmos_trap_in(sP, sysTrapMemMove, 1), numBytes);
+      } else {
+        *err = MemSet(emupalmos_trap_in(dstP, sysTrapMemSet, 0), numBytes, value);
       }
-    //}
+
+      BmpGetDimensions(bmp, &width, &height, NULL);
+      pixelSize = depth / 8;
+      numPixels = numBytes / pixelSize;
+      offset = (dstP - start) / pixelSize;
+      x1 = offset % width;
+      y1 = offset / width;
+      x2 = (offset + numPixels - 1) % width;
+      y2 = (offset + numPixels - 1) / width;
+      debug(DEBUG_TRACE, "EmuPalmOS", "MemSetOrMove screen x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
+      pumpkin_dirty_region_mode(dirtyRegionBegin);
+      pumpkin_screen_dirty(wh, x1, y1, x2, y2);
+      pumpkin_dirty_region_mode(dirtyRegionEnd);
+      moved = true;
+    }
   }
 
   return moved;
