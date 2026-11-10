@@ -394,16 +394,14 @@ void pumpkin_heap_margin(uint32_t margin) {
   }
 }
 
-#define ptr2offset(p) ((p) ? (uint32_t)((uint8_t *)(p) - ram) : 0)
-
 void *pumpkin_heap_alloc(uint32_t size, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   uint8_t *ram = pumpkin_heap_base();
   void *p;
 
   p = heap_alloc(task ? task->heap : pumpkin_module.heap, size);
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_alloc %s %u : 0x%08X", tag, size, ptr2offset(p));
-  debug(DEBUG_TRACE, "logmem", "alloc heap %s %u %u", tag, ptr2offset(p), size);
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_alloc %s %u : 0x%08X", tag, size, ptr2addr(ram, p));
+  debug(DEBUG_TRACE, "logmem", "alloc heap %s %u %u", tag, ptr2addr(ram, p), size);
   if (p) {
     sys_memset(p, 0, size);
   }
@@ -419,8 +417,8 @@ void *pumpkin_heap_realloc(void *p, uint32_t size, char *tag) {
   if (p) {
     q = size ? heap_realloc(task ? task->heap : pumpkin_module.heap, p, size) : NULL;
   }
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_realloc %s %u 0x%08X : 0x%08X", tag, size, ptr2offset(p), ptr2offset(q));
-  debug(DEBUG_TRACE, "logmem", "realloc heap %s %u %u %u", tag, ptr2offset(p), ptr2offset(q), size);
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_realloc %s %u 0x%08X : 0x%08X", tag, size, ptr2addr(ram, p), ptr2addr(ram, q));
+  debug(DEBUG_TRACE, "logmem", "realloc heap %s %u %u %u", tag, ptr2addr(ram, p), ptr2addr(ram, q), size);
 
   return q;
 }
@@ -429,8 +427,8 @@ void pumpkin_heap_free(void *p, char *tag) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   uint8_t *ram = pumpkin_heap_base();
 
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_free %s 0x%08X", tag, ptr2offset(p));
-  debug(DEBUG_TRACE, "logmem", "free heap %s %u", tag, ptr2offset(p));
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_free %s 0x%08X", tag, ptr2addr(ram, p));
+  debug(DEBUG_TRACE, "logmem", "free heap %s %u", tag, ptr2addr(ram, p));
   if (p) {
     heap_free(task ? task->heap : pumpkin_module.heap, p);
   }
@@ -444,7 +442,7 @@ void *pumpkin_heap_dup(void *p, uint32_t size, char *tag) {
     q = pumpkin_heap_alloc(size, tag);
     if (q) sys_memcpy(q, p, size);
   }
-  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_dup %s %u 0x%08X : 0x%08X", tag, size, ptr2offset(p), ptr2offset(q));
+  debug(DEBUG_TRACE, "Heap", "pumpkin_heap_dup %s %u 0x%08X : 0x%08X", tag, size, ptr2addr(ram, p), ptr2addr(ram, q));
 
   return q;
 }
@@ -6027,6 +6025,7 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   UInt32 type, creator;
   notif_ptr_t *np;
+  uint8_t *ram;
   char screator[8], stype[8];
   int ptr, i;
   Err err;
@@ -6052,7 +6051,8 @@ Err SysNotifyRegister(UInt16 cardNo, LocalID dbID, UInt32 notifyType, SysNotifyP
               np = sys_calloc(1, sizeof(notif_ptr_t));
               np->tag = TAG_NOTIF;
               if (pumpkin_is_m68k()) {
-                np->callback68k = callbackP ? (uint8_t *)callbackP - (uint8_t *)pumpkin_heap_base() : 0;
+                ram = pumpkin_heap_base();
+                np->callback68k = ptr2addr(ram, callbackP);
                 np->userData = userDataP;
                 debug(DEBUG_INFO, PUMPKINOS, "notification callback callback68k 0x%08X userData %p", np->callback68k, np->userData);
               } else {
@@ -6566,13 +6566,13 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
           codeSize = pumpkin_module.trapSize[trap];
           task->trapCode[trap] = MemPtrNew(codeSize);
           MemMove(task->trapCode[trap], pumpkin_module.trapCode[trap], codeSize);
-          address = task->trapCode[trap] - ram;
+          address = ptr2addr(ram, task->trapCode[trap]);
         } else {
           // default virtual trap address
           address = TRAPS_BASE + (trap << 2);
         }
       } else {
-        address = task->trapCode[trap] - ram;
+        address = ptr2addr(ram, task->trapCode[trap]);
       }
       mutex_unlock(mutex);
       debug(DEBUG_TRACE, PUMPKINOS, "get trap 0x%04X address 0x%08X", trap + 0xA000, address);
@@ -6616,7 +6616,7 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
             pumpkin_module.trapSize[trap] = 0;
           }
           ram = pumpkin_heap_base();
-          p = ram + address;
+          p = addr2ptr(ram, address);
           codeSize = MemPtrSize(p);
           pumpkin_module.trapSize[trap] = codeSize;
           pumpkin_module.trapCode[trap] = sys_malloc(codeSize);

@@ -73,15 +73,19 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
       if (pumpkin_is_m68k()) {
         if ((d = MemPtrNew(sizeof(PrgCallbackData) + progressMaxMessage)) != NULL) {
           ram = pumpkin_heap_base();
-          addr = d - ram;
+          //addr = d - ram;
+          addr = ptr2addr(ram, d);
           m68k_write_memory_16(addr +  0, prgP->stage);
           m68k_write_memory_32(addr +  2, addr + sizeof(PrgCallbackData));
           m68k_write_memory_16(addr +  6, progressMaxMessage);
-          m68k_write_memory_32(addr +  8, (uint8_t *)prgP->message - ram);
+          //m68k_write_memory_32(addr +  8, (uint8_t *)prgP->message - ram);
+          m68k_write_memory_32(addr +  8, ptr2addr(ram, prgP->message));
           m68k_write_memory_16(addr + 12, prgP->error);
           m68k_write_memory_16(addr + 16, 0x2000); // textChanged = 1
-          m68k_write_memory_32(addr + 38, (uint8_t *)prgP->userDataP - ram);
-          CallPrgCallback((uint8_t *)prgP->textCallback - ram, addr);
+          //m68k_write_memory_32(addr + 38, (uint8_t *)prgP->userDataP - ram);
+          m68k_write_memory_32(addr + 38, ptr2addr(ram, prgP->userDataP));
+          //CallPrgCallback((uint8_t *)prgP->textCallback - ram, addr);
+          CallPrgCallback(ptr2addr(ram, prgP->textCallback), addr);
           data.bitmapId = m68k_read_memory_16(addr + 14);
           flags = m68k_read_memory_16(addr + 16);
           data.textChanged = (flags & 0x2000) ? 1 : 0;

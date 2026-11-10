@@ -196,7 +196,8 @@ static Err INetLibSettingGetPtr(void *buf, UInt16 *bufLenP, void *value) {
     if (pumpkin_is_m68k()) {
       if (*bufLenP == sizeof(UInt32)) {
         ram = pumpkin_heap_base();
-        d = (uint8_t *)value - ram;
+        //d = (uint8_t *)value - ram;
+        d = ptr2addr(ram, value);
         put4b(d, (uint8_t *)buf, 0);
         debug(DEBUG_INFO, "INetMgr", "INetLibSettingGetPtr 0x%08X", d);
         err = errNone;

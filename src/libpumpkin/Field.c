@@ -402,7 +402,8 @@ static FieldType *FldCheckField(FieldType *fldP) {
         get2b(&id, p, 0);
         if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
           ram = (uint8_t *)pumpkin_heap_base();
-          debug(DEBUG_INFO, "Field", "FldCheckField raw Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
+          //debug(DEBUG_INFO, "Field", "FldCheckField raw Field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
+          debug(DEBUG_INFO, "Field", "FldCheckField raw Field 0x%08X %p", ptr2addr(ram, fldP), fldP);
           i = 0;
           if ((fldP = pumpkin_create_field(p, &i)) != NULL) {
             get4b(&h, p, 16);
@@ -463,7 +464,8 @@ void FldFreeMemory(FieldType *fldP) {
         // only free the textHandle if the Field is not 'raw'.
         // raw Fields are those created with MemPtrNew() as used in Clipper.
         ram = (uint8_t *)pumpkin_heap_base();
-        debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle 0x%08X", (uint32_t)((uint8_t *)fldP->textHandle - ram));
+        //debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle 0x%08X", (uint32_t)((uint8_t *)fldP->textHandle - ram));
+        debug(DEBUG_TRACE, PALMOS_MODULE, "FldFreeMemory free text handle 0x%08X", ptr2addr(ram, fldP->textHandle));
         MemHandleFree(fldP->textHandle);
       }
       fldP->textHandle = NULL;
@@ -481,8 +483,10 @@ void FldFreeMemory(FieldType *fldP) {
     fldP->totalLines = 0;
     fldP->pos = 0;
   } else {
+    ram = (uint8_t *)pumpkin_heap_base();
     debug(DEBUG_INFO, "Field", "FldFreeMemory raw Field 0x%08X %p will not be freed",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+      //(uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+      ptr2addr(ram, fldP), fldP);
   }
   OUTV;
 }
@@ -578,6 +582,7 @@ then set the field’s text handle again.
 */
 MemHandle FldGetTextHandle(const FieldType *_fldP) {
   FieldType *fldP;
+  uint8_t *ram;
   MemHandle h = NULL;
 
   IN;
@@ -585,8 +590,10 @@ MemHandle FldGetTextHandle(const FieldType *_fldP) {
   if (fldP && fldP->magic == FIELD_MAGIC) {
     h = fldP->textHandle;
   } else {
+    ram = pumpkin_heap_base();
     debug(DEBUG_ERROR, "Field", "FldGetTextHandle invalid Field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+      //(uint32_t)((uint8_t *)fldP - (uint8_t *)pumpkin_heap_base()), fldP);
+      ptr2addr(ram, fldP), fldP);
   } 
   OUTV;
 
@@ -903,9 +910,10 @@ void FldSetTextHandle(FieldType *fldP, MemHandle textHandle) {
     FldSetText(fldP, textHandle, 0, size);
   } else {
     ram = (uint8_t *)pumpkin_heap_base();
-    debug(DEBUG_INFO, "Field", "FldSetTextHandle raw field 0x%08X %p",
-      (uint32_t)((uint8_t *)fldP - ram), fldP);
-    put4b((uint8_t *)textHandle - ram, (uint8_t *)fldP, 16);
+    //debug(DEBUG_INFO, "Field", "FldSetTextHandle raw field 0x%08X %p", (uint32_t)((uint8_t *)fldP - ram), fldP);
+    debug(DEBUG_INFO, "Field", "FldSetTextHandle raw field 0x%08X %p", ptr2addr(ram, fldP), fldP);
+    //put4b((uint8_t *)textHandle - ram, (uint8_t *)fldP, 16);
+    put4b(ptr2addr(ram, textHandle), (uint8_t *)fldP, 16);
   }
   OUTV;
 }

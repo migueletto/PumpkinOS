@@ -427,7 +427,7 @@ char *BmpGetDescr(BitmapType *bitmapP, char *buf, UInt16 size) {
       default: density = '?'; break;
     }
     BmpGetDimensions(bitmapP, &width, &height, NULL);
-    StrNPrintF(buf, size-1, "%08X_%c%c%c%c_%dx%d", (uint8_t *)bitmapP - ram, version, depth, density, transp ? 't' : '.', width, height);
+    StrNPrintF(buf, size-1, "%08X_%c%c%c%c_%dx%d", ptr2addr(ram, bitmapP), version, depth, density, transp ? 't' : '.', width, height);
   } else {
     StrNCopy(buf, "null", size-1);
   }
@@ -482,7 +482,8 @@ BitmapTypeV3 *BmpCreateBitmapV3(const BitmapType *bitmapP, UInt16 density, const
           if (indirectColorTable) {
             colorTableSize = 4; // pointer to color table
             get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
-            bitmapColorTable = addr ? ram + addr : NULL;
+            //bitmapColorTable = addr ? ram + addr : NULL;
+            bitmapColorTable = addr2ptr(ram, addr);
           } else {
             numEntries = BmpV3GetField((BitmapType *)bitmapP, BitmapV3FieldColorTable);
             colorTableSize = sizeof(UInt16) + numEntries * 4;
@@ -786,7 +787,8 @@ BitmapType *BmpCreate3c(Coord width, Coord height, UInt16 rowBytes, UInt16 densi
     if (indirectColorTable) {
       // indirect color table: pointer to color table
       ram = pumpkin_heap_base();
-      index += put4b((UInt8 *)colorTableP - ram, (UInt8 *)bitmapP, index);
+      //index += put4b((UInt8 *)colorTableP - ram, (UInt8 *)bitmapP, index);
+      index += put4b(ptr2addr(ram, colorTableP), (UInt8 *)bitmapP, index);
     } else {
       // direct color table: numEntries followed by entries
       index += put2b(numEntries, (UInt8 *)bitmapP, index);
@@ -1204,6 +1206,7 @@ Err BmpCompress(BitmapType *bitmapP, BitmapCompressionType compType) {
 
 void *BmpGetBits(BitmapType *bitmapP) {
   UInt32 headerSize, addr;
+  uint8_t *ram = pumpkin_heap_base();
   void *bits = NULL;
   Boolean le;
 
@@ -1227,7 +1230,8 @@ void *BmpGetBits(BitmapType *bitmapP) {
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
           get4(&addr, (UInt8 *)bitmapP, headerSize);
-          bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
+          //bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
+          bits = addr2ptr(ram, addr);
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
         }
@@ -1243,7 +1247,8 @@ void *BmpGetBits(BitmapType *bitmapP) {
         }
         if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirect)) {
           get4(&addr, (UInt8 *)bitmapP, headerSize);
-          bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
+          //bits = addr ? (uint8_t *)pumpkin_heap_base() + addr : NULL;
+          bits = addr2ptr(ram, addr);
         } else {
           bits = (UInt8 *)bitmapP + headerSize;
         }
@@ -1256,7 +1261,8 @@ void *BmpGetBits(BitmapType *bitmapP) {
 
 ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
   ColorTableType *colorTable = NULL;
-  UInt32 addr;
+  uint8_t *ram;
+  UInt32 addr, size;
   Boolean le;
 
   if (bitmapP) {
@@ -1274,8 +1280,11 @@ ColorTableType *BmpGetColortable(BitmapType *bitmapP) {
           break;
         case 3:
           if (BmpGetCommonFlag(bitmapP, BitmapFlagIndirectColorTable)) {
+            ram = pumpkin_heap_base();
+            size = pumpkin_heap_size();
             get4(&addr, (UInt8 *)bitmapP, BitmapV3FieldColorTable);
-            colorTable = addr && addr < pumpkin_heap_size() ? (ColorTableType *)((uint8_t *)pumpkin_heap_base() + addr) : NULL;
+            //colorTable = addr && addr < pumpkin_heap_size() ? (ColorTableType *)((uint8_t *)pumpkin_heap_base() + addr) : NULL;
+            colorTable = (addr - RAM_BASE) < size ? (ColorTableType *)addr2ptr(ram, addr) : NULL;
           } else {
             colorTable = (ColorTableType *)((UInt8 *)bitmapP + BitmapV3FieldColorTable);
           }

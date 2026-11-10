@@ -355,7 +355,8 @@ static Err FtrGetEx(UInt32 creator, UInt16 featureNum, UInt32 *valueP, Boolean *
           if (module->sonySysInfo) {
             // this feature will be meaninful only for m68k apps
             ram = pumpkin_heap_base();
-            *valueP = module->sonySysInfo - ram;
+            //*valueP = module->sonySysInfo - ram;
+            *valueP = ptr2addr(ram, module->sonySysInfo);
             err = errNone;
           }
           break;
@@ -456,7 +457,8 @@ Err FtrGetPtr(UInt32 creator, UInt16 featureNum, void **valueP) {
   if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
     if (ptr) {
       ram = pumpkin_heap_base();
-      *valueP = ram + value;
+      //*valueP = ram + value;
+      *valueP = addr2ptr(ram, value);
     } else {
       err = ftrErrNoSuchFeature;
     }
@@ -536,7 +538,8 @@ Err FtrPtrNew(UInt32 creator, UInt16 featureNum, UInt32 size, void **newPtrP) {
 
   if ((p = MemPtrNew(size)) != NULL) {
     ram = pumpkin_heap_base();
-    value = p - ram;
+    //value = p - ram;
+    value = ptr2addr(ram, p);
     if ((err = FtrSetEx(creator, featureNum, value, true)) == errNone) {
       *newPtrP = p;
       err = errNone;
@@ -557,7 +560,8 @@ Err FtrPtrFree(UInt32 creator, UInt16 featureNum) {
   if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
     if (ptr) {
       ram = pumpkin_heap_base();
-      p = ram + value;
+      //p = ram + value;
+      p = addr2ptr(ram, value);
       MemPtrFree(p);
       err = FtrUnregister(creator, featureNum);
     } else {
@@ -577,7 +581,8 @@ Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPt
   if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
     if (ptr) {
       ram = pumpkin_heap_base();
-      p = ram + value;
+      //p = ram + value;
+      p = addr2ptr(ram, value);
       if ((err = MemPtrResize(p, newSize)) == errNone) {
         *newPtrP = p;
       }

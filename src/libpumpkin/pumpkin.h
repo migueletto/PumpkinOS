@@ -140,6 +140,12 @@ extern "C" {
 
 #define MAX_DBIDS 8192
 
+//#define RAM_BASE 0x10000000
+#define RAM_BASE 0x00000000
+#define ptr2addr(ram,p) ((p) ? (uint32_t)((uint8_t *)(p) - (uint8_t *)ram + RAM_BASE) : 0)
+#define addr2ptr(ram,a) ((a) > RAM_BASE ? ((a) - RAM_BASE + ram) : NULL)
+#define addr2uiptr(ram,a) ((a) > RAM_BASE ? ((a) - RAM_BASE + ram) : 0)
+
 typedef struct {
   char name[dmDBNameLength];
   UInt16 code;

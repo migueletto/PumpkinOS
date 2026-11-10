@@ -28,10 +28,12 @@ UIntPtr FrmObjectGetSetField(void *obj, FormObjectKind kind, UInt16 selector, UI
           case FormTitleFieldText:
             ram = (UIntPtr)pumpkin_heap_base();
             if (set) {
-              put4b(value ? (UInt32)(value - ram) : 0, (UInt8 *)obj, selector);
+              //put4b(value ? (UInt32)(value - ram) : 0, (UInt8 *)obj, selector);
+              put4b(ptr2addr(ram, value), (UInt8 *)obj, selector);
             } else {
               get4b(&v32, (UInt8 *)obj, selector);
-              value = v32 ? ((UIntPtr)ram + v32) : 0;
+              //value = v32 ? ((UIntPtr)ram + v32) : 0;
+              value = (UIntPtr)addr2uiptr(ram, v32);
             }
             break;
           default:

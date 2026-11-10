@@ -17,7 +17,8 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
         get2b(&id, p, 0);
         if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
           ram = (uint8_t *)pumpkin_heap_base();
-          debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", (uint32_t)((uint8_t *)ctlP - ram), ctlP);
+          //debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", (uint32_t)((uint8_t *)ctlP - ram), ctlP);
+          debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", ptr2addr(ram, ctlP), ctlP);
           debug_bytes(DEBUG_INFO, "Control", p, 64);
           i = 0;
           if ((ctlP = pumpkin_create_control(p, &i)) != NULL) {

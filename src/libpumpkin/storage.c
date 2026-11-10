@@ -1745,7 +1745,6 @@ Err DmCloseDatabase(DmOpenRef dbP) {
   vfs_file_t *f;
   UInt32 i, size;
   uint32_t handle;
-  uint8_t *ram;
   void *encoded;
   char st[8], buf[VFS_PATH];
   Err err = dmErrInvalidParam;
@@ -1875,7 +1874,6 @@ Err DmCloseDatabase(DmOpenRef dbP) {
           StoWriteHeader(sto, db);
 
           if (db->elements) {
-            ram = pumpkin_heap_base();
             for (i = 0; i < db->numRecs; i++) {
               h = db->elements[i];
               if (h->magic == HANDLE_MAGIC) {
@@ -1883,11 +1881,13 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                   if ((h->htype & ~STO_INFLATED) != STO_TYPE_MEM) {
                     pumpkin_heap_free(h, "Handle");
                   } else {
-                    handle = (uint8_t *)h - ram;
+                    //handle = (uint8_t *)h - sto->base;
+                    handle = ptr2addr(sto->base, h);
                     debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X STO_TYPE_MEM not freed", db->name, handle);
                   }
                 } else {
-                  handle = (uint8_t *)h - ram;
+                  //handle = (uint8_t *)h - sto->base;
+                  handle = ptr2addr(sto->base, h);
                   if ((h->htype & ~STO_INFLATED) == STO_TYPE_RES) {
                     pumpkin_id2s(h->d.res.type, st);
                     debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X type '%s' id %u lockCount %d not zero",
@@ -1898,7 +1898,8 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                   }
                 }
               } else {
-                handle = (uint8_t *)h - ram;
+                //handle = (uint8_t *)h - sto->base;
+                handle = ptr2addr(sto->base, h);
                 debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" handle 0x%08X is invalid", db->name, handle);
               }
             }
@@ -2103,7 +2104,8 @@ Err DmRecordInfo(DmOpenRef dbP, UInt16 index, UInt16 *attrP, UInt32 *uniqueIDP, 
         if (uniqueIDP) *uniqueIDP = h->d.rec.uniqueID;
         if (chunkIDP) {
           if (h->htype & STO_INFLATED) {
-            *chunkIDP = (uint8_t *)h - sto->base;
+            //*chunkIDP = (uint8_t *)h - sto->base;
+            *chunkIDP = ptr2addr(sto->base, h);
           } else {
             debug(DEBUG_ERROR, "STOR", "DmRecordInfo database \"%s\" index %d chunkID not inflated yet", db->name, index);
             *chunkIDP = 0;
@@ -2291,7 +2293,8 @@ static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resI
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "DmGetResourceEx %s %d: 0x%08X", st, resID, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
+  //debug(DEBUG_TRACE, "STOR", "DmGetResourceEx %s %d: 0x%08X", st, resID, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
+  debug(DEBUG_TRACE, "STOR", "DmGetResourceEx %s %d: 0x%08X", st, resID, ptr2addr(sto->base, h));
   return h;
 }
 
@@ -2577,7 +2580,8 @@ MemHandle DmGetResourceIndex(DmOpenRef dbP, UInt16 index) {
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "DmGetResourceIndex %p %u: 0x%08X", dbP, index, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
+  //debug(DEBUG_TRACE, "STOR", "DmGetResourceIndex %p %u: 0x%08X", dbP, index, (uint32_t)(h ? (uint8_t *)h - sto->base : 0));
+  debug(DEBUG_TRACE, "STOR", "DmGetResourceIndex %p %u: 0x%08X", dbP, index, ptr2addr(sto->base, h));
   return h;
 }
 
@@ -2614,7 +2618,8 @@ Err DmReleaseResource(MemHandle resourceH) {
   if (resourceH) {
     h = (storage_handle_t *)resourceH;
     pumpkin_id2s(h->d.res.type, st);
-    debug(DEBUG_TRACE, "STOR", "DmReleaseResource 0x%08X '%s' %d use %d lock %d", (uint32_t)((uint8_t *)h - sto->base), st, h->d.res.id, h->useCount, h->lockCount);
+    //debug(DEBUG_TRACE, "STOR", "DmReleaseResource 0x%08X '%s' %d use %d lock %d", (uint32_t)((uint8_t *)h - sto->base), st, h->d.res.id, h->useCount, h->lockCount);
+    debug(DEBUG_TRACE, "STOR", "DmReleaseResource 0x%08X '%s' %d use %d lock %d", ptr2addr(sto->base, h), st, h->d.res.id, h->useCount, h->lockCount);
     switch (h->htype & ~STO_INFLATED) {
       case STO_TYPE_RES:
         debug(DEBUG_TRACE, "STOR", "DmReleaseResource '%s' %d inflated %d", st, h->d.res.id, (h->htype & STO_INFLATED) ? 1 : 0);
@@ -2655,11 +2660,13 @@ Err DmReleaseResource(MemHandle resourceH) {
             }
           }
         } else {
-          debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X handle type %d is not inflated", (uint32_t)((uint8_t *)h - sto->base), h->htype);
+          //debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X handle type %d is not inflated", (uint32_t)((uint8_t *)h - sto->base), h->htype);
+          debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X handle type %d is not inflated", ptr2addr(sto->base, h), h->htype);
         }
         break;
       default:
-        debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X unexpected handle type %d", (uint32_t)((uint8_t *)h - sto->base), h->htype & ~STO_INFLATED);
+        //debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X unexpected handle type %d", (uint32_t)((uint8_t *)h - sto->base), h->htype & ~STO_INFLATED);
+        debug(DEBUG_ERROR, "STOR", "DmReleaseResource 0x%08X unexpected handle type %d", ptr2addr(sto->base, h), h->htype & ~STO_INFLATED);
         break;
     }
     err = errNone;
@@ -3101,7 +3108,8 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
         if (db->numRecs > 0) {
           pos = 0;
           appInfoH = db->appInfoID ? MemLocalIDToHandle(db->appInfoID) : NULL;
-          appInfo = appInfoH ? (uint8_t *)appInfoH - sto->base : 0;
+          //appInfo = appInfoH ? (uint8_t *)appInfoH - sto->base : 0;
+          appInfo = ptr2addr(sto->base, appInfoH);
           recInfoP = pumpkin_heap_alloc(4, "recInfo");
           for (i = 0; i < db->numRecs; i++) {
             h = db->elements[i];
@@ -3111,11 +3119,13 @@ UInt16 DmFindSortPosition68K(DmOpenRef dbP, UInt32 newRecord, UInt32 newRecordIn
               recInfoP[1] = (h->d.rec.uniqueID >> 16) & 0xFF;
               recInfoP[2] = (h->d.rec.uniqueID >>  8) & 0xFF;
               recInfoP[3] = (h->d.rec.uniqueID >>  0) & 0xFF;
-              recInfo = recInfoP - sto->base;
+              //recInfo = recInfoP - sto->base;
+              recInfo = ptr2addr(sto->base, recInfoP);
             } else {
               recInfo = 0;
             }
-            if (CallDmCompare(compar, newRecord, h->buf - sto->base, other, newRecordInfo, recInfo, appInfo) < 0) {
+            //if (CallDmCompare(compar, newRecord, h->buf - sto->base, other, newRecordInfo, recInfo, appInfo) < 0)
+            if (CallDmCompare(compar, newRecord, ptr2addr(sto->base, h->buf), other, newRecordInfo, recInfo, appInfo) < 0) {
               pos = i;
               err = errNone;
               break;
@@ -3839,7 +3849,8 @@ Err DmResourceInfo(DmOpenRef dbP, UInt16 index, DmResType *resTypeP, DmResID *re
       h = db->elements[index];
       if (resTypeP) *resTypeP = h->d.res.type;
       if (resIDP) *resIDP = h->d.res.id;
-      if (chunkLocalIDP) *chunkLocalIDP = (uint8_t *)db->elements[index] - sto->base;
+      //if (chunkLocalIDP) *chunkLocalIDP = (uint8_t *)db->elements[index] - sto->base;
+      if (chunkLocalIDP) *chunkLocalIDP = ptr2addr(sto->base, db->elements[index]);
       err = errNone;
     }
   }
@@ -4692,7 +4703,8 @@ MemHandle MemHandleNew(UInt32 size) {
   }
 
   StoCheckErr(err);
-  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, (uint32_t)(h ? (uint8_t *)h - sto->base : 0), h);
+  //debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, (uint32_t)(h ? (uint8_t *)h - sto->base : 0), h);
+  debug(DEBUG_TRACE, "STOR", "MemHandleNew %u 0x%08X %p", size, ptr2addr(sto->base, h), h);
   return h;
 }
 
@@ -4702,7 +4714,8 @@ Err MemHandleFree(MemHandle hh) {
   char st[8];
   Err err = dmErrInvalidParam;
 
-  debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", (uint32_t)(hh ? (uint8_t *)hh - sto->base : 0), hh);
+  //debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", (uint32_t)(hh ? (uint8_t *)hh - sto->base : 0), hh);
+  debug(DEBUG_TRACE, "STOR", "MemHandleFree 0x%08X %p", ptr2addr(sto->base, hh), hh);
 
   if (hh) {
     h = (storage_handle_t *)hh;
@@ -4753,7 +4766,6 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
   DmOpenRef dbRef;
-  uint8_t *ram;
   void *p = NULL;
   Err err = dmErrInvalidParam;
 
@@ -4793,8 +4805,8 @@ MemPtr MemHandleLockEx(MemHandle h, Boolean decoded) {
           }
           p = decoded && handle->d.res.decoded ? handle->d.res.decoded : handle->buf;
           if (p && handle->d.res.type == bitmapRsc) {
-            ram = pumpkin_heap_base();
-            debug(DEBUG_TRACE, "logmem", "lock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)p - ram), handle->size);
+            //debug(DEBUG_TRACE, "logmem", "lock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)p - sto->base), handle->size);
+            debug(DEBUG_TRACE, "logmem", "lock heap %s %u %u", "Bitmap", ptr2addr(sto->base, p), handle->size);
           }
           err = errNone;
           break;
@@ -4818,7 +4830,6 @@ MemPtr MemHandleLock(MemHandle h) {
 Err MemHandleUnlock(MemHandle h) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_handle_t *handle;
-  uint8_t *ram;
   Err err = dmErrInvalidParam;
 
   if (h) {
@@ -4837,8 +4848,8 @@ Err MemHandleUnlock(MemHandle h) {
             debug(DEBUG_ERROR, "STOR", "MemHandleUnlock %p type %d not inflated", handle, handle->htype);
           }
           if ((handle->htype & ~STO_INFLATED) == STO_TYPE_RES && handle->d.res.type == bitmapRsc && handle->buf) {
-            ram = pumpkin_heap_base();
-            debug(DEBUG_TRACE, "logmem", "unlock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)handle->buf - ram), handle->size);
+            //debug(DEBUG_TRACE, "logmem", "unlock heap %s %u %u", "Bitmap", (uint32_t)((uint8_t *)handle->buf - sto->base), handle->size);
+            debug(DEBUG_TRACE, "logmem", "unlock heap %s %u %u", "Bitmap", ptr2addr(sto->base, handle->buf), handle->size);
           }
           handle->lockCount--;
           err = errNone;
@@ -4848,7 +4859,8 @@ Err MemHandleUnlock(MemHandle h) {
           break;
       }
     } else {
-      debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", (uint32_t)((uint8_t *)h - sto->base));
+      //debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", (uint32_t)((uint8_t *)h - sto->base));
+      debug(DEBUG_ERROR, "STOR", "MemHandleUnlock 0x%08X handle is not locked", ptr2addr(sto->base, h));
     }
   }
 
@@ -4898,10 +4910,12 @@ Err MemChunkFree(MemPtr chunkDataP) {
   debug(DEBUG_TRACE, "STOR", "MemChunkFree %p", chunkDataP);
   if (chunkDataP) {
     if ((h = MemPtrRecoverHandle(chunkDataP)) != NULL) {
-      debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", (uint32_t)((uint8_t *)h - sto->base));
+      //debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", (uint32_t)((uint8_t *)h - sto->base));
+      debug(DEBUG_TRACE, "STOR", "MemChunkFree handle 0x%08X", ptr2addr(sto->base, h));
       switch (h->htype & ~STO_INFLATED) {
         case STO_TYPE_MEM:
-          debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p 0x%08X", chunkDataP, (uint32_t)((uint8_t *)h - sto->base));
+          //debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p 0x%08X", chunkDataP, (uint32_t)((uint8_t *)h - sto->base));
+          debug(DEBUG_TRACE, "STOR", "MemChunkFree memory %p 0x%08X", chunkDataP, ptr2addr(sto->base, h));
           if (h->buf) StoPtrFree(h->buf);
           pumpkin_heap_free(h, "Handle");
           err = errNone;
@@ -5309,7 +5323,8 @@ LocalID MemHandleToLocalID(MemHandle h) {
         case STO_TYPE_MEM:
         case STO_TYPE_REC:
         case STO_TYPE_RES:
-          id = (uint8_t *)handle - sto->base;
+          //id = (uint8_t *)handle - sto->base;
+          id = ptr2addr(sto->base, handle);
           err = errNone;
           break;
         default:
@@ -5362,7 +5377,8 @@ MemPtr MemLocalIDToGlobal(LocalID local, UInt16 cardNo) {
   Err err = memErrInvalidParam;
 
   if (local > 0 && local < sto->size) {
-    h = (storage_handle_t *)(sto->base + local);
+    //h = (storage_handle_t *)(sto->base + local);
+    h = (storage_handle_t *)addr2ptr(sto->base, local);
     err = errNone;
   }
 
@@ -5386,7 +5402,8 @@ MemPtr MemLocalIDToPtr(LocalID local, UInt16 cardNo) {
   Err err = memErrInvalidParam;
 
   if (local > 0 && local < sto->size) {
-    h = (storage_handle_t *)(sto->base + local);
+    //h = (storage_handle_t *)(sto->base + local);
+    h = (storage_handle_t *)addr2ptr(sto->base, local);
     if (h->magic == HANDLE_MAGIC) {
       if (h->htype == (STO_TYPE_MEM | STO_INFLATED) && h->lockCount > 0) {
         p = h->buf;
@@ -5411,7 +5428,8 @@ MemPtr MemLocalIDToLockedPtr(LocalID local, UInt16 cardNo) {
   Err err = memErrInvalidParam;
 
   if (local < (sto->size - sizeof(storage_handle_t))) {
-    h = (storage_handle_t *)(sto->base + local);
+    //h = (storage_handle_t *)(sto->base + local);
+    h = (storage_handle_t *)addr2ptr(sto->base, local);
     if (h->magic == HANDLE_MAGIC) {
       if ((h->htype == (STO_TYPE_MEM | STO_INFLATED) || h->htype == (STO_TYPE_REC | STO_INFLATED)) && h->lockCount < 14) {
         h->lockCount++;
@@ -5431,7 +5449,8 @@ MemHandle MemLocalIDToHandle(LocalID local) {
   Err err = memErrInvalidParam;
 
   if (local > 0 && local < sto->size) {
-    h = (storage_handle_t *)(sto->base + local);
+    //h = (storage_handle_t *)(sto->base + local);
+    h = (storage_handle_t *)addr2ptr(sto->base, local);
     if (h->magic == HANDLE_MAGIC) {
       err = errNone;
     }
@@ -5571,7 +5590,7 @@ static int StoCompareHandle(const void *e1, const void *e2) {
   Boolean free1, free2;
   vfs_file_t *f;
   char buf[VFS_PATH];
-  UInt8 *b;
+  //UInt8 *b;
   UInt32 a;
   int r = 0;
 
@@ -5629,9 +5648,12 @@ static int StoCompareHandle(const void *e1, const void *e2) {
       sto->recInfo[6] = (h2->d.rec.uniqueID >>  8) & 0xFF;
       sto->recInfo[7] = (h2->d.rec.uniqueID >>  0) & 0xFF;
 
-      b = sto->base;
-      a = sto->appInfoH ? (UInt8 *)sto->appInfoH - b : 0;
-      r = CallDmCompare(sto->comparF68K, b1 ? b1 - b : 0, b2 ? b2 - b : 0, sto->other, &sto->recInfo[0] - b, &sto->recInfo[4] - b, a);
+      //b = sto->base;
+      //a = sto->appInfoH ? (UInt8 *)sto->appInfoH - b : 0;
+      a = ptr2addr(sto->base, sto->appInfoH);
+      //r = CallDmCompare(sto->comparF68K, b1 ? b1 - b : 0, b2 ? b2 - b : 0, sto->other, &sto->recInfo[0] - b, &sto->recInfo[4] - b, a);
+      r = CallDmCompare(sto->comparF68K, ptr2addr(sto->base, b1), ptr2addr(sto->base, b2), sto->other,
+        ptr2addr(sto->base, &sto->recInfo[0]), ptr2addr(sto->base, &sto->recInfo[4]), a);
     }
 
     if (free1) pumpkin_heap_free(b1, "TmpHandleBuf");

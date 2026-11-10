@@ -2942,7 +2942,8 @@ void CtlDirectAccessHack(ControlType *c) {
 
   } else {
     ram = pumpkin_heap_base();
-    put4b((uint8_t *)c->text - ram, (uint8_t *)c, 10);
+    //put4b((uint8_t *)c->text - ram, (uint8_t *)c, 10);
+    put4b(ptr2addr(ram, c->text), (uint8_t *)c, 10);
     put1(c->font,  (uint8_t *)c, 17);
     put1(c->group, (uint8_t *)c, 18);
     put1(0, (uint8_t *)c, 19); // reserved
@@ -3032,7 +3033,8 @@ ControlType *pumpkin_create_control(uint8_t *p, int *i) {
     len = sys_strlen(text);
     if (len == 0 && textPtr != 0) {
       ram = (char *)pumpkin_heap_base();
-      text = ram + textPtr;
+      //text = ram + textPtr;
+      text = addr2ptr(ram, textPtr);
       len = sys_strlen(text);
     }
     if ((c = pumpkin_heap_alloc(sizeof(ControlType) + len + 1, "Control")) != NULL) {
