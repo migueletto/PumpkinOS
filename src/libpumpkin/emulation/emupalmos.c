@@ -410,18 +410,20 @@ static void write_screen_dirty(emu_state_t *state, WinHandle wh, uint16_t width,
     state->istate->regionStarted = true;
   } else if (x2 == width-1 && y == height-1) {
     // writing to the last pixel on the screen: end the current update region and begins another region
-    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd");
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd (whole screen)");
     pumpkin_screen_dirty(wh, 0, 0, width-1, height-1);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
     state->istate->regionStarted = false;
   } else if (y - state->istate->lastY > 1 || y < state->istate->lastY) {
     // skipping a row or writing to a previous row: end the current update region and begins another region
-    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd");
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionEnd (%d,%d,%d,%d)",
+      state->istate->firstX, state->istate->firstY, state->istate->lastX, state->istate->lastY);
     pumpkin_screen_dirty(wh, state->istate->firstX, state->istate->firstY, state->istate->lastX, state->istate->lastY);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
     state->istate->firstX = x1;
     state->istate->lastX  = x2;
     state->istate->firstY = y;
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write dirtyRegionBegin");
     pumpkin_dirty_region_mode(dirtyRegionBegin);
     state->istate->regionStarted = true;
   } else {
