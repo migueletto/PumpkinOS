@@ -2077,6 +2077,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
   pumpkin_module.tasks[i].creator = creator;
   pumpkin_module.tasks[i].task_index = i;
   pumpkin_module.tasks[i].active = 1;
+  pumpkin_module.tasks[i].finish = 0;
   pumpkin_module.tasks[i].reserved = 0;
   pumpkin_module.tasks[i].screen_ptr = ptr;
   pumpkin_module.tasks[i].width = width;
