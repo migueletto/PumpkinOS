@@ -347,17 +347,13 @@ uint16_t cpu_read_word(uint32_t address) {
     }
   }
 
-  if ((address & 1) == 0 && address >= state->istate->trapsBase && address < (state->istate->trapsBase + TRAPS_SIZE)) {
-    return 0x4E75; // simulated a RTS for direct call to trap addresses
-  } else {
-    if (!emupalmos_check_address_ex(state, address, 2, 1, 0)) return 0;
-    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
-    ram = pumpkin_heap_base();
-    value = READ_WORD(ram, address - RAM_BASE);
+  if (!emupalmos_check_address_ex(state, address, 2, 1, 0)) return 0;
+  debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
+  ram = pumpkin_heap_base();
+  value = READ_WORD(ram, address - RAM_BASE);
 #if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 0);
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 0);
 #endif
-  }
 
   return value;
 }
@@ -2283,7 +2279,7 @@ static int cpu_instr_callback(unsigned int pc) {
 
   trapsBase = pumpkin_get_trapsbase();
   if ((pc & 1) == 0 && pc >= trapsBase && pc < (trapsBase + TRAPS_SIZE)) {
-    trap = 0xA000 | ((pc - trapsBase) >> 2);
+    trap = 0xA000 | ((pc - trapsBase) >> 1);
     if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
       if (logtrap_started(state->lt)) {
         debug(DEBUG_INFO, "logtrap", "simulating a direct call to trap %s (pc 0x%08X)", s, pc);

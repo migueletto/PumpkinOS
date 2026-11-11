@@ -2132,7 +2132,15 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     task->heap = pumpkin_module.heap;
   }
   task->exception = pumpkin_heap_alloc(sizeof(void *), "Exception");
+
+  // this memory region represents virtual trap address for applications
+  // that retrieve a trap address via SysGetTrapAddress() and call
+  // that address directly.
   task->trapsBase = pumpkin_heap_alloc(TRAPS_SIZE, "trapsBase");
+  for (j = 0; j < TRAPS_SIZE; j += 2) {
+    // a RTS instruction is placed on every trap addresse
+    put2b(0x4E75, task->trapsBase, j);
+  }
 
   for (j = 0; j < pumpkin_module.num_serial; j++) {
     task->serial[j] = pumpkin_heap_alloc(sys_strlen(pumpkin_module.serial[j].descr) + 1, "serial_descr");
@@ -6577,7 +6585,7 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
           address = ptr2addr(ram, task->trapCode[trap]);
         } else {
           // default virtual trap address
-          address = pumpkin_get_trapsbase() + (trap << 2);
+          address = pumpkin_get_trapsbase() + (trap << 1);
         }
       } else {
         address = ptr2addr(ram, task->trapCode[trap]);

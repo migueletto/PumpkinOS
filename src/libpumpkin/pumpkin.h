@@ -135,7 +135,7 @@ extern "C" {
 #define PUMPKIN_FONT_STYLE_USRDEF1      4
 #define PUMPKIN_FONT_STYLE_USRDEF2      8
 
-#define TRAPS_SIZE 0x4000  // 4096 traps, 4 bytes each
+#define TRAPS_SIZE 0x2000  // 4096 traps, 2 bytes each
 
 #define MAX_DBIDS 8192
 
