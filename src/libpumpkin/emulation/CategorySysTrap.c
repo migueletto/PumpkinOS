@@ -26,10 +26,12 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryCreateListV10: {
       // void CategoryCreateListV10(DmOpenRef db, in ListType *lst, UInt16 currentCategory, Boolean showAll)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t lst = ARG32;
-      ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
+      //ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
+      ListType *s_lst = emupalmos_trap_in(lst, trap, 1);
       uint16_t currentCategory = ARG16;
       uint8_t showAll = ARG8;
       CategoryCreateListV10(db ? l_db : 0, lst ? s_lst : NULL, currentCategory, showAll);
@@ -39,10 +41,11 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryCreateList: {
       // void CategoryCreateList(DmOpenRef db, in ListType *listP, UInt16 currentCategory, Boolean showAll, Boolean showUneditables, UInt8 numUneditableCategories, UInt32 editingStrID, Boolean resizeList)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t listP = ARG32;
-      ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
+      ListType *s_listP = emupalmos_trap_in(listP, trap, 1);
       uint16_t currentCategory = ARG16;
       uint8_t showAll = ARG8;
       uint8_t showUneditables = ARG8;
@@ -56,10 +59,12 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryFreeListV10: {
       // void CategoryFreeListV10(DmOpenRef db, in ListType *lst)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t lst = ARG32;
-      ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
+      //ListType *s_lst = lst ? (ListType *)(ram + lst) : NULL;
+      ListType *s_lst = emupalmos_trap_in(lst, trap, 1);
       CategoryFreeListV10(db ? l_db : 0, lst ? s_lst : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategoryFreeListV10(db=0x%08X, lst=0x%08X)", db, lst);
     }
@@ -67,8 +72,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryFreeList: {
       // void CategoryFreeList(DmOpenRef db, in ListType *listP, Boolean showAll, UInt32 editingStrID)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t listP = ARG32;
       ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
       uint8_t showAll = ARG8;
@@ -80,10 +86,12 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryFind: {
       // UInt16 CategoryFind(DmOpenRef db, in Char *name)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t name = ARG32;
-      char *s_name = name ? (char *)(ram + name) : NULL;
+      //char *s_name = name ? (char *)(ram + name) : NULL;
+      char *s_name = emupalmos_trap_in(name, trap, 1);
       UInt16 res = CategoryFind(db ? l_db : 0, name ? s_name : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategoryFind(db=0x%08X, name=0x%08X [%s]): %d", db, name, s_name, res);
@@ -92,11 +100,13 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryGetName: {
       // void CategoryGetName(DmOpenRef db, UInt16 index, out Char *name)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint16_t index = ARG16;
       uint32_t name = ARG32;
-      char *s_name = name ? (char *)(ram + name) : NULL;
+      //char *s_name = name ? (char *)(ram + name) : NULL;
+      char *s_name = emupalmos_trap_in(name, trap, 2);
       CategoryGetName(db ? l_db : 0, index, name ? s_name : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategoryGetName(db=0x%08X, index=%d, name=0x%08X [%s])", db, index, name, s_name);
     }
@@ -104,8 +114,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryEditV10: {
       // Boolean CategoryEditV10(DmOpenRef db, inout UInt16 *category)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t category = ARG32;
       UInt16 l_category = 0;
       if (category) l_category = m68k_read_memory_16(category);
@@ -118,8 +129,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryEditV20: {
       // Boolean CategoryEditV20(DmOpenRef db, inout UInt16 *category, UInt32 titleStrID)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t category = ARG32;
       UInt16 l_category = 0;
       if (category) l_category = m68k_read_memory_16(category);
@@ -133,8 +145,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryEdit: {
       // Boolean CategoryEdit(DmOpenRef db, inout UInt16 *category, UInt32 titleStrID, UInt8 numUneditableCategories)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t category = ARG32;
       UInt16 l_category = 0;
       if (category) l_category = m68k_read_memory_16(category);
@@ -149,17 +162,20 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategorySelectV10: {
       // Boolean CategorySelectV10(DmOpenRef db, in FormType *frm, UInt16 ctlID, UInt16 lstID, Boolean title, out UInt16 *categoryP, out Char *categoryName)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t frm = ARG32;
-      FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
+      //FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
+      FormType *s_frm = emupalmos_trap_in(frm, trap, 1);
       uint16_t ctlID = ARG16;
       uint16_t lstID = ARG16;
       uint8_t title = ARG8;
       uint32_t categoryP = ARG32;
       UInt16 l_categoryP = 0;
       uint32_t categoryName = ARG32;
-      char *s_categoryName = categoryName ? (char *)(ram + categoryName) : NULL;
+      //char *s_categoryName = categoryName ? (char *)(ram + categoryName) : NULL;
+      char *s_categoryName = emupalmos_trap_in(categoryName, trap, 6);
       Boolean res = CategorySelectV10(db ? l_db : 0, frm ? s_frm : NULL, ctlID, lstID, title, categoryP ? &l_categoryP : NULL, categoryName ? s_categoryName : NULL);
       if (categoryP) m68k_write_memory_16(categoryP, l_categoryP);
       m68k_set_reg(M68K_REG_D0, res);
@@ -169,17 +185,20 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategorySelect: {
       // Boolean CategorySelect(DmOpenRef db, in FormType *frm, UInt16 ctlID, UInt16 lstID, Boolean title, out UInt16 *categoryP, out Char *categoryName, UInt8 numUneditableCategories, UInt32 editingStrID)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint32_t frm = ARG32;
-      FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
+      //FormType *s_frm = frm ? (FormType *)(ram + frm) : NULL;
+      FormType *s_frm = emupalmos_trap_in(frm, trap, 1);
       uint16_t ctlID = ARG16;
       uint16_t lstID = ARG16;
       uint8_t title = ARG8;
       uint32_t categoryP = ARG32;
       UInt16 l_categoryP = 0;
       uint32_t categoryName = ARG32;
-      char *s_categoryName = categoryName ? (char *)(ram + categoryName) : NULL;
+      //char *s_categoryName = categoryName ? (char *)(ram + categoryName) : NULL;
+      char *s_categoryName = emupalmos_trap_in(categoryName, trap, 6);
       uint8_t numUneditableCategories = ARG8;
       uint32_t editingStrID = ARG32;
       Boolean res = CategorySelect(db ? l_db : 0, frm ? s_frm : NULL, ctlID, lstID, title, categoryP ? &l_categoryP : NULL, categoryName ? s_categoryName : NULL, numUneditableCategories, editingStrID);
@@ -191,8 +210,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryGetNext: {
       // UInt16 CategoryGetNext(DmOpenRef db, UInt16 index)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint16_t index = ARG16;
       UInt16 res = CategoryGetNext(db ? l_db : 0, index);
       m68k_set_reg(M68K_REG_D0, res);
@@ -202,10 +222,12 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategorySetTriggerLabel: {
       // void CategorySetTriggerLabel(in ControlType *ctl, Char *name)
       uint32_t ctl = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      ControlType *s_ctl = ctl ? (ControlType *)(ram + ctl) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //ControlType *s_ctl = ctl ? (ControlType *)(ram + ctl) : NULL;
+      ControlType *s_ctl = emupalmos_trap_in(ctl, trap, 0);
       uint32_t name = ARG32;
-      char *s_name = name ? (char *)(ram + name) : NULL;
+      //char *s_name = name ? (char *)(ram + name) : NULL;
+      char *s_name = emupalmos_trap_in(name, trap, 1);
       CategorySetTriggerLabel(ctl ? s_ctl : NULL, name ? s_name : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategorySetTriggerLabel(ctl=0x%08X, name=0x%08X [%s])", ctl, name, s_name);
     }
@@ -213,8 +235,9 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategoryTruncateName: {
       // void CategoryTruncateName(inout Char *name, UInt16 maxWidth)
       uint32_t name = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_name = name ? (char *)(ram + name) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_name = name ? (char *)(ram + name) : NULL;
+      char *s_name = emupalmos_trap_in(name, trap, 0);
       uint16_t maxWidth = ARG16;
       CategoryTruncateName(name ? s_name : NULL, maxWidth);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategoryTruncateName(name=0x%08X [%s], maxWidth=%d)", name, s_name, maxWidth);
@@ -237,11 +260,13 @@ void palmos_CategorySysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCategorySetName: {
       // void CategorySetName(DmOpenRef db, UInt16 index, in Char *nameP)
       uint32_t db = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //DmOpenRef l_db = db ? (DmOpenRef)(ram + db) : NULL;
+      DmOpenRef l_db = emupalmos_trap_in(db, trap, 0);
       uint16_t index = ARG16;
       uint32_t nameP = ARG32;
-      char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      //char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      char *s_nameP = emupalmos_trap_in(nameP, trap, 2);
       CategorySetName(db ? l_db : 0, index, nameP ? s_nameP : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "CategorySetName(db=0x%08X, index=%d, nameP=0x%08X [%s])", db, index, nameP, s_nameP);
     }

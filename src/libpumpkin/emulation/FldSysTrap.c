@@ -171,8 +171,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t fldP = ARG32;
       FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
       uint32_t textHandle = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
+      MemHandle l_textHandle = emupalmos_trap_in(textHandle, trap, 1);
       uint16_t offset = ARG16;
       uint16_t size = ARG16;
       FldSetText(fldP ? s_fldP : NULL, textHandle ? l_textHandle : 0, offset, size);
@@ -184,8 +185,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t fldP = ARG32;
       FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
       uint32_t textHandle = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MemHandle l_textHandle = textHandle ? ram + textHandle : NULL;
+      MemHandle l_textHandle = emupalmos_trap_in(textHandle, trap, 1);
       FldSetTextHandle(fldP ? s_fldP : NULL, textHandle ? l_textHandle : 0);
       debug(DEBUG_TRACE, "EmuPalmOS", "FldSetTextHandle(fldP=0x%08X, textHandle=0x%08X)", fldP, textHandle);
     }
@@ -195,8 +197,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t fldP = ARG32;
       FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
       uint32_t textP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_textP = textP ? (char *)(ram + textP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_textP = textP ? (char *)(ram + textP) : NULL;
+      char *s_textP = emupalmos_trap_in(textP, trap, 1);
       FldSetTextPtr(fldP ? s_fldP : NULL, textP ? s_textP : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "FldSetTextPtr(fldP=0x%08X, textP=0x%08X [%s])", fldP, textP, s_textP);
     }
@@ -348,8 +351,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFldCalcFieldHeight: {
       // UInt16 FldCalcFieldHeight(in Char *chars, UInt16 maxWidth)
       uint32_t chars = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_chars = chars ? (char *)(ram + chars) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_chars = chars ? (char *)(ram + chars) : NULL;
+      char *s_chars = emupalmos_trap_in(chars, trap, 0);
       uint16_t maxWidth = ARG16;
       UInt16 res = FldCalcFieldHeight(chars ? s_chars : NULL, maxWidth);
       m68k_set_reg(M68K_REG_D0, res);
@@ -359,8 +363,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFldWordWrap: {
       // UInt16 FldWordWrap(in Char *chars, Int16 maxWidth)
       uint32_t chars = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_chars = chars ? (char *)(ram + chars) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_chars = chars ? (char *)(ram + chars) : NULL;
+      char *s_chars = emupalmos_trap_in(chars, trap, 0);
       int16_t maxWidth = ARG16;
       UInt16 res = FldWordWrap(chars ? s_chars : NULL, maxWidth);
       m68k_set_reg(M68K_REG_D0, res);
@@ -416,8 +421,9 @@ void palmos_FldSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t fldP = ARG32;
       FieldType *s_fldP = emupalmos_trap_in(fldP, trap, 0);
       uint32_t insertChars = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_insertChars = insertChars ? (char *)(ram + insertChars) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_insertChars = insertChars ? (char *)(ram + insertChars) : NULL;
+      char *s_insertChars = emupalmos_trap_in(insertChars, trap, 1);
       uint16_t insertLen = ARG16;
       Boolean res = FldInsert(fldP ? s_fldP : NULL, insertChars ? s_insertChars : NULL, insertLen);
       m68k_set_reg(M68K_REG_D0, res);

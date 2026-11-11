@@ -114,8 +114,9 @@ void palmos_LstSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t listP = ARG32;
       ListType *s_listP = emupalmos_trap_in(listP, trap, 0);
       uint32_t itemsText = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char **s_itemsText = itemsText ? (char **)(ram + itemsText) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char **s_itemsText = itemsText ? (char **)(ram + itemsText) : NULL;
+      char **s_itemsText = emupalmos_trap_in(itemsText, trap, 1);
       int16_t numItems = ARG16;
       LstSetListChoices(listP ? s_listP : NULL, itemsText ? s_itemsText : NULL, numItems);
       debug(DEBUG_TRACE, "EmuPalmOS", "LstSetListChoices(listP=0x%08X, itemsText=0x%08X, numItems=%d)", listP, itemsText, numItems);

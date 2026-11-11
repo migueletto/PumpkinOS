@@ -67,7 +67,8 @@ void palmos_WinSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       MemSet(table, sizeof(table), 0);
       if (operation == winPaletteSet && tableP) {
         debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette winPaletteSet %u entries", paletteEntries);
-        debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
+        //debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
+        debug_bytes(DEBUG_TRACE, "EmuPalmOS", addr2ptr(ram, tableP), paletteEntries * 4);
         for (i = 0; i < paletteEntries; i++) {
           decode_rgb(tableP + i*4, &table[i]);
         }
@@ -78,7 +79,8 @@ void palmos_WinSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
           encode_rgb(tableP + i*4, &table[i]);
         }
         debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette winPaletteGet %u entries", paletteEntries);
-        debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
+        //debug_bytes(DEBUG_TRACE, "EmuPalmOS", ram + tableP, paletteEntries * 4);
+        debug_bytes(DEBUG_TRACE, "EmuPalmOS", addr2ptr(ram, tableP), paletteEntries * 4);
       }
       debug(DEBUG_TRACE, "EmuPalmOS", "WinPalette(%d, %d, %d, 0x%08X): %d", operation, startIndex, paletteEntries, tableP, err);
       m68k_set_reg(M68K_REG_D0, err);
@@ -170,8 +172,9 @@ void palmos_WinSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapWinRemoveWindow: {
       // void WinRemoveWindow(WinHandle winHandle)
       uint32_t winHandle = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      WinHandle l_winHandle = winHandle ? (WinHandle)(ram + winHandle) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //WinHandle l_winHandle = winHandle ? (WinHandle)(ram + winHandle) : NULL;
+      WinHandle l_winHandle = emupalmos_trap_in(winHandle, trap, 0);
       WinRemoveWindow(winHandle ? l_winHandle : 0);
       debug(DEBUG_TRACE, "EmuPalmOS", "WinRemoveWindow(winHandle=0x%08X)", winHandle);
     }

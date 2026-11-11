@@ -155,8 +155,9 @@ void palmos_CtlSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCtlSetGraphics: {
       // void CtlSetGraphics(in ControlType *ctlP, DmResID newBitmapID, DmResID newSelectedBitmapID)
       uint32_t ctlP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      ControlType *s_ctlP = emupalmos_trap_in(ctlP, trap, 0);
       uint16_t newBitmapID = ARG16;
       uint16_t newSelectedBitmapID = ARG16;
       CtlSetGraphics(ctlP ? s_ctlP : NULL, newBitmapID, newSelectedBitmapID);
@@ -166,8 +167,9 @@ void palmos_CtlSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCtlSetSliderValues: {
       // void CtlSetSliderValues(in ControlType *ctlP, in UInt16 *minValueP, in UInt16 *maxValueP, in UInt16 *pageSizeP, in UInt16 *valueP)
       uint32_t ctlP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      ControlType *s_ctlP = emupalmos_trap_in(ctlP, trap, 0);
       uint32_t minValueP = ARG32;
       UInt16 l_minValueP = 0;
       if (minValueP) l_minValueP = m68k_read_memory_16(minValueP);
@@ -191,8 +193,9 @@ void palmos_CtlSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapCtlGetSliderValues: {
       // void CtlGetSliderValues(in ControlType *ctlP, out UInt16 *minValueP, out UInt16 *maxValueP, out UInt16 *pageSizeP, out UInt16 *valueP)
       uint32_t ctlP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //ControlType *s_ctlP = ctlP ? (ControlType *)(ram + ctlP) : NULL;
+      ControlType *s_ctlP = emupalmos_trap_in(ctlP, trap, 0);
       uint32_t minValueP = ARG32;
       UInt16 l_minValueP = 0;
       uint32_t maxValueP = ARG32;

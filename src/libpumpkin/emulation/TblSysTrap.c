@@ -150,8 +150,9 @@ void palmos_TblSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       int16_t row = ARG16;
       int16_t column = ARG16;
       uint32_t value = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      void *s_value = value ? (void *)(ram + value) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //void *s_value = value ? (void *)(ram + value) : NULL;
+      void *s_value = emupalmos_trap_in(value, trap, 3);
       TblSetItemPtr(tableP ? s_tableP : NULL, row, column, value ? s_value : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "TblSetItemPtr(tableP=0x%08X, row=%d, column=%d, value=0x%08X)", tableP, row, column, value);
     }

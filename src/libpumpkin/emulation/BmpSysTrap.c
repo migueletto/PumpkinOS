@@ -52,8 +52,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpCompress: {
       // Err BmpCompress(in BitmapType *bitmapP, BitmapCompressionType compType)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       uint8_t compType = ARG8;
       Err res = BmpCompress(bitmapP ? l_bitmapP : NULL, compType);
       m68k_set_reg(M68K_REG_D0, res);
@@ -63,8 +64,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetBits: {
       // void *BmpGetBits(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       void *res = BmpGetBits(bitmapP ? l_bitmapP : NULL);
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);
@@ -74,8 +76,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetColortable: {
       // ColorTableType *BmpGetColortable(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       ColorTableType *res = BmpGetColortable(bitmapP ? l_bitmapP : NULL);
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);
@@ -85,8 +88,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpSize: {
       // UInt16 BmpSize(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       UInt16 res = BmpSize(bitmapP ? l_bitmapP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "BmpSize(bitmapP=0x%08X): %d", bitmapP, res);
@@ -95,8 +99,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpBitsSize: {
       // UInt16 BmpBitsSize(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       UInt16 res = BmpBitsSize(bitmapP ? l_bitmapP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "BmpBitsSize(bitmapP=0x%08X): %d", bitmapP, res);
@@ -105,8 +110,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetSizes: {
       // void BmpGetSizes(in BitmapType *bitmapP, out UInt32 *dataSizeP, out UInt32 *headerSizeP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       uint32_t dataSizeP = ARG32;
       UInt32 l_dataSizeP = 0;
       uint32_t headerSizeP = ARG32;
@@ -120,8 +126,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpColortableSize: {
       // UInt16 BmpColortableSize(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       UInt16 res = BmpColortableSize(bitmapP ? l_bitmapP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "BmpColortableSize(bitmapP=0x%08X): %d", bitmapP, res);
@@ -130,8 +137,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetDimensions: {
       // void BmpGetDimensions(in BitmapType *bitmapP, out Coord *widthP, out Coord *heightP, out UInt16 *rowBytesP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       uint32_t widthP = ARG32;
       Coord l_widthP = 0;
       uint32_t heightP = ARG32;
@@ -148,8 +156,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetBitDepth: {
       // UInt8 BmpGetBitDepth(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       UInt8 res = BmpGetBitDepth(bitmapP ? l_bitmapP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "BmpGetBitDepth(bitmapP=0x%08X): %d", bitmapP, res);
@@ -158,8 +167,9 @@ void palmos_BmpSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapBmpGetNextBitmap: {
       // BitmapType *BmpGetNextBitmap(in BitmapType *bitmapP)
       uint32_t bitmapP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //BitmapType *l_bitmapP = bitmapP ? (BitmapType *)(ram + bitmapP) : NULL;
+      BitmapType *l_bitmapP = emupalmos_trap_in(bitmapP, trap, 0);
       BitmapType *res = BmpGetNextBitmap(bitmapP ? l_bitmapP : NULL);
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);

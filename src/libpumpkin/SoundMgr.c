@@ -559,7 +559,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
             freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k func len=%d nsamples=%d", len, nsamples);
-          err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          //err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, nsamples);
+          err = CallSndFunc(snd->func68k, snd->userdata68k, arg->ptr, ptr2addr(ram, snd->buffer), nsamples);
           MemMove(buffer, snd->buffer, len);
         } else if (snd->funcArm) {
           ram = pumpkin_heap_base();
@@ -568,7 +569,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
             freeBuffer = true;
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM func len=%d nsamples=%d", len, nsamples);
-          err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
+          //err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, nsamples);
+          err = CallSndFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, ptr2addr(ram, snd->buffer), nsamples);
           MemMove(buffer, snd->buffer, len);
         } else if (snd->vfunc68k) {
           ram = pumpkin_heap_base();
@@ -578,7 +580,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio m68k vfunc len=%d", len);
           nbytes = len;
-          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          //err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, snd->buffer - ram, &nbytes);
+          err = CallSndVFunc(snd->func68k, snd->userdata68k, arg->ptr, ptr2addr(ram, snd->buffer), &nbytes);
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio m68k returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
@@ -595,7 +598,8 @@ static int SndGetAudio(void *buffer, int len, void *data) {
           }
           debug(DEBUG_TRACE, "Sound", "GetAudio ARM vfunc len=%d", len);
           nbytes = len;
-          err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
+          //err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, snd->buffer - ram, &nbytes);
+          err = CallSndVFuncArm(snd->funcArm, snd->userdataArm, arg->ptr, ptr2addr(ram, snd->buffer), &nbytes);
           if (nbytes > len) {
             debug(DEBUG_ERROR, "Sound", "GetAudio ARM returned more bytes (%d) than the buffer size (%d)", nbytes, len);
           } else {
@@ -1361,9 +1365,12 @@ Err SndStreamCreateEx(
           snd->vfunc = NULL;
           snd->userdata = NULL;
           ram = pumpkin_heap_base();
-          snd->func68k = func ? (uint8_t *)func - ram : 0;
-          snd->vfunc68k = vfunc ? (uint8_t *)vfunc - ram : 0;
-          snd->userdata68k = userdata ? (uint8_t *)userdata - ram : 0;
+          //snd->func68k = func ? (uint8_t *)func - ram : 0;
+          //snd->vfunc68k = vfunc ? (uint8_t *)vfunc - ram : 0;
+          //snd->userdata68k = userdata ? (uint8_t *)userdata - ram : 0;
+          snd->func68k = ptr2addr(ram, func);
+          snd->vfunc68k = ptr2addr(ram, vfunc);
+          snd->userdata68k = ptr2addr(ram, userdata);
           snd->funcArm = 0;
           snd->vfuncArm = 0;
           snd->userdataArm = 0;
@@ -1372,9 +1379,12 @@ Err SndStreamCreateEx(
           snd->vfunc = NULL;
           snd->userdata = NULL;
           ram = pumpkin_heap_base();
-          snd->funcArm = func ? (uint8_t *)func - ram : 0;
-          snd->vfuncArm = vfunc ? (uint8_t *)vfunc - ram : 0;
-          snd->userdataArm = userdata ? (uint8_t *)userdata - ram : 0;
+          //snd->funcArm = func ? (uint8_t *)func - ram : 0;
+          //snd->vfuncArm = vfunc ? (uint8_t *)vfunc - ram : 0;
+          //snd->userdataArm = userdata ? (uint8_t *)userdata - ram : 0;
+          snd->funcArm = ptr2addr(ram, func);
+          snd->vfuncArm = ptr2addr(ram, vfunc);
+          snd->userdataArm = ptr2addr(ram, userdata);
           snd->func68k = 0;
           snd->vfunc68k = 0;
           snd->userdata68k = 0;

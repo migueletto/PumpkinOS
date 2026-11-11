@@ -2284,6 +2284,9 @@ static MemHandle DmGetResourceEx(DmOpenType *dbRef, DmResType type, DmResID resI
     if (!found) {
       if (type != omOverlayRscType) {
         pumpkin_id2s(type, st);
+if (resID == 2 && type == 'code') {
+debug(1, "XXX", "ah");
+}
         debug(DEBUG_INFO, "STOR", "DmGetResourceEx resource %s %d not found", st, resID);
       }
       err = errNone;

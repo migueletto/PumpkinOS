@@ -197,7 +197,7 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
   uint32_t size = pumpkin_heap_size();
   uint16_t sl;
 
-  if (address > size-4) {
+  if (address > RAM_BASE + size - 4) {
     m68k_pulse_halt();
 
     s = logtrap_trapname(state->lt, trap, &sl, 0);
@@ -224,7 +224,8 @@ void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int a
     return NULL;
   }
 
-  return address ? ram + address : NULL;
+  //return address ? ram + address : NULL;
+  return addr2ptr(ram, address);
 }
 
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg) {
@@ -245,7 +246,8 @@ uint32_t emupalmos_trap_out(void *address) {
     return 0;
   }
 
-  return addr - ram;
+  //return addr - ram;
+  return ptr2addr(ram, addr);
 }
 
 #if !defined(MUTE_MONITOR)

@@ -357,7 +357,8 @@ char *WinGetDescr(WinHandle wh, char *buf, UInt16 size) {
     active = wh == module->activeWindow ? 'a' : '.';
     draw = wh == module->drawWindow ? 'w' : '.';
     display = wh == module->displayWindow ? 'd' : '.';
-    StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", (uint8_t *)wh - ram, BmpGetDescr((BitmapType *)WinGetField(wh, WindowFieldBitmapP), bmpBuf, sizeof(bmpBuf)), active, draw, display);
+    //StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", (uint8_t *)wh - ram, BmpGetDescr((BitmapType *)WinGetField(wh, WindowFieldBitmapP), bmpBuf, sizeof(bmpBuf)), active, draw, display);
+    StrNPrintF(buf, size-1, "%08X_%s (%c%c%c)", ptr2addr(ram, wh), BmpGetDescr((BitmapType *)WinGetField(wh, WindowFieldBitmapP), bmpBuf, sizeof(bmpBuf)), active, draw, display);
   } else {
     StrNCopy(buf, "null", size-1);
   }
@@ -3421,7 +3422,8 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
           WinSetField(module->displayWindow, WindowFieldWindowBoundsH, height);
           WinDirectAccessHack(module->displayWindow);
           ram = pumpkin_heap_base();
-          put4b((UInt8 *)colorTable - ram, (UInt8 *)bmp, BitmapV3FieldColorTable);
+          //put4b((UInt8 *)colorTable - ram, (UInt8 *)bmp, BitmapV3FieldColorTable);
+          put4b(ptr2addr(ram, colorTable), (UInt8 *)bmp, BitmapV3FieldColorTable);
 
           UIColorResetTable(depth);
           WinEraseWindow();
@@ -3716,7 +3718,8 @@ void WinLegacyGetAddr(UInt32 *startAddr, UInt32 *endAddr) {
   BmpGetSizes(bitmapP, &len, NULL);
   ram = (UInt8 *)pumpkin_heap_base();
   bits = (UInt8 *)BmpGetBits(bitmapP);
-  *startAddr = bits - ram;
+  //*startAddr = bits - ram;
+  *startAddr = ptr2addr(ram, bits);
   *endAddr = *startAddr + len;
 }
 

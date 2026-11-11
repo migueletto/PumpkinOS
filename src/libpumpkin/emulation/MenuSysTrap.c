@@ -43,8 +43,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapMenuSetActiveMenu: {
       // MenuBarType *MenuSetActiveMenu(in MenuBarType *menuP)
       uint32_t menuP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      MenuBarType *s_menuP = emupalmos_trap_in(menuP, trap, 0);
       MenuBarType *res = MenuSetActiveMenu(menuP ? s_menuP : NULL);
       uint32_t r_res = emupalmos_trap_out(res);
       m68k_set_reg(M68K_REG_A0, r_res);
@@ -54,8 +55,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapMenuDispose: {
       // void MenuDispose(in MenuBarType *menuP)
       uint32_t menuP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      MenuBarType *s_menuP = emupalmos_trap_in(menuP, trap, 0);
       MenuDispose(menuP ? s_menuP : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "MenuDispose(menuP=0x%08X)", menuP);
     }
@@ -63,8 +65,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapMenuHandleEvent: {
       // Boolean MenuHandleEvent(in MenuBarType *menuP, in EventType *event, out UInt16 *error)
       uint32_t menuP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      MenuBarType *s_menuP = emupalmos_trap_in(menuP, trap, 0);
       uint32_t event = ARG32;
       EventType l_event;
       decode_event(event, &l_event);
@@ -79,8 +82,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapMenuDrawMenu: {
       // void MenuDrawMenu(in MenuBarType *menuP)
       uint32_t menuP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      MenuBarType *s_menuP = emupalmos_trap_in(menuP, trap, 0);
       MenuDrawMenu(menuP ? s_menuP : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "MenuDrawMenu(menuP=0x%08X)", menuP);
     }
@@ -88,8 +92,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapMenuEraseStatus: {
       // void MenuEraseStatus(in MenuBarType *menuP)
       uint32_t menuP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //MenuBarType *s_menuP = menuP ? (MenuBarType *)(ram + menuP) : NULL;
+      MenuBarType *s_menuP = emupalmos_trap_in(menuP, trap, 0);
       MenuEraseStatus(menuP ? s_menuP : NULL);
       debug(DEBUG_TRACE, "EmuPalmOS", "MenuEraseStatus(menuP=0x%08X)", menuP);
     }
@@ -108,8 +113,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint8_t resultType = ARG8;
       uint32_t result = ARG32;
       uint32_t nameP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      char *s_nameP = emupalmos_trap_in(nameP, trap, 4);
       Err res = MenuCmdBarAddButton(where, bitmapId, resultType, result, nameP ? s_nameP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "MenuCmdBarAddButton(where=%d, bitmapId=%d, resultType=%d, result=%d, nameP=0x%08X [%s]): %d", where, bitmapId, resultType, result, nameP, s_nameP, res);
@@ -125,8 +131,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t resultP = ARG32;
       UInt32 l_resultP = 0;
       uint32_t nameP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      char *s_nameP = emupalmos_trap_in(nameP, trap, 4);
       Boolean res = MenuCmdBarGetButtonData(buttonIndex, bitmapIdP ? &l_bitmapIdP : NULL, resultTypeP ? &l_resultTypeP : NULL, resultP ? &l_resultP : NULL, nameP ? s_nameP : NULL);
       if (bitmapIdP) m68k_write_memory_16(bitmapIdP, l_bitmapIdP);
       if (resultTypeP) m68k_write_memory_8(resultTypeP, l_resultTypeP);
@@ -163,8 +170,9 @@ void palmos_MenuSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint16_t id = ARG16;
       int8_t cmd = ARG8;
       uint32_t textP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_textP = textP ? (char *)(ram + textP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_textP = textP ? (char *)(ram + textP) : NULL;
+      char *s_textP = emupalmos_trap_in(textP, trap, 3);
       Err res = MenuAddItem(positionId, id, cmd, textP ? s_textP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "MenuAddItem(positionId=%d, id=%d, cmd=%d, textP=0x%08X [%s]): %d", positionId, id, cmd, textP, s_textP, res);

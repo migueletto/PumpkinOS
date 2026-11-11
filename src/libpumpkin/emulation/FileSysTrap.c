@@ -46,8 +46,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       // FileHand FileOpen(UInt16 cardNo, in Char *nameP, UInt32 type, UInt32 creator, UInt32 openMode, out Err *errP)
       uint16_t cardNo = ARG16;
       uint32_t nameP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      char *s_nameP = emupalmos_trap_in(nameP, trap, 1);
       uint32_t type = ARG32;
       uint32_t creator = ARG32;
       uint32_t openMode = ARG32;
@@ -63,8 +64,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileClose: {
       // Err FileClose(FileHand stream)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       Err res = FileClose(stream ? l_stream : 0);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "FileClose(stream=0x%08X): %d", stream, res);
@@ -74,8 +76,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       // Err FileDelete(UInt16 cardNo, in Char *nameP)
       uint16_t cardNo = ARG16;
       uint32_t nameP = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //char *s_nameP = nameP ? (char *)(ram + nameP) : NULL;
+      char *s_nameP = emupalmos_trap_in(nameP, trap, 1);
       Err res = FileDelete(cardNo, nameP ? s_nameP : NULL);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "FileDelete(cardNo=%d, nameP=0x%08X [%s]): %d", cardNo, nameP, s_nameP, res);
@@ -84,10 +87,12 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileReadLow: {
       // Int32 FileReadLow(FileHand stream, out void *baseP, Int32 offset, Boolean dataStoreBased, Int32 objSize, Int32 numObj, out Err *errP)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       uint32_t baseP = ARG32;
-      void *s_baseP = baseP ? (void *)(ram + baseP) : NULL;
+      //void *s_baseP = baseP ? (void *)(ram + baseP) : NULL;
+      void *s_baseP = emupalmos_trap_in(baseP, trap, 1);
       int32_t offset = ARG32;
       uint8_t dataStoreBased = ARG8;
       int32_t objSize = ARG32;
@@ -103,10 +108,12 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileWrite: {
       // Int32 FileWrite(FileHand stream, in void *dataP, Int32 objSize, Int32 numObj, out Err *errP)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       uint32_t dataP = ARG32;
-      void *s_dataP = dataP ? (void *)(ram + dataP) : NULL;
+      //void *s_dataP = dataP ? (void *)(ram + dataP) : NULL;
+      void *s_dataP = emupalmos_trap_in(dataP, trap, 1);
       int32_t objSize = ARG32;
       int32_t numObj = ARG32;
       uint32_t errP = ARG32;
@@ -120,8 +127,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileSeek: {
       // Err FileSeek(FileHand stream, Int32 offset, FileOriginEnum origin)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       int32_t offset = ARG32;
       uint8_t origin = ARG8;
       Err res = FileSeek(stream ? l_stream : 0, offset, origin);
@@ -132,8 +140,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileTell: {
       // Int32 FileTell(FileHand stream, out Int32 *fileSizeP, out Err *errP)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       uint32_t fileSizeP = ARG32;
       Int32 l_fileSizeP = 0;
       uint32_t errP = ARG32;
@@ -148,8 +157,9 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileTruncate: {
       // Err FileTruncate(FileHand stream, Int32 newSize)
       uint32_t stream = ARG32;
-      uint8_t *ram = pumpkin_heap_base();
-      FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      //uint8_t *ram = pumpkin_heap_base();
+      //FileHand l_stream = stream ? (FileHand)(ram + stream) : NULL;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 0);
       int32_t newSize = ARG32;
       Err res = FileTruncate(stream ? l_stream : 0, newSize);
       m68k_set_reg(M68K_REG_D0, res);
