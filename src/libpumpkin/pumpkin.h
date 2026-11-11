@@ -135,7 +135,6 @@ extern "C" {
 #define PUMPKIN_FONT_STYLE_USRDEF1      4
 #define PUMPKIN_FONT_STYLE_USRDEF2      8
 
-#define TRAPS_BASE 0x4000000
 #define TRAPS_SIZE 0x4000  // 4096 traps, 4 bytes each
 
 #define MAX_DBIDS 8192
@@ -291,6 +290,7 @@ int pumpkin_launch(launch_request_t *request);
 int pumpkin_ps(int (*ps_callback)(int i, uint32_t id, char *name, int m68k, uint32_t heapUsed, uint32_t heapSize, void *data), void *data);
 int pumpkin_kill(uint32_t tid);
 int pumpkin_killed(void);
+uint32_t pumpkin_get_trapsbase(void);
 uint32_t pumpkin_get_taskid(void);
 uint16_t pumpkin_get_app_locale(void);
 LocalID pumpkin_get_app_localid(void);

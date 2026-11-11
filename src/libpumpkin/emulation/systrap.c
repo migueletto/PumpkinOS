@@ -53,7 +53,7 @@ static void palmos_libtrap(uint16_t refNum, uint16_t trap) {
 
 uint32_t palmos_systrap(uint16_t trap) {
   RegFlagsType *regFlags;
-  uint32_t sp, trapAddress, regSize;
+  uint32_t sp, trapAddress, regSize, trapsBase;
   uint16_t idx, selector;
   char buf[256], screator[8];
   char *s;
@@ -66,8 +66,9 @@ uint32_t palmos_systrap(uint16_t trap) {
   debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X begin (%s) pc=0x%08X", trap, s ? s : "unknown", m68k_get_reg(NULL, M68K_REG_PC));
 
   trapAddress = pumpkin_get_trap_address(trap);
-  if (trapAddress < TRAPS_BASE) {
-    debug(DEBUG_TRACE, "EmuPalmOS", "trap 0x%04X redirected to 0x%08X", trap, trapAddress);
+  trapsBase = pumpkin_get_trapsbase();
+  if (trapAddress < trapsBase || trapAddress >= trapsBase+TRAPS_SIZE) {
+    debug(DEBUG_INFO, "EmuPalmOS", "trap 0x%04X redirected to 0x%08X", trap, trapAddress);
     return trapAddress;
   }
 

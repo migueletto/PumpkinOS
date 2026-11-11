@@ -2992,7 +2992,7 @@ static void logtrap_hook2(logtrap_t *lt, uint32_t pc) {
   char buf[1024], buf2[128], aux[32], buf3[256];
 
   if (lt->disasm) {
-    instr_size = m68k_disasm(&lt->dis, buf, pc, M68K_CPU_TYPE_68020, &used);
+    instr_size = m68k_disasm(&lt->dis, buf, pc, M68K_CPU_TYPE_68000, &used);
     hex_opcodes(lt, buf2, pc, instr_size);
     buf3[0] = 0;
 

@@ -43,6 +43,8 @@ struct emu_internal_state_t {
   uint8_t *armCall68KAddr;
   uint8_t *armEmulState;
   uint8_t *armStack;
+  uint32_t heap_size;
+  uint32_t trapsBase;
 
   uint32_t monitored_addr_begin;
   uint32_t monitored_addr_end;
@@ -272,17 +274,17 @@ void emupalmos_monitor_address(uint32_t address, uint32_t size, uint32_t value, 
 }
 #endif
 
-int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int force_valid) {
-  emu_state_t *state;
+int emupalmos_check_address_ex(void *_state, uint32_t address, uint32_t size, int read, int force_valid) {
+  emu_state_t *state = (emu_state_t *)_state;
   char buf[256];
   int valid;
 
-  valid = address <= pumpkin_heap_size() - size;
+  if (state == NULL) state = pumpkin_get_local_storage(emu_key);
+  valid = address >= RAM_BASE && address <= RAM_BASE + state->istate->heap_size - size;
 #ifdef HEAP_DEBUG
   if (valid) {
-    valid = pumpkin_heap_debug_access(address, size, read);
+    valid = pumpkin_heap_debug_access(address - RAM_BASE, size, read);
     if (!valid) {
-      state = pumpkin_get_local_storage(emu_key);
       if (state->istate->lenientMemCheck) return force_valid ? true : valid;
     }
   }
@@ -299,7 +301,7 @@ int emupalmos_check_address_ex(uint32_t address, uint32_t size, int read, int fo
 }
 
 int emupalmos_check_address(uint32_t address, uint32_t size, int read) {
-  return emupalmos_check_address_ex(address, size, read, 0);
+  return emupalmos_check_address_ex(NULL, address, size, read, 0);
 }
 
 uint8_t cpu_read_byte(uint32_t address) {
@@ -309,18 +311,20 @@ uint8_t cpu_read_byte(uint32_t address) {
 
   if (state->read_byte) return state->read_byte(address);
 
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "EmuPalmOS", "read 8 bits from register 0x%08X", address);
-    value = 0;
-  } else {
-    if (!emupalmos_check_address_ex(address, 1, 1, 0)) return 0;
-    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 1);
-    ram = pumpkin_heap_base();
-    value = READ_BYTE(ram, address);
-#if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 0);
-#endif
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      debug(DEBUG_INFO, "EmuPalmOS", "read 8 bits from register 0x%08X", address);
+      return 0;
+    }
   }
+
+  if (!emupalmos_check_address_ex(state, address, 1, 1, 0)) return 0;
+  debug(DEBUG_TRACE, "logmem", "read %u %u", address, 1);
+  ram = pumpkin_heap_base();
+  value = READ_BYTE(ram, address - RAM_BASE);
+#if !defined(MUTE_MONITOR)
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 0);
+#endif
 
   return value;
 }
@@ -332,20 +336,24 @@ uint16_t cpu_read_word(uint32_t address) {
 
   if (state->read_word) return state->read_word(address);
 
-  if ((address & 1) == 0 && address >= TRAPS_BASE && address < (TRAPS_BASE + TRAPS_SIZE)) {
-    return 0x4E75; // simulated a RTS for direct call to trap addresses
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
+      return 0;
+    }
+    if (address == 0x272) {
+      // low memory address read by Clipper. It is a PalmOS global variable containing the refNum of NetLib.
+      return NetLibRefNum;
+    }
   }
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "EmuPalmOS", "read 16 bits from register 0x%08X", address);
-    value = 0;
-  } else if (address == 0x272) {
-    // low memory address read by Clipper. It is a PalmOS global variable containing the refNum of NetLib.
-    value = NetLibRefNum;
+
+  if ((address & 1) == 0 && address >= state->istate->trapsBase && address < (state->istate->trapsBase + TRAPS_SIZE)) {
+    return 0x4E75; // simulated a RTS for direct call to trap addresses
   } else {
-    if (!emupalmos_check_address_ex(address, 2, 1, 0)) return 0;
+    if (!emupalmos_check_address_ex(state, address, 2, 1, 0)) return 0;
     debug(DEBUG_TRACE, "logmem", "read %u %u", address, 2);
     ram = pumpkin_heap_base();
-    value = READ_WORD(ram, address);
+    value = READ_WORD(ram, address - RAM_BASE);
 #if !defined(MUTE_MONITOR)
     if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 0);
 #endif
@@ -361,32 +369,36 @@ uint32_t cpu_read_long(uint32_t address) {
 
   if (state->read_long) return state->read_long(address);
 
-  if (address >= 0xFFFFF000) {
-    if (state->m68k_state.s_m68ki_cpu.palmos) {
-      switch (address) {
-        case 0xFFFFFA00: // LSSA, 32 bits, LCD screen starting address register
-          WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-          value = state->istate->screenStart;
-          debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
-          break;
-        default:
-          debug(DEBUG_INFO, "EmuPalmOS", "read 32 bits from register 0x%08X", address);
-          value = 0;
-          break;
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      if (state->m68k_state.s_m68ki_cpu.palmos) {
+        switch (address) {
+          case 0x00FFFA00: // LSSA, 32 bits, LCD screen starting address register
+            WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+            value = state->istate->screenStart;
+            debug(DEBUG_INFO, "EmuPalmOS", "read LSSA (LCD screen starting address register): 0x%08X", value);
+            break;
+          default:
+            debug(DEBUG_INFO, "EmuPalmOS", "read 32 bits from register 0x%08X", address);
+            value = 0;
+            break;
+        }
       }
+      return value;
     }
-  } else if (address == 0x216) {
-    // low memory address read by Subhunt. It is a PalmOS global variable containing ???
-    value = 0;
-  } else {
-    if (!emupalmos_check_address_ex(address, 4, 1, 0)) return 0;
-    debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);
-    ram = pumpkin_heap_base();
-    value = READ_LONG(ram, address);
-#if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 0);
-#endif
+    if (address == 0x216) {
+      // low memory address read by Subhunt. It is a PalmOS global variable containing ???
+      return 0;
+    }
   }
+
+  if (!emupalmos_check_address_ex(state, address, 4, 1, 0)) return 0;
+  debug(DEBUG_TRACE, "logmem", "read %u %u", address, 4);
+  ram = pumpkin_heap_base();
+  value = READ_LONG(ram, address - RAM_BASE);
+#if !defined(MUTE_MONITOR)
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 0);
+#endif
 
   return value;
 }
@@ -579,21 +591,24 @@ void cpu_write_byte(uint32_t address, uint8_t value) {
 
   if (state->write_byte) return state->write_byte(address, value);
 
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
-  } else {
-    if (!emupalmos_check_address_ex(address, 1, 0, 0)) return;
-    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
-#if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 1);
-#endif
-    ram = pumpkin_heap_base();
-    WRITE_BYTE(ram, address, value);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
-      screen_write8(state, address, value);
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      debug(DEBUG_INFO, "EmuPalmOS", "write 8 bits 0x%02X to register 0x%08X", value, address);
+      return;
     }
+  }
+
+  if (!emupalmos_check_address_ex(state, address, 1, 0, 0)) return;
+  debug(DEBUG_TRACE, "logmem", "write %u %u", address, 1);
+#if !defined(MUTE_MONITOR)
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 1, value, 1);
+#endif
+  ram = pumpkin_heap_base();
+  WRITE_BYTE(ram, address - RAM_BASE, value);
+  WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+  if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd) {
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write byte 0x%08X = 0x%02X", address, value);
+    screen_write8(state, address, value);
   }
 }
 
@@ -603,21 +618,24 @@ void cpu_write_word(uint32_t address, uint16_t value) {
 
   if (state->write_word) return state->write_word(address, value);
 
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
-  } else {
-    if (!emupalmos_check_address_ex(address, 2, 0, 0)) return;
-    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
-#if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 1);
-#endif
-    ram = pumpkin_heap_base();
-    WRITE_WORD(ram, address, value);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
-      screen_write16(state, address, value);
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      debug(DEBUG_INFO, "EmuPalmOS", "write 16 bits 0x%04X to register 0x%08X", value, address);
+      return;
     }
+  }
+
+  if (!emupalmos_check_address_ex(state, address, 2, 0, 0)) return;
+  debug(DEBUG_TRACE, "logmem", "write %u %u", address, 2);
+#if !defined(MUTE_MONITOR)
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 2, value, 1);
+#endif
+  ram = pumpkin_heap_base();
+  WRITE_WORD(ram, address - RAM_BASE, value);
+  WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+  if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 1) {
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write word 0x%08X = 0x%04X", address, value);
+    screen_write16(state, address, value);
   }
 }
 
@@ -627,21 +645,24 @@ void cpu_write_long(uint32_t address, uint32_t value) {
 
   if (state->write_long) return state->write_long(address, value);
 
-  if (address >= 0xFFFFF000) {
-    debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
-  } else {
-    if (!emupalmos_check_address_ex(address, 4, 0, 0)) return;
-    debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
-#if !defined(MUTE_MONITOR)
-    if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 1);
-#endif
-    ram = pumpkin_heap_base();
-    WRITE_LONG(ram, address, value);
-    WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
-    if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
-      debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
-      screen_write32(state, address, value);
+  if (state->istate->heap_size == 0x00800000) {
+    if (address >= 0x00FFF000 && address < 0x01000000) {
+      debug(DEBUG_INFO, "EmuPalmOS", "write 32 bits 0x%08X to register 0x%08X", value, address);
+      return;
     }
+  }
+
+  if (!emupalmos_check_address_ex(state, address, 4, 0, 0)) return;
+  debug(DEBUG_TRACE, "logmem", "write %u %u", address, 4);
+#if !defined(MUTE_MONITOR)
+  if (state->istate->monitored_addr_begin) emupalmos_monitor_address(address, 4, value, 1);
+#endif
+  ram = pumpkin_heap_base();
+  WRITE_LONG(ram, address - RAM_BASE, value);
+  WinLegacyGetAddr(&state->istate->screenStart, &state->istate->screenEnd);
+  if (state->istate->screenStart && state->istate->screenEnd && address >= state->istate->screenStart && address < state->istate->screenEnd - 3) {
+    debug(DEBUG_TRACE, "EmuPalmOS", "direct screen write long 0x%08X = 0x%08X", address, value);
+    screen_write32(state, address, value);
   }
 }
 
@@ -797,27 +818,32 @@ void decode_event(uint32_t eventP, EventType *event) {
     case fldEnterEvent:
       event->data.fldEnter.fieldID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.fldEnter.pField = a ? (FieldType *)(ram + a) : NULL;
+      //event->data.fldEnter.pField = a ? (FieldType *)(ram + a) : NULL;
+      event->data.fldEnter.pField = (FieldType *)addr2ptr(ram, a);
       break;
     case fldChangedEvent:
       event->data.fldChanged.fieldID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.fldChanged.pField = a ? (FieldType *)(ram + a) : NULL;
+      //event->data.fldChanged.pField = a ? (FieldType *)(ram + a) : NULL;
+      event->data.fldChanged.pField = (FieldType *)addr2ptr(ram, a);
       break;
     case ctlEnterEvent:
       event->data.ctlEnter.controlID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.ctlEnter.pControl = a ? (ControlType *)(ram + a) : NULL;
+      //event->data.ctlEnter.pControl = a ? (ControlType *)(ram + a) : NULL;
+      event->data.ctlEnter.pControl = (ControlType *)addr2ptr(ram, a);
       break;
     case ctlExitEvent:
       event->data.ctlExit.controlID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.ctlExit.pControl = a ? (ControlType *)(ram + a) : NULL;
+      //event->data.ctlExit.pControl = a ? (ControlType *)(ram + a) : NULL;
+      event->data.ctlExit.pControl = (ControlType *)addr2ptr(ram, a);
       break;
     case ctlSelectEvent:
       event->data.ctlSelect.controlID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.ctlSelect.pControl = a ? (ControlType *)(ram + a) : NULL;
+      //event->data.ctlSelect.pControl = a ? (ControlType *)(ram + a) : NULL;
+      event->data.ctlSelect.pControl = (ControlType *)addr2ptr(ram, a);
       event->data.ctlSelect.on = m68k_read_memory_8(eventP + 14);
       event->data.ctlSelect.reserved1 = 0;
       event->data.ctlSelect.value = m68k_read_memory_16(eventP + 16);
@@ -825,53 +851,62 @@ void decode_event(uint32_t eventP, EventType *event) {
     case ctlRepeatEvent:
       event->data.ctlRepeat.controlID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.ctlRepeat.pControl = a ? (ControlType *)(ram + a) : NULL;
+      //event->data.ctlRepeat.pControl = a ? (ControlType *)(ram + a) : NULL;
+      event->data.ctlRepeat.pControl = (ControlType *)addr2ptr(ram, a);
       event->data.ctlRepeat.time = m68k_read_memory_32(eventP + 14);
       event->data.ctlRepeat.value = m68k_read_memory_16(eventP + 18);
       break;
     case lstEnterEvent:
       event->data.lstEnter.listID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.lstEnter.pList = a ? (ListType *)(ram + a) : NULL;
+      //event->data.lstEnter.pList = a ? (ListType *)(ram + a) : NULL;
+      event->data.lstEnter.pList = (ListType *)addr2ptr(ram, a);
       event->data.lstEnter.selection = m68k_read_memory_16(eventP + 14);
       break;
     case lstExitEvent:
       event->data.lstExit.listID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.lstExit.pList = a ? (ListType *)(ram + a) : NULL;
+      //event->data.lstExit.pList = a ? (ListType *)(ram + a) : NULL;
+      event->data.lstExit.pList = (ListType *)addr2ptr(ram, a);
       break;
     case lstSelectEvent:
       event->data.lstSelect.listID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.lstSelect.pList = a ? (ListType *)(ram + a) : NULL;
+      //event->data.lstSelect.pList = a ? (ListType *)(ram + a) : NULL;
+      event->data.lstSelect.pList = (ListType *)addr2ptr(ram, a);
       event->data.lstSelect.selection = m68k_read_memory_16(eventP + 14);
       break;
     case popSelectEvent:
       event->data.popSelect.controlID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.popSelect.controlP = a ? (ControlType *)(ram + a) : NULL;
+      //event->data.popSelect.controlP = a ? (ControlType *)(ram + a) : NULL;
+      event->data.popSelect.controlP = (ControlType *)addr2ptr(ram, a);
       event->data.popSelect.listID = m68k_read_memory_16(eventP + 14);
       a = m68k_read_memory_32(eventP + 16);
-      event->data.popSelect.listP = a ? (ListType *)(ram + a) : NULL;
+      //event->data.popSelect.listP = a ? (ListType *)(ram + a) : NULL;
+      event->data.popSelect.listP = (ListType *)addr2ptr(ram, a);
       event->data.popSelect.selection = m68k_read_memory_16(eventP + 20);
       event->data.popSelect.priorSelection = m68k_read_memory_16(eventP + 22);
       break;
     case sclEnterEvent:
       event->data.sclEnter.scrollBarID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.sclEnter.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      //event->data.sclEnter.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      event->data.sclEnter.pScrollBar = (ScrollBarType *)addr2ptr(ram, a);
       break;
     case sclExitEvent:
       event->data.sclExit.scrollBarID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.sclExit.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      //event->data.sclExit.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      event->data.sclExit.pScrollBar = (ScrollBarType *)addr2ptr(ram, a);
       event->data.sclExit.value = m68k_read_memory_16(eventP + 14);
       event->data.sclExit.newValue = m68k_read_memory_16(eventP + 16);
       break;
     case sclRepeatEvent:
       event->data.sclRepeat.scrollBarID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.sclRepeat.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      //event->data.sclRepeat.pScrollBar = a ? (ScrollBarType *)(ram + a) : NULL;
+      event->data.sclRepeat.pScrollBar = (ScrollBarType *)addr2ptr(ram, a);
       event->data.sclRepeat.value = m68k_read_memory_16(eventP + 14);
       event->data.sclRepeat.newValue = m68k_read_memory_16(eventP + 16);
       event->data.sclRepeat.time = m68k_read_memory_32(eventP + 18);
@@ -879,48 +914,58 @@ void decode_event(uint32_t eventP, EventType *event) {
     case frmGadgetEnterEvent:
       event->data.gadgetEnter.gadgetID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.gadgetEnter.gadgetP = a ? (FormGadgetType *)(ram + a) : NULL;
+      //event->data.gadgetEnter.gadgetP = a ? (FormGadgetType *)(ram + a) : NULL;
+      event->data.gadgetEnter.gadgetP = (FormGadgetType *)addr2ptr(ram, a);
       break;
     case frmGadgetMiscEvent:
       event->data.gadgetMisc.gadgetID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.gadgetMisc.gadgetP = a ? (FormGadgetType *)(ram + a) : NULL;
+      //event->data.gadgetMisc.gadgetP = a ? (FormGadgetType *)(ram + a) : NULL;
+      event->data.gadgetMisc.gadgetP = (FormGadgetType *)addr2ptr(ram, a);
       event->data.gadgetMisc.selector = m68k_read_memory_16(eventP + 14);
       a = m68k_read_memory_32(eventP + 16);
-      event->data.gadgetMisc.dataP = a ? (ram + a) : NULL;
+      //event->data.gadgetMisc.dataP = a ? (ram + a) : NULL;
+      event->data.gadgetMisc.dataP = addr2ptr(ram, a);
       break;
     case tblEnterEvent:
       event->data.tblEnter.tableID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.tblEnter.pTable = a ? (TableType *)(ram + a) : NULL;
+      //event->data.tblEnter.pTable = a ? (TableType *)(ram + a) : NULL;
+      event->data.tblEnter.pTable = (TableType *)addr2ptr(ram, a);
       event->data.tblEnter.row = m68k_read_memory_16(eventP + 14);
       event->data.tblEnter.column = m68k_read_memory_16(eventP + 16);
       break;
     case tblExitEvent:
       event->data.tblExit.tableID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.tblExit.pTable = a ? (TableType *)(ram + a) : NULL;
+      //event->data.tblExit.pTable = a ? (TableType *)(ram + a) : NULL;
+      event->data.tblExit.pTable = (TableType *)addr2ptr(ram, a);
       event->data.tblExit.row = m68k_read_memory_16(eventP + 14);
       event->data.tblExit.column = m68k_read_memory_16(eventP + 16);
       break;
     case tblSelectEvent:
       event->data.tblSelect.tableID = m68k_read_memory_16(eventP + 8);
       a = m68k_read_memory_32(eventP + 10);
-      event->data.tblSelect.pTable = a ? (TableType *)(ram + a) : NULL;
+      //event->data.tblSelect.pTable = a ? (TableType *)(ram + a) : NULL;
+      event->data.tblSelect.pTable = (TableType *)addr2ptr(ram, a);
       event->data.tblSelect.row = m68k_read_memory_16(eventP + 14);
       event->data.tblSelect.column = m68k_read_memory_16(eventP + 16);
       break;
     case winEnterEvent:
       a = m68k_read_memory_32(eventP + 8);
-      event->data.winEnter.enterWindow = a ? (WinHandle)(ram + a) : NULL;
+      //event->data.winEnter.enterWindow = a ? (WinHandle)(ram + a) : NULL;
+      event->data.winEnter.enterWindow = (WinHandle)addr2ptr(ram, a);
       a = m68k_read_memory_32(eventP + 12);
-      event->data.winEnter.exitWindow = a ? (WinHandle)(ram + a) : NULL;
+      //event->data.winEnter.exitWindow = a ? (WinHandle)(ram + a) : NULL;
+      event->data.winEnter.exitWindow = (WinHandle)addr2ptr(ram, a);
       break;
     case winExitEvent:
       a = m68k_read_memory_32(eventP + 8);
-      event->data.winExit.enterWindow = a ? (WinHandle)(ram + a) : NULL;
+      //event->data.winExit.enterWindow = a ? (WinHandle)(ram + a) : NULL;
+      event->data.winExit.enterWindow = (WinHandle)addr2ptr(ram, a);
       a = m68k_read_memory_32(eventP + 12);
-      event->data.winExit.exitWindow = a ? (WinHandle)(ram + a) : NULL;
+      //event->data.winExit.exitWindow = a ? (WinHandle)(ram + a) : NULL;
+      event->data.winExit.exitWindow = (WinHandle)addr2ptr(ram, a);
       break;
     case frmObjectFocusTakeEvent:
       event->data.frmObjectFocusTake.formID = m68k_read_memory_16(eventP + 8);
@@ -934,7 +979,8 @@ void decode_event(uint32_t eventP, EventType *event) {
       break;
     case inetSockReadyEvent:
       inetEvent = (INetEventType *)event;
-      inetEvent->data.inetSockReady.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+      //inetEvent->data.inetSockReady.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+      inetEvent->data.inetSockReady.sockH = (MemHandle)addr2ptr(ram, m68k_read_memory_32(eventP + 8));
       inetEvent->data.inetSockReady.context = m68k_read_memory_32(eventP + 12);
       inetEvent->data.inetSockReady.inputReady = m68k_read_memory_8(eventP + 16);
       inetEvent->data.inetSockReady.outputReady = m68k_read_memory_8(eventP + 17);
@@ -942,7 +988,8 @@ void decode_event(uint32_t eventP, EventType *event) {
     default:
       if (event->eType == inetSockStatusChangeEvent) {
         inetEvent = (INetEventType *)event;
-        inetEvent->data.inetSockStatusChange.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+        //inetEvent->data.inetSockStatusChange.sockH = (MemHandle)(ram + m68k_read_memory_32(eventP + 8));
+        inetEvent->data.inetSockStatusChange.sockH = (MemHandle)addr2ptr(ram, m68k_read_memory_32(eventP + 8));
         inetEvent->data.inetSockStatusChange.context = m68k_read_memory_32(eventP + 12);
         inetEvent->data.inetSockStatusChange.status = m68k_read_memory_16(eventP + 16);
         inetEvent->data.inetSockStatusChange.sockErr = m68k_read_memory_16(eventP + 18);
@@ -1041,117 +1088,141 @@ void encode_event(uint32_t eventP, EventType *event) {
       break;
     case fldEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.fldEnter.fieldID);
-      m68k_write_memory_32(eventP + 10, event->data.fldEnter.pField ? (uint32_t)((uint8_t *)event->data.fldEnter.pField - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.fldEnter.pField ? (uint32_t)((uint8_t *)event->data.fldEnter.pField - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.fldEnter.pField));
       break;
     case fldChangedEvent:
       m68k_write_memory_16(eventP +  8, event->data.fldChanged.fieldID);
-      m68k_write_memory_32(eventP + 10, event->data.fldChanged.pField ? (uint32_t)((uint8_t *)event->data.fldChanged.pField - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.fldChanged.pField ? (uint32_t)((uint8_t *)event->data.fldChanged.pField - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.fldChanged.pField));
       break;
     case ctlEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.ctlEnter.controlID);
-      m68k_write_memory_32(eventP + 10, event->data.ctlEnter.pControl ? (uint32_t)((uint8_t *)event->data.ctlEnter.pControl - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.ctlEnter.pControl ? (uint32_t)((uint8_t *)event->data.ctlEnter.pControl - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.ctlEnter.pControl));
       break;
     case ctlExitEvent:
       m68k_write_memory_16(eventP +  8, event->data.ctlExit.controlID);
-      m68k_write_memory_32(eventP + 10, event->data.ctlExit.pControl ? (uint32_t)((uint8_t *)event->data.ctlExit.pControl - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.ctlExit.pControl ? (uint32_t)((uint8_t *)event->data.ctlExit.pControl - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.ctlExit.pControl));
       break;
     case ctlSelectEvent:
       m68k_write_memory_16(eventP +  8, event->data.ctlSelect.controlID);
-      m68k_write_memory_32(eventP + 10, event->data.ctlSelect.pControl ? (uint32_t)((uint8_t *)event->data.ctlSelect.pControl - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.ctlSelect.pControl ? (uint32_t)((uint8_t *)event->data.ctlSelect.pControl - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.ctlSelect.pControl));
       m68k_write_memory_8 (eventP + 14, event->data.ctlSelect.on ? 1 : 0);
       m68k_write_memory_8 (eventP + 15, 0); // reserved
       m68k_write_memory_16(eventP + 16, event->data.ctlSelect.value);
       break;
     case ctlRepeatEvent:
       m68k_write_memory_16(eventP +  8, event->data.ctlRepeat.controlID);
-      m68k_write_memory_32(eventP + 10, event->data.ctlRepeat.pControl ? (uint32_t)((uint8_t *)event->data.ctlRepeat.pControl - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.ctlRepeat.pControl ? (uint32_t)((uint8_t *)event->data.ctlRepeat.pControl - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.ctlRepeat.pControl));
       m68k_write_memory_32(eventP + 14, event->data.ctlRepeat.time);
       m68k_write_memory_16(eventP + 18, event->data.ctlRepeat.value);
       break;
     case lstEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.lstEnter.listID);
-      m68k_write_memory_32(eventP + 10, event->data.lstEnter.pList ? (uint32_t)((uint8_t *)event->data.lstEnter.pList - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.lstEnter.pList ? (uint32_t)((uint8_t *)event->data.lstEnter.pList - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.lstEnter.pList));
       m68k_write_memory_16(eventP + 14, event->data.lstEnter.selection);
       break;
     case lstExitEvent:
       m68k_write_memory_16(eventP +  8, event->data.lstExit.listID);
-      m68k_write_memory_32(eventP + 10, event->data.lstExit.pList ? (uint32_t)((uint8_t *)event->data.lstExit.pList - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.lstExit.pList ? (uint32_t)((uint8_t *)event->data.lstExit.pList - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.lstExit.pList));
       break;
     case lstSelectEvent:
       m68k_write_memory_16(eventP +  8, event->data.lstSelect.listID);
-      m68k_write_memory_32(eventP + 10, event->data.lstSelect.pList ? (uint32_t)((uint8_t *)event->data.lstSelect.pList - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.lstSelect.pList ? (uint32_t)((uint8_t *)event->data.lstSelect.pList - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.lstSelect.pList));
       m68k_write_memory_16(eventP + 14, event->data.lstSelect.selection);
       break;
     case popSelectEvent:
       m68k_write_memory_16(eventP +  8, event->data.popSelect.controlID);
-      m68k_write_memory_32(eventP + 10, event->data.popSelect.controlP ? (uint32_t)((uint8_t *)event->data.popSelect.controlP - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.popSelect.controlP ? (uint32_t)((uint8_t *)event->data.popSelect.controlP - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.popSelect.controlP));
       m68k_write_memory_16(eventP + 14, event->data.popSelect.listID);
-      m68k_write_memory_32(eventP + 16, event->data.popSelect.listP ? (uint32_t)((uint8_t *)event->data.popSelect.listP - ram) : 0);
+      //m68k_write_memory_32(eventP + 16, event->data.popSelect.listP ? (uint32_t)((uint8_t *)event->data.popSelect.listP - ram) : 0);
+      m68k_write_memory_32(eventP + 16, ptr2addr(ram, event->data.popSelect.listP));
       m68k_write_memory_16(eventP + 20, event->data.popSelect.selection);
       m68k_write_memory_16(eventP + 22, event->data.popSelect.priorSelection);
       break;
     case sclEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.sclEnter.scrollBarID);
-      m68k_write_memory_32(eventP + 10, event->data.sclEnter.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclEnter.pScrollBar - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.sclEnter.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclEnter.pScrollBar - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.sclEnter.pScrollBar));
       break;
     case sclExitEvent:
       m68k_write_memory_16(eventP +  8, event->data.sclExit.scrollBarID);
-      m68k_write_memory_32(eventP + 10, event->data.sclExit.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclExit.pScrollBar - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.sclExit.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclExit.pScrollBar - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.sclExit.pScrollBar));
       m68k_write_memory_16(eventP + 14, event->data.sclExit.value);
       m68k_write_memory_16(eventP + 16, event->data.sclExit.newValue);
       break;
     case sclRepeatEvent:
       m68k_write_memory_16(eventP +  8, event->data.sclRepeat.scrollBarID);
-      m68k_write_memory_32(eventP + 10, event->data.sclRepeat.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclRepeat.pScrollBar - ram) : 0);
+      //m68k_write_memory_32(eventP + 10, event->data.sclRepeat.pScrollBar ? (uint32_t)((uint8_t *)event->data.sclRepeat.pScrollBar - ram) : 0);
+      m68k_write_memory_32(eventP + 10, ptr2addr(ram, event->data.sclRepeat.pScrollBar));
       m68k_write_memory_16(eventP + 14, event->data.sclRepeat.value);
       m68k_write_memory_16(eventP + 16, event->data.sclRepeat.newValue);
       m68k_write_memory_32(eventP + 18, event->data.sclRepeat.time);
       break;
     case frmGadgetEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.gadgetEnter.gadgetID);
-      a = event->data.gadgetEnter.gadgetP ? (uint32_t)((uint8_t *)event->data.gadgetEnter.gadgetP - ram) : 0;
+      //a = event->data.gadgetEnter.gadgetP ? (uint32_t)((uint8_t *)event->data.gadgetEnter.gadgetP - ram) : 0;
+      a = ptr2addr(ram, event->data.gadgetEnter.gadgetP);
       m68k_write_memory_32(eventP + 10, a);
       encode_gadget(a, event->data.gadgetEnter.gadgetP);
       break;
     case frmGadgetMiscEvent:
       m68k_write_memory_16(eventP +  8, event->data.gadgetMisc.gadgetID);
-      a = event->data.gadgetMisc.gadgetP ? (uint32_t)((uint8_t *)event->data.gadgetMisc.gadgetP - ram) : 0;
+      //a = event->data.gadgetMisc.gadgetP ? (uint32_t)((uint8_t *)event->data.gadgetMisc.gadgetP - ram) : 0;
+      a = ptr2addr(ram, event->data.gadgetMisc.gadgetP);
       m68k_write_memory_32(eventP + 10, a);
       m68k_write_memory_16(eventP + 14, event->data.gadgetMisc.selector);
-      m68k_write_memory_32(eventP + 16, event->data.gadgetMisc.dataP ? (uint32_t)((uint8_t *)event->data.gadgetMisc.dataP - ram) : 0);
+      //m68k_write_memory_32(eventP + 16, event->data.gadgetMisc.dataP ? (uint32_t)((uint8_t *)event->data.gadgetMisc.dataP - ram) : 0);
+      m68k_write_memory_32(eventP + 16, ptr2addr(ram, event->data.gadgetMisc.dataP));
       encode_gadget(a, event->data.gadgetMisc.gadgetP);
       break;
     case tblEnterEvent:
       m68k_write_memory_16(eventP +  8, event->data.tblEnter.tableID);
-      a = event->data.tblEnter.pTable ? (uint32_t)((uint8_t *)event->data.tblEnter.pTable - ram) : 0;
+      //a = event->data.tblEnter.pTable ? (uint32_t)((uint8_t *)event->data.tblEnter.pTable - ram) : 0;
+      a = ptr2addr(ram, event->data.tblEnter.pTable);
       m68k_write_memory_32(eventP + 10, a);
       m68k_write_memory_16(eventP + 14, event->data.tblEnter.row);
       m68k_write_memory_16(eventP + 16, event->data.tblEnter.column);
       break;
     case tblExitEvent:
       m68k_write_memory_16(eventP +  8, event->data.tblExit.tableID);
-      a = event->data.tblExit.pTable ? (uint32_t)((uint8_t *)event->data.tblExit.pTable - ram) : 0;
+      //a = event->data.tblExit.pTable ? (uint32_t)((uint8_t *)event->data.tblExit.pTable - ram) : 0;
+      a = ptr2addr(ram, event->data.tblExit.pTable);
       m68k_write_memory_32(eventP + 10, a);
       m68k_write_memory_16(eventP + 14, event->data.tblExit.row);
       m68k_write_memory_16(eventP + 16, event->data.tblExit.column);
       break;
     case tblSelectEvent:
       m68k_write_memory_16(eventP +  8, event->data.tblSelect.tableID);
-      a = event->data.tblSelect.pTable ? (uint32_t)((uint8_t *)event->data.tblSelect.pTable - ram) : 0;
+      //a = event->data.tblSelect.pTable ? (uint32_t)((uint8_t *)event->data.tblSelect.pTable - ram) : 0;
+      a = ptr2addr(ram, event->data.tblSelect.pTable);
       m68k_write_memory_32(eventP + 10, a);
       m68k_write_memory_16(eventP + 14, event->data.tblSelect.row);
       m68k_write_memory_16(eventP + 16, event->data.tblSelect.column);
       break;
     case winEnterEvent:
-      a = event->data.winEnter.enterWindow ? (uint32_t)((uint8_t *)event->data.winEnter.enterWindow - ram) : 0;
+      //a = event->data.winEnter.enterWindow ? (uint32_t)((uint8_t *)event->data.winEnter.enterWindow - ram) : 0;
+      a = ptr2addr(ram, event->data.winEnter.enterWindow);
       m68k_write_memory_32(eventP + 8, a);
-      a = event->data.winEnter.exitWindow ? (uint32_t)((uint8_t *)event->data.winEnter.exitWindow - ram) : 0;
+      //a = event->data.winEnter.exitWindow ? (uint32_t)((uint8_t *)event->data.winEnter.exitWindow - ram) : 0;
+      a = ptr2addr(ram, event->data.winEnter.exitWindow);
       m68k_write_memory_32(eventP + 12, a);
       break;
     case winExitEvent:
-      a = event->data.winExit.enterWindow ? (uint32_t)((uint8_t *)event->data.winExit.enterWindow - ram) : 0;
+      //a = event->data.winExit.enterWindow ? (uint32_t)((uint8_t *)event->data.winExit.enterWindow - ram) : 0;
+      a = ptr2addr(ram, event->data.winExit.enterWindow);
       m68k_write_memory_32(eventP + 8, a);
-      a = event->data.winExit.exitWindow ? (uint32_t)((uint8_t *)event->data.winExit.exitWindow - ram) : 0;
+      //a = event->data.winExit.exitWindow ? (uint32_t)((uint8_t *)event->data.winExit.exitWindow - ram) : 0;
+      a = ptr2addr(ram, event->data.winExit.exitWindow);
       m68k_write_memory_32(eventP + 12, a);
       break;
     case frmObjectFocusTakeEvent:
@@ -1166,7 +1237,8 @@ void encode_event(uint32_t eventP, EventType *event) {
       break;
     case inetSockReadyEvent:
       inetEvent = (INetEventType *)event;
-      m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockReady.sockH - ram));
+      //m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockReady.sockH - ram));
+      m68k_write_memory_32(eventP +   8, ptr2addr(ram, inetEvent->data.inetSockReady.sockH));
       m68k_write_memory_32(eventP +  12, inetEvent->data.inetSockReady.context);
       m68k_write_memory_8(eventP +   16, inetEvent->data.inetSockReady.inputReady);
       m68k_write_memory_8(eventP +   17, inetEvent->data.inetSockReady.outputReady);
@@ -1174,7 +1246,8 @@ void encode_event(uint32_t eventP, EventType *event) {
     default:
       if (event->eType == inetSockStatusChangeEvent) {
         inetEvent = (INetEventType *)event;
-        m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockStatusChange.sockH - ram));
+        //m68k_write_memory_32(eventP +   8, (uint32_t)((uint8_t *)inetEvent->data.inetSockStatusChange.sockH - ram));
+        m68k_write_memory_32(eventP +   8, ptr2addr(ram, inetEvent->data.inetSockStatusChange.sockH));
         m68k_write_memory_32(eventP +  12, inetEvent->data.inetSockStatusChange.context);
         m68k_write_memory_16(eventP +  16, inetEvent->data.inetSockStatusChange.status);
         m68k_write_memory_16(eventP +  18, inetEvent->data.inetSockStatusChange.sockErr);
@@ -1247,7 +1320,8 @@ void encode_deviceinfo(uint32_t deviceInfoP, DeviceInfoType *deviceInfo) {
     m68k_write_memory_32(deviceInfoP +  4, deviceInfo->serDevFtrInfo);
     m68k_write_memory_32(deviceInfoP +  8, deviceInfo->serDevMaxBaudRate);
     m68k_write_memory_32(deviceInfoP + 12, deviceInfo->serDevHandshakeBaud);
-    m68k_write_memory_32(deviceInfoP + 16, deviceInfo->serDevPortInfoStr ? ((uint8_t *)deviceInfo->serDevPortInfoStr - ram) : 0);
+    //m68k_write_memory_32(deviceInfoP + 16, deviceInfo->serDevPortInfoStr ? ((uint8_t *)deviceInfo->serDevPortInfoStr - ram) : 0);
+    m68k_write_memory_32(deviceInfoP + 16, ptr2addr(ram, deviceInfo->serDevPortInfoStr));
   }
 }
 
@@ -1686,7 +1760,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     aux_cpu.palmos = 1;
     m68k_set_context(&aux_cpu);
     m68k_init();
-    m68k_set_cpu_type(M68K_CPU_TYPE_68020);
+    m68k_set_cpu_type(M68K_CPU_TYPE_68000);
     m68k_pulse_reset();
     m68k_set_reg(M68K_REG_PC, trapOrFunction);
     m68k_set_reg(M68K_REG_SP, sp);
@@ -2196,6 +2270,7 @@ void fake_cpu_instr_callback(unsigned int pc) {
 static int cpu_instr_callback(unsigned int pc) {
   emu_state_t *state = pumpkin_get_local_storage(emu_key);
   uint16_t trap, selector;
+  uint32_t trapsBase;
   char buf[128], *s;
 
 #if defined(LOGTRAP)
@@ -2206,8 +2281,9 @@ static int cpu_instr_callback(unsigned int pc) {
   }
 #endif
 
-  if ((pc & 1) == 0 && pc >= TRAPS_BASE && pc < (TRAPS_BASE + TRAPS_SIZE)) {
-    trap = 0xA000 | ((pc - TRAPS_BASE) >> 2);
+  trapsBase = pumpkin_get_trapsbase();
+  if ((pc & 1) == 0 && pc >= trapsBase && pc < (trapsBase + TRAPS_SIZE)) {
+    trap = 0xA000 | ((pc - trapsBase) >> 2);
     if ((s = logtrap_trapname(state->lt, trap, &selector, 0)) != NULL) {
       if (logtrap_started(state->lt)) {
         debug(DEBUG_INFO, "logtrap", "simulating a direct call to trap %s (pc 0x%08X)", s, pc);
@@ -2301,6 +2377,8 @@ static emu_state_t *emupalmos_new(void) {
       state->istate->armCall68KAddr = pumpkin_heap_alloc(0x8, "call68kAddr");
       state->istate->armEmulState = pumpkin_heap_alloc(0x100, "emulState");
       state->istate->armStack = pumpkin_heap_alloc(stackSize, "stack");
+      state->istate->heap_size = pumpkin_heap_size();
+      state->istate->trapsBase = pumpkin_get_trapsbase();
 
       // each syscall is identified by a special address of the form 0x04G0NNNN,
       // where G is the group (1, 2, or 3) and NNNN is the function "number" (multiple of 4).
@@ -2920,7 +2998,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       main_cpu.palmos = 1;
       m68k_set_context(&main_cpu);
       m68k_init();
-      m68k_set_cpu_type(M68K_CPU_TYPE_68020);
+      m68k_set_cpu_type(M68K_CPU_TYPE_68000);
       m68k_pulse_reset();
       m68k_set_reg(M68K_REG_PC, pc);
       m68k_set_reg(M68K_REG_SP, a7);

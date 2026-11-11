@@ -154,6 +154,7 @@ typedef struct {
   int num_syslibs;
   uint32_t taskId;
   void *exception;
+  uint8_t *trapsBase;
   uint64_t evtTimeoutLast;
   uint32_t evtTimeoutCount;
   Boolean evtTimeoutWarning;
@@ -2131,6 +2132,7 @@ static int pumpkin_local_init(int i, uint32_t taskId, texture_t *texture, uint32
     task->heap = pumpkin_module.heap;
   }
   task->exception = pumpkin_heap_alloc(sizeof(void *), "Exception");
+  task->trapsBase = pumpkin_heap_alloc(TRAPS_SIZE, "trapsBase");
 
   for (j = 0; j < pumpkin_module.num_serial; j++) {
     task->serial[j] = pumpkin_heap_alloc(sys_strlen(pumpkin_module.serial[j].descr) + 1, "serial_descr");
@@ -2307,6 +2309,7 @@ static int pumpkin_local_finish(UInt32 creator) {
 
   ptr_free(task->screen_ptr, TAG_SCREEN);
   pumpkin_heap_free(task->exception, "Exception");
+  pumpkin_heap_free(task->trapsBase, "trapsBase");
 
   SelTimeFinishModule();
   SndFinishModule();
@@ -4235,6 +4238,11 @@ int pumpkin_event(int *key, int *mods, int *buttons, uint8_t *data, uint32_t *n,
   return pumpkin_module.mode == 1 ?
     pumpkin_event_single_app(key, mods, buttons, data, n, usec) :
     pumpkin_event_multi_thread(key, mods, buttons, data, n, usec);
+}
+
+uint32_t pumpkin_get_trapsbase(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task->trapsBase - (uint8_t *)pumpkin_heap_base();
 }
 
 uint32_t pumpkin_get_taskid(void) {
@@ -6569,7 +6577,7 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
           address = ptr2addr(ram, task->trapCode[trap]);
         } else {
           // default virtual trap address
-          address = TRAPS_BASE + (trap << 2);
+          address = pumpkin_get_trapsbase() + (trap << 2);
         }
       } else {
         address = ptr2addr(ram, task->trapCode[trap]);
@@ -6584,7 +6592,7 @@ uint32_t pumpkin_get_trap_address(uint16_t trap) {
 
 int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
-  uint32_t hackManager, heapSize, codeSize;
+  uint32_t hackManager, heapSize, codeSize, trapsBase;
   uint8_t *ram, *p;
   int r = -1;
 
@@ -6594,7 +6602,8 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address) {
       hackManager = pumpkin_get_id_option("hacks");
       if (pumpkin_get_app_creator() == hackManager) {
         heapSize = pumpkin_heap_size();
-        if (address >= TRAPS_BASE && address < TRAPS_BASE + TRAPS_SIZE) {
+        trapsBase = pumpkin_get_trapsbase();
+        if (address >= trapsBase && address < trapsBase + TRAPS_SIZE) {
           // virtual trap address
           if (task->trapCode[trap]) {
             MemPtrFree(task->trapCode[trap]);

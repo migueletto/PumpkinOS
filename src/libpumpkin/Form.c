@@ -1140,9 +1140,9 @@ Boolean FrmHandleEvent(FormType *formP, EventType *eventP) {
           if (FldGetActiveField() != NULL) {
             if (pumpkin_is_m68k()) {
               uint32_t trapAddress = pumpkin_get_trap_address(sysTrapSysKeyboardDialog);
-              if (trapAddress < TRAPS_BASE) {
+              if (trapAddress < pumpkin_get_trapsbase()) {
                 CallSysKeyboardDialog(trapAddress, kbdAlpha);
-              } else if (trapAddress == TRAPS_BASE + ((sysTrapSysKeyboardDialog - 0xA000) << 2)) {
+              } else if (trapAddress == pumpkin_get_trapsbase() + ((sysTrapSysKeyboardDialog - 0xA000) << 2)) {
                 SysKeyboardDialog(kbdAlpha);
               }
             } else {
