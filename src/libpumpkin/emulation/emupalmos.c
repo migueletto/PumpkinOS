@@ -1693,6 +1693,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
   m68ki_cpu_core old_cpu, aux_cpu;
   uint32_t argsSize, wantA0, selector, a4, a5, sp, r = 0;
   m68k_state_t *m68k_state;
+  emu_state_t *state;
 
   debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func(emulState=0x%08X, trapOrFn=0x%08X, args=0x%08X, argsSize=0x%08x)",
     emulStateP, trapOrFunction, argsOnStackP, argsSizeAndwantA0);
@@ -1707,6 +1708,8 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
   argsSize = argsSizeAndwantA0 & ~kPceNativeWantA0;
   wantA0 = (argsSizeAndwantA0 & kPceNativeWantA0) ? 1 : 0;
   debug(DEBUG_TRACE, "EmuPalmOS", "call68K_func argsSize %d, wantA0 %d", argsSize, wantA0);
+
+  state = pumpkin_get_local_storage(emu_key);
 
   // trapOrFunction: The trap number AND’ed with kPceNativeTrapNoMask, or a pointer to the function to call. Any value less than kPceNativeTrapNoMask is treated as a trap number.
   if (trapOrFunction < kPceNativeTrapNoMask) {
@@ -1727,7 +1730,6 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     palmos_systrap(0xA000 | trapOrFunction);
 
 #if defined(LOGTRAP)
-    emu_state_t *state = pumpkin_get_local_storage(emu_key);
     logtrap_def *def = logtrap_get_def();
     if (def && state->lt) {
       def->rethook(state->lt, 0xFF00A000 | trapOrFunction);
@@ -1758,7 +1760,7 @@ static uint32_t call68K_func(uint32_t emulStateP, uint32_t trapOrFunction, uint3
     aux_cpu.palmos = 1;
     m68k_set_context(&aux_cpu);
     m68k_init();
-    m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+    m68k_set_cpu_type(state->istate->heap_size == 0x00800000 ? M68K_CPU_TYPE_68000 : M68K_CPU_TYPE_68000);
     m68k_pulse_reset();
     m68k_set_reg(M68K_REG_PC, trapOrFunction);
     m68k_set_reg(M68K_REG_SP, sp);
@@ -2996,7 +2998,7 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
       main_cpu.palmos = 1;
       m68k_set_context(&main_cpu);
       m68k_init();
-      m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+      m68k_set_cpu_type(state->istate->heap_size == 0x00800000 ? M68K_CPU_TYPE_68000 : M68K_CPU_TYPE_68000);
       m68k_pulse_reset();
       m68k_set_reg(M68K_REG_PC, pc);
       m68k_set_reg(M68K_REG_SP, a7);
