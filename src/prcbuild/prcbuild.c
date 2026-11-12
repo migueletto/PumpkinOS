@@ -11,6 +11,10 @@
 
 #define MAX_RSRC 8192
 
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+
 static int prcbuild(char *filename, char *type, char *creator, char *name, uint16_t attr, char *rsrc[], int num, int verbose) {
   pdb_t *pdb;
   uint16_t id;
@@ -19,7 +23,7 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, uint1
   char *s, stype[16];
   int i, aux, f, fr, len, r = -1;
 
-  if ((f = creat(filename, 0644)) != -1) {
+  if ((f = open(filename, O_CREAT|O_WRONLY|O_TRUNC|O_BINARY, 0644)) != -1) {
     if ((pdb = pdb_new(name, type, creator)) != NULL) {
       pdb_attr(pdb, attr);
       for (i = 0; i < num; i++) {
@@ -28,7 +32,7 @@ static int prcbuild(char *filename, char *type, char *creator, char *name, uint1
           s = &rsrc[i][len-12];
           if (sscanf(s, "%4s%04x.bin", stype, &aux) == 2 || sscanf(s, "%4s%04x.dat", stype, &aux) == 2) {
             id = aux;
-            if ((fr = open(rsrc[i], O_RDONLY)) != -1) {
+            if ((fr = open(rsrc[i], O_RDONLY|O_BINARY)) != -1) {
               if ((size = lseek(fr, 0, SEEK_END)) > 0) {
                 if (lseek(fr, 0, SEEK_SET) == 0) {
                   if ((data = calloc(1, size)) != NULL) {

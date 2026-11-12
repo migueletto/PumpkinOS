@@ -9,10 +9,14 @@
 
 #include "pdb.h"
 
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+
 static int prclist(char *filename) {
   int f, r = -1;
 
-  if ((f = open(filename, O_RDONLY)) != -1) {
+  if ((f = open(filename, O_RDONLY|O_BINARY)) != -1) {
     r = pdb_list(f);
     close(f);
   }
