@@ -58,3 +58,7 @@ EXTRALIBS=$(UNICORN_LIB)
 
 include ../commonp.mak
 include ../app.mak
+
+ifeq ($(OSNAME),Msys)
+STRIP=strip
+endif
