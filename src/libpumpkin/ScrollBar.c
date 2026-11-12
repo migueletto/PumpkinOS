@@ -53,6 +53,8 @@ void SclSetScrollBar(ScrollBarType *bar, Int16 value, Int16 min, Int16 max, Int1
       debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar must redraw");
       if (FrmObjectGetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible)) {
         SclDrawScrollBar(bar);
+      } else {
+        debug(DEBUG_TRACE, "Scroll", "SclSetScrollBar do not redraw because it is not visible");
       }
     }
   }
@@ -94,10 +96,11 @@ void SclDrawScrollBar(ScrollBarType *bar) {
     oldb = WinSetBackColor(formFill);
     FrmObjectSetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 0);
 
-    if (minValue == 0 && maxValue == 0) {
+    if (pageSize == 0) {
+      debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar erase");
       WinEraseRectangle(&bounds, 0);
 
-    } else if (minValue < maxValue && pageSize > 0) {
+    } else if (minValue <= maxValue) {
       WinEraseRectangle(&bounds, 0);
 
       if (vertical) {
@@ -130,17 +133,19 @@ void SclDrawScrollBar(ScrollBarType *bar) {
         hline(bounds.topLeft.x+2, bounds.topLeft.x+bounds.extent.x-3, y-2);
         hline(bounds.topLeft.x+3, bounds.topLeft.x+bounds.extent.x-4, y-1);
 
-        // car
-        numPages = (maxValue - minValue + 1 + pageSize - 1) / pageSize;
-        h = (bounds.extent.y - 2*d - 2) / numPages;
-        if (h < 1) h = 1;
-        y = ((value - minValue) * (bounds.extent.y - 2*d - 2 - h)) / (maxValue - minValue);
-        rect.topLeft.y = bounds.topLeft.y + d + 1 + y;
-        rect.extent.y = h;
-        rect.topLeft.x = bounds.topLeft.x + ROD_MARGIN;
-        rect.extent.x = bounds.extent.x - 2*ROD_MARGIN;
-        WinSetBackColor(scrollFore);
-        WinEraseRectangle(&rect, 0);
+        if (maxValue > minValue) {
+          // car
+          numPages = (maxValue - minValue + 1 + pageSize - 1) / pageSize;
+          h = (bounds.extent.y - 2*d - 2) / numPages;
+          if (h < 1) h = 1;
+          y = ((value - minValue) * (bounds.extent.y - 2*d - 2 - h)) / (maxValue - minValue);
+          rect.topLeft.y = bounds.topLeft.y + d + 1 + y;
+          rect.extent.y = h;
+          rect.topLeft.x = bounds.topLeft.x + ROD_MARGIN;
+          rect.extent.x = bounds.extent.x - 2*ROD_MARGIN;
+          WinSetBackColor(scrollFore);
+          WinEraseRectangle(&rect, 0);
+        }
 
       } else {
         d = bounds.extent.y >= 6 ? 4 : 2;
@@ -172,17 +177,19 @@ void SclDrawScrollBar(ScrollBarType *bar) {
         vline(bounds.topLeft.y+2, bounds.topLeft.y+bounds.extent.y-3, x-2);
         vline(bounds.topLeft.y+3, bounds.topLeft.y+bounds.extent.y-4, x-1);
 
-        // car
-        numPages = (maxValue - minValue + 1 + pageSize - 1) / pageSize;
-        w = (bounds.extent.x - 2*d - 2) / numPages;
-        if (w < 1) w = 1;
-        x = ((value - minValue) * (bounds.extent.x - 2*d - 2 - w)) / (maxValue - minValue);
-        rect.topLeft.x = bounds.topLeft.x + d + 1 + x;
-        rect.extent.x = w;
-        rect.topLeft.y = bounds.topLeft.y + ROD_MARGIN;
-        rect.extent.y = bounds.extent.y - 2*ROD_MARGIN;
-        WinSetBackColor(scrollFore);
-        WinEraseRectangle(&rect, 0);
+        if (maxValue > minValue) {
+          // car
+          numPages = (maxValue - minValue + 1 + pageSize - 1) / pageSize;
+          w = (bounds.extent.x - 2*d - 2) / numPages;
+          if (w < 1) w = 1;
+          x = ((value - minValue) * (bounds.extent.x - 2*d - 2 - w)) / (maxValue - minValue);
+          rect.topLeft.x = bounds.topLeft.x + d + 1 + x;
+          rect.extent.x = w;
+          rect.topLeft.y = bounds.topLeft.y + ROD_MARGIN;
+          rect.extent.y = bounds.extent.y - 2*ROD_MARGIN;
+          WinSetBackColor(scrollFore);
+          WinEraseRectangle(&rect, 0);
+        }
       }
 
       FrmObjectSetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 1);
