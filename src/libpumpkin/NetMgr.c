@@ -308,8 +308,8 @@ Int16 NetLibReceive(UInt16 libRefNum, NetSocketRef socket, void *bufP, UInt16 bu
     default:
       if (nread == 0) {
         debug(DEBUG_INFO, "NetMgr", "NetLibReceive read nothing");
-        *errP = netErrParamErr;
-        r = -1;
+        *errP = 0;
+        r = 0;
       } else {
         debug(DEBUG_TRACE, "NetMgr", "NetLibReceive read ok");
         *errP = 0;
@@ -539,6 +539,7 @@ Int16 NetLibSocketOptionGet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
 
 Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level, UInt16 option, void *optValueP, UInt16 optValueLen, Int32 timeout, Err *errP) {
   int ilevel, ioption, r;
+  Boolean set = false;
 
   switch (level) {
     case netSocketOptLevelIP:
@@ -555,6 +556,7 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
       switch (option) {
         case netSocketOptTCPNoDelay:      // don't delay send to coalesce packets
           ioption = SYS_TCP_NODELAY;
+          set = true;
           break;
         case netSocketOptTCPMaxSeg:       // TCP maximum segment size (TCP_MAXSEG)
         default:
@@ -565,6 +567,9 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
     case netSocketOptLevelSocket:
       ilevel = SYS_LEVEL_SOCK;
       switch (option) {
+        case netSocketOptSockNonBlocking:     // set non-blocking mode on or off
+          break;
+
         case netSocketOptSockDebug:       // turn on debugging info recording
         case netSocketOptSockAcceptConn:  // socket has had listen
         case netSocketOptSockReuseAddr:   // allow local address reuse
@@ -584,7 +589,6 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
         case netSocketOptSockSocketType:  // get socket type
 
         // The following are Pilot specific options
-        case netSocketOptSockNonBlocking:     // set non-blocking mode on or off
         case netSocketOptSockRequireErrClear: // return error from all further calls to socket unless netSocketOptSockErrorStatus is cleared.
         case netSocketOptSockMultiPktAddr:    // for SOCK_RDM (RMP) sockets. This is the fixed IP addr (i.e. Mobitex MAN #) to use for multiple packet requests.
 
@@ -601,8 +605,10 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
       return -1;
   }
 
-  if ((r = sys_setsockopt(socket, ilevel, ioption, optValueP, optValueLen)) == -1) {
+  if (set && (r = sys_setsockopt(socket, ilevel, ioption, optValueP, optValueLen)) == -1) {
     if (errP) *errP = netErrParamErr;
+  } else {
+    if (errP) *errP = errNone;
   }
 
   return r;

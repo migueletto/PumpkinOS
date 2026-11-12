@@ -584,6 +584,25 @@ void palmos_netlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case netLibTrapSocketOptionSet: {
+      // Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level, UInt16 option, void *optValueP, UInt16 optValueLen, Int32 timeout, Err *errP)
+      uint16_t libRefNum = ARG16;
+      int16_t socket = ARG16;
+      uint16_t level = ARG16;
+      uint16_t option = ARG16; // 8192
+      uint32_t optValueP = ARG32;
+      void *optValue = emupalmos_trap_in(optValueP, trap, 4);
+      uint16_t optValueLen = ARG16;
+      int32_t timeout = ARG32;
+      uint32_t errP = ARG32;
+      Err err;
+      Int16 res = NetLibSocketOptionSet(libRefNum, socket, level, option, optValue, optValueLen, timeout, &err);
+      if (errP) m68k_write_memory_16(errP, err);
+      debug(DEBUG_TRACE, "EmuPalmOS", "NetLibSocketOptionSet(libRefNum=%u, socket=%d, level=%u, option=%u, optValue=0x%08X, optValueLen=%u, timeout=%d, err=0x%08X): %d",
+        libRefNum, socket, level, option, optValueP, optValueLen, timeout, errP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "NetLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);
