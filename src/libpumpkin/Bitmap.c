@@ -2109,32 +2109,6 @@ UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Bo
   return b;
 }
 
-UInt32 BmpConvertFrom4Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
-  switch (depth) {
-    case 1: b = b ? 1 : 0; break;
-    case 2: b = b >> 2; break;
-    case 4: break;
-    case 8:
-      if (isDefault) {
-        b = gray4[b];
-      } else {
-        b = BmpRGBToIndex(gray4values[b], gray4values[b], gray4values[b], colorTable);
-      }
-      break;
-    case 16:
-      b = rgb565(gray4values[b], gray4values[b], gray4values[b]);
-      break;
-    case 24:
-      b = rgb24(gray4values[b], gray4values[b], gray4values[b]);
-      break;
-    case 32:
-      b = rgba32(gray4values[b], gray4values[b], gray4values[b], 0xff);
-      break;
-  }
-
-  return b;
-}
-
 static UInt8 rgbToGray1(UInt16 r, UInt16 g, UInt16 b) {
   return (r > 127 && g > 127 && b > 127) ? 0 : 1;
 }
@@ -2147,6 +2121,28 @@ static UInt8 rgbToGray2(UInt16 r, UInt16 g, UInt16 b) {
 static UInt8 rgbToGray4(UInt16 r, UInt16 g, UInt16 b) {
   UInt16 c = (r + g + b) / 3;
   return 15 - (c >> 4);
+}
+
+UInt32 BmpConvertFrom4Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
+  RGBColorType rgb;
+
+  if (depth == 4 && isSrcDefault && isDstDefault) {
+    return b;
+  }
+
+  CtbGetEntry(srcColorTable, b, &rgb);
+
+  switch (depth) {
+    case  1: b = rgbToGray1(rgb.r, rgb.g, rgb.b); break;
+    case  2: b = rgbToGray2(rgb.r, rgb.g, rgb.b); break;
+    case  4: b = rgbToGray4(rgb.r, rgb.g, rgb.b); break;
+    case  8: b = BmpRGBToIndex(rgb.r, rgb.g, rgb.b, dstColorTable); break;
+    case 16: b = rgb565(rgb.r, rgb.g, rgb.b); break;
+    case 24: b = rgb24(rgb.r, rgb.g, rgb.b); break;
+    case 32: b = rgba32(rgb.r, rgb.g, rgb.b, 0xff); break;
+  }
+
+  return b;
 }
 
 UInt32 BmpConvertFrom8Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
@@ -2934,7 +2930,12 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       case 4:
         srcPixel = bits[sy * srcRowBytes + (sx >> 1)];
         srcPixel = !(sx & 0x01) ? srcPixel >> 4 : srcPixel & 0x0F;
-        dstPixel = (dstDepth == 4) ? srcPixel : BmpConvertFrom4Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
+        //dstPixel = (dstDepth == 4) ? srcPixel : BmpConvertFrom4Bits(srcPixel, srcColorTable, isSrcDefault, dstDepth, dstColorTable, isDstDefault);
+        if (dstDepth == 4 && srcColorTable == dstColorTable) {
+          dstPixel = srcPixel;
+        } else {
+          dstPixel = BmpConvertFrom4Bits(srcPixel, srcColorTable, isSrcDefault, dstDepth, dstColorTable, isDstDefault);
+        }
         break;
       case 8:
         srcPixel = bits[sy * srcRowBytes + sx];
