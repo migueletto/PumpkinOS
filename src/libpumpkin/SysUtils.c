@@ -17,6 +17,7 @@ typedef struct {
   CmpFuncPPtr comparFP;
   void *otherP;
   UInt32 comparF68k;
+  Int32 sysRandomSeed;
 
   // for random
   int n, i, j;
@@ -158,13 +159,15 @@ end:
   return k;
 }
 
-// Return a random number anywhere from 0 to sysRandomMax
+// this is the original random number generator from PalmOS
 Int16 SysRandom(Int32 newSeed) {
-  int32_t r;
-  r = SysRandom32(newSeed);
-  return r % sysRandomMax;
+  sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
+  if (newSeed) module->sysRandomSeed = newSeed;
+  module->sysRandomSeed = (0x015A4E35 * module->sysRandomSeed) + 1;
+  return (Int16)((module->sysRandomSeed >> 16) & 0x7FFF);
 }
 
+// this is a custom random number generator for PumpkinOS
 Int32 SysRandom32(Int32 newSeed) {
   sysu_module_t *module = (sysu_module_t *)pumpkin_get_local_storage(sysu_key);
   int32_t r;
