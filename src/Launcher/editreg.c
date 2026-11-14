@@ -151,7 +151,7 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   UInt32 regSize;
   UInt16 page, osversion, density, depth, heapSize, heapAlign, index, id, num, i;
   char buf[16], *text;
-  Boolean littleEndian, enableSound, fastScreenWrite, armScreenWrite, lenientMemCheck;
+  Boolean littleEndian, enableSound, armScreenWrite, lenientMemCheck;
   Boolean handspringExt, acceptAnyEvent, os1Charset, useAfterRelease, r = false;
 
   index = FrmGetObjectIndex(frm, regPage1Ctl);
@@ -181,7 +181,6 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   enableSound = regRunFlagsP ? (regRunFlagsP->flags & regRunFlagSound) == regRunFlagSound : 0;
 
   regFlagsP = pumpkin_reg_get(creator, regFlagsID, &regSize);
-  fastScreenWrite = regFlagsP ? regFlagsP->flags & regFlagFastScreenWrite : false;
   armScreenWrite  = regFlagsP ? regFlagsP->flags & regFlagARMScreenWrite  : false;
   lenientMemCheck = regFlagsP ? regFlagsP->flags & regFlagLenientMemCheck : false;
   handspringExt   = regFlagsP ? regFlagsP->flags & regFlagHandspringExt   : false;
@@ -245,11 +244,6 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
   index = FrmGetObjectIndex(frm, enableSoundCtl);
   ctl = FrmGetObjectPtr(frm, index);
   CtlSetValue(ctl, enableSound);
-
-  // set fastScreenWrite
-  index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
-  ctl = FrmGetObjectPtr(frm, index);
-  CtlSetValue(ctl, fastScreenWrite);
 
   // set armScreenWrite
   index = FrmGetObjectIndex(frm, armScreenWriteCtl);
@@ -380,18 +374,10 @@ Boolean editRegistry(FormType *frm, UInt32 creator) {
     }
     pumpkin_reg_set(creator, regRunFlagsID, &regRunFlags, sizeof(RegRunFlagsType));
 
-    // update fastScreenWrite, armScreenWrite, lenientMemCheck, acceptAnyEvent,
+    // update armScreenWrite, lenientMemCheck, acceptAnyEvent,
     // os1Charset, and useAfterRelease
     regFlags.flags = regFlagsP ? regFlagsP->flags : 0;
     if (regFlagsP) MemPtrFree(regFlagsP);
-
-    index = FrmGetObjectIndex(frm, fastScreenWriteCtl);
-    ctl = FrmGetObjectPtr(frm, index);
-    if (CtlGetValue(ctl)) {
-      regFlags.flags |= regFlagFastScreenWrite;
-    } else {
-      regFlags.flags &= ~regFlagFastScreenWrite;
-    }
 
     index = FrmGetObjectIndex(frm, armScreenWriteCtl);
     ctl = FrmGetObjectPtr(frm, index);

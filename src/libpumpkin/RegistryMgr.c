@@ -330,7 +330,7 @@ void RegCheckFlags(void) {
             pumpkin_id2s(creator, screator);
             if ((r = MemHandleLock(h)) != NULL) {
               flags = r[0];
-              if ((flags & regFlagFastScreenWrite) && (flags != regFlagFastScreenWrite)) {
+              if ((flags & 2) && (flags != 2)) {
                 debug(DEBUG_INFO, "Registry", "creator '%s' flags 0x%08X", screator, flags);
               }
               MemHandleUnlock(h);

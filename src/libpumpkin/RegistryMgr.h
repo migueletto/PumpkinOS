@@ -13,7 +13,6 @@ typedef struct RegMgrType RegMgrType;
 #define regLocaleID     11
 #define lastRegID       11
 
-#define regFlagFastScreenWrite 0x02
 #define regFlagARMScreenWrite  0x04
 #define regFlagLenientMemCheck 0x08
 #define regFlagHandspringExt   0x10
