@@ -405,6 +405,7 @@ WinHandle WinCreateBitmapWindow(BitmapType *bitmapP, UInt16 *error) {
   compressed = BmpGetCommonFlag(bitmapP, BitmapFlagCompressed);
   forScreen = BmpGetCommonFlag(bitmapP, BitmapFlagForScreen);
   BmpGetDimensions(bitmapP, &width, &height, NULL);
+  BmpSetLittleEndianBits(bitmapP, module->littleEndian);
 
   if (width <= 0 || height <= 0 || compressed || forScreen) {
     debug(DEBUG_ERROR, "Window", "WinCreateBitmapWindow invalid bitmap width=%d height=%d compressed=%d forScreen=%d",
