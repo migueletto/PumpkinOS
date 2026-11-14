@@ -375,6 +375,20 @@ void HRWinInvertPixel(UInt16 refNum, Coord x, Coord y) {
 }
 
 void HRWinInvertRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinInvertRectangle(rP, cornerDiam);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinInvertRectangle(rP, cornerDiam);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {

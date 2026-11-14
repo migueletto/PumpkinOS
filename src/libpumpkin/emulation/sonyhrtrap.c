@@ -214,6 +214,18 @@ void palmos_sonyhrtrap(uint16_t trap) {
         refNum, frame, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
       }
       break;
+    case HRTrapWinInvertRectangle: {
+      // void HRWinInvertRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam)
+      uint16_t refNum = ARG16;
+      uint32_t rP = ARG32;
+      uint16_t cornerDiam = ARG16;
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      HRWinInvertRectangle(refNum, &rect, cornerDiam);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRTrapWinInvertRectangle(%u, rP=0x%08X [%d,%d,%d,%d], cornerDiam=%u)",
+        refNum, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, cornerDiam);
+      }
+      break;
     case HRTrapWinInvertRectangleFrame: {
       // void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP)
       uint16_t refNum = ARG16;
