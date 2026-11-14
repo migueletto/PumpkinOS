@@ -311,3 +311,35 @@ Err RegDelete(RegMgrType *rm, DmResType type) {
 
   return err;
 }
+
+void RegCheckFlags(void) {
+  DmOpenRef compatDbRef;
+  LocalID compatDbID;
+  MemHandle h;
+  UInt32 creator, flags;
+  UInt16 i, resID;
+  UInt32 *r;
+  char screator[8];
+
+  if ((compatDbID = DmFindDatabase(0, COMPAT_DB)) != 0) {
+    if ((compatDbRef = DmOpenDatabaseEx(0, compatDbID, dmModeReadOnly, false)) != NULL) {
+      for (i = 0;; i++) {
+        if ((h = DmGetResourceIndex(compatDbRef, i)) == NULL) break;
+        if (DmResourceInfo(compatDbRef, i, &creator, &resID, NULL) == errNone) {
+          if (resID == regFlagsID) {
+            pumpkin_id2s(creator, screator);
+            if ((r = MemHandleLock(h)) != NULL) {
+              flags = r[0];
+              if ((flags & regFlagFastScreenWrite) && (flags != regFlagFastScreenWrite)) {
+                debug(DEBUG_INFO, "Registry", "creator '%s' flags 0x%08X", screator, flags);
+              }
+              MemHandleUnlock(h);
+            }
+          }
+        }
+        DmReleaseResource(h);
+      }
+      DmCloseDatabase(compatDbRef);
+    }
+  }
+}
