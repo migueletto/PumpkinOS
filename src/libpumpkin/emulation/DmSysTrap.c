@@ -51,6 +51,21 @@ void palmos_DmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
     }
     break;
+    case sysTrapDmAttachResource: {
+      // Err DmAttachResource(DmOpenRef dbP, MemHandle newH, DmResType resType, DmResID resID)
+      uint32_t dbP = ARG32;
+      uint32_t newH = ARG32;
+      uint32_t type = ARG32;
+      uint16_t resID = ARG16;
+      DmOpenRef dbRef = (DmOpenRef)emupalmos_trap_in(dbP, trap, 0);
+      MemHandle h = emupalmos_trap_in(newH, trap, 1);
+      Err res = DmAttachResource(dbRef, h, type, resID);
+      char stype[8];
+      pumpkin_id2s(type, stype);
+      debug(DEBUG_TRACE, "EmuPalmOS", "DmAttachResource(0x%08X, 0x%08X, '%s', %d): %d", dbP, newH, stype, resID, res);
+      m68k_set_reg(M68K_REG_D0, res);
+    }
+    break;
     case sysTrapDmSearchResource: {
       // UInt16 DmSearchResource(DmResType resType, DmResID resID, MemHandle resH, DmOpenRef *dbPP)
       uint32_t type = ARG32;
