@@ -355,7 +355,7 @@ static uint32_t vfs_local_seek(vfs_fpriv_t *fpriv, uint32_t pos, int fromend) {
   }
 
   if (fpriv && fpriv->fd) {
-    r = sys_seek(fpriv->fd, pos, whence);
+    r = sys_seek(fpriv->fd, (int64_t)(int32_t)pos, whence);
   }
 
   return r;
