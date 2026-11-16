@@ -35,7 +35,7 @@ EMU_SYSTRAPS=emulation/AbtSysTrap.c emulation/AlmSysTrap.c emulation/AttnSysTrap
 
 EMU_SOURCE=emulation/emupalmos.c emulation/armsyscall.c emulation/omtrap.c emulation/pinstrap.c emulation/hdtrap.c emulation/serialtrap.c emulation/fstrap.c emulation/intltrap.c \
         emulation/flpemtrap.c emulation/flptrap.c emulation/accessortrap.c emulation/expansiontrap.c emulation/tsmtrap.c emulation/lmtrap.c emulation/navtrap.c emulation/netlibtrap.c \
-        emulation/inetlibtrap.c emulation/gpdlibtrap.c emulation/sonyhrtrap.c emulation/oemtrap.c \
+        emulation/inetlibtrap.c emulation/gpdlibtrap.c emulation/sonyhrtrap.c emulation/irlibtrap.c emulation/oemtrap.c \
         emulation/systrap.c $(EMU_SYSTRAPS) emulation/m68k/m68kcpu.c emulation/softfloat/softfloat.c emulation/m68k/m68kops.c emulation/disasm.c \
         emulation/emu_notif_serde.c emulation/emu_launch_serde.c $(ARM_SOURCE) $(DARM_SOURCE) emulator.c
 

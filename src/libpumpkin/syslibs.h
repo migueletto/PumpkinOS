@@ -26,4 +26,6 @@
 
 #define INetLibRefNum (BASE_SYSLIBS+8)
 
+#define IrLibRefNum (BASE_SYSLIBS+9)
+
 #endif

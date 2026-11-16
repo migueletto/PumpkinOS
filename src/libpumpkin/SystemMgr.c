@@ -5,6 +5,7 @@
 #include <CPMLib.h>
 #include <SonyCLIE.h>
 #include <INetMgr.h>
+#include <IrLib.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -288,6 +289,8 @@ Err SysLibLoad(UInt32 libType, UInt32 libCreator, UInt16 *refNumP) {
     *refNumP = SonyHRLibRefNum;
   } else if (libType == inetLibType && libCreator == inetCreator) {
     *refNumP = INetLibRefNum;
+  } else if (libType == sysFileTLibrary && libCreator == sysFileCIrLib) {
+    *refNumP = IrLibRefNum;
   } else {
     *refNumP = 0;
   }
@@ -313,6 +316,8 @@ Err SysLibFind(const Char *nameP, UInt16 *refNumP) {
     *refNumP = SonyHRLibRefNum;
   } else if (nameP && !StrCompare(nameP, inetLibName)) {
     *refNumP = INetLibRefNum;
+  } else if (nameP && !StrCompare(nameP, irLibName)) {
+    *refNumP = IrLibRefNum;
   } else {
     *refNumP = 0;
   }
