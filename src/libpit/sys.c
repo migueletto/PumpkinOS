@@ -2826,7 +2826,7 @@ int sys_socket_connect_timeout(int sock, char *host, int port, uint32_t us) {
     return -1;
   }
 
-  if (sys_tcpip_connect(sock, (struct sockaddr *)&addr, len, us) == -1) {
+  if (sys_tcpip_connect(f->socket, (struct sockaddr *)&addr, len, us) == -1) {
     ptr_unlock(sock, TAG_FD);
     debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
     return -1;
