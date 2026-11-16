@@ -88,21 +88,16 @@ void SclDrawScrollBar(ScrollBarType *bar) {
 
     vertical = bounds.extent.y > bounds.extent.x;
 
-    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d bounds=(%d,%d,%d,%d)",
-      minValue, value, maxValue, bounds.topLeft.x, bounds.topLeft.y, bounds.extent.x, bounds.extent.y);
+    debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar min=%d value=%d max=%d page=%d bounds=(%d,%d,%d,%d)",
+      minValue, value, maxValue, pageSize, bounds.topLeft.x, bounds.topLeft.y, bounds.extent.x, bounds.extent.y);
     dialog = WinGetFlag(FrmGetWindowHandle(FrmGetActiveForm()), WindowFlagModal);
     formFill = UIColorGetTableEntryIndex(dialog ? UIDialogFill : UIFormFill);
 
     oldb = WinSetBackColor(formFill);
     FrmObjectSetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 0);
+    WinEraseRectangle(&bounds, 0);
 
-    if (pageSize == 0) {
-      debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar erase");
-      WinEraseRectangle(&bounds, 0);
-
-    } else if (minValue <= maxValue) {
-      WinEraseRectangle(&bounds, 0);
-
+    if (pageSize > 0 && minValue < maxValue) {
       if (vertical) {
         d = bounds.extent.x >= 6 ? 4 : 2;
 
@@ -143,6 +138,7 @@ void SclDrawScrollBar(ScrollBarType *bar) {
           rect.extent.y = h;
           rect.topLeft.x = bounds.topLeft.x + ROD_MARGIN;
           rect.extent.x = bounds.extent.x - 2*ROD_MARGIN;
+          debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar car %d,%d,%d,%d", rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
           WinSetBackColor(scrollFore);
           WinEraseRectangle(&rect, 0);
         }
@@ -187,13 +183,13 @@ void SclDrawScrollBar(ScrollBarType *bar) {
           rect.extent.x = w;
           rect.topLeft.y = bounds.topLeft.y + ROD_MARGIN;
           rect.extent.y = bounds.extent.y - 2*ROD_MARGIN;
+          debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar car %d,%d,%d,%d", rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
           WinSetBackColor(scrollFore);
           WinEraseRectangle(&rect, 0);
         }
       }
 
       FrmObjectSetFlag(bar, frmScrollBarObj, FormScrollBarFieldAttr, ScrollBarFlagVisible, 1);
-      debug(DEBUG_TRACE, "Scroll", "SclDrawScrollBar car %d,%d,%d,%d", rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y);
 
       WinSetForeColor(oldf);
     }
