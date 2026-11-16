@@ -2714,15 +2714,10 @@ static int sys_tcpip_socket(char *host, int port, int *type, struct sockaddr_sto
   return sock;
 }
 
-static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
-  struct sockaddr_storage addr;
-  int sock, addrlen, ipv6, r;
+static int sys_tcpip_connect(int sock, struct sockaddr *addr, int addrlen, uint32_t us) {
   sys_timeval_t timeout;
   sys_fdset_t fds;
-
-  if ((sock = sys_tcpip_socket(host, port, &type, &addr, &addrlen, &ipv6, "connect")) == -1) {
-    return -1;
-  }
+  int r;
 
 #ifndef WINDOWS
   if (fcntl(sock, F_SETFL, O_NONBLOCK) != 0) {
@@ -2732,9 +2727,9 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
   }
 #endif
 
-  if (connect(sock, (struct sockaddr *)&addr, addrlen) == -1) {
+  if (connect(sock, addr, addrlen) == -1) {
     if (sys_errno() != EINPROGRESS) {
-      debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
+      debug_errno("SYS", "connect");
       closesocket(sock);
       return -1;
     }
@@ -2744,21 +2739,20 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
     timeout.tv_usec = us;
     r = sys_select_fds(sock+1, NULL, &fds, NULL, us == -1 ? NULL : &timeout);
     if (r == -1) {
-      debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
+      debug_errno("SYS", "connect");
       closesocket(sock);
       return -1;
     }
     if (r == 0) {
-      debug(DEBUG_ERROR, "SYS", "connect to %s port %d (ipv%d) timeout", host, port, ipv6 ? 6 : 4);
+      debug(DEBUG_ERROR, "SYS", "connect timeout");
       closesocket(sock);
       return -1;
     }
   }
 
-  debug(DEBUG_TRACE, "SYS", "fd %d connected to %s host %s port %d (ipv%d)",
-        sock, type == SOCK_STREAM ? "TCP" : "UDP", host, port, ipv6 ? 6 : 4);
+  debug(DEBUG_TRACE, "SYS", "fd %d connected", sock);
 
-  return sock;
+  return 0;
 }
 
 #endif
@@ -2766,16 +2760,24 @@ static int sys_tcpip_connect(char *host, int port, int type, uint32_t us) {
 int sys_socket_open_connect_timeout(char *host, int port, int type, uint32_t us) {
 #if defined(KERNEL)
   return -1;
-#elif defined(WINDOWS)
-  int sock;
+#else
+  struct sockaddr_storage addr;
+  int sock, addrlen, ipv6;
 
-  if ((sock = sys_tcpip_connect(host, port, type, us)) == -1) {
+  if ((sock = sys_tcpip_socket(host, port, &type, &addr, &addrlen, &ipv6, "connect")) == -1) {
     return -1;
   }
 
+  if (sys_tcpip_connect(sock, (struct sockaddr *)&addr, addrlen, us) == -1) {
+    closesocket(sock);
+    return -1;
+  }
+
+#if defined(WINDOWS)
   return fd_open(FD_SOCKET, NULL, NULL, NULL, sock);
 #else
-  return sys_tcpip_connect(host, port, type, us);
+  return sock;
+#endif
 #endif
 }
 
@@ -2801,7 +2803,7 @@ int sys_socket_open(int type, int ipv6) {
 #endif
 }
 
-int sys_socket_connect(int sock, char *host, int port) {
+int sys_socket_connect_timeout(int sock, char *host, int port, uint32_t us) {
 #if defined(KERNEL)
   return -1;
 #else
@@ -2824,7 +2826,7 @@ int sys_socket_connect(int sock, char *host, int port) {
     return -1;
   }
 
-  if (connect(f->socket, (struct sockaddr *)&addr, len) == -1) {
+  if (sys_tcpip_connect(sock, (struct sockaddr *)&addr, len, us) == -1) {
     ptr_unlock(sock, TAG_FD);
     debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
     return -1;
@@ -2832,7 +2834,7 @@ int sys_socket_connect(int sock, char *host, int port) {
 
   ptr_unlock(sock, TAG_FD);
 #else
-  if (connect(sock, (struct sockaddr *)&addr, len) == -1 && errno != EINPROGRESS) {
+  if (sys_tcpip_connect(sock, (struct sockaddr *)&addr, len, us) == -1) {
     debug_errno("SYS", "connect to %s port %d (ipv%d)", host, port, ipv6 ? 6 : 4);
     return -1;
   }
@@ -2840,6 +2842,10 @@ int sys_socket_connect(int sock, char *host, int port) {
 
   return 0;
 #endif
+}
+
+int sys_socket_connect(int sock, char *host, int port) {
+  return sys_socket_connect_timeout(sock, host, port, -1);
 }
 
 #if !defined(KERNEL)

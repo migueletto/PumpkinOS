@@ -377,6 +377,7 @@ Int16 NetLibSocketClose(UInt16 libRefnum, NetSocketRef socket, Int32 timeout, Er
 
 Int16 NetLibSocketConnect(UInt16 libRefnum, NetSocketRef socket, NetSocketAddrType *sockAddrP, Int16 addrLen, Int32 timeout, Err *errP) {
   NetSocketAddrINType *inAddr;
+  uint32_t us;
   char host[32];
   int port, r = -1;
 
@@ -386,7 +387,8 @@ Int16 NetLibSocketConnect(UInt16 libRefnum, NetSocketRef socket, NetSocketAddrTy
     inAddr = (NetSocketAddrINType *)sockAddrP;
     NetLibAddrINToA(libRefnum, inAddr->addr, host);
     port = NetNToHS(inAddr->port);
-    r = sys_socket_connect(socket, host, port);
+    us = timeout == -1 ? -1 : timeout * (1000000 / SysTicksPerSecond());
+    r = sys_socket_connect_timeout(socket, host, port, us);
     if (r == 0) *errP = 0;
   } else {
     debug(DEBUG_ERROR, "NetMgr", "NetLibSocketConnect family %d not supported", sockAddrP->family);
@@ -541,7 +543,7 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
   int ilevel, ioption, r;
   Boolean set = false;
 
-  switch (level) {
+  switch ((Int32)level) {
     case netSocketOptLevelIP:
       ilevel = SYS_LEVEL_IP;
       switch (option) {
@@ -609,6 +611,7 @@ Int16 NetLibSocketOptionSet(UInt16 libRefnum, NetSocketRef socket, UInt16 level,
     if (errP) *errP = netErrParamErr;
   } else {
     if (errP) *errP = errNone;
+    r = 0;
   }
 
   return r;

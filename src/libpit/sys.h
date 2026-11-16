@@ -256,6 +256,8 @@ int sys_socket_fill_addr(void *a, char *host, int port, int *len);
 
 int sys_socket_open(int type, int ipv6);
 
+int sys_socket_connect_timeout(int sock, char *host, int port, uint32_t us);
+
 int sys_socket_connect(int sock, char *host, int port);
 
 int sys_socket_open_connect_timeout(char *host, int port, int type, uint32_t us);
