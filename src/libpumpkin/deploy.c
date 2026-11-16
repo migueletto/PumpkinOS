@@ -113,7 +113,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
       hsize = 78;
       if (size > hsize && size != 0xfffffffful) {
         vfs_seek(f, 0, 0);
-        if ((p = MemPtrNew(size)) != NULL) {
+        if ((p = sys_malloc(size)) != NULL) {
           if (vfs_read(f, p, hsize) == hsize) {
             sys_memset(name, 0, dmDBNameLength);
             sys_memcpy(name, p, dmDBNameLength - 1);
@@ -129,7 +129,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
                 pumpkin_id2s(creator, screator);
                 debug(DEBUG_INFO, PUMPKINOS, "installing new version of \"%s\" type '%s' creator '%s' from \"%s\"", name, stype, screator, path);
 
-                if (DmCreateDatabaseFromImage(p) == errNone) {
+                if (DmCreateDatabaseFromImageEx(p, size) == errNone) {
                   if ((dbID = DmFindDatabase(0, name)) != 0) {
                     debug(DEBUG_INFO, PUMPKINOS, "installed \"%s\"", name);
                     if (type == sysFileTApplication) {
@@ -143,7 +143,7 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
               }
             }
           }
-          MemPtrFree(p);
+          sys_free(p);
         }
       }
       vfs_close(f);

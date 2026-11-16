@@ -1784,12 +1784,21 @@ Err DmCloseDatabase(DmOpenRef dbP) {
                       debug(DEBUG_ERROR, "STOR", "DmCloseDatabase dirty record %d but database is read only", i);
                     }
                   }
+
                   if (h->lockCount == 0) {
-                    StoPtrFree(h->buf);
-                    h->buf = NULL;
+                    if (h->d.rec.attr & dmRecAttached) {
+                      debug(DEBUG_INFO, "STOR", "DmCloseDatabase dettaching record %d %p", i, h->buf);
+                      h->htype = STO_TYPE_MEM | STO_INFLATED;
+                    } else {
+                      debug(DEBUG_TRACE, "STOR", "DmCloseDatabase deflating record %d ", i);
+                      StoPtrFree(h->buf);
+                      h->buf = NULL;
+                      h->htype &= ~STO_INFLATED;
+                    }
                   } else {
                     debug(DEBUG_ERROR, "STOR", "DmCloseDatabase \"%s\" record %d could not be deflated (use=%d lock=%d)", db->name, i, h->useCount, h->lockCount);
                   }
+
                 }
               }
               StoWriteIndex(sto, db);
@@ -2765,6 +2774,14 @@ MemHandle DmNewResourceEx(DmOpenRef dbP, DmResType resType, DmResID resID, UInt3
               vfs_write(f, (uint8_t *)h->buf, h->size);
               vfs_close(f);
             }
+
+            if (!attach) {
+              // XXX if running from DmCreateDatabaseFromImage(), deflate here to not risk exhausting the heap
+              debug(DEBUG_TRACE, "STOR", "DmNewResourceEx deflating resource");
+              StoPtrFree(h->buf);
+              h->buf = NULL;
+              h->htype &= ~STO_INFLATED;
+            }
             err = errNone;
           }
         }
@@ -3499,6 +3516,13 @@ MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32
               vfs_close(f);
             }
             StoWriteIndex(sto, db);
+            if (!attach) {
+              // XXX if running from DmCreateDatabaseFromImage(), deflate here to not risk exhausting the heap
+              debug(DEBUG_TRACE, "STOR", "DmNewRecordEx deflating record %d ", *atP);
+              StoPtrFree(h->buf);
+              h->buf = NULL;
+              h->htype &= ~STO_INFLATED;
+            }
             err = errNone;
           }
         }
@@ -4327,7 +4351,7 @@ Err VFSFileDBGetResource(FileRef ref, DmResType type, DmResID resID, MemHandle *
   return err;
 }
 
-Err DmCreateDatabaseFromImage(MemPtr bufferP) {
+Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;
   char name[dmDBNameLength], st[8];
@@ -4395,7 +4419,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
-                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
+                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : bufferSize - offsets[j];
                 if (size > 8) {
                   debug(DEBUG_TRACE, "STOR", "stream record %u data %u", j, size - 8);
                   FileWrite(f, (UInt8 *)bufferP + offsets[j] + 8, 1, size - 8, &err);
@@ -4423,7 +4447,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
-                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
+                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : bufferSize - offsets[j];
                 pumpkin_id2s(resTypes[j], st);
                 debug(DEBUG_INFO, "STOR", "DmCreateDatabaseFromImage res %d type '%s' id %d size %u", j, st, resIDs[j], size);
                 DmNewResourceEx(dbRef, resTypes[j], resIDs[j], size, &database[offsets[j]], false);
@@ -4449,7 +4473,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
-                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : MemPtrSize(bufferP) - offsets[j];
+                size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : bufferSize - offsets[j];
                 index = dmMaxRecordIndex;
                 DmNewRecordEx(dbRef, &index, size, &database[offsets[j]], uniqueIDs[j], attrs[j], uniqueIDs[j] != 0, false);
               }
@@ -4468,7 +4492,7 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
 
           appInfoSize = 0;
           sortInfoSize = 0;
-          if (firstOffset == 0) firstOffset = MemPtrSize(bufferP);
+          if (firstOffset == 0) firstOffset = bufferSize;
 
           if (appInfo) {
             if (sortInfo) {
@@ -4511,6 +4535,10 @@ Err DmCreateDatabaseFromImage(MemPtr bufferP) {
   }
 
   return err;
+}
+
+Err DmCreateDatabaseFromImage(MemPtr bufferP) {
+  return DmCreateDatabaseFromImageEx(bufferP, MemPtrSize(bufferP));
 }
 
 #if 0
