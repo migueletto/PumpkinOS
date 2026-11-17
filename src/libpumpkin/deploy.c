@@ -138,9 +138,11 @@ static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
                     r = 0;
                   }
                 } else {
-                    debug(DEBUG_ERROR, PUMPKINOS, "error installing \"%s\"", name);
+                  debug(DEBUG_ERROR, PUMPKINOS, "error installing \"%s\"", name);
                 }
               }
+            } else {
+              debug(DEBUG_ERROR, PUMPKINOS, "empty name");
             }
           }
           sys_free(p);

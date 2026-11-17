@@ -4411,6 +4411,13 @@ Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
               offsets = MemPtrNew(numRecs * sizeof(UInt32));
               for (j = 0; j < numRecs; j++) {
                 i += get4b(&offsets[j], database, i);
+                if (j > 0 && offsets[j] < offsets[j-1]) {
+                  debug(DEBUG_ERROR, "STOR", "corrupted offset at file record %d", j);
+                  MemPtrFree(offsets);
+                  DmDeleteDatabase(0, dbID);
+                  FileClose(f);
+                  return err;
+                }
                 i += get1(&dummy8, database, i);
                 i += get1(&dummy8, database, i);
                 i += get1(&dummy8, database, i);
@@ -4444,6 +4451,17 @@ Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
                 i += get4b(&resTypes[j], database, i);
                 i += get2b(&resIDs[j], database, i);
                 i += get4b(&offsets[j], database, i);
+                if (j > 0 && offsets[j] < offsets[j-1]) {
+                  debug(DEBUG_ERROR, "STOR", "corrupted offset at resource %d", j);
+                  MemPtrFree(resTypes);
+                  MemPtrFree(resIDs);
+                  MemPtrFree(uniqueIDs);
+                  MemPtrFree(attrs);
+                  MemPtrFree(offsets);
+                  DmCloseDatabase(dbRef);
+                  DmDeleteDatabase(0, dbID);
+                  return err;
+                }
               }
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
@@ -4458,6 +4476,11 @@ Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
                 i += get4b(&offsets[j], database, i);
                 if (j > 0 && offsets[j] < offsets[j-1]) {
                   debug(DEBUG_ERROR, "STOR", "corrupted offset at record %d", j);
+                  MemPtrFree(resTypes);
+                  MemPtrFree(resIDs);
+                  MemPtrFree(uniqueIDs);
+                  MemPtrFree(attrs);
+                  MemPtrFree(offsets);
                   DmCloseDatabase(dbRef);
                   DmDeleteDatabase(0, dbID);
                   return err;
