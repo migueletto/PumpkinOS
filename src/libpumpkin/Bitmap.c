@@ -2265,7 +2265,6 @@ static void BmpCopyBit1(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = bits[offset] & mask ? 1 : 0;
       bg = WinGetBackColor() ? 1 : 0;
       fg = WinGetForeColor()? 1 : 0;
       if (b == bg) {
@@ -2341,7 +2340,6 @@ static void BmpCopyBit2(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = (bits[offset] & mask) >> shift;
       bg = WinGetBackColor();
       fg = WinGetForeColor();
       if (b == bg) b = fg;
@@ -2429,7 +2427,6 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
-      b = (bits[offset] & mask) >> shift;
       bg = WinGetBackColor();
       fg = WinGetForeColor();
       if (b == bg) b = fg;
