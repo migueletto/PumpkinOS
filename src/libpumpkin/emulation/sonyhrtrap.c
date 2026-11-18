@@ -348,6 +348,16 @@ void palmos_sonyhrtrap(uint16_t trap) {
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinCopyRectangle(%u, 0x%08X, 0x%08X, 0x%08X, %d, %d, %u)", refNum, srcWinP, dstWinP, srcRectP, destX, destY, mode);
       }
       break;
+    case HRTrapWinGetPixel: {
+      //IndexedColorType HRWinGetPixel(UInt16 refNum, Coord x, Coord y)
+      uint16_t refNum = ARG16;
+      int16_t x = ARG16;
+      int16_t y = ARG16;
+      IndexedColorType color = HRWinGetPixel(refNum, x, y);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinGetPixel(%u, x=%d, y=%d): %d", refNum, x, y, color);
+      m68k_set_reg(M68K_REG_D0, color);
+      }
+      break;
     case HRTrapWinGetPixelRGB: {
       //Err HRWinGetPixelRGB(UInt16 refNum, Coord x, Coord y, RGBColorType *rgbP)
       uint16_t refNum = ARG16;

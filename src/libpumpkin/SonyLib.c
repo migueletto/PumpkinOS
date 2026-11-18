@@ -339,7 +339,23 @@ void HRWinGetFramesRectangle(UInt16 refNum, FrameType frame, RectangleType *rP, 
 }
 
 IndexedColorType HRWinGetPixel(UInt16 refNum, Coord x, Coord y) {
-  return 0;
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+  IndexedColorType color = 0;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      color = WinGetPixel(x, y);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      color = WinGetPixel(x, y);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
+
+  return color;
 }
 
 void HRWinGetWindowBounds(UInt16 refNum, RectangleType *rP) {
