@@ -2467,7 +2467,7 @@ static void BmpCopyBit4(UInt8 b, Boolean transp, BitmapType *dst, Coord dx, Coor
   }
 
 static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType *colorTable, Coord dx, Coord dy, WinDrawOperation mode, Boolean dbl, Boolean text) {
-  UInt8 *bits, old, r1, g1, b1, r2, g2, b2, fg, bg;
+  UInt8 *bits, old, r1, g1, b1, fg, bg;
   UInt32 offset, dataSize;
   UInt16 c1, c2, c3, c4;
   UInt16 rowBytes = 0;
@@ -2498,12 +2498,15 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
       old = bits[offset];
+/*
       BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
       BmpIndexToRGB(b, &r2, &g2, &b2, colorTable);
       r1 ^= r2;
       g1 ^= g2;
       b1 ^= b2;
       b = BmpRGBToIndex(r1, g1, b1, colorTable);
+*/
+      b ^= old;
       BmpSetBit8(offset, dataSize, b, dbl);
       break;
     case winOverlay:      // write color-matched source pixel to the destination if the source pixel is not transparent. Transparent pixels are skipped.
@@ -3023,7 +3026,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     if (srcDepth != 32) {
       if (srcTransp) {
         srcTransp = (srcPixel == srcTransparentValue);
-      } else if (mode == winMask || mode == winOverlay) {
+      } else if (mode == winMask || mode == winOverlay || mode == winErase) {
         // source bitmap is not transparent but mode is winMask or winOverlay
         // use the transparent color anyway
         srcTransp = (srcPixel == srcTransparentValue);
