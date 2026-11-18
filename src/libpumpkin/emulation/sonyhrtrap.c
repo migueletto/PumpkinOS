@@ -434,6 +434,18 @@ void palmos_sonyhrtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, r);
       }
       break;
+    case HRTrapWinGetDisplayExtent: {
+      // void HRWinGetDisplayExtent(UInt16 refNum, Coord *extentX, Coord *extentY)
+      uint16_t refNum = ARG16;
+      uint32_t extentXP = ARG32;
+      uint32_t extentYP = ARG32;
+      Coord extentX, extentY;
+      HRWinGetDisplayExtent(refNum, &extentX, &extentY);
+      if (extentXP) m68k_write_memory_16(extentXP, extentX);
+      if (extentYP) m68k_write_memory_16(extentYP, extentY);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinGetDisplayExtent(%u, 0x%08X, 0x%08X", refNum, extentXP, extentYP);
+      }
+      break;
     default:
       sys_snprintf(buf, sizeof(buf)-1, "SonyHRLib trap 0x%04X not mapped", trap);
       emupalmos_panic(buf, EMUPALMOS_INVALID_TRAP);

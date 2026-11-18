@@ -333,6 +333,20 @@ void HRWinGetClip(UInt16 refNum, RectangleType *rP) {
 }
 
 void HRWinGetDisplayExtent(UInt16 refNum, Coord *extentX, Coord *extentY) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinGetDisplayExtent(extentX, extentY);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinGetDisplayExtent(extentX, extentY);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinGetFramesRectangle(UInt16 refNum, FrameType frame, RectangleType *rP, RectangleType *obscuredRectP) {
