@@ -1941,14 +1941,16 @@ void BmpDrawSurface(BitmapType *bitmapP, Coord sx, Coord sy, Coord w, Coord h, s
             }
             break;
           case 2:
+            colorTable = BmpGetColortable(bitmapP);
+            if (colorTable == NULL) colorTable = WinGetColorTable(0);
             offset = sy * rowBytes + sx / 4;
             for (i = 0; i < h; i++, offset += rowBytes) {
               offsetb = (3 - (sx % 4)) << 1;
               k = 0;
               for (j = 0; j < w; j++) {
                 b = (bits[offset + k] & (3 << offsetb)) >> offsetb;
-                gray = gray2values[b];
-                c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, gray, gray, gray, 0xff);
+                BmpIndexToRGB(b, &red, &green, &blue, colorTable);
+                c = surface_color_rgb(surface->encoding, surface->palette, surface->npalette, red, green, blue, 0xff);
                 BmpDrawSurfaceSetPixel(x0, y0, i, j, c, dbl, surface);
                 offsetb -= 2;
                 if (offsetb == -2) {
@@ -2083,27 +2085,23 @@ UInt32 BmpConvertFrom1Bit(UInt32 b, UInt8 depth, UInt32 fg, UInt32 bg) {
 0xe6: 0x00,0x00,0x00
 */
 
-UInt32 BmpConvertFrom2Bits(UInt32 b, UInt8 depth, ColorTableType *colorTable, Boolean isDefault) {
-  switch (depth) {
-    case 1: b = b ? 1 : 0; break;
-    case 2: break;
-    case 4: b = b << 2; break;
-    case 8:
-      if (isDefault) {
-        b = gray2[b];
-      } else {
-        b = BmpRGBToIndex(gray2values[b], gray2values[b], gray2values[b], colorTable);
-      }
-      break;
-    case 16:
-      b = rgb565(gray2values[b], gray2values[b], gray2values[b]);
-      break;
-    case 24:
-      b = rgb24(gray2values[b], gray2values[b], gray2values[b]);
-      break;
-    case 32:
-      b = rgba32(gray2values[b], gray2values[b], gray2values[b], 0xff);
-      break;
+UInt32 BmpConvertFrom2Bits(UInt32 b, ColorTableType *srcColorTable, Boolean isSrcDefault, UInt8 depth, ColorTableType *dstColorTable, Boolean isDstDefault) {
+  RGBColorType rgb;
+
+  if (depth == 2 && isSrcDefault && isDstDefault) {
+    return b;
+  }
+
+  CtbGetEntry(srcColorTable, b, &rgb);
+
+  switch (depth) { 
+    case  1: b = rgbToGray1(rgb.r, rgb.g, rgb.b); break;
+    case  2: b = rgbToGray2(rgb.r, rgb.g, rgb.b); break;
+    case  4: b = rgbToGray4(rgb.r, rgb.g, rgb.b); break;
+    case  8: b = BmpRGBToIndex(rgb.r, rgb.g, rgb.b, dstColorTable); break;
+    case 16: b = rgb565(rgb.r, rgb.g, rgb.b); break;
+    case 24: b = rgb24(rgb.r, rgb.g, rgb.b); break;
+    case 32: b = rgba32(rgb.r, rgb.g, rgb.b, 0xff); break;
   }
 
   return b;
@@ -2925,7 +2923,12 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
       case 2:
         srcPixel = bits[sy * srcRowBytes + (sx >> 2)];
         srcPixel = (srcPixel >> ((3 - (sx & 0x03)) << 1)) & 0x03;
-        dstPixel = (dstDepth == 2) ? srcPixel : BmpConvertFrom2Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
+        //dstPixel = (dstDepth == 2) ? srcPixel : BmpConvertFrom2Bits(srcPixel, dstDepth, dstColorTable, isDstDefault);
+        if (dstDepth == 2 && srcColorTable == dstColorTable) {
+          dstPixel = srcPixel; 
+        } else {
+          dstPixel = BmpConvertFrom2Bits(srcPixel, srcColorTable, isSrcDefault, dstDepth, dstColorTable, isDstDefault);
+        }
         break;
       case 4:
         srcPixel = bits[sy * srcRowBytes + (sx >> 1)];
