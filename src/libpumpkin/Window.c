@@ -503,6 +503,7 @@ void WinInitializeWindow(WinHandle winHandle) {
 
   WinSetField(winHandle, WindowFieldBitmapP, WinGetField(module->displayWindow, WindowFieldBitmapP));
   WinSetField(winHandle, WindowFieldDrawStateP, WinGetField(module->displayWindow, WindowFieldDrawStateP));
+  WinDirectAccessHack(winHandle);
 
   savedDrawWindow = WinSetDrawWindow(winHandle);
   WinResetClip();

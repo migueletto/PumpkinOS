@@ -178,6 +178,7 @@ void FrmGotoForm(UInt16 formId) {
 
 static Err FrmInitFormInternal(FormType *formP) {
   frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
+  WinHandle wh;
   FormList *p;
   Coord width, height, xmargin, ymargin, w, h;
   Err err = errNone;
@@ -204,7 +205,8 @@ static Err FrmInitFormInternal(FormType *formP) {
     return sysErrParamErr;
   }
   formP->bitsBehindForm = WinCreateOffscreenWindow(width + 2*xmargin, height + 2*ymargin, nativeFormat, &err);
-  WinInitializeWindow(FrmGetWindowHandle(formP));
+  wh = FrmGetWindowHandle(formP);
+  WinInitializeWindow(wh);
 
   formP->selectedObject = -1;
   formP->activeList = -1;
