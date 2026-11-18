@@ -1902,12 +1902,7 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
     x0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsX);
     y0 = (Coord)WinGetField(wh, WindowFieldWindowBoundsY);
 
-    if (scaleBitmapOff) {
-      wx = x;
-      wy = y;
-      dx = x;
-      dy = y;
-    } else {
+    if (!scaleBitmapOff) {
       if (bitmapDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
         module->drawState.coordinateSystem = kCoordinatesDouble;
         WinScaleRectangle(&srcRect);
@@ -1915,37 +1910,37 @@ void WinBlitBitmap(BitmapType *bitmapP, WinHandle wh, const RectangleType *rect,
       } else if (bitmapDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
         WinUnscaleRectangle(&srcRect);
       }
+    }
 
-      if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-        module->drawState.coordinateSystem = kCoordinatesDouble;
-        wx = WinScaleCoord(x, false);
-        wy = WinScaleCoord(y, false);
-        module->drawState.coordinateSystem = kCoordinatesStandard;
-      } else if (windowDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
-        wx = WinUnscaleCoord(x, false);
-        wy = WinUnscaleCoord(y, false);
-      } else {
-        wx = x;
-        wy = y;
-      }
+    if (windowDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+      module->drawState.coordinateSystem = kCoordinatesDouble;
+      wx = WinScaleCoord(x, false);
+      wy = WinScaleCoord(y, false);
+      module->drawState.coordinateSystem = kCoordinatesStandard;
+    } else if (windowDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+      wx = WinUnscaleCoord(x, false);
+      wy = WinUnscaleCoord(y, false);
+    } else {
+      wx = x;
+      wy = y;
+    }
 
-      if (displayDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
-        module->drawState.coordinateSystem = kCoordinatesDouble;
-        dx = WinScaleCoord(x, false);
-        dy = WinScaleCoord(y, false);
-        module->drawState.coordinateSystem = kCoordinatesStandard;
-      } else if (displayDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
-        dx = WinUnscaleCoord(x, false);
-        dy = WinUnscaleCoord(y, false);
-      } else {
-        dx = x;
-        dy = y;
-      }
+    if (displayDensity == kDensityDouble && module->drawState.coordinateSystem == kCoordinatesStandard) {
+      module->drawState.coordinateSystem = kCoordinatesDouble;
+      dx = WinScaleCoord(x, false);
+      dy = WinScaleCoord(y, false);
+      module->drawState.coordinateSystem = kCoordinatesStandard;
+    } else if (displayDensity == kDensityLow && module->drawState.coordinateSystem == kCoordinatesDouble) {
+      dx = WinUnscaleCoord(x, false);
+      dy = WinUnscaleCoord(y, false);
+    } else {
+      dx = x;
+      dy = y;
+    }
 
-      if (displayDensity == kDensityDouble) {
-        x0 <<= 1;
-        y0 <<= 1;
-      }
+    if (displayDensity == kDensityDouble) {
+      x0 <<= 1;
+      y0 <<= 1;
     }
 
     wx0 = wx;
