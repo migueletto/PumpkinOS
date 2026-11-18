@@ -84,6 +84,14 @@ void palmos_irlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case irLibTrapIsIrLapConnected: {
+      // BOOL IrIsIrLapConnected(UInt16 refNum)
+      uint16_t refNum = ARG16;
+      Int16 res = IrIsIrLapConnected(refNum);
+      debug(DEBUG_TRACE, "EmuPalmOS", "IrIsIrLapConnected(refNum=%u): %d", refNum, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case irLibTrapIAS_SetDeviceName: {
       // IrStatus IrIAS_SetDeviceName(UInt16 refNum, UInt8 *name, UInt8 len)
       uint16_t refNum = ARG16;

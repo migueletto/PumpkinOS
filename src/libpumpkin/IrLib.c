@@ -97,7 +97,6 @@ BOOL IrIsMediaBusy(UInt16 refNum) {
 }
 
 BOOL IrIsIrLapConnected(UInt16 refNum) {
-  debug(DEBUG_ERROR, "IrLib", "IrIsIrLapConnected not implemented");
   return 0;
 }
 
