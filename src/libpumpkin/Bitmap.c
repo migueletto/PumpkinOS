@@ -2498,14 +2498,6 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       break;
     case winInvert:       // bitwise XOR the color-matched source pixel onto the destination (this mode does not honor the transparent color in any way)
       old = bits[offset];
-/*
-      BmpIndexToRGB(old, &r1, &g1, &b1, colorTable);
-      BmpIndexToRGB(b, &r2, &g2, &b2, colorTable);
-      r1 ^= r2;
-      g1 ^= g2;
-      b1 ^= b2;
-      b = BmpRGBToIndex(r1, g1, b1, colorTable);
-*/
       b ^= old;
       BmpSetBit8(offset, dataSize, b, dbl);
       break;
@@ -2515,21 +2507,14 @@ static void BmpCopyBit8(UInt8 b, Boolean transp, BitmapType *dst, ColorTableType
       }
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
-      if (!transp) {
-        BmpIndexToRGB(b, &r1, &g1, &b1, colorTable);
-        r1 ^= 0xff;
-        g1 ^= 0xff;
-        b1 ^= 0xff;
-        b = BmpRGBToIndex(r1, g1, b1, colorTable);
-        BmpSetBit8(offset, dataSize, b, dbl);
-      }
+      b ^= 0xff;
+      BmpSetBit8(offset, dataSize, b, dbl);
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
       if (text) {
         BmpSetBit8(offset, dataSize, b, dbl);
       } else {
-        b = bits[offset];
         bg = WinGetBackColor();
         fg = WinGetForeColor();
         if (b == bg) b = fg;
@@ -2615,21 +2600,18 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       }
       break;
     case winPaintInverse: // invert the source pixel color and then proceed as with winPaint
-      if (!transp) {
-        BmpSetBit16(offset, dataSize, b ^ 0xffff, dbl);
-      }
+      BmpSetBit16(offset, dataSize, b ^ 0xffff, dbl);
       break;
     case winSwap:         // Swap the backColor and foreColor destination colors if the source is a pattern (the type of pattern is disregarded).
                           // If the source is a bitmap, then the bitmap is transferred using winPaint mode instead.
       if (text) {
         BmpSetBit16(offset, dataSize, b, dbl);
       } else {
-        get2_16(&old, bits, offset);
         bg = WinGetBackColorU();
         fg = WinGetForeColorU();
-        if (old == bg) {
+        if (b == bg) {
           BmpSetBit16(offset, dataSize, fg, dbl);
-        } else if (old == fg) {
+        } else if (b == fg) {
           BmpSetBit16(offset, dataSize, bg, dbl);
         }
       }
@@ -2901,7 +2883,7 @@ void BmpCopyBit(BitmapType *src, Coord sx, Coord sy, BitmapType *dst, Coord dx, 
     srcDepth = BmpGetBitDepth(src);
     srcColorTable = BmpGetColortable(src);
     if (srcColorTable == NULL) {
-      if (dstDepth == 8) {
+      if (srcDepth == dstDepth) {
         srcColorTable = dstColorTable;
         isSrcDefault = isDstDefault;
       } else {
