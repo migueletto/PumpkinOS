@@ -2604,11 +2604,12 @@ static void BmpCopyBit16(UInt16 b, Boolean transp, BitmapType *dst, Coord dx, Co
       if (text) {
         BmpSetBit16(offset, dataSize, b, dbl);
       } else {
+        get2_16(&old, bits, offset);
         bg = WinGetBackColorU();
         fg = WinGetForeColorU();
-        if (b == bg) {
+        if (old == bg) {
           BmpSetBit16(offset, dataSize, fg, dbl);
-        } else if (b == fg) {
+        } else if (old == fg) {
           BmpSetBit16(offset, dataSize, bg, dbl);
         }
       }
