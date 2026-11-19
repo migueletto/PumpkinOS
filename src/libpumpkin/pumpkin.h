@@ -568,7 +568,6 @@ void FrmEraseObject(FormType *formP, UInt16 objIndex, Boolean setUsable);
 UInt16 FrmGrfGetState(void);
 void FrmGrfSetState(UInt16 state);
 UInt16 FrmDoDialogEx(FormType *formP, Int32 timeout);
-void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh);
 void FrmSetVisible(FormType *formP, UInt16 objIndex, Boolean visible);
 Boolean FrmGetVisible(FormType *formP, UInt16 objIndex);
 void FrmSetColorTrigger(FormType *formP, UInt16 id, RGBColorType *rgb, Boolean draw);

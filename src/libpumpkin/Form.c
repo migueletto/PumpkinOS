@@ -1242,12 +1242,13 @@ void FrmDeleteForm(FormType *formP) {
   }
 }
 
-void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh) {
+static Boolean FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinHandle wh) {
   RectangleType aux;
   IndexedColorType formFill, formFrame, old;
   PatternType oldPattern;
   WinHandle oldDraw, oldActive;
   Boolean dialog = false;
+  Boolean erased = false;
 
   // draw dialog border
   if (WinGetFlag(&formP->window, WindowFlagModal)) {
@@ -1283,10 +1284,13 @@ void FrmDrawEmptyDialog(FormType *formP, RectangleType *rect, Int16 margin, WinH
     old = WinSetBackColor(formFill);
     WinEraseRectangle(&aux, 0);
     WinSetBackColor(old);
+    erased = true;
   } else {
     debug(DEBUG_TRACE, "Form", "form %d will NOT be erased saveBehind=%d visible=%d UIFormFill=%d modal=%d",
      formP->formId, formP->attr.saveBehind, formP->attr.visible, UIColorGetTableEntryIndex(UIFormFill), WinGetFlag(&formP->window, WindowFlagModal));
   }
+
+  return erased;
 }
 
 void FrmDrawForm(FormType *formP) {
@@ -1296,6 +1300,7 @@ void FrmDrawForm(FormType *formP) {
   RectangleType rect;
   UInt16 objIndex;
   Int16 margin;
+  Boolean erased;
 
   if (formP && formP->magic == FORM_MAGIC) {
     debug(DEBUG_TRACE, "Form", "FrmDrawForm %d", formP->formId);
@@ -1318,12 +1323,12 @@ void FrmDrawForm(FormType *formP) {
     olda = WinGetActiveWindow();
     WinSetActiveWindow(FrmGetWindowHandle(formP));
     oldd = WinSetDrawWindow(FrmGetWindowHandle(formP));
-    FrmDrawEmptyDialog(formP, &rect, margin, WinGetDisplayWindow());
+    erased = FrmDrawEmptyDialog(formP, &rect, margin, WinGetDisplayWindow());
 
     formP->attr.drawing = 1;
     // draw form objects
     for (objIndex = 0; objIndex < formP->numObjects; objIndex++) {
-      if (formP->objects[objIndex].objectType == frmControlObj) {
+      if (erased && formP->objects[objIndex].objectType == frmControlObj) {
         // CtlInvertControl uses the current visible state to perform color inversion.
         // Since all controls were erased by FrmDrawEmptyDialog above, the visible status
         // must be set here, otherwise the inversion routine would produce garbled pixels.
@@ -2997,6 +3002,7 @@ ControlType *pumpkin_create_control(uint8_t *p, int *i) {
     debug(DEBUG_TRACE, "Form",  "slider control id %d style %d attr 0x%04X bitmaps %d,%d min %d max %d page %d value %d at (%d,%d,%d,%d)",
       id, style, attr, bitmapId, selBitmapId, minValue, maxValue, pageSize, value, x, y, w, h);
     if ((sc = pumpkin_heap_alloc(sizeof(SliderControlType), "Control")) != NULL) {
+      sc->magic = CONTROL_MAGIC;
       sc->id = id;
       sc->bounds.topLeft.x = x;
       sc->bounds.topLeft.y = y;
