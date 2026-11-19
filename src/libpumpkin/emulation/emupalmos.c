@@ -54,6 +54,7 @@ struct emu_internal_state_t {
   Boolean acceptAnyEvent;
   Boolean regionStarted;
   Coord firstY, lastY, firstX, lastX;
+  int64_t lastRegionUpdate;
 
   int recursion;
 };
@@ -480,6 +481,7 @@ static void screen_write8(emu_state_t *state, uint32_t address, uint8_t value) {
       break;
   }
 
+  state->istate->lastRegionUpdate = sys_get_clock();
   write_screen_dirty(state, wh, width, height, y, x1, x2);
 }
 
@@ -530,6 +532,7 @@ static void screen_write16(emu_state_t *state, uint32_t address, uint16_t value)
       break;
   }
 
+  state->istate->lastRegionUpdate = sys_get_clock();
   write_screen_dirty(state, wh, width, height, y, x1, x2);
 }
 
@@ -580,6 +583,7 @@ static void screen_write32(emu_state_t *state, uint32_t address, uint32_t value)
       break;
   }
 
+  state->istate->lastRegionUpdate = sys_get_clock();
   write_screen_dirty(state, wh, width, height, y, x1, x2);
 }
 
@@ -3021,6 +3025,14 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
             EvtPumpEvents(0);
           }
           if (m68k_execute(&state->m68k_state, 10000) == -1) break;
+          if (state->istate->regionStarted) {
+            int64_t d = sys_get_clock() - state->istate->lastRegionUpdate;
+            if (d > 5000) {
+              debug(DEBUG_TRACE, "EmuPalmOS", "forcing dirtyRegionEnd after %d us", (int32_t)d);
+              pumpkin_dirty_region_mode(dirtyRegionEnd);
+              state->istate->regionStarted = false;
+            }
+          }
         }
         logtrap_deinstall(state);
       }
