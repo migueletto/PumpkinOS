@@ -1767,7 +1767,8 @@ void WinCopyBitmap(BitmapType *srcBmp, WinHandle dst, RectangleType *rect, Coord
 
         if (srcWidth == dstWidth &&
             srcRect.topLeft.x == 0 && srcRect.extent.x == srcWidth &&
-            dstRect.topLeft.x == 0 && dstRect.extent.x == dstWidth) {
+            dstRect.topLeft.x == 0 && dstRect.extent.x == dstWidth &&
+            ((srcWidth * pixelMul) / pixelDiv) == srcRowBytes) {
 
           dstRect.topLeft.x += x0;
           dstRect.topLeft.y += y0;
