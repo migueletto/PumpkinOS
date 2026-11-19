@@ -107,7 +107,7 @@ void palmos_MemSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
           (sP+numBytes-1 >= start && sP+numBytes-1 < end) ||
           (sP < start && sP+numBytes >= end)) {
 
-        debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen", dstP, sP, numBytes);
+        debug(DEBUG_TRACE, "EmuPalmOS", "MemMove(0x%08X, 0x%08X, %d) inside screen (0x%08X -> 0x%08X)", dstP, sP, numBytes, start, end);
         if (!MemSetOrMoveDisplay(dstP, sP, numBytes, 0, start, end, &err)) {
           for (uint32_t i = 0; i < numBytes && !emupalmos_finished(); i++) {
             uint8_t value = m68k_read_memory_8(sP+i);
