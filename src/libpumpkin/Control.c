@@ -6,7 +6,7 @@
 
 static ControlType *CtlCheckControl(ControlType *ctlP) {
   FormType *formP;
-  UInt16 id;
+  UInt16 index, id;
   uint8_t *ram, *p;
   int i;
 
@@ -15,7 +15,7 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
       if ((formP = FrmGetActiveForm()) != NULL && formP->magic == FORM_MAGIC) {
         p = (uint8_t *)ctlP;
         get2b(&id, p, 0);
-        if (FrmGetObjectIndex(formP, id) == frmInvalidObjectId) {
+        if ((index = FrmGetObjectIndex(formP, id)) == (UInt16)frmInvalidObjectId) {
           ram = (uint8_t *)pumpkin_heap_base();
           //debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", (uint32_t)((uint8_t *)ctlP - ram), ctlP);
           debug(DEBUG_INFO, "Control", "CtlCheckControl raw Control 0x%08X %p", ptr2addr(ram, ctlP), ctlP);
@@ -28,7 +28,7 @@ static ControlType *CtlCheckControl(ControlType *ctlP) {
           }
         } else {
           debug(DEBUG_ERROR, "Control", "CtlCheckControl existing form object");
-          ctlP->formP = formP;
+          ctlP = (ControlType *)FrmGetObjectPtr(formP, index);
         }
       } else {
         debug(DEBUG_ERROR, "Control", "CtlCheckControl no active form");
