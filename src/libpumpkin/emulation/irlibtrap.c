@@ -92,6 +92,16 @@ void palmos_irlibtrap(uint16_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
       }
       break;
+    case irLibTrapDiscoverReq: {
+      // IrStatus IrDiscoverReq(UInt16 refNum, IrConnect *con)
+      uint16_t refNum = ARG16;
+      uint32_t conP = ARG32;
+      IrConnect *con = emupalmos_trap_in(conP, trap, 1);
+      IrStatus res = IrDiscoverReq(refNum, con);
+      debug(DEBUG_TRACE, "EmuPalmOS", "IrDiscoverReq(refNum=%u, con=0x%08X): %d", refNum, conP, res);
+      m68k_set_reg(M68K_REG_D0, res);
+      }
+      break;
     case irLibTrapIAS_SetDeviceName: {
       // IrStatus IrIAS_SetDeviceName(UInt16 refNum, UInt8 *name, UInt8 len)
       uint16_t refNum = ARG16;

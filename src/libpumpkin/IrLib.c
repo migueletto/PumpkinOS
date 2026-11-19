@@ -21,8 +21,7 @@ IrStatus IrUnbind(UInt16 refNum, IrConnect *con) {
 }
 
 IrStatus IrDiscoverReq(UInt16 refNum, IrConnect *con) {
-  debug(DEBUG_ERROR, "IrLib", "IrDiscoverReq not implemented");
-  return 0;
+  return IR_STATUS_SUCCESS;
 }
 
 IrStatus IrConnectIrLap(UInt16 refNum, IrDeviceAddr deviceAddr) {
