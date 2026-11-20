@@ -1646,6 +1646,17 @@ UInt8 BmpRGBToIndex(UInt8 red, UInt8 green, UInt8 blue, ColorTableType *colorTab
   imin = 0;
   numEntries = CtbGetNumEntries(colorTable);
 
+  // optmized test for black color in the last entry;
+  // PalmOS performs this test, so we replicate it here
+  if (red == 0 && green == 0 && blue == 0) {
+    i = numEntries - 1;
+    CtbGetEntry(colorTable, i, &rgb);
+    if (rgb.r == 0 && rgb.g == 0 && rgb.b == 0) {
+      debug(DEBUG_TRACE, "Bitmap", "BmpRGBToIndex black %d", i);
+      return i;
+    }
+  }
+
   for (i = 0; i < numEntries; i++) {
     CtbGetEntry(colorTable, i, &rgb);
 
