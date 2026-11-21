@@ -253,6 +253,7 @@ static bool ucarmHookScreenMem(uc_engine *uc, uc_mem_type type, uint64_t address
         arm->count >= 1024) {
 
       if (arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
+        debug(DEBUG_TRACE, "ARM", "display update write %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
         pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
         pumpkin_dirty_region_mode(dirtyRegionReset);
         pumpkin_dirty_region_mode(dirtyRegionEnd);
@@ -446,6 +447,7 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
     arm->x1 = 0;
     arm->y1 = 0;
     arm->lastY = 0;
+    arm->count = 0;
   }
 
   for (i = 0; i < 16; i++) {
@@ -458,8 +460,9 @@ static int ucarmRun(arm_emu_t *arm, uint32_t n, uint32_t call68KAddr, call68KFun
   pc = ucarmGetReg(arm, 15);
 
   if (arm->armScreenWrite && arm->displayWrite && arm->x1 >= arm->x0 && arm->y1 >= arm->y0) {
-    debug(DEBUG_TRACE, "ARM", "display was updated %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
+    debug(DEBUG_TRACE, "ARM", "display update end   %d,%d %d,%d", arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
     pumpkin_screen_dirty(WinGetDisplayWindow(), arm->x0, arm->y0, arm->x1 - arm->x0 + 1, arm->y1 - arm->y0 + 1);
+    pumpkin_dirty_region_mode(dirtyRegionReset);
     pumpkin_dirty_region_mode(dirtyRegionEnd);
   }
 
