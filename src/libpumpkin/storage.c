@@ -5172,9 +5172,31 @@ UInt16 MemPtrHeapID(MemPtr p) {
   return 0;
 }
 
+// Return true if the given pointer is part of a data storage heap;
+// if not, it is a pointer in the dynamic heap.
+// XXX MotoGear depends on this function returning the correct value
 Boolean MemPtrDataStorage(MemPtr p) {
-  //return false;
-  return true;
+  //return true;
+  MemHandle h;
+  storage_handle_t *handle;
+  Boolean dataStorage = false;
+
+  if ((h = MemPtrRecoverHandle(p)) != NULL) {
+    handle = (storage_handle_t *)h;
+
+    switch (handle->htype) {
+      case STO_TYPE_MEM:
+        dataStorage = false;
+        break;
+      case STO_TYPE_REC:
+      case STO_TYPE_RES:
+      case STO_TYPE_FILE:
+        dataStorage = true;
+        break;
+    }
+  }
+
+  return dataStorage;
 }
 
 UInt16 MemPtrCardNo(MemPtr p) {
