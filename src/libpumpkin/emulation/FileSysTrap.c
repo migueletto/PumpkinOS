@@ -27,16 +27,29 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       // Err FileControl(FileOpEnum op, FileHand stream, inout void *valueP, inout Int32 *valueLenP)
       uint8_t op = ARG8;
       uint32_t stream = ARG32;
-      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 1);
       uint32_t valueP = ARG32;
-      void *s_valueP = emupalmos_trap_in(valueP, trap, 2);
       uint32_t valueLenP = ARG32;
+      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 1);
+      emupalmos_trap_in(valueP, trap, 2);
       emupalmos_trap_in(valueLenP, trap, 3);
+      void *value = NULL;
       Int32 l_valueLenP;
       if (valueLenP) l_valueLenP = m68k_read_memory_32(valueLenP);
-      // XXX read valueP
-      Err res = FileControl(op, l_stream, s_valueP, &l_valueLenP);
-      // XXX fill valueP
+      Err res = FileControl(op, l_stream, &value, &l_valueLenP);
+      if (valueP) {
+        switch (op) {
+          case fileOpGetOpenDbRef: {
+            DmOpenRef dbRef = (DmOpenRef *)value;
+            uint32_t addr = emupalmos_trap_out(dbRef);
+            m68k_write_memory_32(valueP, addr);
+            }
+            break;
+          default:
+            // XXX fill value for the other op values
+            m68k_write_memory_32(valueP, 0);
+            break;
+        }
+      }
       if (valueLenP) m68k_write_memory_32(valueLenP, l_valueLenP);
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "EmuPalmOS", "FileControl(op=%d, stream=0x%08X, valueP=0x%08X, valueLenP=0x%08X): %d", op, stream, valueP, valueLenP, res);

@@ -279,6 +279,24 @@ Err FileTruncate(FileHand stream, Int32 newSize) {
 }
 
 Err FileControl(FileOpEnum op, FileHand stream, void *valueP, Int32 *valueLenP) {
-  debug(DEBUG_ERROR, PALMOS_MODULE, "FileControl not implemented");
-  return 0;
+  FileType *f;
+  Err err = fileErrIOError;
+
+  if (stream && valueP) {
+    f = (FileType *)stream;
+
+    switch (op) {
+      case fileOpGetOpenDbRef: {
+        DmOpenRef *dbRef = (DmOpenRef *)valueP;
+        *dbRef = f->dbRef;
+        err = errNone;
+        }
+        break;
+      default:
+        debug(DEBUG_ERROR, PALMOS_MODULE, "FileControl op %d not implemented", op);
+        break;
+    }
+  }
+
+  return err;
 }
