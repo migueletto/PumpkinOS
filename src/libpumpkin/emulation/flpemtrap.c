@@ -144,9 +144,10 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       ARG_DOUBLE(a);
       ARG_DOUBLE(b);
       Int32 res;
-      if (a.d == b.d) res = 0;
-      else if (b.d < a.d) res = -1;
-      else res = 1;
+      if (sys_isnan(a.d) || sys_isnan(b.d)) res = flpUnordered;
+      else if (a.d == b.d) res = flpEqual;
+      else if (a.d < b.d) res = flpLess;
+      else res = flpGreater;
       m68k_set_reg(M68K_REG_D0, res);
       debug(DEBUG_TRACE, "FlpEm", "_d_cmp(%f, %f): %d", a.d, b.d, res);
     }
@@ -321,6 +322,24 @@ void palmos_flpemtrap(uint32_t sp, uint16_t idx, uint32_t sel) {
       f.f = a.f / b.f;
       debug(DEBUG_TRACE, "FlpEm", "_f_div(%f, %f): %f", a.f, b.f, f.f);
       m68k_set_reg(M68K_REG_D0, f.i);
+    }
+      break;
+    case sysFloatEm_f_cmp: {
+      // Int32 _f_cmp(FlpFloat, FlpFloat)
+      // Return values: flpEqual, flpLess, flpGreater, or flpUnordered 
+      // Two floating point values are unordered when they enjoy no numerical relationship,
+      // as is the case when one or both are NaNs
+      flp_float_t a;
+      a.i = ARG32;
+      flp_float_t b;
+      b.i = ARG32;
+      Int32 res;
+      if (sys_isnan(a.f) || sys_isnan(b.f)) res = flpUnordered;
+      else if (a.f == b.f) res = flpEqual;
+      else if (a.f < b.f) res = flpLess;
+      else res = flpGreater;
+      m68k_set_reg(M68K_REG_D0, res);
+      debug(DEBUG_TRACE, "FlpEm", "_f_cmp(%f, %f): %d", a.f, b.f, res);
     }
       break;
     case sysFloatEm_f_flt: {
