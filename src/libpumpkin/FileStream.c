@@ -286,6 +286,9 @@ Err FileControl(FileOpEnum op, FileHand stream, void *valueP, Int32 *valueLenP) 
     f = (FileType *)stream;
 
     switch (op) {
+      case fileOpNone:
+        err = errNone;
+        break;
       case fileOpGetOpenDbRef: {
         DmOpenRef *dbRef = (DmOpenRef *)valueP;
         *dbRef = f->dbRef;

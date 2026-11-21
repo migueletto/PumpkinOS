@@ -26,33 +26,41 @@ void palmos_FileSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
     case sysTrapFileControl: {
       // Err FileControl(FileOpEnum op, FileHand stream, inout void *valueP, inout Int32 *valueLenP)
       uint8_t op = ARG8;
-      uint32_t stream = ARG32;
+      uint32_t streamP = ARG32;
       uint32_t valueP = ARG32;
       uint32_t valueLenP = ARG32;
-      FileHand l_stream = (FileHand)emupalmos_trap_in(stream, trap, 1);
+      FileHand stream = (FileHand)emupalmos_trap_in(streamP, trap, 1);
       emupalmos_trap_in(valueP, trap, 2);
       emupalmos_trap_in(valueLenP, trap, 3);
-      void *value = NULL;
-      Int32 l_valueLenP;
-      if (valueLenP) l_valueLenP = m68k_read_memory_32(valueLenP);
-      Err res = FileControl(op, l_stream, &value, &l_valueLenP);
-      if (valueP) {
-        switch (op) {
-          case fileOpGetOpenDbRef: {
-            DmOpenRef dbRef = (DmOpenRef *)value;
-            uint32_t addr = emupalmos_trap_out(dbRef);
-            m68k_write_memory_32(valueP, addr);
+      Err res = fileErrIOError;
+
+      switch (op) {
+        case fileOpNone:
+          res = FileControl(op, stream, NULL, NULL);
+          break;
+        case fileOpGetOpenDbRef:
+          if (valueP && valueLenP) {
+            Int32 valueLen = m68k_read_memory_32(valueLenP);
+            if (valueLen == 4) {
+              DmOpenRef dbRef = NULL;
+              valueLen = sizeof(void *);
+              res = FileControl(op, stream, &dbRef, &valueLen);
+              if (res == errNone) {
+                uint32_t addr = emupalmos_trap_out(dbRef);
+                m68k_write_memory_32(valueP, addr);
+              }
+            } else {
+              debug(DEBUG_ERROR, "EmuPalmOS", "FileControl fileOpGetOpenDbRef invalid valueLen %d", valueLen);
             }
-            break;
-          default:
-            // XXX fill value for the other op values
-            m68k_write_memory_32(valueP, 0);
-            break;
-        }
+          }
+          break;
+        default:
+          debug(DEBUG_ERROR, "EmuPalmOS", "FileControl op %d not implemented", op);
+          break;
       }
-      if (valueLenP) m68k_write_memory_32(valueLenP, l_valueLenP);
+
       m68k_set_reg(M68K_REG_D0, res);
-      debug(DEBUG_TRACE, "EmuPalmOS", "FileControl(op=%d, stream=0x%08X, valueP=0x%08X, valueLenP=0x%08X): %d", op, stream, valueP, valueLenP, res);
+      debug(DEBUG_TRACE, "EmuPalmOS", "FileControl(op=%d, stream=0x%08X, valueP=0x%08X, valueLenP=0x%08X): %d", op, streamP, valueP, valueLenP, res);
     }
     break;
     case sysTrapFileOpen: {
