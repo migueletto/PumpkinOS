@@ -3355,6 +3355,11 @@ Err WinScreenMode(WinScreenModeOperation operation, UInt32 *widthP, UInt32 *heig
       if (module->density == kDensityDouble) {
         if (width == 160) width <<= 1;
         if (height == 160) height <<= 1;
+
+        // XXX Magic World sets width=320 and height=256, but still expects
+        // the screen heigth to be 320 (?)
+        if (width == 320 && height != 320) height = 320;
+        if (height == 320 && width != 320) width = 320;
       }
 
       if (depth <= module->maxDepth && width <= module->maxWidth && height <= module->maxHeight &&
