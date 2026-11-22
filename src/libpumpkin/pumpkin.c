@@ -1,6 +1,7 @@
 #include <PalmOS.h>
 #include <UIResourcesPrv.h>
 #include <VFSMgr.h>
+#include <palmOneNavigator.h>
 
 #include "sys.h"
 #include "script.h"
@@ -3365,12 +3366,13 @@ void pumpkin_set_key(int key) {
   switch (key) {
     case WINDOW_KEY_DOWN:  pumpkin_module.keyMask |= keyBitPageDown;   break;
     case WINDOW_KEY_UP:    pumpkin_module.keyMask |= keyBitPageUp;     break;
-    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask |= keyBitLeft;       break;
-    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask |= keyBitRight;      break;
+    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask |= keyBitLeft  | keyBitNavLeft;  break;
+    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask |= keyBitRight | keyBitNavRight; break;
     case WINDOW_KEY_F1:    pumpkin_module.keyMask |= keyBitHard1;      break;
     case WINDOW_KEY_F2:    pumpkin_module.keyMask |= keyBitHard2;      break;
     case WINDOW_KEY_F3:    pumpkin_module.keyMask |= keyBitHard3;      break;
     case WINDOW_KEY_F4:    pumpkin_module.keyMask |= keyBitHard4;      break;
+    case WINDOW_KEY_F6:    pumpkin_module.keyMask |= keyBitNavSelect;  break;
     case WINDOW_KEY_END:   pumpkin_module.keyMask |= keyBitPower;      break;
     case WINDOW_KEY_SHIFT: pumpkin_module.modMask |= WINDOW_MOD_SHIFT; break;
     case WINDOW_KEY_CTRL:  pumpkin_module.modMask |= WINDOW_MOD_CTRL;  break;
@@ -3387,15 +3389,16 @@ void pumpkin_set_key(int key) {
 
 int pumpkin_reset_key(int key) {
   switch (key) {
-    case WINDOW_KEY_DOWN:  pumpkin_module.keyMask &= ~keyBitPageDown; break;
-    case WINDOW_KEY_UP:    pumpkin_module.keyMask &= ~keyBitPageUp;   break;
-    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask &= ~keyBitLeft;     break;
-    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask &= ~keyBitRight;    break;
-    case WINDOW_KEY_F1:    pumpkin_module.keyMask &= ~keyBitHard1;    break;
-    case WINDOW_KEY_F2:    pumpkin_module.keyMask &= ~keyBitHard2;    break;
-    case WINDOW_KEY_F3:    pumpkin_module.keyMask &= ~keyBitHard3;    break;
-    case WINDOW_KEY_F4:    pumpkin_module.keyMask &= ~keyBitHard4;    break;
-    case WINDOW_KEY_END:   pumpkin_module.keyMask &= ~keyBitPower;    break;
+    case WINDOW_KEY_DOWN:  pumpkin_module.keyMask &= ~keyBitPageDown ; break;
+    case WINDOW_KEY_UP:    pumpkin_module.keyMask &= ~keyBitPageUp;    break;
+    case WINDOW_KEY_LEFT:  pumpkin_module.keyMask &= ~(keyBitLeft  | keyBitNavLeft);  break;
+    case WINDOW_KEY_RIGHT: pumpkin_module.keyMask &= ~(keyBitRight | keyBitNavRight); break;
+    case WINDOW_KEY_F1:    pumpkin_module.keyMask &= ~keyBitHard1;     break;
+    case WINDOW_KEY_F2:    pumpkin_module.keyMask &= ~keyBitHard2;     break;
+    case WINDOW_KEY_F3:    pumpkin_module.keyMask &= ~keyBitHard3;     break;
+    case WINDOW_KEY_F4:    pumpkin_module.keyMask &= ~keyBitHard4;     break;
+    case WINDOW_KEY_F6:    pumpkin_module.keyMask &= ~keyBitNavSelect; break;
+    case WINDOW_KEY_END:   pumpkin_module.keyMask &= ~keyBitPower;     break;
     case WINDOW_KEY_SHIFT: pumpkin_module.modMask &= ~WINDOW_MOD_SHIFT; key = 0; break;
     case WINDOW_KEY_CTRL:  pumpkin_module.modMask &= ~WINDOW_MOD_CTRL;  key = 0; break;
     case WINDOW_KEY_RCTRL: pumpkin_module.modMask &= ~WINDOW_MOD_RCTRL; key = 0; break;
