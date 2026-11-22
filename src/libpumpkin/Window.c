@@ -560,8 +560,8 @@ WinHandle WinGetDisplayWindow(void) {
 }
 
 WinHandle WinGetFirstWindow(void) {
-  debug(DEBUG_ERROR, "Window", "WinGetFirstWindow not implemented");
-  return NULL;
+  // XXX not the real implementation
+  return WinGetDisplayWindow();
 }
 
 void WinEnableWindow(WinHandle winHandle) {
