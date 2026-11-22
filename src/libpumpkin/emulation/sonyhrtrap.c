@@ -190,6 +190,18 @@ void palmos_sonyhrtrap(uint16_t trap) {
         refNum, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, cornerDiam);
       }
       break;
+    case HRTrapWinPaintRectangle: {
+      //void HRWinPaintRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam)
+      uint16_t refNum = ARG16;
+      uint32_t rP = ARG32;
+      uint16_t cornerDiam = ARG16;
+      RectangleType rect;
+      decode_rectangle(rP, &rect);
+      HRWinPaintRectangle(refNum, &rect, cornerDiam);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinPaintRectangle(%u, rP=0x%08X [%d,%d,%d,%d], cornerDiam=%d)",
+        refNum, rP, rect.topLeft.x, rect.topLeft.y, rect.extent.x, rect.extent.y, cornerDiam);
+      }
+      break;
     case HRTrapWinEraseRectangle: {
       //void HRWinEraseRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam)
       uint16_t refNum = ARG16;
@@ -270,6 +282,17 @@ void palmos_sonyhrtrap(uint16_t trap) {
       BitmapType *bitmap = emupalmos_trap_in(bitmapP, trap, 1);
       HRWinDrawBitmap(refNum, bitmap, x, y);
       debug(DEBUG_TRACE, "EmuPalmOS", "HRWinDrawBitmap(%u, bitmapP=0x%08X, x=%d, y=%d)", refNum, bitmapP, x, y);
+      }
+      break;
+    case HRTrapWinPaintBitmap: {
+      //void HRWinPaintBitmap(UInt16 refNum, BitmapType *bitmapP, Coord x, Coord y)
+      uint16_t refNum = ARG16;
+      uint32_t bitmapP = ARG32;
+      int16_t x = ARG16;
+      int16_t y = ARG16;
+      BitmapType *bitmap = emupalmos_trap_in(bitmapP, trap, 1);
+      HRWinPaintBitmap(refNum, bitmap, x, y);
+      debug(DEBUG_TRACE, "EmuPalmOS", "HRWinPaintBitmap(%u, bitmapP=0x%08X, x=%d, y=%d)", refNum, bitmapP, x, y);
       }
       break;
     case HRTrapBmpCreate: {

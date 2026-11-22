@@ -439,6 +439,23 @@ void HRWinInvertRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP
 }
 
 void HRWinPaintBitmap(UInt16 refNum, BitmapType *bitmapP, Coord x, Coord y) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt32 oldScalingMode;
+  UInt16 prevCoordSys;
+  
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      oldScalingMode = WinSetScalingMode(kBitmapScalingOff);
+      WinPaintBitmap(bitmapP, x, y);
+      WinSetScalingMode(oldScalingMode);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinPaintBitmap(bitmapP, x, y);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module);
+  }
 }
 
 void HRWinPaintChar(UInt16 refNum, WChar theChar, Coord x, Coord y) {
@@ -474,6 +491,20 @@ void HRWinPaintPixels(UInt16 refNum, UInt16 numPoints, PointType pts[]) {
 }
 
 void HRWinPaintRectangle(UInt16 refNum, RectangleType *rP, UInt16 cornerDiam) {
+  sony_lib_t *module = (sony_lib_t *)pumpkin_get_local_storage(sonylib_key);
+  UInt16 prevCoordSys;
+
+  if (refNum == SonyHRLibRefNum && module) {
+    if (module->hrmode) {
+      prevCoordSys = WinSetCoordinateSystem(kDensityDouble);
+      WinPaintRectangle(rP, cornerDiam);
+      WinSetCoordinateSystem(prevCoordSys);
+    } else {
+      WinPaintRectangle(rP, cornerDiam);
+    }
+  } else {
+    debug(DEBUG_ERROR, "SonyHR", "invalid refNum %u or module %p is null", refNum, module); 
+  }
 }
 
 void HRWinPaintRectangleFrame(UInt16 refNum, FrameType frame, RectangleType *rP) {
