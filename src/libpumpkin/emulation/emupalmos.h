@@ -164,6 +164,7 @@ void palmos_gpdlibtrap(uint16_t trap);
 void palmos_sonyhrtrap(uint16_t trap);
 void palmos_inetlibtrap(uint16_t trap);
 void palmos_irlibtrap(uint16_t trap);
+void palmos_btlibtrap(uint16_t trap);
 
 void *emupalmos_trap_in(uint32_t address, uint16_t trap, int arg);
 void *emupalmos_trap_sel_in(uint32_t address, uint16_t trap, uint16_t sel, int arg);

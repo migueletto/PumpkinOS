@@ -28,4 +28,6 @@
 
 #define IrLibRefNum (BASE_SYSLIBS+9)
 
+#define BtLibRefNum (BASE_SYSLIBS+10)
+
 #endif

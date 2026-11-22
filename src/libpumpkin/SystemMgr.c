@@ -6,6 +6,7 @@
 #include <SonyCLIE.h>
 #include <INetMgr.h>
 #include <IrLib.h>
+#include <BtLib.h>
 
 #include "sys.h"
 #include "thread.h"
@@ -291,6 +292,8 @@ Err SysLibLoad(UInt32 libType, UInt32 libCreator, UInt16 *refNumP) {
     *refNumP = INetLibRefNum;
   } else if (libType == sysFileTLibrary && libCreator == sysFileCIrLib) {
     *refNumP = IrLibRefNum;
+  } else if (libType == sysFileTLibrary && libCreator == sysFileCBtLib) {
+    *refNumP = BtLibRefNum;
   } else {
     *refNumP = 0;
   }
@@ -318,6 +321,8 @@ Err SysLibFind(const Char *nameP, UInt16 *refNumP) {
     *refNumP = INetLibRefNum;
   } else if (nameP && !StrCompare(nameP, irLibName)) {
     *refNumP = IrLibRefNum;
+  } else if (nameP && !StrCompare(nameP, btLibName)) {
+    *refNumP = BtLibRefNum;
   } else {
     *refNumP = 0;
   }

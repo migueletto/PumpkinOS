@@ -4,26 +4,27 @@
 #include "debug.h"
 
 Err BtLibOpen(UInt16 btLibRefNum, Boolean allowStackToFail) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibOpen not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
 Err BtLibClose(UInt16 btLibRefNum) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibClose not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
 Err BtLibSleep(UInt16 btLibRefNum) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibSleep not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
 Err BtLibWake(UInt16 btLibRefNum) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibWake not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
-Err BtLibHandleEvent (UInt16 btLibRefNum, void *eventP) {
+Err BtLibSocketCreate(UInt16 btLibRefNum, BtLibSocketRef *socketRefP, BtLibSocketProcPtr callbackP, UInt32 refCon, BtLibProtocolEnum socketProtocol) {
+  if (socketRefP) *socketRefP = 0;
+  return btLibErrNoError;
+}
+
+Err BtLibHandleEvent(UInt16 btLibRefNum, void *eventP) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibHandleEvent not implemented");
   return 0;
 }
@@ -33,13 +34,11 @@ void BtLibHandleTransportEvent(UInt16 btLibRefNum, void *transportEventP) {
 }
 
 Err BtLibRegisterManagementNotification(UInt16 btLibRefNum, BtLibManagementProcPtr callbackP, UInt32 refCon) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibRegisterManagementNotification not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
 Err BtLibUnregisterManagementNotification(UInt16 btLibRefNum, BtLibManagementProcPtr callbackP) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibUnregisterManagementNotification not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
 Err BtLibStartInquiry(UInt16 btLibRefNum,  UInt8 timeOut, UInt8 maxResp) {
@@ -47,12 +46,12 @@ Err BtLibStartInquiry(UInt16 btLibRefNum,  UInt8 timeOut, UInt8 maxResp) {
   return 0;
 }
 
-Err BtLibCancelInquiry(UInt16 btLibRefNum ) {
+Err BtLibCancelInquiry(UInt16 btLibRefNum) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibCancelInquiry not implemented");
   return 0;
 }
 
-Err BtLibGetSelectedDevices(UInt16 btLibRefNum, BtLibDeviceAddressType* selectedDeviceArray, UInt8 arraySize, UInt8 *numDevicesReturned) {
+Err BtLibGetSelectedDevices(UInt16 btLibRefNum, BtLibDeviceAddressType *selectedDeviceArray, UInt8 arraySize, UInt8 *numDevicesReturned) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibGetSelectedDevices not implemented");
   return 0;
 }
@@ -87,22 +86,22 @@ Err BtLibPiconetLockInbound(UInt16 btLibRefNum) {
   return 0;
 }
 
-Err BtLibLinkSetState(UInt16 btLibRefNum,  BtLibDeviceAddressTypePtr remoteDeviceP, BtLibLinkPrefsEnum pref, void* linkState, UInt16 linkStateSize) {
+Err BtLibLinkSetState(UInt16 btLibRefNum,  BtLibDeviceAddressTypePtr remoteDeviceP, BtLibLinkPrefsEnum pref, void *linkState, UInt16 linkStateSize) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibLinkSetState not implemented");
   return 0;
 }
 
-Err BtLibLinkGetState(UInt16 btLibRefNum,  BtLibDeviceAddressTypePtr remoteDeviceP, BtLibLinkPrefsEnum pref, void* linkState, UInt16 linkStateSize) {
+Err BtLibLinkGetState(UInt16 btLibRefNum,  BtLibDeviceAddressTypePtr remoteDeviceP, BtLibLinkPrefsEnum pref, void *linkState, UInt16 linkStateSize) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibLinkGetState not implemented");
   return 0;
 }
 
-Err BtLibSetGeneralPreference(UInt16 btLibRefNum, BtLibGeneralPrefEnum pref, void* prefValue, UInt16 prefValueSize) {
+Err BtLibSetGeneralPreference(UInt16 btLibRefNum, BtLibGeneralPrefEnum pref, void *prefValue, UInt16 prefValueSize) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibSetGeneralPreference not implemented");
   return 0;
 }
 
-Err BtLibGetGeneralPreference(UInt16 btLibRefNum, BtLibGeneralPrefEnum pref, void* prefValue, UInt16 prefValueSize) {
+Err BtLibGetGeneralPreference(UInt16 btLibRefNum, BtLibGeneralPrefEnum pref, void *prefValue, UInt16 prefValueSize) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibGetGeneralPreference not implemented");
   return 0;
 }
@@ -113,11 +112,10 @@ Err BtLibSocketClose(UInt16 btLibRefNum,  BtLibSocketRef socket) {
 }
 
 Err BtLibSocketListen(UInt16 btLibRefNum,  BtLibSocketRef socket, BtLibSocketListenInfoType *listenInfo) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibSocketListen not implemented");
-  return 0;
+  return btLibErrNoError;
 }
 
-Err BtLibSocketConnect(UInt16 btLibRefNum,  BtLibSocketRef socket, BtLibSocketConnectInfoType* connectInfo) {
+Err BtLibSocketConnect(UInt16 btLibRefNum,  BtLibSocketRef socket, BtLibSocketConnectInfoType *connectInfo) {
   debug(DEBUG_ERROR, "PALMOS", "BtLibSocketConnect not implemented");
   return 0;
 }
@@ -137,9 +135,8 @@ Err BtLibSocketAdvanceCredit(UInt16 btLibRefNum, BtLibSocketRef socket, UInt8 cr
   return 0;
 }
 
-Err BtLibSdpServiceRecordCreate(UInt16 btLibRefNum, BtLibSdpRecordHandle* recordH ) {
-  debug(DEBUG_ERROR, "PALMOS", "BtLibSdpServiceRecordCreate not implemented");
-  return 0;
+Err BtLibSdpServiceRecordCreate(UInt16 btLibRefNum, BtLibSdpRecordHandle *recordH) {
+  return btLibErrNoError;
 }
 
 Err BtLibSdpServiceRecordDestroy(UInt16 btLibRefNum, BtLibSdpRecordHandle recordH) {
