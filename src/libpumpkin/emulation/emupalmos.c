@@ -3028,9 +3028,9 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
           if (state->istate->regionStarted) {
             int64_t d = sys_get_clock() - state->istate->lastRegionUpdate;
             if (d > 5000) {
-              debug(DEBUG_TRACE, "EmuPalmOS", "forcing dirtyRegionEnd after %d us", (int32_t)d);
+              debug(DEBUG_INFO, "EmuPalmOS", "forcing dirtyRegionEnd after %d us", (int32_t)d);
               pumpkin_dirty_region_mode(dirtyRegionEnd);
-              state->istate->regionStarted = false;
+              pumpkin_dirty_region_mode(dirtyRegionBegin);
             }
           }
         }
