@@ -46,8 +46,21 @@ typedef struct {
   DmOpenRef dbRef;
 } ftr_module_t;
 
+static char *getFeatureDBName(char *name) {
+  UInt32 creator;
+  char s[8];
+
+  creator = pumpkin_get_app_creator();
+  pumpkin_id2s(creator, s);
+  StrNPrintF(name, dmDBNameLength, "FeatureDB_%02X%02X%02X%02X", s[0], s[1], s[2], s[3]);
+
+  return name;
+}
+
 int FtrInitModule(void) {
   ftr_module_t *module;
+  char name[dmDBNameLength];
+  LocalID dbID;
 
   if ((module = sys_calloc(1, sizeof(ftr_module_t))) == NULL) {
     return -1;
@@ -59,6 +72,11 @@ int FtrInitModule(void) {
     put4b(sonySysFtrSysInfoLibrHR, module->sonySysInfo, 8);   // libr
   }
 
+  getFeatureDBName(name);
+  if ((dbID = DmFindDatabase(0, name)) != 0) {
+    DmDeleteDatabase(0, dbID);
+  }
+
   module->reg = pumpkin_reg_get(pumpkin_get_app_creator(), regFeatureID, &module->regSize);
   pumpkin_set_local_storage(ftr_key, module);
 
@@ -67,9 +85,17 @@ int FtrInitModule(void) {
 
 int FtrFinishModule(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
+  char name[dmDBNameLength];
+  LocalID dbID;
 
   if (module) {
-    if (module->dbRef) DmCloseDatabase(module->dbRef);
+    if (module->dbRef) {
+      DmCloseDatabase(module->dbRef);
+      getFeatureDBName(name);
+      if ((dbID = DmFindDatabase(0, name)) != 0) {
+        DmDeleteDatabase(0, dbID);
+      }
+    }
     if (module->sonySysInfo) MemPtrFree(module->sonySysInfo);
     if (module->reg) MemPtrFree(module->reg);
     sys_free(module);
@@ -537,15 +563,11 @@ Err FtrGetByIndex(UInt16 index, Boolean romTable, UInt32 *creatorP, UInt16 *numP
 
 static DmOpenRef getFeatureDB(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
-  UInt32 creator;
   LocalID dbID;
-  char name[dmDBNameLength], s[8];
+  char name[dmDBNameLength];
   
   if (module->dbRef == NULL) {
-    creator = pumpkin_get_app_creator();
-    pumpkin_id2s(creator, s);
-    StrNPrintF(name, sizeof(name)-1, "FeatureDB_%02X%02X%02X%02X", s[0], s[1], s[2], s[3]);
-
+    getFeatureDBName(name);
     if ((dbID = DmFindDatabase(0, name)) == 0) {
       DmCreateDatabase(0, name, pumpkin_get_app_creator(), featureDBType, false);
       dbID = DmFindDatabase(0, name);
@@ -627,7 +649,7 @@ Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPt
       if ((h = MemPtrRecoverHandle(p)) != NULL) {
         if ((dbRef = getFeatureDB()) != NULL) {
           MemHandleUnlock(h);
-          if ((index = DmSearchRecord(h, dbRef)) != 0xffff) {
+          if ((index = DmSearchRecord(h, &dbRef)) != 0xffff && dbRef == getFeatureDB()) {
             DmResizeRecord(dbRef, index, newSize);
             *newPtrP = MemHandleLock(h);
           }
