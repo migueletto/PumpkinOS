@@ -29,6 +29,7 @@
 #define sonySysInfoSize 42
 
 #define featureDBType    'ftDB'
+#define featureResType   'Ftre'
 
 typedef struct {
   UInt32 creator;
@@ -65,11 +66,30 @@ int FtrInitModule(void) {
   return 0;
 }
 
+static char *getFeatureDBName(char *name) {
+  UInt32 creator;
+  char s[8];
+
+  creator = pumpkin_get_app_creator();
+  pumpkin_id2s(creator, s);
+  StrNPrintF(name, dmDBNameLength, "FeatureDB_%02X%02X%02X%02X", s[0], s[1], s[2], s[3]);
+
+  return name;
+}
+
 int FtrFinishModule(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
+  LocalID dbID;
+  char name[dmDBNameLength];
 
   if (module) {
-    if (module->dbRef) DmCloseDatabase(module->dbRef);
+    if (module->dbRef) {
+      DmCloseDatabase(module->dbRef);
+      getFeatureDBName(name);
+      if ((dbID = DmFindDatabase(0, name)) != 0) {
+        DmDeleteDatabase(0, dbID);
+      }
+    }
     if (module->sonySysInfo) MemPtrFree(module->sonySysInfo);
     if (module->reg) MemPtrFree(module->reg);
     sys_free(module);
@@ -537,17 +557,13 @@ Err FtrGetByIndex(UInt16 index, Boolean romTable, UInt32 *creatorP, UInt16 *numP
 
 static DmOpenRef getFeatureDB(void) {
   ftr_module_t *module = (ftr_module_t *)pumpkin_get_local_storage(ftr_key);
-  UInt32 creator;
   LocalID dbID;
-  char name[dmDBNameLength], s[8];
+  char name[dmDBNameLength];
   
   if (module->dbRef == NULL) {
-    creator = pumpkin_get_app_creator();
-    pumpkin_id2s(creator, s);
-    StrNPrintF(name, sizeof(name)-1, "FeatureDB_%02X%02X%02X%02X", s[0], s[1], s[2], s[3]);
-
+    getFeatureDBName(name);
     if ((dbID = DmFindDatabase(0, name)) == 0) {
-      DmCreateDatabase(0, name, pumpkin_get_app_creator(), featureDBType, false);
+      DmCreateDatabase(0, name, pumpkin_get_app_creator(), featureDBType, true);
       dbID = DmFindDatabase(0, name);
     }
     module->dbRef = dbID ? DmOpenDatabase(0, dbID, dmModeReadWrite) : NULL;
@@ -564,18 +580,21 @@ Err FtrPtrNew(UInt32 creator, UInt16 featureNum, UInt32 size, void **newPtrP) {
   UInt32 value;
   Err err = memErrInvalidParam;
 
+  if (newPtrP) *newPtrP = NULL;
   dbRef = getFeatureDB();
-  index = 0xffff;
-  if (dbRef && (h = DmNewRecordEx(dbRef, &index, size, NULL, 0, 0, false, true)) != NULL) {
+
+  if (dbRef && size && (h = DmNewResourceEx(dbRef, featureResType, featureNum, size, NULL, true)) != NULL) {
     if ((p = MemHandleLock(h)) != NULL) {
       ram = pumpkin_heap_base();
       value = ptr2addr(ram, p);
       if ((err = FtrSetEx(creator, featureNum, value, true)) == errNone) {
-        *newPtrP = p;
+        if (newPtrP) *newPtrP = p;
         err = errNone;
       } else {
         MemHandleUnlock(h);
-        DmRemoveRecord(dbRef, index);
+        if ((index = DmFindResource(dbRef, featureResType, featureNum, h)) != 0xffff) {
+          DmRemoveResource(dbRef, index);
+        }
       }
     }
   }
@@ -598,8 +617,9 @@ Err FtrPtrFree(UInt32 creator, UInt16 featureNum) {
       p = addr2ptr(ram, value);
       if ((h = MemPtrRecoverHandle(p)) != NULL) {
         MemHandleUnlock(h);
-        if ((index = DmSearchRecord(h, &dbRef)) != 0xffff && dbRef == getFeatureDB()) {
-          DmRemoveRecord(dbRef, index);
+        dbRef = getFeatureDB();
+        if ((index = DmFindResource(dbRef, featureResType, featureNum, h)) != 0xffff) {
+          DmRemoveResource(dbRef, index);
         }
       }
       err = FtrUnregister(creator, featureNum);
@@ -612,25 +632,22 @@ Err FtrPtrFree(UInt32 creator, UInt16 featureNum) {
 }
 
 Err FtrPtrResize(UInt32 creator, UInt16 featureNum, UInt32 newSize, void **newPtrP) {
-  DmOpenRef dbRef;
   MemHandle h;
   UInt8 *p, *ram;
-  UInt16 index;
   UInt32 value;
   Boolean ptr;
   Err err = memErrInvalidParam;
 
-  if ((err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
+  if (newPtrP) *newPtrP = NULL;
+
+  if (newSize && (err = FtrGetEx(creator, featureNum, &value, &ptr)) == errNone) {
     if (ptr) {
       ram = pumpkin_heap_base();
       p = addr2ptr(ram, value);
       if ((h = MemPtrRecoverHandle(p)) != NULL) {
-        if ((dbRef = getFeatureDB()) != NULL) {
-          MemHandleUnlock(h);
-          if ((index = DmSearchRecord(h, dbRef)) != 0xffff) {
-            DmResizeRecord(dbRef, index, newSize);
-            *newPtrP = MemHandleLock(h);
-          }
+        MemHandleUnlock(h);
+        if (DmResizeResource(h, newSize) != NULL) {
+          if (newPtrP) *newPtrP = MemHandleLock(h);
         }
       }
     } else {
