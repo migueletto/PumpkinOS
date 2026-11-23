@@ -2205,6 +2205,7 @@ uint32_t arm_native_call_pce(uint32_t code, uint32_t userData) {
       state->istate->armp->armCodeRegion(state->arm, code, code + MemHandleSize(h));
     } else {
       debug(DEBUG_TRACE, "ARM", "arm code address 0x%08X is not a locked handle", code);
+      state->istate->armp->armCodeRegion(state->arm, 0, 0);
     }
   }
 
