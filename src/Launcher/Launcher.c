@@ -1167,22 +1167,6 @@ static int printColumn(launcher_data_t *data, launcher_item_t *item, char *label
   return x;
 }
 
-static void paintBitmap(UInt16 id, Coord x, Coord y) {
-  BitmapType *bmp;
-  MemHandle h;
-  UInt16 old;
-
-  if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
-    if ((bmp = MemHandleLock(h)) != NULL) {
-      old = WinSetDrawMode(winOverlay);
-      WinPaintBitmap(bmp, x, y);
-      WinSetDrawMode(old);
-      MemHandleUnlock(h);
-    }
-    DmReleaseResource(h);
-  }
-}
-
 static int printBmpColumn(launcher_data_t *data, launcher_item_t *item, char *label, char *value, UInt16 bmpId, int x, int y, int max, Boolean inverted) {
   RectangleType rect;
   char buf[MAX_NAME];
@@ -3236,7 +3220,7 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   launcher_data_t *data;
   FormType *formP;
   RGBColorType rgb;
-  UInt32 value;
+  UInt32 value, i;
 
   switch (cmd) {
     case sysAppLaunchCmdNormalLaunch:
@@ -3350,6 +3334,11 @@ UInt32 PilotMain(UInt16 cmd, MemPtr cmdPBP, UInt16 launchFlags)
   formP->mbar = NULL;
   FrmCloseAllForms();
 
+  for (i = 0; i < data->numLang; i++) {
+    if (data->lang[i] != NULL) {
+      LanguageFinish(data->lang[i]);
+    }
+  }
   MemPtrFree(data->lang);
 
   if (data->useTaskbar) {

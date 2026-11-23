@@ -145,6 +145,7 @@ typedef struct {
   UInt32 creator;
   uint32_t (*pilot_main)(uint16_t code, void *param, uint16_t flags);
   uint32_t paramBlockSize;
+  DmOpenRef dbRef;
   DmOpenRef bootRef;
   uint16_t locale;
   language_t *lang;
@@ -1720,6 +1721,7 @@ static int pumpkin_pilotmain(char *name, PilotMainF pilotMain, uint16_t code, la
         oldCreator = task->creator;
         task->dbID = dbID;
         task->creator = creator;
+        task->dbRef = dbRef;
 
         callNormal = true;
 
@@ -4280,6 +4282,11 @@ UInt32 pumpkin_get_app_creator(void) {
 char *pumpkin_get_app_name(void) {
   pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
   return task ? task->name : "";
+}
+
+DmOpenRef pumpkin_get_app_dbref(void) {
+  pumpkin_task_t *task = (pumpkin_task_t *)thread_get(task_key);
+  return task ? task->dbRef : NULL;
 }
 
 uint32_t pumpkin_get_param_size(void) {

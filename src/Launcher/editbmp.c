@@ -678,19 +678,6 @@ static Boolean paletteGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, 
   return true;
 }
 
-static void paintBitmap(UInt16 id, Coord x, Coord y) {
-  MemHandle h;
-  BitmapType *bmp;
-            
-  if ((h = DmGet1Resource(bitmapRsc, id)) != NULL) {
-    if ((bmp = MemHandleLock(h)) != NULL) {
-      WinPaintBitmap(bmp, x, y);
-      MemHandleUnlock(h);
-    }     
-    DmReleaseResource(h);
-  }
-}
-
 static Boolean toolsGadgetCallback(FormGadgetTypeInCallback *gad, UInt16 cmd, void *param) {
   EventType *event;
   FormType *frm;
@@ -1279,4 +1266,20 @@ Boolean editBitmap(FormType *frm, char *title, MemHandle h) {
   }
 
   return r;
+}
+
+void paintBitmap(UInt16 id, Coord x, Coord y) {
+  BitmapType *bmp;
+  MemHandle h;
+  UInt16 old;
+
+  if ((h = DmGetMyResource(bitmapRsc, id)) != NULL) {
+    if ((bmp = MemHandleLock(h)) != NULL) {
+      old = WinSetDrawMode(winOverlay);
+      WinPaintBitmap(bmp, x, y);
+      WinSetDrawMode(old);
+      MemHandleUnlock(h);
+    }
+    DmReleaseResource(h);
+  }
 }

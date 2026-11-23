@@ -296,6 +296,7 @@ uint16_t pumpkin_get_app_locale(void);
 LocalID pumpkin_get_app_localid(void);
 UInt32 pumpkin_get_app_creator(void);
 char *pumpkin_get_app_name(void);
+DmOpenRef pumpkin_get_app_dbref(void);
 uint32_t pumpkin_get_param_size(void);
 void *pumpkin_get_exception(void);
 void pumpkin_error_dialog(char *msg);
@@ -448,6 +449,7 @@ int pumpkin_set_trap_address(uint16_t trap, uint32_t address);
 
 MemPtr MemHandleLockEx(MemHandle h, Boolean decoded);
 Err MemHandleUnlockEx(MemHandle h, UInt16 *lockCount);
+MemHandle DmGetMyResource(DmResType type, DmResID resID);
 Err DmResourceType(MemHandle resourceH, DmResType *resType, DmResID *resID);
 MemHandle DmNewRecordEx(DmOpenRef dbP, UInt16 *atP, UInt32 size, void *p, UInt32 uniqueID, UInt16 attr, Boolean setAttr, Boolean attach);
 MemHandle DmGetResourceDecoded(DmResType type, DmResID resID);

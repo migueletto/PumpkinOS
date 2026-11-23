@@ -2319,6 +2319,17 @@ MemHandle DmGet1Resource(DmResType type, DmResID resID) {
   return DmGetResourceEx(NULL, type, resID, true, false);
 }
 
+MemHandle DmGetMyResource(DmResType type, DmResID resID) {
+  DmOpenType *dbRef;
+  MemHandle h = NULL;
+
+  if ((dbRef = pumpkin_get_app_dbref()) != NULL) {
+    h = DmGetResourceEx(dbRef, type, resID, true, false);
+  }
+
+  return h;
+}
+
 void *DmExtractResource(DmResType type, DmResID resID, Boolean firstOnly, UInt32 *size) {
   storage_t *sto = (storage_t *)pumpkin_get_local_storage(sto_key);
   storage_db_t *db;

@@ -32,3 +32,5 @@ Boolean editString(FormType *frm, char *title, MemHandle h);
 Boolean editBitmap(FormType *frm, char *title, MemHandle h);
 Boolean editForm(FormType *frm, char *title, MemHandle h);
 Boolean editBinary(FormType *frm, char *title, MemHandle h);
+
+void paintBitmap(UInt16 id, Coord x, Coord y);
