@@ -5195,7 +5195,7 @@ Boolean MemPtrDataStorage(MemPtr p) {
   if ((h = MemPtrRecoverHandle(p)) != NULL) {
     handle = (storage_handle_t *)h;
 
-    switch (handle->htype) {
+    switch (handle->htype & ~STO_INFLATED) {
       case STO_TYPE_MEM:
         dataStorage = false;
         break;
