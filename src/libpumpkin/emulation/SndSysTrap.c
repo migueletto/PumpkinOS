@@ -145,11 +145,12 @@ void palmos_SndSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t userdataP = ARG32;
       uint32_t buffsize = ARG32;
       uint8_t armNative = ARG8;
-      SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
+      SndStreamRef channel;
+      emupalmos_trap_in(channelP, trap, 0);
       SndStreamBufferCallback func = (SndStreamBufferCallback)emupalmos_trap_in(funcP, trap, 5);
       void *userdata = emupalmos_trap_in(userdataP, trap, 6);
-      Err err = SndStreamCreate(channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
-      if (channelP) m68k_write_memory_32(channelP, *channel);
+      Err err = SndStreamCreate(&channel, mode, samplerate, type, width, func, userdata, buffsize, armNative);
+      if (channelP) m68k_write_memory_32(channelP, channel);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreate(0x%08X, %d, %d, %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
         channelP, mode, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
       m68k_set_reg(M68K_REG_D0, err);
@@ -167,10 +168,12 @@ void palmos_SndSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       uint32_t userdataP = ARG32;
       uint32_t buffsize = ARG32;
       uint8_t armNative = ARG8;
-      SndStreamRef *channel = (SndStreamRef *)emupalmos_trap_in(channelP, trap, 0);
+      SndStreamRef channel;
+      emupalmos_trap_in(channelP, trap, 0);
       SndStreamVariableBufferCallback func = (SndStreamVariableBufferCallback)emupalmos_trap_in(funcP, trap, 6);
       void *userdata = emupalmos_trap_in(userdataP, trap, 7);
-      Err err = SndStreamCreateExtended(channel, mode, format, samplerate, type, width, func, userdata, buffsize, armNative);
+      Err err = SndStreamCreateExtended(&channel, mode, format, samplerate, type, width, func, userdata, buffsize, armNative);
+      if (channelP) m68k_write_memory_32(channelP, channel);
       debug(DEBUG_TRACE, "EmuPalmOS", "SndStreamCreateExtented(0x%08X, %d, %d, %d %d, %d, 0x%08X, 0x%08X, %d, %d): %d",
         channelP, mode, format, samplerate, type, width, funcP, userdataP, buffsize, armNative, err);
       m68k_set_reg(M68K_REG_D0, err);
