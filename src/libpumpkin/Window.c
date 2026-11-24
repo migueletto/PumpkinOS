@@ -538,7 +538,9 @@ WinHandle WinSetDrawWindow(WinHandle winHandle) {
   WinHandle prev = module->drawWindow;
   char buf[64];
 
-  module->drawWindow = winHandle;
+  // OS versions before 3.5 allowed you to use NULL as a parameter to
+  // this function to set the draw window to the display window
+  module->drawWindow = winHandle ? winHandle : module->displayWindow;
   debug(DEBUG_TRACE, "Window", "WinSetDrawWindow %s", WinGetDescr(module->drawWindow, buf, sizeof(buf)));
 
   return prev;
