@@ -48,5 +48,12 @@ void palmos_AlmSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       m68k_set_reg(M68K_REG_D0, res);
     }
     break;
+  case sysTrapAlmEnableNotification: {
+    // void AlmEnableNotification(Boolean enable)
+    uint8_t enable = ARG8;
+    AlmEnableNotification(enable);
+    debug(DEBUG_TRACE, "EmuPalmOS", "AlmEnableNotification(%u)", enable);
+    }
+    break;
   }
 }

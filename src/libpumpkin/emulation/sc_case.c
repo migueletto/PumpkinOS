@@ -685,6 +685,7 @@
       break;
     case sysTrapAlmSetAlarm:
     case sysTrapAlmGetAlarm:
+    case sysTrapAlmEnableNotification:
       palmos_AlmSysTrap(sp, idx, trap);
       break;
     case sysTrapFldCopy:
