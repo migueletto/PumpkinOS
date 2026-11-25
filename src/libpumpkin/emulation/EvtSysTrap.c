@@ -53,7 +53,7 @@ void palmos_EvtSysTrap(uint32_t sp, uint16_t idx, uint32_t trap) {
       // void EvtAddEventToQueue(const EventType *event)
       uint32_t eventP = ARG32;
       uint8_t *p = emupalmos_trap_in(eventP, trap, 0);
-      debug(DEBUG_INFO, "EmuPalmOS", "EvtAddEventToQueue event:");
+      debug(DEBUG_TRACE, "EmuPalmOS", "EvtAddEventToQueue event:");
       debug_bytes(DEBUG_TRACE, "EmuPalmOS", p, 24);
       EventType event;
       if (eventP) decode_event(eventP, &event);
