@@ -4477,7 +4477,7 @@ Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : bufferSize - offsets[j];
-                if (size > 65536) {
+                if (size >= bufferSize) {
                   debug(DEBUG_ERROR, "STOR", "corrupted size at resource %d", j);
                   MemPtrFree(resTypes);
                   MemPtrFree(resIDs);
