@@ -4477,6 +4477,17 @@ Err DmCreateDatabaseFromImageEx(MemPtr bufferP, UInt32 bufferSize) {
               i = firstOffset = offsets[0];
               for (j = 0; j < numRecs; j++) {
                 size = (j < numRecs-1) ? offsets[j+1] - offsets[j] : bufferSize - offsets[j];
+                if (size > 65536) {
+                  debug(DEBUG_ERROR, "STOR", "corrupted size at resource %d", j);
+                  MemPtrFree(resTypes);
+                  MemPtrFree(resIDs);
+                  MemPtrFree(uniqueIDs);
+                  MemPtrFree(attrs);
+                  MemPtrFree(offsets);
+                  DmCloseDatabase(dbRef);
+                  DmDeleteDatabase(0, dbID);
+                  return err;
+                }
                 pumpkin_id2s(resTypes[j], st);
                 debug(DEBUG_INFO, "STOR", "DmCreateDatabaseFromImage res %d type '%s' id %d size %u", j, st, resIDs[j], size);
                 DmNewResourceEx(dbRef, resTypes[j], resIDs[j], size, &database[offsets[j]], false);
