@@ -2934,10 +2934,24 @@ static Boolean ApplicationHandleEvent(EventPtr event) {
   return handled;
 }
 
+static Boolean prgCallback(PrgCallbackDataPtr cbP) {
+  if (cbP && cbP->textP) {
+    cbP->textP[0] = 0;
+  }
+
+  return true;
+}
+
+static void deploy_callback(void *data, char *msg) {
+  ProgressPtr prg = (ProgressPtr)data;
+  PrgUpdateDialog(prg, 0, 0, msg, true);
+}
+
 static void CheckNotifications(void) {
   launcher_data_t *data = pumpkin_get_data();
   Boolean deploy = false, reload = false, updateTime = false;
   Boolean appCrashed = false, appQuit = false;
+  ProgressPtr prg;
 
   if (mutex_lock(data->mutex) == 0) {
     deploy = data->deploy;
@@ -2963,7 +2977,9 @@ static void CheckNotifications(void) {
 
   if (deploy) {
     debug(DEBUG_INFO, "Launcher", "CheckNotifications deploy");
-    pumpkin_deploy_files("/app_install");
+    prg = PrgStartDialog("Deploy", prgCallback, NULL);
+    pumpkin_deploy_files("/app_install", deploy_callback, prg);
+    PrgStopDialog(prg, false);
     reload = true;
   }
 

@@ -225,7 +225,7 @@ static int libos_action(void *arg) {
   pumpkin_set_depth(data->depth);
 
   debug(DEBUG_INFO, PUMPKINOS, "deploying applications");
-  pumpkin_deploy_files("/app_install");
+  pumpkin_deploy_files("/app_install", NULL, NULL);
   pumpkin_init_misc();
   pumpkin_load_plugins();
 

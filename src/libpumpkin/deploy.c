@@ -98,7 +98,7 @@ void pumpkin_registry_create(UInt32 creator) {
   pumpkin_reg_set(creator, regHeapID, &regHeap, sizeof(RegHeapType));
 }
 
-static int pumpkin_deploy_file_session(vfs_session_t *session, char *path) {
+static int pumpkin_deploy_file_session(vfs_session_t *session, char *path, void (*callback)(void *data, char *msg), void *data) {
   vfs_file_t *f;
   LocalID dbID;
   UInt32 type, creator;
@@ -192,7 +192,7 @@ int pumpkin_deploy_from_image(vfs_session_t *session, uint8_t *p, uint32_t size)
   return r;
 }
 
-int pumpkin_deploy_files_session(vfs_session_t *session, char *path) {
+int pumpkin_deploy_files_session(vfs_session_t *session, char *path, void (*callback)(void *data, char *msg), void *data) {
   vfs_dir_t *dir;
   vfs_ent_t *ent;
   char *ext, buf[VFS_PATH];
@@ -208,7 +208,8 @@ int pumpkin_deploy_files_session(vfs_session_t *session, char *path) {
         sys_memset(buf, 0, sizeof(buf));
         sys_snprintf(buf, sizeof(buf)-1, "%s/%s", path, ent->name);
         if (!sys_strcasecmp(ext, "prc") || !sys_strcasecmp(ext, "pdb") || !sys_strcasecmp(ext, "pqa")) {
-          rr = pumpkin_deploy_file_session(session, buf);
+          if (callback) callback(data, ent->name);
+          rr = pumpkin_deploy_file_session(session, buf, callback, data);
           vfs_unlink(session, buf);
           if (rr == 0) {
             r++;

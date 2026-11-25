@@ -94,6 +94,7 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
           MemPtrFree(d);
         }
       } else {
+        MemSet(text, sizeof(text), 0);
         data.stage = prgP->stage;
         data.textP = text;
         data.textLen = progressMaxMessage;

@@ -757,9 +757,9 @@ logtrap_def *logtrap_get_def(void) {
   return &pumpkin_module.ltdef;
 }
 
-void pumpkin_deploy_files(char *path) {
+void pumpkin_deploy_files(char *path, void (*callback)(void *data, char *msg), void *data) {
   if (mutex_lock(pumpkin_module.fs_mutex) == 0) {
-    pumpkin_deploy_files_session(pumpkin_module.session, path);
+    pumpkin_deploy_files_session(pumpkin_module.session, path, callback, data);
     mutex_unlock(pumpkin_module.fs_mutex);
   }
 }
