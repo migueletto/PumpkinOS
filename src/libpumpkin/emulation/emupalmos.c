@@ -2654,7 +2654,8 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
   MemHandle hAmdc0, hAmdd0, hCode0, hCode1, hCodeN, hData0, hData, hStack, hSysAppInfo;
   uint8_t *amdc0, *amdd0, *code0, *code1, *data0, *data, *stack, *sysAppInfo, *paramBlock;
   uint32_t pc, a5, a7, st;
-  uint32_t sysAppInfoStart, stackStart, codeStart, codeSize, dataStart, data0Size, dataSize, aboveSize;
+  uint32_t sysAppInfoStart, stackStart, codeStart, codeSize, dataStart, data0Size, dataSize;
+  uint32_t  aboveSize, jumpTableSize, jumpTableOffset;
   uint8_t *p8, *start, b;
   uint32_t i, j, k, k0, n, m, xr, count, creator;
   uint32_t paramBlockStart;
@@ -2789,11 +2790,19 @@ uint32_t emupalmos_main(uint16_t launchCode, void *param, uint16_t flags) {
         debug(DEBUG_TRACE, "EmuPalmOS", "code0 end");
         get4b(&aboveSize, code0, 0);
         get4b(&dataSize, code0, 4);
+        get4b(&jumpTableSize, code0, 8);
+        get4b(&jumpTableOffset, code0, 12);
         hData = MemHandleNew(dataSize + aboveSize);
-        debug(DEBUG_INFO, "EmuPalmOS", "dataSize %d aboveSize %d", dataSize, aboveSize);
+        debug(DEBUG_INFO, "EmuPalmOS", "dataSize %d aboveSize %d jumpTable %d %d", dataSize, aboveSize, jumpTableSize, jumpTableOffset);
         data = MemHandleLock(hData);
         MemSet(data, dataSize + aboveSize, 0);
         dataStart = data - ram;
+/*
+        XXX is this necessary ?
+        if (aboveSize > 0) {
+          put4b(sysAppInfoStart, data, dataSize);
+        }
+*/
       } else {
         aboveSize = 0;
         dataSize = 0;
