@@ -1464,18 +1464,7 @@ void WinEraseRectangle(const RectangleType *rP, UInt16 cornerDiam) {
 }
 
 void WinInvertRectangle(const RectangleType *rP, UInt16 cornerDiam) {
-  win_module_t *module = (win_module_t *)pumpkin_get_local_storage(win_key);
-  if (rP) {
-    debug(DEBUG_TRACE, "Window", "WinInvertRectangle([%d, %d, %d, %d], %d)",
-      rP->topLeft.x, rP->topLeft.y, rP->extent.x, rP->extent.y, cornerDiam);
-    invertPrefix(winInvert);
-    RectangleType rect;
-    MemMove(&rect, rP, sizeof(RectangleType));
-    if (!isDouble) WinScaleRectangle(&rect);
-    if (!isDouble) cornerDiam = WinScaleCoord(cornerDiam, false);
-    WinPaintRectangleF(&rect, 1, cornerDiam, true, false);
-    invertSuffix();
-  }
+  WinInvertRect((RectangleType *)rP, cornerDiam);
 }
 
 void WinFillLine(Coord x1, Coord y1, Coord x2, Coord y2) {
