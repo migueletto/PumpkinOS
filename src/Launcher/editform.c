@@ -160,6 +160,7 @@ static void drawForm(FormType *current, form_edit_t *data) {
     UIColorGetTableEntryRGB(UIDialogFrame, &oldDialogFrame);
     UIColorSetTableEntry(UIFormFrame, &purple);
     UIColorSetTableEntry(UIDialogFrame, &purple);
+
     FrmSetActiveForm(formP);
     FrmDrawForm(formP);
     FrmSetActiveForm(frm);
@@ -183,11 +184,13 @@ static void drawForm(FormType *current, form_edit_t *data) {
     }
     KbdGrfSetState(state);
 
+    RctSetRectFromWin(&rect, &formP->window);
+    rect.topLeft.x = x0;
+    rect.topLeft.y = y0;
+    RctInsetRectangle(&rect, -1);
+    WinSetClip(&rect);
+    RctInsetRectangle(&rect, 2);
     if (!WinGetFlag(&formP->window, WindowFlagModal)) {
-      RctSetRectFromWin(&rect, &formP->window);
-      rect.topLeft.x = x0;
-      rect.topLeft.y = y0;
-      RctInsetRectangle(&rect, 1);
       WinSetForeColorRGB(&gray, NULL);
       WinPaintRectangleFrame(1, &rect);
     }
@@ -199,6 +202,7 @@ static void drawForm(FormType *current, form_edit_t *data) {
       rect.topLeft.y += y0;
       WinPaintRectangleFrame(1, &rect);
     }
+    WinResetClip();
 
     FrmDeleteForm(formP);
     UIColorSetTableEntry(UIFormFrame, &oldFormFrame);
