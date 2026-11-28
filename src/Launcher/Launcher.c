@@ -2948,7 +2948,6 @@ static Boolean prgCallback(PrgCallbackDataPtr cbP) {
 static void deploy_callback(void *data, char *msg) {
   ProgressPtr prg = (ProgressPtr)data;
   PrgUpdateDialog(prg, 0, 0, msg, true);
-  SysTaskDelay(100);
 }
 
 static void CheckNotifications(void) {
