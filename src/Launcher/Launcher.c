@@ -2939,7 +2939,7 @@ static Boolean prgCallback(PrgCallbackDataPtr cbP) {
     if (cbP->message) {
       StrNCopy(cbP->textP, cbP->message, progressMaxMessage);
     }
-    cbP->bitmapId = 10005;
+    //cbP->bitmapId = 10005;  // XXX find which bitmap to use for deploy
   }
 
   return true;
