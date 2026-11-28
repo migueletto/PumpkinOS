@@ -14,26 +14,25 @@
 #include "emupalmos.h"
 #include "debug.h"
 
-ProgressPtr	PrgStartDialogV31(const Char *title, PrgCallbackFunc textCallback) {
+#define prgProgressFrm    11600
+#define prgProgressText   11601
+#define prgProgressBitmap 11602
+
+ProgressPtr PrgStartDialogV31(const Char *title, PrgCallbackFunc textCallback) {
   return PrgStartDialog(title, textCallback, NULL);
 }
 
-ProgressPtr	PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void *userDataP) {
-  ProgressPtr	prgP = NULL;
-  UInt16 index;
+ProgressPtr PrgStartDialog(const Char *title, PrgCallbackFunc textCallback, void *userDataP) {
+  ProgressPtr prgP = NULL;
   
   if (title && textCallback && (prgP = MemPtrNew(sizeof(ProgressType))) != NULL) {
     StrNCopy(prgP->title, title, progressMaxTitle);
     prgP->textCallback = textCallback;
     prgP->userDataP = userDataP;
     prgP->oldFrmP = FrmGetActiveForm();
-    prgP->frmP = FrmNewForm(1000, title, 2, 76, 156, 82, true, 0, 0, 0);
-    FrmNewBitmap(&prgP->frmP, 1000, 10004, 0, 15);
-    index = FrmGetObjectIndex(prgP->frmP, 1000);
-    FrmHideObject(prgP->frmP, index);
-    FldNewField((void **)&prgP->frmP, 2000, 0, 40, 76, FntCharHeight(), stdFont, progressMaxMessage, false, false,
-      true, false, leftAlign, false, false, false);
+    prgP->frmP = FrmInitForm(prgProgressFrm);
     FrmSetActiveForm(prgP->frmP);
+    FrmSetTitle(prgP->frmP, (char *)title);
     FrmDrawForm(prgP->frmP);
   }
 
@@ -49,16 +48,18 @@ void PrgStopDialog(ProgressPtr prgP, Boolean force) {
   }
 }
 
-Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
+Boolean PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
   PrgCallbackData data;
   char text[progressMaxMessage];
   uint32_t addr;
   uint16_t flags;
   uint8_t *ram, *d;
+  RectangleType rect;
   UInt16 index;
   FieldAttrType attr;
   FieldType *fld;
-  FormBitmapType *bmp;
+  MemHandle h;
+  BitmapType *bmp;
   Boolean handled = false;
 
   if (prgP) {
@@ -73,18 +74,14 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
       if (pumpkin_is_m68k()) {
         if ((d = MemPtrNew(sizeof(PrgCallbackData) + progressMaxMessage)) != NULL) {
           ram = pumpkin_heap_base();
-          //addr = d - ram;
           addr = ptr2addr(ram, d);
           m68k_write_memory_16(addr +  0, prgP->stage);
           m68k_write_memory_32(addr +  2, addr + sizeof(PrgCallbackData));
           m68k_write_memory_16(addr +  6, progressMaxMessage);
-          //m68k_write_memory_32(addr +  8, (uint8_t *)prgP->message - ram);
           m68k_write_memory_32(addr +  8, ptr2addr(ram, prgP->message));
           m68k_write_memory_16(addr + 12, prgP->error);
           m68k_write_memory_16(addr + 16, 0x2000); // textChanged = 1
-          //m68k_write_memory_32(addr + 38, (uint8_t *)prgP->userDataP - ram);
           m68k_write_memory_32(addr + 38, ptr2addr(ram, prgP->userDataP));
-          //CallPrgCallback((uint8_t *)prgP->textCallback - ram, addr);
           CallPrgCallback(ptr2addr(ram, prgP->textCallback), addr);
           data.bitmapId = m68k_read_memory_16(addr + 14);
           flags = m68k_read_memory_16(addr + 16);
@@ -94,6 +91,7 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
           MemPtrFree(d);
         }
       } else {
+        MemSet(&data, sizeof(data), 0);
         MemSet(text, sizeof(text), 0);
         data.stage = prgP->stage;
         data.textP = text;
@@ -108,19 +106,24 @@ Boolean	PrgHandleEvent(ProgressPtr prgP, EventType *eventP) {
 
       // update bitmap
       if (data.bitmapId != prgP->lastBitmapID) {
-        index = FrmGetObjectIndex(prgP->frmP, 1000);
-        bmp = (FormBitmapType *)FrmGetObjectPtr(prgP->frmP, index);
-        if (prgP->lastBitmapID == 0) {
-          bmp->rscID = data.bitmapId;
-          FrmShowObject(prgP->frmP, index);
-        } else if (data.bitmapId == 0) {
-          FrmHideObject(prgP->frmP, index);
+        index = FrmGetObjectIndex(prgP->frmP, prgProgressBitmap);
+        FrmGetObjectBounds(prgP->frmP, index, &rect);
+        if (data.bitmapId != 0) {
+          if ((h = DmGetResource(bitmapRsc, data.bitmapId)) != NULL) {
+            if ((bmp = MemHandleLock(h)) != NULL) {
+              WinPaintBitmap(bmp, rect.topLeft.x, rect.topLeft.y);
+              MemHandleUnlock(h);
+            }
+            DmReleaseResource(h);
+          }
+        } else {
+          WinEraseRectangle(&rect, 0);
         }
         prgP->lastBitmapID = data.bitmapId;
       }
 
       // update text
-      index = FrmGetObjectIndex(prgP->frmP, 2000);
+      index = FrmGetObjectIndex(prgP->frmP, prgProgressText);
       fld = (FieldType *)FrmGetObjectPtr(prgP->frmP, index);
       FldGetAttributes(fld, &attr);
       attr.editable = 1;

@@ -2936,7 +2936,10 @@ static Boolean ApplicationHandleEvent(EventPtr event) {
 
 static Boolean prgCallback(PrgCallbackDataPtr cbP) {
   if (cbP && cbP->textP) {
-    cbP->textP[0] = 0;
+    if (cbP->message) {
+      StrNCopy(cbP->textP, cbP->message, progressMaxMessage);
+    }
+    cbP->bitmapId = 10005;
   }
 
   return true;
@@ -2945,6 +2948,7 @@ static Boolean prgCallback(PrgCallbackDataPtr cbP) {
 static void deploy_callback(void *data, char *msg) {
   ProgressPtr prg = (ProgressPtr)data;
   PrgUpdateDialog(prg, 0, 0, msg, true);
+  SysTaskDelay(100);
 }
 
 static void CheckNotifications(void) {
@@ -2977,7 +2981,7 @@ static void CheckNotifications(void) {
 
   if (deploy) {
     debug(DEBUG_INFO, "Launcher", "CheckNotifications deploy");
-    prg = PrgStartDialog("Deploy", prgCallback, NULL);
+    prg = PrgStartDialog("Installing", prgCallback, NULL);
     pumpkin_deploy_files("/app_install", deploy_callback, prg);
     PrgStopDialog(prg, false);
     reload = true;
