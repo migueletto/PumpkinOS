@@ -273,6 +273,18 @@ FormType *FrmInitFormEx(UInt16 rscID, MemHandle h) {
 }
 
 FormType *FrmInitForm(UInt16 rscID) {
+  frm_module_t *module = (frm_module_t *)pumpkin_get_local_storage(frm_key);
+  FormList *p;
+
+  for (p = module->list; p; p = p->next) {
+    if (p->formP->formId == rscID) {
+      // XXX BrickShooter inits form 1200 twice.
+      // If there is an initialized form with the same ID in the list, just return it.
+      debug(DEBUG_ERROR, "Form", "FrmInitForm %u already in list", rscID);
+      return p->formP;
+    }
+  }
+
   return FrmInitFormEx(rscID, NULL);
 }
 
@@ -2692,11 +2704,11 @@ FormType *FrmNewForm(UInt16 formID, const Char *titleStrP, Coord x, Coord y, Coo
     WinSetField(&formP->window, WindowFieldWindowBoundsW, width);
     WinSetField(&formP->window, WindowFieldWindowBoundsH, height);
 
-    FrmInitFormInternal(formP);
-
     if (WinGetFlag(&formP->window, WindowFlagModal) && module->centerDialogs) {
       FrmCenterForm(formP);
     }
+
+    FrmInitFormInternal(formP);
 
     if (titleStrP) {
       if ((title = pumpkin_heap_alloc(FORM_TITLE_STRUCT_SIZE, "Title")) != NULL) {
@@ -3566,6 +3578,10 @@ FormType *pumpkin_create_form(uint8_t *p, uint32_t formSize) {
     formAttr.orientationTrigger = (attr & 0x00000040) ? 1 : 0;
     formAttr.drawing            = 0;
     formAttr.reserved2          = 0;
+
+    if (WinGetFlag(&form->window, WindowFlagModal)) {
+      formAttr.saveBehind = 1;
+    }
 
     debug(DEBUG_TRACE, "Form", "form id %d attr usable %d save %d", formId, formAttr.usable, formAttr.saveBehind);
     debug(DEBUG_TRACE, "Form", "form id %d wflags dialog %d modal %d", formId, WinGetFlag(&form->window, WindowFlagDialog), WinGetFlag(&form->window, WindowFlagModal));
