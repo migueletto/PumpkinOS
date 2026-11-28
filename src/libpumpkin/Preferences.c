@@ -538,8 +538,9 @@ Int16 PrefGetAppPreferences(UInt32 creator, UInt16 id, void *prefs, UInt16 *pref
     if (size >= 2) {
       if ((p = xcalloc(1, size)) != NULL) {
         pumpkin_get_preference(creator, id, p, size, saved);
-        if (*prefsSize == 0) {
-          *prefsSize = size - 2;
+        size -= 2;
+        if (*prefsSize == 0 || size < *prefsSize) {
+          *prefsSize = size;
         }
         if (prefs) {
           MemMove(prefs, &p[1], *prefsSize);
